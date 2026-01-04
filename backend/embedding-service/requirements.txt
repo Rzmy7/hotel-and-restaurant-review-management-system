@@ -3,3 +3,5 @@ uvicorn
 chromadb
 python-dotenv
 sentence-transformers
+#google-genai
+#google-api-core
