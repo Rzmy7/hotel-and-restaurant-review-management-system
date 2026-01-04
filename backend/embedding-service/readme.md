@@ -49,7 +49,7 @@ The rest of the system (API, search, database) remains unchanged.
 </ul>
 
 Add gemini api key to the env file
-GEMINI_API_KEY=
+<pre>GEMINI_API_KEY=</pre>
 
 <h3>Build Docker Image</h3>
 <pre>
