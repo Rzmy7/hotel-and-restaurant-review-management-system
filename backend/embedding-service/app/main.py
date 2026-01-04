@@ -36,8 +36,8 @@ def get_threshold(query: str) -> float:
     if words == 1:
         return 1.3
     elif words <= 3:
-        return 1.1
-    return 1.0
+        return 1.2
+    return 1.1
 
 
 @app.post("/embed")
