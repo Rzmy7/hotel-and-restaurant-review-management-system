@@ -167,8 +167,10 @@ def search(data: SearchRequest):
         query_embeddings=[vector],
         n_results=data.top_k,
         where={
-            "hotel_id": data.hotel_id,
-            "type": "review"
+            "$and": [
+                {"hotel_id": data.hotel_id},
+                {"type": "review"}
+            ]
         },
         include=["documents", "metadatas", "distances"]
     )
@@ -189,8 +191,10 @@ def search(data: SearchRequest):
         query_embeddings=[vector],
         n_results=5,
         where={
-            "hotel_id": data.hotel_id,
-            "type": "rule"
+        "$and": [
+            {"hotel_id": data.hotel_id},
+            {"type": "rule"}
+            ]
         },
         include=["documents", "metadatas", "distances"]
     )
