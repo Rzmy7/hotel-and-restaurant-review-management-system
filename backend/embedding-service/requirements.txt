@@ -4,8 +4,8 @@ chromadb
 python-dotenv
 
 # for local embeddings
-sentence-transformers
+#sentence-transformers
 
 # for gemini embeddings
-#google-genai
-#google-api-core
+google-genai
+google-api-core

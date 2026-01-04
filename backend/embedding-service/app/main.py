@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 import time
 
-from app.embedding import embed_text
+from app.gemini_embedding import embed_text
 from app.chroma import save_embedding, collection
 
 app = FastAPI(title="Embedding Service")
@@ -19,16 +19,28 @@ class ReviewItem(BaseModel):
     review_id: str
     text: str
 
-
 class BatchEmbedRequest(BaseModel):
     hotel_id: int
     reviews: List[ReviewItem]
-
 
 class SearchRequest(BaseModel):
     query: str
     hotel_id: int
     top_k: int = 3
+
+class Rule(BaseModel):
+    rule_id: str
+    hotel_id: int
+    text: str
+
+class RuleItem(BaseModel):
+    rule_id: str
+    text: str
+
+class BatchRuleEmbedRequest(BaseModel):
+    hotel_id: int
+    rules: list[RuleItem]
+
 
 
 def get_threshold(query: str) -> float:
@@ -47,7 +59,10 @@ def embed(review: Review):
     save_embedding(
         review.review_id,
         vector,
-        {"hotel_id": review.hotel_id},
+        {
+            "hotel_id": review.hotel_id,
+            "type": "review"
+        },
         document=review.text
     )
 
@@ -66,7 +81,7 @@ def embed_batch(data: BatchEmbedRequest):
             save_embedding(
                 review.review_id,
                 vector,
-                {"hotel_id": data.hotel_id},
+                {"hotel_id": data.hotel_id, "type": "review"},
                 document=review.text
             )
 
@@ -84,6 +99,61 @@ def embed_batch(data: BatchEmbedRequest):
         "embedded_ids": embedded,
         "failed": failed
     }
+
+@app.post("/embed/rule")
+def embed_rule(rule: Rule):
+    vector = embed_text(rule.text)
+
+    save_embedding(
+        rule.rule_id,
+        vector,
+        {
+            "hotel_id": rule.hotel_id,
+            "type": "rule"
+        },
+        document=rule.text
+    )
+
+    return {
+        "status": "success",
+        "rule_id": rule.rule_id
+    }
+
+@app.post("/embed/rule/batch")
+def embed_rule_batch(data: BatchRuleEmbedRequest):
+    embedded = []
+    failed = []
+
+    for rule in data.rules:
+        try:
+            vector = embed_text(rule.text)
+
+            save_embedding(
+                rule.rule_id,
+                vector,
+                {
+                    "hotel_id": data.hotel_id,
+                    "type": "rule"
+                },
+                document=rule.text
+            )
+
+            embedded.append(rule.rule_id)
+
+            time.sleep(0.5)
+
+        except Exception as e:
+            failed.append({
+                "rule_id": rule.rule_id,
+                "error": str(e)
+            })
+
+    return {
+        "embedded_count": len(embedded),
+        "embedded_ids": embedded,
+        "failed": failed
+    }
+
 
 
 @app.post("/search")
