@@ -3,7 +3,7 @@
 <h1>🧠 Embedding Service</h1>
 
 <p>
-This service provides <strong>semantic embeddings and vector search</strong> for hotel reviews.
+This service provides <strong>semantic embeddings and vector search</strong> for reviews.
 It is built with FastAPI, ChromaDB, and Docker, and supports both
 <strong>cloud-based</strong> and <strong>locally hosted</strong> embedding models.
 </p>
@@ -47,6 +47,9 @@ The rest of the system (API, search, database) remains unchanged.
   <li>Internet access is available</li>
   <li>External API usage is acceptable</li>
 </ul>
+
+Add gemini api key to the env file
+GEMINI_API_KEY=
 
 <h3>Build Docker Image</h3>
 <pre>
@@ -152,10 +155,6 @@ http://localhost:8001/docs
     <td>2 GB</td>
     <td>Local MiniLM (Recommended)</td>
   </tr>
-  <tr>
-    <td>4 GB+</td>
-    <td>Any</td>
-  </tr>
 </table>
 
 <hr>
@@ -176,5 +175,4 @@ The system is optimized for low-resource deployment while maintaining semantic a
   <li>Supports Gemini and local models</li>
   <li>Batch embedding with safe resource usage</li>
   <li>Semantic search with metadata filtering</li>
-  <li>Production-ready for low-memory VPS environments</li>
 </ul>
