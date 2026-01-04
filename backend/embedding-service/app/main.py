@@ -160,26 +160,55 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
 def search(data: SearchRequest):
     vector = embed_text(data.query)
 
-    results = collection.query(
-        query_embeddings=[vector],
-        n_results=data.top_k,
-        where={"hotel_id": data.hotel_id}
-    )
-
     threshold = get_threshold(data.query)
 
-    filtered = [
+    # 1️⃣ Search REVIEWS
+    review_results = collection.query(
+        query_embeddings=[vector],
+        n_results=data.top_k,
+        where={
+            "hotel_id": data.hotel_id,
+            "type": "review"
+        },
+        include=["documents", "metadatas", "distances"]
+    )
+
+    reviews = [
         {
-            "id": results["ids"][0][i],
-            "metadata": results["metadatas"][0][i],
+            "id": review_results["ids"][0][i],
+            "text": review_results["documents"][0][i],
+            "metadata": review_results["metadatas"][0][i],
             "distance": dist
         }
-        for i, dist in enumerate(results["distances"][0])
+        for i, dist in enumerate(review_results["distances"][0])
         if dist < threshold
+    ]
+
+    # 2️⃣ Search RULES (looser threshold, fewer results)
+    rule_results = collection.query(
+        query_embeddings=[vector],
+        n_results=5,
+        where={
+            "hotel_id": data.hotel_id,
+            "type": "rule"
+        },
+        include=["documents", "metadatas", "distances"]
+    )
+
+    rules = [
+        {
+            "id": rule_results["ids"][0][i],
+            "text": rule_results["documents"][0][i],
+            "metadata": rule_results["metadatas"][0][i],
+            "distance": dist
+        }
+        for i, dist in enumerate(rule_results["distances"][0])
+        if dist < (threshold + 0.2)   # rules are authoritative
     ]
 
     return {
         "query": data.query,
         "threshold": threshold,
-        "results": filtered
+        "reviews": reviews,
+        "rules": rules
     }
