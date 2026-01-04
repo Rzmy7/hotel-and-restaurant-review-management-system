@@ -1,44 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Embedding Service – FastAPI & ChromaDB</title>
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      line-height: 1.6;
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-      color: #222;
-    }
-    h1, h2, h3 {
-      color: #2c3e50;
-    }
-    code, pre {
-      background: #f4f4f4;
-      padding: 8px;
-      display: block;
-      overflow-x: auto;
-    }
-    ul {
-      margin-left: 20px;
-    }
-    .note {
-      background: #fff3cd;
-      padding: 10px;
-      border-left: 5px solid #ffc107;
-      margin: 15px 0;
-    }
-    .important {
-      background: #f8d7da;
-      padding: 10px;
-      border-left: 5px solid #dc3545;
-      margin: 15px 0;
-    }
-  </style>
-</head>
-<body>
+
 
 <h1>🧠 Embedding Service</h1>
 
@@ -218,6 +178,3 @@ The system is optimized for low-resource deployment while maintaining semantic a
   <li>Semantic search with metadata filtering</li>
   <li>Production-ready for low-memory VPS environments</li>
 </ul>
-
-</body>
-</html>
