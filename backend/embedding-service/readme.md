@@ -82,6 +82,108 @@ Batch embedding with throttling is recommended.
   <li>VPS has at least 2 GB RAM</li>
 </ul>
 
+<h2>📨 API Request & Response Formats</h2>
+
+<h3>1️⃣ Embed Single Review</h3>
+
+<p><strong>Request JSON</strong></p>
+<pre>
+{
+  "review_id": "r_wifi_01",
+  "text": "Wifi was fast and stable throughout the stay.",
+  "hotel_id": 101
+}
+</pre>
+
+<p><strong>Response JSON</strong></p>
+<pre>
+{
+  "status": "success"
+}
+</pre>
+
+<hr>
+
+<h3>2️⃣ Embed Multiple Reviews (Batch)</h3>
+
+<p><strong>Request JSON</strong></p>
+<pre>
+{
+  "hotel_id": 101,
+  "reviews": [
+    {
+      "review_id": "r_wifi_01",
+      "text": "Wifi was fast and stable."
+    },
+    {
+      "review_id": "r_wifi_02",
+      "text": "Internet connection worked well in the room."
+    },
+    {
+      "review_id": "r_wifi_03",
+      "text": "Poor wifi signal, kept disconnecting."
+    }
+  ]
+}
+</pre>
+
+<p><strong>Response JSON</strong></p>
+<pre>
+{
+  "embedded_count": 3,
+  "embedded_ids": [
+    "r_wifi_01",
+    "r_wifi_02",
+    "r_wifi_03"
+  ],
+  "failed": []
+}
+</pre>
+
+<hr>
+
+<h3>3️⃣ Semantic Search</h3>
+
+<p><strong>Request JSON</strong></p>
+<pre>
+{
+  "query": "internet and wifi connection",
+  "hotel_id": 101,
+  "top_k": 5
+}
+</pre>
+
+<p><strong>Response JSON</strong></p>
+<pre>
+{
+  "query": "internet and wifi connection",
+  "threshold": 1.1,
+  "results": [
+    {
+      "id": "r_wifi_02",
+      "metadata": {
+        "hotel_id": 101
+      },
+      "distance": 1.07
+    },
+    {
+      "id": "r_wifi_04",
+      "metadata": {
+        "hotel_id": 101
+      },
+      "distance": 1.06
+    }
+  ]
+}
+</pre>
+
+<div class="note">
+<strong>Note:</strong> Lower distance values indicate higher semantic similarity.
+The threshold is dynamically adjusted based on query length.
+</div>
+
+<hr>
+
 <h3>Build Docker Image</h3>
 <pre>
 docker build --no-cache -t embedding-service .
