@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation ,Link} from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import Sidebar from './components/SideBar';
 import ReviewsPage from './pages/ReviewsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -56,14 +56,14 @@ const AppContent = () => {
       <Route path="/setup/schedule" element={<ChooseSchedulePage />} />
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
-      
+
       {/* Main app routes with sidebar */}
       <Route
         path="/*"
         element={
-          <div className="app-container">
+          <div className="flex w-screen h-screen overflow-hidden">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <main className="main-content">
+            <main className="flex-1 flex flex-col bg-gray-50 overflow-y-auto w-full">
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage toggleSidebar={toggleSidebar} />} />
