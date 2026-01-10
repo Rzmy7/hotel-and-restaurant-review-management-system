@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Globe, Bell, Lock, CreditCard, Building2, Upload, Phone, Mail } from 'lucide-react';
+import { ChevronLeft, Globe, Bell, Lock, CreditCard, Building2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -21,7 +21,6 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
   const [primaryEmail, setPrimaryEmail] = useState('reviews@grandplazahotel.com');
   const [phoneNumber, setPhoneNumber] = useState('+1 (555) 987-6543');
 
-  return (
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header */}
