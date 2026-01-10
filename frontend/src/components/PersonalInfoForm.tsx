@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+/*import React, { useState, useEffect } from 'react';
 import { type UserProfile } from '../pages/ProfilePage';
 import './PersonalInfoForm.css';
 
@@ -161,6 +161,128 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                     </div>
                 </div>
             </form>
+        </div>
+    );
+};
+
+export default PersonalInfoForm;*/
+
+
+import React from 'react';
+import { type UserProfile } from '../pages/ProfilePage';
+import './PersonalInfoForm.css';
+
+interface PersonalInfoFormProps {
+    profile: UserProfile;
+    onProfileUpdate: (updatedProfile: UserProfile) => void;
+    onSave: () => void;
+    isSaving: boolean;
+}
+
+const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
+    profile,
+    onProfileUpdate,
+    onSave,
+    isSaving
+}) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        onProfileUpdate({
+            ...profile,
+            [name]: value
+        });
+    };
+
+    return (
+        <div className="personal-info-form">
+            <div className="form-card">
+                <h2 className="form-title">Personal Information</h2>
+                
+                <div className="form-grid">
+                    <div className="form-group">
+                        <label className="form-label">First Name</label>
+                        <input
+                            type="text"
+                            name="firstName"
+                            className="form-input"
+                            value={profile.firstName}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Last Name</label>
+                        <input
+                            type="text"
+                            name="lastName"
+                            className="form-input"
+                            value={profile.lastName}
+                            onChange={handleChange}
+                        />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Email Address</label>
+                    <input
+                        type="email"
+                        name="email"
+                        className="form-input"
+                        value={profile.email}
+                        onChange={handleChange}
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <input
+                        type="text"
+                        name="phone"
+                        className="form-input"
+                        value={profile.phone}
+                        onChange={handleChange}
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Job Title</label>
+                    <input
+                        type="text"
+                        name="jobTitle"
+                        className="form-input"
+                        value={profile.jobTitle}
+                        onChange={handleChange}
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Bio</label>
+                    <textarea
+                        name="bio"
+                        className="form-textarea"
+                        placeholder="Tell us about yourself..."
+                        value={profile.bio}
+                        onChange={handleChange}
+                    />
+                </div>
+
+                <div className="form-actions">
+                    <button 
+                        type="button" 
+                        className="btn btn-primary" 
+                        onClick={onSave}
+                        disabled={isSaving}
+                    >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button 
+                        type="button" 
+                        className="btn btn-secondary"
+                        disabled={isSaving}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

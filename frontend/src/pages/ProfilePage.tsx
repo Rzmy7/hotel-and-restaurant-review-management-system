@@ -36,21 +36,17 @@ const ProfilePage: React.FC = () => {
 
     const handleSaveProfile = async () => {
         setIsSaving(true);
-
         try {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            console.log('Profile saved:', profile);
             alert('Profile updated successfully!');
         } catch (error) {
-            console.error('Error saving profile:', error);
-            alert('Failed to save profile. Please try again.');
+            alert('Failed to save profile.');
         } finally {
             setIsSaving(false);
         }
     };
 
     const handlePhotoChange = (file: File) => {
-        console.log('Photo selected:', file);
         const reader = new FileReader();
         reader.onloadend = () => {
             setProfile(prev => ({
@@ -62,28 +58,34 @@ const ProfilePage: React.FC = () => {
     };
 
     return (
-        <div className="profile-page">
+        <div className="profile-page-root">
             <ProfileHeader
                 title="Profile"
                 subtitle="Manage your personal information"
             />
+            
+            <div className="profile-main-layout">
+                <div className="profile-grid-wrapper">
+                    {/* Left: Form */}
+                    <div className="profile-form-area">
+                        <PersonalInfoForm
+                            profile={profile}
+                            onProfileUpdate={handleProfileUpdate}
+                            onSave={handleSaveProfile}
+                            isSaving={isSaving}
+                        />
+                    </div>
 
-            <div className="profile-content">
-                <div className="profile-main">
-                    <PersonalInfoForm
-                        profile={profile}
-                        onProfileUpdate={handleProfileUpdate}
-                        onSave={handleSaveProfile}
-                        isSaving={isSaving}
-                    />
+                    {/* Right: Sidebar Card */}
+                    <div className="profile-sidebar-area">
+                        <ProfileSidebar
+                            profile={profile}
+                            onPhotoChange={handlePhotoChange}
+                        />
+                    </div>
                 </div>
-
-                <div className="profile-aside">
-                    <ProfileSidebar
-                        profile={profile}
-                        onPhotoChange={handlePhotoChange}
-                    />
-                </div>
+                {/* Extra spacer to ensure buttons are never cut off/blurred */}
+                <div className="profile-footer-spacer"></div>
             </div>
         </div>
     );
