@@ -49,7 +49,6 @@ const ReviewDetailModal = ({
   }
 
   return (
-  return (
     <div className="fixed inset-0 bg-black/50 flex items-stretch justify-end z-[1000] overflow-x-hidden overflow-y-auto" onClick={onClose}>
       <div className="bg-white w-full max-w-[600px] h-screen flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.15)] overflow-hidden animate-[slideInRight_0.3s_ease-out] max-md:max-w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -82,7 +81,7 @@ const ReviewDetailModal = ({
             <div className="mb-6 last:mb-0">
               <h3 className="text-sm font-semibold text-gray-700 m-0 mb-3">Images</h3>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 mt-3">
-                {review.photos.map((photo) => (
+                {review.photos?.map((photo) => (
                   <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer transition-all hover:scale-105 hover:shadow-lg">
                     {photo.src ? (
                       <img
