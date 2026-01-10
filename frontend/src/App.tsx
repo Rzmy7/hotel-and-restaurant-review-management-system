@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation ,Link} from 'react-router-dom';
 import Sidebar from './components/SideBar';
 import ReviewsPage from './pages/ReviewsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -13,6 +13,19 @@ import ChooseSchedulePage from './pages/ChooseSchedulePage';
 import FinishSetupPage from './pages/FinishSetupPage';
 import ScrapeLauncher from './components/ScrapeLauncher';
 import './App.css';
+
+
+
+const NotFound = () => {
+  return (
+    <div style={{ textAlign: 'center', marginTop: '50px' }}>
+      <h1>404</h1>
+      <p>Page not Found</p>
+      {/* It's good practice to provide a way back */}
+      <Link to="/">Go Home</Link>
+    </div>
+  );
+};
 
 // Wrapper component to handle location changes
 const AppContent = () => {
@@ -57,6 +70,7 @@ const AppContent = () => {
                 <Route path="/reviews" element={<ReviewsPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/sources" element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
           </div>
