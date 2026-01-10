@@ -11,7 +11,6 @@ import AlertsPanel from '../components/AlertsPanel.tsx';
 import ReviewSources from '../components/ReviewSources.tsx';
 import ScrapeLauncher from '../components/ScrapeLauncher';
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
-import '../App.css';
 
 interface DashboardPageProps {
   toggleSidebar: () => void;
@@ -23,11 +22,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ toggleSidebar }) => {
       {/* Header */}
       <DashboardHeader onMenuClick={toggleSidebar} />
 
-      <div className="content-area">
+      <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50">
         {/* <ScrapeLauncher /> */}
 
         {/* Metrics Grid */}
-        <div className="metrics-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 min-[1200px]:grid-cols-4 gap-4">
           <MetricCard
             icon={<Star size={20} />}
             label="Average Rating"
@@ -57,25 +56,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ toggleSidebar }) => {
         </div>
 
         {/* Charts Row */}
-        <div className="dashboard-grid">
+        <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
           <SentimentChart />
           <TrendsChart />
         </div>
 
         {/* Reviews and Category Row */}
-        <div className="dashboard-grid">
+        <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
           <LatestReviews />
           <CategoryPerformance />
         </div>
 
         {/* AI Insights and Alerts Row */}
-        <div className="dashboard-grid">
+        <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
           <AIInsights />
           <AlertsPanel />
         </div>
 
         {/* Review Sources */}
-        <div className="dashboard-grid">
+        <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
           <ReviewSources />
         </div>
       </div>

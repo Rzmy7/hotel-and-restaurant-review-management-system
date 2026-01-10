@@ -8,7 +8,7 @@ interface ReviewsHeaderProps {
 
 const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
   return (
-    <div className="reviews-header-wrapper">
+    <div>
       {/* 1. The Top Part (Title, Search, etc) */}
       <ReviewsHeaderTop onMenuClick={onMenuClick} />
 
