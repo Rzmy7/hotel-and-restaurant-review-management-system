@@ -1,4 +1,4 @@
-import './AlertsPanel.css';
+
 
 const AlertsPanel = () => {
   const alerts = [
@@ -15,17 +15,23 @@ const AlertsPanel = () => {
   ];
 
   return (
-    <div className="alerts-panel-card">
-      <div className="card-header">
-        <h3 className="card-title">Alerts</h3>
-        <button className="view-all-btn">View All</button>
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="m-0 text-base font-bold text-gray-800">Alerts</h3>
+        <button className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline">View All</button>
       </div>
 
-      <div className="alerts-list">
+      <div className="flex flex-col gap-3 mt-4">
         {alerts.map((alert) => (
-          <div key={alert.id} className={`alert-item ${alert.type}`}>
-            <span className="alert-dot"></span>
-            <p className="alert-message">{alert.message}</p>
+          <div
+            key={alert.id}
+            className={`flex items-start gap-2.5 p-3 rounded-lg border ${alert.type === 'critical'
+              ? 'bg-red-50 border-red-200 text-red-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-current mt-1.5 shrink-0"></span>
+            <p className="m-0 text-sm font-medium flex-1">{alert.message}</p>
           </div>
         ))}
       </div>
