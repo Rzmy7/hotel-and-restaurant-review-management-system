@@ -1,7 +1,7 @@
-# L2 Project - Hotel Review Scraping & Analysis System
+# Hotel and Restaurant Review Management & Analysis System
 
 ## 📌 Project Overview
-The **L2 Project** is a sophisticated full-stack application designed to aggregate and analyze customer feedback from Booking.com. It combines automated web scraping, structured data storage, and AI-powered sentiment analysis to provide actionable insights into hotel performance.
+The **Hotel and Restaurant Review Management & Analysis System** is a sophisticated full-stack application designed to aggregate and analyze customer feedback from Booking.com. It combines automated web scraping, structured data storage, and AI-powered sentiment analysis to provide actionable insights into hotel performance.
 
 The system consists of three main components:
 1.  **Backend API**: A FastAPI-based server that handles scraping requests, data processing, and serves data to the frontend.
@@ -95,15 +95,16 @@ The backend handles the core logic for scraping and API services.
 6.  **Run the Server**:
     ```bash
     # From the backend directory
-    uvicorn app.main:app --reload
+    cd backend/app/test
+    python main.py
     ```
-    The API will be available at `http://localhost:8000`.
+    The API will be available at `http://127.0.0.1:8000`.
 
 ### 3. Frontend Setup (User UI)
 
 1.  **Navigate to the frontend directory**:
     ```bash
-    cd ../frontend
+    cd ../../frontend
     ```
 
 2.  **Install Dependencies**:
@@ -115,7 +116,7 @@ The backend handles the core logic for scraping and API services.
     ```bash
     npm run dev
     ```
-    The application will run at `http://localhost:5173`.
+    The application will run at `http://localhost:5173`.(or on an available port)
 
 ### 4. Admin Frontend Setup
 
@@ -133,6 +134,7 @@ The backend handles the core logic for scraping and API services.
     ```bash
     npm run dev
     ```
+    The application will run at `http://localhost:5174`.(or on an available port)
 
 ---
 
@@ -143,6 +145,7 @@ e:\L2 Project\UI\L2_project_UI
 ├── backend/                  # Python FastAPI Backend
 │   ├── app/
 │   │   ├── main.py           # API Entry Point
+|   |   ├── .env              # Environment Variables
 │   │   ├── test/             # Scraping & Processing Logic
 │   │   │   ├── scraping/     # Playwright Scraper
 │   │   │   └── services/     # AI Processing Services
