@@ -50,9 +50,9 @@ const ReviewSources = () => {
       <div className="flex gap-8 items-center mt-5 max-md:flex-col">
         <div className="w-[180px] h-[180px] shrink-0 relative max-md:w-[200px] max-md:h-[200px]">
           <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-sm [&_circle]:stroke-round">
-            {sources.map((source, index) => {
+            {sources.map((source) => {
               const path = createDonutPath(source.percentage, currentAngle);
-              const segmentAngle = currentAngle;
+              // const segmentAngle = currentAngle;
               currentAngle += (source.percentage / 100) * 360;
 
               return (

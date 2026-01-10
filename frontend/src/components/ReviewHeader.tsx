@@ -1,4 +1,4 @@
-import React from 'react';
+
 import ReviewsHeaderTop from './ReviewHeaderTop';
 import ReviewsHeaderBottom from './ReviewHeaderBottom';
 

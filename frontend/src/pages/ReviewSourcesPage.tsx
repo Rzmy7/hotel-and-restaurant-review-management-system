@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Menu } from 'lucide-react';
 import SourcesTable from '../components/SourcesTable';
 import AddSourceModal from '../components/AddSourceModal';
@@ -137,7 +137,7 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
   };
 
   const handleSaveSource = (updatedSource: any) => {
-    setSources(sources.map(s => 
+    setSources(sources.map(s =>
       s.id === updatedSource.id ? updatedSource : s
     ));
   };
@@ -147,7 +147,7 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
       {/* Header */}
       <div style={styles.sourcesHeader}>
         <div style={styles.headerLeft}>
-          <button 
+          <button
             style={styles.menuBtn}
             onClick={toggleSidebar}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
@@ -161,7 +161,7 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
             <p style={styles.pageSubtitle}>Manage your connected review platforms</p>
           </div>
         </div>
-        <button 
+        <button
           style={styles.addSourceBtn}
           onClick={() => setIsModalOpen(true)}
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
@@ -176,13 +176,13 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
       <SourcesTable sources={sources} onEditSource={handleEditSource} />
 
       {/* Add Source Modal */}
-      <AddSourceModal 
+      <AddSourceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
 
       {/* Edit Source Modal */}
-      <EditSourceModal 
+      <EditSourceModal
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);

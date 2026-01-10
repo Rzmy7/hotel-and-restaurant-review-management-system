@@ -1,5 +1,5 @@
 // src/pages/ReviewsPage.tsx
-import React from 'react';
+
 import ReviewsHeader from '../components/ReviewHeader';
 import ReviewList from '../components/ReviewList';
 

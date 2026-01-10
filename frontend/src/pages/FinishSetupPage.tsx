@@ -1,7 +1,6 @@
-import React from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/SetupLayout';
-import { CheckCircle2 } from 'lucide-react';
 
 const FinishSetupPage = () => {
   const navigate = useNavigate();
@@ -80,7 +79,7 @@ const FinishSetupPage = () => {
         <div style={styles.iconWrapper}>
           <CheckCircle2 size={48} color="#10b981" strokeWidth={2} />
         </div>
-        
+
         <h1 style={styles.title}>Setup Complete!</h1>
         <p style={styles.description}>
           Your organization has been successfully configured.<br />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/SetupLayout';
 import { Clock, Calendar } from 'lucide-react';
@@ -84,7 +84,7 @@ const ChooseSchedulePage = () => {
       width: '64px',
       height: '64px',
       borderRadius: '50%',
-      backgroundColor: `${color}15`,
+      backgroundColor: `${color} 15`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -146,7 +146,7 @@ const ChooseSchedulePage = () => {
         {scheduleOptions.map((option) => {
           const Icon = option.icon;
           const isSelected = selectedSchedule === option.id;
-          
+
           return (
             <div
               key={option.id}
@@ -166,7 +166,7 @@ const ChooseSchedulePage = () => {
               {option.recommended && (
                 <div style={styles.recommendedBadge}>Recommended</div>
               )}
-              
+
               <div style={styles.radioContainer}>
                 {isSelected && <div style={styles.radioInner} />}
               </div>

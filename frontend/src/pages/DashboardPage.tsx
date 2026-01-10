@@ -1,5 +1,4 @@
 // src/pages/DashboardPage.tsx
-import React from 'react';
 import DashboardHeader from '../components/DashboardHeader.tsx';
 import MetricCard from '../components/MetricCard.tsx';
 import SentimentChart from '../components/SentimentChart.tsx';
@@ -9,7 +8,6 @@ import CategoryPerformance from '../components/CategoryPerformance.tsx';
 import AIInsights from '../components/AIInsights.tsx';
 import AlertsPanel from '../components/AlertsPanel.tsx';
 import ReviewSources from '../components/ReviewSources.tsx';
-import ScrapeLauncher from '../components/ScrapeLauncher';
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
 
 interface DashboardPageProps {

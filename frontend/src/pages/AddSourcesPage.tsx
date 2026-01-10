@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/SetupLayout';
 
@@ -30,7 +30,7 @@ const AddSourcesPage = () => {
   };
 
   const handleConnect = (sourceId: string) => {
-    setSources(sources.map(source => 
+    setSources(sources.map(source =>
       source.id === sourceId ? { ...source, connected: !source.connected } : source
     ));
   };
