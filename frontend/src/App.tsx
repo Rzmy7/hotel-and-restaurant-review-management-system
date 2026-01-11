@@ -12,7 +12,7 @@ import AddSourcesPage from './pages/AddSourcesPage';
 import ChooseSchedulePage from './pages/ChooseSchedulePage';
 import FinishSetupPage from './pages/FinishSetupPage';
 import ScrapeLauncher from './components/ScrapeLauncher';
-
+import ProfilePage from './pages/ProfilePage';
 
 
 
@@ -70,6 +70,10 @@ const AppContent = () => {
                 <Route path="/reviews" element={<ReviewsPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/sources" element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                  path="/profile"
+                  element={<ProfilePage toggleSidebar={toggleSidebar} />}
+                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
