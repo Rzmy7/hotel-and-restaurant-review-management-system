@@ -86,7 +86,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             onClick={() => navigate('/settings')} 
           />
           <SidebarItem icon={<Bell size={20} />} text="Notifications" badge="3" />
-          <SidebarItem icon={<User size={20} />} text="Profile" />
+          <SidebarItem 
+            icon={<User size={20} />} 
+            text="Profile" 
+            active={isActive('/profile')} 
+            onClick={() => navigate('/profile')}          
+          />
         </div>
 
         <div className="divider"></div>

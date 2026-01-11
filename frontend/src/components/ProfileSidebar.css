@@ -1,0 +1,194 @@
+.profile-sidebar-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 32px 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.profile-avatar-section {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.profile-avatar-placeholder {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 600;
+    color: #ffffff;
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+}
+
+.profile-avatar-image {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 3px solid #ffffff;
+}
+
+.profile-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 6px 0;
+}
+
+.profile-role {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 24px 0;
+}
+
+.profile-photo-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.btn-photo-action {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    border: none;
+    white-space: nowrap;
+}
+
+.btn-edit {
+    background-color: #ffffff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-edit:hover {
+    background-color: #f9fafb;
+    color: #111827;
+}
+
+.btn-change {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+
+.btn-change:hover {
+    background-color: #2563eb;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.btn-change:active {
+    background-color: #1d4ed8;
+}
+
+.profile-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+}
+
+.profile-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #f9fafb;
+    transition: background-color 0.2s;
+}
+
+.profile-detail-item:hover {
+    background-color: #f3f4f6;
+}
+
+.detail-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.detail-text {
+    flex: 1;
+    font-size: 14px;
+    color: #374151;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Responsive Design */
+@media (max-width: 968px) {
+    .profile-sidebar-card {
+        padding: 28px 20px;
+    }
+}
+
+@media (max-width: 640px) {
+    .profile-sidebar-card {
+        padding: 24px 16px;
+    }
+
+    .profile-avatar-placeholder,
+    .profile-avatar-image {
+        width: 80px;
+        height: 80px;
+        font-size: 30px;
+    }
+
+    .profile-name {
+        font-size: 18px;
+    }
+
+    .profile-role {
+        font-size: 13px;
+    }
+
+    .profile-photo-actions {
+        gap: 8px;
+    }
+
+    .btn-photo-action {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .detail-text {
+        font-size: 13px;
+    }
+
+    .profile-detail-item {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-photo-actions {
+        flex-direction: column;
+    }
+
+    .btn-photo-action {
+        width: 100%;
+    }
+}

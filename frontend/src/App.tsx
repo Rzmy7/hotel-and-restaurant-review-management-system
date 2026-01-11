@@ -5,6 +5,7 @@ import ReviewsPage from './pages/ReviewsPage';
 import DashboardPage from './pages/DashboardPage';
 import ReviewSourcesPage from './pages/ReviewSourcesPage';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import SetupPage from './pages/SetupPage';
@@ -41,11 +42,6 @@ const AppContent = () => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Close sidebar when route changes
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
   return (
     <Routes>
       {/* Auth routes - standalone without sidebar */}
@@ -57,7 +53,10 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
       
-      {/* Main app routes with sidebar */}
+      {/* Profile route - standalone without navigation sidebar */}
+      <Route path="/profile" element={<ProfilePage />} />
+      
+      {/* Main app routes with navigation sidebar */}
       <Route
         path="/*"
         element={
