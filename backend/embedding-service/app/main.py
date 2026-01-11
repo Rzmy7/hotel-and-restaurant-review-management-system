@@ -1,10 +1,23 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+
+from app.embedding import embed_text
+from app.chroma import save_embedding
+from app.chroma import collection
+=======
+>>>>>>> temp
 from typing import List
 import time
 
 from app.gemini_embedding import embed_text
 from app.chroma import save_embedding, collection
+<<<<<<< HEAD
+=======
+>>>>>>> vectordb
+>>>>>>> temp
 
 app = FastAPI(title="Embedding Service")
 
@@ -15,6 +28,11 @@ class Review(BaseModel):
     hotel_id: int
 
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> temp
 class ReviewItem(BaseModel):
     review_id: str
     text: str
@@ -52,6 +70,10 @@ def get_threshold(query: str) -> float:
     return 1.1
 
 
+<<<<<<< HEAD
+=======
+>>>>>>> vectordb
+>>>>>>> temp
 @app.post("/embed")
 def embed(review: Review):
     vector = embed_text(review.text)
@@ -59,15 +81,26 @@ def embed(review: Review):
     save_embedding(
         review.review_id,
         vector,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+        {"hotel_id": review.hotel_id}
+=======
+>>>>>>> temp
         {
             "hotel_id": review.hotel_id,
             "type": "review"
         },
         document=review.text
+<<<<<<< HEAD
+=======
+>>>>>>> vectordb
+>>>>>>> temp
     )
 
     return {"status": "success"}
 
+<<<<<<< HEAD
 # @app.get("/debug/count")
 # def debug_count():
 #     return {"count": collection.count()}
@@ -75,6 +108,17 @@ def embed(review: Review):
 # @app.get("/debug/peek")
 # def debug_peek():
 #     return collection.peek(limit=5)
+=======
+<<<<<<< HEAD
+@app.get("/debug/count")
+def debug_count():
+    return {"count": collection.count()}
+
+@app.get("/debug/peek")
+def debug_peek():
+    return collection.peek(limit=5)
+=======
+>>>>>>> temp
 
 @app.post("/embed/batch")
 def embed_batch(data: BatchEmbedRequest):
@@ -223,3 +267,7 @@ def search(data: SearchRequest):
         "reviews": reviews,
         "rules": rules
     }
+<<<<<<< HEAD
+=======
+>>>>>>> vectordb
+>>>>>>> temp
