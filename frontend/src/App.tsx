@@ -39,7 +39,7 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       
       {/* Profile route - standalone without navigation sidebar */}
-      <Route path="/profile" element={<ProfilePage />} />
+      
       
       {/* Main app routes with navigation sidebar */}
       <Route
@@ -54,6 +54,7 @@ const AppContent = () => {
                 <Route path="/reviews" element={<ReviewsPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/sources" element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/profile" element={<ProfilePage toggleSidebar={toggleSidebar}/>} />
               </Routes>
             </main>
           </div>

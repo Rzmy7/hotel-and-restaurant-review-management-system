@@ -4,7 +4,12 @@ import PersonalInfoForm from '../components/PersonalInfoForm';
 import ProfileSidebar from '../components/ProfileSidebar';
 import './ProfilePage.css';
 
-export interface UserProfile {
+interface ProfilePageProps {
+    toggleSidebar: () => void;
+}
+
+
+interface UserProfile {
     firstName: string;
     lastName: string;
     email: string;
@@ -16,7 +21,7 @@ export interface UserProfile {
     avatar?: string;
 }
 
-const ProfilePage: React.FC = () => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ toggleSidebar }) => {
     const [profile, setProfile] = useState<UserProfile>({
         firstName: 'Sarah',
         lastName: 'Johnson',
@@ -40,7 +45,7 @@ const ProfilePage: React.FC = () => {
             await new Promise(resolve => setTimeout(resolve, 1000));
             alert('Profile updated successfully!');
         } catch (error) {
-            alert('Failed to save profile.');
+            alert('Failed to save profile.' + error);
         } finally {
             setIsSaving(false);
         }
@@ -62,6 +67,7 @@ const ProfilePage: React.FC = () => {
             <ProfileHeader
                 title="Profile"
                 subtitle="Manage your personal information"
+                onMenuClick={toggleSidebar}
             />
             
             <div className="profile-main-layout">
