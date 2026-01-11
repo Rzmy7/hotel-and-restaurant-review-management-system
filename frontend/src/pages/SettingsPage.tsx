@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Globe, Bell, Lock, CreditCard, Building2, Upload, Phone, Mail } from 'lucide-react';
+import { Globe, Bell, Lock, CreditCard, Building2, Upload, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './SettingsPage.css';
 
-interface SettingsPageProps {}
+interface SettingsPageProps {
+  toggleSidebar: () => void;
+}
 
-const SettingsPage: React.FC<SettingsPageProps> = () => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   
   // State for toggles
@@ -25,8 +27,8 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
     <div className="settings-page">
       {/* Header */}
       <div className="settings-header">
-        <button className="back-button" onClick={() => navigate(-1)}>
-          <ChevronLeft size={20} />
+        <button className="menu-btn" onClick={toggleSidebar}>
+          <Menu size={24} />
         </button>
         <div className="header-content">
           <h1 className="settings-title">Settings</h1>

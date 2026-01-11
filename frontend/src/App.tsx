@@ -85,7 +85,10 @@ const AppContent = () => {
                   path="/sources"
                   element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />}
                 />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                  path="/settings"
+                  element={<SettingsPage toggleSidebar={toggleSidebar} />}
+                />
                 <Route
                   path="/profile"
                   element={<ProfilePage toggleSidebar={toggleSidebar} />}
