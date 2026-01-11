@@ -1,25 +1,30 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation ,Link} from 'react-router-dom';
-import Sidebar from './components/SideBar';
-import ReviewsPage from './pages/ReviewsPage';
-import DashboardPage from './pages/DashboardPage';
-import ReviewSourcesPage from './pages/ReviewSourcesPage';
-import SettingsPage from './pages/SettingsPage';
-import ProfilePage from './pages/ProfilePage';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import SetupPage from './pages/SetupPage';
-import AddSourcesPage from './pages/AddSourcesPage';
-import ChooseSchedulePage from './pages/ChooseSchedulePage';
-import FinishSetupPage from './pages/FinishSetupPage';
-import ScrapeLauncher from './components/ScrapeLauncher';
-import './App.css';
-
-
+import { useState, useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  Link,
+} from "react-router-dom";
+import Sidebar from "./components/SideBar";
+import ReviewsPage from "./pages/ReviewsPage";
+import DashboardPage from "./pages/DashboardPage";
+import ReviewSourcesPage from "./pages/ReviewSourcesPage";
+import SettingsPage from "./pages/SettingsPage";
+import ProfilePage from "./pages/ProfilePage";
+import LoginPage from "./pages/LoginPage";
+import SignUpPage from "./pages/SignUpPage";
+import SetupPage from "./pages/SetupPage";
+import AddSourcesPage from "./pages/AddSourcesPage";
+import ChooseSchedulePage from "./pages/ChooseSchedulePage";
+import FinishSetupPage from "./pages/FinishSetupPage";
+import ScrapeLauncher from "./components/ScrapeLauncher";
+import "./App.css";
 
 const NotFound = () => {
   return (
-    <div style={{ textAlign: 'center', marginTop: '50px' }}>
+    <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h1>404</h1>
       <p>Page not Found</p>
       {/* It's good practice to provide a way back */}
@@ -52,23 +57,40 @@ const AppContent = () => {
       <Route path="/setup/schedule" element={<ChooseSchedulePage />} />
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
-      
-      {/* Profile route - standalone without navigation sidebar */}
-      <Route path="/profile" element={<ProfilePage />} />
-      
+
       {/* Main app routes with navigation sidebar */}
       <Route
         path="/*"
         element={
           <div className="app-container">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <Sidebar
+              isOpen={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
             <main className="main-content">
               <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<DashboardPage toggleSidebar={toggleSidebar} />} />
-                <Route path="/reviews" element={<ReviewsPage toggleSidebar={toggleSidebar} />} />
-                <Route path="/sources" element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />} />
+                <Route
+                  path="/"
+                  element={<Navigate to="/dashboard" replace />}
+                />
+                <Route
+                  path="/dashboard"
+                  element={<DashboardPage toggleSidebar={toggleSidebar} />}
+                />
+                <Route
+                  path="/reviews"
+                  element={<ReviewsPage toggleSidebar={toggleSidebar} />}
+                />
+                <Route
+                  path="/sources"
+                  element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />}
+                />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                  path="/profile"
+                  element={<ProfilePage toggleSidebar={toggleSidebar} />}
+                />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
