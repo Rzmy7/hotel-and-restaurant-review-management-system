@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
@@ -84,6 +88,7 @@ button {
   background-color: var(--bg-sidebar) !important;
   border-right: none !important;
 }
+
 /* Global Toggle Switch */
 .toggle-switch {
   position: relative;
@@ -121,11 +126,11 @@ button {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.toggle-input:checked + .toggle-slider {
+.toggle-input:checked+.toggle-slider {
   background-color: #6366f1;
 }
 
-.toggle-input:checked + .toggle-slider:before {
+.toggle-input:checked+.toggle-slider:before {
   transform: translateX(20px);
 }
 
@@ -135,6 +140,6 @@ button {
   color: #6366f1;
 }
 
-.toggle-input:not(:checked) ~ .toggle-label {
+.toggle-input:not(:checked)~.toggle-label {
   color: var(--text-secondary);
 }

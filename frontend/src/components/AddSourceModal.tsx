@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 
 interface AddSourceModalProps {
@@ -184,7 +184,7 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           {/* Platform Select */}
           <div style={styles.formGroup}>
             <label style={styles.label}>Source Platform</label>
-            <select 
+            <select
               style={styles.select}
               value={platform}
               onChange={(e) => setPlatform(e.target.value)}
@@ -224,7 +224,7 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           {/* Schedule */}
           <div style={styles.formGroup}>
             <label style={styles.label}>Schedule</label>
-            <select 
+            <select
               style={styles.select}
               value={schedule}
               onChange={(e) => setSchedule(e.target.value)}
@@ -236,7 +236,7 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           </div>
 
           {/* Test Connection Button */}
-          <button 
+          <button
             style={styles.testBtn}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
@@ -254,7 +254,7 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
                 Enable to start collecting reviews immediately
               </div>
             </div>
-            <div 
+            <div
               style={styles.toggle}
               onClick={() => setSourceStatus(!sourceStatus)}
             >
@@ -265,7 +265,7 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
 
         {/* Footer */}
         <div style={styles.footer}>
-          <button 
+          <button
             style={styles.cancelBtn}
             onClick={onClose}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -273,7 +273,7 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           >
             Cancel
           </button>
-          <button 
+          <button
             style={styles.submitBtn}
             onClick={handleSubmit}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}

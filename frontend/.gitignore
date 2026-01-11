@@ -23,3 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 .vite
+
+build_log_v3.txt

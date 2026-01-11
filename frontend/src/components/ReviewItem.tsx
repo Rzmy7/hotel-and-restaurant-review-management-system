@@ -1,4 +1,4 @@
-import { Calendar, User, MessageCircle, Star, ArrowRight } from 'lucide-react';
+import { Star, ArrowRight } from 'lucide-react';
 
 
 // Define the shape of a Review Object

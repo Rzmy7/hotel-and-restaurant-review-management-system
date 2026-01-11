@@ -12,7 +12,7 @@ import AddSourcesPage from './pages/AddSourcesPage';
 import ChooseSchedulePage from './pages/ChooseSchedulePage';
 import FinishSetupPage from './pages/FinishSetupPage';
 import ScrapeLauncher from './components/ScrapeLauncher';
-import './App.css';
+
 
 
 

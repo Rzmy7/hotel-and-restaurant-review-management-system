@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface Source {
@@ -281,7 +281,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
             {/* Platform Select */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Source Platform</label>
-              <select 
+              <select
                 style={styles.select}
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
@@ -318,7 +318,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
             {/* Schedule */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Schedule</label>
-              <select 
+              <select
                 style={styles.select}
                 value={schedule}
                 onChange={(e) => setSchedule(e.target.value)}
@@ -339,7 +339,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
                   {sourceStatus ? 'Active and collecting reviews' : 'Paused'}
                 </div>
               </div>
-              <div 
+              <div
                 style={styles.toggle}
                 onClick={() => setSourceStatus(!sourceStatus)}
               >
@@ -348,7 +348,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
             </div>
 
             {/* Delete Button */}
-            <button 
+            <button
               style={styles.deleteBtn}
               onClick={handleDelete}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
@@ -396,7 +396,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
 
         {/* Footer */}
         <div style={styles.footer}>
-          <button 
+          <button
             style={styles.cancelBtn}
             onClick={onClose}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -404,7 +404,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
           >
             Cancel
           </button>
-          <button 
+          <button
             style={styles.saveBtn}
             onClick={handleSave}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#000000'}

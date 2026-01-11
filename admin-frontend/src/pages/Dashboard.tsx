@@ -3,7 +3,7 @@ import { Building2, Users, Building, Loader } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
 import { fetchDashboardStats, fetchUsageData, fetchReviewData } from '../services/mockService';
 import type { DashboardStats, ChartDataPoint } from '../types';
-import './Dashboard.css';
+
 
 export const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -29,7 +29,7 @@ export const Dashboard: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex-center" style={{ height: '50vh' }}>
+            <div className="flex items-center justify-center h-[50vh]">
                 <Loader size={32} className="animate-spin" />
             </div>
         );
@@ -50,9 +50,9 @@ export const Dashboard: React.FC = () => {
     const chartPoints = getPoints(usageData, 600, 250); // Approximated viewBox dimensions
 
     return (
-        <div className="dashboard-container">
+        <div className="max-w-[1200px] mx-auto">
             {stats && (
-                <div className="dashboard-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                     <StatCard
                         label="Total Organizations"
                         value={stats.totalOrganizations.toLocaleString()}
@@ -74,14 +74,14 @@ export const Dashboard: React.FC = () => {
                 </div>
             )}
 
-            <div className="charts-grid">
-                <div className="white-card chart-card">
-                    <div className="chart-header">
-                        <div className="chart-title">Platform Usage Over Time</div>
-                        <div className="chart-subtitle">Active users per month</div>
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-[400px] flex flex-col">
+                    <div className="mb-6">
+                        <div className="text-base font-semibold text-gray-900 mb-1">Platform Usage Over Time</div>
+                        <div className="text-sm text-gray-500">Active users per month</div>
                     </div>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                        <svg viewBox="0 0 600 250" className="line-chart-svg" preserveAspectRatio="none">
+                    <div className="flex-1 relative">
+                        <svg viewBox="0 0 600 250" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                             {/* Horizontal Grid Lines */}
                             {[0, 1, 2, 3, 4].map(i => (
                                 <line
@@ -90,41 +90,41 @@ export const Dashboard: React.FC = () => {
                                     y1={20 + (i * 50)}
                                     x2="580"
                                     y2={20 + (i * 50)}
-                                    className="grid-line"
+                                    className="stroke-gray-200 stroke-1 [stroke-dasharray:4_4]"
                                 />
                             ))}
 
                             {/* The Line */}
                             <polyline
                                 points={chartPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                                className="line-path"
+                                className="fill-none stroke-blue-500 stroke-[3] line-cap-round line-join-round"
                             />
 
                             {/* Dots */}
                             {chartPoints.map((p, i) => (
-                                <circle key={i} cx={p.x} cy={p.y} className="chart-dot" />
+                                <circle key={i} cx={p.x} cy={p.y} className="fill-white stroke-blue-500 stroke-[2] r-[4px]" />
                             ))}
 
                             {/* X Axis Labels */}
                             {chartPoints.map((p, i) => (
-                                <text key={i} x={p.x} y="245" textAnchor="middle" className="axis-text">{p.label}</text>
+                                <text key={i} x={p.x} y="245" textAnchor="middle" className="text-[10px] fill-gray-500">{p.label}</text>
                             ))}
                         </svg>
                     </div>
                 </div>
 
-                <div className="white-card chart-card">
-                    <div className="chart-header">
-                        <div className="chart-title">Reviews by Organization</div>
-                        <div className="chart-subtitle">Total reviews collected</div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-[400px] flex flex-col">
+                    <div className="mb-6">
+                        <div className="text-base font-semibold text-gray-900 mb-1">Reviews by Organization</div>
+                        <div className="text-sm text-gray-500">Total reviews collected</div>
                     </div>
-                    <div className="chart-content">
+                    <div className="flex-1 flex items-end justify-between gap-3 pt-5">
                         {reviewData.map((item, index) => (
-                            <div key={index} className="bar-chart-item" style={{ height: '100%' }}>
-                                <div className="bar" style={{ height: '100%', width: '30px' }}>
-                                    <div className="bar-fill" style={{ height: `${item.value}%` }}></div>
+                            <div key={index} className="flex flex-col items-center gap-2 flex-1 h-full">
+                                <div className="w-full bg-gray-100 rounded relative overflow-hidden h-full">
+                                    <div className="absolute bottom-0 left-0 w-full bg-blue-500 rounded transition-all duration-1000 ease-out" style={{ height: `${item.value}%` }}></div>
                                 </div>
-                                <div className="bar-label">{item.label}</div>
+                                <div className="text-xs text-gray-500 text-center overflow-hidden text-ellipsis whitespace-nowrap max-w-full">{item.label}</div>
                             </div>
                         ))}
                     </div>
