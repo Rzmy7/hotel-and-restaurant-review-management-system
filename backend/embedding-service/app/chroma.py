@@ -10,6 +10,7 @@ client = chromadb.Client(
 
 collection = client.get_or_create_collection("hotel_reviews")
 
+<<<<<<< HEAD
 def save_embedding(review_id: str, embedding, metadata: dict):
     collection.add(
         ids=[review_id],
@@ -22,3 +23,12 @@ def count_embeddings():
 
 def peek_embeddings(limit=5):
     return collection.peek(limit=limit)
+=======
+def save_embedding(review_id, embedding, metadata, document=None):
+    collection.add(
+        ids=[review_id],
+        embeddings=[embedding],
+        metadatas=[metadata],
+        documents=[document] if document else None
+    )
+>>>>>>> vectordb
