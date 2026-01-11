@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 import time
 from google import genai
@@ -20,14 +19,4 @@ def embed_text(text: str, retries: int = 3):
             print(f"[WARN] Gemini quota hit. Retrying in {wait}s...")
             time.sleep(wait)
 
-    raise Exception("Embedding failed due to quota limits")
-=======
-from sentence_transformers import SentenceTransformer
-
-# Load once at startup
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-def embed_text(text: str):
-    vector = model.encode(text)
-    return vector.tolist()
->>>>>>> vectordb
+    raise Exception("Gemini embedding failed after retries")
