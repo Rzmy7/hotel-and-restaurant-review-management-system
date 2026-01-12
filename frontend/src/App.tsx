@@ -1,11 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  Link,
-} from "react-router-dom";
+import { useState } from "react";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
 
 import Sidebar from "./components/SideBar";
 
@@ -25,34 +19,26 @@ import Insights from "./pages/Insights";
 
 import "./App.css";
 
-/* 404 Page */
-const NotFound = () => {
-  return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>404</h1>
-      <p>Page not Found</p>
-      <Link to="/">Go Home</Link>
-    </div>
-  );
-};
+/* 404 */
+const NotFound = () => (
+  <div style={{ textAlign: "center", marginTop: "50px" }}>
+    <h1>404</h1>
+    <p>Page not Found</p>
+    <Link to="/dashboard">Go Dashboard</Link>
+  </div>
+);
 
-/* MAIN APP */
-const AppContent = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
+const App = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
   return (
     <Routes>
 
-      {/* AUTH ROUTES */}
+      {/* AUTH */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/setup" element={<SetupPage />} />
@@ -61,27 +47,21 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
 
-      {/* MAIN LAYOUT */}
+      {/* MAIN */}
       <Route
         path="/*"
         element={
           <div className="app-container">
 
-            {/* HIDE SIDEBAR ON INSIGHTS */}
-            {!location.pathname.includes("insights") && (
-              <Sidebar
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-              />
-            )}
+            <Sidebar
+              isOpen={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
 
             <main className="main-content">
               <Routes>
 
-                <Route
-                  path=""
-                  element={<Navigate to="dashboard" replace />}
-                />
+                <Route path="" element={<Navigate to="dashboard" replace />} />
 
                 <Route
                   path="dashboard"
@@ -108,10 +88,10 @@ const AppContent = () => {
                   element={<ProfilePage toggleSidebar={toggleSidebar} />}
                 />
 
-                {/* INSIGHTS PAGE */}
+                {/* FIXED */}
                 <Route
                   path="insights"
-                  element={<Insights />}
+                  element={<Insights toggleSidebar={toggleSidebar} />}
                 />
 
                 <Route path="*" element={<NotFound />} />
@@ -126,4 +106,4 @@ const AppContent = () => {
   );
 };
 
-export default AppContent;
+export default App;
