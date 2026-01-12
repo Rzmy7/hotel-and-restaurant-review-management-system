@@ -1,9 +1,15 @@
-/* src/index.css */
+/* Tailwind base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Custom global styles */
 :root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  background-color: #f4f4f4; /* Match your app background */
+  background-color: #f4f4f4;
 }
 
 body {
@@ -11,5 +17,6 @@ body {
   padding: 0;
   width: 100vw;
   height: 100vh;
-  overflow: hidden; /* Prevent double scrollbars */
+  overflow-x: hidden; /* prevent horizontal scroll */
+  background-color: #f4f4f4;
 }
