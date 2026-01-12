@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import {
-  BrowserRouter,
   Routes,
   Route,
   Navigate,
   useLocation,
   Link,
 } from "react-router-dom";
+
 import Sidebar from "./components/SideBar";
+
 import ReviewsPage from "./pages/ReviewsPage";
 import DashboardPage from "./pages/DashboardPage";
 import ReviewSourcesPage from "./pages/ReviewSourcesPage";
@@ -20,20 +21,22 @@ import AddSourcesPage from "./pages/AddSourcesPage";
 import ChooseSchedulePage from "./pages/ChooseSchedulePage";
 import FinishSetupPage from "./pages/FinishSetupPage";
 import ScrapeLauncher from "./components/ScrapeLauncher";
+import Insights from "./pages/Insights";
+
 import "./App.css";
 
+/* 404 Page */
 const NotFound = () => {
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h1>404</h1>
       <p>Page not Found</p>
-      {/* It's good practice to provide a way back */}
       <Link to="/">Go Home</Link>
     </div>
   );
 };
 
-// Wrapper component to handle location changes
+/* MAIN APP */
 const AppContent = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
@@ -42,14 +45,14 @@ const AppContent = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Close sidebar when route changes
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
   return (
     <Routes>
-      {/* Auth routes - standalone without sidebar */}
+
+      {/* AUTH ROUTES */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/setup" element={<SetupPage />} />
@@ -58,58 +61,69 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
 
-      {/* Main app routes with navigation sidebar */}
+      {/* MAIN LAYOUT */}
       <Route
         path="/*"
         element={
           <div className="app-container">
-            <Sidebar
-              isOpen={sidebarOpen}
-              onClose={() => setSidebarOpen(false)}
-            />
+
+            {/* HIDE SIDEBAR ON INSIGHTS */}
+            {!location.pathname.includes("insights") && (
+              <Sidebar
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+              />
+            )}
+
             <main className="main-content">
               <Routes>
+
                 <Route
-                  path="/"
-                  element={<Navigate to="/dashboard" replace />}
+                  path=""
+                  element={<Navigate to="dashboard" replace />}
                 />
+
                 <Route
-                  path="/dashboard"
+                  path="dashboard"
                   element={<DashboardPage toggleSidebar={toggleSidebar} />}
                 />
+
                 <Route
-                  path="/reviews"
+                  path="reviews"
                   element={<ReviewsPage toggleSidebar={toggleSidebar} />}
                 />
+
                 <Route
-                  path="/sources"
+                  path="sources"
                   element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />}
                 />
+
                 <Route
-                  path="/settings"
+                  path="settings"
                   element={<SettingsPage toggleSidebar={toggleSidebar} />}
                 />
+
                 <Route
-                  path="/profile"
+                  path="profile"
                   element={<ProfilePage toggleSidebar={toggleSidebar} />}
                 />
 
+                {/* INSIGHTS PAGE */}
+                <Route
+                  path="insights"
+                  element={<Insights />}
+                />
+
                 <Route path="*" element={<NotFound />} />
+
               </Routes>
             </main>
           </div>
         }
       />
+
     </Routes>
   );
 };
 
-function App() {
-  return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
-  );
-}
-
-export default App;
+export default AppContent;
