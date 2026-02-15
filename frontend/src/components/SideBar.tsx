@@ -56,7 +56,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           />
           {/* Note: You can add routes for these later in App.tsx */}
           <SidebarItem icon={<BarChart3 size={20} />} text="Insights" />
-          <SidebarItem icon={<Target size={20} />} text="Competitors" />
+          <SidebarItem 
+            icon={<Target size={20} />} 
+            text="Competitors" 
+            active={isActive('/competitors')} 
+            onClick={() => navigate('/competitors')} 
+          />
           <SidebarItem 
             icon={<Plug size={20} />} 
             text="Sources" 

@@ -11,6 +11,7 @@ import Sidebar from "./components/SideBar";
 import ReviewsPage from "./pages/ReviewsPage";
 import DashboardPage from "./pages/DashboardPage";
 import ReviewSourcesPage from "./pages/ReviewSourcesPage";
+import CompetitorsPage from "./pages/CompetitorsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
@@ -80,6 +81,10 @@ const AppContent = () => {
                 <Route
                   path="/reviews"
                   element={<ReviewsPage toggleSidebar={toggleSidebar} />}
+                />
+                <Route
+                  path="/competitors"
+                  element={<CompetitorsPage toggleSidebar={toggleSidebar} />}
                 />
                 <Route
                   path="/sources"
