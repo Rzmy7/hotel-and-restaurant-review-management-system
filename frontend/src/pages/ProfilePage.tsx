@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import ProfileHeader from '../components/ProfileHeader';
 import PersonalInfoForm from '../components/PersonalInfoForm';
 import ProfileSidebar from '../components/ProfileSidebar';
-import './ProfilePage.css';
 
 interface ProfilePageProps {
     toggleSidebar: () => void;

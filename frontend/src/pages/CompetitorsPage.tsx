@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, TrendingUp, Plus, Star, Trash2 } from 'lucide-react';
-import './CompetitorsPage.css';
 
 interface CompetitorsPageProps {
   toggleSidebar: () => void;
@@ -81,32 +80,32 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   };
 
   return (
-    <div className="page-content">
+    <div className="flex-1 overflow-auto">
       {/* Header */}
-      <header className="page-header">
-        <div className="header-left">
-          <button className="menu-btn" onClick={toggleSidebar}>
+      <header className="flex justify-between items-center px-8 py-5 bg-white border-b border-gray-200">
+        <div className="flex items-start gap-4">
+          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={toggleSidebar}>
             <Menu size={24} />
           </button>
-          <div className="header-text">
-            <h1>Competitors</h1>
-            <p className="subtitle">Manage your competitor list</p>
+          <div>
+            <h1 className="m-0 text-2xl font-bold text-gray-800">Competitors</h1>
+            <p className="mt-1 mb-0 text-xs text-gray-400">Manage your competitor list</p>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <div className="content-area">
-        <div className="competitors-container">
+      <div className="p-8">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {/* Section Header */}
-          <div className="competitors-header">
-            <h2>Competitor List</h2>
-            <div className="header-actions">
-              <button className="btn-outline" onClick={handleViewRankings}>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-5 md:p-6 border-b border-gray-200 gap-3">
+            <h2 className="text-lg font-semibold text-gray-800 m-0">Competitor List</h2>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-400" onClick={handleViewRankings}>
                 <TrendingUp size={18} />
                 View Rankings
               </button>
-              <button className="btn-primary" onClick={handleAddCompetitor}>
+              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 border border-blue-500 rounded-lg text-sm font-medium text-white transition-all hover:bg-blue-600" onClick={handleAddCompetitor}>
                 <Plus size={18} />
                 Add Competitor
               </button>
@@ -114,42 +113,46 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
           </div>
 
           {/* Competitors Table */}
-          <div className="competitors-table-container">
-            <table className="competitors-table">
-              <thead>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th>COMPETITOR NAME</th>
-                  <th>LOCATION</th>
-                  <th>AVG RATING</th>
-                  <th>SENTIMENT SCORE</th>
-                  <th>REVIEW COUNT</th>
-                  <th>ACTION</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">COMPETITOR NAME</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LOCATION</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">AVG RATING</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SENTIMENT SCORE</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">REVIEW COUNT</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {competitors.map((competitor) => (
-                  <tr key={competitor.id}>
-                    <td className="competitor-name">{competitor.name}</td>
-                    <td className="location">{competitor.location}</td>
-                    <td className="rating">
-                      <span className="rating-value">{competitor.avgRating}</span>
-                      <Star size={16} className="star-icon" fill="#FFC107" color="#FFC107" />
+                  <tr key={competitor.id} className="border-b border-gray-100 last:border-b-0 transition-colors hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{competitor.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{competitor.location}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className="flex items-center gap-1">
+                        <span className="font-medium text-gray-800">{competitor.avgRating}</span>
+                        <Star size={16} fill="#FFC107" color="#FFC107" />
+                      </span>
                     </td>
-                    <td className="sentiment">{competitor.sentimentScore}%</td>
-                    <td className="review-count">{competitor.reviewCount.toLocaleString()}</td>
-                    <td className="actions">
-                      <button 
-                        className="btn-compare"
-                        onClick={() => handleCompare(competitor.id)}
-                      >
-                        Compare
-                      </button>
-                      <button 
-                        className="btn-delete"
-                        onClick={() => handleDelete(competitor.id)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-700">{competitor.sentimentScore}%</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{competitor.reviewCount.toLocaleString()}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button 
+                          className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg transition-all hover:bg-blue-600"
+                          onClick={() => handleCompare(competitor.id)}
+                        >
+                          Compare
+                        </button>
+                        <button 
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          onClick={() => handleDelete(competitor.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
