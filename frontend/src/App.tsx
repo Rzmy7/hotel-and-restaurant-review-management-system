@@ -12,6 +12,8 @@ import ReviewsPage from "./pages/ReviewsPage";
 import DashboardPage from "./pages/DashboardPage";
 import ReviewSourcesPage from "./pages/ReviewSourcesPage";
 import CompetitorsPage from "./pages/CompetitorsPage";
+import CompetitorComparisonPage from "./pages/CompetitorComparisonPage";
+import CompetitorRankingsPage from "./pages/CompetitorRankingsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
@@ -85,6 +87,14 @@ const AppContent = () => {
                 <Route
                   path="/competitors"
                   element={<CompetitorsPage toggleSidebar={toggleSidebar} />}
+                />
+                <Route
+                  path="/competitors/compare"
+                  element={<CompetitorComparisonPage toggleSidebar={toggleSidebar} />}
+                />
+                <Route
+                  path="/competitors/rankings"
+                  element={<CompetitorRankingsPage toggleSidebar={toggleSidebar} />}
                 />
                 <Route
                   path="/sources"

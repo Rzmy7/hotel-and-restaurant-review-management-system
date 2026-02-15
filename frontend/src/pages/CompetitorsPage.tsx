@@ -1,5 +1,6 @@
 // src/pages/CompetitorsPage.tsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu, TrendingUp, Plus, Star, Trash2 } from 'lucide-react';
 import './CompetitorsPage.css';
 
@@ -17,6 +18,7 @@ interface Competitor {
 }
 
 const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
+  const navigate = useNavigate();
   const [competitors] = useState<Competitor[]>([
     {
       id: 1,
@@ -53,8 +55,15 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   ]);
 
   const handleCompare = (competitorId: number) => {
-    console.log('Compare competitor:', competitorId);
-    // Add comparison logic
+    // Map competitor IDs to slugs for URL
+    const competitorMap: { [key: number]: string } = {
+      1: 'luxury-grand',
+      2: 'royal-beach',
+      3: 'seaside-paradise',
+      4: 'mountain-view',
+    };
+    const competitorSlug = competitorMap[competitorId];
+    navigate(`/competitors/compare?id=${competitorSlug}`);
   };
 
   const handleDelete = (competitorId: number) => {
@@ -68,8 +77,7 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   };
 
   const handleViewRankings = () => {
-    console.log('View rankings');
-    // Add view rankings logic
+    navigate('/competitors/rankings');
   };
 
   return (
