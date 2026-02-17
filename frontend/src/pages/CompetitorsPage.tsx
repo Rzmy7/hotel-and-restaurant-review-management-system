@@ -1,7 +1,7 @@
 // src/pages/CompetitorsPage.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, TrendingUp, Plus, Star, Trash2 } from 'lucide-react';
+import { Menu, TrendingUp, Plus, Star, Trash2, ChevronDown } from 'lucide-react';
 
 interface CompetitorsPageProps {
   toggleSidebar: () => void;
@@ -18,6 +18,7 @@ interface Competitor {
 
 const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
+  const [selectedDomain, setSelectedDomain] = useState('hotel');
   const [competitors] = useState<Competitor[]>([
     {
       id: 1,
@@ -91,6 +92,20 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
             <h1 className="m-0 text-2xl font-bold text-gray-800">Competitors</h1>
             <p className="mt-1 mb-0 text-xs text-gray-400">Manage your competitor list</p>
           </div>
+        </div>
+        <div className="relative">
+          <select 
+            value={selectedDomain} 
+            onChange={(e) => setSelectedDomain(e.target.value)}
+            className="appearance-none px-4 py-2 pr-8 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer hover:border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="hotel">Hotel</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="resort">Resort</option>
+            <option value="spa">Spa</option>
+          </select>
+          <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
         </div>
       </header>
 
