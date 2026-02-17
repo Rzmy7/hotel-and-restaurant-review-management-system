@@ -79,14 +79,14 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
           {/* Left: menu + title */}
           <div className="flex items-center gap-4">
             <button
-              className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition"
+              className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition mt-0.5"
               onClick={toggleSidebar}
             >
               <Menu size={24} />
             </button>
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Review Sources</h1>
-              <p className="text-sm text-gray-500 hidden sm:block m-0">Manage your connected review platforms</p>
+              <p className="mt-1 text-[13px] text-gray-400 hidden sm:block m-0 leading-none">Manage your connected review platforms</p>
             </div>
           </div>
 
