@@ -1,8 +1,9 @@
 // src/pages/CompetitorsPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, TrendingUp, Plus, Star, Trash2, ChevronDown } from 'lucide-react';
 import AddCompetitorModal from '../components/AddCompetitorModal';
+import API_BASE_URL from '../config/api';
 
 interface CompetitorsPageProps {
   toggleSidebar: () => void;
@@ -21,78 +22,52 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const [selectedDomain, setSelectedDomain] = useState('hotel');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [competitors] = useState<Competitor[]>([
-    {
-      id: 1,
-      name: 'Luxury Grand Resort',
-      location: 'Downtown',
-      avgRating: 4.7,
-      sentimentScore: 89,
-      reviewCount: 2847,
-    },
-    {
-      id: 2,
-      name: 'Royal Beach Resort',
-      location: 'Beachfront',
-      avgRating: 4.6,
-      sentimentScore: 88,
-      reviewCount: 2156,
-    },
-    {
-      id: 3,
-      name: 'Seaside Paradise Inn',
-      location: 'Coastal Area',
-      avgRating: 4.3,
-      sentimentScore: 82,
-      reviewCount: 1654,
-    },
-    {
-      id: 4,
-      name: 'Mountain View Lodge',
-      location: 'Hillside',
-      avgRating: 4.2,
-      sentimentScore: 80,
-      reviewCount: 1432,
-    },
-  ]);
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [availableCompetitors, setAvailableCompetitors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const availableCompetitors = [
-    {
-      id: 101,
-      name: 'Jetwin hotel',
-      location: 'Downtown',
-      avgRating: 4.7,
-    },
-    {
-      id: 102,
-      name: 'Cinnamon Hotel',
-      location: 'Beachfront',
-      avgRating: 4.6,
-    },
-    {
-      id: 103,
-      name: 'Turtle watch Hotel',
-      location: 'Coastal Area',
-      avgRating: 4.3,
-    },
-    {
-      id: 104,
-      name: 'Turkey Lodge',
-      location: 'Hillside',
-      avgRating: 4.2,
-    },
-  ];
+  // Fetch tracked competitors
+  useEffect(() => {
+    fetchCompetitors();
+  }, [selectedDomain]);
+
+  // Fetch available competitors when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchAvailableCompetitors();
+    }
+  }, [isModalOpen, selectedDomain]);
+
+  const fetchCompetitors = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/competitors?domain=${selectedDomain}`);
+      if (!response.ok) throw new Error('Failed to fetch competitors');
+      const data = await response.json();
+      setCompetitors(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load competitors');
+      console.error('Error fetching competitors:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAvailableCompetitors = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/competitors/available?domain=${selectedDomain}`);
+      if (!response.ok) throw new Error('Failed to fetch available competitors');
+      const data = await response.json();
+      setAvailableCompetitors(data);
+    } catch (err) {
+      console.error('Error fetching available competitors:', err);
+    }
+  };
 
   const handleCompare = (competitorId: number) => {
-    // Map competitor IDs to slugs for URL
-    const competitorMap: { [key: number]: string } = {
-      1: 'luxury-grand',
-      2: 'royal-beach',
-      3: 'seaside-paradise',
-      4: 'mountain-view',
-    };
-    const competitorSlug = competitorMap[competitorId];
-    navigate(`/competitors/compare?id=${competitorSlug}`);
+    navigate(`/competitors/compare?id=${competitorId}`);
   };
 
   const handleDelete = (competitorId: number) => {
@@ -167,44 +142,67 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
 
           {/* Competitors Table */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">COMPETITOR NAME</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LOCATION</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">AVG RATING</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SENTIMENT SCORE</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">REVIEW COUNT</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {competitors.map((competitor) => (
-                  <tr key={competitor.id} className="border-b border-gray-100 last:border-b-0 transition-colors hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{competitor.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{competitor.location}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className="flex items-center gap-1">
-                        <span className="font-medium text-gray-800">{competitor.avgRating}</span>
-                        <Star size={16} fill="#FFC107" color="#FFC107" />
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-700">{competitor.sentimentScore}%</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{competitor.reviewCount.toLocaleString()}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button 
-                          className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg transition-all hover:bg-blue-600"
-                          onClick={() => handleCompare(competitor.id)}
-                        >
-                          Compare
-                        </button>
-                        <button 
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          onClick={() => handleDelete(competitor.id)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-gray-500">Loading competitors...</div>
+              </div>
+            ) : error ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-red-500">{error}</div>
+              </div>
+            ) : competitors.length === 0 ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-gray-500">No competitors found. Click "Add Competitor" to get started.</div>
+              </div>
+            ) : (
+              <table className="w-full border-collapse">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">COMPETITOR NAME</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">LOCATION</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">AVG RATING</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SENTIMENT SCORE</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">REVIEW COUNT</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {competitors.map((competitor) => (
+                    <tr key={competitor.id} className="border-b border-gray-100 last:border-b-0 transition-colors hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-800">{competitor.name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{competitor.location}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className="flex items-center gap-1">
+                          <span className="font-medium text-gray-800">{competitor.avgRating}</span>
+                          <Star size={16} fill="#FFC107" color="#FFC107" />
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">{competitor.sentimentScore}%</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{competitor.reviewCount.toLocaleString()}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg transition-all hover:bg-blue-600"
+                            onClick={() => handleCompare(competitor.id)}
+                          >
+                            Compare
+                          </button>
+                          <button 
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            onClick={() => handleDelete(competitor.id)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Add Competitor Modal */}
       <AddCompetitorModal
@@ -213,15 +211,6 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
         onAddCompetitor={handleAddCompetitorFromList}
         availableCompetitors={availableCompetitors}
       />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

@@ -1,7 +1,8 @@
 // src/pages/CompetitorRankingsPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, ChevronDown, ArrowLeft, Star, ArrowUpDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config/api';
 
 interface CompetitorRankingsPageProps {
   toggleSidebar: () => void;
@@ -24,11 +25,43 @@ const CompetitorRankingsPage: React.FC<CompetitorRankingsPageProps> = ({ toggleS
   
   const [selectedHotel] = useState('grand-plaza');
   const [selectedPeriod] = useState('Last 30 Days');
+  const [selectedDomain] = useState('hotel');
   const [sortField, setSortField] = useState<SortField>('rank');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [rawRankings, setRawRankings] = useState<RankingData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with API call later
-  const rawRankings: RankingData[] = [
+  // Fetch rankings from API
+  useEffect(() => {
+    fetchRankings();
+  }, [selectedDomain]);
+
+  const fetchRankings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/competitors/rankings/all?domain=${selectedDomain}`);
+      if (!response.ok) throw new Error('Failed to fetch rankings');
+      const data = await response.json();
+      setRawRankings(data.map((item: any) => ({
+        rank: item.rank,
+        name: item.name,
+        avgRating: item.avgRating,
+        sentimentScore: item.sentimentScore,
+        reviewCount: item.reviewCount,
+        isYou: item.isMyHotel
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load rankings');
+      console.error('Error fetching rankings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock data removed - now fetching from API
+  /*const rawRankings: RankingData[] = [
     {
       rank: 1,
       name: 'Royal Beach Resort',
@@ -72,7 +105,7 @@ const CompetitorRankingsPage: React.FC<CompetitorRankingsPageProps> = ({ toggleS
       sentimentScore: 78,
       reviewCount: 540,
     },
-  ];
+  ];*/
 
   // Sorting function
   const handleSort = (field: SortField) => {
@@ -96,6 +129,24 @@ const CompetitorRankingsPage: React.FC<CompetitorRankingsPageProps> = ({ toggleS
   const yourCurrentRank = rankings.findIndex(r => r.isYou) + 1;
   const topPerformer = rawRankings[0];
   const totalCompetitors = rawRankings.length;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-gray-500">Loading rankings...</div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error || rawRankings.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-red-500">{error || 'No rankings data available'}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-auto">

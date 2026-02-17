@@ -12,6 +12,18 @@ from pydantic import BaseModel, AnyHttpUrl ,Field
 
 
 from scraping.booking import scrape_booking
+from api.competitor_api import (
+    CompetitorModel,
+    CompetitorDetailModel,
+    ComparisonDataModel,
+    RankingModel,
+    get_competitor_list_from_db,
+    get_available_competitors_from_db,
+    get_competitor_details_from_db,
+    compare_with_my_hotel_from_db,
+    get_rankings_from_db,
+    get_comparison_chart_data_from_db
+)
 
 load_dotenv()  # Load environment variables
 
@@ -301,6 +313,86 @@ async def start_booking_scrape(payload: BookingScrapeRequest, background_tasks: 
         "url": str(payload.url),
         "headless": payload.headless,
     }
+
+
+# ==========================================
+# COMPETITOR API ROUTES
+# ==========================================
+
+@app.get("/competitors", response_model=List[CompetitorModel], tags=["Competitors"])
+def get_competitors(domain: str = "hotel"):
+    """
+    Get list of tracked competitors for a specific domain
+    """
+    try:
+        competitors = get_competitor_list_from_db(domain)
+        return competitors
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/competitors/available", tags=["Competitors"])
+def get_available_competitors_list(domain: str = "hotel"):
+    """
+    Get list of available competitors that can be added to tracking
+    """
+    try:
+        competitors = get_available_competitors_from_db(domain)
+        return competitors
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/competitors/rankings/all", response_model=List[RankingModel], tags=["Competitors"])
+def get_all_rankings(domain: str = "hotel"):
+    """
+    Get rankings of all competitors including your hotel
+    """
+    try:
+        rankings = get_rankings_from_db(domain)
+        return rankings
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/competitors/{competitor_id}", response_model=CompetitorDetailModel, tags=["Competitors"])
+def get_competitor_details(competitor_id: int):
+    """
+    Get detailed information about a specific competitor
+    """
+    try:
+        competitor = get_competitor_details_from_db(competitor_id)
+        return competitor
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/competitors/{competitor_id}/compare", response_model=ComparisonDataModel, tags=["Competitors"])
+def compare_competitor(competitor_id: int):
+    """
+    Compare a competitor with your hotel and get insights
+    """
+    try:
+        comparison = compare_with_my_hotel_from_db(competitor_id)
+        return comparison
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/competitors/{competitor_id}/chart-data", tags=["Competitors"])
+def get_competitor_chart_data(competitor_id: int):
+    """
+    Get chart data for competitor comparison page (radar, line, bar charts)
+    """
+    try:
+        chart_data = get_comparison_chart_data_from_db(competitor_id)
+        return chart_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==========================================

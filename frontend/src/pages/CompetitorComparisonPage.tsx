@@ -1,7 +1,8 @@
 // src/pages/CompetitorComparisonPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, Bell, ChevronDown, Lightbulb, CheckCircle, AlertTriangle } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config/api';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -35,79 +36,125 @@ interface CompetitorComparisonPageProps {
   toggleSidebar: () => void;
 }
 
-// Mock data structure - replace with API call later
-const competitorsData = {
-  'grand-plaza': {
-    name: 'Grand Plaza Hotel',
-    avgRating: 4.5,
-    reviewCount: 2847,
-    positivePercent: 78,
-    negativePercent: 12,
+interface ComparisonData {
+  myHotel: {
+    name: string;
+    avgRating: number;
+    reviewCount: number;
+    positivePercent: number;
+    negativePercent: number;
     aspects: {
-      cleanliness: 4.3,
-      service: 4.6,
-      location: 4.8,
-      food: 4.2,
-      comfort: 4.4,
-    },
-    trendData: [4.3, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7],
-    sentimentDistribution: {
-      positive: 45,
-      neutral: 28,
-      veryNegative: 8,
-    }
-  },
-  'royal-beach': {
-    name: 'Royal Beach Resort',
-    avgRating: 4.3,
-    reviewCount: 2723,
-    positivePercent: 73,
-    negativePercent: 15,
+      cleanliness: number;
+      service: number;
+      location: number;
+      food: number;
+      comfort: number;
+    };
+  };
+  competitor: {
+    name: string;
+    avgRating: number;
+    reviewCount: number;
+    positivePercent: number;
+    negativePercent: number;
     aspects: {
-      cleanliness: 4.7,
-      service: 4.5,
-      location: 4.6,
-      food: 4.1,
-      comfort: 4.3,
-    },
-    trendData: [3.9, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5],
-    sentimentDistribution: {
-      positive: 50,
-      neutral: 25,
-      veryNegative: 10,
-    }
-  },
-  'luxury-grand': {
-    name: 'Luxury Grand Resort',
-    avgRating: 4.7,
-    reviewCount: 2847,
-    positivePercent: 89,
-    negativePercent: 5,
-    aspects: {
-      cleanliness: 4.8,
-      service: 4.9,
-      location: 4.5,
-      food: 4.6,
-      comfort: 4.7,
-    },
-    trendData: [4.5, 4.6, 4.6, 4.7, 4.7, 4.8, 4.7],
-    sentimentDistribution: {
-      positive: 55,
-      neutral: 20,
-      veryNegative: 5,
-    }
-  }
-};
+      cleanliness: number;
+      service: number;
+      location: number;
+      food: number;
+      comfort: number;
+    };
+  };
+}
+
+interface ChartData {
+  trendData: {
+    labels: string[];
+    myHotelData: number[];
+    competitorData: number[];
+  };
+  sentimentData: {
+    myHotelPositive: number;
+    myHotelNeutral: number;
+    myHotelVeryNegative: number;
+    competitorPositive: number;
+    competitorNeutral: number;
+    competitorVeryNegative: number;
+  };
+}
 
 const CompetitorComparisonPage: React.FC<CompetitorComparisonPageProps> = ({ toggleSidebar }) => {
   const [searchParams] = useSearchParams();
-  const competitorId = searchParams.get('id') || 'royal-beach';
+  const navigate = useNavigate();
+  const competitorId = searchParams.get('id') || '2';
   
-  const [yourHotel] = useState('grand-plaza');
-  const [selectedCompetitor, setSelectedCompetitor] = useState(competitorId);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [comparisonData, setComparisonData] = useState<ComparisonData | null>(null);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [availableCompetitors, setAvailableCompetitors] = useState<Array<{id: number, name: string}>>([]);
 
-  const yourData = competitorsData[yourHotel as keyof typeof competitorsData];
-  const competitorData = competitorsData[selectedCompetitor as keyof typeof competitorsData];
+  // Fetch comparison data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch comparison data
+        const comparisonResponse = await fetch(`${API_BASE_URL}/competitors/${competitorId}/compare`);
+        if (!comparisonResponse.ok) {
+          throw new Error('Failed to fetch comparison data');
+        }
+        const comparison = await comparisonResponse.json();
+        setComparisonData(comparison);
+
+        // Fetch chart data
+        const chartResponse = await fetch(`${API_BASE_URL}/competitors/${competitorId}/chart-data`);
+        if (!chartResponse.ok) {
+          throw new Error('Failed to fetch chart data');
+        }
+        const charts = await chartResponse.json();
+        setChartData(charts);
+
+        // Fetch available competitors for dropdown
+        const competitorsResponse = await fetch(`${API_BASE_URL}/competitors`);
+        if (!competitorsResponse.ok) {
+          throw new Error('Failed to fetch competitors');
+        }
+        const competitors = await competitorsResponse.json();
+        setAvailableCompetitors(competitors.map((c: any) => ({ id: c.id, name: c.name })));
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+        console.error('Error fetching comparison data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [competitorId]);
+
+  // Show loading or error states
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-gray-500">Loading comparison data...</div>
+      </div>
+    );
+  }
+
+  if (error || !comparisonData || !chartData) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-red-500">{error || 'No data available'}</div>
+      </div>
+    );
+  }
+
+const yourData = comparisonData.myHotel;
+  const competitorData = comparisonData.competitor;
 
   // Radar Chart Data
   const radarData = {
@@ -146,11 +193,11 @@ const CompetitorComparisonPage: React.FC<CompetitorComparisonPageProps> = ({ tog
 
   // Line Chart Data
   const lineData = {
-    labels: ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    labels: chartData.trendData.labels,
     datasets: [
       {
         label: 'Your Hotel',
-        data: yourData.trendData,
+        data: chartData.trendData.myHotelData,
         borderColor: 'rgba(59, 130, 246, 1)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         tension: 0.4,
@@ -159,7 +206,7 @@ const CompetitorComparisonPage: React.FC<CompetitorComparisonPageProps> = ({ tog
       },
       {
         label: 'Competitor',
-        data: competitorData.trendData,
+        data: chartData.trendData.competitorData,
         borderColor: 'rgba(34, 197, 94, 1)',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         tension: 0.4,
@@ -176,18 +223,18 @@ const CompetitorComparisonPage: React.FC<CompetitorComparisonPageProps> = ({ tog
       {
         label: 'Competitor',
         data: [
-          competitorData.sentimentDistribution.positive,
-          competitorData.sentimentDistribution.neutral,
-          competitorData.sentimentDistribution.veryNegative,
+          chartData.sentimentData.competitorPositive,
+          chartData.sentimentData.competitorNeutral,
+          chartData.sentimentData.competitorVeryNegative,
         ],
         backgroundColor: 'rgba(34, 197, 94, 0.8)',
       },
       {
         label: 'Your Hotel',
         data: [
-          yourData.sentimentDistribution.positive,
-          yourData.sentimentDistribution.neutral,
-          yourData.sentimentDistribution.veryNegative,
+          chartData.sentimentData.myHotelPositive,
+          chartData.sentimentData.myHotelNeutral,
+          chartData.sentimentData.myHotelVeryNegative,
         ],
         backgroundColor: 'rgba(59, 130, 246, 0.8)',
       },
@@ -278,19 +325,20 @@ const CompetitorComparisonPage: React.FC<CompetitorComparisonPageProps> = ({ tog
         </div>
         <div className="flex items-center gap-3 flex-wrap w-full md:w-auto">
           <div className="relative">
-            <select value={yourHotel} className="appearance-none px-4 py-2 pr-8 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer hover:border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-              <option value="grand-plaza">Grand Plaza Hotel</option>
+            <select value="" disabled className="appearance-none px-4 py-2 pr-8 bg-white border border-gray-200 rounded-lg text-sm cursor-not-allowed hover:border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+              <option value="">{comparisonData.myHotel.name}</option>
             </select>
             <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
           </div>
           <div className="relative">
             <select 
-              value={selectedCompetitor} 
-              onChange={(e) => setSelectedCompetitor(e.target.value)}
+              value={competitorId} 
+              onChange={(e) => navigate(`/competitors/compare?id=${e.target.value}`)}
               className="appearance-none px-4 py-2 pr-8 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer hover:border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
-              <option value="royal-beach">Royal Beach Resort</option>
-              <option value="luxury-grand">Luxury Grand Resort</option>
+              {availableCompetitors.map(comp => (
+                <option key={comp.id} value={String(comp.id)}>{comp.name}</option>
+              ))}
             </select>
             <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
           </div>
