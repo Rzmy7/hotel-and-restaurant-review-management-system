@@ -4,9 +4,10 @@ import { X } from 'lucide-react';
 interface AddSourceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (source: any) => void;
 }
 
-const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
+const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
   const [platform, setPlatform] = useState('');
   const [propertyUrl, setPropertyUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -16,8 +17,21 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
   if (!isOpen) return null;
 
   const handleSubmit = () => {
-    console.log({ platform, propertyUrl, apiKey, schedule, sourceStatus });
+    const newSource = {
+      id: Date.now(), // Generate a temp ID
+      platform: platform || 'Unknown Platform',
+      status: sourceStatus ? 'Active' : 'Paused',
+      lastSynced: 'Never',
+      schedule: schedule
+    };
+    onSave(newSource);
     onClose();
+    // Reset form
+    setPlatform('');
+    setPropertyUrl('');
+    setApiKey('');
+    setSchedule('Daily');
+    setSourceStatus(false);
   };
 
   const inputClasses =

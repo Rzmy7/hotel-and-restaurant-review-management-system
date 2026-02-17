@@ -1,4 +1,5 @@
 import { Bell, CalendarDays, Menu } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 
 interface DashboardHeaderProps {
@@ -6,6 +7,8 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
+  const { showToast } = useToast();
+
   return (
     <header className="flex justify-between items-center px-8 py-5 bg-white border-b border-gray-200 max-md:flex-col max-md:items-start max-md:gap-4 transition-all">
       <div className="flex items-start gap-4">
@@ -19,11 +22,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
       </div>
 
       <div className="flex items-center gap-3 max-md:w-full max-md:justify-end">
-        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 cursor-pointer transition hover:bg-gray-50 hover:border-gray-400">
+        <button
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 cursor-pointer transition hover:bg-gray-50 hover:border-gray-400"
+          onClick={() => showToast('Date range picker coming soon', 'info')}
+        >
           <CalendarDays size={16} />
           <span>Last 30 Days</span>
         </button>
-        <button className="w-10 h-10 grid place-items-center bg-white border border-gray-200 rounded-full text-gray-500 cursor-pointer relative transition hover:bg-gray-100 after:content-[''] after:absolute after:top-2 after:right-2 after:w-2 after:h-2 after:bg-red-500 after:rounded-full after:border-2 after:border-white">
+        <button
+          className="w-10 h-10 grid place-items-center bg-white border border-gray-200 rounded-full text-gray-500 cursor-pointer relative transition hover:bg-gray-100 after:content-[''] after:absolute after:top-2 after:right-2 after:w-2 after:h-2 after:bg-red-500 after:rounded-full after:border-2 after:border-white"
+          onClick={() => showToast('Notifications panel coming soon', 'info')}
+        >
           <Bell size={18} />
         </button>
         <div className="w-10 h-10 grid place-items-center bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full font-bold text-base">L</div>

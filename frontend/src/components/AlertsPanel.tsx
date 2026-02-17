@@ -1,6 +1,8 @@
+import { useToast } from '../contexts/ToastContext';
 
 
 const AlertsPanel = () => {
+  const { showToast } = useToast();
   const alerts = [
     {
       id: 1,
@@ -18,7 +20,12 @@ const AlertsPanel = () => {
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <div className="flex justify-between items-center mb-5">
         <h3 className="m-0 text-base font-bold text-gray-800">Alerts</h3>
-        <button className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline">View All</button>
+        <button
+          className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline"
+          onClick={() => showToast('Alerts center coming soon', 'info')}
+        >
+          View All
+        </button>
       </div>
 
       <div className="flex flex-col gap-3 mt-4">

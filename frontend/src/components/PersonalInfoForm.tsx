@@ -5,6 +5,7 @@ interface PersonalInfoFormProps {
     profile: UserProfile;
     onProfileUpdate: (updatedProfile: UserProfile) => void;
     onSave: () => void;
+    onCancel: () => void;
     isSaving: boolean;
 }
 
@@ -12,6 +13,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
     profile,
     onProfileUpdate,
     onSave,
+    onCancel,
     isSaving
 }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -133,6 +135,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                         hover:enabled:bg-gray-50 
                         disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
                         disabled={isSaving}
+                        onClick={onCancel}
                     >
                         Cancel
                     </button>

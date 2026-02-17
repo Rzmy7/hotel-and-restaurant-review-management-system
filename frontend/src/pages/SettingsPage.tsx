@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Globe, Bell, Lock, CreditCard, Building2, Upload, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
 
 
 interface SettingsPageProps {
@@ -22,6 +23,26 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
   const [propertyType, setPropertyType] = useState('');
   const [primaryEmail, setPrimaryEmail] = useState('reviews@grandplazahotel.com');
   const [phoneNumber, setPhoneNumber] = useState('+1 (555) 987-6543');
+
+  // General Section State
+  const [propertyName, setPropertyName] = useState('Grand Hotel NYC');
+  const [timeZone, setTimeZone] = useState('EST (UTC-5)');
+  const [language, setLanguage] = useState('English');
+
+  const { showToast } = useToast();
+
+  const handleSave = () => {
+    // Simulate API call
+    setTimeout(() => {
+      showToast('Settings saved successfully', 'success');
+    }, 500);
+  };
+
+  const handleCancel = () => {
+    if (confirm('Discard unsaved changes?')) {
+      navigate('/dashboard');
+    }
+  };
 
   return (
     <div className="p-0 bg-gray-50 min-h-full">
@@ -53,30 +74,40 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
               <div className="flex-1">
                 <label className="text-sm font-medium text-gray-700 cursor-default">Property Name</label>
               </div>
-              <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
-                <span className="text-sm text-gray-500 font-medium">Grand Hotel NYC</span>
-                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
-              </div>
+              <input
+                type="text"
+                value={propertyName}
+                onChange={(e) => setPropertyName(e.target.value)}
+                className="text-sm text-gray-900 font-medium border border-gray-200 rounded-md px-3 py-1.5 w-[200px] text-right focus:border-blue-500 focus:outline-none max-md:w-full max-md:text-left"
+              />
             </div>
 
             <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0 max-md:flex-col max-md:items-start max-md:gap-3">
               <div className="flex-1">
                 <label className="text-sm font-medium text-gray-700 cursor-default">Time Zone</label>
               </div>
-              <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
-                <span className="text-sm text-gray-500 font-medium">EST (UTC-5)</span>
-                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
-              </div>
+              <input
+                type="text"
+                value={timeZone}
+                onChange={(e) => setTimeZone(e.target.value)}
+                className="text-sm text-gray-900 font-medium border border-gray-200 rounded-md px-3 py-1.5 w-[200px] text-right focus:border-blue-500 focus:outline-none max-md:w-full max-md:text-left"
+              />
             </div>
 
             <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0 max-md:flex-col max-md:items-start max-md:gap-3">
               <div className="flex-1">
                 <label className="text-sm font-medium text-gray-700 cursor-default">Language</label>
               </div>
-              <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
-                <span className="text-sm text-gray-500 font-medium">English</span>
-                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
-              </div>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="text-sm text-gray-900 font-medium border border-gray-200 rounded-md px-3 py-1.5 w-[200px] text-right focus:border-blue-500 focus:outline-none bg-white max-md:w-full max-md:text-left"
+              >
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+              </select>
             </div>
           </div>
         </div>
@@ -165,7 +196,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium tracking-[2px] text-base">••••••••</span>
-                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
+                <button
+                  className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700"
+                  onClick={() => showToast('Password change wizard is coming soon', 'info')}
+                >
+                  Edit
+                </button>
               </div>
             </div>
 
@@ -175,7 +211,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium">30 minutes</span>
-                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
+                <button
+                  className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700"
+                  onClick={() => showToast('Session settings are managed by admin', 'info')}
+                >
+                  Edit
+                </button>
               </div>
             </div>
           </div>
@@ -237,7 +278,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
                     <div className="text-xs text-gray-500">Expires 12/26</div>
                   </div>
                 </div>
-                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
+                <button
+                  className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700"
+                  onClick={() => showToast('Redirecting to secure payment portal...', 'info')}
+                >
+                  Edit
+                </button>
               </div>
             </div>
           </div>
@@ -331,8 +377,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
 
       {/* Action Buttons */}
       <div className="max-w-4xl mx-auto p-6 px-8 flex gap-3 bg-white border-t border-gray-200 sticky bottom-0 max-md:flex-col max-md:p-4">
-        <button className="px-8 py-3 bg-transparent text-gray-500 border border-gray-300 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-gray-50 max-md:w-full">Cancel</button>
-        <button className="px-8 py-3 bg-blue-500 text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-blue-600 max-md:w-full">Save Changes</button>
+        <button
+          className="px-8 py-3 bg-transparent text-gray-500 border border-gray-300 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-gray-50 max-md:w-full"
+          onClick={handleCancel}
+        >
+          Cancel
+        </button>
+        <button
+          className="px-8 py-3 bg-blue-500 text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-blue-600 max-md:w-full"
+          onClick={handleSave}
+        >
+          Save Changes
+        </button>
       </div>
     </div>
   );

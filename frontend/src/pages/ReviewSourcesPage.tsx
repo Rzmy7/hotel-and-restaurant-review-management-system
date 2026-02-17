@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Plus, Menu, Search, ChevronDown } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 import SourcesTable from '../components/SourcesTable';
 import AddSourceModal from '../components/AddSourceModal';
 import EditSourceModal from '../components/EditSourceModal';
@@ -17,6 +18,7 @@ export interface Source {
 }
 
 const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) => {
+  const { showToast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,8 +51,24 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleAddSource = (newSource: any) => {
+    setSources([...sources, newSource]);
+    showToast('New review source added successfully', 'success');
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSaveSource = (updatedSource: any) => {
     setSources(sources.map(s => s.id === updatedSource.id ? updatedSource : s));
+    showToast('Source updated successfully', 'success');
+  };
+
+  const handleDeleteSource = (sourceOrId: any) => {
+    // Check if passed argument is ID or object
+    const id = typeof sourceOrId === 'object' ? sourceOrId.id : sourceOrId;
+    if (confirm('Are you sure you want to delete this source?')) {
+      setSources(sources.filter(s => s.id !== id));
+      showToast('Source deleted successfully', 'success');
+    }
   };
 
   return (
@@ -120,11 +138,19 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
         </div>
 
         {/* Sources Table */}
-        <SourcesTable sources={filteredSources} onEditSource={handleEditSource} />
+        <SourcesTable
+          sources={filteredSources}
+          onEditSource={handleEditSource}
+          onDeleteSource={handleDeleteSource}
+        />
       </main>
 
       {/* Add Source Modal */}
-      <AddSourceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddSourceModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleAddSource}
+      />
 
       {/* Edit Source Modal */}
       <EditSourceModal
@@ -132,6 +158,7 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
         onClose={() => { setIsEditModalOpen(false); setSelectedSource(null); }}
         source={selectedSource}
         onSave={handleSaveSource}
+        onDelete={handleDeleteSource}
       />
     </div>
   );

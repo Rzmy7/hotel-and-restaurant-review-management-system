@@ -1,11 +1,13 @@
 import { Search, Calendar, Download, Menu } from "lucide-react";
-
+import { useReviews } from "../contexts/ReviewsContext";
 
 interface ReviewsHeaderProps {
   onMenuClick?: () => void;
 }
 
 const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
+  const { filters, setSearchQuery } = useReviews();
+
   return (
     <header className="bg-white p-6 px-8 border-b border-gray-200 flex flex-col gap-5">
       {/* ROW 1: Title and Top Actions */}
@@ -24,6 +26,8 @@ const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
               type="text"
               placeholder="Search reviews..."
               className="w-full py-2.5 px-2.5 pl-[38px] border border-gray-200 rounded-md text-sm outline-none bg-gray-50 transition-colors focus:border-blue-500 focus:bg-white"
+              value={filters.search}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 

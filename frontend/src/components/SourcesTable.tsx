@@ -13,6 +13,8 @@ interface SourcesTableProps {
   sources: Source[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onEditSource: (source: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onDeleteSource: (source: any) => void;
 }
 
 /* ── Platform logo helper ── */
@@ -62,7 +64,7 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
 /* ── Pagination config ── */
 const PAGE_SIZE = 7;
 
-const SourcesTable = ({ sources, onEditSource }: SourcesTableProps) => {
+const SourcesTable = ({ sources, onEditSource, onDeleteSource }: SourcesTableProps) => {
   const [page, setPage] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(sources.length / PAGE_SIZE));
@@ -140,6 +142,7 @@ const SourcesTable = ({ sources, onEditSource }: SourcesTableProps) => {
                       <button
                         className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100 transition-colors"
                         title="Delete"
+                        onClick={() => onDeleteSource(source)}
                       >
                         <Trash2 size={16} />
                       </button>

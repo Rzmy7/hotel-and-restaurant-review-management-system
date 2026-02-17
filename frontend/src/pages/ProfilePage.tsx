@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
 import ProfileHeader from '../components/ProfileHeader';
 import PersonalInfoForm from '../components/PersonalInfoForm';
 import ProfileSidebar from '../components/ProfileSidebar';
@@ -20,6 +22,8 @@ export interface UserProfile {
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ toggleSidebar }) => {
+    const navigate = useNavigate();
+    const { showToast } = useToast();
     const [profile, setProfile] = useState<UserProfile>({
         firstName: 'Sarah',
         lastName: 'Johnson',
@@ -41,11 +45,17 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ toggleSidebar }) => {
         setIsSaving(true);
         try {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            alert('Profile updated successfully!');
+            showToast('Profile updated successfully!', 'success');
         } catch (error) {
-            alert('Failed to save profile.' + error);
+            showToast('Failed to save profile. ' + error, 'error');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleCancel = () => {
+        if (confirm('Discard unsaved changes?')) {
+            navigate('/dashboard');
         }
     };
 
@@ -86,6 +96,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ toggleSidebar }) => {
                             profile={profile}
                             onProfileUpdate={handleProfileUpdate}
                             onSave={handleSaveProfile}
+                            onCancel={handleCancel}
                             isSaving={isSaving}
                         />
                     </div>

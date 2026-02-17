@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { type UserProfile } from '../pages/ProfilePage';
+import { useToast } from '../contexts/ToastContext';
 
 interface ProfileSidebarProps {
     profile: UserProfile;
@@ -8,6 +9,7 @@ interface ProfileSidebarProps {
 
 const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { showToast } = useToast();
 
     const getInitials = () => {
         return `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`.toUpperCase();
@@ -21,12 +23,12 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange 
         const file = e.target.files?.[0];
         if (file) {
             if (!file.type.startsWith('image/')) {
-                alert('Please select an image file');
+                showToast('Please select an image file', 'error');
                 return;
             }
 
             if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB');
+                showToast('File size must be less than 5MB', 'error');
                 return;
             }
 

@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import ReviewDetailModal from './ReviewDetailModal';
 
 const LatestReviews = () => {
+  const navigate = useNavigate();
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -66,7 +68,12 @@ const LatestReviews = () => {
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex justify-between items-center mb-5">
           <h3 className="m-0 text-base font-bold text-gray-800">Latest Reviews</h3>
-          <button className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline">View All</button>
+          <button
+            className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline"
+            onClick={() => navigate('/reviews')}
+          >
+            View All
+          </button>
         </div>
 
         <div className="flex flex-col gap-4 mt-4">

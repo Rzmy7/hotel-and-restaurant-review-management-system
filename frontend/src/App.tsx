@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ToastProvider } from './contexts/ToastContext';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import Sidebar from './components/SideBar';
 import ReviewsPage from './pages/ReviewsPage';
@@ -81,7 +82,9 @@ const AppContent = () => {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </BrowserRouter>
   );
 }

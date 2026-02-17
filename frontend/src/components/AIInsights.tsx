@@ -1,11 +1,18 @@
-
+import { useToast } from '../contexts/ToastContext';
 
 const AIInsights = () => {
+  const { showToast } = useToast();
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <div className="flex justify-between items-center mb-5">
         <h3 className="m-0 text-base font-bold text-gray-800">AI Insights</h3>
-        <button className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline">View</button>
+        <button
+          className="bg-none border-none text-blue-500 font-semibold text-sm cursor-pointer hover:underline"
+          onClick={() => showToast('Full AI Insights report coming soon', 'info')}
+        >
+          View
+        </button>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5 mt-4">

@@ -14,9 +14,10 @@ interface EditSourceModalProps {
   onClose: () => void;
   source: Source | null;
   onSave: (source: Source) => void;
+  onDelete: (sourceId: number) => void;
 }
 
-const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalProps) => {
+const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSourceModalProps) => {
   const [platform, setPlatform] = useState('');
   const [propertyUrl, setPropertyUrl] = useState('https://example.com/tripadvisor');
   const [apiKey, setApiKey] = useState('**********');
@@ -47,8 +48,8 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
   };
 
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this source?')) {
-      console.log('Deleting source:', source.id);
+    if (source && confirm('Are you sure you want to delete this source?')) {
+      onDelete(source.id);
       onClose();
     }
   };
