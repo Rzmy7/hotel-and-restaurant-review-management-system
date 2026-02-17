@@ -94,7 +94,7 @@ export const Embeddings: React.FC = () => {
             </div>
 
             {/* Vector Database & Similarity Thresholds Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/* Vector Database */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -117,6 +117,22 @@ export const Embeddings: React.FC = () => {
                         <div>
                             <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Namespace</div>
                             <div className="text-xl font-bold text-gray-900">{vectorDb.namespace}</div>
+                        </div>
+                    </div>
+
+                    {/* Additional Stats */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">Dimensions</div>
+                            <div className="text-sm font-semibold text-gray-900">768</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">Index Type</div>
+                            <div className="text-sm font-semibold text-gray-900">HNSW</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">Storage</div>
+                            <div className="text-sm font-semibold text-gray-900">2.4 GB</div>
                         </div>
                     </div>
 
