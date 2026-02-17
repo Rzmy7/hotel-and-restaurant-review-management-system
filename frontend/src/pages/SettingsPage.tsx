@@ -22,7 +22,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
   const [phoneNumber, setPhoneNumber] = useState('+1 (555) 987-6543');
 
   return (
-    <div className="p-0 bg-gray-50 min-h-screen">
+    <div className="p-0 bg-gray-50 min-h-full">
       {/* Header */}
       <div className="bg-white p-6 px-8 border-b border-gray-200 flex items-start gap-4 max-md:p-4">
         <button className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-gray-500 transition-colors hover:text-gray-900 mt-0.5" onClick={() => navigate(-1)}>

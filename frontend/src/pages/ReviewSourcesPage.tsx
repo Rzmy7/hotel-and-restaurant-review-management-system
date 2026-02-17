@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Menu } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Menu, Search, ChevronDown } from 'lucide-react';
 import SourcesTable from '../components/SourcesTable';
 import AddSourceModal from '../components/AddSourceModal';
 import EditSourceModal from '../components/EditSourceModal';
@@ -8,186 +8,130 @@ interface ReviewSourcesPageProps {
   toggleSidebar: () => void;
 }
 
-const styles = {
-  sourcesPage: {
-    padding: '32px 40px',
-    backgroundColor: '#f9fafb',
-    minHeight: '100vh',
-  },
-  sourcesHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '32px',
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '16px',
-    flex: 1,
-  } as React.CSSProperties,
-  menuBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    color: '#6b7280',
-    padding: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '6px',
-    transition: 'background-color 0.2s',
-  } as React.CSSProperties,
-  headerContent: {
-    flex: 1,
-  },
-  pageTitle: {
-    fontSize: '28px',
-    fontWeight: 700,
-    color: '#111827',
-    margin: '0 0 8px 0',
-  },
-  pageSubtitle: {
-    fontSize: '15px',
-    color: '#6b7280',
-    margin: 0,
-  },
-  addSourceBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '10px 20px',
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-};
+export interface Source {
+  id: number;
+  platform: string;
+  status: 'Active' | 'Paused' | 'Error';
+  lastSynced: string;
+  schedule: string;
+}
 
 const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedSource, setSelectedSource] = useState<any>(null);
-  const [sources, setSources] = useState([
-    {
-      id: 1,
-      platform: 'TripAdvisor',
-      status: 'Active' as const,
-      lastSynced: '2 minutes ago',
-      schedule: 'Hourly',
-    },
-    {
-      id: 2,
-      platform: 'Booking.com',
-      status: 'Active' as const,
-      lastSynced: '15 minutes ago',
-      schedule: 'Daily',
-    },
-    {
-      id: 3,
-      platform: 'Google Reviews',
-      status: 'Paused' as const,
-      lastSynced: '2 hours ago',
-      schedule: 'Hourly',
-    },
-    {
-      id: 4,
-      platform: 'Airbnb',
-      status: 'Active' as const,
-      lastSynced: '5 minutes ago',
-      schedule: 'Daily',
-    },
-    {
-      id: 5,
-      platform: 'TripAdvisor',
-      status: 'Active' as const,
-      lastSynced: '1 hour ago',
-      schedule: 'Daily',
-    },
-    {
-      id: 6,
-      platform: 'Booking.com',
-      status: 'Active' as const,
-      lastSynced: '30 minutes ago',
-      schedule: 'Hourly',
-    },
-    {
-      id: 7,
-      platform: 'Google Reviews',
-      status: 'Active' as const,
-      lastSynced: '10 minutes ago',
-      schedule: 'Hourly',
-    },
-    {
-      id: 8,
-      platform: 'Airbnb',
-      status: 'Paused' as const,
-      lastSynced: '3 hours ago',
-      schedule: 'Daily',
-    },
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const [sources, setSources] = useState<Source[]>([
+    { id: 1, platform: 'TripAdvisor', status: 'Active', lastSynced: '2 minutes ago', schedule: 'Hourly' },
+    { id: 2, platform: 'Booking.com', status: 'Active', lastSynced: '15 minutes ago', schedule: 'Daily' },
+    { id: 3, platform: 'Google Reviews', status: 'Paused', lastSynced: '2 hours ago', schedule: 'Hourly' },
+    { id: 4, platform: 'Airbnb', status: 'Error', lastSynced: '5 minutes ago', schedule: 'Daily' },
+    { id: 5, platform: 'TripAdvisor', status: 'Active', lastSynced: '1 hour ago', schedule: 'Daily' },
+    { id: 6, platform: 'Booking.com', status: 'Active', lastSynced: '30 minutes ago', schedule: 'Hourly' },
+    { id: 7, platform: 'Google Reviews', status: 'Active', lastSynced: '10 minutes ago', schedule: 'Hourly' },
   ]);
 
-  const handleEditSource = (source: typeof sources[0]) => {
+  const filteredSources = useMemo(() => {
+    return sources.filter((s) => {
+      const matchesSearch = s.platform.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === '' || s.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [sources, searchQuery, statusFilter]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleEditSource = (source: any) => {
     setSelectedSource(source);
     setIsEditModalOpen(true);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSaveSource = (updatedSource: any) => {
-    setSources(sources.map(s =>
-      s.id === updatedSource.id ? updatedSource : s
-    ));
+    setSources(sources.map(s => s.id === updatedSource.id ? updatedSource : s));
   };
 
   return (
-    <div style={styles.sourcesPage}>
-      {/* Header */}
-      <div style={styles.sourcesHeader}>
-        <div style={styles.headerLeft}>
-          <button
-            style={styles.menuBtn}
-            onClick={toggleSidebar}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            className="menu-btn-hover"
-          >
-            <Menu size={24} />
-          </button>
-          <div style={styles.headerContent}>
-            <h1 style={styles.pageTitle}>Review Sources</h1>
-            <p style={styles.pageSubtitle}>Manage your connected review platforms</p>
+    <div className="min-h-full bg-gray-50 flex flex-col">
+      {/* ── Sticky Header ── */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Left: menu + title */}
+            <div className="flex items-center gap-4">
+              <button
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none transition-colors"
+                onClick={toggleSidebar}
+              >
+                <Menu size={22} />
+              </button>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold text-gray-900 leading-tight">Review Sources</h1>
+                <p className="text-sm text-gray-500 hidden sm:block">Manage your connected review platforms</p>
+              </div>
+            </div>
+
+            {/* Right: Add Source */}
+            <button
+              className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all flex items-center gap-2"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Plus size={18} />
+              Add Source
+            </button>
           </div>
         </div>
-        <button
-          style={styles.addSourceBtn}
-          onClick={() => setIsModalOpen(true)}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-        >
-          <Plus size={18} />
-          Add Source
-        </button>
-      </div>
+      </header>
 
-      {/* Sources Table */}
-      <SourcesTable sources={sources} onEditSource={handleEditSource} />
+      {/* ── Main Content ── */}
+      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        {/* Toolbar: search + filter */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+          {/* Search */}
+          <div className="relative w-full sm:w-96">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 transition-shadow text-sm outline-none"
+              placeholder="Search sources..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative w-full sm:w-48">
+            <select
+              className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none cursor-pointer outline-none"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Paused">Paused</option>
+              <option value="Error">Error</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+              <ChevronDown size={16} className="text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Sources Table */}
+        <SourcesTable sources={filteredSources} onEditSource={handleEditSource} />
+      </main>
 
       {/* Add Source Modal */}
-      <AddSourceModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <AddSourceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {/* Edit Source Modal */}
       <EditSourceModal
         isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedSource(null);
-        }}
+        onClose={() => { setIsEditModalOpen(false); setSelectedSource(null); }}
         source={selectedSource}
         onSave={handleSaveSource}
       />

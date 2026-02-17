@@ -50,7 +50,7 @@ const ReviewDetailModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-stretch justify-end z-[1000] overflow-x-hidden overflow-y-auto" onClick={onClose}>
-      <div className="bg-white w-full max-w-[600px] h-screen flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.15)] overflow-hidden animate-[slideInRight_0.3s_ease-out] max-md:max-w-full" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white w-full max-w-[600px] h-full flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.15)] overflow-hidden animate-[slideInRight_0.3s_ease-out] max-md:max-w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="p-6 px-6 pb-4 border-b border-gray-200">
           <div className="flex justify-between items-center mb-2">

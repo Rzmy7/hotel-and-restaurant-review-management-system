@@ -23,7 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {isOpen && <div className="fixed inset-0 bg-black/50 z-[999] animate-[fadeIn_0.3s_ease-in-out]" onClick={onClose}></div>}
 
       {/* Sidebar */}
-      <nav className={`w-[260px] h-screen bg-white border-r border-gray-200 flex flex-col font-sans text-gray-600 overflow-hidden fixed top-0 z-[1000] transition-[left] duration-300 ease-in-out ${isOpen ? 'left-0' : '-left-[260px]'}`}>
+      <nav className={`w-[260px] h-full bg-white border-r border-gray-200 flex flex-col font-sans text-gray-600 overflow-hidden fixed top-0 z-[1000] transition-[left] duration-300 ease-in-out ${isOpen ? 'left-0' : '-left-[260px]'}`}>
         {/* 1. HEADER */}
         <div className="p-5 flex items-center gap-3 border-b border-transparent shrink-0">
           <div className="w-9 h-9 bg-blue-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">HR</div>

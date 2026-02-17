@@ -61,7 +61,7 @@ const AppContent = () => {
       <Route
         path="/*"
         element={
-          <div className="flex w-screen h-screen overflow-hidden">
+          <div className="flex w-full h-full overflow-hidden">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <main className="flex-1 flex flex-col bg-gray-50 overflow-y-auto w-full">
               <Routes>
