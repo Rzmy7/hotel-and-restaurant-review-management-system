@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, MoreVertical } from 'lucide-react';
+import { Search, Plus, Loader, ChevronDown } from 'lucide-react';
+import { UserTable } from '../components/UserTable';
 import { fetchUsers } from '../services/mockService';
 import type { User } from '../types';
-import './Users.css';
 
 export const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -10,7 +10,7 @@ export const UsersPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState('All Roles');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const itemsPerPage = 8;
 
     useEffect(() => {
         const loadData = async () => {
@@ -20,10 +20,6 @@ export const UsersPage: React.FC = () => {
         };
         loadData();
     }, []);
-
-    const getInitials = (name: string) => {
-        return name.split(' ').map(n => n[0]).join('').substring(0, 2);
-    };
 
     // Filter Logic
     const filteredUsers = users.filter(user => {
@@ -45,114 +41,67 @@ export const UsersPage: React.FC = () => {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-[50vh]">
+                <Loader size={32} className="animate-spin text-blue-500" />
+            </div>
+        );
+    }
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div className="users-table-controls">
-                <div className="user-search-wrapper">
-                    <div className="search-input-wrapper" style={{ flex: 1, maxWidth: 'none' }}>
-                        <Search className="search-icon" size={18} />
+        <div className="space-y-6">
+            {/* Controls */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                    {/* Search Input */}
+                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2.5 flex-1 max-w-xl">
+                        <Search size={18} className="text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search users..."
                             value={searchQuery}
                             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                            className="bg-transparent border-none outline-none text-sm text-gray-600 placeholder-gray-400 w-full"
                         />
                     </div>
-                    <select
-                        className="role-select"
-                        value={roleFilter}
-                        onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
-                    >
-                        <option>All Roles</option>
-                        <option>Admin</option>
-                        <option>Manager</option>
-                        <option>User</option>
-                    </select>
+                    
+                    {/* Role Filter */}
+                    <div className="relative">
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+                            className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-600 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option>All Roles</option>
+                            <option>Admin</option>
+                            <option>Manager</option>
+                            <option>User</option>
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
                 </div>
-                <button className="btn-primary" onClick={() => alert('Add User Modal would open here')}>
+
+                {/* Add User Button */}
+                <button 
+                    className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                    onClick={() => alert('Add User Modal would open here')}
+                >
                     <Plus size={18} />
                     Add User
                 </button>
             </div>
 
-            <div className="white-card">
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th style={{ width: '30%' }}>Name</th>
-                            <th style={{ width: '30%' }}>Email</th>
-                            <th style={{ width: '15%' }}>Role</th>
-                            <th style={{ width: '15%' }}>Status</th>
-                            <th style={{ width: '10%' }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginatedUsers.map((user) => (
-                            <tr key={user.id}>
-                                <td>
-                                    <div className="user-name-cell">
-                                        <div
-                                            className="avatar-initials"
-                                            style={{ backgroundColor: user.avatarColor || '#e5e7eb' }}
-                                        >
-                                            {getInitials(user.name)}
-                                        </div>
-                                        <span>{user.name}</span>
-                                    </div>
-                                </td>
-                                <td style={{ color: 'var(--text-secondary)' }}>
-                                    {user.email}
-                                </td>
-                                <td>
-                                    <span className="role-badge">{user.role}</span>
-                                </td>
-                                <td>
-                                    <span className={`status-badge-sm ${user.status === 'Active' ? 'status-active-sm' : 'status-suspended-sm'}`}>
-                                        {user.status}
-                                    </span>
-                                </td>
-                                <td>
-                                    <button style={{ color: 'var(--text-secondary)' }}>
-                                        <MoreVertical size={18} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <div className="pagination">
-                    <div className="page-info">
-                        Showing {filteredUsers.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
-                    </div>
-                    <div className="page-controls">
-                        <button
-                            className="page-btn"
-                            disabled={currentPage === 1}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                        >
-                            Previous
-                        </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                            <button
-                                key={page}
-                                className={`page-btn ${currentPage === page ? 'active' : ''}`}
-                                onClick={() => handlePageChange(page)}
-                            >
-                                {page}
-                            </button>
-                        ))}
-                        <button
-                            className="page-btn"
-                            disabled={currentPage === totalPages || totalPages === 0}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {/* Users Table */}
+            <UserTable
+                users={paginatedUsers}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredUsers.length}
+                itemsPerPage={itemsPerPage}
+                startIndex={startIndex}
+                onPageChange={handlePageChange}
+            />
         </div>
     );
 };

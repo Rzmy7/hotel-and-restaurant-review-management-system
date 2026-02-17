@@ -108,6 +108,8 @@ export const fetchUsers = (): Promise<User[]> => {
                 { id: '6', name: 'Robert Anderson', email: 'robert.anderson@company.com', role: 'User', status: 'Active', avatarColor: '#bbf7d0' },
                 { id: '7', name: 'Maria Garcia', email: 'maria.garcia@company.com', role: 'Admin', status: 'Active', avatarColor: '#fde68a' },
                 { id: '8', name: 'James Wilson', email: 'james.wilson@company.com', role: 'User', status: 'Suspended', avatarColor: '#99f6e4' },
+                { id: '9', name: 'Linda Martinez', email: 'linda.martinez@company.com', role: 'Manager', status: 'Active', avatarColor: '#c7d2fe' },
+                { id: '10', name: 'Kevin Brown', email: 'kevin.brown@company.com', role: 'User', status: 'Active', avatarColor: '#fca5a5' },
             ]);
         }, 600);
     });

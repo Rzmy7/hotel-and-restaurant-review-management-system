@@ -12,7 +12,7 @@ export const Header: React.FC = () => {
             case '/organizations':
                 return { title: 'Organizations', subtitle: 'Manage organizations and their settings' };
             case '/users':
-                return { title: 'Users', subtitle: 'Manage system users and roles' };
+                return { title: 'Users', subtitle: 'Manage user accounts and permissions' };
             case '/feature-flags':
                 return { title: 'Feature Flags', subtitle: 'Manage global feature flags' };
             case '/settings':
