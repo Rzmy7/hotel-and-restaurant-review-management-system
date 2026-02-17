@@ -18,6 +18,7 @@ export interface User {
     email: string;
     role: 'Admin' | 'User' | 'Manager';
     status: 'Active' | 'Suspended';
+    plan?: 'Free' | 'Basic' | 'Pro' | 'Enterprise';
     avatarColor?: string;
 }
 
