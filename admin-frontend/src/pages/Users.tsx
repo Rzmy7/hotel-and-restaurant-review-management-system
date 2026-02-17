@@ -50,7 +50,7 @@ export const UsersPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pt-4">
             {/* Controls */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-1">
