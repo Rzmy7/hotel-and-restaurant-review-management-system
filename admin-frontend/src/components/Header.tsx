@@ -1,8 +1,6 @@
-
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, Search } from 'lucide-react';
-import './Header.css';
 
 export const Header: React.FC = () => {
     const location = useLocation();
@@ -19,6 +17,12 @@ export const Header: React.FC = () => {
                 return { title: 'Feature Flags', subtitle: 'Manage global feature flags' };
             case '/settings':
                 return { title: 'Admin Settings', subtitle: 'Configure platform settings' };
+            case '/embeddings':
+                return { title: 'Embeddings', subtitle: 'Manage embedding configurations' };
+            case '/scraping':
+                return { title: 'Scraping', subtitle: 'Configure scraping settings' };
+            case '/api-manage':
+                return { title: 'API Manage', subtitle: 'Manage API keys and access' };
             default:
                 return { title: 'Admin Panel', subtitle: 'Welcome back' };
         }
@@ -27,18 +31,22 @@ export const Header: React.FC = () => {
     const { title, subtitle } = getHeaderContent();
 
     return (
-        <header className="header">
-            <div className="header-content">
-                <h1>{title}</h1>
-                <p>{subtitle}</p>
+        <header className="fixed top-0 left-64 right-0 h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
+            <div>
+                <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+                <p className="text-sm text-gray-500">{subtitle}</p>
             </div>
 
-            <div className="header-actions">
-                <div className="search-bar">
-                    <Search size={18} color="#9ca3af" />
-                    <input type="text" placeholder="Search..." />
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-4 py-2.5 w-64">
+                    <Search size={18} className="text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search..."
+                        className="bg-transparent border-none outline-none text-sm text-gray-600 placeholder-gray-400 w-full"
+                    />
                 </div>
-                <button className="icon-btn">
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
                     <Bell size={20} />
                 </button>
             </div>

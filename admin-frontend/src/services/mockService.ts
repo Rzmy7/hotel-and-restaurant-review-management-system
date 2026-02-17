@@ -40,11 +40,14 @@ export const fetchReviewData = (): Promise<ChartDataPoint[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { label: 'Beach Paradise', value: 85 },
-                { label: 'City Suites', value: 92 },
-                { label: 'Mountain Lodge', value: 78 },
-                { label: 'Coastal Views', value: 88 },
-                { label: 'Urban Inn', value: 65 },
+                { label: 'Acme Hotels', value: 7 },
+                { label: 'Grand Resorts', value: 5 },
+                { label: 'Luxury Stays', value: 4 },
+                { label: 'Urban Inn', value: 3 },
+                { label: 'Coastal Views', value: 4 },
+                { label: 'Mountain Lodge', value: 3 },
+                { label: 'City Suites', value: 5 },
+                { label: 'Beach Paradise', value: 6 },
             ]);
         }, 700);
     });

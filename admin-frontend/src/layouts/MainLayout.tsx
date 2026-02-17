@@ -5,14 +5,10 @@ import { Header } from '../components/Header';
 
 export const MainLayout: React.FC = () => {
     return (
-        <div style={{ minHeight: '100vh' }}>
+        <div className="min-h-screen bg-gray-50">
             <Sidebar />
             <Header />
-            <main style={{
-                marginLeft: '280px',
-                padding: 'var(--space-xl)',
-                minHeight: 'calc(100vh - 80px)'
-            }}>
+            <main className="ml-64 pt-20 p-8 min-h-screen">
                 <Outlet />
             </main>
         </div>

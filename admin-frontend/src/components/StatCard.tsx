@@ -1,4 +1,3 @@
-
 import type { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
@@ -11,37 +10,21 @@ interface StatCardProps {
 
 export const StatCard = ({ label, value, trend, icon: Icon }: StatCardProps) => {
     return (
-        <div className="white-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-                <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
-                    background: '#eff6ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--primary)'
-                }}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
+            <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                     <Icon size={24} />
                 </div>
-                <div style={{
-                    padding: '4px 8px',
-                    background: '#eff6ff',
-                    borderRadius: '20px',
-                    color: 'var(--primary)',
-                    fontSize: '0.75rem',
-                    fontWeight: 600
-                }}>
+                <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold">
                     {trend}
                 </div>
             </div>
 
             <div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '8px' }}>
+                <div className="text-gray-500 text-sm mb-2">
                     {label}
                 </div>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                <div className="text-3xl font-bold text-gray-900">
                     {value}
                 </div>
             </div>
