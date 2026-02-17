@@ -22,7 +22,9 @@ from api.competitor_api import (
     get_competitor_details_from_db,
     compare_with_my_hotel_from_db,
     get_rankings_from_db,
-    get_comparison_chart_data_from_db
+    get_comparison_chart_data_from_db,
+    track_competitor_in_db,
+    untrack_competitor_in_db
 )
 
 load_dotenv()  # Load environment variables
@@ -391,6 +393,34 @@ def get_competitor_chart_data(competitor_id: int):
     try:
         chart_data = get_comparison_chart_data_from_db(competitor_id)
         return chart_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/competitors/{competitor_id}/track", tags=["Competitors"])
+def track_competitor(competitor_id: int):
+    """
+    Track a competitor by adding them to your tracking list
+    """
+    try:
+        result = track_competitor_in_db(competitor_id)
+        return result
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/competitors/{competitor_id}/track", tags=["Competitors"])
+def untrack_competitor(competitor_id: int):
+    """
+    Untrack a competitor by removing them from your tracking list
+    """
+    try:
+        result = untrack_competitor_in_db(competitor_id)
+        return result
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

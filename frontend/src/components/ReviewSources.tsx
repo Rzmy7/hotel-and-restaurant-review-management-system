@@ -1,5 +1,3 @@
-import './ReviewSources.css';
-
 const ReviewSources = () => {
   const sources = [
     { name: 'Booking', percentage: 42, color: '#3b82f6' },
@@ -42,14 +40,14 @@ const ReviewSources = () => {
   let currentAngle = -90; // Start from top
 
   return (
-    <div className="review-sources-card">
-      <div className="card-header">
-        <h3 className="card-title">Review Sources</h3>
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="mb-5">
+        <h3 className="text-base font-bold text-gray-800 m-0">Review Sources</h3>
       </div>
 
-      <div className="sources-content">
-        <div className="pie-chart">
-          <svg viewBox="0 0 200 200" className="pie-svg">
+      <div className="flex gap-8 items-center mt-5">
+        <div className="w-[180px] h-[180px] flex-shrink-0 relative">
+          <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.06)]">
             {sources.map((source, index) => {
               const path = createDonutPath(source.percentage, currentAngle);
               const segmentAngle = currentAngle;
@@ -66,15 +64,15 @@ const ReviewSources = () => {
           </svg>
         </div>
 
-        <div className="sources-legend">
+        <div className="flex flex-col gap-4 flex-1">
           {sources.map((source) => (
-            <div key={source.name} className="source-item">
+            <div key={source.name} className="flex items-center gap-3">
               <span
-                className="source-color"
+                className="w-3.5 h-3.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: source.color }}
               ></span>
-              <span className="source-name">{source.name}</span>
-              <span className="source-percentage">{source.percentage}%</span>
+              <span className="flex-1 text-[15px] font-medium text-gray-800">{source.name}</span>
+              <span className="text-[15px] font-semibold text-gray-500">{source.percentage}%</span>
             </div>
           ))}
         </div>

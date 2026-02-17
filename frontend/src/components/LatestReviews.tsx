@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './LatestReviews.css';
 import ReviewDetailModal from './ReviewDetailModal';
 
 const LatestReviews = () => {
@@ -61,33 +60,37 @@ const LatestReviews = () => {
     setSelectedReview(null);
   };
 
+  const sentimentStyles = {
+    positive: 'bg-emerald-100 text-emerald-600',
+    negative: 'bg-red-100 text-red-600',
+  };
+
   return (
     <>
-      <div className="latest-reviews-card">
-        <div className="card-header">
-          <h3 className="card-title">Latest Reviews</h3>
-          <button className="view-all-btn">View All</button>
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">Latest Reviews</h3>
+          <button className="text-blue-500 font-semibold text-sm hover:underline">View All</button>
         </div>
 
-        <div className="reviews-list">
+        <div className="flex flex-col gap-4 mt-4">
           {reviews.map((review) => (
             <div 
               key={review.id} 
-              className="review-item"
+              className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-[0_2px_8px_rgba(59,130,246,0.1)] hover:-translate-y-0.5 transition-all cursor-pointer"
               onClick={() => handleReviewClick(review)}
-              style={{ cursor: 'pointer' }}
             >
-              <div className="review-stars">
+              <div className="text-amber-400 text-base mb-2">
                 {'★'.repeat(review.rating)}
                 {'☆'.repeat(5 - review.rating)}
               </div>
-              <p className="review-text">{review.title}</p>
-              <div className="review-meta">
-                <span className={`review-badge source`}>{review.source}</span>
-                <span className={`review-badge ${review.sentiment.toLowerCase()}`}>
+              <p className="mb-2.5 text-sm font-semibold text-gray-900">{review.title}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-500">{review.source}</span>
+                <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${sentimentStyles[review.sentiment.toLowerCase() as keyof typeof sentimentStyles]}`}>
                   {review.sentiment}
                 </span>
-                <span className="review-time">{review.time}</span>
+                <span className="text-xs text-gray-400">{review.time}</span>
               </div>
             </div>
           ))}

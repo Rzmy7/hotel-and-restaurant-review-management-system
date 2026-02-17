@@ -469,3 +469,95 @@ def get_comparison_chart_data_from_db(hotel_id: int) -> Dict:
     except Exception as e:
         print(f"Database Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def track_competitor_in_db(competitor_id: int) -> dict:
+    """
+    Track a competitor by setting is_tracked = 1 in the database
+    """
+    try:
+        conn = pyodbc.connect(DB_CONNECTION_STRING)
+        cursor = conn.cursor()
+        
+        # Check if hotel exists and is not "my hotel"
+        check_query = """
+            SELECT hotel_id, name, is_my_hotel 
+            FROM Hotels 
+            WHERE hotel_id = ?
+        """
+        cursor.execute(check_query, competitor_id)
+        hotel = cursor.fetchone()
+        
+        if not hotel:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Hotel not found")
+        
+        if hotel.is_my_hotel:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Cannot track your own hotel as a competitor")
+        
+        # Update is_tracked to 1
+        update_query = """
+            UPDATE Hotels 
+            SET is_tracked = 1 
+            WHERE hotel_id = ?
+        """
+        cursor.execute(update_query, competitor_id)
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": f"Successfully tracking {hotel.name}",
+            "competitor_id": competitor_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def untrack_competitor_in_db(competitor_id: int) -> dict:
+    """
+    Untrack a competitor by setting is_tracked = 0 in the database
+    """
+    try:
+        conn = pyodbc.connect(DB_CONNECTION_STRING)
+        cursor = conn.cursor()
+        
+        # Check if hotel exists
+        check_query = """
+            SELECT hotel_id, name 
+            FROM Hotels 
+            WHERE hotel_id = ?
+        """
+        cursor.execute(check_query, competitor_id)
+        hotel = cursor.fetchone()
+        
+        if not hotel:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Hotel not found")
+        
+        # Update is_tracked to 0
+        update_query = """
+            UPDATE Hotels 
+            SET is_tracked = 0 
+            WHERE hotel_id = ?
+        """
+        cursor.execute(update_query, competitor_id)
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": f"Successfully untracked {hotel.name}",
+            "competitor_id": competitor_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

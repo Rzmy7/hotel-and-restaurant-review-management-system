@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import ReviewItem from "./ReviewItem";
 import ReviewDetailModal from "./ReviewDetailModal";
-import "./ReviewList.css";
 
 // const ReviewList = () => {
 //   // 1. State for data, loading, and error handling
@@ -85,9 +84,9 @@ import "./ReviewList.css";
 const ReviewList = () => {
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -113,12 +112,12 @@ const ReviewList = () => {
   }, []);
 
   if (loading) {
-    return <div className="review-list-container">Loading reviews...</div>;
+    return <div className="bg-white rounded-lg">Loading reviews...</div>;
   }
 
   // 4. Render Error State
   if (error) {
-    return <div className="review-list-container" style={{color: 'red'}}>{error}</div>;
+    return <div className="bg-white rounded-lg" style={{color: 'red'}}>{error}</div>;
   }
 
   const handleOpenReview = (review: any) => {
@@ -133,21 +132,21 @@ const ReviewList = () => {
 
   return (
     <>
-      <div className="review-list-container">
+      <div className="bg-white rounded-lg">
       {/* HEADER ROW */}
-      <div className="review-header-row">
-        <div className="h-col">RATING</div>
-        <div className="h-col">REVIEW SNIPPET</div>
-        <div className="h-col">SENTIMENT</div>
-        <div className="h-col">CATEGORY</div>
-        <div className="h-col">SOURCE</div>
-        <div className="h-col">DATE</div>
-        <div className="h-col">REPLY STATUS</div>
-        <div className="h-col">ACTIONS</div>
+      <div className="grid grid-cols-[60px_3fr_1fr_1.2fr_1fr_1fr_1fr_80px] gap-4 items-start px-6 py-4 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">RATING</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">REVIEW SNIPPET</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">SENTIMENT</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">CATEGORY</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">SOURCE</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">DATE</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">REPLY STATUS</div>
+        <div className="text-[11px] font-semibold text-gray-500 tracking-wide uppercase">ACTIONS</div>
       </div>
 
       {/* DATA ROWS */}
-      <div className="review-rows">
+      <div>
         {reviews.map((review) => (
           <ReviewItem 
             key={review.id} 

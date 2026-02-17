@@ -1,6 +1,5 @@
 import React from 'react';
 import { Image as ImageIcon } from 'lucide-react';
-import './ReviewImageGallery.css';
 
 const ReviewImageGallery = () => {
   // Placeholder images - will be replaced with backend data
@@ -13,25 +12,25 @@ const ReviewImageGallery = () => {
   ];
 
   return (
-    <div className="review-image-gallery">
-      <div className="gallery-header">
-        <h3 className="gallery-title">Recent Review Images</h3>
-        <span className="gallery-count">{placeholderImages.length} images</span>
+    <div className="bg-white rounded-lg p-5 px-6 mb-6 border border-gray-200">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-base font-semibold text-gray-800 m-0">Recent Review Images</h3>
+        <span className="text-[13px] text-gray-500 font-medium">{placeholderImages.length} images</span>
       </div>
       
-      <div className="gallery-grid">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
         {placeholderImages.map((image) => (
-          <div key={image.id} className="gallery-item">
+          <div key={image.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
             {image.url ? (
               <img 
                 src={image.url} 
                 alt={image.alt}
-                className="gallery-image"
+                className="w-full h-full object-cover"
               />
             ) : (
-              <div className="gallery-placeholder">
-                <ImageIcon size={32} className="placeholder-icon" />
-                <span className="placeholder-text">Image {image.id}</span>
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400 gap-2">
+                <ImageIcon size={32} className="text-gray-300" />
+                <span className="text-xs font-medium text-gray-400">Image {image.id}</span>
               </div>
             )}
           </div>

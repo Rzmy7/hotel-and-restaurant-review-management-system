@@ -1,24 +1,22 @@
-import './TrendsChart.css';
-
 const TrendsChart = () => {
   return (
-    <div className="trends-chart-card">
-      <div className="card-header">
-        <h3 className="card-title">Review Trends</h3>
-        <div className="chart-legend-inline">
-          <div className="legend-dot-item">
-            <span className="chart-dot review-count"></span>
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="mb-5 flex justify-between items-center">
+        <h3 className="m-0 text-base font-bold text-gray-800">Review Trends</h3>
+        <div className="flex gap-4">
+          <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
+            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
             <span>Review Count</span>
           </div>
-          <div className="legend-dot-item">
-            <span className="chart-dot sentiment-score"></span>
+          <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
+            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
             <span>Sentiment Score</span>
           </div>
         </div>
       </div>
 
-      <div className="trends-chart">
-        <svg viewBox="0 0 600 200" preserveAspectRatio="none" className="chart-svg">
+      <div className="my-5 mb-3 h-[140px] bg-gradient-to-b from-blue-500/[0.03] to-transparent rounded-lg">
+        <svg viewBox="0 0 600 200" preserveAspectRatio="none" className="w-full h-full">
           {/* Background grid lines */}
           <line x1="0" y1="50" x2="600" y2="50" stroke="#f3f4f6" strokeWidth="1" />
           <line x1="0" y1="100" x2="600" y2="100" stroke="#f3f4f6" strokeWidth="1" />
@@ -43,7 +41,7 @@ const TrendsChart = () => {
         </svg>
       </div>
 
-      <div className="chart-months">
+      <div className="grid grid-cols-7 text-center text-xs text-gray-400 mt-2">
         <span>Jan</span>
         <span>Feb</span>
         <span>Mar</span>

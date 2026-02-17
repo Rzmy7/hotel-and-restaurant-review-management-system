@@ -1,6 +1,5 @@
 import React from 'react';
 import { Star, ArrowRight } from 'lucide-react';
-import './ReviewItem.css';// We will share one CSS file for the list layout
 
 // Define the shape of a Review Object
 interface ReviewProps {
@@ -20,59 +19,63 @@ interface ReviewProps {
 
 const ReviewItem = ({ review, onOpen }: ReviewProps) => {
   return (
-    <div className="review-row">
+    <div className="grid grid-cols-[60px_3fr_1fr_1.2fr_1fr_1fr_1fr_80px] gap-4 items-start px-6 py-4 border-b border-gray-100 transition-colors duration-200 bg-white hover:bg-gray-50">
       
       {/* 1. Rating */}
-      <div className="col-rating">
-        <span className="rating-num">{review.rating}</span>
+      <div className="flex items-center gap-1 font-semibold text-gray-800">
+        <span>{review.rating}</span>
         <Star size={14} fill="#fbbf24" color="#fbbf24" /> {/* Gold Star */}
       </div>
 
       {/* 2. Snippet */}
-      <div className="col-snippet">
-        <div className="user-name">{review.userName}</div>
-        <div className="review-text">{review.reviewText}</div>
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-gray-500">{review.userName}</div>
+        <div className="text-sm text-gray-700 leading-[1.4] line-clamp-2">{review.reviewText}</div>
       </div>
 
       {/* 3. Sentiment */}
-      <div className="col-sentiment">
-        <span className={`sentiment-pill ${review.sentiment.toLowerCase()}`}>
+      <div>
+        <span className={`inline-block text-xs px-3 py-1 rounded-md font-medium ${
+          review.sentiment.toLowerCase() === 'positive' ? 'bg-[#F0FDF4] text-[#008235] border border-[#B9F8CF]' :
+          review.sentiment.toLowerCase() === 'negative' ? 'bg-[#FEF2F2] text-[#C10007] border border-[#FFC9C9]' :
+          'bg-[#eaeaea] text-[#494949] border border-[#838383]'
+        }`}>
           {review.sentiment}
         </span>
       </div>
 
       {/* 4. Category */}
-      <div className="col-category">
-        <div className="category-stack">
+      <div>
+        <div className="flex flex-wrap gap-1.5">
           {review.categories.slice(0, 2).map((cat, i) => (
-            <span key={i} className="category-pill">{cat}</span>
+            <span key={i} className="border border-blue-500 text-gray-800 text-[11px] px-2 py-0.5 rounded-xl bg-blue-50">{cat}</span>
           ))}
           {review.categories.length > 2 && (
-            <span className="category-more">+{review.categories.length - 2}</span>
+            <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-xl">+{review.categories.length - 2}</span>
           )}
         </div>
       </div>
 
       {/* 5. Source */}
-      <div className="col-source">
-        <span className="source-pill">{review.source}</span>
+      <div>
+        <span className="bg-black text-white text-[11px] px-2.5 py-1 rounded-md">{review.source}</span>
       </div>
 
       {/* 6. Date */}
-      <div className="col-date">
+      <div className="text-[13px] text-gray-600">
         {review.date}
       </div>
 
       {/* 7. Status */}
-      <div className="col-status">
-        <span className={`status-pill ${review.status.replace(' ', '-').toLowerCase()}`}>
+      <div>
+        <span className="text-xs px-2.5 py-1 rounded-md font-medium text-white bg-black">
           {review.status}
         </span>
       </div>
 
       {/* 8. Actions */}
-      <div className="col-actions">
-        <button className="open-btn" onClick={onOpen}>
+      <div>
+        <button className="flex items-center gap-1 text-blue-500 bg-transparent border-none text-[13px] cursor-pointer p-0 hover:underline" onClick={onOpen}>
           Open <ArrowRight size={14} />
         </button>
       </div>

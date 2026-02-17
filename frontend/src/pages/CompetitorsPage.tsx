@@ -70,9 +70,28 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
     navigate(`/competitors/compare?id=${competitorId}`);
   };
 
-  const handleDelete = (competitorId: number) => {
-    console.log('Delete competitor:', competitorId);
-    // Add delete logic
+  const handleDelete = async (competitorId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/competitors/${competitorId}/track`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to untrack competitor');
+      }
+      
+      const result = await response.json();
+      console.log('Untracked competitor:', result);
+      
+      // Refresh both lists
+      await fetchCompetitors();
+      if (isModalOpen) {
+        await fetchAvailableCompetitors();
+      }
+    } catch (err) {
+      console.error('Error untracking competitor:', err);
+      alert('Failed to remove competitor. Please try again.');
+    }
   };
 
   const handleAddCompetitor = () => {
@@ -83,10 +102,26 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
     setIsModalOpen(false);
   };
 
-  const handleAddCompetitorFromList = (competitorId: number) => {
-    console.log('Adding competitor:', competitorId);
-    // Add logic to add the competitor to the main list
-    // You can implement this based on your requirements
+  const handleAddCompetitorFromList = async (competitorId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/competitors/${competitorId}/track`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to track competitor');
+      }
+      
+      const result = await response.json();
+      console.log('Tracked competitor:', result);
+      
+      // Refresh both lists
+      await fetchCompetitors();
+      await fetchAvailableCompetitors();
+    } catch (err) {
+      console.error('Error tracking competitor:', err);
+      alert('Failed to add competitor. Please try again.');
+    }
   };
 
   const handleViewRankings = () => {
@@ -114,8 +149,6 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
           >
             <option value="hotel">Hotel</option>
             <option value="restaurant">Restaurant</option>
-            <option value="cafe">Cafe</option>
-            <option value="resort">Resort</option>
             <option value="spa">Spa</option>
           </select>
           <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
