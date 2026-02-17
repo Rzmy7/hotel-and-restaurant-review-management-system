@@ -12,13 +12,17 @@ export interface Review {
     source: string;
     date: string;
     status: 'Replied' | 'AI Draft' | 'Pending';
+    language?: string;
 }
 
-interface FilterState {
+export interface FilterState {
     search: string;
     rating: number[];
     sentiment: string[];
     source: string[];
+    category: string[];
+    language: string[];
+    hasAiReply: boolean;
 }
 
 interface ReviewsContextType {
@@ -28,7 +32,8 @@ interface ReviewsContextType {
     error: string | null;
     filters: FilterState;
     setSearchQuery: (query: string) => void;
-    toggleFilter: (type: keyof Omit<FilterState, 'search'>, value: string | number) => void;
+    toggleFilter: (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => void;
+    toggleAiReplyFilter: () => void;
     selectedReview: Review | null;
     isModalOpen: boolean;
     openReview: (review: Review) => void;
@@ -46,7 +51,10 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         search: '',
         rating: [],
         sentiment: [],
-        source: []
+        source: [],
+        category: [],
+        language: [],
+        hasAiReply: false
     });
 
     const [selectedReview, setSelectedReview] = useState<Review | null>(null);
@@ -97,6 +105,25 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
                 return false;
             }
 
+            // Category
+            if (filters.category.length > 0) {
+                const hasCategory = review.categories.some(cat => filters.category.includes(cat));
+                if (!hasCategory) return false;
+            }
+
+            // Language
+            if (filters.language.length > 0) {
+                // Determine language (default to English if undefined)
+                const lang = review.language || 'English';
+                if (!filters.language.includes(lang)) return false;
+            }
+
+            // Has AI Reply
+            if (filters.hasAiReply) {
+                // specific logic: matches Replied or AI Draft
+                if (review.status === 'Pending') return false;
+            }
+
             return true;
         });
     }, [reviews, filters]);
@@ -106,7 +133,7 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         setFilters(prev => ({ ...prev, search: query }));
     };
 
-    const toggleFilter = (type: keyof Omit<FilterState, 'search'>, value: string | number) => {
+    const toggleFilter = (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => {
         setFilters(prev => {
             const currentValues = prev[type] as any[];
             const exists = currentValues.includes(value);
@@ -116,6 +143,10 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
 
             return { ...prev, [type]: newValues };
         });
+    };
+
+    const toggleAiReplyFilter = () => {
+        setFilters(prev => ({ ...prev, hasAiReply: !prev.hasAiReply }));
     };
 
     const openReview = (review: Review) => {
@@ -137,6 +168,7 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
             filters,
             setSearchQuery,
             toggleFilter,
+            toggleAiReplyFilter,
             selectedReview,
             isModalOpen,
             openReview,
