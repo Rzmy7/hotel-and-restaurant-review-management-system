@@ -5,6 +5,7 @@ import { Organizations } from './pages/Organizations';
 import { UsersPage } from './pages/Users';
 import { FeatureFlags } from './pages/FeatureFlags';
 import { Settings } from './pages/Settings';
+import { Embeddings } from './pages/Embeddings';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="feature-flags" element={<FeatureFlags />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="embeddings" element={<Embeddings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes> 

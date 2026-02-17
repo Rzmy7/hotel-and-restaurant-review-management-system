@@ -53,6 +53,19 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </nav>
+
+      {/* User Profile */}
+      <div className="px-4 py-4 border-t border-gray-200">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-sm font-medium">
+            AD
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900 truncate">Admin User</div>
+            <div className="text-xs text-gray-500 truncate">admin@company.com</div>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 };
