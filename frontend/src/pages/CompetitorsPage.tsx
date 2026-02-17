@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, TrendingUp, Plus, Star, Trash2, ChevronDown } from 'lucide-react';
+import AddCompetitorModal from '../components/AddCompetitorModal';
 
 interface CompetitorsPageProps {
   toggleSidebar: () => void;
@@ -19,6 +20,7 @@ interface Competitor {
 const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const [selectedDomain, setSelectedDomain] = useState('hotel');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [competitors] = useState<Competitor[]>([
     {
       id: 1,
@@ -54,6 +56,33 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
     },
   ]);
 
+  const availableCompetitors = [
+    {
+      id: 101,
+      name: 'Jetwin hotel',
+      location: 'Downtown',
+      avgRating: 4.7,
+    },
+    {
+      id: 102,
+      name: 'Cinnamon Hotel',
+      location: 'Beachfront',
+      avgRating: 4.6,
+    },
+    {
+      id: 103,
+      name: 'Turtle watch Hotel',
+      location: 'Coastal Area',
+      avgRating: 4.3,
+    },
+    {
+      id: 104,
+      name: 'Turkey Lodge',
+      location: 'Hillside',
+      avgRating: 4.2,
+    },
+  ];
+
   const handleCompare = (competitorId: number) => {
     // Map competitor IDs to slugs for URL
     const competitorMap: { [key: number]: string } = {
@@ -72,8 +101,17 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
   };
 
   const handleAddCompetitor = () => {
-    console.log('Add new competitor');
-    // Add modal logic
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleAddCompetitorFromList = (competitorId: number) => {
+    console.log('Adding competitor:', competitorId);
+    // Add logic to add the competitor to the main list
+    // You can implement this based on your requirements
   };
 
   const handleViewRankings = () => {
@@ -167,6 +205,14 @@ const CompetitorsPage: React.FC<CompetitorsPageProps> = ({ toggleSidebar }) => {
                         >
                           <Trash2 size={16} />
                         </button>
+
+      {/* Add Competitor Modal */}
+      <AddCompetitorModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onAddCompetitor={handleAddCompetitorFromList}
+        availableCompetitors={availableCompetitors}
+      />
                       </div>
                     </td>
                   </tr>
