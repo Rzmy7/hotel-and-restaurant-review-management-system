@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, CheckCircle2, Clock, Search, Plus, MoreVertical, Building } from 'lucide-react';
-import { StatCard } from '../components/StatCard';
+import { Building2, CheckCircle2, Clock, Search, Plus, MoreVertical, Building, Loader, ChevronDown } from 'lucide-react';
+import { Pagination } from '../components/Pagination';
 import { fetchOrganizations, fetchOrgStats } from '../services/mockService';
 import type { Organization, OrganizationStats } from '../types';
-import './Organizations.css';
 
 export const Organizations: React.FC = () => {
     const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -12,7 +11,7 @@ export const Organizations: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All Status');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const itemsPerPage = 8;
 
     useEffect(() => {
         const loadData = async () => {
@@ -27,12 +26,12 @@ export const Organizations: React.FC = () => {
         loadData();
     }, []);
 
-    const getStatusClass = (status: string) => {
+    const getStatusBadgeClass = (status: string) => {
         switch (status) {
-            case 'Active': return 'status-badge status-active';
-            case 'Pending': return 'status-badge status-pending';
-            case 'Inactive': return 'status-badge status-inactive';
-            default: return 'status-badge';
+            case 'Active': return 'bg-green-100 text-green-600';
+            case 'Pending': return 'bg-yellow-100 text-yellow-600';
+            case 'Inactive': return 'bg-red-100 text-red-500';
+            default: return 'bg-gray-100 text-gray-600';
         }
     };
 
@@ -54,96 +53,125 @@ export const Organizations: React.FC = () => {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-[50vh]">
+                <Loader size={32} className="animate-spin text-blue-500" />
+            </div>
+        );
+    }
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="space-y-6 pt-4">
+            {/* Stats Cards */}
             {stats && (
-                <div className="org-stats-grid">
-                    <StatCard
-                        label="Total Organizations"
-                        value={stats.total.toLocaleString()}
-                        trend=""
-                        icon={Building2}
-                    />
-                    <StatCard
-                        label="Active Organizations"
-                        value={stats.active.toLocaleString()}
-                        trend=""
-                        icon={CheckCircle2}
-                    />
-                    <StatCard
-                        label="Pending Organizations"
-                        value={stats.pending.toLocaleString()}
-                        trend=""
-                        icon={Clock}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Total Organizations */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Total Organizations</div>
+                            <div className="text-3xl font-bold text-gray-900">{stats.total.toLocaleString()}</div>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                            <Building2 size={24} />
+                        </div>
+                    </div>
+
+                    {/* Active Organizations */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Active Organizations</div>
+                            <div className="text-3xl font-bold text-gray-900">{stats.active.toLocaleString()}</div>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
+                            <CheckCircle2 size={24} />
+                        </div>
+                    </div>
+
+                    {/* Pending Organizations */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+                        <div>
+                            <div className="text-sm text-gray-500 mb-1">Pending Organizations</div>
+                            <div className="text-3xl font-bold text-gray-900">{stats.pending.toLocaleString()}</div>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center text-yellow-500">
+                            <Clock size={24} />
+                        </div>
+                    </div>
                 </div>
             )}
 
-            <div className="table-controls">
-                <div className="search-input-wrapper">
-                    <Search className="search-icon" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search organizations..."
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                    />
+            {/* Controls */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                    {/* Search Input */}
+                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2.5 flex-1 max-w-xl">
+                        <Search size={18} className="text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search organizations..."
+                            value={searchQuery}
+                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                            className="bg-transparent border-none outline-none text-sm text-gray-600 placeholder-gray-400 w-full"
+                        />
+                    </div>
+                    
+                    {/* Status Filter */}
+                    <div className="relative">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                            className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-600 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option>All Status</option>
+                            <option>Active</option>
+                            <option>Pending</option>
+                            <option>Inactive</option>
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
                 </div>
 
-                <div className="filter-group">
-                    <select
-                        className="status-select"
-                        value={statusFilter}
-                        onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                    >
-                        <option>All Status</option>
-                        <option>Active</option>
-                        <option>Pending</option>
-                        <option>Inactive</option>
-                    </select>
-                    <button className="btn-primary" onClick={() => alert('Add Organization Modal would open here')}>
-                        <Plus size={18} />
-                        Add Organization
-                    </button>
-                </div>
+                {/* Add Organization Button */}
+                <button 
+                    className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                    onClick={() => alert('Add Organization Modal would open here')}
+                >
+                    <Plus size={18} />
+                    Add Organization
+                </button>
             </div>
 
-            <div className="white-card" style={{ overflow: 'hidden' }}>
-                <table className="data-table">
+            {/* Organizations Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full">
                     <thead>
-                        <tr>
-                            <th>Organization Name</th>
-                            <th>Domain</th>
-                            <th>Number of Users</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                        <tr className="border-b border-gray-100">
+                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '35%' }}>Organization Name</th>
+                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '30%' }}>Domain</th>
+                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '20%' }}>Status</th>
+                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '15%' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {paginatedOrgs.map((org) => (
-                            <tr key={org.id}>
-                                <td>
-                                    <div className="org-cell">
-                                        <div className="org-icon-placeholder">
-                                            <Building size={16} />
+                            <tr key={org.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                                            <Building size={18} />
                                         </div>
-                                        <span style={{ fontWeight: 500 }}>{org.name}</span>
+                                        <span className="font-medium text-gray-900">{org.name}</span>
                                     </div>
                                 </td>
-                                <td style={{ color: 'var(--text-secondary)' }}>{org.domain}</td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <UsersIcon />
-                                        {org.usersCount.toLocaleString()}
-                                    </div>
+                                <td className="px-6 py-4 text-gray-500">{org.domain}</td>
+                                <td className="px-6 py-4">
+                                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(org.status)}`}>
+                                        {org.status}
+                                    </span>
                                 </td>
-                                <td>
-                                    <span className={getStatusClass(org.status)}>{org.status}</span>
-                                </td>
-                                <td>
-                                    <button style={{ color: 'var(--text-secondary)' }}>
+                                <td className="px-6 py-4">
+                                    <button className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
                                         <MoreVertical size={18} />
                                     </button>
                                 </td>
@@ -151,47 +179,16 @@ export const Organizations: React.FC = () => {
                         ))}
                     </tbody>
                 </table>
-                <div className="pagination">
-                    <div className="page-info">
-                        Showing {filteredOrgs.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + itemsPerPage, filteredOrgs.length)} of {filteredOrgs.length} organizations
-                    </div>
-                    <div className="page-controls">
-                        <button
-                            className="page-btn"
-                            disabled={currentPage === 1}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                        >
-                            Previous
-                        </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                            <button
-                                key={page}
-                                className={`page-btn ${currentPage === page ? 'active' : ''}`}
-                                onClick={() => handlePageChange(page)}
-                            >
-                                {page}
-                            </button>
-                        ))}
-                        <button
-                            className="page-btn"
-                            disabled={currentPage === totalPages || totalPages === 0}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredOrgs.length}
+                    itemsPerPage={itemsPerPage}
+                    startIndex={startIndex}
+                    onPageChange={handlePageChange}
+                    itemLabel="organizations"
+                />
             </div>
         </div>
     );
 };
-
-// Helper icon component
-const UsersIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#9ca3af' }}>
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-);

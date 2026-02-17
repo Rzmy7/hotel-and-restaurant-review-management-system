@@ -15,7 +15,7 @@ export const ReviewsChart: React.FC<ReviewsChartProps> = ({ data }) => {
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
             <div className="mb-4">
-                <h3 className="text-base font-semibold text-gray-900">Reviews by Organization</h3>
+                <h3 className="text-base font-semibold text-gray-900">Reviews by Platform</h3>
                 <p className="text-sm text-gray-500">Total reviews collected</p>
             </div>
             <div className="flex-1">

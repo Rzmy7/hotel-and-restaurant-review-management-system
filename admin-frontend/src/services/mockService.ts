@@ -40,14 +40,14 @@ export const fetchReviewData = (): Promise<ChartDataPoint[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { label: 'Acme Hotels', value: 7 },
-                { label: 'Grand Resorts', value: 5 },
-                { label: 'Luxury Stays', value: 4 },
-                { label: 'Urban Inn', value: 3 },
-                { label: 'Coastal Views', value: 4 },
-                { label: 'Mountain Lodge', value: 3 },
-                { label: 'City Suites', value: 5 },
-                { label: 'Beach Paradise', value: 6 },
+                { label: 'Google', value: 7 },
+                { label: 'Booking.com', value: 5 },
+                { label: 'TripAdvisor', value: 4 },
+                { label: 'Expedia', value: 3 },
+                { label: 'Hotels.com', value: 4 },
+                { label: 'Agoda', value: 3 },
+                { label: 'Yelp', value: 5 },
+                { label: 'Trustpilot', value: 6 },
             ]);
         }, 700);
     });
@@ -91,6 +91,10 @@ export const fetchOrganizations = (): Promise<Organization[]> => {
                 { id: '6', name: 'Smart Systems', domain: 'smartsys.com', usersCount: 234, status: 'Inactive' },
                 { id: '7', name: 'Future Tech', domain: 'futuretech.io', usersCount: 1523, status: 'Active' },
                 { id: '8', name: 'CloudBase Ltd', domain: 'cloudbase.co', usersCount: 967, status: 'Active' },
+                { id: '9', name: 'NextGen Solutions', domain: 'nextgen.io', usersCount: 534, status: 'Active' },
+                { id: '10', name: 'DataFlow Inc', domain: 'dataflow.com', usersCount: 789, status: 'Pending' },
+                { id: '11', name: 'Quantum Labs', domain: 'quantumlabs.co', usersCount: 312, status: 'Active' },
+                { id: '12', name: 'Peak Systems', domain: 'peaksys.net', usersCount: 456, status: 'Active' },
             ]);
         }, 700);
     });
