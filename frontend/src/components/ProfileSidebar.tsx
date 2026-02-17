@@ -62,7 +62,6 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange 
                     accept="image/*"
                     onChange={handleFileChange}
                     className="hidden"
-                    style={{ display: 'none' }}
                 />
                 <button
                     type="button"
@@ -70,13 +69,6 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange 
                     onClick={handleEditPhotoClick}
                 >
                     Edit Photo
-                </button>
-                <button
-                    type="button"
-                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-                    onClick={handleEditPhotoClick}
-                >
-                    Change
                 </button>
             </div>
 

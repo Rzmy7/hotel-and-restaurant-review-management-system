@@ -18,11 +18,10 @@ import ProfilePage from './pages/ProfilePage';
 
 const NotFound = () => {
   return (
-    <div style={{ textAlign: 'center', marginTop: '50px' }}>
-      <h1>404</h1>
-      <p>Page not Found</p>
-      {/* It's good practice to provide a way back */}
-      <Link to="/">Go Home</Link>
+    <div className="text-center mt-12">
+      <h1 className="text-4xl font-bold text-gray-900">404</h1>
+      <p className="text-gray-500 mt-2">Page not Found</p>
+      <Link to="/" className="text-blue-500 hover:text-blue-700 mt-4 inline-block">Go Home</Link>
     </div>
   );
 };
@@ -35,11 +34,6 @@ const AppContent = () => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-
-  // Close sidebar when route changes
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
 
   // Close sidebar when route changes
   useEffect(() => {
@@ -69,7 +63,7 @@ const AppContent = () => {
                 <Route path="/dashboard" element={<DashboardPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/reviews" element={<ReviewsPage toggleSidebar={toggleSidebar} />} />
                 <Route path="/sources" element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings" element={<SettingsPage toggleSidebar={toggleSidebar} />} />
                 <Route
                   path="/profile"
                   element={<ProfilePage toggleSidebar={toggleSidebar} />}

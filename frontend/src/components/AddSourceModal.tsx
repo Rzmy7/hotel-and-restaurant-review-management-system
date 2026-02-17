@@ -16,179 +16,32 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
   if (!isOpen) return null;
 
   const handleSubmit = () => {
-    // Handle form submission here
     console.log({ platform, propertyUrl, apiKey, schedule, sourceStatus });
     onClose();
   };
 
-  const styles = {
-    overlay: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    },
-    modal: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      width: '100%',
-      maxWidth: '500px',
-      padding: '0',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-    },
-    header: {
-      padding: '20px 24px',
-      borderBottom: '1px solid #e5e7eb',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    title: {
-      fontSize: '18px',
-      fontWeight: 600,
-      color: '#111827',
-      margin: 0,
-    },
-    closeBtn: {
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '4px',
-      color: '#6b7280',
-      display: 'flex',
-      alignItems: 'center',
-      borderRadius: '4px',
-    },
-    body: {
-      padding: '24px',
-    },
-    formGroup: {
-      marginBottom: '20px',
-    },
-    label: {
-      display: 'block',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#374151',
-      marginBottom: '8px',
-    },
-    select: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      color: '#1f2937',
-      backgroundColor: 'white',
-      cursor: 'pointer',
-    },
-    input: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      color: '#1f2937',
-      boxSizing: 'border-box' as const,
-    },
-    testBtn: {
-      padding: '8px 16px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#3b82f6',
-      backgroundColor: 'white',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-    toggleContainer: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: '20px',
-    },
-    toggleLabel: {
-      fontSize: '13px',
-      color: '#6b7280',
-    },
-    toggle: {
-      position: 'relative' as const,
-      width: '44px',
-      height: '24px',
-      backgroundColor: sourceStatus ? '#3b82f6' : '#d1d5db',
-      borderRadius: '12px',
-      cursor: 'pointer',
-      transition: 'background-color 0.2s',
-    },
-    toggleKnob: {
-      position: 'absolute' as const,
-      top: '2px',
-      left: sourceStatus ? '22px' : '2px',
-      width: '20px',
-      height: '20px',
-      backgroundColor: 'white',
-      borderRadius: '50%',
-      transition: 'left 0.2s',
-    },
-    footer: {
-      padding: '16px 24px',
-      borderTop: '1px solid #e5e7eb',
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: '12px',
-    },
-    cancelBtn: {
-      padding: '10px 20px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#374151',
-      backgroundColor: 'white',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-    submitBtn: {
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: 'white',
-      backgroundColor: '#6b7280',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-  };
+  const inputClasses =
+    'w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white box-border outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+  const selectClasses =
+    'w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white cursor-pointer outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-[500px] shadow-xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div style={styles.header}>
-          <h2 style={styles.title}>Source Platform</h2>
-          <button style={styles.closeBtn} onClick={onClose}>
+        <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900 m-0">Add Source</h2>
+          <button className="bg-transparent border-none cursor-pointer p-1 text-gray-500 hover:text-gray-700 flex items-center rounded transition-colors" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <div style={styles.body}>
+        <div className="p-6">
           {/* Platform Select */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Source Platform</label>
-            <select
-              style={styles.select}
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-            >
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Source Platform</label>
+            <select className={selectClasses} value={platform} onChange={(e) => setPlatform(e.target.value)}>
               <option value="">Select a platform</option>
               <option value="booking">Booking.com</option>
               <option value="tripadvisor">TripAdvisor</option>
@@ -198,11 +51,11 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           </div>
 
           {/* Property URL */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Property / Hotel URL</label>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Property / Hotel URL</label>
             <input
               type="text"
-              style={styles.input}
+              className={inputClasses}
               placeholder="https://example.com/hotel"
               value={propertyUrl}
               onChange={(e) => setPropertyUrl(e.target.value)}
@@ -210,11 +63,11 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           </div>
 
           {/* API Key */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>API Key (optional)</label>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-2">API Key (optional)</label>
             <input
               type="text"
-              style={styles.input}
+              className={inputClasses}
               placeholder="Enter API key if available"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -222,62 +75,49 @@ const AddSourceModal = ({ isOpen, onClose }: AddSourceModalProps) => {
           </div>
 
           {/* Schedule */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Schedule</label>
-            <select
-              style={styles.select}
-              value={schedule}
-              onChange={(e) => setSchedule(e.target.value)}
-            >
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Schedule</label>
+            <select className={selectClasses} value={schedule} onChange={(e) => setSchedule(e.target.value)}>
               <option value="Hourly">Hourly</option>
               <option value="Daily">Daily</option>
               <option value="Weekly">Weekly</option>
             </select>
           </div>
 
-          {/* Test Connection Button */}
-          <button
-            style={styles.testBtn}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-          >
+          {/* Test Connection */}
+          <button className="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-blue-500 bg-white hover:bg-blue-50 cursor-pointer transition-colors">
             Test Connection
           </button>
 
           {/* Source Status Toggle */}
-          <div style={styles.toggleContainer}>
+          <div className="flex items-center justify-between mt-5">
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
-                Source Status
-              </div>
-              <div style={styles.toggleLabel}>
-                Enable to start collecting reviews immediately
-              </div>
+              <div className="text-sm font-medium text-gray-700 mb-1">Source Status</div>
+              <div className="text-[13px] text-gray-500">Enable to start collecting reviews immediately</div>
             </div>
-            <div
-              style={styles.toggle}
-              onClick={() => setSourceStatus(!sourceStatus)}
-            >
-              <div style={styles.toggleKnob}></div>
-            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={sourceStatus}
+                onChange={(e) => setSourceStatus(e.target.checked)}
+              />
+              <span className="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-[20px]"></span>
+            </label>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={styles.footer}>
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
           <button
-            style={styles.cancelBtn}
+            className="py-2.5 px-5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
             onClick={onClose}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
           >
             Cancel
           </button>
           <button
-            style={styles.submitBtn}
+            className="py-2.5 px-5 border-none rounded-lg text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 cursor-pointer transition-colors"
             onClick={handleSubmit}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6b7280'}
           >
             Add Source
           </button>

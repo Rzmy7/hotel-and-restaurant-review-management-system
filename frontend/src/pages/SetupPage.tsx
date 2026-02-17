@@ -1,198 +1,72 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import SetupLayout from '../components/SetupLayout';
 
 const SetupPage = () => {
-  const [organizationType, setOrganizationType] = useState<'hotel' | 'restaurant' | 'other'>('hotel');
-  const [organizationName, setOrganizationName] = useState('');
-  const [groupInviteLink, setGroupInviteLink] = useState('');
   const navigate = useNavigate();
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const handleContinue = () => {
-    // Validate Step 1
-    if (!organizationName.trim()) {
-      alert('Please enter an organization name');
-      return;
+    if (selectedType) {
+      navigate('/setup/sources');
     }
-    navigate('/setup/sources');
   };
 
-  const styles = {
-    pageWrapper: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      overflow: 'auto',
-      backgroundColor: '#f3f4f6',
+  const organizationTypes = [
+    {
+      id: 'hotel',
+      title: 'Hotel / Resort',
+      description: 'Traditional hotel, boutique hotel, or resort property',
     },
-    container: {
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column' as const,
+    {
+      id: 'restaurant',
+      title: 'Restaurant / Cafe',
+      description: 'Restaurant, cafe, bar, or food service establishment',
     },
-    header: {
-      padding: '20px 40px',
-      backgroundColor: '#2c3e50',
-      color: '#9ca3af',
-      fontSize: '16px',
-      fontWeight: 500,
+    {
+      id: 'property',
+      title: 'Property Group',
+      description: 'Management company overseeing multiple properties',
     },
-    stepsContainer: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '40px',
-      padding: '40px 20px 30px',
-      backgroundColor: 'white',
+    {
+      id: 'other',
+      title: 'Other',
+      description: 'Other type of hospitality business',
     },
-    step: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      alignItems: 'flex-start',
-      gap: '8px',
-      flex: 1,
-      maxWidth: '200px',
-    },
-    stepLabel: (active: boolean) => ({
-      fontSize: '13px',
-      color: active ? '#1f2937' : '#9ca3af',
-      fontWeight: active ? 600 : 400,
-      whiteSpace: 'nowrap' as const,
-    }),
-    stepNumber: {
-      fontSize: '13px',
-      color: '#9ca3af',
-      marginBottom: '2px',
-    },
-    stepIndicator: (active: boolean) => ({
-      width: '100%',
-      height: '3px',
-      backgroundColor: active ? '#1f2937' : '#e5e7eb',
-      borderRadius: '2px',
-      marginTop: '4px',
-    }),
-    mainCard: {
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      padding: '50px 60px',
-      maxWidth: '800px',
-      margin: '40px auto',
-      width: '90%',
-    },
-    title: {
-      fontSize: '28px',
-      fontWeight: 600,
-      color: '#1f2937',
-      textAlign: 'center' as const,
-      marginBottom: '40px',
-    },
-    sectionLabel: {
-      fontSize: '14px',
-      fontWeight: 600,
-      color: '#374151',
-      marginBottom: '12px',
-    },
-    buttonGroup: {
-      display: 'flex',
-      gap: '12px',
-      marginBottom: '24px',
-    },
-    typeButton: (selected: boolean) => ({
-      flex: 1,
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '50px',
-      fontSize: '13px',
-      fontWeight: 500,
-      cursor: 'pointer',
-      backgroundColor: selected ? '#374151' : '#f3f4f6',
-      color: selected ? 'white' : '#9ca3af',
-      transition: 'all 0.2s',
-    }),
-    inputWrapper: {
-      position: 'relative' as const,
-      marginBottom: '24px',
-    },
-    icon: {
-      position: 'absolute' as const,
-      left: '14px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      color: '#d1d5db',
-      width: '18px',
-      height: '18px',
-    },
-    input: {
-      width: '100%',
-      padding: '12px 14px 12px 44px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '13px',
-      outline: 'none',
-      backgroundColor: '#ffffff',
-      color: '#6b7280',
-      transition: 'border-color 0.2s',
-    },
-  };
+  ];
 
   return (
     <SetupLayout currentStep={1} onContinue={handleContinue} showBack={false}>
-      <h1 style={styles.title}>Let's Set Up your Hotel or Restaurant</h1>
+      <h1 className="text-[28px] font-semibold text-gray-800 text-center mb-3">
+        Let's set up your organization
+      </h1>
+      <p className="text-[15px] text-gray-400 text-center mb-10">
+        Select the type that best describes your business
+      </p>
 
-      <div style={{ marginBottom: '30px' }}>
-        <div style={styles.sectionLabel}>Organization Type</div>
-        <div style={styles.buttonGroup}>
-          <button
-            style={styles.typeButton(organizationType === 'hotel')}
-            onClick={() => setOrganizationType('hotel')}
+      <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+        {organizationTypes.map((type) => (
+          <div
+            key={type.id}
+            className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${selectedType === type.id
+                ? 'border-gray-400 bg-gray-50 shadow-sm'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            onClick={() => setSelectedType(type.id)}
           >
-            Hotel
-          </button>
-          <button
-            style={styles.typeButton(organizationType === 'restaurant')}
-            onClick={() => setOrganizationType('restaurant')}
-          >
-            Restaurant
-          </button>
-          <button
-            style={styles.typeButton(organizationType === 'other')}
-            onClick={() => setOrganizationType('other')}
-          >
-            Other
-          </button>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '30px' }}>
-        <div style={styles.sectionLabel}>Organization Name</div>
-        <div style={styles.inputWrapper}>
-          <Building2 style={styles.icon} />
-          <input
-            type="text"
-            placeholder="E.g. Ocean Bay Hotel"
-            value={organizationName}
-            onChange={(e) => setOrganizationName(e.target.value)}
-            style={styles.input}
-          />
-        </div>
-      </div>
-
-      <div>
-        <div style={styles.sectionLabel}>Group Link</div>
-        <div style={styles.inputWrapper}>
-          <Users style={styles.icon} />
-          <input
-            type="text"
-            placeholder="Enter group invite link"
-            value={groupInviteLink}
-            onChange={(e) => setGroupInviteLink(e.target.value)}
-            style={styles.input}
-          />
-        </div>
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${selectedType === type.id ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                <Building2 size={20} />
+              </div>
+              <div>
+                <div className="text-[15px] font-semibold text-gray-800 mb-1">{type.title}</div>
+                <div className="text-[13px] text-gray-400 leading-relaxed">{type.description}</div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </SetupLayout>
   );

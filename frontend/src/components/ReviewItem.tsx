@@ -60,7 +60,7 @@ const ReviewItem = ({ review, onOpen }: ReviewProps) => {
 
       {/* 5. Source */}
       <div>
-        <span className="bg-black text-white text-[11px] px-2.5 py-1 rounded-md">{review.source}</span>
+        <span className="bg-blue-50 text-blue-500 text-[11px] px-2.5 py-1 rounded-md font-medium">{review.source}</span>
       </div>
 
       {/* 6. Date */}
@@ -70,7 +70,10 @@ const ReviewItem = ({ review, onOpen }: ReviewProps) => {
 
       {/* 7. Status */}
       <div>
-        <span className="text-xs px-2.5 py-1 rounded-md font-medium text-white bg-black">
+        <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${review.status === 'Replied' ? 'bg-emerald-100 text-emerald-700' :
+            review.status === 'AI Draft' ? 'bg-blue-100 text-blue-700' :
+              'bg-amber-100 text-amber-700'
+          }`}>
           {review.status}
         </span>
       </div>

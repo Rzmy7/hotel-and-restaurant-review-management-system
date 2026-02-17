@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Globe, Bell, Lock, CreditCard, Building2, Upload } from 'lucide-react';
+import { ChevronLeft, Globe, Bell, Lock, CreditCard, Building2, Upload, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 
-interface SettingsPageProps { }
+interface SettingsPageProps {
+  toggleSidebar: () => void;
+}
 
-const SettingsPage: React.FC<SettingsPageProps> = () => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
 
   // State for toggles
@@ -24,22 +26,25 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-full">
       {/* Header */}
-      <div className="bg-white p-6 px-8 border-b border-gray-200 flex items-start gap-4 max-md:p-4">
-        <button className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-gray-500 transition-colors hover:text-gray-900 mt-0.5" onClick={() => navigate(-1)}>
-          <ChevronLeft size={20} />
+      <header className="bg-white px-8 py-5 border-b border-gray-200 flex items-center gap-4">
+        <button className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition" onClick={toggleSidebar}>
+          <Menu size={24} />
         </button>
+        {/* <button className="bg-transparent border-none cursor-pointer p-1 flex items-center justify-center text-gray-500 transition-colors hover:text-gray-900" onClick={() => navigate(-1)}>
+          <ChevronLeft size={20} />
+        </button> */}
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-gray-900 m-0 mb-1 max-md:text-2xl">Settings</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 m-0 mb-1">Settings</h1>
           <p className="text-sm text-gray-500 m-0">Manage your account and application preferences</p>
         </div>
-      </div>
+      </header>
 
       {/* Content */}
       <div className="max-w-4xl mx-auto p-8 max-md:p-4">
         {/* General Section */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm max-md:p-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-            <Globe className="text-sky-500" size={20} />
+            <Globe className="text-blue-500" size={20} />
             <h2 className="text-lg font-semibold text-gray-900 m-0">General</h2>
           </div>
 
@@ -50,7 +55,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium">Grand Hotel NYC</span>
-                <button className="bg-transparent border-none text-sky-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-sky-700">Edit</button>
+                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
               </div>
             </div>
 
@@ -60,7 +65,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium">EST (UTC-5)</span>
-                <button className="bg-transparent border-none text-sky-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-sky-700">Edit</button>
+                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
               </div>
             </div>
 
@@ -70,7 +75,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium">English</span>
-                <button className="bg-transparent border-none text-sky-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-sky-700">Edit</button>
+                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
               </div>
             </div>
           </div>
@@ -79,7 +84,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         {/* Notifications Section */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm max-md:p-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-            <Bell className="text-sky-500" size={20} />
+            <Bell className="text-blue-500" size={20} />
             <h2 className="text-lg font-semibold text-gray-900 m-0">Notifications</h2>
           </div>
 
@@ -95,7 +100,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   checked={emailNotifications}
                   onChange={(e) => setEmailNotifications(e.target.checked)}
                 />
-                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-sky-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
+                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-blue-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
               </label>
             </div>
 
@@ -110,7 +115,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   checked={newReviewAlerts}
                   onChange={(e) => setNewReviewAlerts(e.target.checked)}
                 />
-                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-sky-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
+                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-blue-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
               </label>
             </div>
 
@@ -125,7 +130,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   checked={weeklySummary}
                   onChange={(e) => setWeeklySummary(e.target.checked)}
                 />
-                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-sky-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
+                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-blue-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
               </label>
             </div>
           </div>
@@ -134,7 +139,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         {/* Security Section */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm max-md:p-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-            <Lock className="text-sky-500" size={20} />
+            <Lock className="text-blue-500" size={20} />
             <h2 className="text-lg font-semibold text-gray-900 m-0">Security</h2>
           </div>
 
@@ -150,7 +155,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   checked={twoFactorAuth}
                   onChange={(e) => setTwoFactorAuth(e.target.checked)}
                 />
-                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-sky-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
+                <span className="absolute cursor-pointer inset-0 bg-gray-300 transition-all duration-300 rounded-[34px] peer-checked:bg-blue-500 before:absolute before:content-[''] before:h-5 before:w-5 before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-300 before:rounded-full peer-checked:before:translate-x-[22px]"></span>
               </label>
             </div>
 
@@ -160,7 +165,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium tracking-[2px] text-base">••••••••</span>
-                <button className="bg-transparent border-none text-sky-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-sky-700">Change</button>
+                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
               </div>
             </div>
 
@@ -170,7 +175,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               </div>
               <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                 <span className="text-sm text-gray-500 font-medium">30 minutes</span>
-                <button className="bg-transparent border-none text-sky-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-sky-700">Edit</button>
+                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
               </div>
             </div>
           </div>
@@ -179,7 +184,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         {/* Subscription & Billing Section */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm max-md:p-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-            <CreditCard className="text-sky-500" size={20} />
+            <CreditCard className="text-blue-500" size={20} />
             <h2 className="text-lg font-semibold text-gray-900 m-0">Subscription & Billing</h2>
           </div>
 
@@ -215,7 +220,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               <label className="text-sm font-medium text-gray-700 cursor-default">Billing Email</label>
               <input
                 type="email"
-                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-sky-500 max-md:max-w-full"
+                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-blue-500 max-md:max-w-full"
                 value={billingEmail}
                 onChange={(e) => setBillingEmail(e.target.value)}
               />
@@ -232,7 +237,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                     <div className="text-xs text-gray-500">Expires 12/26</div>
                   </div>
                 </div>
-                <button className="bg-transparent border-none text-sky-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-sky-700">Update</button>
+                <button className="bg-transparent border-none text-blue-500 text-sm font-medium cursor-pointer p-1 px-2 transition-colors hover:text-blue-700">Edit</button>
               </div>
             </div>
           </div>
@@ -241,7 +246,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         {/* Hotel Information Section */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm max-md:p-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-            <Building2 className="text-sky-500" size={20} />
+            <Building2 className="text-blue-500" size={20} />
             <h2 className="text-lg font-semibold text-gray-900 m-0">Hotel Information</h2>
           </div>
 
@@ -249,7 +254,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
             {/* Logo Upload */}
             <div className="flex flex-col gap-2 py-4 border-b border-gray-100 last:border-b-0">
               <div className="flex gap-4 items-start max-md:flex-col">
-                <div className="w-[140px] h-[140px] border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all bg-gray-50 hover:border-sky-500 hover:bg-sky-50 max-md:w-full max-md:max-w-[200px]">
+                <div className="w-[140px] h-[140px] border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all bg-gray-50 hover:border-blue-500 hover:bg-blue-50 max-md:w-full max-md:max-w-[200px]">
                   <Upload className="text-gray-400" size={32} />
                   <span className="text-[13px] text-gray-500 text-center max-w-[100px]">Upload Hotel Logo</span>
                 </div>
@@ -266,7 +271,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               <label className="text-sm font-medium text-gray-700 cursor-default">Hotel/Brand Name</label>
               <input
                 type="text"
-                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-sky-500 max-md:max-w-full"
+                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-blue-500 max-md:max-w-full"
                 value={hotelName}
                 onChange={(e) => setHotelName(e.target.value)}
               />
@@ -280,7 +285,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   <Globe className="absolute left-3.5 text-gray-400 pointer-events-none" size={16} />
                   <input
                     type="url"
-                    className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-sky-500 pl-10 max-md:max-w-full"
+                    className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-blue-500 pl-10 max-md:max-w-full"
                     value={websiteUrl}
                     onChange={(e) => setWebsiteUrl(e.target.value)}
                     placeholder="https://grandplazahotel.com"
@@ -291,7 +296,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                 <label className="text-sm font-medium text-gray-700 cursor-default">Property Type</label>
                 <input
                   type="text"
-                  className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-sky-500 max-md:max-w-full"
+                  className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-blue-500 max-md:max-w-full"
                   value={propertyType}
                   onChange={(e) => setPropertyType(e.target.value)}
                   placeholder="e.g., Hotel, Resort, B&B"
@@ -304,7 +309,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               <label className="text-sm font-medium text-gray-700 cursor-default">Primary Email</label>
               <input
                 type="email"
-                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-sky-500 max-md:max-w-full"
+                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-blue-500 max-md:max-w-full"
                 value={primaryEmail}
                 onChange={(e) => setPrimaryEmail(e.target.value)}
               />
@@ -315,7 +320,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
               <label className="text-sm font-medium text-gray-700 cursor-default">Phone Number</label>
               <input
                 type="tel"
-                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-sky-500 max-md:max-w-full"
+                className="p-2.5 px-3.5 border border-gray-300 rounded-lg text-sm text-gray-700 transition w-full max-w-[400px] focus:outline-none focus:border-blue-500 max-md:max-w-full"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
               />
@@ -326,8 +331,8 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
 
       {/* Action Buttons */}
       <div className="max-w-4xl mx-auto p-6 px-8 flex gap-3 bg-white border-t border-gray-200 sticky bottom-0 max-md:flex-col max-md:p-4">
-        <button className="px-8 py-3 bg-sky-500 text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-colors hover:bg-sky-600 max-md:w-full">Save Changes</button>
-        <button className="px-8 py-3 bg-transparent text-gray-500 border-none rounded-lg text-sm font-semibold cursor-pointer transition-colors hover:text-gray-700 max-md:w-full">Cancel</button>
+        <button className="px-8 py-3 bg-transparent text-gray-500 border border-gray-300 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-gray-50 max-md:w-full">Cancel</button>
+        <button className="px-8 py-3 bg-blue-500 text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-blue-600 max-md:w-full">Save Changes</button>
       </div>
     </div>
   );

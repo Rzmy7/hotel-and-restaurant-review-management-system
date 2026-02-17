@@ -113,12 +113,21 @@ const ReviewList = () => {
   }, []);
 
   if (loading) {
-    return <div className="review-list-container">Loading reviews...</div>;
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <span className="ml-3 text-sm text-gray-500">Loading reviews...</span>
+      </div>
+    );
   }
 
   // 4. Render Error State
   if (error) {
-    return <div className="review-list-container" style={{ color: 'red' }}>{error}</div>;
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 mx-6 my-4">
+        <p className="text-red-700 text-sm font-medium m-0">{error}</p>
+      </div>
+    );
   }
 
   const handleOpenReview = (review: any) => {

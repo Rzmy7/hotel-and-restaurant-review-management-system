@@ -13,7 +13,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
           <Menu size={24} />
         </button>
         <div>
-          <h1 className="m-0 text-2xl font-bold text-gray-800">Grand Plaza Hotel</h1>
+          <h1 className="m-0 text-2xl font-semibold text-gray-900">Grand Plaza Hotel</h1>
           <p className="mt-1 text-[13px] text-gray-400">Review Management Dashboard</p>
         </div>
       </div>

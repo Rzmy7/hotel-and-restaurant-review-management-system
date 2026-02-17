@@ -56,37 +56,35 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
   return (
     <div className="min-h-full bg-gray-50 flex flex-col">
       {/* ── Sticky Header ── */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Left: menu + title */}
-            <div className="flex items-center gap-4">
-              <button
-                className="p-2 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none transition-colors"
-                onClick={toggleSidebar}
-              >
-                <Menu size={22} />
-              </button>
-              <div className="flex flex-col">
-                <h1 className="text-xl font-bold text-gray-900 leading-tight">Review Sources</h1>
-                <p className="text-sm text-gray-500 hidden sm:block">Manage your connected review platforms</p>
-              </div>
-            </div>
-
-            {/* Right: Add Source */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 px-8 py-5">
+        <div className="flex justify-between items-center">
+          {/* Left: menu + title */}
+          <div className="flex items-center gap-4">
             <button
-              className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all flex items-center gap-2"
-              onClick={() => setIsModalOpen(true)}
+              className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition"
+              onClick={toggleSidebar}
             >
-              <Plus size={18} />
-              Add Source
+              <Menu size={24} />
             </button>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Review Sources</h1>
+              <p className="text-sm text-gray-500 hidden sm:block m-0">Manage your connected review platforms</p>
+            </div>
           </div>
+
+          {/* Right: Add Source */}
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all flex items-center gap-2"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus size={18} />
+            Add Source
+          </button>
         </div>
       </header>
 
       {/* ── Main Content ── */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
+      <main className="w-full px-8 py-8 flex-1">
         {/* Toolbar: search + filter */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
           {/* Search */}

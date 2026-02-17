@@ -53,239 +53,33 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
     }
   };
 
-  const styles = {
-    overlay: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    },
-    modal: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      width: '100%',
-      maxWidth: '800px',
-      padding: '0',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-      maxHeight: '90vh',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column' as const,
-    },
-    header: {
-      padding: '20px 24px',
-      borderBottom: '1px solid #e5e7eb',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    headerLeft: {
-      flex: 1,
-    },
-    title: {
-      fontSize: '18px',
-      fontWeight: 600,
-      color: '#111827',
-      margin: '0 0 4px 0',
-    },
-    subtitle: {
-      fontSize: '14px',
-      color: '#6b7280',
-      margin: 0,
-    },
-    closeBtn: {
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '4px',
-      color: '#6b7280',
-      display: 'flex',
-      alignItems: 'center',
-      borderRadius: '4px',
-    },
-    body: {
-      padding: '24px',
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '32px',
-      overflowY: 'auto' as const,
-      flex: 1,
-    },
-    column: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-    },
-    formGroup: {
-      marginBottom: '20px',
-    },
-    label: {
-      display: 'block',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#374151',
-      marginBottom: '8px',
-    },
-    select: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      color: '#1f2937',
-      backgroundColor: 'white',
-      cursor: 'pointer',
-    },
-    input: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      color: '#1f2937',
-      boxSizing: 'border-box' as const,
-    },
-    toggleContainer: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: '20px',
-    },
-    toggleLabel: {
-      fontSize: '13px',
-      color: '#6b7280',
-    },
-    toggle: {
-      position: 'relative' as const,
-      width: '44px',
-      height: '24px',
-      backgroundColor: sourceStatus ? '#3b82f6' : '#d1d5db',
-      borderRadius: '12px',
-      cursor: 'pointer',
-      transition: 'background-color 0.2s',
-    },
-    toggleKnob: {
-      position: 'absolute' as const,
-      top: '2px',
-      left: sourceStatus ? '22px' : '2px',
-      width: '20px',
-      height: '20px',
-      backgroundColor: 'white',
-      borderRadius: '50%',
-      transition: 'left 0.2s',
-    },
-    statsSection: {
-      backgroundColor: '#f9fafb',
-      padding: '20px',
-      borderRadius: '8px',
-    },
-    statsTitle: {
-      fontSize: '16px',
-      fontWeight: 600,
-      color: '#111827',
-      marginBottom: '16px',
-    },
-    statItem: {
-      marginBottom: '16px',
-    },
-    statLabel: {
-      fontSize: '13px',
-      color: '#6b7280',
-      marginBottom: '4px',
-    },
-    statValue: {
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#111827',
-    },
-    progressBar: {
-      width: '100%',
-      height: '8px',
-      backgroundColor: '#e5e7eb',
-      borderRadius: '4px',
-      overflow: 'hidden',
-      marginTop: '4px',
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: '#10b981',
-      borderRadius: '4px',
-      transition: 'width 0.3s',
-    },
-    deleteBtn: {
-      padding: '10px 20px',
-      border: '1px solid #fecaca',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#dc2626',
-      backgroundColor: 'white',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      marginTop: '24px',
-    },
-    footer: {
-      padding: '16px 24px',
-      borderTop: '1px solid #e5e7eb',
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: '12px',
-    },
-    cancelBtn: {
-      padding: '10px 20px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: '#374151',
-      backgroundColor: 'white',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-    saveBtn: {
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: 'white',
-      backgroundColor: '#111827',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-    },
-  };
+  const inputClasses =
+    'w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white box-border outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+  const selectClasses =
+    'w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white cursor-pointer outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-[800px] shadow-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div style={styles.header}>
-          <div style={styles.headerLeft}>
-            <h2 style={styles.title}>Edit Source</h2>
-            <p style={styles.subtitle}>{source.platform}</p>
+        <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-start">
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-gray-900 m-0 mb-1">Edit Source</h2>
+            <p className="text-sm text-gray-500 m-0">{source.platform}</p>
           </div>
-          <button style={styles.closeBtn} onClick={onClose}>
+          <button className="bg-transparent border-none cursor-pointer p-1 text-gray-500 hover:text-gray-700 flex items-center rounded transition-colors" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <div style={styles.body}>
+        <div className="p-6 grid grid-cols-2 gap-8 overflow-y-auto flex-1 max-md:grid-cols-1">
           {/* Left Column - Form */}
-          <div style={styles.column}>
+          <div className="flex flex-col">
             {/* Platform Select */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Source Platform</label>
-              <select
-                style={styles.select}
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-              >
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Source Platform</label>
+              <select className={selectClasses} value={platform} onChange={(e) => setPlatform(e.target.value)}>
                 <option value="TripAdvisor">TripAdvisor</option>
                 <option value="Booking.com">Booking.com</option>
                 <option value="Google Reviews">Google Reviews</option>
@@ -294,35 +88,31 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
             </div>
 
             {/* Property URL */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Property / Hotel URL</label>
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Property / Hotel URL</label>
               <input
                 type="text"
-                style={styles.input}
+                className={inputClasses}
                 value={propertyUrl}
                 onChange={(e) => setPropertyUrl(e.target.value)}
               />
             </div>
 
             {/* API Key */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>API Key</label>
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
               <input
                 type="password"
-                style={styles.input}
+                className={inputClasses}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
               />
             </div>
 
             {/* Schedule */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Schedule</label>
-              <select
-                style={styles.select}
-                value={schedule}
-                onChange={(e) => setSchedule(e.target.value)}
-              >
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Schedule</label>
+              <select className={selectClasses} value={schedule} onChange={(e) => setSchedule(e.target.value)}>
                 <option value="Hourly">Hourly</option>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
@@ -330,85 +120,80 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave }: EditSourceModalPro
             </div>
 
             {/* Source Status Toggle */}
-            <div style={styles.toggleContainer}>
+            <div className="flex items-center justify-between mt-5">
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
-                  Source Status
-                </div>
-                <div style={styles.toggleLabel}>
+                <div className="text-sm font-medium text-gray-700 mb-1">Source Status</div>
+                <div className="text-[13px] text-gray-500">
                   {sourceStatus ? 'Active and collecting reviews' : 'Paused'}
                 </div>
               </div>
-              <div
-                style={styles.toggle}
-                onClick={() => setSourceStatus(!sourceStatus)}
-              >
-                <div style={styles.toggleKnob}></div>
-              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={sourceStatus}
+                  onChange={(e) => setSourceStatus(e.target.checked)}
+                />
+                <span className="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-[20px]"></span>
+              </label>
             </div>
 
             {/* Delete Button */}
             <button
-              style={styles.deleteBtn}
+              className="mt-6 py-2.5 px-5 border border-red-200 rounded-lg text-sm font-medium text-red-600 bg-white hover:bg-red-50 cursor-pointer transition-colors self-start"
               onClick={handleDelete}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
             >
               Delete Source
             </button>
           </div>
 
           {/* Right Column - Statistics */}
-          <div style={styles.column}>
-            <div style={styles.statsSection}>
-              <h3 style={styles.statsTitle}>Source Statistics</h3>
+          <div className="flex flex-col">
+            <div className="bg-gray-50 p-5 rounded-lg">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Source Statistics</h3>
 
-              <div style={styles.statItem}>
-                <div style={styles.statLabel}>Last Run Time</div>
-                <div style={styles.statValue}>{source.lastSynced}</div>
+              <div className="mb-4">
+                <div className="text-[13px] text-gray-500 mb-1">Last Run Time</div>
+                <div className="text-sm font-medium text-gray-900">{source.lastSynced}</div>
               </div>
 
-              <div style={styles.statItem}>
-                <div style={styles.statLabel}>Next Run Time</div>
-                <div style={styles.statValue}>In 45 minutes</div>
+              <div className="mb-4">
+                <div className="text-[13px] text-gray-500 mb-1">Next Run Time</div>
+                <div className="text-sm font-medium text-gray-900">In 45 minutes</div>
               </div>
 
-              <div style={styles.statItem}>
-                <div style={styles.statLabel}>Success Rate</div>
-                <div style={{ ...styles.statValue, color: '#10b981' }}>96%</div>
-                <div style={styles.progressBar}>
-                  <div style={{ ...styles.progressFill, width: '96%' }}></div>
+              <div className="mb-4">
+                <div className="text-[13px] text-gray-500 mb-1">Success Rate</div>
+                <div className="text-sm font-medium text-emerald-500">96%</div>
+                <div className="w-full h-2 bg-gray-200 rounded mt-1 overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded transition-all" style={{ width: '96%' }} />
                 </div>
               </div>
 
-              <div style={styles.statItem}>
-                <div style={styles.statLabel}>Error Count</div>
-                <div style={styles.statValue}>0 errors</div>
+              <div className="mb-4">
+                <div className="text-[13px] text-gray-500 mb-1">Error Count</div>
+                <div className="text-sm font-medium text-gray-900">0 errors</div>
               </div>
 
-              <div style={styles.statItem}>
-                <div style={styles.statLabel}>Source ID</div>
-                <div style={{ ...styles.statValue, fontFamily: 'monospace' }}>60800081</div>
+              <div>
+                <div className="text-[13px] text-gray-500 mb-1">Source ID</div>
+                <div className="text-sm font-medium text-gray-900 font-mono">60800081</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={styles.footer}>
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
           <button
-            style={styles.cancelBtn}
+            className="py-2.5 px-5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
             onClick={onClose}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
           >
             Cancel
           </button>
           <button
-            style={styles.saveBtn}
+            className="py-2.5 px-5 border-none rounded-lg text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 cursor-pointer transition-colors"
             onClick={handleSave}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#000000'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#111827'}
           >
             Save Changes
           </button>

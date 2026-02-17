@@ -32,14 +32,14 @@ const ReviewDetailModal = ({
 }: ReviewDetailModalProps) => {
   if (!isOpen) return null;
 
-  const getSentimentColor = (sentiment: string) => {
+  const getSentimentClasses = (sentiment: string) => {
     switch (sentiment) {
       case "Positive":
-        return "#10b981";
+        return "bg-emerald-500 text-white";
       case "Negative":
-        return "#ef4444";
+        return "bg-red-500 text-white";
       default:
-        return "#6b7280";
+        return "bg-gray-500 text-white";
     }
   };
 
@@ -110,11 +110,7 @@ const ReviewDetailModal = ({
             <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
               <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Sentiment</span>
               <span
-                className="px-3 py-1 rounded-md text-[13px] font-medium"
-                style={{
-                  backgroundColor: getSentimentColor(review.sentiment),
-                  color: "white",
-                }}
+                className={`px-3 py-1 rounded-md text-[13px] font-medium ${getSentimentClasses(review.sentiment)}`}
               >
                 {review.sentiment}
               </span>
@@ -219,10 +215,10 @@ const ReviewDetailModal = ({
         {/* Footer */}
         <div className="p-4 px-6 border-t border-gray-200 flex gap-3 justify-end max-md:flex-col">
           <button className="px-5 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 text-sm font-medium cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-400 max-md:w-full" onClick={onClose}>
-            Close
+            Cancel
           </button>
-          <button className="px-5 py-2.5 border-none rounded-lg bg-gray-800 text-white text-sm font-medium cursor-pointer transition-all hover:bg-gray-900 max-md:w-full">Mark as Replied</button>
-          <button className="px-5 py-2.5 border-none rounded-lg bg-gray-800 text-white text-sm font-medium cursor-pointer transition-all hover:bg-gray-900 max-md:w-full">Save Changes</button>
+          <button className="px-5 py-2.5 border-none rounded-lg bg-blue-500 text-white text-sm font-medium cursor-pointer transition-all hover:bg-blue-600 max-md:w-full">Mark as Replied</button>
+          <button className="px-5 py-2.5 border-none rounded-lg bg-blue-500 text-white text-sm font-medium cursor-pointer transition-all hover:bg-blue-600 max-md:w-full">Save Changes</button>
         </div>
       </div>
     </div>

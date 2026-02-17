@@ -27,287 +27,117 @@ const SignUpPage = () => {
     navigate('/setup');
   };
 
-  const styles = {
-    pageWrapper: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-      overflow: 'auto',
-    },
-    container: {
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#e5e7eb',
-      padding: '40px 20px',
-    },
-    signupCard: {
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      padding: '40px',
-      width: '100%',
-      maxWidth: '480px',
-      margin: 'auto',
-    },
-    title: {
-      fontSize: '28px',
-      fontWeight: 600,
-      color: '#1f2937',
-      textAlign: 'center' as const,
-      marginBottom: '8px',
-    },
-    subtitle: {
-      fontSize: '14px',
-      color: '#6b7280',
-      textAlign: 'center' as const,
-      marginBottom: '28px',
-    },
-    formGroup: {
-      marginBottom: '18px',
-    },
-    label: {
-      display: 'block',
-      fontSize: '13px',
-      fontWeight: 500,
-      color: '#374151',
-      marginBottom: '6px',
-    },
-    inputWrapper: {
-      position: 'relative' as const,
-      display: 'flex',
-      alignItems: 'center',
-    },
-    icon: {
-      position: 'absolute' as const,
-      left: '14px',
-      color: '#9ca3af',
-      width: '16px',
-      height: '16px',
-    },
-    input: {
-      width: '100%',
-      padding: '10px 14px 10px 40px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '14px',
-      outline: 'none',
-      transition: 'border-color 0.2s',
-      backgroundColor: '#f9fafb',
-      boxSizing: 'border-box' as const,
-    },
-    passwordInput: {
-      width: '100%',
-      padding: '10px 40px 10px 40px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '14px',
-      outline: 'none',
-      transition: 'border-color 0.2s',
-      backgroundColor: '#f9fafb',
-      boxSizing: 'border-box' as const,
-    },
-    eyeIcon: {
-      position: 'absolute' as const,
-      right: '14px',
-      color: '#9ca3af',
-      cursor: 'pointer',
-      width: '16px',
-      height: '16px',
-    },
-    accountTypeLabel: {
-      display: 'block',
-      fontSize: '13px',
-      fontWeight: 600,
-      color: '#374151',
-      marginBottom: '10px',
-    },
-    accountTypeButtons: {
-      display: 'flex',
-      gap: '12px',
-      marginBottom: '18px',
-    },
-    accountTypeButton: {
-      flex: 1,
-      padding: '10px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: 500,
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      backgroundColor: 'white',
-      color: '#6b7280',
-    },
-    accountTypeButtonActive: {
-      flex: 1,
-      padding: '10px',
-      border: '1px solid #0284c7',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: 500,
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      backgroundColor: '#0284c7',
-      color: 'white',
-    },
-    termsRow: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '8px',
-      marginBottom: '20px',
-    },
-    checkbox: {
-      width: '16px',
-      height: '16px',
-      cursor: 'pointer',
-      accentColor: '#0284c7',
-      flexShrink: 0,
-      marginTop: '2px',
-    },
-    termsText: {
-      fontSize: '13px',
-      color: '#4b5563',
-      lineHeight: '1.5',
-    },
-    termsLink: {
-      color: '#0284c7',
-      textDecoration: 'none',
-    },
-    createButton: {
-      width: '100%',
-      padding: '11px',
-      backgroundColor: '#0284c7',
-      color: 'white',
-      border: 'none',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: 600,
-      cursor: 'pointer',
-      marginBottom: '16px',
-      transition: 'background-color 0.2s',
-    },
-    loginText: {
-      textAlign: 'center' as const,
-      fontSize: '13px',
-      color: '#6b7280',
-    },
-    loginLink: {
-      color: '#0284c7',
-      textDecoration: 'none',
-      fontWeight: 500,
-      cursor: 'pointer',
-      marginLeft: '4px',
-    },
-  };
+  const inputClasses =
+    'w-full py-2.5 pl-10 pr-3.5 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none transition-colors box-border focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20';
+  const passwordInputClasses =
+    'w-full py-2.5 px-10 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none transition-colors box-border focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20';
 
   return (
-    <div style={styles.pageWrapper}>
-      <div style={styles.container}>
-        <div style={styles.signupCard}>
-          <h1 style={styles.title}>Sign up</h1>
-          <p style={styles.subtitle}>Create Your Account</p>
+    <div className="fixed inset-0 z-[9999] overflow-auto">
+      <div className="min-h-full flex items-center justify-center bg-gray-200 py-10 px-5">
+        <div className="bg-white rounded-xl shadow-sm p-10 w-full max-w-[480px] my-auto">
+          <h1 className="text-[28px] font-semibold text-gray-800 text-center mb-2">Sign up</h1>
+          <p className="text-sm text-gray-500 text-center mb-7">Create Your Account</p>
 
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Full Name</label>
-              <div style={styles.inputWrapper}>
-                <User style={styles.icon} />
+            {/* Full Name */}
+            <div className="mb-[18px]">
+              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Full Name</label>
+              <div className="relative flex items-center">
+                <User size={16} className="absolute left-3.5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  style={styles.input}
+                  className={inputClasses}
                   required
                 />
               </div>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Email</label>
-              <div style={styles.inputWrapper}>
-                <Mail style={styles.icon} />
+            {/* Email */}
+            <div className="mb-[18px]">
+              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Email</label>
+              <div className="relative flex items-center">
+                <Mail size={16} className="absolute left-3.5 text-gray-400" />
                 <input
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={styles.input}
+                  className={inputClasses}
                   required
                 />
               </div>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Password</label>
-              <div style={styles.inputWrapper}>
-                <Lock style={styles.icon} />
+            {/* Password */}
+            <div className="mb-[18px]">
+              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Password</label>
+              <div className="relative flex items-center">
+                <Lock size={16} className="absolute left-3.5 text-gray-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={styles.passwordInput}
+                  className={passwordInputClasses}
                   required
                 />
-                {showPassword ? (
-                  <EyeOff
-                    style={styles.eyeIcon}
-                    onClick={() => setShowPassword(false)}
-                  />
-                ) : (
-                  <Eye
-                    style={styles.eyeIcon}
-                    onClick={() => setShowPassword(true)}
-                  />
-                )}
+                <button
+                  type="button"
+                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer p-0"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Confirm Password</label>
-              <div style={styles.inputWrapper}>
-                <Lock style={styles.icon} />
+            {/* Confirm Password */}
+            <div className="mb-[18px]">
+              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Confirm Password</label>
+              <div className="relative flex items-center">
+                <Lock size={16} className="absolute left-3.5 text-gray-400" />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={styles.passwordInput}
+                  className={passwordInputClasses}
                   required
                 />
-                {showConfirmPassword ? (
-                  <EyeOff
-                    style={styles.eyeIcon}
-                    onClick={() => setShowConfirmPassword(false)}
-                  />
-                ) : (
-                  <Eye
-                    style={styles.eyeIcon}
-                    onClick={() => setShowConfirmPassword(true)}
-                  />
-                )}
+                <button
+                  type="button"
+                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer p-0"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
-            <div style={{ marginBottom: '18px' }}>
-              <label style={styles.accountTypeLabel}>Account Type</label>
-              <div style={styles.accountTypeButtons}>
+            {/* Account Type */}
+            <div className="mb-[18px]">
+              <label className="block text-[13px] font-semibold text-gray-700 mb-2.5">Account Type</label>
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  style={accountType === 'tenant' ? styles.accountTypeButtonActive : styles.accountTypeButton}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${accountType === 'tenant'
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                    }`}
                   onClick={() => setAccountType('tenant')}
                 >
                   Tenant
                 </button>
                 <button
                   type="button"
-                  style={accountType === 'observer' ? styles.accountTypeButtonActive : styles.accountTypeButton}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${accountType === 'observer'
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                    }`}
                   onClick={() => setAccountType('observer')}
                 >
                   Group Observer
@@ -315,33 +145,37 @@ const SignUpPage = () => {
               </div>
             </div>
 
-            <div style={styles.termsRow}>
+            {/* Terms */}
+            <div className="flex items-start gap-2 mb-5">
               <input
                 type="checkbox"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                style={styles.checkbox}
+                className="w-4 h-4 cursor-pointer accent-blue-500 shrink-0 mt-0.5"
               />
-              <span style={styles.termsText}>
+              <span className="text-[13px] text-gray-600 leading-relaxed">
                 I accept the{' '}
-                <a href="/terms" style={styles.termsLink}>
+                <a href="/terms" className="text-blue-500 no-underline hover:underline">
                   Terms of Service
                 </a>{' '}
                 and{' '}
-                <a href="/privacy" style={styles.termsLink}>
+                <a href="/privacy" className="text-blue-500 no-underline hover:underline">
                   Privacy Policy
                 </a>
               </span>
             </div>
 
-            <button type="submit" style={styles.createButton}>
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-colors mb-4"
+            >
               Create Account
             </button>
           </form>
 
-          <p style={styles.loginText}>
+          <p className="text-center text-[13px] text-gray-500">
             Already have an account?
-            <a href="/login" style={styles.loginLink}>
+            <a href="/login" className="text-blue-500 no-underline font-medium ml-1 hover:underline">
               Login
             </a>
           </p>

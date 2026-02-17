@@ -7,14 +7,14 @@ interface ReviewsHeaderProps {
 
 const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
   return (
-    <div className="bg-white p-6 px-8 border-b border-gray-200 flex flex-col gap-5">
+    <header className="bg-white p-6 px-8 border-b border-gray-200 flex flex-col gap-5">
       {/* ROW 1: Title and Top Actions */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition" onClick={onMenuClick}>
             <Menu size={24} />
           </button>
-          <h1 className="text-2xl font-semibold text-gray-800 m-0">Reviews</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 m-0">Reviews</h1>
         </div>
 
         <div className="flex items-center gap-[60px]">
@@ -41,7 +41,7 @@ const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
           </button>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 

@@ -24,7 +24,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
 
     return (
         <div className="w-full">
-            <div className="bg-white rounded-[12px] p-8 shadow-[0_1px_3px_rgba(0,0,0,0.1)] border border-gray-200 box-border">
+            <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200 box-border">
                 <h2 className="text-[18px] font-semibold text-gray-900 m-0 mb-6">
                     Personal Information
                 </h2>
@@ -38,7 +38,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                             type="text"
                             name="firstName"
                             className="w-full p-[10px_14px] border border-gray-300 rounded-lg text-[14px] text-gray-900 bg-white transition-all duration-200 box-border
-                            focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                            focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             value={profile.firstName}
                             onChange={handleChange}
                         />
@@ -51,7 +51,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                             type="text"
                             name="lastName"
                             className="w-full p-[10px_14px] border border-gray-300 rounded-lg text-[14px] text-gray-900 bg-white transition-all duration-200 box-border
-                            focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                            focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             value={profile.lastName}
                             onChange={handleChange}
                         />
@@ -66,7 +66,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                         type="email"
                         name="email"
                         className="w-full p-[10px_14px] border border-gray-300 rounded-lg text-[14px] text-gray-900 bg-white transition-all duration-200 box-border
-                        focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                        focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         value={profile.email}
                         onChange={handleChange}
                     />
@@ -80,7 +80,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                         type="text"
                         name="phone"
                         className="w-full p-[10px_14px] border border-gray-300 rounded-lg text-[14px] text-gray-900 bg-white transition-all duration-200 box-border
-                        focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                        focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         value={profile.phone}
                         onChange={handleChange}
                     />
@@ -94,7 +94,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                         type="text"
                         name="jobTitle"
                         className="w-full p-[10px_14px] border border-gray-300 rounded-lg text-[14px] text-gray-900 bg-white transition-all duration-200 box-border
-                        focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                        focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         value={profile.jobTitle}
                         onChange={handleChange}
                     />
@@ -107,7 +107,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
                     <textarea
                         name="bio"
                         className="w-full p-[10px_14px] border border-gray-300 rounded-lg text-[14px] text-gray-900 bg-white transition-all duration-200 box-border resize-y min-h-[120px] leading-relaxed
-                        focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                        focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         placeholder="Tell us about yourself..."
                         value={profile.bio}
                         onChange={handleChange}
