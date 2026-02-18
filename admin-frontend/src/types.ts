@@ -93,3 +93,37 @@ export interface AdminSettings {
     notifySystemAlerts: boolean;
     notifyFeatureUpdates: boolean;
 }
+
+export interface ScrapingStats {
+    activeJobs: number;
+    activeJobsChange: number;
+    completedToday: number;
+    successRate: number;
+    failedJobs: number;
+    requiresAttention: boolean;
+    reviewsIngested: number;
+    reviewsChange: number;
+}
+
+export interface ScrapingPlatform {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    enabled: boolean;
+    lastRun: string;
+    status: 'active' | 'maintenance';
+}
+
+export interface ScrapingJob {
+    id: string;
+    jobId: string;
+    platform: string;
+    platformIcon: string;
+    platformColor: string;
+    organization: string;
+    status: 'Running' | 'Completed' | 'Failed';
+    startTime: string;
+    duration: string;
+    reviews: number | null;
+}

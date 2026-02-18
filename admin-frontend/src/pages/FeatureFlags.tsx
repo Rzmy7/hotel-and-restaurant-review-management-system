@@ -35,10 +35,6 @@ export const FeatureFlags: React.FC = () => {
 
     return (
         <div className="feature-flags-container">
-            <div className="dashboard-header" style={{ marginBottom: '24px' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Enable or disable features across the platform</p>
-            </div>
-
             <div className="feature-search-header">
                 <div className="feature-search-wrapper">
                     <Search className="feature-search-icon" size={18} />

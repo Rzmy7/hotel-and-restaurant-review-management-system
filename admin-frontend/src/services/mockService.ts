@@ -304,3 +304,46 @@ export const fetchAiJobsData = (): Promise<ChartDataPoint[]> => {
         }, 500);
     });
 };
+
+export const fetchScrapingStats = (): Promise<import('../types').ScrapingStats> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({
+                activeJobs: 12,
+                activeJobsChange: 2,
+                completedToday: 1458,
+                successRate: 98.5,
+                failedJobs: 3,
+                requiresAttention: true,
+                reviewsIngested: 24500,
+                reviewsChange: 12
+            });
+        }, 500);
+    });
+};
+
+export const fetchScrapingPlatforms = (): Promise<import('../types').ScrapingPlatform[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                { id: '1', name: 'Booking.com', icon: 'B', color: '#003580', enabled: true, lastRun: '2h ago', status: 'active' },
+                { id: '2', name: 'TripAdvisor', icon: 'T', color: '#00AF87', enabled: true, lastRun: '45m ago', status: 'active' },
+                { id: '3', name: 'Agoda', icon: 'Ag', color: '#5E4B8B', enabled: false, lastRun: '', status: 'maintenance' }
+            ]);
+        }, 400);
+    });
+};
+
+export const fetchScrapingJobs = (): Promise<import('../types').ScrapingJob[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                { id: '1', jobId: '#SCR-28492', platform: 'Booking.com', platformIcon: 'B', platformColor: '#003580', organization: 'Grand Hotel Budapest', status: 'Running', startTime: 'Today, 10:42 AM', duration: '12m 45s', reviews: null },
+                { id: '2', jobId: '#SCR-28491', platform: 'TripAdvisor', platformIcon: 'T', platformColor: '#00AF87', organization: 'Seaside Resort & Spa', status: 'Completed', startTime: 'Today, 09:15 AM', duration: '4m 12s', reviews: 128 },
+                { id: '3', jobId: '#SCR-28488', platform: 'Agoda', platformIcon: 'Ag', platformColor: '#5E4B8B', organization: 'Mountain View Lodge', status: 'Failed', startTime: 'Yesterday, 11:30 PM', duration: '0s', reviews: 0 },
+                { id: '4', jobId: '#SCR-28485', platform: 'Booking.com', platformIcon: 'B', platformColor: '#003580', organization: 'City Center Boutique', status: 'Completed', startTime: 'Yesterday, 08:00 PM', duration: '8m 33s', reviews: 45 },
+                { id: '5', jobId: '#SCR-28482', platform: 'TripAdvisor', platformIcon: 'T', platformColor: '#00AF87', organization: 'Blue Lagoon Hotel', status: 'Completed', startTime: 'Yesterday, 06:15 PM', duration: '5m 01s', reviews: 12 }
+            ]);
+        }, 600);
+    });
+};
