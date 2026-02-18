@@ -28,7 +28,7 @@ export const Sidebar: React.FC = () => {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-gray-100 flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5">
-        <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white">
+        <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center text-white">
           <Check size={18} strokeWidth={3} />
         </div>
         <span className="text-lg font-semibold text-gray-900">AdminPanel</span>

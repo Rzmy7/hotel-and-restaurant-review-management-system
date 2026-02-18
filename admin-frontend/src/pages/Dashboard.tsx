@@ -73,7 +73,7 @@ export const Dashboard: React.FC = () => {
                         icon={Users}
                     />
                     <StatCard
-                        label="Active Hotels"
+                        label="Active Organizations"
                         value={stats.activeHotels.toLocaleString()}
                         trend={`+${stats.hotelsGrowth}%`}
                         icon={Building}
