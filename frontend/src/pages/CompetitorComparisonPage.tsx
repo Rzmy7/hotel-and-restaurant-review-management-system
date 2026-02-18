@@ -1,6 +1,6 @@
 // src/pages/CompetitorComparisonPage.tsx
 import React, { useState, useEffect } from 'react';
-import { Menu, Bell, ChevronDown, Lightbulb, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Menu, Bell, ChevronDown, Lightbulb, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import API_BASE_URL from '../config/api';
 import {
@@ -305,7 +305,6 @@ const yourData = comparisonData.myHotel;
     },
   };
 
-  const avgRatingChange = ((yourData.avgRating - competitorData.avgRating) * 100 / competitorData.avgRating).toFixed(1);
   const reviewCountChange = yourData.reviewCount - competitorData.reviewCount;
   const positiveChange = yourData.positivePercent - competitorData.positivePercent;
   const negativeChange = yourData.negativePercent - competitorData.negativePercent;
@@ -351,37 +350,110 @@ const yourData = comparisonData.myHotel;
 
       {/* Content */}
       <div className="p-8">
+        {/* Back Button */}
+        <button 
+          className="mb-6 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 text-gray-700" 
+          onClick={() => navigate('/competitors')}
+        >
+          <ArrowLeft size={20} />
+          <span className="text-sm font-medium">Back to Competitors</span>
+        </button>
+
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Average Rating */}
           <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="text-xs text-gray-500 mb-3 font-medium">Average Rating</div>
-            <div className="text-3xl font-bold text-gray-800 mb-2">{yourData.avgRating}</div>
-            <div className={`text-sm font-medium ${parseFloat(avgRatingChange) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {parseFloat(avgRatingChange) > 0 ? '+' : ''}{avgRatingChange}%
+            <div className="text-xs text-gray-500 mb-4 font-semibold uppercase">Average Rating</div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-blue-600">My Hotel</span>
+                <span className="text-lg font-bold text-gray-800">{yourData.avgRating}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-green-600">Competitor</span>
+                <span className="text-lg font-bold text-gray-800">{competitorData.avgRating}</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between items-center">
+                <span className="text-xs font-medium text-gray-600">Gap</span>
+                <span className={`text-sm font-bold ${yourData.avgRating > competitorData.avgRating ? 'text-green-600' : 'text-red-600'}`}>
+                  {yourData.avgRating > competitorData.avgRating ? '+' : ''}{(yourData.avgRating - competitorData.avgRating).toFixed(2)}
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 italic">
+                {yourData.avgRating > competitorData.avgRating ? '✓ You are performing better' : '⚠ Competitor is ahead'}
+              </div>
             </div>
           </div>
 
+          {/* Review Count */}
           <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="text-xs text-gray-500 mb-3 font-medium">Review Count</div>
-            <div className="text-3xl font-bold text-gray-800 mb-2">{yourData.reviewCount.toLocaleString()}</div>
-            <div className={`text-sm font-medium ${reviewCountChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {reviewCountChange > 0 ? '+' : ''}{reviewCountChange}
+            <div className="text-xs text-gray-500 mb-4 font-semibold uppercase">Review Count</div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-blue-600">My Hotel</span>
+                <span className="text-lg font-bold text-gray-800">{yourData.reviewCount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-green-600">Competitor</span>
+                <span className="text-lg font-bold text-gray-800">{competitorData.reviewCount.toLocaleString()}</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between items-center">
+                <span className="text-xs font-medium text-gray-600">Gap</span>
+                <span className={`text-sm font-bold ${reviewCountChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {reviewCountChange > 0 ? '+' : ''}{reviewCountChange}
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 italic">
+                {reviewCountChange > 0 ? '✓ More reviews than competitor' : '⚠ Fewer reviews than competitor'}
+              </div>
             </div>
           </div>
 
+          {/* Positive % */}
           <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="text-xs text-gray-500 mb-3 font-medium">Positive %</div>
-            <div className="text-3xl font-bold text-gray-800 mb-2">{yourData.positivePercent}%</div>
-            <div className={`text-sm font-medium ${positiveChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {positiveChange > 0 ? '+' : ''}{positiveChange}%
+            <div className="text-xs text-gray-500 mb-4 font-semibold uppercase">Positive %</div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-blue-600">My Hotel</span>
+                <span className="text-lg font-bold text-gray-800">{yourData.positivePercent}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-green-600">Competitor</span>
+                <span className="text-lg font-bold text-gray-800">{competitorData.positivePercent}%</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between items-center">
+                <span className="text-xs font-medium text-gray-600">Gap</span>
+                <span className={`text-sm font-bold ${positiveChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {positiveChange > 0 ? '+' : ''}{positiveChange}%
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 italic">
+                {positiveChange > 0 ? '✓ Higher positive sentiment' : '⚠ Lower positive sentiment'}
+              </div>
             </div>
           </div>
 
+          {/* Negative % */}
           <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="text-xs text-gray-500 mb-3 font-medium">Negative %</div>
-            <div className="text-3xl font-bold text-gray-800 mb-2">{yourData.negativePercent}%</div>
-            <div className={`text-sm font-medium ${negativeChange < 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {negativeChange > 0 ? '+' : ''}{negativeChange}%
+            <div className="text-xs text-gray-500 mb-4 font-semibold uppercase">Negative %</div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-blue-600">My Hotel</span>
+                <span className="text-lg font-bold text-gray-800">{yourData.negativePercent}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-green-600">Competitor</span>
+                <span className="text-lg font-bold text-gray-800">{competitorData.negativePercent}%</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between items-center">
+                <span className="text-xs font-medium text-gray-600">Gap</span>
+                <span className={`text-sm font-bold ${negativeChange < 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {negativeChange > 0 ? '+' : ''}{negativeChange}%
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 italic">
+                {negativeChange < 0 ? '✓ Lower negative sentiment' : '⚠ Higher negative sentiment'}
+              </div>
             </div>
           </div>
         </div>
