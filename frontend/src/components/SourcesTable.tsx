@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Play, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Edit2, Trash2, AlertCircle } from 'lucide-react';
 
-interface Source {
+export interface Source {
   id: number;
   platform: string;
   status: 'Active' | 'Paused' | 'Error';
@@ -15,6 +15,7 @@ interface SourcesTableProps {
   onEditSource: (source: any) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onDeleteSource: (source: any) => void;
+  onTogglePause: (source: Source) => void;
 }
 
 /* ── Platform logo helper ── */
@@ -64,7 +65,7 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
 /* ── Pagination config ── */
 const PAGE_SIZE = 7;
 
-const SourcesTable = ({ sources, onEditSource, onDeleteSource }: SourcesTableProps) => {
+const SourcesTable = ({ sources, onEditSource, onDeleteSource, onTogglePause }: SourcesTableProps) => {
   const [page, setPage] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(sources.length / PAGE_SIZE));
@@ -117,18 +118,35 @@ const SourcesTable = ({ sources, onEditSource, onDeleteSource }: SourcesTablePro
                 {/* Actions */}
                 <td className="px-6 py-5 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {/* Pause / Resume */}
+                    {source.status !== 'Error' && (
+                      <button
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${source.status === 'Active'
+                          ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                          : 'text-green-600 bg-green-50 hover:bg-green-100'
+                          }`}
+                        onClick={() => onTogglePause(source)}
+                      >
+                        {source.status === 'Active' ? (
+                          <><Pause size={13} /> Pause</>
+                        ) : (
+                          <><Play size={13} /> Resume</>
+                        )}
+                      </button>
+                    )}
+
                     {/* Run / Retry */}
                     {source.status === 'Error' ? (
                       <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors opacity-50 cursor-not-allowed">
                         <Play size={13} />
                         Retry
                       </button>
-                    ) : (
+                    ) : source.status === 'Active' ? (
                       <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
                         <Play size={13} />
                         Run Now
                       </button>
-                    )}
+                    ) : null}
 
                     {/* Hover-reveal edit + delete */}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

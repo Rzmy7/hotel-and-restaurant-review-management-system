@@ -4,18 +4,13 @@ import { useToast } from '../contexts/ToastContext';
 import SourcesTable from '../components/SourcesTable';
 import AddSourceModal from '../components/AddSourceModal';
 import EditSourceModal from '../components/EditSourceModal';
+import type { Source } from '../components/SourcesTable';
 
 interface ReviewSourcesPageProps {
   toggleSidebar: () => void;
 }
 
-export interface Source {
-  id: number;
-  platform: string;
-  status: 'Active' | 'Paused' | 'Error';
-  lastSynced: string;
-  schedule: string;
-}
+
 
 const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) => {
   const { showToast } = useToast();
@@ -69,6 +64,19 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
       setSources(sources.filter(s => s.id !== id));
       showToast('Source deleted successfully', 'success');
     }
+  };
+
+  const handleTogglePause = (source: Source) => {
+    const newStatus = source.status === 'Active' ? 'Paused' : 'Active';
+    setSources(sources.map(s =>
+      s.id === source.id ? { ...s, status: newStatus } : s
+    ));
+    showToast(
+      newStatus === 'Paused'
+        ? `${source.platform} paused — reviews will not sync`
+        : `${source.platform} resumed — reviews will sync on schedule`,
+      newStatus === 'Paused' ? 'info' : 'success'
+    );
   };
 
   return (
@@ -142,6 +150,7 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
           sources={filteredSources}
           onEditSource={handleEditSource}
           onDeleteSource={handleDeleteSource}
+          onTogglePause={handleTogglePause}
         />
       </main>
 
