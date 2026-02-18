@@ -75,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div>
           <div className="text-[11px] font-semibold text-gray-400 mt-5 mb-2.5 ml-2.5 tracking-wider uppercase">ORGANIZATION</div>
           <SidebarItem icon={<Building2 size={20} />} text="Groups & Branches" />
-          <SidebarItem icon={<Users size={20} />} text="Team" />
+          <SidebarItem icon={<Users size={20} />} text="Subgroups" />
         </div>
 
         <div className="h-px bg-gray-100 my-2.5"></div>
