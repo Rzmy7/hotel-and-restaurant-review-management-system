@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, Settings } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, Settings, Loader, CheckCircle, XCircle, Grid3X3 } from 'lucide-react';
 import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs } from '../services/mockService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
-import './Scraping.css';
 
 export const Scraping: React.FC = () => {
     const [stats, setStats] = useState<ScrapingStats | null>(null);
@@ -42,88 +41,83 @@ export const Scraping: React.FC = () => {
 
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
-            case 'Running': return 'status-badge running';
-            case 'Completed': return 'status-badge completed';
-            case 'Failed': return 'status-badge failed';
-            default: return 'status-badge';
+            case 'Running': return 'bg-blue-100 text-blue-700';
+            case 'Completed': return 'bg-green-100 text-green-700';
+            case 'Failed': return 'bg-red-100 text-red-700';
+            default: return 'bg-gray-100 text-gray-700';
         }
     };
 
-    if (loading) return <div className="scraping-loading">Loading...</div>;
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-[50vh]">
+                <Loader size={32} className="animate-spin text-blue-500" />
+            </div>
+        );
+    }
 
     return (
-        <div className="scraping-container">
+        <div className="space-y-6 pt-4">
             {/* Stats Cards */}
-            <div className="scraping-stats-grid">
-                <div className="scraping-stat-card">
-                    <div className="stat-header">
-                        <span className="stat-label">Active Jobs</span>
-                        <div className="stat-icon blue">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-500">Active Jobs</span>
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                             <Play size={16} />
                         </div>
                     </div>
-                    <div className="stat-value">{stats?.activeJobs}</div>
-                    <div className="stat-change positive">+{stats?.activeJobsChange} since last hour</div>
+                    <div className="text-2xl font-bold text-gray-900">{stats?.activeJobs}</div>
+                    <div className="text-xs text-green-600">+{stats?.activeJobsChange} since last hour</div>
                 </div>
 
-                <div className="scraping-stat-card">
-                    <div className="stat-header">
-                        <span className="stat-label">Completed Today</span>
-                        <div className="stat-icon green">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-500">Completed Today</span>
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                            <CheckCircle size={16} />
                         </div>
                     </div>
-                    <div className="stat-value">{stats?.completedToday.toLocaleString()}</div>
-                    <div className="stat-subtext">{stats?.successRate}% success rate</div>
+                    <div className="text-2xl font-bold text-gray-900">{stats?.completedToday.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">{stats?.successRate}% success rate</div>
                 </div>
 
-                <div className="scraping-stat-card">
-                    <div className="stat-header">
-                        <span className="stat-label">Failed Jobs</span>
-                        <div className="stat-icon red">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="15" y1="9" x2="9" y2="15"></line>
-                                <line x1="9" y1="9" x2="15" y2="15"></line>
-                            </svg>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-500">Failed Jobs</span>
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                            <XCircle size={16} />
                         </div>
                     </div>
-                    <div className="stat-value">{stats?.failedJobs}</div>
-                    <div className="stat-change negative">Requires attention</div>
+                    <div className="text-2xl font-bold text-gray-900">{stats?.failedJobs}</div>
+                    <div className="text-xs text-red-600">Requires attention</div>
                 </div>
 
-                <div className="scraping-stat-card">
-                    <div className="stat-header">
-                        <span className="stat-label">Reviews Ingested</span>
-                        <div className="stat-icon purple">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="3" width="7" height="7"></rect>
-                                <rect x="14" y="14" width="7" height="7"></rect>
-                                <rect x="3" y="14" width="7" height="7"></rect>
-                            </svg>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-500">Reviews Ingested</span>
+                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                            <Grid3X3 size={16} />
                         </div>
                     </div>
-                    <div className="stat-value">{formatNumber(stats?.reviewsIngested || 0)}</div>
-                    <div className="stat-change positive">+{stats?.reviewsChange}% vs last week</div>
+                    <div className="text-2xl font-bold text-gray-900">{formatNumber(stats?.reviewsIngested || 0)}</div>
+                    <div className="text-xs text-green-600">+{stats?.reviewsChange}% vs last week</div>
                 </div>
             </div>
 
             {/* Platform Configuration */}
-            <div className="platform-config-section">
-                <div className="platform-config-header">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h2 className="section-title">Platform Configuration</h2>
-                        <p className="section-subtitle">Configure scraper status and frequency settings for supported platforms.</p>
+                        <h2 className="text-base font-semibold text-gray-900">Platform Configuration</h2>
+                        <p className="text-sm text-gray-500">Configure scraper status and frequency settings for supported platforms.</p>
                     </div>
-                    <div className="frequency-selector">
-                        <span className="frequency-label">Global Frequency:</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-500">Global Frequency:</span>
                         <select 
                             value={globalFrequency} 
                             onChange={(e) => setGlobalFrequency(e.target.value)}
-                            className="frequency-dropdown"
+                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option>Daily (24h)</option>
                             <option>Hourly</option>
@@ -134,28 +128,35 @@ export const Scraping: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="platforms-grid">
+                <div className="flex gap-4 flex-wrap">
                     {platforms.map(platform => (
-                        <div key={platform.id} className={`platform-card ${platform.status === 'maintenance' ? 'maintenance' : ''}`}>
-                            <div className="platform-icon" style={{ backgroundColor: platform.color }}>
+                        <div 
+                            key={platform.id} 
+                            className={`flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl min-w-[200px] ${platform.status === 'maintenance' ? 'opacity-70' : ''}`}
+                        >
+                            <div 
+                                className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
+                                style={{ backgroundColor: platform.color }}
+                            >
                                 {platform.icon}
                             </div>
-                            <div className="platform-info">
-                                <span className="platform-name">{platform.name}</span>
-                                <span className="platform-status">
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <span className="font-medium text-sm text-gray-900">{platform.name}</span>
+                                <span className="text-xs text-gray-500">
                                     {platform.status === 'maintenance' ? 'Maintenance Mode' : `Last run: ${platform.lastRun}`}
                                 </span>
                             </div>
-                            <label className="toggle-switch">
+                            <label className="relative cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    className="toggle-input"
+                                    className="sr-only peer"
                                     checked={platform.enabled}
                                     onChange={() => togglePlatform(platform.id)}
                                 />
-                                <span className="toggle-slider"></span>
+                                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 transition-colors"></div>
+                                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                             </label>
-                            <button className="platform-settings-btn">
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded">
                                 <Settings size={16} />
                             </button>
                         </div>
@@ -164,84 +165,88 @@ export const Scraping: React.FC = () => {
             </div>
 
             {/* Job Status Table */}
-            <div className="job-status-section">
-                <div className="job-status-header">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h2 className="section-title">Job Status Table</h2>
-                        <p className="section-subtitle">Real-time monitoring of all active and recent scraping jobs.</p>
+                        <h2 className="text-base font-semibold text-gray-900">Job Status Table</h2>
+                        <p className="text-sm text-gray-500">Real-time monitoring of all active and recent scraping jobs.</p>
                     </div>
-                    <div className="job-actions">
-                        <div className="job-search-wrapper">
-                            <Search size={16} className="job-search-icon" />
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search Job ID or Org..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-                        <button className="filter-btn">
+                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
                             <Filter size={16} />
                             Filter
                         </button>
-                        <button className="refresh-btn">
+                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
                             <RefreshCw size={16} />
                             Refresh
                         </button>
                     </div>
                 </div>
 
-                <div className="job-table-container">
-                    <table className="job-table">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
                         <thead>
-                            <tr>
-                                <th>JOB ID</th>
-                                <th>PLATFORM</th>
-                                <th>ORGANIZATION</th>
-                                <th>STATUS</th>
-                                <th>START TIME</th>
-                                <th>DURATION</th>
-                                <th>REVIEWS</th>
-                                <th>ACTIONS</th>
+                            <tr className="border-b border-gray-200">
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Job ID</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Platform</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Start Time</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reviews</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {jobs.map(job => (
-                                <tr key={job.id}>
-                                    <td className="job-id">{job.jobId}</td>
-                                    <td>
-                                        <div className="platform-cell">
-                                            <div className="platform-icon-small" style={{ backgroundColor: job.platformColor }}>
+                                <tr key={job.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                    <td className="py-4 px-4 text-sm font-mono text-gray-500">{job.jobId}</td>
+                                    <td className="py-4 px-4">
+                                        <div className="flex items-center gap-2">
+                                            <div 
+                                                className="w-7 h-7 rounded-md flex items-center justify-center text-white font-semibold text-xs"
+                                                style={{ backgroundColor: job.platformColor }}
+                                            >
                                                 {job.platformIcon}
                                             </div>
-                                            <span>{job.platform}</span>
+                                            <span className="text-sm text-gray-900">{job.platform}</span>
                                         </div>
                                     </td>
-                                    <td>{job.organization}</td>
-                                    <td>
-                                        <span className={getStatusBadgeClass(job.status)}>
-                                            {job.status === 'Running' && <span className="status-dot"></span>}
+                                    <td className="py-4 px-4 text-sm text-gray-900">{job.organization}</td>
+                                    <td className="py-4 px-4">
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(job.status)}`}>
+                                            {job.status === 'Running' && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>}
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td>{job.startTime}</td>
-                                    <td>{job.duration}</td>
-                                    <td>{job.reviews !== null ? job.reviews : '--'}</td>
-                                    <td>
-                                        <div className="action-buttons">
+                                    <td className="py-4 px-4 text-sm text-gray-900">{job.startTime}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900">{job.duration}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900">{job.reviews !== null ? job.reviews : '--'}</td>
+                                    <td className="py-4 px-4">
+                                        <div className="flex items-center gap-2">
                                             {job.status === 'Running' && (
-                                                <button className="action-btn pause">PAUSE</button>
+                                                <button className="text-xs font-semibold text-blue-600 hover:text-blue-700 uppercase">Pause</button>
                                             )}
                                             {job.status === 'Failed' && (
                                                 <>
-                                                    <button className="action-btn retry">RETRY</button>
-                                                    <button className="action-btn-icon">
+                                                    <button className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase">Retry</button>
+                                                    <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
                                                         <RotateCcw size={14} />
                                                     </button>
                                                 </>
                                             )}
                                             {job.status === 'Completed' && (
-                                                <button className="action-btn-icon">
+                                                <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
                                                     <Eye size={16} />
                                                 </button>
                                             )}
@@ -253,15 +258,15 @@ export const Scraping: React.FC = () => {
                     </table>
                 </div>
 
-                <div className="table-footer">
-                    <span className="showing-text">Showing 1 to 5 of 128 jobs</span>
-                    <div className="pagination">
-                        <button className="page-btn" disabled>Previous</button>
-                        <button className="page-btn active">1</button>
-                        <button className="page-btn">2</button>
-                        <button className="page-btn">3</button>
-                        <span className="page-ellipsis">...</span>
-                        <button className="page-btn">Next</button>
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
+                    <span className="text-sm text-gray-500">Showing 1 to 5 of 128 jobs</span>
+                    <div className="flex items-center gap-1">
+                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50" disabled>Previous</button>
+                        <button className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium">1</button>
+                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">2</button>
+                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">3</button>
+                        <span className="px-2 text-gray-500">...</span>
+                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">Next</button>
                     </div>
                 </div>
             </div>
