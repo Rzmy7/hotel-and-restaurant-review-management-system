@@ -70,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="menu-section">
             <div className="text-[11px] font-semibold text-gray-400 my-5 mx-2.5 tracking-[0.5px] uppercase">ORGANIZATION</div>
             <SidebarItem icon={<Building2 size={20} />} text="Groups & Branches" />
-            <SidebarItem icon={<Users size={20} />} text="Team" />
+            <SidebarItem icon={<Users size={20} />} text="Subgroups" />
           </div>
 
           <div className="h-px bg-gray-100 my-2.5"></div>
