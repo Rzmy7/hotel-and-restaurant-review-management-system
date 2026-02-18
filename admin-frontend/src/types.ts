@@ -5,11 +5,35 @@ export interface DashboardStats {
     organizationsGrowth: number;
     usersGrowth: number;
     hotelsGrowth: number;
+    totalReviews: number;
+    reviewsGrowth: number;
+    activeUsersToday: number;
+    systemUptime: number;
+    aiJobsProcessed: number;
+    aiJobsGrowth: number;
 }
 
 export interface ChartDataPoint {
     label: string;
     value: number;
+}
+
+export interface SystemAlert {
+    id: string;
+    type: 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+    timestamp: string;
+    isRead: boolean;
+}
+
+export interface RecentActivity {
+    id: string;
+    type: 'user_joined' | 'org_created' | 'scrape_completed' | 'scrape_failed' | 'subscription_changed' | 'ai_job';
+    title: string;
+    description: string;
+    timestamp: string;
+    user?: string;
 }
 
 export interface User {

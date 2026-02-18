@@ -1,4 +1,4 @@
-import type { DashboardStats, ChartDataPoint, User, Organization, OrganizationStats, FeatureFlag, AdminSettings } from '../types';
+import type { DashboardStats, ChartDataPoint, User, Organization, OrganizationStats, FeatureFlag, AdminSettings, SystemAlert, RecentActivity } from '../types';
 
 export const fetchDashboardStats = (): Promise<DashboardStats> => {
     return new Promise((resolve) => {
@@ -10,6 +10,12 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
                 usersGrowth: 8.2,
                 activeHotels: 1245,
                 hotelsGrowth: 5.4,
+                totalReviews: 156789,
+                reviewsGrowth: 15.3,
+                activeUsersToday: 1247,
+                systemUptime: 99.9,
+                aiJobsProcessed: 45832,
+                aiJobsGrowth: 22.8,
             });
         }, 600);
     });
@@ -161,6 +167,140 @@ export const fetchSettings = (): Promise<AdminSettings> => {
                 notifySystemAlerts: true,
                 notifyFeatureUpdates: false
             });
+        }, 500);
+    });
+};
+
+export const fetchSystemAlerts = (): Promise<SystemAlert[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                {
+                    id: '1',
+                    type: 'error',
+                    title: 'Scraping Job Failed',
+                    message: 'TripAdvisor scraper failed for Hotel Grand Plaza - Connection timeout',
+                    timestamp: '2 hours ago',
+                    isRead: false
+                },
+                {
+                    id: '2',
+                    type: 'warning',
+                    title: 'High API Usage',
+                    message: 'AI processing API usage at 85% of monthly limit',
+                    timestamp: '5 hours ago',
+                    isRead: false
+                },
+                {
+                    id: '3',
+                    type: 'warning',
+                    title: 'Subscription Expiring',
+                    message: '3 organizations have subscriptions expiring in 7 days',
+                    timestamp: '1 day ago',
+                    isRead: true
+                },
+                {
+                    id: '4',
+                    type: 'info',
+                    title: 'System Maintenance',
+                    message: 'Scheduled maintenance on Feb 20, 2026 at 02:00 UTC',
+                    timestamp: '1 day ago',
+                    isRead: true
+                },
+                {
+                    id: '5',
+                    type: 'error',
+                    title: 'Database Connection Issue',
+                    message: 'Intermittent connection issues detected with replica database',
+                    timestamp: '3 hours ago',
+                    isRead: false
+                }
+            ]);
+        }, 500);
+    });
+};
+
+export const fetchRecentActivity = (): Promise<RecentActivity[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                {
+                    id: '1',
+                    type: 'user_joined',
+                    title: 'New User Registration',
+                    description: 'Sarah Johnson joined Acme Hotels',
+                    timestamp: '10 minutes ago',
+                    user: 'Sarah Johnson'
+                },
+                {
+                    id: '2',
+                    type: 'scrape_completed',
+                    title: 'Scraping Completed',
+                    description: 'Booking.com scrape completed - 156 new reviews collected',
+                    timestamp: '25 minutes ago'
+                },
+                {
+                    id: '3',
+                    type: 'org_created',
+                    title: 'Organization Created',
+                    description: 'New organization "Sunset Resort Group" created',
+                    timestamp: '1 hour ago',
+                    user: 'Mike Chen'
+                },
+                {
+                    id: '4',
+                    type: 'ai_job',
+                    title: 'AI Processing Complete',
+                    description: 'Sentiment analysis completed for 2,450 reviews',
+                    timestamp: '2 hours ago'
+                },
+                {
+                    id: '5',
+                    type: 'subscription_changed',
+                    title: 'Subscription Upgraded',
+                    description: 'TechStart Inc upgraded to Enterprise plan',
+                    timestamp: '3 hours ago',
+                    user: 'David Kim'
+                },
+                {
+                    id: '6',
+                    type: 'scrape_failed',
+                    title: 'Scraping Failed',
+                    description: 'Agoda scraper rate limited - retry scheduled',
+                    timestamp: '4 hours ago'
+                },
+                {
+                    id: '7',
+                    type: 'user_joined',
+                    title: 'New User Registration',
+                    description: 'Emily Rodriguez joined Global Enterprises',
+                    timestamp: '5 hours ago',
+                    user: 'Emily Rodriguez'
+                },
+                {
+                    id: '8',
+                    type: 'ai_job',
+                    title: 'AI Response Generated',
+                    description: 'Auto-generated 45 review responses for Hotel Marina',
+                    timestamp: '6 hours ago'
+                }
+            ]);
+        }, 600);
+    });
+};
+
+export const fetchAiJobsData = (): Promise<ChartDataPoint[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                { label: 'Mon', value: 1250 },
+                { label: 'Tue', value: 1890 },
+                { label: 'Wed', value: 2100 },
+                { label: 'Thu', value: 1780 },
+                { label: 'Fri', value: 2340 },
+                { label: 'Sat', value: 980 },
+                { label: 'Sun', value: 750 }
+            ]);
         }, 500);
     });
 };
