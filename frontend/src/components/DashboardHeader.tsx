@@ -1,6 +1,8 @@
+import { useState, useRef, useEffect } from 'react';
 import { Bell, CalendarDays, Menu } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
-
+import NotificationPanel from './NotificationPanel';
+import ProfileDropdown from './ProfileDropdown';
 
 interface DashboardHeaderProps {
   onMenuClick?: () => void;
@@ -8,6 +10,37 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
   const { showToast } = useToast();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close panels on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+    if (showNotifications || showProfile) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications, showProfile]);
+
+  const toggleNotifications = () => {
+    setShowNotifications((prev) => !prev);
+    setShowProfile(false);
+  };
+
+  const toggleProfile = () => {
+    setShowProfile((prev) => !prev);
+    setShowNotifications(false);
+  };
 
   return (
     <header className="flex justify-between items-center px-8 py-5 bg-white border-b border-gray-200 max-md:flex-col max-md:items-start max-md:gap-4 transition-all">
@@ -29,13 +62,46 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
           <CalendarDays size={16} />
           <span>Last 30 Days</span>
         </button>
-        <button
-          className="w-10 h-10 grid place-items-center bg-white border border-gray-200 rounded-full text-gray-500 cursor-pointer relative transition hover:bg-gray-100 after:content-[''] after:absolute after:top-2 after:right-2 after:w-2 after:h-2 after:bg-red-500 after:rounded-full after:border-2 after:border-white"
-          onClick={() => showToast('Notifications panel coming soon', 'info')}
-        >
-          <Bell size={18} />
-        </button>
-        <div className="w-10 h-10 grid place-items-center bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full font-bold text-base">L</div>
+
+        {/* Notification Bell + Panel */}
+        <div className="relative" ref={notifRef}>
+          <button
+            className={`w-10 h-10 grid place-items-center bg-white border rounded-full text-gray-500 cursor-pointer relative transition hover:bg-gray-100 ${showNotifications
+              ? 'border-blue-300 bg-blue-50 text-blue-600'
+              : 'border-gray-200'
+              } ${unreadCount > 0
+                ? "after:content-[''] after:absolute after:top-2 after:right-2 after:w-2 after:h-2 after:bg-red-500 after:rounded-full after:border-2 after:border-white"
+                : ''
+              }`}
+            onClick={toggleNotifications}
+          >
+            <Bell size={18} />
+          </button>
+
+          {showNotifications && (
+            <NotificationPanel
+              onClose={() => setShowNotifications(false)}
+              onUnreadCountChange={(count) => setUnreadCount(count)}
+            />
+          )}
+        </div>
+
+        {/* Profile Avatar + Dropdown */}
+        <div className="relative" ref={profileRef}>
+          <button
+            className={`w-10 h-10 grid place-items-center bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full font-bold text-base cursor-pointer border-2 transition-all ${showProfile
+                ? 'border-blue-300 ring-2 ring-blue-200'
+                : 'border-transparent hover:ring-2 hover:ring-blue-200'
+              }`}
+            onClick={toggleProfile}
+          >
+            L
+          </button>
+
+          {showProfile && (
+            <ProfileDropdown onClose={() => setShowProfile(false)} />
+          )}
+        </div>
       </div>
     </header>
   );
