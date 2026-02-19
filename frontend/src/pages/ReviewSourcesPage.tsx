@@ -57,7 +57,7 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
     showToast('Source updated successfully', 'success');
   };
 
-  const handleDeleteSource = (sourceOrId: any) => {
+  const handleDeleteSource = (sourceOrId: Source | number) => {
     // Check if passed argument is ID or object
     const id = typeof sourceOrId === 'object' ? sourceOrId.id : sourceOrId;
     if (confirm('Are you sure you want to delete this source?')) {
