@@ -1,11 +1,11 @@
-import { Search, Calendar, Download, Menu } from "lucide-react";
+import { Search, Calendar, Download } from "lucide-react";
 import { useReviews } from "../contexts/ReviewsContext";
 
 interface ReviewsHeaderProps {
-  onMenuClick?: () => void;
+  // onMenuClick removed — sidebar toggle is now built into the sidebar itself
 }
 
-const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
+const ReviewsHeader: React.FC<ReviewsHeaderProps> = () => {
   const { filters, setSearchQuery } = useReviews();
 
   return (
@@ -13,9 +13,6 @@ const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
       {/* ROW 1: Title and Top Actions */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <button className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition mt-0.5" onClick={onMenuClick}>
-            <Menu size={24} />
-          </button>
           <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Reviews</h1>
         </div>
 

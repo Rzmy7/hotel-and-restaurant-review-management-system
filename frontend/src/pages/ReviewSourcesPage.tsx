@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Menu, Search, ChevronDown } from 'lucide-react';
+import { Plus, Search, ChevronDown } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import SourcesTable from '../components/SourcesTable';
 import AddSourceModal from '../components/AddSourceModal';
@@ -7,12 +7,12 @@ import EditSourceModal from '../components/EditSourceModal';
 import type { Source } from '../components/SourcesTable';
 
 interface ReviewSourcesPageProps {
-  toggleSidebar: () => void;
+  toggleSidebar?: () => void; // deprecated, no longer used
 }
 
 
 
-const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) => {
+const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = () => {
   const { showToast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -84,14 +84,8 @@ const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = ({ toggleSidebar }) 
       {/* ── Sticky Header ── */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30 px-8 py-5">
         <div className="flex justify-between items-center">
-          {/* Left: menu + title */}
+          {/* Left: title */}
           <div className="flex items-center gap-4">
-            <button
-              className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition mt-0.5"
-              onClick={toggleSidebar}
-            >
-              <Menu size={24} />
-            </button>
             <div className="flex flex-col">
               <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Review Sources</h1>
               <p className="mt-1 text-[13px] text-gray-400 hidden sm:block m-0 leading-none">Manage your connected review platforms</p>

@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, CalendarDays, Menu } from 'lucide-react';
+import { Bell, CalendarDays } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 
 interface DashboardHeaderProps {
-  onMenuClick?: () => void;
+  // onMenuClick removed — sidebar toggle is now built into the sidebar itself
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = (_props) => {
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -45,9 +45,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
   return (
     <header className="flex justify-between items-center px-8 py-5 bg-white border-b border-gray-200 max-md:flex-col max-md:items-start max-md:gap-4 transition-all">
       <div className="flex items-start gap-4">
-        <button className="bg-transparent border-none cursor-pointer text-gray-500 p-1 flex items-center justify-center rounded-md hover:bg-gray-100 transition mt-0.5" onClick={onMenuClick}>
-          <Menu size={24} />
-        </button>
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Grand Plaza Hotel</h1>
           <p className="mt-1 text-[13px] text-gray-400 m-0 leading-none">Review Management Dashboard</p>
@@ -90,8 +87,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick }) => {
         <div className="relative" ref={profileRef}>
           <button
             className={`w-10 h-10 grid place-items-center bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full font-bold text-base cursor-pointer border-2 transition-all ${showProfile
-                ? 'border-blue-300 ring-2 ring-blue-200'
-                : 'border-transparent hover:ring-2 hover:ring-blue-200'
+              ? 'border-blue-300 ring-2 ring-blue-200'
+              : 'border-transparent hover:ring-2 hover:ring-blue-200'
               }`}
             onClick={toggleProfile}
           >

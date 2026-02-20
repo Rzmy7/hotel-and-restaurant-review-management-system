@@ -6,7 +6,7 @@ import PersonalInfoForm from '../components/PersonalInfoForm';
 import ProfileSidebar from '../components/ProfileSidebar';
 
 interface ProfilePageProps {
-    toggleSidebar: () => void;
+    toggleSidebar?: () => void; // deprecated, no longer used
 }
 
 export interface UserProfile {
@@ -21,7 +21,7 @@ export interface UserProfile {
     avatar?: string;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ toggleSidebar }) => {
+const ProfilePage: React.FC<ProfilePageProps> = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
     const [profile, setProfile] = useState<UserProfile>({
@@ -75,7 +75,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ toggleSidebar }) => {
             <ProfileHeader
                 title="Profile"
                 subtitle="Manage your personal information"
-                onMenuClick={toggleSidebar}
             />
 
             <div className="w-full max-w-[1200px] mx-auto pt-10 px-8 box-border flex-1">

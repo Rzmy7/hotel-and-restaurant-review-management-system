@@ -11,14 +11,14 @@ import ReviewSources from '../components/ReviewSources.tsx';
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
 
 interface DashboardPageProps {
-  toggleSidebar: () => void;
+  toggleSidebar?: () => void; // deprecated, no longer used
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ toggleSidebar }) => {
+const DashboardPage: React.FC<DashboardPageProps> = () => {
   return (
     <>
       {/* Header */}
-      <DashboardHeader onMenuClick={toggleSidebar} />
+      <DashboardHeader />
 
       <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50">
         {/* <ScrapeLauncher /> */}

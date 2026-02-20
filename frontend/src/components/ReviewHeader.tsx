@@ -2,15 +2,11 @@
 import ReviewsHeaderTop from './ReviewHeaderTop';
 import ReviewsHeaderBottom from './ReviewHeaderBottom';
 
-interface ReviewsHeaderProps {
-  onMenuClick?: () => void;
-}
-
-const ReviewsHeader: React.FC<ReviewsHeaderProps> = ({ onMenuClick }) => {
+const ReviewsHeader: React.FC = () => {
   return (
     <div>
       {/* 1. The Top Part (Title, Search, etc) */}
-      <ReviewsHeaderTop onMenuClick={onMenuClick} />
+      <ReviewsHeaderTop />
 
       {/* 2. The Bottom Part (Pills, Count) */}
       <ReviewsHeaderBottom />

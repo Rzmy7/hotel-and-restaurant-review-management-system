@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ToastProvider } from './contexts/ToastContext';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import Sidebar from './components/SideBar';
 import ReviewsPage from './pages/ReviewsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -29,17 +29,11 @@ const NotFound = () => {
 
 // Wrapper component to handle location changes
 const AppContent = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+  const handleSidebarToggle = () => {
+    setIsSidebarExpanded((prev) => !prev);
   };
-
-  // Close sidebar when route changes
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
 
   return (
     <Routes>
@@ -57,17 +51,17 @@ const AppContent = () => {
         path="/*"
         element={
           <div className="flex w-full h-full overflow-hidden">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <main className="flex-1 flex flex-col bg-gray-50 overflow-y-auto w-full">
+            <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
+            <main className="flex-1 flex flex-col bg-gray-50 overflow-y-auto min-w-0">
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<DashboardPage toggleSidebar={toggleSidebar} />} />
-                <Route path="/reviews" element={<ReviewsPage toggleSidebar={toggleSidebar} />} />
-                <Route path="/sources" element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />} />
-                <Route path="/settings" element={<SettingsPage toggleSidebar={toggleSidebar} />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/reviews" element={<ReviewsPage />} />
+                <Route path="/sources" element={<ReviewSourcesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route
                   path="/profile"
-                  element={<ProfilePage toggleSidebar={toggleSidebar} />}
+                  element={<ProfilePage />}
                 />
                 <Route path="*" element={<NotFound />} />
               </Routes>

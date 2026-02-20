@@ -5,10 +5,10 @@ import { useToast } from '../contexts/ToastContext';
 import SettingsHeader from '../components/SettingsHeader';
 
 interface SettingsPageProps {
-  toggleSidebar: () => void;
+  toggleSidebar?: () => void; // deprecated, no longer used
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
+const SettingsPage: React.FC<SettingsPageProps> = () => {
   const navigate = useNavigate();
 
   // State for toggles
@@ -47,7 +47,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
   return (
     <div className="p-0 bg-gray-50 min-h-full">
       {/* Header */}
-      <SettingsHeader onMenuClick={toggleSidebar} />
+      <SettingsHeader />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto p-8 max-md:p-4">
