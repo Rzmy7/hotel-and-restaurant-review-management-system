@@ -232,7 +232,7 @@ const NotificationsPage: React.FC = () => {
         <div className="min-h-full bg-gray-50">
             <NotificationsHeader />
 
-            <div className="max-w-4xl mx-auto p-8 max-md:p-4">
+            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
                 {/* Toolbar — filters + bulk actions */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-wrap gap-3">
@@ -259,15 +259,15 @@ const NotificationsPage: React.FC = () => {
                                             setActiveFilter(tab.key)
                                         }
                                         className={`px-3.5 py-1.5 rounded-lg text-sm font-medium cursor-pointer border transition-all ${isActive
-                                                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                                : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700'
+                                            ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                            : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700'
                                             }`}
                                     >
                                         {tab.label}
                                         <span
                                             className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold ${isActive
-                                                    ? 'bg-blue-500 text-white'
-                                                    : 'bg-gray-100 text-gray-400'
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-gray-100 text-gray-400'
                                                 }`}
                                         >
                                             {count}
@@ -364,8 +364,8 @@ const NotificationsPage: React.FC = () => {
                                                 markAsRead(notif.id)
                                             }
                                             className={`bg-white rounded-xl shadow-sm border cursor-pointer transition-all group relative overflow-hidden ${notif.read
-                                                    ? 'border-gray-100 hover:border-gray-200'
-                                                    : 'border-blue-100 hover:border-blue-200 ring-1 ring-blue-50'
+                                                ? 'border-gray-100 hover:border-gray-200'
+                                                : 'border-blue-100 hover:border-blue-200 ring-1 ring-blue-50'
                                                 }`}
                                         >
                                             {/* Unread indicator bar */}
@@ -386,8 +386,8 @@ const NotificationsPage: React.FC = () => {
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p
                                                             className={`text-sm m-0 truncate ${notif.read
-                                                                    ? 'font-medium text-gray-700'
-                                                                    : 'font-semibold text-gray-900'
+                                                                ? 'font-medium text-gray-700'
+                                                                : 'font-semibold text-gray-900'
                                                                 }`}
                                                         >
                                                             {notif.title}

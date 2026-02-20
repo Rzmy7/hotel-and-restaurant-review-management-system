@@ -15,6 +15,7 @@ import FinishSetupPage from './pages/FinishSetupPage';
 import ScrapeLauncher from './components/ScrapeLauncher';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
+import InsightsPage from './pages/InsightsPage';
 
 
 
@@ -61,6 +62,7 @@ const AppContent = () => {
                 <Route path="/sources" element={<ReviewSourcesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/insights" element={<InsightsPage />} />
                 <Route
                   path="/profile"
                   element={<ProfilePage />}

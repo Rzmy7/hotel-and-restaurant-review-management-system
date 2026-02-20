@@ -50,7 +50,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
       <SettingsHeader />
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-8 max-md:p-4">
+      <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
         {/* General Section */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm max-md:p-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">

@@ -90,7 +90,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
             onClick={() => handleItemClick('/reviews')}
             isExpanded={isExpanded}
           />
-          <SidebarItem icon={<BarChart3 size={20} />} text="Insights" isExpanded={isExpanded} />
+          <SidebarItem
+            icon={<BarChart3 size={20} />}
+            text="Insights"
+            active={isActive('/insights')}
+            onClick={() => handleItemClick('/insights')}
+            isExpanded={isExpanded}
+          />
           <SidebarItem icon={<Target size={20} />} text="Competitors" isExpanded={isExpanded} />
           <SidebarItem
             icon={<Plug size={20} />}
