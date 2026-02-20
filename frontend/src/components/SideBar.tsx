@@ -126,6 +126,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
             icon={<Bell size={20} />}
             text="Notifications"
             badge="3"
+            active={isActive('/notifications')}
+            onClick={() => handleItemClick('/notifications')}
             isExpanded={isExpanded}
           />
           <SidebarItem

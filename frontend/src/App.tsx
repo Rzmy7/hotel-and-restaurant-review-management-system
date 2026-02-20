@@ -14,6 +14,7 @@ import ChooseSchedulePage from './pages/ChooseSchedulePage';
 import FinishSetupPage from './pages/FinishSetupPage';
 import ScrapeLauncher from './components/ScrapeLauncher';
 import ProfilePage from './pages/ProfilePage';
+import NotificationsPage from './pages/NotificationsPage';
 
 
 
@@ -59,6 +60,7 @@ const AppContent = () => {
                 <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="/sources" element={<ReviewSourcesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route
                   path="/profile"
                   element={<ProfilePage />}
