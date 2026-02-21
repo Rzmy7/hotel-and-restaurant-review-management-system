@@ -365,15 +365,15 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="max-w-4xl mx-auto p-6 px-8 flex gap-3 bg-white border-t border-gray-200 sticky bottom-0 max-md:flex-col max-md:p-4">
+      <div className="flex gap-3 justify-end p-4 md:px-8 md:py-5 bg-white border-t border-gray-200 sticky bottom-0 max-md:flex-col">
         <button
-          className="px-8 py-3 bg-transparent text-gray-500 border border-gray-300 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-gray-50 max-md:w-full"
+          className="inline-flex items-center justify-center px-6 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg text-[14px] font-medium cursor-pointer transition-all duration-200 hover:bg-gray-50 max-md:w-full"
           onClick={handleCancel}
         >
           Cancel
         </button>
         <button
-          className="px-8 py-3 bg-blue-500 text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-blue-600 max-md:w-full"
+          className="inline-flex items-center justify-center px-6 py-2.5 bg-blue-500 text-white border border-blue-500 rounded-lg text-[14px] font-medium cursor-pointer transition-all duration-200 hover:bg-blue-600 max-md:w-full"
           onClick={handleSave}
         >
           Save Changes

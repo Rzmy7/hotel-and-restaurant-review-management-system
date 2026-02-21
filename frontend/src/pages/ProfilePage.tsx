@@ -77,12 +77,7 @@ const ProfilePage: React.FC<ProfilePageProps> = () => {
                 subtitle="Manage your personal information"
             />
 
-            <div className="w-full max-w-[1200px] mx-auto pt-10 px-8 box-border flex-1">
-                {/* Grid Layout Logic:
-                  - Default (Mobile): 1 column
-                  - >968px: 1fr + 340px (using CSS logic from source: @media 1100px gap)
-                  - >1100px: 1fr + 380px
-                */}
+            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
                 <div className="grid grid-cols-1 gap-6 
                     lg:grid-cols-[1fr_340px] 
                     xl:grid-cols-[1fr_380px] 
@@ -100,7 +95,7 @@ const ProfilePage: React.FC<ProfilePageProps> = () => {
                         />
                     </div>
 
-                    {/* Right: Sidebar Card - Order change logic handles via Flex/Grid naturally in Tailwind */}
+                    {/* Right: Sidebar Card */}
                     <div className="w-full -order-1 lg:order-none mb-6 lg:mb-0">
                         <ProfileSidebar
                             profile={profile}
@@ -108,9 +103,6 @@ const ProfilePage: React.FC<ProfilePageProps> = () => {
                         />
                     </div>
                 </div>
-
-                {/* Extra spacer */}
-                <div className="h-[60px] w-full pointer-events-none"></div>
             </div>
         </div>
     );
