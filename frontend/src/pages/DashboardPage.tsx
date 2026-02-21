@@ -7,7 +7,7 @@ import LatestReviews from '../components/LatestReviews.tsx';
 import CategoryPerformance from '../components/CategoryPerformance.tsx';
 import AIInsights from '../components/AIInsights.tsx';
 import AlertsPanel from '../components/AlertsPanel.tsx';
-import ReviewSources from '../components/ReviewSources.tsx';
+import SourceComparison from '../components/SourceComparison.tsx';
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -71,10 +71,8 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
           <AlertsPanel />
         </div>
 
-        {/* Review Sources */}
-        <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
-          <ReviewSources />
-        </div>
+        {/* Source Comparison */}
+        <SourceComparison />
       </div>
     </>
   );

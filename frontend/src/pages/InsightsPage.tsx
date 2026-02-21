@@ -5,6 +5,7 @@ import {
     Minus, Lightbulb, Target, BarChart3
 } from 'lucide-react';
 import InsightsHeader from '../components/InsightsHeader';
+import SourceBreakdown from '../components/SourceBreakdown';
 
 // ═══════════════════════════════════════════════════════════════════
 //  MOCK DATA (keyed per time-range)
@@ -240,25 +241,7 @@ const dataByRange: Record<string, RangeData> = {
     },
 };
 
-// ═══════════════════════════════════════════════════════════════════
-//  HELPER: Donut path (reused from ReviewSources pattern)
-// ═══════════════════════════════════════════════════════════════════
-const createDonutPath = (pct: number, startAngle: number, R = 90, r = 55) => {
-    const cx = 100, cy = 100;
-    const a = (pct / 100) * 360;
-    const end = startAngle + a;
-    const rad = (d: number) => (Math.PI * d) / 180;
-    const x1 = cx + R * Math.cos(rad(startAngle));
-    const y1 = cy + R * Math.sin(rad(startAngle));
-    const x2 = cx + R * Math.cos(rad(end));
-    const y2 = cy + R * Math.sin(rad(end));
-    const ix1 = cx + r * Math.cos(rad(startAngle));
-    const iy1 = cy + r * Math.sin(rad(startAngle));
-    const ix2 = cx + r * Math.cos(rad(end));
-    const iy2 = cy + r * Math.sin(rad(end));
-    const lg = a > 180 ? 1 : 0;
-    return `M ${x1} ${y1} A ${R} ${R} 0 ${lg} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${r} ${r} 0 ${lg} 0 ${ix1} ${iy1} Z`;
-};
+
 
 // ═══════════════════════════════════════════════════════════════════
 //  HELPER: Change badge
@@ -312,9 +295,6 @@ const InsightsPage: React.FC = () => {
         const pts = vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' L');
         return `M0,${chartH} L${pts} L${(vals.length - 1) * gapX},${chartH} Z`;
     };
-
-    // ── Source donut ────────────────────────────────────────────
-    let sourceAngle = -90;
 
     // ── Heatmap max ─────────────────────────────────────────────
     const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
@@ -462,50 +442,8 @@ const InsightsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ═══ 5. SOURCE COMPARISON ══════════════════════════ */}
-                <div className="bg-white border border-gray-200 rounded-xl p-5">
-                    <h3 className="m-0 text-base font-bold text-gray-800 mb-5">Source Comparison</h3>
-                    <div className="flex gap-8 items-center max-md:flex-col">
-                        {/* Donut chart */}
-                        <div className="w-[180px] h-[180px] shrink-0 relative">
-                            <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-sm">
-                                {d.sources.map((s) => {
-                                    const path = createDonutPath(s.pct, sourceAngle);
-                                    sourceAngle += (s.pct / 100) * 360;
-                                    return <path key={s.name} d={path} fill={s.color} />;
-                                })}
-                            </svg>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                                <p className="m-0 text-2xl font-extrabold text-gray-800">{d.totalReviews}</p>
-                                <p className="mt-0.5 text-[11px] text-gray-400">reviews</p>
-                            </div>
-                        </div>
-
-                        {/* Source table */}
-                        <div className="flex-1 w-full">
-                            <div className="grid grid-cols-[1fr_70px_70px_60px] gap-y-3 gap-x-4 text-sm">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Source</span>
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center">Rating</span>
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center">Reviews</span>
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-right">Share</span>
-                                {d.sources.map((s) => (
-                                    <React.Fragment key={s.name}>
-                                        <div className="flex items-center gap-2.5">
-                                            <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                                            <span className="font-medium text-gray-800">{s.name}</span>
-                                        </div>
-                                        <div className="flex items-center justify-center gap-1">
-                                            <Star size={12} className="text-amber-400" fill="#fbbf24" />
-                                            <span className="font-semibold text-gray-700">{s.rating}</span>
-                                        </div>
-                                        <span className="font-medium text-gray-600 text-center">{s.reviews}</span>
-                                        <span className="font-semibold text-gray-500 text-right">{s.pct}%</span>
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* ═══ 5. SOURCE BREAKDOWN ══════════════════════════ */}
+                <SourceBreakdown timeRange={timeRange} />
 
                 {/* ═══ 6. TOP KEYWORDS ═══════════════════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
