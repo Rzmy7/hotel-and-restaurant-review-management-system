@@ -70,7 +70,7 @@ const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
 
 const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number }) => (
     <div className="flex h-1 w-full rounded-full overflow-hidden bg-white/50 mt-1.5 shadow-inner">
-        <div style={{ width: `${pos}%` }} className="bg-[#4e80ee]/80 h-full" />
+        <div style={{ width: `${pos}%` }} className="bg-emerald-500/80 h-full" />
         <div style={{ width: `${neu}%` }} className="bg-slate-300 h-full" />
         <div style={{ width: `${neg}%` }} className="bg-rose-400 h-full" />
     </div>
@@ -241,7 +241,7 @@ const SourceComparison: React.FC = () => {
                                         <div className={`${isCompact ? 'p-1.5' : 'p-2'} bg-white/40 rounded-lg border border-black/5`}>
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Sentiment</span>
-                                                <span className="text-[8px] font-black text-[#4e80ee] uppercase tabular-nums">{s.sentiment.pos}% Pos</span>
+                                                <span className="text-[8px] font-black text-emerald-600 uppercase tabular-nums">{s.sentiment.pos}% Pos</span>
                                             </div>
                                             <SentimentBar pos={s.sentiment.pos} neu={s.sentiment.neu} neg={s.sentiment.neg} />
                                         </div>
