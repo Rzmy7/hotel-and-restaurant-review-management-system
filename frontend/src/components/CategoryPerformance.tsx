@@ -1,5 +1,5 @@
 
-import { Users, Droplets, MapPin, Utensils, TrendingUp, TrendingDown, Minus, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Users, Droplets, MapPin, Utensils, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 const CategoryPerformance = () => {
   const categories = [
