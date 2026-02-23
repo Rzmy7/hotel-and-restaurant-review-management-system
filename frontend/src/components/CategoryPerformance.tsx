@@ -1,12 +1,29 @@
-
 import { Users, Droplets, MapPin, Utensils, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
+interface CategoryData {
+  name: string;
+  score: number;
+  icon: 'Users' | 'Droplets' | 'MapPin' | 'Utensils';
+  trend: string;
+  count: number;
+  trendType: 'up' | 'down' | 'neutral';
+}
+
+const iconMap = {
+  Users: <Users size={16} />,
+  Droplets: <Droplets size={16} />,
+  MapPin: <MapPin size={16} />,
+  Utensils: <Utensils size={16} />,
+};
+
 const CategoryPerformance = () => {
-  const categories = [
+  // Keeping mock data internal for now as it's not in the main response interface yet,
+  // but adding the structure to allow future prop-injection.
+  const categories: CategoryData[] = [
     {
       name: 'Staff',
       score: 85,
-      icon: <Users size={16} />,
+      icon: 'Users',
       trend: '+2.4%',
       count: 428,
       trendType: 'up'
@@ -14,7 +31,7 @@ const CategoryPerformance = () => {
     {
       name: 'Cleanliness',
       score: 78,
-      icon: <Droplets size={16} />,
+      icon: 'Droplets',
       trend: '-1.2%',
       count: 312,
       trendType: 'down'
@@ -22,7 +39,7 @@ const CategoryPerformance = () => {
     {
       name: 'Location',
       score: 92,
-      icon: <MapPin size={16} />,
+      icon: 'MapPin',
       trend: '+0.5%',
       count: 247,
       trendType: 'up'
@@ -30,7 +47,7 @@ const CategoryPerformance = () => {
     {
       name: 'Food',
       score: 71,
-      icon: <Utensils size={16} />,
+      icon: 'Utensils',
       trend: '+5.1%',
       count: 260,
       trendType: 'up'
@@ -59,7 +76,7 @@ const CategoryPerformance = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] transition-all group-hover/cat:scale-110 group-hover/cat:bg-[#4e80ee] group-hover/cat:text-white">
-                  {category.icon}
+                  {iconMap[category.icon]}
                 </div>
                 <div>
                   <span className="text-sm font-black text-gray-800 block leading-tight">{category.name}</span>

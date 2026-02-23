@@ -5,10 +5,11 @@ import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 
 interface DashboardHeaderProps {
-  // onMenuClick removed — sidebar toggle is now built into the sidebar itself
+  hotelName: string;
+  hotelStatus: string;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = (_props) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hotelName, hotelStatus }) => {
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -47,10 +48,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = (_props) => {
       <div className="flex items-center gap-4">
         <div className="relative group">
           <h1 className="text-xl font-black text-gray-900 m-0 leading-tight tracking-tight group-hover:text-blue-600 transition-colors duration-300">
-            Grand Plaza Hotel
+            {hotelName}
           </h1>
           <p className="mt-0.5 text-[10px] font-bold text-gray-400 m-0 leading-none uppercase tracking-[0.2em]">
-            Review Analytics Hub
+            {hotelStatus}
           </p>
           <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-500"></div>
         </div>

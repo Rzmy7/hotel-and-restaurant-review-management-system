@@ -1,41 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
+import type { Alert } from '../types/dashboard';
 
-const AlertsPanel = () => {
+interface AlertsPanelProps {
+  alerts: Alert[];
+}
+
+const AlertsPanel = ({ alerts }: AlertsPanelProps) => {
   const navigate = useNavigate();
-
-  const alerts = [
-    {
-      id: 1,
-      message: 'Spike in negative reviews today (+15)',
-      type: 'critical',
-      time: '2h ago'
-    },
-    {
-      id: 2,
-      message: 'Booking.com sync failed for TripAdvisor',
-      type: 'warning',
-      time: '4h ago'
-    },
-    {
-      id: 3,
-      message: 'New competitor mention in Google Reviews',
-      type: 'info',
-      time: '5h ago'
-    },
-    {
-      id: 4,
-      message: 'Rating dropped below 4.0 on Expedia',
-      type: 'critical',
-      time: '1d ago'
-    },
-    {
-      id: 5,
-      message: 'System maintenance scheduled for midnight',
-      type: 'info',
-      time: '1d ago'
-    },
-  ];
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col h-full shadow-sm hover:shadow-md transition-all duration-300">

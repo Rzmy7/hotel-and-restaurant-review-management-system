@@ -1,20 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { ThumbsUp, ThumbsDown, Brain, Zap, TrendingUp, ChevronRight } from 'lucide-react';
+import type { AIInsightsData } from '../types/dashboard';
 
-const AIInsights = () => {
+interface AIInsightsProps {
+  data: AIInsightsData;
+}
+
+const AIInsights = ({ data }: AIInsightsProps) => {
   const navigate = useNavigate();
-
-  const strengths = [
-    { label: 'Staff responsiveness', impact: 'High', freq: '82%' },
-    { label: 'Central location', impact: 'Med', freq: '74%' },
-    { label: 'Room cleanliness', impact: 'High', freq: '91%' },
-  ];
-
-  const issues = [
-    { label: 'Wi-Fi connectivity', impact: 'Critical', freq: '34%' },
-    { label: 'Breakfast variety', impact: 'Low', freq: '12%' },
-    { label: 'A/C noise level', impact: 'Med', freq: '18%' },
-  ];
+  const { strengths, issues, highlight } = data;
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col h-full shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group">
@@ -99,11 +93,11 @@ const AIInsights = () => {
           <span className="text-[10px] font-black text-blue-600/80 uppercase tracking-[0.2em] italic">AI Highlight</span>
         </div>
         <p className="m-0 text-[13px] font-bold text-gray-700 leading-relaxed relative z-10">
-          Wi-Fi dissatisfaction reached a <span className="text-blue-600 underline decoration-blue-500/30 underline-offset-4">critical 34% peak</span> last Tuesday. Infrastructure review is recommended.
+          {highlight.text}
         </p>
         <div className="mt-4 flex items-center gap-2 relative z-10">
           <TrendingUp size={12} className="text-emerald-500" />
-          <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">+12% correlation with negative sentiment</span>
+          <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{highlight.correlation}</span>
         </div>
       </div>
     </div>

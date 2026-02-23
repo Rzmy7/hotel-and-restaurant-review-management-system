@@ -1,56 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Star, TrendingUp, TrendingDown, Clock, Info, Layers } from 'lucide-react';
+import { Star, Clock, Info, Layers } from 'lucide-react';
+import type { SourceData } from '../types/dashboard';
 
-interface Source {
-    name: string;
-    rating: number;
-    trend: string;
-    trendType: 'up' | 'down' | 'neutral';
-    reviews: number;
-    pct: number;
-    color: string;
-    bgColor: string;
-    borderColor: string;
-    sentiment: { pos: number; neu: number; neg: number };
-    lastSync: string;
-    isOthers?: boolean;
+interface SourceComparisonProps {
+    sources: SourceData[];
 }
 
-const rawSources: Source[] = [
-    {
-        name: 'Booking.com', rating: 4.4, trend: '+0.2', trendType: 'up', reviews: 79, pct: 42, color: '#2563eb',
-        bgColor: 'bg-blue-50/60', borderColor: 'border-blue-100', sentiment: { pos: 65, neu: 25, neg: 10 }, lastSync: '2m ago'
-    },
-    {
-        name: 'TripAdvisor', rating: 4.2, trend: '-0.1', trendType: 'down', reviews: 53, pct: 28, color: '#7c3aed',
-        bgColor: 'bg-purple-50/60', borderColor: 'border-purple-100', sentiment: { pos: 58, neu: 30, neg: 12 }, lastSync: '15m ago'
-    },
-    {
-        name: 'Google', rating: 4.5, trend: '+0.1', trendType: 'up', reviews: 38, pct: 20, color: '#059669',
-        bgColor: 'bg-emerald-50/60', borderColor: 'border-emerald-100', sentiment: { pos: 72, neu: 18, neg: 10 }, lastSync: '5m ago'
-    },
-    {
-        name: 'Expedia', rating: 3.9, trend: '0.0', trendType: 'neutral', reviews: 19, pct: 10, color: '#d97706',
-        bgColor: 'bg-amber-50/60', borderColor: 'border-amber-100', sentiment: { pos: 45, neu: 40, neg: 15 }, lastSync: '1h ago'
-    },
-    // Adding more mock sources to demonstrate clustering
-    {
-        name: 'Hotels.com', rating: 4.1, trend: '+0.1', trendType: 'up', reviews: 12, pct: 6, color: '#be123c',
-        bgColor: 'bg-rose-50/60', borderColor: 'border-rose-100', sentiment: { pos: 55, neu: 35, neg: 10 }, lastSync: '3h ago'
-    },
-    {
-        name: 'Agoda', rating: 4.3, trend: '0.0', trendType: 'neutral', reviews: 8, pct: 4, color: '#0e7490',
-        bgColor: 'bg-cyan-50/60', borderColor: 'border-cyan-100', sentiment: { pos: 60, neu: 25, neg: 15 }, lastSync: '2h ago'
-    },
-    {
-        name: 'Airbnb', rating: 4.7, trend: '+0.3', trendType: 'up', reviews: 5, pct: 2, color: '#ea580c',
-        bgColor: 'bg-orange-50/60', borderColor: 'border-orange-100', sentiment: { pos: 85, neu: 10, neg: 5 }, lastSync: '10m ago'
-    }
-];
-
-const totalReviews = rawSources.reduce((s, x) => s + x.reviews, 0);
-
-/** Donut segment helper */
 const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
     const cx = 100, cy = 100;
     const a = (pct / 100) * 360;
@@ -76,22 +31,19 @@ const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number
     </div>
 );
 
-const SourceComparison: React.FC = () => {
+const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources }) => {
     const [hoveredSource, setHoveredSource] = useState<string | null>(null);
 
-    // Process sources: Cluster others if > 6
+    const totalReviews = rawSources.reduce((s, x) => s + x.reviews, 0);
+
     const processedSources = useMemo(() => {
         const sorted = [...rawSources].sort((a, b) => b.reviews - a.reviews);
-
         if (sorted.length <= 6) return sorted;
 
         const top = sorted.slice(0, 5);
         const others = sorted.slice(5);
-
         const totalOtherReviews = others.reduce((s, x) => s + x.reviews, 0);
         const totalOtherPct = others.reduce((s, x) => s + x.pct, 0);
-
-        // Weighted average for rating and sentiment
         const avgRating = others.reduce((s, x) => s + (x.rating * x.reviews), 0) / totalOtherReviews;
 
         const otherSentiment = others.reduce((acc, x) => {
@@ -105,14 +57,14 @@ const SourceComparison: React.FC = () => {
         otherSentiment.neu /= totalOtherReviews;
         otherSentiment.neg /= totalOtherReviews;
 
-        const otherEntry: Source = {
+        return [...top, {
             name: 'Others',
             rating: parseFloat(avgRating.toFixed(1)),
             trend: '...',
-            trendType: 'neutral',
+            trendType: 'neutral' as const,
             reviews: totalOtherReviews,
             pct: totalOtherPct,
-            color: '#64748b', // Slate for others
+            color: '#64748b',
             bgColor: 'bg-slate-50/60',
             borderColor: 'border-slate-100',
             sentiment: {
@@ -122,10 +74,8 @@ const SourceComparison: React.FC = () => {
             },
             lastSync: 'Varies',
             isOthers: true
-        };
-
-        return [...top, otherEntry];
-    }, []);
+        }];
+    }, [rawSources]);
 
     let angle = -90;
 
@@ -155,7 +105,6 @@ const SourceComparison: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[220px_1fr] gap-12 items-center">
-                {/* Donut focus */}
                 <div className="flex flex-col items-center">
                     <div className="w-[180px] h-[180px] shrink-0 relative flex items-center justify-center">
                         <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_4px_10px_rgba(0,0,0,0.03)] filter">
@@ -182,7 +131,6 @@ const SourceComparison: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Details optimized with dynamic grid sizing */}
                 <div className={`grid grid-cols-1 sm:grid-cols-2 ${processedSources.length > 4 ? 'lg:grid-cols-3' : ''} gap-4`}>
                     {processedSources.map((s) => {
                         const isHovered = hoveredSource === s.name;
@@ -227,7 +175,6 @@ const SourceComparison: React.FC = () => {
                                     </div>
 
                                     <div className={`${isCompact ? 'space-y-2' : 'space-y-3'}`}>
-                                        {/* Primary volume bar */}
                                         <div className="h-1.5 w-full bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
                                             <div
                                                 className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-800"

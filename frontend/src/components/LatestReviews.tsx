@@ -1,99 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import ReviewDetailModal from './ReviewDetailModal';
+import type { Review } from '../types/dashboard';
 
-const LatestReviews = () => {
+interface LatestReviewsProps {
+  reviews: Review[];
+}
+
+const LatestReviews = ({ reviews }: LatestReviewsProps) => {
   const navigate = useNavigate();
-  const [selectedReview, setSelectedReview] = useState<any>(null);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const reviews = [
-    {
-      id: 'REV-001',
-      reviewerName: 'Sarah Johnson',
-      title: 'Exceptional service and beautiful rooms…',
-      source: 'Booking',
-      sentiment: 'Positive' as const,
-      time: '2h ago',
-      rating: 5,
-      date: 'November 15, 2025 at 05:30 AM',
-      reviewText: 'Absolutely wonderful experience! The staff was incredibly friendly and went above and beyond to make our stay memorable. The room was spotless, and the breakfast buffet exceeded all expectations.',
-      categories: ['Staff', 'Cleanliness', 'Food', 'Location'],
-    },
-    {
-      id: 'REV-002',
-      reviewerName: 'Michael Chen',
-      title: 'Wi-Fi connection was terrible…',
-      source: 'TripAdvisor',
-      sentiment: 'Negative' as const,
-      time: '9h ago',
-      rating: 2,
-      date: 'November 14, 2025 at 10:15 PM',
-      reviewText: 'Very disappointed with our stay. The room was not cleaned properly before check-in, and we found hair in the bathroom. The Wi-Fi was extremely slow.',
-      categories: ['Cleanliness', 'WiFi'],
-    },
-    {
-      id: 'REV-003',
-      reviewerName: 'Emma Wilson',
-      title: 'Perfect location for sightseeing',
-      source: 'Google',
-      sentiment: 'Positive' as const,
-      time: '1d ago',
-      rating: 4,
-      date: 'November 13, 2025 at 02:20 PM',
-      reviewText: 'The hotel is located right in the heart of the city. Most attractions are within walking distance.',
-      categories: ['Location'],
-    },
-    {
-      id: 'REV-004',
-      reviewerName: 'David Miller',
-      title: 'Breakfast was underwhelming',
-      source: 'Expedia',
-      sentiment: 'Neutral' as const,
-      time: '2d ago',
-      rating: 3,
-      date: 'November 12, 2025 at 08:45 AM',
-      reviewText: 'Overall a decent stay, but the breakfast selection was quite limited. Staff were helpful though.',
-      categories: ['Food', 'Staff'],
-    },
-    {
-      id: 'REV-005',
-      reviewerName: 'Sophia Garcia',
-      title: 'Very professional staff',
-      source: 'Booking',
-      sentiment: 'Positive' as const,
-      time: '3d ago',
-      rating: 5,
-      date: 'November 11, 2025 at 11:30 AM',
-      reviewText: 'From the moment we arrived, we were treated like royalty. The concierge was particularly helpful.',
-      categories: ['Staff'],
-    },
-    {
-      id: 'REV-006',
-      reviewerName: 'James Taylor',
-      title: 'Noise issues at night',
-      source: 'TripAdvisor',
-      sentiment: 'Negative' as const,
-      time: '4d ago',
-      rating: 2,
-      date: 'November 10, 2025 at 01:10 AM',
-      reviewText: 'Hard to sleep because of the street noise. The windows aren\'t well soundproofed.',
-      categories: ['Comfort'],
-    },
-    {
-      id: 'REV-007',
-      reviewerName: 'Olivia Brown',
-      title: 'Highly recommended for families',
-      source: 'Google',
-      sentiment: 'Positive' as const,
-      time: '5d ago',
-      rating: 5,
-      date: 'November 9, 2025 at 10:00 AM',
-      reviewText: 'Great amenities for kids. The pool area is safe and clean.',
-      categories: ['Facilities'],
-    }
-  ];
 
   const handleReviewClick = (review: any) => {
     setSelectedReview(review);

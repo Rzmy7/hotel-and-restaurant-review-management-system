@@ -1,13 +1,10 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import type { MetricTrend } from '../types/dashboard';
 
-interface MetricCardProps {
+interface MetricCardProps extends MetricTrend {
   icon: React.ReactNode;
   label: string;
-  value: string;
-  change?: string;
-  changeType?: 'up' | 'down' | 'neutral';
-  colorScheme?: 'blue' | 'amber' | 'indigo' | 'rose' | 'emerald';
 }
 
 const MetricCard = ({
