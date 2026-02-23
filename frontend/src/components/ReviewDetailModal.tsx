@@ -11,16 +11,16 @@ interface ReviewDetailModalProps {
     date: string;
     reviewText: string;
     sentiment: "Positive" | "Negative" | "Neutral";
-    categories: string[];
-    keyPhrases: string[];
-    summary: string;
-    platformReviewId: string;
-    language: string;
-    replyStatus: string;
-    firstSeen: string;
-    lastUpdated: string;
-    scrapedAt: string;
-    hasReply: string;
+    categories?: string[];
+    keyPhrases?: string[];
+    summary?: string;
+    platformReviewId?: string;
+    language?: string;
+    replyStatus?: string;
+    firstSeen?: string;
+    lastUpdated?: string;
+    scrapedAt?: string;
+    hasReply?: string;
     photos?: { id: number; src: string; alt: string }[];
   };
 }
@@ -119,28 +119,34 @@ const ReviewDetailModal = ({
             <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
               <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Categories</span>
               <div className="flex flex-wrap gap-2 flex-1">
-                {review.categories.map((category, index) => (
+                {review.categories?.map((category, index) => (
                   <span key={index} className="px-3 py-1.5 rounded-md text-[13px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
                     {category}
                   </span>
                 ))}
+                {(!review.categories || review.categories.length === 0) && (
+                  <span className="text-sm text-gray-400 italic">No categories analyzed</span>
+                )}
               </div>
             </div>
 
             <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
               <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Key Phrases</span>
               <div className="flex flex-wrap gap-2 flex-1">
-                {review.keyPhrases.map((phrase, index) => (
+                {review.keyPhrases?.map((phrase, index) => (
                   <span key={index} className="px-3 py-1.5 rounded-md text-[13px] font-normal bg-blue-50 text-blue-800 border border-blue-100 break-words">
                     "{phrase}"
                   </span>
                 ))}
+                {(!review.keyPhrases || review.keyPhrases.length === 0) && (
+                  <span className="text-sm text-gray-400 italic">No key phrases identified</span>
+                )}
               </div>
             </div>
 
             <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
               <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Summary</span>
-              <p className="text-gray-700 text-sm leading-relaxed m-0 flex-1 break-words">{review.summary}</p>
+              <p className="text-gray-700 text-sm leading-relaxed m-0 flex-1 break-words">{review.summary || <span className="text-gray-400 italic">No summary available</span>}</p>
             </div>
           </div>
 
@@ -181,32 +187,32 @@ const ReviewDetailModal = ({
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">Platform Review ID</span>
                 <span className="text-sm text-gray-800">
-                  {review.platformReviewId}
+                  {review.platformReviewId || "N/A"}
                 </span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">Language</span>
-                <span className="text-sm text-gray-800">{review.language}</span>
+                <span className="text-sm text-gray-800">{review.language || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">Reply Status</span>
-                <span className="text-sm text-gray-800">{review.replyStatus}</span>
+                <span className="text-sm text-gray-800">{review.replyStatus || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">First Seen</span>
-                <span className="text-sm text-gray-800">{review.firstSeen}</span>
+                <span className="text-sm text-gray-800">{review.firstSeen || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">Last Updated</span>
-                <span className="text-sm text-gray-800">{review.lastUpdated}</span>
+                <span className="text-sm text-gray-800">{review.lastUpdated || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">Scraped At</span>
-                <span className="text-sm text-gray-800">{review.scrapedAt}</span>
+                <span className="text-sm text-gray-800">{review.scrapedAt || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-500">Has AI Reply</span>
-                <span className="text-sm text-gray-800">{review.hasReply}</span>
+                <span className="text-sm text-gray-800">{review.hasReply || "N/A"}</span>
               </div>
             </div>
           </div>
