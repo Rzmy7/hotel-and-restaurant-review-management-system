@@ -91,7 +91,7 @@ const TrendsChart = ({ data }: TrendsChartProps) => {
                     <div className="flex items-center gap-2 group cursor-help relative">
                         <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">AI Sentiment</span>
+                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">Sentiment Score</span>
                             <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Rating</span>
                         </div>
                     </div>

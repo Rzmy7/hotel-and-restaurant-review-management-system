@@ -9,9 +9,10 @@ import CategoryPerformance from '../components/CategoryPerformance';
 import AIInsights from '../components/AIInsights';
 import AlertsPanel from '../components/AlertsPanel';
 import SourceComparison from '../components/SourceComparison';
-import { Star, Link2, MessageSquare, Frown, Loader2, AlertCircle } from 'lucide-react';
+import { Star, Link2, MessageSquare, Frown, AlertCircle } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useToast } from '../contexts/ToastContext';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 
 const DashboardPage: React.FC = () => {
   const { data, loading, error } = useDashboardData();
@@ -27,12 +28,7 @@ const DashboardPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[600px] bg-gray-50">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Loading Dashboard Intelligence...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error || !data) {
