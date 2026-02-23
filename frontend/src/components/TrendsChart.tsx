@@ -79,6 +79,23 @@ const TrendsChart = ({ data }: TrendsChartProps) => {
                     <h3 className="m-0 text-sm font-black text-gray-700 uppercase tracking-widest">Review Trends</h3>
                     <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider">Historical Analytics</p>
                 </div>
+                <div className="flex gap-6 mt-1">
+                    <div className="flex items-center gap-2 group cursor-help relative">
+                        <div className="w-2.5 h-2.5 rounded-sm border border-slate-300 bg-slate-50 group-hover:rotate-45 transition-transform" />
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">Volume</span>
+                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Total</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 group cursor-help relative">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">AI Sentiment</span>
+                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Rating</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="relative h-[220px] mb-10 mt-4 px-10 group/chart">
@@ -182,25 +199,7 @@ const TrendsChart = ({ data }: TrendsChartProps) => {
                 </svg>
             </div>
 
-            <div className="flex justify-between items-center px-1">
-                <div className="flex gap-8">
-                    <div className="flex items-center gap-2 group cursor-help relative">
-                        <div className="w-2.5 h-2.5 rounded-sm border border-slate-300 bg-slate-50 group-hover:rotate-45 transition-transform" />
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">Volume</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Total Reviews</span>
-                        </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 group cursor-help relative">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">AI Sentiment</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Success Rate</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
