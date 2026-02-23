@@ -50,8 +50,8 @@ const SetupPage = () => {
           <div
             key={type.id}
             className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${selectedType === type.id
-                ? 'border-gray-400 bg-gray-50 shadow-sm'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+              ? 'border-gray-400 bg-gray-50 shadow-sm'
+              : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             onClick={() => setSelectedType(type.id)}
           >

@@ -125,8 +125,8 @@ const SignUpPage = () => {
                 <button
                   type="button"
                   className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${accountType === 'tenant'
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
                     }`}
                   onClick={() => setAccountType('tenant')}
                 >
@@ -135,8 +135,8 @@ const SignUpPage = () => {
                 <button
                   type="button"
                   className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${accountType === 'observer'
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
                     }`}
                   onClick={() => setAccountType('observer')}
                 >
