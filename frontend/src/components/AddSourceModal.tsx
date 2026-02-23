@@ -15,6 +15,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
   const [schedule, setSchedule] = useState<'Hourly' | 'Daily' | 'Weekly'>('Daily');
   const [sourceStatus, setSourceStatus] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
 
@@ -40,7 +41,14 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
     setTimeout(() => setIsTesting(false), 2000);
   };
 
-  const platforms: SourcePlatform[] = ['TripAdvisor', 'Booking.com', 'Google Reviews', 'Airbnb'];
+  const allPlatforms: SourcePlatform[] = [
+    'TripAdvisor', 'Booking.com', 'Google Reviews', 'Airbnb', 'Agoda',
+    'Expedia', 'Yelp', 'Zomato', 'OpenTable', 'Hotels.com', 'Custom'
+  ];
+
+  const filteredPlatforms = allPlatforms.filter(p =>
+    p.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={onClose}>
@@ -60,24 +68,43 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
         <div className="p-8 space-y-6">
           {/* Platform Picker */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <Globe size={16} className="text-blue-500" />
-              Source Platform
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {platforms.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlatform(p)}
-                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
-                    ? 'border-blue-600 bg-blue-50/50 text-blue-700'
-                    : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
-                    }`}
-                >
-                  {p}
-                  {platform === p && <ShieldCheck size={16} />}
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <Globe size={16} className="text-blue-500" />
+                Source Platform
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search platforms..."
+                  className="pl-8 pr-4 py-2 bg-gray-100 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500/20 transition-all outline-none w-48"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Globe size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="max-h-[160px] overflow-y-auto pr-2 grid grid-cols-2 gap-3 custom-scrollbar">
+              {filteredPlatforms.length > 0 ? (
+                filteredPlatforms.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPlatform(p)}
+                    className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
+                      ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                      : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
+                      }`}
+                  >
+                    {p}
+                    {platform === p && <ShieldCheck size={16} />}
+                  </button>
+                ))
+              ) : (
+                <div className="col-span-2 py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No platforms found</p>
+                </div>
+              )}
             </div>
           </div>
 

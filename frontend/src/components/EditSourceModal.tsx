@@ -14,6 +14,7 @@ import BookingLogo from '../assets/source-logo/Booking.jpeg';
 import AgodaLogo from '../assets/source-logo/agoda.jpeg';
 import AirbnbLogo from '../assets/source-logo/airbnb.jpeg';
 import TripAdvisorLogo from '../assets/source-logo/tripAdvisor.jpeg';
+import GoogleLogo from '../assets/source-logo/Google.jpeg';
 
 interface EditSourceModalProps {
   isOpen: boolean;
@@ -48,11 +49,24 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
       case 'Booking.com': return BookingLogo;
       case 'Agoda': return AgodaLogo;
       case 'Airbnb': return AirbnbLogo;
+      case 'Google Reviews': return GoogleLogo;
       default: return null;
     }
   };
 
+  const getFallbackStyles = () => {
+    switch (source.platform) {
+      case 'Expedia': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'Yelp': return 'bg-rose-50 text-rose-600 border-rose-100';
+      case 'Zomato': return 'bg-red-50 text-red-600 border-red-100';
+      case 'OpenTable': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+      case 'Hotels.com': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
+      default: return 'bg-blue-50 text-[#4e80ee] border-blue-100/50';
+    }
+  };
+
   const logo = getLogo();
+  const fallbackStyles = getFallbackStyles();
 
   const handleSave = () => {
     onSave({
@@ -71,7 +85,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
         {/* Header - Aligned with Dashboard branding */}
         <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg bg-blue-50 text-[#4e80ee] border border-blue-100/50 shadow-sm uppercase tracking-tighter overflow-hidden bg-white`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg shadow-sm uppercase tracking-tighter overflow-hidden bg-white border ${fallbackStyles}`}>
               {logo ? (
                 <img src={logo} alt={source.platform} className="w-full h-full object-cover" />
               ) : (

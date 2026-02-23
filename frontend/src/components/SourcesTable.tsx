@@ -43,6 +43,17 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
     }
   };
 
+  const getFallbackStyles = () => {
+    switch (platform) {
+      case 'Expedia': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'Yelp': return 'bg-rose-50 text-rose-600 border-rose-100';
+      case 'Zomato': return 'bg-red-50 text-red-600 border-red-100';
+      case 'OpenTable': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+      case 'Hotels.com': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
+      default: return 'bg-gray-50 text-gray-400 border-gray-200';
+    }
+  };
+
   const logo = getLogo();
 
   if (logo) {
@@ -53,7 +64,7 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
     );
   }
 
-  return <div className={`${baseClasses} bg-gray-50 text-gray-400 border-gray-200`}>{platform[0]}</div>;
+  return <div className={`${baseClasses} ${getFallbackStyles()}`}>{platform[0]}</div>;
 };
 
 const StatusBadge = ({ status }: { status: Source['status'] }) => {
