@@ -1,168 +1,247 @@
-import { useState, useMemo } from 'react';
-import { Plus, Search, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { sourcesService } from '../services/sourcesService';
+import { Source, SyncLog, SourceStats as SourceStatsType } from '../types/sources';
+
+// New Components
 import SourcesTable from '../components/SourcesTable';
+import SourceStats from '../components/SourceStats';
+import SyncHistoryPanel from '../components/SyncHistoryPanel';
 import AddSourceModal from '../components/AddSourceModal';
 import EditSourceModal from '../components/EditSourceModal';
-import type { Source } from '../components/SourcesTable';
 
-interface ReviewSourcesPageProps {
-  toggleSidebar?: () => void; // deprecated, no longer used
-}
-
-
-
-const ReviewSourcesPage: React.FC<ReviewSourcesPageProps> = () => {
+const ReviewSourcesPage = () => {
   const { showToast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // State
+  const [sources, setSources] = useState<Source[]>([]);
+  const [stats, setStats] = useState<SourceStatsType | null>(null);
+  const [logs, setLogs] = useState<SyncLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // UI State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedSource, setSelectedSource] = useState<any>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<Source | null>(null);
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
 
-  const [sources, setSources] = useState<Source[]>([
-    { id: 1, platform: 'TripAdvisor', status: 'Active', lastSynced: '2 minutes ago', schedule: 'Hourly' },
-    { id: 2, platform: 'Booking.com', status: 'Active', lastSynced: '15 minutes ago', schedule: 'Daily' },
-    { id: 3, platform: 'Google Reviews', status: 'Paused', lastSynced: '2 hours ago', schedule: 'Hourly' },
-    { id: 4, platform: 'Airbnb', status: 'Error', lastSynced: '5 minutes ago', schedule: 'Daily' },
-    { id: 5, platform: 'TripAdvisor', status: 'Active', lastSynced: '1 hour ago', schedule: 'Daily' },
-    { id: 6, platform: 'Booking.com', status: 'Active', lastSynced: '30 minutes ago', schedule: 'Hourly' },
-    { id: 7, platform: 'Google Reviews', status: 'Active', lastSynced: '10 minutes ago', schedule: 'Hourly' },
-  ]);
+  // Fetch Data
+  const fetchData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const [sourcesData, statsData, logsData] = await Promise.all([
+        sourcesService.getSources(),
+        sourcesService.getStats(),
+        sourcesService.getSyncLogs()
+      ]);
+      setSources(sourcesData);
+      setStats(statsData);
+      setLogs(logsData);
+    } catch (error) {
+      showToast('Failed to fetch sources data', 'error');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Filtered Sources
   const filteredSources = useMemo(() => {
-    return sources.filter((s) => {
-      const matchesSearch = s.platform.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === '' || s.status === statusFilter;
+    return sources.filter(source => {
+      const matchesSearch = source.platform.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'All' || source.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [sources, searchQuery, statusFilter]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleEditSource = (source: any) => {
-    setSelectedSource(source);
-    setIsEditModalOpen(true);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAddSource = (newSource: any) => {
-    setSources([...sources, newSource]);
-    showToast('New review source added successfully', 'success');
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSaveSource = (updatedSource: any) => {
-    setSources(sources.map(s => s.id === updatedSource.id ? updatedSource : s));
-    showToast('Source updated successfully', 'success');
-  };
-
-  const handleDeleteSource = (sourceOrId: Source | number) => {
-    // Check if passed argument is ID or object
-    const id = typeof sourceOrId === 'object' ? sourceOrId.id : sourceOrId;
-    if (confirm('Are you sure you want to delete this source?')) {
-      setSources(sources.filter(s => s.id !== id));
-      showToast('Source deleted successfully', 'success');
+  // Handlers
+  const handleAddSource = async (newSourceData: any) => {
+    try {
+      await sourcesService.addSource(newSourceData);
+      await fetchData(true);
+      showToast('New source added successfully', 'success');
+    } catch (error) {
+      showToast('Failed to add source', 'error');
     }
   };
 
-  const handleTogglePause = (source: Source) => {
+  const handleUpdateSource = async (updatedSource: Source) => {
+    try {
+      await sourcesService.updateSource(updatedSource.id, updatedSource);
+      await fetchData(true);
+      showToast('Source updated successfully', 'success');
+    } catch (error) {
+      showToast('Failed to update source', 'error');
+    }
+  };
+
+  const handleDeleteSource = async (id: number) => {
+    try {
+      await sourcesService.deleteSource(id);
+      await fetchData(true);
+      showToast('Source removed successfully', 'info');
+    } catch (error) {
+      showToast('Failed to delete source', 'error');
+    }
+  };
+
+  const handleToggleStatus = async (source: Source) => {
     const newStatus = source.status === 'Active' ? 'Paused' : 'Active';
-    setSources(sources.map(s =>
-      s.id === source.id ? { ...s, status: newStatus } : s
-    ));
-    showToast(
-      newStatus === 'Paused'
-        ? `${source.platform} paused — reviews will not sync`
-        : `${source.platform} resumed — reviews will sync on schedule`,
-      newStatus === 'Paused' ? 'info' : 'success'
-    );
+    try {
+      await sourcesService.updateSource(source.id, { status: newStatus });
+      await fetchData(true);
+      showToast(
+        newStatus === 'Active' ? `${source.platform} resumed` : `${source.platform} paused`,
+        'success'
+      );
+    } catch (error) {
+      showToast('Failed to toggle status', 'error');
+    }
+  };
+
+  const handleSyncNow = async (id: number) => {
+    const source = sources.find(s => s.id === id);
+    if (!source) return;
+
+    showToast(`Starting sync for ${source.platform}...`, 'info');
+    try {
+      await sourcesService.triggerSync(id);
+      // Simulate real-time update
+      setTimeout(() => {
+        fetchData(true);
+        showToast(`Sync completed for ${source.platform}`, 'success');
+      }, 2000);
+    } catch (error) {
+      showToast('Sync failed', 'error');
+    }
   };
 
   return (
-    <div className="min-h-full bg-gray-50 flex flex-col">
-      {/* ── Sticky Header ── */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 px-8 py-5">
-        <div className="flex justify-between items-center">
-          {/* Left: title */}
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Review Sources</h1>
-              <p className="mt-1 text-[13px] text-gray-400 hidden sm:block m-0 leading-none">Manage your connected review platforms</p>
-            </div>
+    <div className="min-h-full bg-[#FAFAFB] flex flex-col">
+      {/* Redesigned Header */}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 px-10 py-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+              Review Sources
+              {sources.length > 0 && (
+                <span className="text-sm font-bold bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
+                  {sources.length} Connected
+                </span>
+              )}
+            </h1>
+            <p className="mt-1 text-gray-500 font-medium">Configure and manage your review aggregation channels</p>
           </div>
 
-          {/* Right: Add Source */}
-          <button
-            className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all flex items-center gap-2"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Plus size={18} />
-            Add Source
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setIsRefreshing(true); fetchData(true); }}
+              className={`p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}
+              title="Refresh Data"
+            >
+              <RefreshCw size={22} />
+            </button>
+            <button
+              onClick={() => setIsHistoryOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+            >
+              <History size={18} />
+              Sync Logs
+            </button>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5"
+            >
+              <Plus size={20} />
+              Connect Source
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* ── Main Content ── */}
-      <main className="w-full px-8 py-8 flex-1">
-        {/* Toolbar: search + filter */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
-          {/* Search */}
-          <div className="relative w-full sm:w-96">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-400" />
-            </div>
+      <main className="w-full px-10 py-8 flex-1 max-w-[1600px] mx-auto">
+        {/* Stats Section */}
+        {stats && <SourceStats stats={stats} isLoading={isLoading} />}
+
+        {/* Filters Toolbar */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 transition-shadow text-sm outline-none"
-              placeholder="Search sources..."
+              placeholder="Search by platform name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
 
-          {/* Status Filter */}
-          <div className="relative w-full sm:w-48">
-            <select
-              className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none cursor-pointer outline-none"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Paused">Paused</option>
-              <option value="Error">Error</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <ChevronDown size={16} className="text-gray-400" />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex bg-gray-50 p-1 rounded-xl">
+              {['All', 'Active', 'Paused', 'Error'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusFilter === status
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  {status}
+                </button>
+              ))}
             </div>
+            <button className="p-3 bg-gray-50 text-gray-500 hover:text-gray-900 rounded-xl transition-all">
+              <Filter size={20} />
+            </button>
           </div>
         </div>
 
-        {/* Sources Table */}
+        {/* Sources List */}
         <SourcesTable
           sources={filteredSources}
-          onEditSource={handleEditSource}
-          onDeleteSource={handleDeleteSource}
-          onTogglePause={handleTogglePause}
+          isLoading={isLoading}
+          onEdit={(source) => { setSelectedSource(source); setIsEditModalOpen(true); }}
+          onDelete={handleDeleteSource}
+          onToggleStatus={handleToggleStatus}
+          onSync={handleSyncNow}
         />
       </main>
 
-      {/* Add Source Modal */}
+      {/* Panels & Modals */}
+      <SyncHistoryPanel
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        logs={logs}
+        isLoading={isLoading}
+      />
+
       <AddSourceModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         onSave={handleAddSource}
       />
 
-      {/* Edit Source Modal */}
-      <EditSourceModal
-        isOpen={isEditModalOpen}
-        onClose={() => { setIsEditModalOpen(false); setSelectedSource(null); }}
-        source={selectedSource}
-        onSave={handleSaveSource}
-        onDelete={handleDeleteSource}
-      />
+      {selectedSource && (
+        <EditSourceModal
+          isOpen={isEditModalOpen}
+          onClose={() => { setIsEditModalOpen(false); setSelectedSource(null); }}
+          source={selectedSource as any} // Temporary cast until EditSourceModal is updated
+          onSave={handleUpdateSource}
+          onDelete={handleDeleteSource}
+        />
+      )}
     </div>
   );
 };

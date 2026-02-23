@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Globe, Link, Key, Calendar, ShieldCheck, Zap } from 'lucide-react';
+import { SourcePlatform } from '../types/sources';
 
 interface AddSourceModalProps {
   isOpen: boolean;
@@ -8,132 +9,174 @@ interface AddSourceModalProps {
 }
 
 const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
-  const [platform, setPlatform] = useState('');
+  const [platform, setPlatform] = useState<SourcePlatform>('TripAdvisor');
   const [propertyUrl, setPropertyUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [schedule, setSchedule] = useState('Daily');
-  const [sourceStatus, setSourceStatus] = useState(false);
+  const [schedule, setSchedule] = useState<'Hourly' | 'Daily' | 'Weekly'>('Daily');
+  const [sourceStatus, setSourceStatus] = useState(true);
+  const [isTesting, setIsTesting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = () => {
+    if (!propertyUrl) return;
+
     const newSource = {
-      id: Date.now(), // Generate a temp ID
-      platform: platform || 'Unknown Platform',
+      platform,
+      propertyUrl,
+      syncSchedule: schedule,
       status: sourceStatus ? 'Active' : 'Paused',
-      lastSynced: 'Never',
-      schedule: schedule
     };
     onSave(newSource);
     onClose();
     // Reset form
-    setPlatform('');
     setPropertyUrl('');
     setApiKey('');
     setSchedule('Daily');
-    setSourceStatus(false);
   };
 
-  const inputClasses =
-    'w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white box-border outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
-  const selectClasses =
-    'w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white cursor-pointer outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+  const handleTestConnection = () => {
+    setIsTesting(true);
+    setTimeout(() => setIsTesting(false), 2000);
+  };
+
+  const platforms: SourcePlatform[] = ['TripAdvisor', 'Booking.com', 'Google Reviews', 'Airbnb'];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-[500px] shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl w-full max-w-[550px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900 m-0">Add Source</h2>
-          <button className="bg-transparent border-none cursor-pointer p-1 text-gray-500 hover:text-gray-700 flex items-center rounded transition-colors" onClick={onClose}>
+        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div>
+            <h2 className="text-xl font-black text-gray-900 leading-none">Connect Source</h2>
+            <p className="text-sm text-gray-500 mt-2 font-medium">Add a new review channel to your dashboard</p>
+          </div>
+          <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-white rounded-xl transition-all shadow-sm" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6">
-          {/* Platform Select */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Source Platform</label>
-            <select className={selectClasses} value={platform} onChange={(e) => setPlatform(e.target.value)}>
-              <option value="">Select a platform</option>
-              <option value="booking">Booking.com</option>
-              <option value="tripadvisor">TripAdvisor</option>
-              <option value="google">Google Reviews</option>
-              <option value="airbnb">Airbnb</option>
-            </select>
+        <div className="p-8 space-y-6">
+          {/* Platform Picker */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <Globe size={16} className="text-blue-500" />
+              Source Platform
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {platforms.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPlatform(p)}
+                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
+                      ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                      : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
+                    }`}
+                >
+                  {p}
+                  {platform === p && <ShieldCheck size={16} />}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Property URL */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Property / Hotel URL</label>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <Link size={16} className="text-blue-500" />
+              Property / Listing URL
+            </label>
             <input
               type="text"
-              className={inputClasses}
-              placeholder="https://example.com/hotel"
+              className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
+              placeholder="https://..."
               value={propertyUrl}
               onChange={(e) => setPropertyUrl(e.target.value)}
             />
           </div>
 
-          {/* API Key */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-2">API Key (optional)</label>
-            <input
-              type="text"
-              className={inputClasses}
-              placeholder="Enter API key if available"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          </div>
-
-          {/* Schedule */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Schedule</label>
-            <select className={selectClasses} value={schedule} onChange={(e) => setSchedule(e.target.value)}>
-              <option value="Hourly">Hourly</option>
-              <option value="Daily">Daily</option>
-              <option value="Weekly">Weekly</option>
-            </select>
-          </div>
-
-          {/* Test Connection */}
-          <button className="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-blue-500 bg-white hover:bg-blue-50 cursor-pointer transition-colors">
-            Test Connection
-          </button>
-
-          {/* Source Status Toggle */}
-          <div className="flex items-center justify-between mt-5">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Schedule */}
             <div>
-              <div className="text-sm font-medium text-gray-700 mb-1">Source Status</div>
-              <div className="text-[13px] text-gray-500">Enable to start collecting reviews immediately</div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <Calendar size={16} className="text-blue-500" />
+                Sync Schedule
+              </label>
+              <select
+                className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:bg-white focus:border-blue-500/20 transition-all outline-none appearance-none"
+                value={schedule}
+                onChange={(e) => setSchedule(e.target.value as any)}
+              >
+                <option value="Hourly">Every Hour</option>
+                <option value="Daily">Once Daily</option>
+                <option value="Weekly">Once Weekly</option>
+              </select>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+
+            {/* API Key */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <Key size={16} className="text-blue-500" />
+                API Key (Optional)
+              </label>
               <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={sourceStatus}
-                onChange={(e) => setSourceStatus(e.target.checked)}
+                type="password"
+                className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-blue-500/20 transition-all outline-none"
+                placeholder="••••••••"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
               />
-              <span className="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-[20px]"></span>
-            </label>
+            </div>
+          </div>
+
+          {/* Toggle & Test */}
+          <div className="pt-4 flex items-center justify-between border-t border-gray-100">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleTestConnection}
+                disabled={!propertyUrl || isTesting}
+                className={`text-sm font-bold flex items-center gap-2 transition-all ${isTesting ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'
+                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+              >
+                {isTesting ? (
+                  <RefreshCw size={16} className="animate-spin" />
+                ) : (
+                  <Zap size={16} />
+                )}
+                {isTesting ? 'Testing...' : 'Test Connection'}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-gray-700">Auto-Sync</span>
+              <label className="relative inline-flex items-center cursor-pointer group">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={sourceStatus}
+                  onChange={(e) => setSourceStatus(e.target.checked)}
+                />
+                <div className="w-12 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[19px] after:w-[19px] after:transition-all peer-checked:bg-blue-600 transition-colors"></div>
+              </label>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-4">
           <button
-            className="py-2.5 px-5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+            className="px-6 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 bg-white hover:bg-gray-100 transition-all"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
-            className="py-2.5 px-5 border-none rounded-lg text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 cursor-pointer transition-colors"
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none"
             onClick={handleSubmit}
+            disabled={!propertyUrl}
           >
-            Add Source
+            Connect Platform
           </button>
         </div>
       </div>

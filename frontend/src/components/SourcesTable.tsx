@@ -1,202 +1,266 @@
-import { useState } from 'react';
-import { Play, Pause, Edit2, Trash2, AlertCircle } from 'lucide-react';
-
-export interface Source {
-  id: number;
-  platform: string;
-  status: 'Active' | 'Paused' | 'Error';
-  lastSynced: string;
-  schedule: string;
-}
+import React, { useState } from 'react';
+import {
+  Play,
+  Pause,
+  Edit2,
+  Trash2,
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  MoreVertical,
+  RefreshCw
+} from 'lucide-react';
+import { Source } from '../types/sources';
 
 interface SourcesTableProps {
   sources: Source[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onEditSource: (source: any) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onDeleteSource: (source: any) => void;
-  onTogglePause: (source: Source) => void;
+  onEdit: (source: Source) => void;
+  onDelete: (id: number) => void;
+  onToggleStatus: (source: Source) => void;
+  onSync: (id: number) => void;
+  isLoading?: boolean;
 }
 
-/* ── Platform logo helper ── */
-const PLATFORM_LOGOS: Record<string, { bg: string; letter: string; color: string }> = {
-  'TripAdvisor': { bg: 'bg-green-500', letter: 'T', color: 'text-white' },
-  'Booking.com': { bg: 'bg-blue-800', letter: 'B', color: 'text-white' },
-  'Google Reviews': { bg: 'bg-white', letter: 'G', color: 'text-blue-500' },
-  'Airbnb': { bg: 'bg-rose-500', letter: 'A', color: 'text-white' },
+const PAGE_SIZE = 8;
+
+const PlatformIcon = ({ platform }: { platform: string }) => {
+  const baseClasses = "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm border transition-transform group-hover:scale-105";
+
+  switch (platform) {
+    case 'TripAdvisor':
+      return <div className={`${baseClasses} bg-[#34E0A1]/10 text-[#34E0A1] border-[#34E0A1]/20`}>T</div>;
+    case 'Booking.com':
+      return <div className={`${baseClasses} bg-[#003580]/10 text-[#003580] border-[#003580]/20`}>B</div>;
+    case 'Google Reviews':
+      return <div className={`${baseClasses} bg-white text-gray-700 border-gray-100 shadow-sm`}>G</div>;
+    case 'Airbnb':
+      return <div className={`${baseClasses} bg-[#FF5A5F]/10 text-[#FF5A5F] border-[#FF5A5F]/20`}>A</div>;
+    default:
+      return <div className={`${baseClasses} bg-gray-50 text-gray-400 border-gray-200`}>{platform[0]}</div>;
+  }
 };
 
-const PlatformLogo = ({ platform }: { platform: string }) => {
-  const cfg = PLATFORM_LOGOS[platform] ?? { bg: 'bg-gray-200', letter: platform[0], color: 'text-gray-600' };
-  return (
-    <div className={`w-8 h-8 rounded-full ${cfg.bg} flex items-center justify-center border border-gray-200 shrink-0 text-sm font-bold ${cfg.color}`}>
-      {cfg.letter}
-    </div>
-  );
-};
-
-/* ── Status badge ── */
 const StatusBadge = ({ status }: { status: Source['status'] }) => {
-  if (status === 'Active') {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5" />
-        Active
-      </span>
-    );
+  switch (status) {
+    case 'Active':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+          Active
+        </span>
+      );
+    case 'Paused':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-gray-50 text-gray-600 border border-gray-100">
+          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+          Paused
+        </span>
+      );
+    case 'Error':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+          <AlertCircle size={12} />
+          Error
+        </span>
+      );
   }
-  if (status === 'Paused') {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1.5" />
-        Paused
-      </span>
-    );
-  }
-  // Error
-  return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-      <AlertCircle size={12} className="mr-1" />
-      Error
-    </span>
-  );
 };
 
-/* ── Pagination config ── */
-const PAGE_SIZE = 7;
-
-const SourcesTable = ({ sources, onEditSource, onDeleteSource, onTogglePause }: SourcesTableProps) => {
+const SourcesTable: React.FC<SourcesTableProps> = ({
+  sources,
+  onEdit,
+  onDelete,
+  onToggleStatus,
+  onSync,
+  isLoading
+}) => {
   const [page, setPage] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(sources.length / PAGE_SIZE));
-  const start = page * PAGE_SIZE;
-  const paged = sources.slice(start, start + PAGE_SIZE);
+  const currentSources = sources.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* Table */}
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full whitespace-nowrap">
+        <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200 text-left">
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Source Platform</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Synced</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Schedule</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+            <tr className="bg-gray-50/50 border-b border-gray-100/50">
+              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Platform</th>
+              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Last Synced</th>
+              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Schedule</th>
+              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Success Rate</th>
+              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {paged.length === 0 && (
+          <tbody className="divide-y divide-gray-50">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td colSpan={6} className="px-6 py-6"><div className="h-10 bg-gray-50 rounded" /></td>
+                </tr>
+              ))
+            ) : currentSources.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
-                  No sources found.
-                </td>
-              </tr>
-            )}
-            {paged.map((source) => (
-              <tr key={source.id} className="group hover:bg-gray-50 transition-colors">
-                {/* Platform */}
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <PlatformLogo platform={source.platform} />
-                    <span className="font-medium text-gray-900">{source.platform}</span>
+                <td colSpan={6} className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center">
+                    <div className="p-4 bg-gray-50 rounded-full mb-3 text-gray-300">
+                      <RefreshCw size={32} />
+                    </div>
+                    <p className="text-gray-500 font-medium">No sources connected yet</p>
+                    <p className="text-sm text-gray-400 mt-1">Add your first review platform to start collecting insights</p>
                   </div>
                 </td>
+              </tr>
+            ) : (
+              currentSources.map((source) => (
+                <tr key={source.id} className="group hover:bg-blue-50/20 transition-colors">
+                  {/* Platform */}
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-4">
+                      <PlatformIcon platform={source.platform} />
+                      <div>
+                        <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {source.platform}
+                        </div>
+                        <a
+                          href={source.propertyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-gray-400 flex items-center gap-1 hover:text-blue-500 hover:underline transition-all mt-0.5"
+                        >
+                          View Property <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    </div>
+                  </td>
 
-                {/* Status */}
-                <td className="px-6 py-5">
-                  <StatusBadge status={source.status} />
-                </td>
+                  {/* Status */}
+                  <td className="px-6 py-5">
+                    <StatusBadge status={source.status} />
+                  </td>
 
-                {/* Last Synced */}
-                <td className="px-6 py-5 text-sm text-gray-500">{source.lastSynced}</td>
+                  {/* Last Synced */}
+                  <td className="px-6 py-5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-700">{formatDate(source.lastSyncedAt)}</span>
+                      {source.errorCount > 0 && (
+                        <span className="text-[11px] text-rose-500 font-medium mt-0.5">
+                          {source.errorCount} failed attempts
+                        </span>
+                      )}
+                    </div>
+                  </td>
 
-                {/* Schedule */}
-                <td className="px-6 py-5 text-sm text-gray-900">{source.schedule}</td>
+                  {/* Schedule */}
+                  <td className="px-6 py-5 text-center">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-gray-100 text-[12px] font-medium text-gray-600 shadow-xs">
+                      <Calendar size={12} className="text-gray-400" />
+                      {source.syncSchedule}
+                    </div>
+                  </td>
 
-                {/* Actions */}
-                <td className="px-6 py-5 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {/* Pause / Resume */}
-                    {source.status !== 'Error' && (
+                  {/* Success Rate */}
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ${source.successRate > 90 ? 'bg-emerald-500' :
+                              source.successRate > 70 ? 'bg-amber-500' : 'bg-rose-500'
+                            }`}
+                          style={{ width: `${source.successRate}%` }}
+                        />
+                      </div>
+                      <span className={`text-[13px] font-bold ${source.successRate > 90 ? 'text-emerald-600' :
+                          source.successRate > 70 ? 'text-amber-600' : 'text-rose-600'
+                        }`}>
+                        {source.successRate}%
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${source.status === 'Active'
-                          ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
-                          : 'text-green-600 bg-green-50 hover:bg-green-100'
+                        onClick={() => onSync(source.id)}
+                        disabled={source.status === 'Paused'}
+                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                        title="Sync Now"
+                      >
+                        <RefreshCw size={18} />
+                      </button>
+                      <button
+                        onClick={() => onToggleStatus(source)}
+                        className={`p-2 rounded-lg transition-all ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'
                           }`}
-                        onClick={() => onTogglePause(source)}
+                        title={source.status === 'Active' ? 'Pause' : 'Resume'}
                       >
-                        {source.status === 'Active' ? (
-                          <><Pause size={13} /> Pause</>
-                        ) : (
-                          <><Play size={13} /> Resume</>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Run / Retry */}
-                    {source.status === 'Error' ? (
-                      <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors opacity-50 cursor-not-allowed">
-                        <Play size={13} />
-                        Retry
-                      </button>
-                    ) : source.status === 'Active' ? (
-                      <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
-                        <Play size={13} />
-                        Run Now
-                      </button>
-                    ) : null}
-
-                    {/* Hover-reveal edit + delete */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100 transition-colors"
-                        title="Edit"
-                        onClick={() => onEditSource(source)}
-                      >
-                        <Edit2 size={16} />
+                        {source.status === 'Active' ? <Pause size={18} /> : <Play size={18} />}
                       </button>
                       <button
-                        className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100 transition-colors"
-                        title="Delete"
-                        onClick={() => onDeleteSource(source)}
+                        onClick={() => onEdit(source)}
+                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                        title="Edit Settings"
                       >
-                        <Trash2 size={16} />
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to remove this source? All associated data will be archived.')) {
+                            onDelete(source.id);
+                          }
+                        }}
+                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        title="Remove Source"
+                      >
+                        <Trash2 size={18} />
                       </button>
                     </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    {/* Placeholder for no-hover state to keep row alignment if needed */}
+                    <div className="p-2 h-9 w-9 inline-block group-hover:hidden">
+                      <MoreVertical size={18} className="text-gray-300" />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination Footer */}
-      <div className="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-        <span className="text-sm text-gray-500">
-          Showing <span className="font-medium text-gray-900">{sources.length === 0 ? 0 : start + 1}</span> to{' '}
-          <span className="font-medium text-gray-900">{Math.min(start + PAGE_SIZE, sources.length)}</span> of{' '}
-          <span className="font-medium text-gray-900">{sources.length}</span> results
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-1 text-sm border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            disabled={page === 0}
-            onClick={() => setPage(p => p - 1)}
-          >
-            Previous
-          </button>
-          <button
-            className="px-3 py-1 text-sm border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Next
-          </button>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-sm font-medium text-gray-500">
+            Showing <span className="text-gray-900">{page * PAGE_SIZE + 1}</span> to <span className="text-gray-900">{Math.min((page + 1) * PAGE_SIZE, sources.length)}</span> of <span className="text-gray-900">{sources.length}</span> sources
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={page === 0}
+              onClick={() => setPage(p => p - 1)}
+              className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-xs"
+            >
+              Previous
+            </button>
+            <button
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(p => p + 1)}
+              className="px-4 py-2 text-sm font-semibold text-gray-100 bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 transition-all shadow-xs"
+            >
+              Next Page
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
