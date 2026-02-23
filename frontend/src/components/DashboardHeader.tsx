@@ -3,13 +3,22 @@ import { Bell, CalendarDays } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
+import OrganizationSwitcher from './OrganizationSwitcher';
+import type { Organization } from '../types/dashboard';
 
 interface DashboardHeaderProps {
-  hotelName: string;
-  hotelStatus: string;
+  organizations: Organization[];
+  currentOrg: Organization;
+  onSwitchOrganization: (orgId: string) => void;
+  onAddOrganization: () => void;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hotelName, hotelStatus }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({
+  organizations,
+  currentOrg,
+  onSwitchOrganization,
+  onAddOrganization
+}) => {
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -46,15 +55,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hotelName, hotelStatu
   return (
     <header className="sticky top-0 z-[40] flex justify-between items-center px-8 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 max-md:flex-col max-md:items-start max-md:gap-4 transition-all duration-300">
       <div className="flex items-center gap-4">
-        <div className="relative group">
-          <h1 className="text-xl font-black text-gray-900 m-0 leading-tight tracking-tight group-hover:text-blue-600 transition-colors duration-300">
-            {hotelName}
-          </h1>
-          <p className="mt-0.5 text-[10px] font-bold text-gray-400 m-0 leading-none uppercase tracking-[0.2em]">
-            {hotelStatus}
-          </p>
-          <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-500"></div>
-        </div>
+        <OrganizationSwitcher
+          currentOrg={currentOrg}
+          organizations={organizations}
+          onSwitch={onSwitchOrganization}
+          onAdd={onAddOrganization}
+        />
       </div>
 
       <div className="flex items-center gap-4 max-md:w-full max-md:justify-end">

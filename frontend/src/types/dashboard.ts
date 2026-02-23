@@ -75,12 +75,16 @@ export interface SentimentDistribution {
     negative: { count: number; percentage: number };
 }
 
+export interface Organization {
+    id: string;
+    name: string;
+    status: string;
+}
+
 export interface DashboardResponse {
-    hotel: {
-        id: string;
-        name: string;
-        status: 'Active' | 'Inactive';
-    };
+    hotel: Organization;
+    organizations: Organization[];
+    currentOrganizationId: string;
     metrics: {
         avgRating: MetricTrend;
         activeSources: MetricTrend;

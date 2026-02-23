@@ -7,6 +7,13 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
         name: 'Azure Bay Resort',
         status: 'Active',
     },
+    organizations: [
+        { id: 'HOTEL-001', name: 'Grand Plaza Hotel', status: 'Active' },
+        { id: 'HOTEL-002', name: 'Azure Bay Resort', status: 'Active' },
+        { id: 'HOTEL-003', name: 'Sunset Retreat Boutique', status: 'Inactive' },
+        { id: 'REST-001', name: 'Skyline Grill & Bar', status: 'Active' },
+    ],
+    currentOrganizationId: 'HOTEL-002',
     metrics: {
         avgRating: {
             value: '4.7',

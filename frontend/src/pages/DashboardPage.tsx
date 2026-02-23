@@ -11,9 +11,20 @@ import AlertsPanel from '../components/AlertsPanel';
 import SourceComparison from '../components/SourceComparison';
 import { Star, Link2, MessageSquare, Frown, Loader2, AlertCircle } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useToast } from '../contexts/ToastContext';
 
 const DashboardPage: React.FC = () => {
   const { data, loading, error } = useDashboardData();
+  const { showToast } = useToast();
+
+  const handleSwitchOrganization = (orgId: string) => {
+    showToast(`Switching to organization: ${orgId}`, 'info');
+    // In a real app, this would refresh the dashboard data for the selected org
+  };
+
+  const handleAddOrganization = () => {
+    showToast('Add organization feature coming soon', 'info');
+  };
 
   if (loading) {
     return (
@@ -47,8 +58,10 @@ const DashboardPage: React.FC = () => {
   return (
     <>
       <DashboardHeader
-        hotelName={data.hotel.name}
-        hotelStatus={data.hotel.status === 'Active' ? 'Review Analytics Hub' : 'System Offline'}
+        organizations={data.organizations}
+        currentOrg={data.hotel}
+        onSwitchOrganization={handleSwitchOrganization}
+        onAddOrganization={handleAddOrganization}
       />
 
       <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50">
