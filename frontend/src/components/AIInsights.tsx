@@ -1,8 +1,8 @@
-import { useToast } from '../contexts/ToastContext';
-import { Sparkles, ThumbsUp, ThumbsDown, Brain, Zap, TrendingUp, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ThumbsUp, ThumbsDown, Brain, Zap, TrendingUp, ChevronRight } from 'lucide-react';
 
 const AIInsights = () => {
-  const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const strengths = [
     { label: 'Staff responsiveness', impact: 'High', freq: '82%' },
@@ -27,13 +27,13 @@ const AIInsights = () => {
             <Brain size={18} />
           </div>
           <div>
-            <h3 className="m-0 text-base font-bold text-gray-800">AI Alert Intelligence</h3>
+            <h3 className="m-0 text-base font-bold text-gray-800">AI Insights</h3>
             <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider">Live Processing</p>
           </div>
         </div>
         <button
           className="flex items-center gap-1 text-blue-600 font-bold text-xs hover:text-blue-700 transition-colors group/btn"
-          onClick={() => showToast('Full AI Insights report coming soon', 'info')}
+          onClick={() => navigate('/insights')}
         >
           Detailed Report
           <ChevronRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
@@ -90,20 +90,20 @@ const AIInsights = () => {
       </div>
 
       {/* AI Generated Highlight Card */}
-      <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl relative overflow-hidden shadow-lg shadow-blue-200/50">
-        <Sparkles className="absolute -top-2 -right-2 text-white/10" size={64} />
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-md">
-            <Zap size={14} className="text-amber-300 fill-amber-300" />
+      <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl relative overflow-hidden group/highlight">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover/highlight:bg-blue-500/10 transition-colors duration-500"></div>
+        <div className="flex items-center gap-3 mb-2 relative z-10">
+          <div className="p-1.5 bg-blue-100/50 rounded-lg text-blue-600">
+            <Zap size={14} className="fill-blue-600" />
           </div>
-          <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest italic">AI Highlight</span>
+          <span className="text-[11px] font-bold text-blue-600/80 uppercase tracking-widest italic">AI Highlight</span>
         </div>
-        <p className="m-0 text-sm font-medium text-white leading-relaxed">
-          Wi-Fi dissatisfaction reached a <span className="text-amber-300 font-bold underline decoration-amber-300/30 offset-2">critical 34% peak</span> last Tuesday. Immediate infrastructure review is recommended.
+        <p className="m-0 text-sm font-medium text-gray-700 leading-relaxed relative z-10">
+          Wi-Fi dissatisfaction reached a <span className="text-blue-600 font-bold underline decoration-blue-500/30 underline-offset-2">critical 34% peak</span> last Tuesday. Immediate infrastructure review is recommended.
         </p>
-        <div className="mt-3 flex items-center gap-2">
-          <TrendingUp size={12} className="text-emerald-300" />
-          <span className="text-[10px] font-bold text-emerald-300 uppercase">+12% correlation with negative sentiment</span>
+        <div className="mt-3 flex items-center gap-2 relative z-10">
+          <TrendingUp size={12} className="text-emerald-500" />
+          <span className="text-[10px] font-bold text-emerald-500 uppercase">+12% correlation with negative sentiment</span>
         </div>
       </div>
     </div>
