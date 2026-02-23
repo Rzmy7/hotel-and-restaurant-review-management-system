@@ -66,9 +66,9 @@ const ReviewSourcesPage = () => {
   }, [sources, searchQuery, statusFilter]);
 
   // Handlers
-  const handleAddSource = async (newSourceData: any) => {
+  const handleAddSource = async (newSourceData: Partial<Source>) => {
     try {
-      await sourcesService.addSource(newSourceData);
+      await sourcesService.addSource(newSourceData as any);
       await fetchData(true);
       showToast('New source added successfully', 'success');
     } catch (error) {
@@ -128,82 +128,84 @@ const ReviewSourcesPage = () => {
   };
 
   return (
-    <div className="min-h-full bg-[#FAFAFB] flex flex-col">
-      {/* Redesigned Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 px-10 py-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1600px] mx-auto w-full">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-              Review Sources
-              {sources.length > 0 && (
-                <span className="text-sm font-bold bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
-                  {sources.length} Connected
-                </span>
-              )}
-            </h1>
-            <p className="mt-1 text-gray-500 font-medium">Configure and manage your review aggregation channels</p>
-          </div>
-
+    <div className="min-h-full bg-gray-50 flex flex-col">
+      {/* Redesigned Header - Sophisticated & Consistent */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+        <div className="flex flex-col">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setIsRefreshing(true); fetchData(true); }}
-              className={`p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}
-              title="Refresh Data"
-            >
-              <RefreshCw size={22} />
-            </button>
-            <button
-              onClick={() => setIsHistoryOpen(true)}
-              className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
-            >
-              <History size={18} />
-              Sync Logs
-            </button>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5"
-            >
-              <Plus size={20} />
-              Connect Source
-            </button>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight uppercase">
+              Review Sources
+            </h1>
+            {sources.length > 0 && (
+              <span className="text-[10px] font-black bg-[#4e80ee] text-white px-2 py-0.5 rounded-lg shadow-sm shadow-blue-100 uppercase tracking-widest">
+                {sources.length} Connected
+              </span>
+            )}
           </div>
+          <p className="mt-0.5 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Configure your aggregation infrastructure</p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => { setIsRefreshing(true); fetchData(true); }}
+            className={`w-10 h-10 grid place-items-center bg-gray-50 border border-gray-200 text-gray-400 rounded-xl transition-all duration-300 hover:border-blue-400 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-blue-600' : ''}`}
+            title="Refresh System"
+          >
+            <RefreshCw size={18} />
+          </button>
+
+          <button
+            onClick={() => setIsHistoryOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm"
+          >
+            <History size={16} />
+            Sync Logs
+          </button>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95"
+          >
+            <Plus size={18} />
+            Connect Source
+          </button>
         </div>
       </header>
 
-      <main className="w-full px-10 py-8 flex-1 max-w-[1600px] mx-auto">
+      <main className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
         {/* Stats Section */}
         {stats && <SourceStats stats={stats} isLoading={isLoading} />}
 
-        {/* Filters Toolbar */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        {/* Filters Toolbar - Modernized */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="relative w-full md:w-96 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#4e80ee] transition-colors" size={16} />
             <input
               type="text"
-              placeholder="Search by platform name..."
+              placeholder="Filter by platform..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 border border-gray-100 rounded-xl text-[13px] font-bold text-gray-700 placeholder:text-gray-400 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] transition-all outline-none"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="flex bg-gray-50 p-1 rounded-xl">
+            <div className="flex bg-gray-100/50 p-1 rounded-xl border border-gray-100">
               {['All', 'Active', 'Paused', 'Error'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusFilter === status
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
+                  className={`px-5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${statusFilter === status
+                    ? 'bg-white text-[#4e80ee] shadow-md shadow-gray-200/50 translate-y-[-1px]'
+                    : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
                   {status}
                 </button>
               ))}
             </div>
-            <button className="p-3 bg-gray-50 text-gray-500 hover:text-gray-900 rounded-xl transition-all">
-              <Filter size={20} />
+            <button className="w-10 h-10 grid place-items-center bg-white border border-gray-200 text-gray-400 rounded-xl hover:border-blue-400 hover:text-[#4e80ee] transition-all shadow-sm active:scale-95">
+              <Filter size={18} />
             </button>
           </div>
         </div>

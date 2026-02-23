@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Globe, Link, Key, Calendar, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
+import { X, Globe, Link, Key, Calendar, ShieldCheck, RefreshCw } from 'lucide-react';
 import type { Source, SourcePlatform } from '../types/sources';
 
 interface AddSourceModalProps {
@@ -35,7 +35,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
     setSchedule('Daily');
   };
 
-  const handleTestConnection = () => {
+  const testConnection = () => {
     setIsTesting(true);
     setTimeout(() => setIsTesting(false), 2000);
   };
@@ -70,8 +70,8 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
                   key={p}
                   onClick={() => setPlatform(p)}
                   className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
-                    ? 'border-blue-600 bg-blue-50/50 text-blue-700'
-                    : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
+                      ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                      : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
                     }`}
                 >
                   {p}
@@ -132,19 +132,18 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
 
           {/* Toggle & Test */}
           <div className="pt-4 flex items-center justify-between border-t border-gray-100">
-            <div className="flex items-center gap-4">
+            <div className="flex">
               <button
-                onClick={handleTestConnection}
-                disabled={!propertyUrl || isTesting}
-                className={`text-sm font-bold flex items-center gap-2 transition-all ${isTesting ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'
-                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+                type="button"
+                onClick={testConnection}
+                disabled={isTesting || !propertyUrl}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border ${isTesting
+                    ? 'bg-gray-50 text-gray-400 border-gray-100'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-[#4e80ee] hover:text-[#4e80ee] hover:shadow-blue-50'
+                  }`}
               >
-                {isTesting ? (
-                  <RefreshCw size={16} className="animate-spin" />
-                ) : (
-                  <Zap size={16} />
-                )}
-                {isTesting ? 'Testing...' : 'Test Connection'}
+                <RefreshCw size={14} className={isTesting ? 'animate-spin' : ''} />
+                {isTesting ? 'Testing Link...' : 'Validate Protocol'}
               </button>
             </div>
 
@@ -164,19 +163,19 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-4">
+        <div className="flex items-center justify-end gap-3 p-6 bg-gray-50/50 border-t border-gray-100 rounded-b-2xl">
           <button
-            className="px-6 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 bg-white hover:bg-gray-100 transition-all"
             onClick={onClose}
+            className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors"
           >
             Cancel
           </button>
           <button
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none"
             onClick={handleSubmit}
             disabled={!propertyUrl}
+            className="bg-[#4e80ee] hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0"
           >
-            Connect Platform
+            Establish Source
           </button>
         </div>
       </div>

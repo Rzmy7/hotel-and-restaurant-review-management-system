@@ -43,23 +43,23 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
   switch (status) {
     case 'Active':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-sm shadow-emerald-50">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-          Active
+          Protocol Online
         </span>
       );
     case 'Paused':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-gray-50 text-gray-600 border border-gray-100">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-gray-50 text-gray-500 border border-gray-100/50 shadow-sm shadow-gray-50">
           <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-          Paused
+          Standby
         </span>
       );
     case 'Error':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-rose-50 text-rose-700 border border-rose-100">
-          <AlertCircle size={12} />
-          Error
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50">
+          <AlertCircle size={10} />
+          Terminal Failure
         </span>
       );
   }
@@ -90,12 +90,12 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 border-b border-gray-100/50">
-              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Platform</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Last Synced</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Schedule</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest">Success Rate</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Aggregation Channel</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Protocol Status</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Transmission</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Sync Matrix</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Health Index</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">System Ops</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -121,20 +121,20 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
               currentSources.map((source) => (
                 <tr key={source.id} className="group hover:bg-blue-50/20 transition-colors">
                   {/* Platform */}
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
                       <PlatformIcon platform={source.platform} />
                       <div>
-                        <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <div className="text-[13px] font-black text-gray-900 group-hover:text-[#4e80ee] transition-colors uppercase tracking-tight">
                           {source.platform}
                         </div>
                         <a
                           href={source.propertyUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[11px] text-gray-400 flex items-center gap-1 hover:text-blue-500 hover:underline transition-all mt-0.5"
+                          className="text-[10px] text-gray-400 font-bold flex items-center gap-1 hover:text-[#4e80ee] hover:underline transition-all mt-0.5 uppercase tracking-wider"
                         >
-                          View Property <ExternalLink size={10} />
+                          System Link <ExternalLink size={10} />
                         </a>
                       </div>
                     </div>
@@ -158,8 +158,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                   </td>
 
                   {/* Schedule */}
-                  <td className="px-6 py-5 text-center">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-gray-100 text-[12px] font-medium text-gray-600 shadow-xs">
+                  <td className="px-6 py-4 text-center">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50/50 border border-gray-100 text-[10px] font-black text-gray-600 uppercase tracking-widest shadow-xs">
                       <Calendar size={12} className="text-gray-400" />
                       {source.syncSchedule}
                     </div>
@@ -190,7 +190,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       <button
                         onClick={() => onSync(source.id)}
                         disabled={source.status === 'Paused'}
-                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                        className="p-2 text-[#4e80ee] hover:bg-blue-50 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
                         title="Sync Now"
                       >
                         <RefreshCw size={18} />

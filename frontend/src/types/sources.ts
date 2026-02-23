@@ -4,12 +4,14 @@ export type SourceStatus = 'Active' | 'Paused' | 'Error';
 
 export type SyncStatus = 'Success' | 'Failed' | 'In Progress';
 
+export type SyncSchedule = 'Hourly' | 'Daily' | 'Weekly';
+
 export interface Source {
     id: number;
     platform: SourcePlatform;
     status: SourceStatus;
     lastSyncedAt: string | null;
-    syncSchedule: 'Hourly' | 'Daily' | 'Weekly';
+    syncSchedule: SyncSchedule;
     propertyUrl: string;
     successRate: number;
     errorCount: number;

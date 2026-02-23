@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
   X,
-  Settings,
-  BarChart3,
-  Trash2,
+  ExternalLink,
   ShieldCheck,
-  Globe,
-  Clock,
   TrendingUp,
   AlertTriangle,
-  RefreshCw,
-  ExternalLink
+  Globe
 } from 'lucide-react';
-import { Source } from '../types/sources';
+import type { Source, SourceStatus, SyncSchedule } from '../types/sources';
 
 interface EditSourceModalProps {
   isOpen: boolean;
@@ -23,177 +18,150 @@ interface EditSourceModalProps {
 }
 
 const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSourceModalProps) => {
-  const [activeTab, setActiveTab] = useState<'settings' | 'stats'>('settings');
-  const [platform, setPlatform] = useState('');
-  const [propertyUrl, setPropertyUrl] = useState('');
-  const [syncSchedule, setSyncSchedule] = useState<'Hourly' | 'Daily' | 'Weekly'>('Daily');
-  const [status, setStatus] = useState<'Active' | 'Paused'>('Active');
+  const [activeTab, setActiveTab] = useState<'settings' | 'analytics'>('settings');
+  const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('Daily');
+  const [status, setStatus] = useState<SourceStatus>('Active');
 
   useEffect(() => {
     if (source) {
-      setPlatform(source.platform);
-      setPropertyUrl(source.propertyUrl);
       setSyncSchedule(source.syncSchedule);
-      setStatus(source.status === 'Error' ? 'Active' : source.status as any);
+      setStatus(source.status === 'Error' ? 'Active' : source.status);
     }
   }, [source]);
 
   if (!isOpen || !source) return null;
 
   const handleSave = () => {
-    if (source) {
-      onSave({
-        ...source,
-        platform: platform as any,
-        propertyUrl,
-        syncSchedule,
-        status: status as any
-      });
-      onClose();
-    }
+    onSave({
+      ...source,
+      syncSchedule,
+      status
+    });
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={onClose}>
-      <div className="bg-white rounded-[32px] w-full max-w-[900px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="px-10 py-8 border-b border-gray-100 flex items-start justify-between bg-gray-50/50">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                <Settings size={20} />
-              </span>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Source Management</h2>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 min-w-[320px]">
+      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100">
+        {/* Header - Aligned with Dashboard branding */}
+        <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg bg-blue-50 text-[#4e80ee] border border-blue-100/50 shadow-sm uppercase tracking-tighter`}>
+              {source.platform[0]}
             </div>
-            <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              Configuring <span className="text-gray-900 font-bold">{source.platform}</span>
-              <span className="w-1 h-1 bg-gray-300 rounded-full" />
-              ID: {source.id}
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Source Configuration</h2>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 border border-gray-200`}>
+                  ID: #{source.id}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">{source.platform} Aggregation Node</p>
+            </div>
           </div>
-          <button className="p-3 text-gray-400 hover:text-gray-900 hover:bg-white rounded-2xl transition-all shadow-sm" onClick={onClose}>
-            <X size={24} />
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="px-10 flex border-b border-gray-100 bg-white">
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`py-5 px-6 text-sm font-bold flex items-center gap-2 transition-all border-b-2 ${activeTab === 'settings' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-          >
-            <Settings size={18} /> Configuration
-          </button>
-          <button
-            onClick={() => setActiveTab('stats')}
-            className={`py-5 px-6 text-sm font-bold flex items-center gap-2 transition-all border-b-2 ${activeTab === 'stats' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-          >
-            <BarChart3 size={18} /> Detailed Analytics
-          </button>
+        {/* Tab Navigation - Sophisticated branding */}
+        <div className="px-8 bg-gray-50/30 border-b border-gray-100">
+          <div className="flex gap-8">
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'settings' ? 'text-[#4e80ee]' : 'text-gray-400 hover:text-gray-600'
+                }`}
+            >
+              System Parameters
+              {activeTab === 'settings' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#4e80ee] rounded-t-full shadow-lg shadow-blue-200" />}
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'analytics' ? 'text-[#4e80ee]' : 'text-gray-400 hover:text-gray-600'
+                }`}
+            >
+              Efficiency Intel
+              {activeTab === 'analytics' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#4e80ee] rounded-t-full shadow-lg shadow-blue-200" />}
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-10">
+        <div className="flex-1 overflow-y-auto p-8">
           {activeTab === 'settings' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <div className="space-y-8">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">Platform Identity</label>
-                  <div className="p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-bold text-blue-600 shadow-sm">
-                        {source.platform[0]}
-                      </div>
-                      <span className="font-bold text-gray-900">{source.platform}</span>
-                    </div>
-                    <ShieldCheck size={20} className="text-emerald-500" />
+            <div className="space-y-8 max-w-2xl mx-auto">
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Protocol Type</label>
+                  <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700">
+                    {source.platform}
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">Source URL</label>
-                  <div className="relative group">
-                    <input
-                      className="w-full pl-5 pr-12 py-4 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-blue-500/20 transition-all outline-none"
-                      value={propertyUrl}
-                      onChange={(e) => setPropertyUrl(e.target.value)}
-                    />
-                    <a
-                      href={propertyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all shadow-sm bg-gray-50"
-                    >
-                      <ExternalLink size={16} />
-                    </a>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">Synchronization Frequency</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {['Hourly', 'Daily', 'Weekly'].map((sched) => (
-                      <button
-                        key={sched}
-                        onClick={() => setSyncSchedule(sched as any)}
-                        className={`py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border-2 ${syncSchedule === sched
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-50 bg-gray-50 text-gray-400 hover:border-gray-100'
-                          }`}
-                      >
-                        {sched}
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Transmission Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as SourceStatus)}
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-900 focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] outline-none shadow-sm transition-all"
+                  >
+                    <option value="Active">Operational (Online)</option>
+                    <option value="Paused">Standby (Inactive)</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-8">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">Operational Status</label>
-                  <div
-                    onClick={() => setStatus(status === 'Active' ? 'Paused' : 'Active')}
-                    className={`p-6 rounded-2xl border-2 transition-all cursor-pointer group ${status === 'Active' ? 'border-emerald-500 bg-emerald-50/30' : 'border-amber-500 bg-amber-50/30'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {status === 'Active' ? (
-                          <RefreshCw size={24} className="text-emerald-500 animate-[spin_4s_linear_infinite]" />
-                        ) : (
-                          <Clock size={24} className="text-amber-500" />
-                        )}
-                        <div>
-                          <p className={`text-sm font-black uppercase tracking-widest ${status === 'Active' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                            {status}
-                          </p>
-                          <p className="text-xs font-medium text-gray-500 mt-0.5">
-                            {status === 'Active' ? 'Reviews are being synced' : 'Aggregation is currently paused'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`w-10 h-6 rounded-full relative transition-colors ${status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`}>
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${status === 'Active' ? 'right-1' : 'left-1'}`} />
-                      </div>
-                    </div>
-                  </div>
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Endpoint URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={source.propertyUrl}
+                    readOnly
+                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-500 shadow-inner"
+                  />
+                  <a href={source.propertyUrl} target="_blank" rel="noreferrer" className="p-3 bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-[#4e80ee] rounded-xl shadow-sm transition-all">
+                    <ExternalLink size={20} />
+                  </a>
                 </div>
+              </div>
 
-                <div className="p-6 bg-rose-50 rounded-2xl border-2 border-rose-100">
-                  <h4 className="text-sm font-black text-rose-700 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <AlertTriangle size={16} /> Danger Zone
-                  </h4>
-                  <p className="text-xs font-medium text-rose-600 mb-4 leading-relaxed">
-                    Removing this source will cease all data collection. Historical reviews will remain archived but no further updates will occur.
-                  </p>
-                  <button
-                    onClick={() => onDelete(source.id)}
-                    className="w-full py-3 bg-white hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={16} /> Disconnect Source
-                  </button>
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Sync Matrix Schedule</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['Hourly', 'Daily', 'Weekly'].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSyncSchedule(s as SyncSchedule)}
+                      className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${syncSchedule === s
+                        ? 'bg-blue-50 border-blue-200 text-[#4e80ee] shadow-sm'
+                        : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300'
+                        }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Danger Zone - Premium styling */}
+              <div className="pt-8 border-t border-gray-100/50">
+                <div className="bg-rose-50/30 border border-rose-100 rounded-2xl p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-2 text-rose-600 mb-1">
+                        <AlertTriangle size={16} />
+                        <h4 className="text-[12px] font-black uppercase tracking-tight">Terminal Deletion Protocol</h4>
+                      </div>
+                      <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Historical data will be archived upon removal.</p>
+                    </div>
+                    <button
+                      onClick={() => onDelete(source.id)}
+                      className="px-6 py-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                    >
+                      Purge Source
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -253,18 +221,18 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
         </div>
 
         {/* Footer */}
-        <div className="px-10 py-8 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-4">
+        <div className="flex items-center justify-end gap-3 p-6 bg-gray-50/50 border-t border-gray-100 rounded-b-2xl">
           <button
-            className="px-8 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all shadow-sm"
             onClick={onClose}
+            className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors"
           >
-            Cancel
+            Close Node
           </button>
           <button
-            className="px-10 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl text-sm font-black shadow-xl shadow-gray-200 transition-all transform hover:-translate-y-0.5"
             onClick={handleSave}
+            className="bg-[#4e80ee] hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 active:scale-95 shadow-md shadow-blue-200/50"
           >
-            Apply Changes
+            Commit Changes
           </button>
         </div>
       </div>

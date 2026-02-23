@@ -13,36 +13,41 @@ const SourceStats: React.FC<SourceStatsProps> = ({ stats, isLoading }) => {
             label: 'Total Sources',
             value: stats.totalSources,
             icon: Database,
-            color: 'text-blue-600',
+            color: 'text-[#4e80ee]',
             bg: 'bg-blue-50',
+            border: 'hover:border-blue-200'
         },
         {
-            label: 'Active',
+            label: 'Active Channels',
             value: stats.activeSources,
             icon: Activity,
             color: 'text-emerald-600',
             bg: 'bg-emerald-50',
+            border: 'hover:border-emerald-200'
         },
         {
-            label: 'Paused',
+            label: 'Paused Tracks',
             value: stats.pausedSources,
             icon: PauseCircle,
             color: 'text-amber-600',
             bg: 'bg-amber-50',
+            border: 'hover:border-amber-200'
         },
         {
-            label: 'Errors',
+            label: 'Sync Errors',
             value: stats.errorSources,
             icon: AlertCircle,
             color: 'text-rose-600',
             bg: 'bg-rose-50',
+            border: 'hover:border-rose-200'
         },
         {
-            label: 'Total Fetched',
+            label: 'Reviews Fetched',
             value: stats.totalReviewsFetched.toLocaleString(),
             icon: RefreshCw,
             color: 'text-indigo-600',
             bg: 'bg-indigo-50',
+            border: 'hover:border-indigo-200'
         },
     ];
 
@@ -51,19 +56,25 @@ const SourceStats: React.FC<SourceStatsProps> = ({ stats, isLoading }) => {
             {cards.map((card, index) => (
                 <div
                     key={index}
-                    className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md hover:border-blue-100 group"
+                    className={`bg-white p-5 rounded-xl border border-gray-100 transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/40 hover:-translate-y-0.5 group ${card.border} relative overflow-hidden`}
                 >
-                    <div className="flex items-center justify-between mb-3">
-                        <div className={`p-2 rounded-lg ${card.bg} ${card.color} group-hover:scale-110 transition-transform`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${card.bg} ${card.color} transition-transform duration-300 group-hover:scale-110 shadow-sm border border-transparent`}>
                             <card.icon size={20} />
                         </div>
+                        {index === 1 && !isLoading && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+                                <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+                                Live
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">{card.label}</p>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{card.label}</p>
                         {isLoading ? (
-                            <div className="h-8 w-16 bg-gray-100 animate-pulse rounded" />
+                            <div className="h-8 w-16 bg-gray-50 animate-pulse rounded-lg" />
                         ) : (
-                            <h3 className="text-2xl font-bold text-gray-900 leading-none">{card.value}</h3>
+                            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{card.value}</h3>
                         )}
                     </div>
                 </div>
