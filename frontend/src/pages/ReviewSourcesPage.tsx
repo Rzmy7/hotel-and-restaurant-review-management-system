@@ -24,6 +24,7 @@ const ReviewSourcesPage = () => {
   // UI State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<'settings' | 'analytics'>('settings');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
 
@@ -142,7 +143,7 @@ const ReviewSourcesPage = () => {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Configure your aggregation infrastructure</p>
+          <p className="mt-0.5 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Manage your review platforms and connections</p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -159,7 +160,7 @@ const ReviewSourcesPage = () => {
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm"
           >
             <History size={16} />
-            Sync Logs
+            Activity
           </button>
 
           <button
@@ -167,7 +168,7 @@ const ReviewSourcesPage = () => {
             className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95"
           >
             <Plus size={18} />
-            Connect Source
+            Add Source
           </button>
         </div>
       </header>
@@ -214,7 +215,11 @@ const ReviewSourcesPage = () => {
         <SourcesTable
           sources={filteredSources}
           isLoading={isLoading}
-          onEdit={(source) => { setSelectedSource(source); setIsEditModalOpen(true); }}
+          onEdit={(source, tab = 'settings') => {
+            setSelectedSource(source);
+            setActiveModalTab(tab);
+            setIsEditModalOpen(true);
+          }}
           onDelete={handleDeleteSource}
           onToggleStatus={handleToggleStatus}
           onSync={handleSyncNow}
@@ -238,6 +243,7 @@ const ReviewSourcesPage = () => {
       {selectedSource && (
         <EditSourceModal
           isOpen={isEditModalOpen}
+          initialTab={activeModalTab}
           onClose={() => { setIsEditModalOpen(false); setSelectedSource(null); }}
           source={selectedSource}
           onSave={handleUpdateSource}

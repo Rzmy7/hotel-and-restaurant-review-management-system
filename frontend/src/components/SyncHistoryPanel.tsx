@@ -1,6 +1,5 @@
-import React from 'react';
-import { X, CheckCircle2, XCircle, Clock, Info } from 'lucide-react';
-import { SyncLog } from '../types/sources';
+import { X, CheckCircle2, XCircle, Clock, Info, AlertCircle } from 'lucide-react';
+import type { SyncLog } from '../types/sources';
 
 interface SyncHistoryPanelProps {
     isOpen: boolean;
@@ -24,8 +23,8 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ isOpen, onClose, lo
             <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-[1002] flex flex-col transition-transform transform translate-x-0">
                 <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900">Sync History</h2>
-                        <p className="text-sm text-gray-500">Track recent platform updates</p>
+                        <h2 className="text-lg font-bold text-gray-900">Activity Log</h2>
+                        <p className="text-sm text-gray-500">Track recent sync updates</p>
                     </div>
                     <button
                         onClick={onClose}

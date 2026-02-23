@@ -4,16 +4,16 @@ import {
   Pause,
   Edit2,
   Trash2,
-  AlertCircle,
   Calendar,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import type { Source } from '../types/sources';
 
 interface SourcesTableProps {
   sources: Source[];
-  onEdit: (source: Source) => void;
+  onEdit: (source: Source, tab?: 'settings' | 'analytics') => void;
   onDelete: (id: number) => void;
   onToggleStatus: (source: Source) => void;
   onSync: (id: number) => void;
@@ -45,21 +45,21 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-sm shadow-emerald-50">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-          Protocol Online
+          Active
         </span>
       );
     case 'Paused':
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-gray-50 text-gray-500 border border-gray-100/50 shadow-sm shadow-gray-50">
           <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-          Standby
+          Paused
         </span>
       );
     case 'Error':
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50">
           <AlertCircle size={10} />
-          Terminal Failure
+          Error
         </span>
       );
   }
@@ -90,12 +90,12 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 border-b border-gray-100/50">
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Aggregation Channel</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Protocol Status</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Transmission</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Sync Matrix</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Health Index</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">System Ops</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Platform</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Sync</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Frequency</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Success Rate</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -125,16 +125,19 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                     <div className="flex items-center gap-4">
                       <PlatformIcon platform={source.platform} />
                       <div>
-                        <div className="text-[13px] font-black text-gray-900 group-hover:text-[#4e80ee] transition-colors uppercase tracking-tight">
+                        <button
+                          onClick={() => onEdit(source, 'analytics')}
+                          className="text-[13px] font-black text-gray-900 hover:text-[#4e80ee] transition-colors uppercase tracking-tight text-left block"
+                        >
                           {source.platform}
-                        </div>
+                        </button>
                         <a
                           href={source.propertyUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-[10px] text-gray-400 font-bold flex items-center gap-1 hover:text-[#4e80ee] hover:underline transition-all mt-0.5 uppercase tracking-wider"
                         >
-                          System Link <ExternalLink size={10} />
+                          View Link <ExternalLink size={10} />
                         </a>
                       </div>
                     </div>

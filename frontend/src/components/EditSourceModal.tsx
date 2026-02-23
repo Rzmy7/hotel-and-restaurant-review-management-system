@@ -15,12 +15,17 @@ interface EditSourceModalProps {
   source: Source | null;
   onSave: (source: Source) => void;
   onDelete: (sourceId: number) => void;
+  initialTab?: 'settings' | 'analytics';
 }
 
-const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSourceModalProps) => {
-  const [activeTab, setActiveTab] = useState<'settings' | 'analytics'>('settings');
+const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab = 'settings' }: EditSourceModalProps) => {
+  const [activeTab, setActiveTab] = useState<'settings' | 'analytics'>(initialTab);
   const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('Daily');
   const [status, setStatus] = useState<SourceStatus>('Active');
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, isOpen]);
 
   useEffect(() => {
     if (source) {
@@ -58,7 +63,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
                   ID: #{source.id}
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">{source.platform} Aggregation Node</p>
+              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">{source.platform} Source</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all">
@@ -71,19 +76,21 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
           <div className="flex gap-8">
             <button
               onClick={() => setActiveTab('settings')}
-              className={`py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'settings' ? 'text-[#4e80ee]' : 'text-gray-400 hover:text-gray-600'
+              className={`pb-4 px-2 text-sm font-bold transition-all border-b-2 ${activeTab === 'settings'
+                ? 'border-[#4e80ee] text-[#4e80ee]'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
             >
-              System Parameters
-              {activeTab === 'settings' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#4e80ee] rounded-t-full shadow-lg shadow-blue-200" />}
+              Settings
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'analytics' ? 'text-[#4e80ee]' : 'text-gray-400 hover:text-gray-600'
+              className={`pb-4 px-2 text-sm font-bold transition-all border-b-2 ${activeTab === 'analytics'
+                ? 'border-[#4e80ee] text-[#4e80ee]'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
             >
-              Efficiency Intel
-              {activeTab === 'analytics' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#4e80ee] rounded-t-full shadow-lg shadow-blue-200" />}
+              Analytics
             </button>
           </div>
         </div>
@@ -93,13 +100,13 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
             <div className="space-y-8 max-w-2xl mx-auto">
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Protocol Type</label>
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Platform</label>
                   <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700">
                     {source.platform}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Transmission Status</label>
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Status</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as SourceStatus)}
@@ -112,7 +119,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Endpoint URL</label>
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Listing URL</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -127,7 +134,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Sync Matrix Schedule</label>
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Sync Frequency</label>
                 <div className="grid grid-cols-3 gap-3">
                   {['Hourly', 'Daily', 'Weekly'].map((s) => (
                     <button
@@ -151,15 +158,15 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
                     <div>
                       <div className="flex items-center gap-2 text-rose-600 mb-1">
                         <AlertTriangle size={16} />
-                        <h4 className="text-[12px] font-black uppercase tracking-tight">Terminal Deletion Protocol</h4>
+                        <h4 className="text-[12px] font-black uppercase tracking-tight">Delete Source</h4>
                       </div>
-                      <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Historical data will be archived upon removal.</p>
+                      <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Removing this source will archive its history.</p>
                     </div>
                     <button
                       onClick={() => onDelete(source.id)}
                       className="px-6 py-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                     >
-                      Purge Source
+                      Remove Source
                     </button>
                   </div>
                 </div>
@@ -232,7 +239,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete }: EditSour
             onClick={handleSave}
             className="bg-[#4e80ee] hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 active:scale-95 shadow-md shadow-blue-200/50"
           >
-            Commit Changes
+            Save Changes
           </button>
         </div>
       </div>
