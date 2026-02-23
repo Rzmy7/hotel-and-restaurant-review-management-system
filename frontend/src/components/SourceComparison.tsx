@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Star, TrendingUp, TrendingDown, Clock, Info } from 'lucide-react';
 
 const sources = [
@@ -9,7 +9,9 @@ const sources = [
         trendType: 'up',
         reviews: 79,
         pct: 42,
-        color: '#2563eb', // More professional Blue
+        color: '#2563eb',
+        bgColor: 'bg-blue-50/60',
+        borderColor: 'border-blue-100',
         sentiment: { pos: 65, neu: 25, neg: 10 },
         lastSync: '2m ago'
     },
@@ -20,7 +22,9 @@ const sources = [
         trendType: 'down',
         reviews: 53,
         pct: 28,
-        color: '#7c3aed', // More professional Purple
+        color: '#7c3aed',
+        bgColor: 'bg-purple-50/60',
+        borderColor: 'border-purple-100',
         sentiment: { pos: 58, neu: 30, neg: 12 },
         lastSync: '15m ago'
     },
@@ -31,7 +35,9 @@ const sources = [
         trendType: 'up',
         reviews: 38,
         pct: 20,
-        color: '#059669', // More professional Emerald
+        color: '#059669',
+        bgColor: 'bg-emerald-50/60',
+        borderColor: 'border-emerald-100',
         sentiment: { pos: 72, neu: 18, neg: 10 },
         lastSync: '5m ago'
     },
@@ -42,7 +48,9 @@ const sources = [
         trendType: 'neutral',
         reviews: 19,
         pct: 10,
-        color: '#d97706', // More professional Amber
+        color: '#d97706',
+        bgColor: 'bg-amber-50/60',
+        borderColor: 'border-amber-100',
         sentiment: { pos: 45, neu: 40, neg: 15 },
         lastSync: '1h ago'
     },
@@ -69,7 +77,7 @@ const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
 };
 
 const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number }) => (
-    <div className="flex h-1 w-full rounded-full overflow-hidden bg-gray-50 mt-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+    <div className="flex h-1 w-full rounded-full overflow-hidden bg-white/50 mt-1.5 shadow-inner">
         <div style={{ width: `${pos}%` }} className="bg-emerald-500/80 h-full" />
         <div style={{ width: `${neu}%` }} className="bg-slate-300 h-full" />
         <div style={{ width: `${neg}%` }} className="bg-rose-400 h-full" />
@@ -77,11 +85,11 @@ const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number
 );
 
 const SourceComparison: React.FC = () => {
+    const [hoveredSource, setHoveredSource] = useState<string | null>(null);
     let angle = -90;
 
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm overflow-hidden relative">
-            {/* Header section with distinct metrics-toggle layout */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 border-b border-gray-50 pb-5">
                 <div>
                     <h3 className="m-0 text-base font-bold text-gray-900 flex items-center gap-2">
@@ -91,7 +99,6 @@ const SourceComparison: React.FC = () => {
                     <p className="m-0 text-[11px] text-gray-500 font-medium uppercase tracking-tight mt-1">Volume & Sentiment Overview</p>
                 </div>
 
-                {/* Clean inline legend */}
                 <div className="flex items-center gap-5 mt-4 sm:mt-0 bg-gray-50/50 px-4 py-2 rounded-lg border border-gray-100">
                     <div className="flex items-center gap-2">
                         <div className="w-2.5 h-1 rounded-full bg-emerald-500" />
@@ -104,83 +111,102 @@ const SourceComparison: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-12 items-center">
                 {/* Donut focus */}
                 <div className="flex flex-col items-center">
-                    <div className="w-[180px] h-[180px] shrink-0 relative flex items-center justify-center">
+                    <div className="w-[200px] h-[200px] shrink-0 relative flex items-center justify-center">
                         <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_4px_10px_rgba(0,0,0,0.03)] filter">
                             {sources.map((s) => {
-                                const path = createDonutPath(s.pct, angle);
+                                const isHovered = hoveredSource === s.name;
+                                const path = createDonutPath(s.pct, angle, isHovered ? 98 : 90, isHovered ? 56 : 60);
                                 angle += (s.pct / 100) * 360;
                                 return (
                                     <path
                                         key={s.name}
                                         d={path}
                                         fill={s.color}
-                                        className="transition-all duration-300 hover:opacity-90 hover:scale-[1.02] origin-center cursor-default"
+                                        onMouseEnter={() => setHoveredSource(s.name)}
+                                        onMouseLeave={() => setHoveredSource(null)}
+                                        className={`transition-all duration-300 cursor-default ${isHovered ? 'brightness-110' : 'opacity-90 hover:opacity-100'}`}
                                     />
                                 );
                             })}
                         </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-3xl font-black text-gray-900 tracking-tighter leading-none">{totalReviews}</span>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Reviews</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-transform duration-300">
+                            <span className="text-4xl font-black text-gray-900 tracking-tighter leading-none">{totalReviews}</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Reviews</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Details optimized for scanability */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8">
-                    {sources.map((s) => (
-                        <div key={s.name} className="flex flex-col group relative">
-                            {/* Source Info Bar */}
-                            <div className="flex items-center justify-between mb-3.5">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-3 h-3 rounded-[4px] shrink-0 shadow-sm" style={{ backgroundColor: s.color }} />
-                                    <span className="text-sm font-bold text-gray-900 tracking-tight">{s.name}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="flex items-center gap-1 bg-amber-50/50 px-2 py-0.5 rounded border border-amber-100/50">
-                                        <Star size={12} className="text-amber-500 fill-amber-500" />
-                                        <span className="text-xs font-bold text-amber-700">{s.rating}</span>
+                {/* Details optimized with source-specific backgrounds & bidirectional hover */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {sources.map((s) => {
+                        const isHovered = hoveredSource === s.name;
+                        return (
+                            <div
+                                key={s.name}
+                                onMouseEnter={() => setHoveredSource(s.name)}
+                                onMouseLeave={() => setHoveredSource(null)}
+                                className={`flex flex-col p-4 rounded-xl border-2 transition-all duration-300 ${isHovered ? `${s.bgColor} ${s.borderColor} shadow-md scale-[1.02]` : 'bg-gray-50/30 border-transparent hover:bg-gray-50/60'}`}
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-[6px] shrink-0 shadow-sm" style={{ backgroundColor: s.color }} />
+                                        <span className="text-sm font-black text-gray-900 tracking-tight">{s.name}</span>
                                     </div>
-                                    <div className={`p-0.5 rounded ${s.trendType === 'up' ? 'text-emerald-500' : s.trendType === 'down' ? 'text-rose-500' : 'text-gray-300'}`}>
-                                        {s.trendType === 'up' ? <TrendingUp size={12} /> : s.trendType === 'down' ? <TrendingDown size={12} /> : null}
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded shadow-sm border border-gray-100">
+                                            <Star size={12} className="text-amber-500 fill-amber-500" />
+                                            <span className="text-xs font-bold text-gray-700">{s.rating}</span>
+                                        </div>
+                                        {s.trendType !== 'neutral' && (
+                                            <div className={`p-1 rounded-full bg-white shadow-sm border border-gray-50 ${s.trendType === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                {s.trendType === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-end justify-between text-[11px] font-bold pb-1 border-b border-black/5">
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-lg text-gray-900 font-black leading-none">{s.pct}%</span>
+                                            <span className="text-gray-500 font-medium tracking-tight">Share</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-gray-400 font-medium">
+                                            <Clock size={10} strokeWidth={2.5} />
+                                            <span>{s.lastSync}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {/* Primary volume bar with dynamic opacity */}
+                                        <div className="h-2 w-full bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-800"
+                                                style={{
+                                                    width: `${s.pct}%`,
+                                                    opacity: isHovered ? 1 : 0.85
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="bg-white/40 p-2 rounded-lg border border-black/5">
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Sentiment</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                    <span className="text-[9px] font-black text-emerald-600 uppercase tabular-nums">{s.sentiment.pos}%</span>
+                                                </div>
+                                            </div>
+                                            <SentimentBar pos={s.sentiment.pos} neu={s.sentiment.neu} neg={s.sentiment.neg} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Unified Volume Bar with Sub-metrics */}
-                            <div className="space-y-3">
-                                <div className="flex items-end justify-between text-[11px] font-bold pb-1 underline decoration-gray-100 underline-offset-4">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-[13px] text-gray-900 font-black">{s.pct}%</span>
-                                        <span className="text-gray-400 font-medium tracking-tight">of total volume</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-gray-400 font-medium italic">
-                                        <Clock size={10} strokeWidth={3} />
-                                        <span>{s.lastSync}</span>
-                                    </div>
-                                </div>
-
-                                {/* Unified primary bar color: Dark Slate for all, emphasizing volume without "rainbow" effect */}
-                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-700 opacity-90 group-hover:opacity-100"
-                                        style={{ width: `${s.pct}%` }}
-                                    />
-                                </div>
-
-                                <div className="pt-1">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Sentiment Mix</span>
-                                        <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">{s.sentiment.pos}% Positive</span>
-                                    </div>
-                                    <SentimentBar pos={s.sentiment.pos} neu={s.sentiment.neu} neg={s.sentiment.neg} />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>
