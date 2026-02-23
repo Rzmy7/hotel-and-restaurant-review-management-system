@@ -6,7 +6,6 @@ const CategoryPerformance = () => {
     {
       name: 'Staff',
       score: 85,
-      color: '#3b82f6',
       icon: <Users size={16} />,
       trend: '+2.4%',
       count: 428,
@@ -15,7 +14,6 @@ const CategoryPerformance = () => {
     {
       name: 'Cleanliness',
       score: 78,
-      color: '#06b6d4',
       icon: <Droplets size={16} />,
       trend: '-1.2%',
       count: 312,
@@ -24,7 +22,6 @@ const CategoryPerformance = () => {
     {
       name: 'Location',
       score: 92,
-      color: '#8b5cf6',
       icon: <MapPin size={16} />,
       trend: '+0.5%',
       count: 247,
@@ -33,7 +30,6 @@ const CategoryPerformance = () => {
     {
       name: 'Food',
       score: 71,
-      color: '#f59e0b',
       icon: <Utensils size={16} />,
       trend: '+5.1%',
       count: 260,
@@ -62,7 +58,7 @@ const CategoryPerformance = () => {
           <div key={category.name} className="flex flex-col gap-3 group/cat">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 transition-transform group-hover/cat:scale-110" style={{ color: category.color }}>
+                <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] transition-all group-hover/cat:scale-110 group-hover/cat:bg-[#4e80ee] group-hover/cat:text-white">
                   {category.icon}
                 </div>
                 <div>
@@ -82,13 +78,12 @@ const CategoryPerformance = () => {
             </div>
 
             <div className="w-full">
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden relative shadow-inner">
+              <div className="w-full h-2 bg-gray-50 rounded-full overflow-hidden relative shadow-inner border border-gray-100/50">
                 <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  className="h-full rounded-full transition-all duration-1000 ease-out bg-[#4e80ee]"
                   style={{
                     width: `${category.score}%`,
-                    backgroundColor: category.color,
-                    backgroundImage: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 100%)'
+                    backgroundImage: 'linear-gradient(90deg, #4e80ee 0%, #7ba3f5 100%)'
                   }}
                 ></div>
               </div>
