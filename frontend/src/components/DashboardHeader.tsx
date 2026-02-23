@@ -43,36 +43,42 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = (_props) => {
   };
 
   return (
-    <header className="flex justify-between items-center px-8 py-5 bg-white border-b border-gray-200 max-md:flex-col max-md:items-start max-md:gap-4 transition-all">
-      <div className="flex items-start gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 m-0 leading-tight">Grand Plaza Hotel</h1>
-          <p className="mt-1 text-[13px] text-gray-400 m-0 leading-none">Review Management Dashboard</p>
+    <header className="sticky top-0 z-[40] flex justify-between items-center px-8 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 max-md:flex-col max-md:items-start max-md:gap-4 transition-all duration-300">
+      <div className="flex items-center gap-4">
+        <div className="relative group">
+          <h1 className="text-xl font-black text-gray-900 m-0 leading-tight tracking-tight group-hover:text-blue-600 transition-colors duration-300">
+            Grand Plaza Hotel
+          </h1>
+          <p className="mt-0.5 text-[10px] font-bold text-gray-400 m-0 leading-none uppercase tracking-[0.2em]">
+            Review Analytics Hub
+          </p>
+          <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-500"></div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 max-md:w-full max-md:justify-end">
+      <div className="flex items-center gap-4 max-md:w-full max-md:justify-end">
+        {/* Modern Date Range Picker */}
         <button
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 cursor-pointer transition hover:bg-gray-50 hover:border-gray-400"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 cursor-pointer transition-all hover:bg-white hover:border-blue-400 hover:text-blue-600 hover:shadow-md active:scale-95 shadow-sm"
           onClick={() => showToast('Date range picker coming soon', 'info')}
         >
-          <CalendarDays size={16} />
+          <CalendarDays size={16} className="text-gray-400 group-hover:text-blue-500" />
           <span>Last 30 Days</span>
         </button>
 
-        {/* Notification Bell + Panel */}
+        {/* Improved Notification Bell */}
         <div className="relative" ref={notifRef}>
           <button
-            className={`w-10 h-10 grid place-items-center bg-white border rounded-full text-gray-500 cursor-pointer relative transition hover:bg-gray-100 ${showNotifications
-              ? 'border-blue-300 bg-blue-50 text-blue-600'
-              : 'border-gray-200'
-              } ${unreadCount > 0
-                ? "after:content-[''] after:absolute after:top-2 after:right-2 after:w-2 after:h-2 after:bg-red-500 after:rounded-full after:border-2 after:border-white"
-                : ''
+            className={`w-10 h-10 grid place-items-center rounded-xl cursor-pointer relative transition-all duration-300 active:scale-90 ${showNotifications
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+              : 'bg-white border border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:shadow-sm'
               }`}
             onClick={toggleNotifications}
           >
-            <Bell size={18} />
+            <Bell size={20} className={showNotifications ? 'animate-bounce' : ''} />
+            {unreadCount > 0 && !showNotifications && (
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white ring-2 ring-red-500/20 shadow-sm animate-pulse" />
+            )}
           </button>
 
           {showNotifications && (
@@ -83,12 +89,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = (_props) => {
           )}
         </div>
 
-        {/* Profile Avatar + Dropdown */}
+        {/* User Profile - Sophisticated Avatar */}
         <div className="relative" ref={profileRef}>
           <button
-            className={`w-10 h-10 grid place-items-center bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full font-bold text-base cursor-pointer border-2 transition-all ${showProfile
-              ? 'border-blue-300 ring-2 ring-blue-200'
-              : 'border-transparent hover:ring-2 hover:ring-blue-200'
+            className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${showProfile
+              ? 'bg-blue-600 text-white border-blue-200 ring-4 ring-blue-50 scale-105'
+              : 'bg-gray-900 text-white border-transparent hover:scale-105 active:scale-95'
               }`}
             onClick={toggleProfile}
           >
