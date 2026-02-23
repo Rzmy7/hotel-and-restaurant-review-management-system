@@ -12,6 +12,7 @@ const TrendsChart = () => {
 
             </div>
 
+
             <div className="relative h-[220px] mb-10 mt-4 px-10 group/chart">
                 {/* Y-Axis Labels - Sentiment % (Left) */}
                 <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between py-0 text-[10px] font-black text-blue-500/80 pr-2 items-end h-[200px]">
@@ -128,14 +129,14 @@ const TrendsChart = () => {
                     <div className="flex items-center gap-2 group cursor-help relative">
                         <div className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest leading-none">Intelligence</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Sentiment</span>
+                            <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest leading-none">Alerts</span>
+                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Notifications</span>
                         </div>
                         {/* Hover Explanation Card */}
                         <div className="absolute bottom-full left-0 mb-4 w-56 p-4 bg-white/95 backdrop-blur-md border border-gray-100 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-50">
-                            <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 border-b border-blue-50 pb-2">AI Intelligence</h4>
+                            <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 border-b border-blue-50 pb-2">AI Alerts</h4>
                             <p className="text-[10px] leading-relaxed text-gray-500 font-medium whitespace-normal">
-                                The <span className="text-blue-600 font-bold">AI-driven net sentiment rating</span>. Measures the quality of experience by analyzing mood and recurring themes across all reviews.
+                                The <span className="text-blue-600 font-bold">AI-driven alert system</span>. Monitors critical feedback and identifies urgent issues that require immediate attention.
                             </p>
                             <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
                         </div>

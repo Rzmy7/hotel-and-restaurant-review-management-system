@@ -10,6 +10,7 @@ import {
     Trash2,
     Filter,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import NotificationsHeader from '../components/NotificationsHeader';
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -191,9 +192,19 @@ const filterTabs: { key: FilterTab; label: string }[] = [
 
 // ── Page ───────────────────────────────────────────────────────────
 const NotificationsPage: React.FC = () => {
+    const location = useLocation();
     const [notifications, setNotifications] =
         useState<Notification[]>(mockNotifications);
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+
+    // Handle filter from URL query param
+    React.useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const filterParam = params.get('filter') as FilterTab;
+        if (filterParam && filterTabs.some(tab => tab.key === filterParam)) {
+            setActiveFilter(filterParam);
+        }
+    }, [location.search]);
 
     const unreadCount = notifications.filter((n) => !n.read).length;
 

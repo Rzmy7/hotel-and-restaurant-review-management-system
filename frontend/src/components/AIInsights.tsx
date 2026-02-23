@@ -27,7 +27,7 @@ const AIInsights = () => {
             <Brain size={18} />
           </div>
           <div>
-            <h3 className="m-0 text-base font-bold text-gray-800">AI Analysis</h3>
+            <h3 className="m-0 text-base font-bold text-gray-800">AI Alert Intelligence</h3>
             <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider">Live Processing</p>
           </div>
         </div>
