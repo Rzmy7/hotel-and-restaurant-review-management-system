@@ -22,7 +22,7 @@ const MetricCard = ({
   const schemes = {
     blue: {
       bg: 'bg-blue-50',
-      icon: 'text-blue-600',
+      icon: 'text-[#4e80ee]',
       border: 'hover:border-blue-200'
     },
     amber: {

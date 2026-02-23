@@ -44,18 +44,18 @@ const AIInsights = () => {
         {/* Liked Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 px-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-[#4e80ee]"></div>
             <h4 className="m-0 text-[10px] font-black text-gray-400 uppercase tracking-widest">Key Strengths</h4>
           </div>
           <div className="space-y-2.5">
             {strengths.map((item) => (
-              <div key={item.label} className="p-3.5 bg-emerald-50/20 border border-emerald-100/30 rounded-xl hover:bg-emerald-50/40 transition-colors group/item">
+              <div key={item.label} className="p-3.5 bg-blue-50/20 border border-blue-100/30 rounded-xl hover:bg-blue-50/40 transition-colors group/item">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[13px] font-black text-gray-800">{item.label}</span>
-                  <ThumbsUp size={12} className="text-emerald-500 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                  <ThumbsUp size={12} className="text-[#4e80ee] opacity-0 group-hover/item:opacity-100 transition-opacity" />
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[9px] font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded uppercase tracking-widest">Impact: {item.impact}</span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-100 text-[#4e80ee] rounded uppercase tracking-widest">Impact: {item.impact}</span>
                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{item.freq} mention rate</span>
                 </div>
               </div>

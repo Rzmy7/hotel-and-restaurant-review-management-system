@@ -144,7 +144,7 @@ const SourceComparison: React.FC = () => {
 
                 <div className="flex items-center gap-4 mt-4 sm:mt-0 bg-gray-50/50 px-4 py-2.5 rounded-xl border border-gray-100">
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <div className="w-2 h-2 rounded-full bg-[#4e80ee]" />
                         <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Positive</span>
                     </div>
                     <div className="flex items-center gap-2">

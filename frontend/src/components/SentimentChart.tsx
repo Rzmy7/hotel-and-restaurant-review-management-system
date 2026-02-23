@@ -20,8 +20,8 @@ const SentimentChart = () => {
           <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md">
             <defs>
               <linearGradient id="posGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="100%" stopColor="#34d399" />
+                <stop offset="0%" stopColor="#4e80ee" />
+                <stop offset="100%" stopColor="#7ba3f5" />
               </linearGradient>
               <linearGradient id="neuGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#94A3B8" />
@@ -63,14 +63,14 @@ const SentimentChart = () => {
 
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
             <p className="m-0 text-4xl font-black text-gray-900 tracking-tighter">68<span className="text-xl">%</span></p>
-            <p className="mt-0.5 text-[10px] uppercase font-black text-emerald-500 tracking-widest">Positive</p>
+            <p className="mt-0.5 text-[10px] uppercase font-black text-[#4e80ee] tracking-widest">Positive</p>
           </div>
         </div>
 
         {/* Premium Legend */}
         <div className="flex flex-col gap-3 flex-1 w-full">
-          <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-emerald-100 hover:bg-emerald-50/30 transition-all duration-300">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform">
+          <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all duration-300">
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] group-hover:scale-110 transition-transform">
               <Smile size={20} strokeWidth={2.5} />
             </div>
             <div className="flex-1">
@@ -78,7 +78,7 @@ const SentimentChart = () => {
               <p className="text-sm font-black text-gray-900">848 reviews</p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-black text-emerald-600">68%</p>
+              <p className="text-lg font-black text-[#4e80ee]">68%</p>
             </div>
           </div>
 

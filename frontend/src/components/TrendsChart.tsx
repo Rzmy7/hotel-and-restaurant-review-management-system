@@ -13,7 +13,7 @@ const TrendsChart = () => {
 
             <div className="relative h-[220px] mb-10 mt-4 px-10 group/chart">
                 {/* Y-Axis Labels - Sentiment % (Left) */}
-                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between py-0 text-[10px] font-black text-blue-500/80 pr-2 items-end h-[200px]">
+                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between py-0 text-[10px] font-black text-[#4e80ee]/80 pr-2 items-end h-[200px]">
                     <span>100%</span>
                     <span>75%</span>
                     <span>50%</span>
@@ -36,15 +36,15 @@ const TrendsChart = () => {
                     <span className="absolute left-[25%] -translate-x-1/2 hover:text-gray-500 cursor-default transition-colors text-blue-400/30">Mar 2026</span>
                     <span className="absolute left-[50%] -translate-x-1/2 hover:text-gray-500 cursor-default transition-colors">May 2026</span>
                     <span className="absolute left-[75%] -translate-x-1/2 hover:text-gray-500 cursor-default transition-colors">Jun 2026</span>
-                    <span className="absolute right-0 hover:text-gray-500 cursor-default transition-colors text-blue-600 font-bold">Jul 2026</span>
+                    <span className="absolute right-0 hover:text-gray-500 cursor-default transition-colors text-[#4e80ee] font-bold">Jul 2026</span>
                 </div>
 
                 <svg viewBox="0 0 600 200" preserveAspectRatio="none" className="w-full h-[200px] overflow-visible">
                     <defs>
                         <linearGradient id="sentimentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                            <stop offset="60%" stopColor="#3b82f6" stopOpacity="0.05" />
-                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#4e80ee" stopOpacity="0.25" />
+                            <stop offset="60%" stopColor="#4e80ee" stopOpacity="0.05" />
+                            <stop offset="100%" stopColor="#4e80ee" stopOpacity="0" />
                         </linearGradient>
                         <linearGradient id="countGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.15" />
@@ -79,7 +79,7 @@ const TrendsChart = () => {
                     />
                     <path
                         d="M0,160 C50,155 100,140 150,130 C200,120 250,110 300,100 C350,90 400,80 450,70 C500,60 550,50 600,40"
-                        fill="none" stroke="#3b82f6" strokeWidth="3.5" strokeLinecap="round"
+                        fill="none" stroke="#4e80ee" strokeWidth="3.5" strokeLinecap="round"
                     />
 
                     {/* Key Data Markers - Elite Glow Style */}
@@ -88,12 +88,12 @@ const TrendsChart = () => {
                         return (
                             <g key={i} className="cursor-pointer group/marker">
                                 {/* Glow effect */}
-                                <circle cx={x} cy={heights[i]} r="12" fill="#3b82f6" fillOpacity="0.1" className="scale-0 group-hover/marker:scale-100 transition-transform duration-300" />
-                                <circle cx={x} cy={heights[i]} r="8" fill="#3b82f6" fillOpacity="0.1" />
+                                <circle cx={x} cy={heights[i]} r="12" fill="#4e80ee" fillOpacity="0.1" className="scale-0 group-hover/marker:scale-100 transition-transform duration-300" />
+                                <circle cx={x} cy={heights[i]} r="8" fill="#4e80ee" fillOpacity="0.1" />
                                 {/* Main point */}
                                 <circle
                                     cx={x} cy={heights[i]} r="5"
-                                    fill="white" stroke="#3b82f6" strokeWidth="3"
+                                    fill="white" stroke="#4e80ee" strokeWidth="3"
                                     className="drop-shadow-sm transition-all duration-300 group-hover/marker:r-6"
                                 />
                             </g>
@@ -115,7 +115,7 @@ const TrendsChart = () => {
 
                     {/* Intelligence Legend with Precise Hover Explanation */}
                     <div className="flex items-center gap-2 group cursor-help relative">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
                         <div className="flex flex-col">
                             <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">AI Sentiment</span>
                             <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Success Rate</span>
