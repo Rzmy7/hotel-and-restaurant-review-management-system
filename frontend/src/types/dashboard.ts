@@ -9,7 +9,8 @@ export interface MetricTrend {
 
 export interface ChartDataPoint {
     label: string;
-    value: number;
+    volume: number;
+    sentiment: number;
 }
 
 export interface Review {
