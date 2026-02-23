@@ -64,14 +64,14 @@ const CategoryPerformance = () => {
                 </div>
                 <div>
                   <span className="text-sm font-bold text-gray-800 block leading-tight">{category.name}</span>
-                  <span className="text-[11px] text-gray-400 font-medium">{category.count} reviews</span>
+                  <span className="text-xs text-gray-400 font-medium">{category.count} reviews</span>
                 </div>
               </div>
               <div className="text-right">
                 <span className="text-sm font-bold text-gray-800 block leading-tight">{category.score}%</span>
                 <div className="flex items-center gap-1 justify-end">
                   {getTrendIcon(category.trendType)}
-                  <span className={`text-[11px] font-semibold ${category.trendType === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <span className={`text-xs font-semibold ${category.trendType === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {category.trend}
                   </span>
                 </div>
@@ -94,14 +94,14 @@ const CategoryPerformance = () => {
         ))}
       </div>
 
-      {/* Insights Section to fill white space */}
+      {/* Insights Section to fill white space
       <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-2 gap-4">
         <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
           <div className="flex items-center gap-2 mb-2">
             <ThumbsUp size={14} className="text-emerald-600" />
             <span className="text-xs font-bold text-emerald-800">Key Strength</span>
           </div>
-          <p className="text-[11px] text-emerald-700 leading-relaxed font-medium">
+          <p className="text-xs text-emerald-700 leading-relaxed font-medium">
             Location continues to outperform with a consistent 92% approval rating.
           </p>
         </div>
@@ -111,11 +111,14 @@ const CategoryPerformance = () => {
             <ThumbsDown size={14} className="text-rose-600" />
             <span className="text-xs font-bold text-rose-800">Needs Attention</span>
           </div>
-          <p className="text-[11px] text-rose-700 leading-relaxed font-medium">
+          <p className="text-xs text-rose-700 leading-relaxed font-medium">
             Food quality has improved, but cleanliness saw a 1.2% dip this month.
           </p>
         </div>
       </div>
+
+       */}
+
     </div>
   );
 };
