@@ -3,15 +3,13 @@ import { TrendingUp } from 'lucide-react';
 
 const TrendsChart = () => {
     return (
-        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex justify-between items-start mb-8">
                 <div>
-                    <h3 className="m-0 text-sm font-black text-gray-900 uppercase tracking-widest">Review Trends</h3>
-                    <p className="mt-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Advanced Analytical Dashboard</p>
+                    <h3 className="m-0 text-sm font-black text-gray-700 uppercase tracking-widest">Review Trends</h3>
+                    <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider">Historical Analytics</p>
                 </div>
-
             </div>
-
 
             <div className="relative h-[220px] mb-10 mt-4 px-10 group/chart">
                 {/* Y-Axis Labels - Sentiment % (Left) */}
@@ -64,8 +62,6 @@ const TrendsChart = () => {
                         <line key={x} x1={x} y1="0" x2={x} y2="200" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 2" />
                     ))}
 
-
-
                     {/* Review Count Area (Slate) - Smoothed Line */}
                     <path
                         d="M0,120 C50,118 100,110 150,115 C200,120 250,125 300,118 C350,110 400,122 450,115 C500,105 550,110 600,100 L600,200 L0,200 Z"
@@ -112,16 +108,8 @@ const TrendsChart = () => {
                     <div className="flex items-center gap-2 group cursor-help relative">
                         <div className="w-2.5 h-2.5 rounded-sm border border-slate-300 bg-slate-50 group-hover:rotate-45 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest leading-none">Volume</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Reviews</span>
-                        </div>
-                        {/* Hover Explanation Card */}
-                        <div className="absolute bottom-full left-0 mb-4 w-56 p-4 bg-white/95 backdrop-blur-md border border-gray-100 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-50">
-                            <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-2 border-b border-gray-100 pb-2">Review Volume</h4>
-                            <p className="text-[10px] leading-relaxed text-gray-500 font-medium whitespace-normal">
-                                Tracks the <span className="text-slate-900 font-bold">total quantity</span> of feedback. High volume peaks often correlate with peak seasons or successful marketing campaigns.
-                            </p>
-                            <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
+                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">Volume</span>
+                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Total Reviews</span>
                         </div>
                     </div>
 
@@ -129,20 +117,11 @@ const TrendsChart = () => {
                     <div className="flex items-center gap-2 group cursor-help relative">
                         <div className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest leading-none">Alerts</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Notifications</span>
-                        </div>
-                        {/* Hover Explanation Card */}
-                        <div className="absolute bottom-full left-0 mb-4 w-56 p-4 bg-white/95 backdrop-blur-md border border-gray-100 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-50">
-                            <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 border-b border-blue-50 pb-2">AI Alerts</h4>
-                            <p className="text-[10px] leading-relaxed text-gray-500 font-medium whitespace-normal">
-                                The <span className="text-blue-600 font-bold">AI-driven alert system</span>. Monitors critical feedback and identifies urgent issues that require immediate attention.
-                            </p>
-                            <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-r border-b border-gray-100 rotate-45" />
+                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">AI Sentiment</span>
+                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Success Rate</span>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     );

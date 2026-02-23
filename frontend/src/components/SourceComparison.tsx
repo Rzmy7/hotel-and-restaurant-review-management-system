@@ -130,26 +130,26 @@ const SourceComparison: React.FC = () => {
     let angle = -90;
 
     return (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm overflow-hidden relative">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 border-b border-gray-50 pb-5">
+        <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm overflow-hidden relative transition-all duration-300 hover:shadow-md">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 border-b border-gray-50 pb-8">
                 <div>
-                    <h3 className="m-0 text-base font-bold text-gray-900 flex items-center gap-2">
+                    <h3 className="m-0 text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
                         Source Comparison
                         <Info size={14} className="text-gray-300 cursor-help" />
                     </h3>
-                    <p className="m-0 text-[11px] text-gray-500 font-medium uppercase tracking-tight mt-1">
+                    <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">
                         {rawSources.length} sources identified • Top performance clustering
                     </p>
                 </div>
 
-                <div className="flex items-center gap-5 mt-4 sm:mt-0 bg-gray-50/50 px-4 py-2 rounded-lg border border-gray-100">
+                <div className="flex items-center gap-4 mt-4 sm:mt-0 bg-gray-50/50 px-4 py-2.5 rounded-xl border border-gray-100">
                     <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-1 rounded-full bg-emerald-500" />
-                        <span className="text-[10px] text-gray-600 font-bold uppercase tracking-wider">Pos</span>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Positive</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-1 rounded-full bg-rose-500" />
-                        <span className="text-[10px] text-gray-600 font-bold uppercase tracking-wider">Neg</span>
+                        <div className="w-2 h-2 rounded-full bg-rose-500" />
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Negative</span>
                     </div>
                 </div>
             </div>
