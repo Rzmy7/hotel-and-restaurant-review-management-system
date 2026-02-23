@@ -94,7 +94,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = (_props) => {
           <button
             className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${showProfile
               ? 'bg-blue-600 text-white border-blue-200 ring-4 ring-blue-50 scale-105'
-              : 'bg-gray-900 text-white border-transparent hover:scale-105 active:scale-95'
+              : 'bg-blue-500 text-white border-transparent hover:scale-105 active:scale-95'
               }`}
             onClick={toggleProfile}
           >
