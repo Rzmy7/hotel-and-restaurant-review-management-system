@@ -1,30 +1,92 @@
+import React from 'react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+
 interface MetricCardProps {
   icon: React.ReactNode;
   label: string;
   value: string;
   change?: string;
   changeType?: 'up' | 'down' | 'neutral';
+  colorScheme?: 'blue' | 'amber' | 'indigo' | 'rose' | 'emerald';
 }
 
-const MetricCard = ({ icon, label, value, change, changeType = 'neutral' }: MetricCardProps) => {
-  const changeColors = {
-    up: "text-emerald-600 bg-emerald-100",
-    down: "text-red-600 bg-red-100",
-    neutral: "text-gray-500 bg-gray-100"
+const MetricCard = ({
+  icon,
+  label,
+  value,
+  change,
+  changeType = 'neutral',
+  colorScheme = 'blue'
+}: MetricCardProps) => {
+
+  const schemes = {
+    blue: {
+      bg: 'bg-blue-50',
+      icon: 'text-blue-600',
+      border: 'hover:border-blue-200'
+    },
+    amber: {
+      bg: 'bg-amber-50',
+      icon: 'text-amber-600',
+      border: 'hover:border-amber-200'
+    },
+    indigo: {
+      bg: 'bg-indigo-50',
+      icon: 'text-indigo-600',
+      border: 'hover:border-indigo-200'
+    },
+    rose: {
+      bg: 'bg-rose-50',
+      icon: 'text-rose-600',
+      border: 'hover:border-rose-200'
+    },
+    emerald: {
+      bg: 'bg-emerald-50',
+      icon: 'text-emerald-600',
+      border: 'hover:border-emerald-200'
+    }
   };
 
+  const changeStyles = {
+    up: {
+      text: "text-emerald-600",
+      bg: "bg-emerald-50",
+      icon: <TrendingUp size={12} className="stroke-[3px]" />
+    },
+    down: {
+      text: "text-rose-600",
+      bg: "bg-rose-50",
+      icon: <TrendingDown size={12} className="stroke-[3px]" />
+    },
+    neutral: {
+      text: "text-gray-500",
+      bg: "bg-gray-50",
+      icon: <Minus size={12} className="stroke-[3px]" />
+    }
+  };
+
+  const scheme = schemes[colorScheme];
+  const trend = changeStyles[changeType];
+
   return (
-    <div className="flex items-center gap-3.5 p-[18px] bg-white border border-gray-200 rounded-xl transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-      <div className="w-11 h-11 grid place-items-center bg-blue-50 text-blue-500 rounded-[10px]">{icon}</div>
-      <div className="flex-1">
-        <p className="mb-1.5 text-[13px] text-gray-500 font-medium">{label}</p>
-        <div className="flex items-baseline gap-2">
-          <span className="text-[26px] font-bold text-gray-800">{value}</span>
-          {change && (
-            <span className={`text-[13px] font-semibold px-2 py-1 rounded-md ${changeColors[changeType]}`}>
-              {change}
-            </span>
-          )}
+    <div className={`p-4 bg-white border border-gray-100 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/40 hover:-translate-y-0.5 group ${scheme.border} relative overflow-hidden`}>
+      <div className="flex justify-between items-center mb-3">
+        <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${scheme.bg} ${scheme.icon} transition-transform duration-300 group-hover:scale-105`}>
+          {icon}
+        </div>
+
+        {change && (
+          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${trend.bg} ${trend.text} border border-transparent`}>
+            {trend.icon}
+            <span>{change}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-0.5">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-bold text-gray-900 tracking-tight">{value}</span>
         </div>
       </div>
     </div>

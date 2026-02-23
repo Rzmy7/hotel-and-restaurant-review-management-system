@@ -31,11 +31,13 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
             value="4.3"
             change="+0.2"
             changeType="up"
+            colorScheme="amber"
           />
           <MetricCard
             icon={<Link2 size={20} />}
             label="Active Sources"
             value="3"
+            colorScheme="blue"
           />
           <MetricCard
             icon={<MessageSquare size={20} />}
@@ -43,6 +45,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
             value="1,247"
             change="+12%"
             changeType="up"
+            colorScheme="indigo"
           />
           <MetricCard
             icon={<Frown size={20} />}
@@ -50,6 +53,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
             value="89"
             change="-3%"
             changeType="down"
+            colorScheme="rose"
           />
         </div>
 
