@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { X, Globe, Link, Key, Calendar, ShieldCheck, Zap } from 'lucide-react';
-import { SourcePlatform } from '../types/sources';
+import { X, Globe, Link, Key, Calendar, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
+import type { SourcePlatform } from '../types/sources';
 
 interface AddSourceModalProps {
   isOpen: boolean;
@@ -70,8 +70,8 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
                   key={p}
                   onClick={() => setPlatform(p)}
                   className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
-                      ? 'border-blue-600 bg-blue-50/50 text-blue-700'
-                      : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
+                    ? 'border-blue-600 bg-blue-50/50 text-blue-700'
+                    : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
                     }`}
                 >
                   {p}

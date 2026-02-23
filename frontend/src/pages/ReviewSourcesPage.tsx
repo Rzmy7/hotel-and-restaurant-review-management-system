@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { sourcesService } from '../services/sourcesService';
-import { Source, SyncLog, SourceStats as SourceStatsType } from '../types/sources';
+import type { Source, SyncLog, SourceStats as SourceStatsType } from '../types/sources';
 
 // New Components
 import SourcesTable from '../components/SourcesTable';
@@ -194,8 +194,8 @@ const ReviewSourcesPage = () => {
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusFilter === status
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-900'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
                     }`}
                 >
                   {status}

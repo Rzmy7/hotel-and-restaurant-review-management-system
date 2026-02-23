@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Play,
   Pause,
@@ -6,13 +6,10 @@ import {
   Trash2,
   AlertCircle,
   Calendar,
-  CheckCircle2,
-  Clock,
   ExternalLink,
-  MoreVertical,
   RefreshCw
 } from 'lucide-react';
-import { Source } from '../types/sources';
+import type { Source } from '../types/sources';
 
 interface SourcesTableProps {
   sources: Source[];
@@ -26,7 +23,7 @@ interface SourcesTableProps {
 const PAGE_SIZE = 8;
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
-  const baseClasses = "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm border transition-transform group-hover:scale-105";
+  const baseClasses = "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm border transition-all";
 
   switch (platform) {
     case 'TripAdvisor':
@@ -174,13 +171,13 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-1000 ${source.successRate > 90 ? 'bg-emerald-500' :
-                              source.successRate > 70 ? 'bg-amber-500' : 'bg-rose-500'
+                            source.successRate > 70 ? 'bg-amber-500' : 'bg-rose-500'
                             }`}
                           style={{ width: `${source.successRate}%` }}
                         />
                       </div>
                       <span className={`text-[13px] font-bold ${source.successRate > 90 ? 'text-emerald-600' :
-                          source.successRate > 70 ? 'text-amber-600' : 'text-rose-600'
+                        source.successRate > 70 ? 'text-amber-600' : 'text-rose-600'
                         }`}>
                         {source.successRate}%
                       </span>
@@ -189,7 +186,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
 
                   {/* Actions */}
                   <td className="px-6 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onSync(source.id)}
                         disabled={source.status === 'Paused'}
@@ -224,10 +221,6 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       >
                         <Trash2 size={18} />
                       </button>
-                    </div>
-                    {/* Placeholder for no-hover state to keep row alignment if needed */}
-                    <div className="p-2 h-9 w-9 inline-block group-hover:hidden">
-                      <MoreVertical size={18} className="text-gray-300" />
                     </div>
                   </td>
                 </tr>
