@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 // Define the shape of a Review Object
@@ -43,19 +44,31 @@ interface ReviewsContextType {
 const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
 
 export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [filters, setFilters] = useState<FilterState>({
-        search: '',
-        rating: [],
-        sentiment: [],
-        source: [],
-        category: [],
-        language: [],
-        hasAiReply: false
-    });
+    // Initialize filters from URL
+    const initialFilters = useMemo(() => {
+        const getParam = (key: string) => searchParams.getAll(key);
+        return {
+            search: searchParams.get('q') || '',
+            rating: getParam('rating').map(Number),
+            sentiment: getParam('sentiment'),
+            source: getParam('source'),
+            category: getParam('category'),
+            language: getParam('language'),
+            hasAiReply: searchParams.get('ai_reply') === 'true'
+        };
+    }, [searchParams]);
+
+    const [filters, setFilters] = useState<FilterState>(initialFilters);
+
+    // Sync state with URL when it changes (handle back/forward browser buttons)
+    useEffect(() => {
+        setFilters(initialFilters);
+    }, [initialFilters]);
 
     const [selectedReview, setSelectedReview] = useState<Review | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,14 +126,12 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
 
             // Language
             if (filters.language.length > 0) {
-                // Determine language (default to English if undefined)
                 const lang = review.language || 'English';
                 if (!filters.language.includes(lang)) return false;
             }
 
             // Has AI Reply
             if (filters.hasAiReply) {
-                // specific logic: matches Replied or AI Draft
                 if (review.status === 'Pending') return false;
             }
 
@@ -128,25 +139,42 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         });
     }, [reviews, filters]);
 
+    // Helper to update URL params
+    const updateUrlParams = (newFilters: FilterState) => {
+        const params = new URLSearchParams();
+        if (newFilters.search) params.set('q', newFilters.search);
+        newFilters.rating.forEach(v => params.append('rating', v.toString()));
+        newFilters.sentiment.forEach(v => params.append('sentiment', v));
+        newFilters.source.forEach(v => params.append('source', v));
+        newFilters.category.forEach(v => params.append('category', v));
+        newFilters.language.forEach(v => params.append('language', v));
+        if (newFilters.hasAiReply) params.set('ai_reply', 'true');
+        setSearchParams(params);
+    };
+
     // Actions
     const setSearchQuery = (query: string) => {
-        setFilters(prev => ({ ...prev, search: query }));
+        const newFilters = { ...filters, search: query };
+        setFilters(newFilters);
+        updateUrlParams(newFilters);
     };
 
     const toggleFilter = (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => {
-        setFilters(prev => {
-            const currentValues = prev[type] as any[];
-            const exists = currentValues.includes(value);
-            const newValues = exists
-                ? currentValues.filter(v => v !== value)
-                : [...currentValues, value];
+        const currentValues = filters[type] as any[];
+        const exists = currentValues.includes(value);
+        const newValues = exists
+            ? currentValues.filter(v => v !== value)
+            : [...currentValues, value];
 
-            return { ...prev, [type]: newValues };
-        });
+        const newFilters = { ...filters, [type]: newValues };
+        setFilters(newFilters);
+        updateUrlParams(newFilters);
     };
 
     const toggleAiReplyFilter = () => {
-        setFilters(prev => ({ ...prev, hasAiReply: !prev.hasAiReply }));
+        const newFilters = { ...filters, hasAiReply: !filters.hasAiReply };
+        setFilters(newFilters);
+        updateUrlParams(newFilters);
     };
 
     const openReview = (review: Review) => {

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Smile, Meh, Frown } from 'lucide-react';
 import type { SentimentDistribution } from '../types/dashboard';
 
@@ -6,7 +7,12 @@ interface SentimentChartProps {
 }
 
 const SentimentChart = ({ data }: SentimentChartProps) => {
+  const navigate = useNavigate();
   const { positive, neutral, negative } = data;
+
+  const handleFilterClick = (sentiment: string) => {
+    navigate(`/reviews?sentiment=${sentiment}`);
+  };
 
   // Calculate dash arrays based on percentages
   const totalLength = 515; // Circumference approx
@@ -52,7 +58,8 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
               stroke="url(#posGradient)" strokeWidth="20"
               strokeDasharray={`${posDash} ${totalLength - posDash}`} strokeDashoffset="0"
               transform="rotate(-90 100 100)"
-              className="transition-all duration-1000 ease-out"
+              className="transition-all duration-1000 ease-out cursor-pointer hover:brightness-110"
+              onClick={() => handleFilterClick('Positive')}
             />
             {/* Neutral Segment */}
             <circle
@@ -60,7 +67,8 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
               stroke="url(#neuGradient)" strokeWidth="20"
               strokeDasharray={`${neuDash} ${totalLength - neuDash}`} strokeDashoffset={-posDash}
               transform="rotate(-90 100 100)"
-              className="transition-all duration-1000 ease-out"
+              className="transition-all duration-1000 ease-out cursor-pointer hover:brightness-110"
+              onClick={() => handleFilterClick('Neutral')}
             />
             {/* Negative Segment */}
             <circle
@@ -68,10 +76,11 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
               stroke="url(#negGradient)" strokeWidth="20"
               strokeDasharray={`${negDash} ${totalLength - negDash}`} strokeDashoffset={-(posDash + neuDash)}
               transform="rotate(-90 100 100)"
-              className="transition-all duration-1000 ease-out"
+              className="transition-all duration-1000 ease-out cursor-pointer hover:brightness-110"
+              onClick={() => handleFilterClick('Negative')}
             />
           </svg>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
             <p className="m-0 text-4xl font-black text-gray-900 tracking-tighter">{positive.percentage}<span className="text-xl">%</span></p>
             <p className="mt-0.5 text-[10px] uppercase font-black text-[#4e80ee] tracking-widest">Positive</p>
           </div>
@@ -79,7 +88,10 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
 
         {/* Premium Legend */}
         <div className="flex flex-col gap-3 flex-1 w-full">
-          <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all duration-300">
+          <button
+            onClick={() => handleFilterClick('Positive')}
+            className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all duration-300 cursor-pointer"
+          >
             <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] group-hover:scale-110 transition-transform">
               <Smile size={20} strokeWidth={2.5} />
             </div>
@@ -90,9 +102,12 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
             <div className="text-right">
               <p className="text-lg font-black text-[#4e80ee]">{positive.percentage}%</p>
             </div>
-          </div>
+          </button>
 
-          <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-300">
+          <button
+            onClick={() => handleFilterClick('Neutral')}
+            className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-300 cursor-pointer"
+          >
             <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 group-hover:scale-110 transition-transform">
               <Meh size={20} strokeWidth={2.5} />
             </div>
@@ -103,9 +118,12 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
             <div className="text-right">
               <p className="text-lg font-black text-slate-400">{neutral.percentage}%</p>
             </div>
-          </div>
+          </button>
 
-          <div className="group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-rose-100 hover:bg-rose-50/30 transition-all duration-300">
+          <button
+            onClick={() => handleFilterClick('Negative')}
+            className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-rose-100 hover:bg-rose-50/30 transition-all duration-300 cursor-pointer"
+          >
             <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 group-hover:scale-110 transition-transform">
               <Frown size={20} strokeWidth={2.5} />
             </div>
@@ -116,7 +134,7 @@ const SentimentChart = ({ data }: SentimentChartProps) => {
             <div className="text-right">
               <p className="text-lg font-black text-rose-500">{negative.percentage}%</p>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Star, Clock, Info, Layers } from 'lucide-react';
 import type { SourceData } from '../types/dashboard';
 
@@ -32,9 +33,15 @@ const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number
 );
 
 const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources }) => {
+    const navigate = useNavigate();
     const [hoveredSource, setHoveredSource] = useState<string | null>(null);
 
     const totalReviews = rawSources.reduce((s, x) => s + x.reviews, 0);
+
+    const handleSourceClick = (sourceName: string) => {
+        if (sourceName === 'Others') return; // Others is an aggregate
+        navigate(`/reviews?source=${sourceName}`);
+    };
 
     const processedSources = useMemo(() => {
         const sorted = [...rawSources].sort((a, b) => b.reviews - a.reviews);
@@ -119,7 +126,8 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                         fill={s.color}
                                         onMouseEnter={() => setHoveredSource(s.name)}
                                         onMouseLeave={() => setHoveredSource(null)}
-                                        className={`transition-all duration-300 cursor-default ${isHovered ? 'brightness-110' : 'opacity-90 hover:opacity-100'}`}
+                                        onClick={() => handleSourceClick(s.name)}
+                                        className={`transition-all duration-300 ${s.name !== 'Others' ? 'cursor-pointer' : 'cursor-default'} ${isHovered ? 'brightness-110' : 'opacity-90 hover:opacity-100'}`}
                                     />
                                 );
                             })}
@@ -137,13 +145,14 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                         const isCompact = processedSources.length > 4;
 
                         return (
-                            <div
+                            <button
                                 key={s.name}
                                 onMouseEnter={() => setHoveredSource(s.name)}
                                 onMouseLeave={() => setHoveredSource(null)}
-                                className={`flex flex-col ${isCompact ? 'p-3' : 'p-4'} rounded-xl border-2 transition-all duration-300 ${isHovered ? `${s.bgColor} ${s.borderColor} shadow-md scale-[1.02]` : 'bg-gray-50/30 border-transparent hover:bg-gray-50/60'}`}
+                                onClick={() => handleSourceClick(s.name)}
+                                className={`flex flex-col text-left group/source ${isCompact ? 'p-3' : 'p-4'} rounded-xl border-2 transition-all duration-300 focus:outline-none ${isHovered ? `${s.bgColor} ${s.borderColor} shadow-md scale-[1.02]` : 'bg-gray-50/30 border-transparent hover:bg-gray-50/60'} ${s.name !== 'Others' ? 'cursor-pointer' : 'cursor-default'}`}
                             >
-                                <div className={`flex items-center justify-between ${isCompact ? 'mb-2' : 'mb-4'}`}>
+                                <div className={`flex items-center justify-between w-full ${isCompact ? 'mb-2' : 'mb-4'}`}>
                                     <div className="flex items-center gap-2.5 overflow-hidden">
                                         {s.isOthers ? (
                                             <Layers size={14} className="text-slate-500 shrink-0" />
@@ -160,7 +169,7 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                     </div>
                                 </div>
 
-                                <div className={`${isCompact ? 'space-y-2' : 'space-y-4'}`}>
+                                <div className={`w-full ${isCompact ? 'space-y-2' : 'space-y-4'}`}>
                                     <div className="flex items-end justify-between text-[10px] font-bold pb-1 border-b border-black/5">
                                         <div className="flex items-baseline gap-1">
                                             <span className={`${isCompact ? 'text-[14px]' : 'text-lg'} text-gray-900 font-black leading-none`}>{s.pct}%</span>
@@ -177,7 +186,7 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                     <div className={`${isCompact ? 'space-y-2' : 'space-y-3'}`}>
                                         <div className="h-1.5 w-full bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
                                             <div
-                                                className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-800"
+                                                className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-800 group-hover/source:brightness-110"
                                                 style={{
                                                     width: `${s.pct}%`,
                                                     opacity: isHovered ? 1 : 0.85
@@ -194,7 +203,7 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         );
                     })}
                 </div>
