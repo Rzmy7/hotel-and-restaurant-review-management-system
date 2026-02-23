@@ -9,6 +9,12 @@ import {
 } from 'lucide-react';
 import type { Source, SourceStatus, SyncSchedule } from '../types/sources';
 
+// Brand Logos
+import BookingLogo from '../assets/source-logo/Booking.jpeg';
+import AgodaLogo from '../assets/source-logo/agoda.jpeg';
+import AirbnbLogo from '../assets/source-logo/airbnb.jpeg';
+import TripAdvisorLogo from '../assets/source-logo/tripAdvisor.jpeg';
+
 interface EditSourceModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +42,18 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
 
   if (!isOpen || !source) return null;
 
+  const getLogo = () => {
+    switch (source.platform) {
+      case 'TripAdvisor': return TripAdvisorLogo;
+      case 'Booking.com': return BookingLogo;
+      case 'Agoda': return AgodaLogo;
+      case 'Airbnb': return AirbnbLogo;
+      default: return null;
+    }
+  };
+
+  const logo = getLogo();
+
   const handleSave = () => {
     onSave({
       ...source,
@@ -53,8 +71,12 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
         {/* Header - Aligned with Dashboard branding */}
         <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg bg-blue-50 text-[#4e80ee] border border-blue-100/50 shadow-sm uppercase tracking-tighter`}>
-              {source.platform[0]}
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg bg-blue-50 text-[#4e80ee] border border-blue-100/50 shadow-sm uppercase tracking-tighter overflow-hidden bg-white`}>
+              {logo ? (
+                <img src={logo} alt={source.platform} className="w-full h-full object-cover" />
+              ) : (
+                source.platform[0]
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">

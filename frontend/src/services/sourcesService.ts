@@ -1,4 +1,4 @@
-import { Source, SyncLog, SourceStats } from '../types/sources';
+import type { Source, SyncLog, SourceStats } from '../types/sources';
 
 // Mock Data
 const MOCK_SOURCES: Source[] = [
@@ -49,6 +49,18 @@ const MOCK_SOURCES: Source[] = [
         errorCount: 3,
         nextRunAt: new Date(Date.now() + 1000 * 60 * 10).toISOString(),
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    },
+    {
+        id: 5,
+        platform: 'Agoda',
+        status: 'Active',
+        lastSyncedAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+        syncSchedule: 'Hourly',
+        propertyUrl: 'https://agoda.com/hotel/5',
+        successRate: 92,
+        errorCount: 2,
+        nextRunAt: new Date(Date.now() + 1000 * 60 * 45).toISOString(),
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
     },
 ];
 

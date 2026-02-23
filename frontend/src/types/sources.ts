@@ -1,4 +1,4 @@
-export type SourcePlatform = 'TripAdvisor' | 'Booking.com' | 'Google Reviews' | 'Airbnb' | 'Custom';
+export type SourcePlatform = 'TripAdvisor' | 'Booking.com' | 'Google Reviews' | 'Airbnb' | 'Agoda' | 'Custom';
 
 export type SourceStatus = 'Active' | 'Paused' | 'Error';
 

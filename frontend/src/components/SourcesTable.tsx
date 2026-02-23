@@ -11,6 +11,13 @@ import {
 } from 'lucide-react';
 import type { Source } from '../types/sources';
 
+// Brand Logos
+import BookingLogo from '../assets/source-logo/Booking.jpeg';
+import AgodaLogo from '../assets/source-logo/agoda.jpeg';
+import AirbnbLogo from '../assets/source-logo/airbnb.jpeg';
+import TripAdvisorLogo from '../assets/source-logo/tripAdvisor.jpeg';
+import GoogleLogo from '../assets/source-logo/Google.jpeg';
+
 interface SourcesTableProps {
   sources: Source[];
   onEdit: (source: Source, tab?: 'settings' | 'analytics') => void;
@@ -23,20 +30,30 @@ interface SourcesTableProps {
 const PAGE_SIZE = 8;
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
-  const baseClasses = "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm border transition-all";
+  const baseClasses = "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm border transition-all overflow-hidden bg-white";
 
-  switch (platform) {
-    case 'TripAdvisor':
-      return <div className={`${baseClasses} bg-[#34E0A1]/10 text-[#34E0A1] border-[#34E0A1]/20`}>T</div>;
-    case 'Booking.com':
-      return <div className={`${baseClasses} bg-[#003580]/10 text-[#003580] border-[#003580]/20`}>B</div>;
-    case 'Google Reviews':
-      return <div className={`${baseClasses} bg-white text-gray-700 border-gray-100 shadow-sm`}>G</div>;
-    case 'Airbnb':
-      return <div className={`${baseClasses} bg-[#FF5A5F]/10 text-[#FF5A5F] border-[#FF5A5F]/20`}>A</div>;
-    default:
-      return <div className={`${baseClasses} bg-gray-50 text-gray-400 border-gray-200`}>{platform[0]}</div>;
+  const getLogo = () => {
+    switch (platform) {
+      case 'TripAdvisor': return TripAdvisorLogo;
+      case 'Booking.com': return BookingLogo;
+      case 'Agoda': return AgodaLogo;
+      case 'Airbnb': return AirbnbLogo;
+      case 'Google Reviews': return GoogleLogo;
+      default: return null;
+    }
+  };
+
+  const logo = getLogo();
+
+  if (logo) {
+    return (
+      <div className={baseClasses}>
+        <img src={logo} alt={platform} className="w-full h-full object-cover" />
+      </div>
+    );
   }
+
+  return <div className={`${baseClasses} bg-gray-50 text-gray-400 border-gray-200`}>{platform[0]}</div>;
 };
 
 const StatusBadge = ({ status }: { status: Source['status'] }) => {
