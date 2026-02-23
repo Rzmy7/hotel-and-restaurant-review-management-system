@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { X, Globe, Link, Key, Calendar, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
-import type { SourcePlatform } from '../types/sources';
+import type { Source, SourcePlatform } from '../types/sources';
 
 interface AddSourceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (source: any) => void;
+  onSave: (source: Partial<Source>) => void;
 }
 
 const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
@@ -21,11 +21,11 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
   const handleSubmit = () => {
     if (!propertyUrl) return;
 
-    const newSource = {
+    const newSource: Partial<Source> = {
       platform,
       propertyUrl,
       syncSchedule: schedule,
-      status: sourceStatus ? 'Active' : 'Paused',
+      status: (sourceStatus ? 'Active' : 'Paused') as any,
     };
     onSave(newSource);
     onClose();

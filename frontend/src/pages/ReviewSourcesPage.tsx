@@ -237,7 +237,7 @@ const ReviewSourcesPage = () => {
         <EditSourceModal
           isOpen={isEditModalOpen}
           onClose={() => { setIsEditModalOpen(false); setSelectedSource(null); }}
-          source={selectedSource as any} // Temporary cast until EditSourceModal is updated
+          source={selectedSource}
           onSave={handleUpdateSource}
           onDelete={handleDeleteSource}
         />
