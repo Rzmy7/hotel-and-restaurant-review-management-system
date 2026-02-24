@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const SignUpPage = () => {
   const [fullName, setFullName] = useState('');
@@ -11,9 +12,17 @@ const SignUpPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [accountType, setAccountType] = useState<'tenant' | 'observer'>('tenant');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const auth = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (!auth.user) return;
+    const setupComplete = localStorage.getItem('setupComplete') !== 'false';
+    navigate(setupComplete ? '/dashboard' : '/setup');
+  }, [auth.user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       alert('Passwords do not match!');
@@ -23,8 +32,18 @@ const SignUpPage = () => {
       alert('Please accept the Terms of Service and Privacy Policy');
       return;
     }
-    console.log('Sign up attempt:', { fullName, email, password, accountType });
-    navigate('/setup');
+
+    setLoading(true);
+    try {
+      await auth.signup(fullName, email, password);
+      // signup auto-signs in (AuthContext persists user)
+      localStorage.setItem('setupComplete', 'false');
+      navigate('/setup');
+    } catch (err: any) {
+      alert(err.message || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const styles = {
@@ -341,9 +360,9 @@ const SignUpPage = () => {
 
           <p style={styles.loginText}>
             Already have an account?
-            <a href="/login" style={styles.loginLink}>
+            <Link to="/login" style={styles.loginLink}>
               Login
-            </a>
+            </Link>
           </p>
         </div>
       </div>
