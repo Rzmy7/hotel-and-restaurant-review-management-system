@@ -49,8 +49,8 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
       </div>
 
       <div className={`
-        flex flex-col overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ml-3
-        ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 ml-0'}
+        flex flex-col overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out
+        ${isExpanded ? 'opacity-100 w-auto ml-3' : 'opacity-0 w-0 ml-0'}
       `}>
         <span className="font-bold text-black text-base tracking-tight">ReviewHub</span>
         <span className="text-[11px] text-gray-400 font-medium">Grand Hotel NYC</span>
