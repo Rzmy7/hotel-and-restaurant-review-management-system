@@ -75,8 +75,8 @@
         "email": "hansiwickramage18@gmail.com",
         "password": "$2b$12$45TCuu4r6axSUWDfTefBducl2/yAnQRk1Zy1pUSbPBIg/bNJe2UwO",
         "google_id": null,
-        "reset_token": "06a8877530fc261092a1d3b8e2604251",
-        "reset_token_expiry": "2026-02-24T10:47:00.131963",
+        "reset_token": "8fd11e5d71022d1fba96e259f0f20efc",
+        "reset_token_expiry": "2026-02-24T11:10:49.000457",
         "role": "staff"
     },
     {
@@ -374,6 +374,16 @@
         "name": "omal",
         "email": "omal@gmail.com",
         "password": "$2b$12$QonBBUaqtaqkBeazL9C6H.wdoY63k5tTsjD2oo0Pt5o24mzpp1XLy",
+        "google_id": null,
+        "reset_token": null,
+        "reset_token_expiry": null,
+        "role": "staff"
+    },
+    {
+        "id": 39,
+        "name": "as",
+        "email": "as@gmail.com",
+        "password": "$2b$12$KofPZwQyTDSXs1ixm3NmM.2JTKBormHSQLLAszzp2R2VPTkSlRWAW",
         "google_id": null,
         "reset_token": null,
         "reset_token_expiry": null,

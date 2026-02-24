@@ -1,26 +1,40 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const auth = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (auth.user) navigate('/dashboard');
+  }, [auth.user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password, rememberMe });
-    navigate('/dashboard');
+    setLoading(true);
+    setError(null);
+    try {
+      await auth.login(email, password);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
-    console.log('Google login');
-  };
-
-  const handleFacebookLogin = () => {
-    console.log('Facebook login');
+    // Open backend Google OAuth flow (backend will redirect to Google)
+    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    window.location.href = `${apiBase}/login/google`;
   };
 
   const styles = {
@@ -47,6 +61,43 @@ const LoginPage = () => {
       padding: '48px 40px',
       width: '100%',
       maxWidth: '400px',
+    },
+    errorAlert: {
+      backgroundColor: '#fee2e2',
+      borderLeft: '4px solid #dc2626',
+      color: '#991b1b',
+      padding: '12px 16px',
+      borderRadius: '4px',
+      marginBottom: '20px',
+      fontSize: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      animation: 'slideIn 0.3s ease-in-out',
+    },
+    errorIcon: {
+      width: '20px',
+      height: '20px',
+      flexShrink: 0,
+      color: '#dc2626',
+    },
+    errorText: {
+      flex: 1,
+      fontWeight: 500,
+    },
+    errorClose: {
+      background: 'none',
+      border: 'none',
+      color: '#dc2626',
+      cursor: 'pointer',
+      fontSize: '18px',
+      padding: '0',
+      width: '20px',
+      height: '20px',
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     title: {
       fontSize: '28px',
@@ -192,9 +243,36 @@ const LoginPage = () => {
 
   return (
     <div style={styles.pageWrapper}>
+      <style>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
       <div style={styles.container}>
         <div style={styles.loginCard}>
           <h1 style={styles.title}>Login</h1>
+
+          {error && (
+            <div style={styles.errorAlert}>
+              <AlertCircle style={styles.errorIcon} />
+              <span style={styles.errorText}>{error}</span>
+              <button
+                type="button"
+                style={styles.errorClose}
+                onClick={() => setError(null)}
+                aria-label="Close alert"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div style={styles.formGroup}>
@@ -248,21 +326,29 @@ const LoginPage = () => {
                 />
                 <span style={styles.checkboxLabel}>Remember me</span>
               </label>
-              <a href="/forgot-password" style={styles.forgotPassword}>
+              <Link to="/forgot-password" style={styles.forgotPassword}>
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
-            <button type="submit" style={styles.signInButton}>
-              Sign In
+            <button
+              type="submit"
+              style={{
+                ...styles.signInButton,
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
           <p style={styles.signUpText}>
             Don't have an account?
-            <a href="/signup" style={styles.signUpLink}>
+            <Link to="/signup" style={styles.signUpLink}>
               Sign up
-            </a>
+            </Link>
           </p>
 
           <div style={styles.divider}>Or continue with</div>
@@ -292,16 +378,6 @@ const LoginPage = () => {
                 />
               </svg>
               Google
-            </button>
-            <button
-              type="button"
-              style={styles.socialButton}
-              onClick={handleFacebookLogin}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-              Facebook
             </button>
           </div>
         </div>
