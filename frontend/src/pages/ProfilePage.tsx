@@ -9,7 +9,7 @@ interface ProfilePageProps {
 }
 
 
-interface UserProfile {
+export interface UserProfile {
     firstName: string;
     lastName: string;
     email: string;

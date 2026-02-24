@@ -7,6 +7,7 @@ const FinishSetupPage = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
+    localStorage.setItem('setupComplete', 'true');
     navigate('/dashboard');
   };
 

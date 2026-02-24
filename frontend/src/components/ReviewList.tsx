@@ -3,6 +3,22 @@ import ReviewItem from "./ReviewItem";
 import ReviewDetailModal from "./ReviewDetailModal";
 import "./ReviewList.css";
 
+interface Review {
+  id: number | string;
+  rating: number;
+  userName: string;
+  reviewText: string;
+  sentiment: 'Positive' | 'Negative' | 'Neutral';
+  categories: string[];
+  source: string;
+  date: string;
+  status: 'Replied' | 'AI Draft' | 'Pending';
+}
+
+interface ReviewsApiResponse {
+  reviews: Review[];
+}
+
 // const ReviewList = () => {
 //   // 1. State for data, loading, and error handling
 //   const [reviews, setReviews] = useState([]);
@@ -83,11 +99,11 @@ import "./ReviewList.css";
 // };
 
 const ReviewList = () => {
-  const [selectedReview, setSelectedReview] = useState<any>(null);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -99,8 +115,8 @@ const ReviewList = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
-        setReviews(data);
+        const data: ReviewsApiResponse = await response.json();
+        setReviews(Array.isArray(data.reviews) ? data.reviews : []);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching reviews:", err);
@@ -121,7 +137,7 @@ const ReviewList = () => {
     return <div className="review-list-container" style={{color: 'red'}}>{error}</div>;
   }
 
-  const handleOpenReview = (review: any) => {
+  const handleOpenReview = (review: Review) => {
     setSelectedReview(review);
     setIsModalOpen(true);
   };

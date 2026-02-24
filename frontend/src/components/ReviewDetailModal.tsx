@@ -5,22 +5,23 @@ interface ReviewDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   review: {
-    id: string;
-    reviewerName: string;
+    id: string | number;
+    reviewerName?: string;
+    userName?: string;
     rating: number;
     date: string;
     reviewText: string;
     sentiment: "Positive" | "Negative" | "Neutral";
     categories: string[];
-    keyPhrases: string[];
-    summary: string;
-    platformReviewId: string;
-    language: string;
-    replyStatus: string;
-    firstSeen: string;
-    lastUpdated: string;
-    scrapedAt: string;
-    hasReply: string;
+    keyPhrases?: string[];
+    summary?: string;
+    platformReviewId?: string;
+    language?: string;
+    replyStatus?: string;
+    firstSeen?: string;
+    lastUpdated?: string;
+    scrapedAt?: string;
+    hasReply?: string;
     photos?: { id: number; src: string; alt: string }[];
   };
 }
@@ -54,7 +55,7 @@ const ReviewDetailModal = ({
         {/* Header */}
         <div className="review-modal-header">
           <div className="review-modal-title">
-            <h2>{review.reviewerName}</h2>
+            <h2>{review.reviewerName || review.userName || "Guest"}</h2>
             <button className="close-btn" onClick={onClose}>
               <X size={20} />
             </button>
@@ -134,7 +135,7 @@ const ReviewDetailModal = ({
             <div className="analysis-item">
               <span className="analysis-label">Key Phrases</span>
               <div className="key-phrases">
-                {review.keyPhrases.map((phrase, index) => (
+                {(review.keyPhrases ?? []).map((phrase, index) => (
                   <span key={index} className="key-phrase">
                     "{phrase}"
                   </span>
@@ -144,7 +145,7 @@ const ReviewDetailModal = ({
 
             <div className="analysis-item">
               <span className="analysis-label">Summary</span>
-              <p className="summary-text">{review.summary}</p>
+              <p className="summary-text">{review.summary || "No summary available."}</p>
             </div>
           </div>
 
@@ -185,32 +186,32 @@ const ReviewDetailModal = ({
               <div className="metadata-item">
                 <span className="metadata-label">Platform Review ID</span>
                 <span className="metadata-value">
-                  {review.platformReviewId}
+                  {review.platformReviewId || "-"}
                 </span>
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">Language</span>
-                <span className="metadata-value">{review.language}</span>
+                <span className="metadata-value">{review.language || "-"}</span>
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">Reply Status</span>
-                <span className="metadata-value">{review.replyStatus}</span>
+                <span className="metadata-value">{review.replyStatus || "-"}</span>
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">First Seen</span>
-                <span className="metadata-value">{review.firstSeen}</span>
+                <span className="metadata-value">{review.firstSeen || "-"}</span>
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">Last Updated</span>
-                <span className="metadata-value">{review.lastUpdated}</span>
+                <span className="metadata-value">{review.lastUpdated || "-"}</span>
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">Scraped At</span>
-                <span className="metadata-value">{review.scrapedAt}</span>
+                <span className="metadata-value">{review.scrapedAt || "-"}</span>
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">Has AI Reply</span>
-                <span className="metadata-value">{review.hasReply}</span>
+                <span className="metadata-value">{review.hasReply || "-"}</span>
               </div>
             </div>
           </div>

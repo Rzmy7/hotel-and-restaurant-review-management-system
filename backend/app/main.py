@@ -210,12 +210,16 @@ def login(payload: LoginModel):
 # ----------------------
 @app.get("/login/google")
 async def login_google(request: Request):
+    if not getattr(oauth, "google", None):
+        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
     redirect_uri = request.url_for("auth_google")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @app.get("/auth/google")
 async def auth_google(request: Request):
+    if not getattr(oauth, "google", None):
+        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
     token = await oauth.google.authorize_access_token(request)
     user_info = token.get("userinfo") or token
 

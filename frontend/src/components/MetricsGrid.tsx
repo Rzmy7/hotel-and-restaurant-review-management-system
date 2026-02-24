@@ -1,5 +1,5 @@
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
-import { MetricCard } from './MetricCard';
+import MetricCard from './MetricCard';
 import './MetricsGrid.css';
 
 const metrics = [
@@ -42,7 +42,7 @@ const MetricsGrid = () => {
           label={item.label}
           value={item.value}
           change={item.change}
-          tone={item.tone}
+          changeType={item.tone}
           icon={item.icon}
         />
       ))}
