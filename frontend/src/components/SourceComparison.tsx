@@ -25,10 +25,10 @@ const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
 };
 
 const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number }) => (
-    <div className="flex h-2 w-full rounded-full overflow-hidden bg-white/50 mt-2 shadow-inner">
-        <div style={{ width: `${pos}%` }} className="bg-[#4e80ee]/80 h-full transition-all duration-500" />
-        <div style={{ width: `${neu}%` }} className="bg-slate-300 h-full transition-all duration-500" />
-        <div style={{ width: `${neg}%` }} className="bg-rose-400 h-full transition-all duration-500" />
+    <div className="flex h-1 w-full rounded-full overflow-hidden bg-white/50 mt-1.5 shadow-inner">
+        <div style={{ width: `${pos}%` }} className="bg-[#4e80ee]/80 h-full" />
+        <div style={{ width: `${neu}%` }} className="bg-slate-300 h-full" />
+        <div style={{ width: `${neg}%` }} className="bg-rose-400 h-full" />
     </div>
 );
 
@@ -159,7 +159,7 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                         ) : (
                                             <div className="w-3 h-3 rounded-[4px] shrink-0 shadow-sm" style={{ backgroundColor: s.color }} />
                                         )}
-                                        <span className={`font-black text-gray-900 tracking-tight truncate ${isCompact ? 'text-[18px]' : 'text-[15px]'}`}>{s.name}</span>
+                                        <span className={`font-black text-gray-900 tracking-tight truncate ${isCompact ? 'text-[13px]' : 'text-sm'}`}>{s.name}</span>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-100">
