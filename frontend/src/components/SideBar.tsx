@@ -1,8 +1,9 @@
-import React from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, Plus, Building2 } from 'lucide-react';
 import { navigationConfig } from '../config/navigation';
 import type { SidebarItemData, SidebarGroupData } from '../types/navigation';
+import { useOrganizations } from '../contexts/OrganizationContext';
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -13,7 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
   return (
     <nav
       style={{ width: isExpanded ? 260 : 68 }}
-      className="h-full bg-white border-r border-gray-100 flex flex-col font-sans shrink-0 relative transition-[width] duration-300 ease-in-out overflow-hidden z-20"
+      className="h-full bg-white border-r border-gray-100 flex flex-col font-sans shrink-0 relative transition-[width] duration-300 ease-in-out z-20"
     >
       <SidebarHeader isExpanded={isExpanded} onToggle={onToggle} />
 
@@ -36,33 +37,126 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
 
 // --- Header Component ---
 const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = ({ isExpanded, onToggle }) => {
+  const { organizations, currentOrg, switchOrganization, addOrganization } = useOrganizations();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (!currentOrg) return null;
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   return (
-    <div className={`flex items-center shrink-0 h-[72px] transition-all duration-300 ${isExpanded ? 'px-5' : 'px-0 justify-center'}`}>
-      <div
-        onClick={!isExpanded ? onToggle : undefined}
-        className={`
-          w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center font-bold text-lg shrink-0 cursor-pointer
-          shadow-lg shadow-brand/20 transition-transform hover:scale-105 active:scale-95
-        `}
-      >
-        HR
-      </div>
-
-      <div className={`
-        flex flex-col overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out
-        ${isExpanded ? 'opacity-100 w-auto ml-3' : 'opacity-0 w-0 ml-0'}
-      `}>
-        <span className="font-bold text-black text-base tracking-tight">ReviewHub</span>
-        <span className="text-[11px] text-gray-400 font-medium">Grand Hotel NYC</span>
-      </div>
-
-      {isExpanded && (
-        <button
-          onClick={onToggle}
-          className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 transition-all duration-200"
+    <div className="relative shrink-0 z-50 px-2 pt-2" ref={dropdownRef}>
+      <div className="flex items-center gap-1">
+        <div
+          onClick={() => {
+            if (!isExpanded) {
+              onToggle();
+            } else {
+              setIsDropdownOpen(!isDropdownOpen);
+            }
+          }}
+          className={`
+            flex items-center h-[60px] cursor-pointer rounded-xl transition-all duration-300 flex-1
+            ${isExpanded ? 'px-3 hover:bg-gray-50' : 'justify-center'}
+            ${isDropdownOpen ? 'bg-gray-50' : ''}
+          `}
         >
-          <ChevronLeft size={18} />
-        </button>
+          <div
+            className={`
+              w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center font-bold text-lg shrink-0
+              shadow-lg shadow-brand/20 transition-transform group-hover:scale-105 active:scale-95
+            `}
+          >
+            {getInitials(currentOrg.name)}
+          </div>
+
+          <div className={`
+            flex flex-col overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ml-3
+            ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 ml-0'}
+          `}>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-black text-sm tracking-tight truncate max-w-[110px]">
+                {currentOrg.name}
+              </span>
+              <ChevronDown size={14} className={`text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </div>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none mt-0.5">
+              {currentOrg.status === 'Active' ? 'ReviewHub' : 'Inactive'}
+            </span>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <button
+            onClick={onToggle}
+            className="w-8 h-10 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 transition-all duration-200 shrink-0"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown Menu */}
+      {isDropdownOpen && isExpanded && (
+        <div className="absolute left-2 right-2 top-[70px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+          <div className="p-2 max-h-[300px] overflow-y-auto no-scrollbar">
+            <div className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              My Organizations
+            </div>
+            {organizations.map((org) => (
+              <button
+                key={org.id}
+                onClick={() => {
+                  switchOrganization(org.id);
+                  setIsDropdownOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 group/item ${org.id === currentOrg.id
+                  ? 'bg-brand/5 text-brand'
+                  : 'hover:bg-gray-50 text-gray-700 hover:text-brand'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${org.id === currentOrg.id ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500 group-hover/item:bg-brand/10 group-hover/item:text-brand'
+                    }`}>
+                    <Building2 size={14} />
+                  </div>
+                  <div className="text-[13px] font-bold text-left truncate max-w-[150px]">
+                    {org.name}
+                  </div>
+                </div>
+                {org.id === currentOrg.id && <Check size={14} className="text-brand" />}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-2 bg-gray-50/80 border-t border-gray-100">
+            <button
+              onClick={() => {
+                addOrganization();
+                setIsDropdownOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-white border border-gray-200 text-[13px] font-bold text-gray-600 hover:border-brand/40 hover:text-brand hover:shadow-sm transition-all active:scale-[0.98]"
+            >
+              <div className="w-8 h-8 rounded-lg bg-brand/5 text-brand flex items-center justify-center">
+                <Plus size={16} />
+              </div>
+              <span>Add New Source</span>
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

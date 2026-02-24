@@ -4,21 +4,10 @@ import { useToast } from '../contexts/ToastContext';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 import OrganizationSwitcher from './OrganizationSwitcher';
-import type { Organization } from '../types/dashboard';
+import { useOrganizations } from '../contexts/OrganizationContext';
 
-interface DashboardHeaderProps {
-  organizations: Organization[];
-  currentOrg: Organization;
-  onSwitchOrganization: (orgId: string) => void;
-  onAddOrganization: () => void;
-}
-
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({
-  organizations,
-  currentOrg,
-  onSwitchOrganization,
-  onAddOrganization
-}) => {
+const DashboardHeader: React.FC = () => {
+  const { organizations, currentOrg, switchOrganization, addOrganization } = useOrganizations();
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -55,12 +44,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <header className="sticky top-0 z-[40] flex justify-between items-center px-8 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 max-md:flex-col max-md:items-start max-md:gap-4 transition-all duration-300">
       <div className="flex items-center gap-4">
-        <OrganizationSwitcher
-          currentOrg={currentOrg}
-          organizations={organizations}
-          onSwitch={onSwitchOrganization}
-          onAdd={onAddOrganization}
-        />
+        {currentOrg && (
+          <OrganizationSwitcher
+            currentOrg={currentOrg}
+            organizations={organizations}
+            onSwitch={switchOrganization}
+            onAdd={addOrganization}
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-4 max-md:w-full max-md:justify-end">

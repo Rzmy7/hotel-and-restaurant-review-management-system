@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ToastProvider } from './contexts/ToastContext';
+import { OrganizationProvider } from './contexts/OrganizationContext';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import Sidebar from './components/SideBar';
 import ReviewsPage from './pages/ReviewsPage';
@@ -81,7 +82,9 @@ function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <AppContent />
+        <OrganizationProvider>
+          <AppContent />
+        </OrganizationProvider>
       </ToastProvider>
     </BrowserRouter>
   );
