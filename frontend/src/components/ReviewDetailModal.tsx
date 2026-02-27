@@ -1,5 +1,6 @@
-import { X, Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, PenTool, Scissors, Copy, CheckCircle2, Bot } from "lucide-react";
+import { X, Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, PenTool, Scissors, Copy, CheckCircle2, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review } from '../types/reviews';
+import { useReviews } from '../contexts/ReviewsContext';
 
 interface ReviewDetailModalProps {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface ReviewDetailModalProps {
 }
 
 const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) => {
+  const { navigateReview } = useReviews();
+
   if (!isOpen) return null;
 
   const getSentimentStyles = (sentiment: string) => {
@@ -61,12 +64,30 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
             </div>
           </div>
 
-          <button
-            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white border border-gray-100 shadow-sm"
-            onClick={onClose}
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[#4e80ee] transition-colors bg-white border border-gray-100 shadow-sm"
+              onClick={() => navigateReview('prev')}
+              title="Previous Review"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[#4e80ee] transition-colors bg-white border border-gray-100 shadow-sm"
+              onClick={() => navigateReview('next')}
+              title="Next Review"
+            >
+              <ChevronRight size={20} />
+            </button>
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <button
+              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white border border-gray-100 shadow-sm"
+              onClick={onClose}
+              title="Close Details View"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}

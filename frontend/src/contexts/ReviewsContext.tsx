@@ -18,6 +18,7 @@ interface ReviewsContextType {
     isModalOpen: boolean;
     openReview: (review: Review) => void;
     closeReview: () => void;
+    navigateReview: (direction: 'next' | 'prev') => void;
     refreshData: () => Promise<void>;
 }
 
@@ -177,6 +178,20 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSelectedReview(null);
     };
 
+    const navigateReview = useCallback((direction: 'next' | 'prev') => {
+        if (!selectedReview) return;
+        const currentIndex = filteredReviews.findIndex(r => r.id === selectedReview.id);
+        if (currentIndex === -1) return;
+
+        let newIndex;
+        if (direction === 'next') {
+            newIndex = currentIndex < filteredReviews.length - 1 ? currentIndex + 1 : 0;
+        } else {
+            newIndex = currentIndex > 0 ? currentIndex - 1 : filteredReviews.length - 1;
+        }
+        setSelectedReview(filteredReviews[newIndex]);
+    }, [filteredReviews, selectedReview]);
+
     return (
         <ReviewsContext.Provider value={{
             reviews,
@@ -192,6 +207,7 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
             isModalOpen,
             openReview,
             closeReview,
+            navigateReview,
             refreshData
         }}>
             {children}
