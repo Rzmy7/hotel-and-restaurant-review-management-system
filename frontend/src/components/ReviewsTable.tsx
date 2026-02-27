@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, MessageSquareQuote, CheckCircle2, Bot, ArrowRight } from 'lucide-react';
+import { Star, MessageSquareQuote, CheckCircle2, Bot } from 'lucide-react';
 import { useReviews } from '../contexts/ReviewsContext';
 import type { Review } from '../types/reviews';
 
@@ -60,7 +60,6 @@ const ReviewsTable = () => {
                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[140px]">Insights</th>
                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[140px]">Source</th>
                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[140px]">Status</th>
-                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[100px] text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -84,7 +83,11 @@ const ReviewsTable = () => {
                             </tr>
                         ) : (
                             currentReviews.map((review: Review) => (
-                                <tr key={review.id} className="group hover:bg-blue-50/30 transition-colors">
+                                <tr
+                                    key={review.id}
+                                    onClick={() => openReview(review)}
+                                    className="group hover:bg-blue-50/30 transition-colors cursor-pointer"
+                                >
                                     {/* Rating */}
                                     <td className="px-6 py-5">
                                         <div className="flex flex-col gap-1.5">
@@ -143,17 +146,6 @@ const ReviewsTable = () => {
                                     {/* Status */}
                                     <td className="px-6 py-5">
                                         {getStatusBadge(review.status)}
-                                    </td>
-
-                                    {/* Action */}
-                                    <td className="px-6 py-5 text-right">
-                                        <button
-                                            onClick={() => openReview(review)}
-                                            className="w-8 h-8 inline-flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-blue-300 hover:shadow-sm transition-all group-hover:bg-blue-500 group-hover:text-white group-hover:border-blue-600"
-                                            title="View Details"
-                                        >
-                                            <ArrowRight size={16} />
-                                        </button>
                                     </td>
                                 </tr>
                             ))
