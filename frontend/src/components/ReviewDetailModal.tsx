@@ -1,230 +1,256 @@
-import { X, Image as ImageIcon } from "lucide-react";
-
+import { X, Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, PenTool, Scissors, Copy, CheckCircle2, Bot } from "lucide-react";
+import type { Review } from '../types/reviews';
 
 interface ReviewDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  review: {
-    id: string;
-    reviewerName: string;
-    rating: number;
-    date: string;
-    reviewText: string;
-    sentiment: "Positive" | "Negative" | "Neutral";
-    categories?: string[];
-    keyPhrases?: string[];
-    summary?: string;
-    platformReviewId?: string;
-    language?: string;
-    replyStatus?: string;
-    firstSeen?: string;
-    lastUpdated?: string;
-    scrapedAt?: string;
-    hasReply?: string;
-    photos?: { id: number; src: string; alt: string }[];
-  };
+  review: Review;
 }
 
-const ReviewDetailModal = ({
-  isOpen,
-  onClose,
-  review,
-}: ReviewDetailModalProps) => {
+const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) => {
   if (!isOpen) return null;
 
-  const getSentimentClasses = (sentiment: string) => {
+  const getSentimentStyles = (sentiment: string) => {
     switch (sentiment) {
-      case "Positive":
-        return "bg-emerald-500 text-white";
-      case "Negative":
-        return "bg-red-500 text-white";
-      default:
-        return "bg-gray-500 text-white";
+      case "Positive": return "bg-emerald-50 text-emerald-600 border-emerald-200";
+      case "Negative": return "bg-rose-50 text-rose-600 border-rose-200";
+      default: return "bg-gray-50 text-gray-600 border-gray-200";
     }
   };
 
-  console.log("Review Details:", review);
-  for (const photo of review.photos || []) {
-    console.log("Photo URL:", photo.src);
-  }
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-stretch justify-end z-[1000] overflow-x-hidden overflow-y-auto" onClick={onClose}>
-      <div className="bg-white w-full max-w-[600px] h-full flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.15)] overflow-hidden animate-[slideInRight_0.3s_ease-out] max-md:max-w-full" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="p-6 px-6 pb-4 border-b border-gray-200">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-semibold text-gray-800 m-0">{review.reviewerName}</h2>
-            <button className="bg-transparent border-none cursor-pointer p-1 text-gray-500 flex items-center justify-center rounded-md hover:bg-gray-100 hover:text-gray-800 transition-colors" onClick={onClose}>
-              <X size={20} />
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-amber-400 text-base tracking-widest">
-              {"★".repeat(review.rating)}
-              {"☆".repeat(5 - review.rating)}
+    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 animate-in fade-in duration-200" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-5xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header - Premium minimal look */}
+        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 bg-white/80 sticky top-0 z-10 backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-lg font-black text-[#4e80ee] uppercase">
+              {review.userName.charAt(0)}
             </div>
-            <span className="text-gray-500 text-sm">{review.date}</span>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6">
-          {/* Review Text */}
-          <div className="mb-6 last:mb-0">
-            <h3 className="text-sm font-semibold text-gray-700 m-0 mb-3">Review</h3>
-            {/* <p className="review-text">{review.reviewText}</p> */}
-            <p className="text-gray-800 text-[15px] leading-relaxed m-0 break-words italic">{review.reviewText}</p>
-          </div>
-
-          {review.photos && review.photos.length > 0 && (
-            <div className="mb-6 last:mb-0">
-              <h3 className="text-sm font-semibold text-gray-700 m-0 mb-3">Images</h3>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 mt-3">
-                {review.photos?.map((photo) => (
-                  <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer transition-all hover:scale-105 hover:shadow-lg">
-                    {photo.src ? (
-                      <img
-                        src={photo.src}
-                        alt={photo.alt}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400 gap-1.5">
-                        <ImageIcon size={24} className="text-gray-300" />
-                        <span className="text-[11px] font-medium text-gray-400">
-                          Image {photo.id}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI Analysis */}
-          <div className="mb-6 last:mb-0">
-            <h3 className="text-sm font-semibold text-gray-700 m-0 mb-3">AI Analysis</h3>
-
-            <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
-              <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Sentiment</span>
-              <span
-                className={`px-3 py-1 rounded-md text-[13px] font-medium ${getSentimentClasses(review.sentiment)}`}
-              >
-                {review.sentiment}
-              </span>
-            </div>
-
-            <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
-              <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Categories</span>
-              <div className="flex flex-wrap gap-2 flex-1">
-                {review.categories?.map((category, index) => (
-                  <span key={index} className="px-3 py-1.5 rounded-md text-[13px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                    {category}
-                  </span>
-                ))}
-                {(!review.categories || review.categories.length === 0) && (
-                  <span className="text-sm text-gray-400 italic">No categories analyzed</span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
-              <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Key Phrases</span>
-              <div className="flex flex-wrap gap-2 flex-1">
-                {review.keyPhrases?.map((phrase, index) => (
-                  <span key={index} className="px-3 py-1.5 rounded-md text-[13px] font-normal bg-blue-50 text-blue-800 border border-blue-100 break-words">
-                    "{phrase}"
-                  </span>
-                ))}
-                {(!review.keyPhrases || review.keyPhrases.length === 0) && (
-                  <span className="text-sm text-gray-400 italic">No key phrases identified</span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 mb-4 items-start overflow-x-hidden last:mb-0">
-              <span className="text-sm font-medium text-gray-500 min-w-[100px] shrink-0">Summary</span>
-              <p className="text-gray-700 text-sm leading-relaxed m-0 flex-1 break-words">{review.summary || <span className="text-gray-400 italic">No summary available</span>}</p>
-            </div>
-          </div>
-
-          {/* AI Reply Generator */}
-          <div className="mb-6 last:mb-0">
-            <h3 className="text-sm font-semibold text-gray-700 m-0 mb-3">AI Reply Generator</h3>
-            <div className="flex flex-col gap-3">
-              <textarea
-                className="w-full p-3 border border-gray-300 rounded-lg text-sm min-h-[100px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 box-border resize-y font-inherit"
-                placeholder="AI generated response will appear here..."
-                rows={4}
-              />
-              <div className="flex gap-2 flex-wrap max-md:flex-col">
-                <button className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm font-medium cursor-pointer flex items-center gap-1.5 transition-all hover:bg-gray-50 hover:border-gray-400 max-md:w-full max-md:justify-center">
-                  <span>🔄</span> Regenerate Reply
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm font-medium cursor-pointer flex items-center gap-1.5 transition-all hover:bg-gray-50 hover:border-gray-400 max-md:w-full max-md:justify-center">
-                  <span>✨</span> Improve Tone
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm font-medium cursor-pointer flex items-center gap-1.5 transition-all hover:bg-gray-50 hover:border-gray-400 max-md:w-full max-md:justify-center">
-                  <span>✂️</span> Shorten
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm font-medium cursor-pointer flex items-center gap-1.5 transition-all hover:bg-gray-50 hover:border-gray-400 max-md:w-full max-md:justify-center">
-                  <span>📋</span> Copy Reply
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Metadata */}
-          <div className="mb-6 last:mb-0">
-            <h3 className="text-sm font-semibold text-gray-700 m-0 mb-3">Metadata</h3>
-            <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Review ID</span>
-                <span className="text-sm text-gray-800">{review.id}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Platform Review ID</span>
-                <span className="text-sm text-gray-800">
-                  {review.platformReviewId || "N/A"}
+            <div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">{review.userName}</h2>
+              <div className="flex items-center gap-3 mt-1">
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      size={14}
+                      className={i < review.rating ? "fill-amber-400 text-amber-400" : "fill-gray-100 text-gray-200"}
+                    />
+                  ))}
+                </div>
+                <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <CalendarDays size={14} />
+                  {formatDate(review.date)}
+                </span>
+                <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                <span className="text-[12px] font-black text-[#4e80ee] uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                  {review.source}
                 </span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Language</span>
-                <span className="text-sm text-gray-800">{review.language || "N/A"}</span>
+            </div>
+          </div>
+
+          <button
+            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white border border-gray-100 shadow-sm"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50/30">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-8">
+
+            {/* Left Column: Review Content & Photos */}
+            <div className="lg:col-span-2 space-y-8">
+
+              {/* Review Bubble */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative">
+                <div className="absolute top-6 -left-3 border-y-8 border-y-transparent border-r-8 border-r-white w-0 h-0 filter drop-shadow-sm" />
+                <div className="flex items-center gap-2 mb-4">
+                  <MessageSquareText size={18} className="text-gray-400" />
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Customer Review</h3>
+                </div>
+                <p className="text-[15px] leading-relaxed text-gray-800 break-words whitespace-pre-wrap font-medium">
+                  "{review.reviewText}"
+                </p>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Reply Status</span>
-                <span className="text-sm text-gray-800">{review.replyStatus || "N/A"}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">First Seen</span>
-                <span className="text-sm text-gray-800">{review.firstSeen || "N/A"}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Last Updated</span>
-                <span className="text-sm text-gray-800">{review.lastUpdated || "N/A"}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Scraped At</span>
-                <span className="text-sm text-gray-800">{review.scrapedAt || "N/A"}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Has AI Reply</span>
-                <span className="text-sm text-gray-800">{review.hasReply || "N/A"}</span>
+
+              {/* Photos */}
+              {review.photos && review.photos.length > 0 && (
+                <div>
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Attachments ({review.photos.length})</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {review.photos.map((photo) => (
+                      <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group cursor-pointer bg-white">
+                        <img
+                          src={photo.src}
+                          alt={photo.alt}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Draft Section */}
+              <div className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm relative z-0">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent -z-10" />
+                <div className="px-6 py-4 border-b border-blue-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu size={18} className="text-[#4e80ee]" />
+                    <h3 className="text-[12px] font-black text-[#4e80ee] uppercase tracking-widest">AI Drafted Response</h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Ready for Review
+                  </span>
+                </div>
+
+                <div className="p-6">
+                  <div className="min-h-[140px] w-full p-4 bg-white/80 border border-blue-100/50 rounded-xl text-[14px] font-medium text-gray-700 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-400 transition-all shadow-sm shadow-blue-50">
+                    <textarea
+                      className="w-full h-full min-h-[120px] bg-transparent resize-none outline-none leading-relaxed"
+                      placeholder="AI generated response will appear here..."
+                      defaultValue={`Dear ${review.userName}, \n\nThank you so much for your feedback! We're thrilled to hear that you had a wonderful experience. \n\nWe hope to welcome you back soon!`}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                      <RefreshCw size={14} /> Regenerate
+                    </button>
+                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                      <PenTool size={14} /> Professional Tone
+                    </button>
+                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                      <Scissors size={14} /> Shorten
+                    </button>
+                    <div className="flex-1" />
+                    <button className="px-4 py-2 bg-[#4e80ee] hover:bg-blue-600 text-white rounded-lg text-[12px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-lg shadow-blue-200 active:scale-95">
+                      <Copy size={14} /> Copy
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Right Column: AI Analysis & Metadata */}
+            <div className="space-y-6">
+              {/* Insights Card */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-3xl -z-10 -m-10" />
+                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+                  <Bot size={16} /> Analysis Insights
+                </h3>
+
+                <div className="space-y-5">
+                  {/* Sentiment */}
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Sentiment</span>
+                    <span className={`inline-flex px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider border ${getSentimentStyles(review.sentiment)}`}>
+                      {review.sentiment}
+                    </span>
+                  </div>
+
+                  {/* Categories */}
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Topic Categories</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {review.categories?.length ? review.categories.map((cat, i) => (
+                        <span key={i} className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                          {cat}
+                        </span>
+                      )) : <span className="text-xs text-gray-400 italic">None identified</span>}
+                    </div>
+                  </div>
+
+                  {/* Key Phrases */}
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Key Phrases</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {review.keyPhrases?.length ? review.keyPhrases.map((phrase, i) => (
+                        <span key={i} className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-[#4e80ee] border border-blue-100">
+                          "{phrase}"
+                        </span>
+                      )) : <span className="text-xs text-gray-400 italic">None extracted</span>}
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">AI Summary</span>
+                    <p className="text-[13px] text-gray-600 leading-relaxed font-medium bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      {review.summary || "Summary not available for this review."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Metadata */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+                  <Clock size={16} /> System Metadata
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-gray-500 font-bold">Review ID</span>
+                    <span className="text-gray-900 font-mono tracking-tighter bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{review.id}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-gray-500 font-bold">Platform ID</span>
+                    <span className="text-[#4e80ee] font-mono tracking-tighter bg-blue-50 px-2 py-0.5 rounded border border-blue-100 flex items-center gap-1 cursor-pointer hover:underline">
+                      {review.platformReviewId || "N/A"} <ExternalLink size={10} />
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-gray-500 font-bold">Language</span>
+                    <span className="text-gray-900 font-medium">{review.language || "English"}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-gray-500 font-bold">First Seen</span>
+                    <span className="text-gray-900 font-medium">{formatDate(review.firstSeen)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-gray-500 font-bold">Last Scraped</span>
+                    <span className="text-gray-900 font-medium">{formatDate(review.scrapedAt)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 px-6 border-t border-gray-200 flex gap-3 justify-end max-md:flex-col">
-          <button className="px-5 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 text-sm font-medium cursor-pointer transition-all hover:bg-gray-50 hover:border-gray-400 max-md:w-full" onClick={onClose}>
-            Cancel
+        {/* Footer Actions */}
+        <div className="p-4 px-8 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between mt-auto">
+          <button
+            className="px-6 py-2.5 rounded-xl text-[13px] font-bold text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
+            onClick={onClose}
+          >
+            Close View
           </button>
-          <button className="px-5 py-2.5 border-none rounded-lg bg-blue-500 text-white text-sm font-medium cursor-pointer transition-all hover:bg-blue-600 max-md:w-full">Mark as Replied</button>
-          <button className="px-5 py-2.5 border-none rounded-lg bg-blue-500 text-white text-sm font-medium cursor-pointer transition-all hover:bg-blue-600 max-md:w-full">Save Changes</button>
+          <div className="flex items-center gap-3">
+            <button className="px-6 py-2.5 rounded-xl text-[13px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all uppercase tracking-wider flex items-center gap-1.5 active:scale-95 shadow-sm">
+              <CheckCircle2 size={16} /> Mark as Resolved
+            </button>
+            <button className="px-8 py-2.5 rounded-xl text-[13px] font-black text-white bg-gray-900 hover:bg-black transition-all uppercase tracking-wider shadow-xl shadow-gray-200 active:scale-95 transform hover:-translate-y-0.5">
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
     </div>

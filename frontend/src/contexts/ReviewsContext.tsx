@@ -1,34 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
-
-// Define the shape of a Review Object
-export interface Review {
-    id: number | string;
-    rating: number;
-    userName: string;
-    reviewText: string;
-    sentiment: 'Positive' | 'Negative' | 'Neutral';
-    categories: string[];
-    source: string;
-    date: string;
-    status: 'Replied' | 'AI Draft' | 'Pending';
-    language?: string;
-}
-
-export interface FilterState {
-    search: string;
-    rating: number[];
-    sentiment: string[];
-    source: string[];
-    category: string[];
-    language: string[];
-    hasAiReply: boolean;
-}
+import type { Review, ReviewStats, FilterState } from '../types/reviews';
+import { reviewsService } from '../services/reviewsService';
 
 interface ReviewsContextType {
     reviews: Review[];
     filteredReviews: Review[];
+    stats: ReviewStats | null;
     loading: boolean;
     error: string | null;
     filters: FilterState;
@@ -39,6 +18,7 @@ interface ReviewsContextType {
     isModalOpen: boolean;
     openReview: (review: Review) => void;
     closeReview: () => void;
+    refreshData: () => Promise<void>;
 }
 
 const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
@@ -46,6 +26,7 @@ const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
 export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [reviews, setReviews] = useState<Review[]>([]);
+    const [stats, setStats] = useState<ReviewStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -73,23 +54,32 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [selectedReview, setSelectedReview] = useState<Review | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Fetch Reviews
-    useEffect(() => {
-        const fetchReviews = async () => {
-            try {
-                const response = await fetch("http://127.0.0.1:8000/reviews");
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                setReviews(data);
-                setLoading(false);
-            } catch (err) {
-                console.error("Error fetching reviews:", err);
-                setError("Failed to load reviews from API. Is the backend running?");
-                setLoading(false);
-            }
-        };
-        fetchReviews();
+    // Fetch Reviews and Stats
+    const fetchData = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        try {
+            const [reviewsData, statsData] = await Promise.all([
+                reviewsService.getReviews(),
+                reviewsService.getStats()
+            ]);
+            setReviews(reviewsData);
+            setStats(statsData);
+            setError(null);
+        } catch (err) {
+            console.error("Error fetching reviews:", err);
+            setError("Failed to load reviews. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const refreshData = async () => {
+        await fetchData(true);
+    };
 
     // Filter Logic
     const filteredReviews = useMemo(() => {
@@ -191,6 +181,7 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         <ReviewsContext.Provider value={{
             reviews,
             filteredReviews,
+            stats,
             loading,
             error,
             filters,
@@ -200,7 +191,8 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
             selectedReview,
             isModalOpen,
             openReview,
-            closeReview
+            closeReview,
+            refreshData
         }}>
             {children}
         </ReviewsContext.Provider>

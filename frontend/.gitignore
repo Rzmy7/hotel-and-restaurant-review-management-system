@@ -25,3 +25,6 @@ dist-ssr
 .vite
 
 build_log_v3.txt
+
+package-lock.json
+package.json
