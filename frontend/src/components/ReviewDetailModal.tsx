@@ -9,9 +9,13 @@ interface ReviewDetailModalProps {
 }
 
 const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) => {
-  const { navigateReview } = useReviews();
+  const { navigateReview, filteredReviews } = useReviews();
 
   if (!isOpen) return null;
+
+  const currentIndex = filteredReviews.findIndex(r => r.id === review.id);
+  const isFirst = currentIndex <= 0;
+  const isLast = currentIndex >= filteredReviews.length - 1;
 
   const getSentimentStyles = (sentiment: string) => {
     switch (sentiment) {
@@ -66,16 +70,18 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
 
           <div className="flex items-center gap-2">
             <button
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[#4e80ee] transition-colors bg-white border border-gray-100 shadow-sm"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-white border border-gray-100 shadow-sm ${isFirst ? 'text-gray-200 bg-gray-50 cursor-not-allowed opacity-50' : 'text-gray-400 hover:bg-gray-100 hover:text-[#4e80ee]'}`}
               onClick={() => navigateReview('prev')}
               title="Previous Review"
+              disabled={isFirst}
             >
               <ChevronLeft size={20} />
             </button>
             <button
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[#4e80ee] transition-colors bg-white border border-gray-100 shadow-sm"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-white border border-gray-100 shadow-sm ${isLast ? 'text-gray-200 bg-gray-50 cursor-not-allowed opacity-50' : 'text-gray-400 hover:bg-gray-100 hover:text-[#4e80ee]'}`}
               onClick={() => navigateReview('next')}
               title="Next Review"
+              disabled={isLast}
             >
               <ChevronRight size={20} />
             </button>

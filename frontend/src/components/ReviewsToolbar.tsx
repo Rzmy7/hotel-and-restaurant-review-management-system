@@ -1,4 +1,4 @@
-import { Search, Check, ChevronDown } from 'lucide-react';
+import { Search, Check, ChevronDown, X } from 'lucide-react';
 import { useReviews } from '../contexts/ReviewsContext';
 import { useState } from 'react';
 import type { Review } from '../types/reviews';
@@ -6,6 +6,7 @@ import type { Review } from '../types/reviews';
 const ReviewsToolbar = () => {
     const { filters, setSearchQuery, toggleFilter, filteredReviews, reviews } = useReviews();
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
+    const [menuSearch, setMenuSearch] = useState('');
 
     // Derived distinct options (could also come from the API/Context)
     // Derived distinct options
@@ -20,6 +21,7 @@ const ReviewsToolbar = () => {
 
     const handleMenuClick = (menu: string) => {
         setActiveMenu(activeMenu === menu ? null : menu);
+        if (activeMenu !== menu) setMenuSearch('');
     };
 
     const isFilterActive = (type: string) => {
@@ -46,24 +48,60 @@ const ReviewsToolbar = () => {
             default: return null;
         }
 
+        const hasSearch = menu === 'Category' || menu === 'Source';
+
         return (
-            <div className="absolute top-full left-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/50 z-50 p-2 min-w-[180px]">
-                {menuOptions.map((opt: unknown) => {
-                    const isSelected = (filters as any)[filterType].includes(opt as string | number);
-                    return (
-                        <button
-                            key={opt as string | number}
-                            onClick={() => toggleFilter(filterType, opt as string | number)}
-                            className={`flex items-center justify-between w-full px-3 py-2 text-[13px] font-bold text-left rounded-lg transition-all ${isSelected
-                                ? 'bg-blue-50 text-[#4e80ee]'
-                                : 'hover:bg-gray-50 text-gray-600'
-                                }`}
-                        >
-                            <span>{menu === 'Rating' ? `${opt} Stars` : String(opt)}</span>
-                            {isSelected && <Check size={14} className="text-[#4e80ee]" />}
-                        </button>
-                    );
-                })}
+            <div className={`absolute top-full left-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/50 z-50 p-2 min-w-[200px] ${hasSearch ? 'min-w-[240px]' : ''}`}>
+                {hasSearch && (
+                    <div className="mb-2">
+                        <div className="relative mb-2">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                                type="text"
+                                placeholder={`Search ${menu}...`}
+                                value={menuSearch}
+                                onChange={(e) => setMenuSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs outline-none focus:border-blue-400 focus:bg-white transition-all"
+                            />
+                        </div>
+                        {(filters as any)[filterType].length > 0 && (
+                            <div className="flex flex-wrap gap-1 border-b border-gray-100 pb-2 mb-2">
+                                {(filters as any)[filterType].map((val: string | number) => (
+                                    <button
+                                        key={val}
+                                        onClick={() => toggleFilter(filterType, val)}
+                                        className="flex items-center gap-1 bg-blue-50 text-[#4e80ee] pl-2 pr-1.5 py-1 rounded-md text-[10px] font-bold hover:bg-blue-100 transition-colors"
+                                        title={`Remove ${val}`}
+                                    >
+                                        {val}
+                                        <X size={12} />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className={hasSearch ? "max-h-56 overflow-y-auto pr-1 space-y-0.5 custom-scrollbar" : "space-y-0.5"}>
+                    {menuOptions
+                        .filter((opt: any) => hasSearch ? String(opt).toLowerCase().includes(menuSearch.toLowerCase()) : true)
+                        .map((opt: unknown) => {
+                            const isSelected = (filters as any)[filterType].includes(opt as string | number);
+                            return (
+                                <button
+                                    key={opt as string | number}
+                                    onClick={() => toggleFilter(filterType, opt as string | number)}
+                                    className={`flex items-center justify-between w-full px-3 py-2 text-[13px] font-bold text-left rounded-lg transition-all ${isSelected
+                                        ? 'bg-blue-50 text-[#4e80ee]'
+                                        : 'hover:bg-gray-50 text-gray-600'
+                                        }`}
+                                >
+                                    <span>{menu === 'Rating' ? `${opt} Stars` : String(opt)}</span>
+                                    {isSelected && <Check size={14} className="text-[#4e80ee]" />}
+                                </button>
+                            );
+                        })}
+                </div>
             </div>
         );
     };

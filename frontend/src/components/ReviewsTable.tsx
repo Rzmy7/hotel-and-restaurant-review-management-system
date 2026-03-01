@@ -3,7 +3,7 @@ import { Star, MessageSquareQuote, CheckCircle2, Bot } from 'lucide-react';
 import { useReviews } from '../contexts/ReviewsContext';
 import type { Review } from '../types/reviews';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 15;
 
 const ReviewsTable = () => {
     const { filteredReviews, loading: isLoading, openReview } = useReviews();
@@ -11,6 +11,33 @@ const ReviewsTable = () => {
 
     const totalPages = Math.max(1, Math.ceil(filteredReviews.length / PAGE_SIZE));
     const currentReviews = filteredReviews.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+    const renderPageNumbers = () => {
+        const pages = [];
+        let start = Math.max(0, page - 2);
+        let end = Math.min(totalPages - 1, page + 2);
+
+        if (totalPages > 5) {
+            if (page <= 2) end = 4;
+            if (page >= totalPages - 3) start = totalPages - 5;
+        }
+
+        for (let i = start; i <= end; i++) {
+            pages.push(
+                <button
+                    key={i}
+                    onClick={() => setPage(i)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] font-bold transition-all ${page === i
+                            ? 'bg-[#4e80ee] text-white shadow-md shadow-blue-200'
+                            : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'
+                        }`}
+                >
+                    {i + 1}
+                </button>
+            );
+        }
+        return pages;
+    };
 
     const getStatusBadge = (status: Review['status']) => {
         switch (status) {
@@ -124,12 +151,26 @@ const ReviewsTable = () => {
                                                 {review.sentiment}
                                             </span>
                                             {review.categories && review.categories.length > 0 && (
-                                                <div className="flex gap-1 flex-wrap">
+                                                <div className="flex gap-1 flex-wrap relative group/cat z-10 w-fit">
                                                     <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                                                         {review.categories[0]}
                                                     </span>
                                                     {review.categories.length > 1 && (
-                                                        <span className="text-[10px] font-bold text-gray-400">+{review.categories.length - 1}</span>
+                                                        <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full cursor-help hover:text-gray-600 transition-colors border border-gray-100">
+                                                            +{review.categories.length - 1}
+                                                        </span>
+                                                    )}
+
+                                                    {/* Tooltip for all categories */}
+                                                    {review.categories.length > 1 && (
+                                                        <div className="absolute top-full left-0 mt-1.5 hidden group-hover/cat:flex flex-col gap-1 w-max p-2 bg-gray-900 border border-gray-800 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                            <div className="absolute -top-1.5 left-4 w-3 h-3 bg-gray-900 rotate-45 border-l border-t border-gray-800" />
+                                                            {review.categories.map((cat, i) => (
+                                                                <span key={i} className="text-[11px] font-bold text-gray-200 relative z-10">
+                                                                    {cat}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
@@ -163,16 +204,21 @@ const ReviewsTable = () => {
                     <button
                         disabled={page === 0}
                         onClick={() => setPage(p => p - 1)}
-                        className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-xs"
+                        className="px-4 py-2 text-[13px] font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-sm"
                     >
-                        Previous
+                        Prev
                     </button>
+
+                    <div className="flex items-center gap-1 mx-2">
+                        {renderPageNumbers()}
+                    </div>
+
                     <button
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage(p => p + 1)}
-                        className="px-4 py-2 text-[13px] font-black text-white bg-[#4e80ee] rounded-xl hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-[#4e80ee] transition-all shadow-lg shadow-blue-200 uppercase tracking-wider"
+                        className="px-4 py-2 text-[13px] font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-sm"
                     >
-                        Next Page
+                        Next
                     </button>
                 </div>
             </div>

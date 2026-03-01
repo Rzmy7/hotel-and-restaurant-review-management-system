@@ -185,9 +185,11 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         let newIndex;
         if (direction === 'next') {
-            newIndex = currentIndex < filteredReviews.length - 1 ? currentIndex + 1 : 0;
+            if (currentIndex >= filteredReviews.length - 1) return;
+            newIndex = currentIndex + 1;
         } else {
-            newIndex = currentIndex > 0 ? currentIndex - 1 : filteredReviews.length - 1;
+            if (currentIndex <= 0) return;
+            newIndex = currentIndex - 1;
         }
         setSelectedReview(filteredReviews[newIndex]);
     }, [filteredReviews, selectedReview]);
