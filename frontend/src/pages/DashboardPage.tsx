@@ -17,7 +17,7 @@ import DashboardSkeleton from '../components/DashboardSkeleton';
 
 const DashboardPage: React.FC = () => {
   const { data, loading, error } = useDashboardData();
-  const { showToast } = useToast();
+  useToast();
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -95,7 +95,7 @@ const DashboardPage: React.FC = () => {
               <div className="flex flex-col gap-3">
                 {(() => {
                   const total = data.latestReviews.length;
-                  return [5,4,3,2,1].map(star => {
+                  return [5, 4, 3, 2, 1].map(star => {
                     const count = data.latestReviews.filter(r => r.rating === star).length;
                     const pct = total ? Math.round((count / total) * 100) : 0;
                     return (
