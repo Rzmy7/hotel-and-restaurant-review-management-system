@@ -10,7 +10,7 @@ const AlertsPanel = ({ alerts }: AlertsPanelProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col h-full shadow-sm hover:shadow-md transition-all duration-300">
+    <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col shadow-sm hover:shadow-md transition-all duration-300" style={{ maxHeight: 340 }}>
       <div className="flex justify-between items-center mb-8 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 flex items-center justify-center bg-rose-50 rounded-xl text-rose-600 border border-rose-100/50">
@@ -30,7 +30,7 @@ const AlertsPanel = ({ alerts }: AlertsPanelProps) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 space-y-3 -mr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto pr-2 space-y-3 -mr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent" style={{ maxHeight: 220 }}>
         {alerts.map((alert) => (
           <div
             key={alert.id}
