@@ -1,236 +1,98 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import type { Review, ReviewStats, FilterState } from '../types/reviews';
-import { reviewsService } from '../services/reviewsService';
+import { useReviewFilters } from '../hooks/useReviewFilters';
+import { useReviewsData } from '../hooks/useReviewsData';
+import { useReviewModal } from '../hooks/useReviewModal';
 
 interface ReviewsContextType {
+    // Data State
     reviews: Review[];
-    filteredReviews: Review[];
     stats: ReviewStats | null;
     loading: boolean;
     error: string | null;
-    filters: FilterState;
+
+    // Pagination & Config
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+    sourceOptions: string[];
+    categoryOptions: string[];
+
+    // Filters & Actions
+    filters: FilterState & { page: number };
     setSearchQuery: (query: string) => void;
     toggleFilter: (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => void;
     toggleAiReplyFilter: () => void;
+    setPage: (page: number) => void;
+    refreshData: () => void;
+
+    // Modal State
     selectedReview: Review | null;
     isModalOpen: boolean;
     openReview: (review: Review) => void;
     closeReview: () => void;
     navigateReview: (direction: 'next' | 'prev') => void;
-    refreshData: () => Promise<void>;
-    sourceOptions: string[];
-    categoryOptions: string[];
 }
 
 const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
 
 export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [reviews, setReviews] = useState<Review[]>([]);
-    const [stats, setStats] = useState<ReviewStats | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // 1. Manage URL synchronization and filtering parameters
+    const {
+        filters,
+        fetchParams,
+        setSearchQuery,
+        toggleFilter,
+        toggleAiReplyFilter,
+        setPage
+    } = useReviewFilters();
 
-    // Initialize filters from URL
-    const initialFilters = useMemo(() => {
-        const getParam = (key: string) => searchParams.getAll(key);
-        return {
-            search: searchParams.get('q') || '',
-            rating: getParam('rating').map(Number),
-            sentiment: getParam('sentiment'),
-            source: getParam('source'),
-            category: getParam('category'),
-            language: getParam('language'),
-            status: getParam('status'),
-            hasAiReply: searchParams.get('ai_reply') === 'true'
-        };
-    }, [searchParams]);
+    // 2. Fetch remote data based on active parameters
+    const {
+        reviews,
+        pagination,
+        stats,
+        filtersConfig,
+        isLoading,
+        error,
+        refresh
+    } = useReviewsData(fetchParams);
 
-    const [filters, setFilters] = useState<FilterState>(initialFilters);
-
-    // Sync state with URL when it changes (handle back/forward browser buttons)
-    useEffect(() => {
-        setFilters(initialFilters);
-    }, [initialFilters]);
-
-    const [selectedReview, setSelectedReview] = useState<Review | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    // Fetch Reviews and Stats
-    const fetchData = useCallback(async (silent = false) => {
-        if (!silent) setLoading(true);
-        try {
-            const [reviewsData, statsData] = await Promise.all([
-                reviewsService.getReviews(),
-                reviewsService.getStats()
-            ]);
-            setReviews(reviewsData);
-            setStats(statsData);
-            setError(null);
-        } catch (err) {
-            console.error("Error fetching reviews:", err);
-            setError("Failed to load reviews. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    const refreshData = async () => {
-        await fetchData(true);
-    };
-
-    // Filter Logic
-    const filteredReviews = useMemo(() => {
-        return reviews.filter((review) => {
-            // Search
-            if (filters.search) {
-                const query = filters.search.toLowerCase();
-                const matchesSearch =
-                    review.reviewText.toLowerCase().includes(query) ||
-                    review.userName.toLowerCase().includes(query);
-                if (!matchesSearch) return false;
-            }
-
-            // Rating
-            if (filters.rating.length > 0 && !filters.rating.includes(review.rating)) {
-                return false;
-            }
-
-            // Sentiment
-            if (filters.sentiment.length > 0 && !filters.sentiment.includes(review.sentiment)) {
-                return false;
-            }
-
-            // Source
-            if (filters.source.length > 0 && !filters.source.includes(review.source)) {
-                return false;
-            }
-
-            // Category
-            if (filters.category.length > 0) {
-                const hasCategory = review.categories.some(cat => filters.category.includes(cat));
-                if (!hasCategory) return false;
-            }
-
-            // Language
-            if (filters.language.length > 0) {
-                const lang = review.language || 'English';
-                if (!filters.language.includes(lang)) return false;
-            }
-
-            // Status
-            if (filters.status.length > 0 && !filters.status.includes(review.status)) {
-                return false;
-            }
-
-            // Has AI Reply
-            if (filters.hasAiReply) {
-                if (review.status === 'Pending') return false;
-            }
-
-            return true;
-        });
-    }, [reviews, filters]);
-
-    // Helper to update URL params
-    const updateUrlParams = (newFilters: FilterState) => {
-        const params = new URLSearchParams();
-        if (newFilters.search) params.set('q', newFilters.search);
-        newFilters.rating.forEach(v => params.append('rating', v.toString()));
-        newFilters.sentiment.forEach(v => params.append('sentiment', v));
-        newFilters.source.forEach(v => params.append('source', v));
-        newFilters.category.forEach(v => params.append('category', v));
-        newFilters.language.forEach(v => params.append('language', v));
-        newFilters.status.forEach(v => params.append('status', v));
-        if (newFilters.hasAiReply) params.set('ai_reply', 'true');
-        setSearchParams(params);
-    };
-
-    // Actions
-    const setSearchQuery = (query: string) => {
-        const newFilters = { ...filters, search: query };
-        setFilters(newFilters);
-        updateUrlParams(newFilters);
-    };
-
-    const toggleFilter = (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => {
-        const currentValues = filters[type] as any[];
-        const exists = currentValues.includes(value);
-        const newValues = exists
-            ? currentValues.filter(v => v !== value)
-            : [...currentValues, value];
-
-        const newFilters = { ...filters, [type]: newValues };
-        setFilters(newFilters);
-        updateUrlParams(newFilters);
-    };
-
-    const toggleAiReplyFilter = () => {
-        const newFilters = { ...filters, hasAiReply: !filters.hasAiReply };
-        setFilters(newFilters);
-        updateUrlParams(newFilters);
-    };
-
-    const openReview = (review: Review) => {
-        setSelectedReview(review);
-        setIsModalOpen(true);
-    };
-
-    const closeReview = () => {
-        setIsModalOpen(false);
-        setSelectedReview(null);
-    };
-
-    const navigateReview = useCallback((direction: 'next' | 'prev') => {
-        if (!selectedReview) return;
-        const currentIndex = filteredReviews.findIndex(r => r.id === selectedReview.id);
-        if (currentIndex === -1) return;
-
-        let newIndex;
-        if (direction === 'next') {
-            if (currentIndex >= filteredReviews.length - 1) return;
-            newIndex = currentIndex + 1;
-        } else {
-            if (currentIndex <= 0) return;
-            newIndex = currentIndex - 1;
-        }
-        setSelectedReview(filteredReviews[newIndex]);
-    }, [filteredReviews, selectedReview]);
-
-    const sourceOptions = useMemo(() => Array.from(new Set(reviews.map(r => r.source))).sort(), [reviews]);
-    const categoryOptions = useMemo(() => Array.from(new Set(reviews.flatMap(r => r.categories || []))).sort(), [reviews]);
+    // 3. Manage interaction state for the details modal
+    const {
+        selectedReview,
+        isModalOpen,
+        openReview,
+        closeReview,
+        navigateReview
+    } = useReviewModal(reviews);
 
     return (
         <ReviewsContext.Provider value={{
             reviews,
-            filteredReviews,
             stats,
-            loading,
+            loading: isLoading,
             error,
+            pagination,
+            sourceOptions: filtersConfig.sources,
+            categoryOptions: filtersConfig.categories,
             filters,
             setSearchQuery,
             toggleFilter,
             toggleAiReplyFilter,
+            setPage,
+            refreshData: refresh,
             selectedReview,
             isModalOpen,
             openReview,
             closeReview,
-            navigateReview,
-            refreshData,
-            sourceOptions,
-            categoryOptions
+            navigateReview
         }}>
             {children}
         </ReviewsContext.Provider>
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useReviews = () => {
     const context = useContext(ReviewsContext);
     if (!context) {

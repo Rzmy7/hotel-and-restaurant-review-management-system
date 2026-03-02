@@ -1,8 +1,9 @@
 import { Search, Check, ChevronDown, X } from 'lucide-react';
 import { useReviews } from '../contexts/ReviewsContext';
 import { useState } from 'react';
+import type { FilterState } from '../types/reviews';
 const ReviewsToolbar = () => {
-    const { filters, setSearchQuery, toggleFilter, filteredReviews, sourceOptions, categoryOptions } = useReviews();
+    const { filters, setSearchQuery, toggleFilter, pagination, sourceOptions, categoryOptions } = useReviews();
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
 
@@ -35,7 +36,7 @@ const ReviewsToolbar = () => {
         if (activeMenu !== menu) return null;
 
         const menuOptions = options[menu as keyof typeof options];
-        let filterType: any = '';
+        let filterType: keyof Omit<FilterState, 'search' | 'hasAiReply'> | '' = '';
 
         switch (menu) {
             case 'Rating': filterType = 'rating'; break;
@@ -62,12 +63,12 @@ const ReviewsToolbar = () => {
                                 className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs outline-none focus:border-blue-400 focus:bg-white transition-all"
                             />
                         </div>
-                        {(filters as any)[filterType].length > 0 && (
+                        {filterType && (filters[filterType] as (string | number)[]).length > 0 && (
                             <div className="flex flex-wrap gap-1 border-b border-gray-100 pb-2 mb-2">
-                                {(filters as any)[filterType].map((val: string | number) => (
+                                {(filters[filterType] as (string | number)[]).map((val: string | number) => (
                                     <button
                                         key={val}
-                                        onClick={() => toggleFilter(filterType, val)}
+                                        onClick={() => toggleFilter(filterType as keyof Omit<FilterState, 'search' | 'hasAiReply'>, val)}
                                         className="flex items-center gap-1 bg-blue-50 text-[#4e80ee] pl-2 pr-1.5 py-1 rounded-md text-[10px] font-bold hover:bg-blue-100 transition-colors"
                                         title={`Remove ${val}`}
                                     >
@@ -82,13 +83,13 @@ const ReviewsToolbar = () => {
 
                 <div className={hasSearch ? "max-h-56 overflow-y-auto pr-1 space-y-0.5 custom-scrollbar" : "space-y-0.5"}>
                     {menuOptions
-                        .filter((opt: any) => hasSearch ? String(opt).toLowerCase().includes(menuSearch.toLowerCase()) : true)
-                        .map((opt: unknown) => {
-                            const isSelected = (filters as any)[filterType].includes(opt as string | number);
+                        .filter((opt: string | number) => hasSearch ? String(opt).toLowerCase().includes(menuSearch.toLowerCase()) : true)
+                        .map((opt: string | number) => {
+                            const isSelected = filterType && (filters[filterType] as (string | number)[]).includes(opt);
                             return (
                                 <button
-                                    key={opt as string | number}
-                                    onClick={() => toggleFilter(filterType, opt as string | number)}
+                                    key={opt}
+                                    onClick={() => toggleFilter(filterType as keyof Omit<FilterState, 'search' | 'hasAiReply'>, opt)}
                                     className={`flex items-center justify-between w-full px-3 py-2 text-[13px] font-bold text-left rounded-lg transition-all ${isSelected
                                         ? 'bg-blue-50 text-[#4e80ee]'
                                         : 'hover:bg-gray-50 text-gray-600'
@@ -139,7 +140,7 @@ const ReviewsToolbar = () => {
                 <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block"></div>
 
                 <div className="text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                    Showing <span className="text-[#4e80ee] text-[13px]">{filteredReviews.length}</span> results
+                    Showing <span className="text-[#4e80ee] text-[13px]">{pagination.total}</span> results
                 </div>
             </div>
         </div>

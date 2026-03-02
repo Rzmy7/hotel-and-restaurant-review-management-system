@@ -7,7 +7,7 @@ export interface Review {
     categories: string[];
     source: string;
     date: string;
-    status: 'Pending' | 'Replied' | 'AI Draft';
+    status: 'Pending' | 'Replied' | 'AI Draft' | 'Archived' | 'Flagged';
     language?: string;
     photos?: { id: number; src: string; alt: string }[];
     keyPhrases?: string[];
@@ -37,4 +37,19 @@ export interface FilterState {
     language: string[];
     status: string[];
     hasAiReply: boolean;
+}
+
+export interface PaginatedResponse<T> {
+    data: T[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+export interface FetchReviewsParams extends Partial<FilterState> {
+    page?: number;
+    limit?: number;
+    sortBy?: 'date' | 'rating';
+    sortOrder?: 'asc' | 'desc';
 }

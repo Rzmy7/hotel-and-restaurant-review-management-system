@@ -9,7 +9,7 @@ import ReviewsTable from '../components/ReviewsTable';
 import ReviewDetailModal from '../components/ReviewDetailModal';
 
 const ReviewsPageContent = () => {
-  const { stats, loading, refreshData, reviews, selectedReview, isModalOpen, closeReview } = useReviews();
+  const { stats, loading, refreshData, pagination, selectedReview, isModalOpen, closeReview } = useReviews();
 
   return (
     <div className="min-h-full bg-gray-50 flex flex-col">
@@ -20,9 +20,9 @@ const ReviewsPageContent = () => {
             <h1 className="text-2xl font-black text-gray-900 tracking-tight uppercase">
               Reviews Management
             </h1>
-            {!loading && reviews.length > 0 && (
+            {!loading && pagination.total > 0 && (
               <span className="text-[10px] font-black bg-[#4e80ee] text-white px-2 py-0.5 rounded-lg shadow-sm shadow-blue-100 uppercase tracking-widest">
-                {reviews.length} Total
+                {pagination.total} Total
               </span>
             )}
           </div>

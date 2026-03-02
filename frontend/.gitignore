@@ -28,3 +28,11 @@ build_log_v3.txt
 
 package-lock.json
 package.json
+
+
+eslint_errors_utf8.txt
+eslint_errors.txt
+eslint_report.json
+api_response.json
+
+tsc_errors.txt

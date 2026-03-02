@@ -1,4 +1,5 @@
-import type { Review, ReviewStats } from '../types/reviews';
+import type { Review, ReviewStats, FetchReviewsParams, PaginatedResponse } from '../types/reviews';
+import { apiClient } from '../api/client';
 
 // Mock Data
 let MOCK_REVIEWS: Review[] = [
@@ -31651,44 +31652,162 @@ let MOCK_REVIEWS: Review[] = [
 ];
 
 class ReviewsService {
-    async getReviews(): Promise<Review[]> {
-        try {
-            // Attempt to fetch from the actual API first
-            const response = await fetch("http://127.0.0.1:8000/reviews");
-            if (response.ok) {
-                return await response.json();
-            }
-        } catch (error) {
-            console.warn("Real API unavailable, falling back to mock data.", error);
-        }
+    private cachedReviews: Review[] | null = null;
+    private fetchPromise: Promise<Review[]> | null = null;
 
-        // Simulate API delay for mock data
-        return new Promise((resolve) => {
-            setTimeout(() => resolve([...MOCK_REVIEWS]), 500);
-        });
+    private async getBaseData(): Promise<Review[]> {
+        if (this.cachedReviews) return this.cachedReviews;
+        if (this.fetchPromise) return this.fetchPromise;
+
+        this.fetchPromise = (async () => {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch('http://127.0.0.1:8000/reviews', {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`API HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (Array.isArray(data) && data.length > 0) {
+                    const mappedData: Review[] = data.map((item: any) => ({
+                        id: item.id || Math.random().toString(),
+                        rating: typeof item.rating === 'number' ? item.rating : 5,
+                        userName: item.userName || item.reviewerName || 'Anonymous',
+                        reviewText: item.reviewText || '',
+                        sentiment: item.sentiment || 'Neutral',
+                        categories: Array.isArray(item.categories) ? item.categories : [],
+                        source: item.source || item.platform || 'Unknown',
+                        date: item.date || new Date().toISOString().split('T')[0],
+                        status: item.status || 'Pending',
+                        language: item.language || 'English',
+                        photos: Array.isArray(item.photos) ? item.photos : [],
+                        keyPhrases: Array.isArray(item.keyPhrases) ? item.keyPhrases : [],
+                        summary: item.summary || '',
+                        platformReviewId: item.platformReviewId || '',
+                        replyStatus: item.replyStatus || 'Unreplied',
+                        hasReply: item.hasReply || 'No',
+                        isAiReply: item.isAiReply || false
+                    }));
+
+                    this.cachedReviews = mappedData;
+                    return mappedData;
+                }
+
+                throw new Error('API returned an empty or invalid array format.');
+            } catch (error) {
+                console.warn('Real API fetch failed, falling back to local MOCK_REVIEWS:', error);
+                this.cachedReviews = [...MOCK_REVIEWS];
+                return this.cachedReviews;
+            } finally {
+                this.fetchPromise = null;
+            }
+        })();
+
+        return this.fetchPromise;
     }
 
-    async getStats(): Promise<ReviewStats> {
-        const reviews = await this.getReviews();
+    /**
+     * Simulated Endpoint: GET /api/reviews
+     * Handles server-side pagination, sorting, and filtering.
+     */
+    async getReviews(params: FetchReviewsParams): Promise<PaginatedResponse<Review>> {
+        // Simulate network call overhead from the mock layer architecture
+        await apiClient.get('/api/reviews', params);
 
+        const baseData = await this.getBaseData();
+        let filteredData = [...baseData];
+
+        // Apply string search
+        if (params.search) {
+            const query = params.search.toLowerCase();
+            filteredData = filteredData.filter(
+                (r) => r.reviewText.toLowerCase().includes(query) || r.userName.toLowerCase().includes(query)
+            );
+        }
+
+        if (params.rating && params.rating.length > 0) {
+            filteredData = filteredData.filter(r => params.rating!.includes(r.rating));
+        }
+        if (params.sentiment && params.sentiment.length > 0) {
+            filteredData = filteredData.filter(r => params.sentiment!.includes(r.sentiment));
+        }
+        if (params.source && params.source.length > 0) {
+            filteredData = filteredData.filter(r => params.source!.includes(r.source));
+        }
+        if (params.category && params.category.length > 0) {
+            filteredData = filteredData.filter(r => r.categories.some(cat => params.category!.includes(cat)));
+        }
+        if (params.language && params.language.length > 0) {
+            filteredData = filteredData.filter(r => params.language!.includes(r.language || 'English'));
+        }
+        if (params.status && params.status.length > 0) {
+            filteredData = filteredData.filter(r => params.status!.includes(r.status));
+        }
+        if (params.hasAiReply) {
+            filteredData = filteredData.filter(r => r.status !== 'Pending');
+        }
+
+        // Apply Sorting
+        const sortBy = params.sortBy || 'date';
+        const sortOrder = params.sortOrder || 'desc';
+        filteredData.sort((a, b) => {
+            if (sortBy === 'date') {
+                return sortOrder === 'asc'
+                    ? new Date(a.date).getTime() - new Date(b.date).getTime()
+                    : new Date(b.date).getTime() - new Date(a.date).getTime();
+            }
+            if (sortBy === 'rating') {
+                return sortOrder === 'asc' ? a.rating - b.rating : b.rating - a.rating;
+            }
+            return 0;
+        });
+
+        const total = filteredData.length;
+        const page = params.page || 0;
+        const limit = params.limit || 15;
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+
+        const paginatedData = filteredData.slice(page * limit, (page + 1) * limit);
+
+        return {
+            data: paginatedData,
+            total,
+            page,
+            limit,
+            totalPages
+        };
+    }
+
+    /**
+     * Simulated Endpoint: GET /api/reviews/stats
+     */
+    async getStats(): Promise<ReviewStats> {
+        await apiClient.get('/api/reviews/stats');
+
+        const reviews = await this.getBaseData();
         const totalReviews = reviews.length;
         let totalRating = 0;
         let pendingReplies = 0;
-        let sentimentScore = 0; // -1 to 1 mapped to 0-100 later
+        let sentimentScore = 0;
 
         reviews.forEach(review => {
             totalRating += review.rating;
             if (review.status === 'Pending' || review.status === 'AI Draft') {
                 pendingReplies++;
             }
-
             if (review.sentiment === 'Positive') sentimentScore += 1;
             else if (review.sentiment === 'Negative') sentimentScore -= 1;
         });
 
         const averageRating = totalReviews > 0 ? Number((totalRating / totalReviews).toFixed(1)) : 0;
-
-        // Calculate a 0-100 sentiment score based on Positive vs Negative ratio
         const normalizedSentiment = totalReviews > 0
             ? Math.round(((sentimentScore / totalReviews) + 1) * 50)
             : 50;
@@ -31701,59 +31820,62 @@ class ReviewsService {
         };
     }
 
-    // Mock API call to generate an AI reply
+    async getOptions(): Promise<{ sources: string[], categories: string[] }> {
+        const reviews = await this.getBaseData();
+        return {
+            sources: Array.from(new Set(reviews.map(r => r.source))).sort(),
+            categories: Array.from(new Set(reviews.flatMap(r => r.categories || []))).sort()
+        };
+    }
+
+    /**
+     * Simulated Endpoint: POST /api/reviews/generate
+     */
     async generateReply(review: Review, tone: 'professional' | 'casual' | 'standard' = 'standard', length: 'short' | 'standard' = 'standard'): Promise<string> {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                let base = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
+        await apiClient.post('/api/reviews/generate', { reviewId: review.id, tone, length });
 
-                if (review.sentiment === 'Positive') {
-                    base += "We're thrilled to hear that you had a wonderful experience. ";
-                } else if (review.sentiment === 'Negative') {
-                    base += "We sincerely apologize that your experience did not meet expectations. We take this seriously and will improve. ";
-                } else {
-                    base += "We appreciate your balanced feedback and will use it to enhance our services. ";
-                }
+        let base = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
 
-                if (tone === 'professional') {
-                    base = `Dear ${review.userName}, \n\nWe acknowledge your review and appreciate the time you took to provide feedback. Our team is committed to excellence. `;
-                }
+        if (review.sentiment === 'Positive') {
+            base += "We're thrilled to hear that you had a wonderful experience. ";
+        } else if (review.sentiment === 'Negative') {
+            base += "We sincerely apologize that your experience did not meet expectations. We take this seriously and will improve. ";
+        } else {
+            base += "We appreciate your balanced feedback and will use it to enhance our services. ";
+        }
 
-                if (length === 'short') {
-                    base = `Hi ${review.userName}, thanks for the review! We appreciate your insights.`;
-                } else {
-                    base += `\n\nWe hope to welcome you back soon!`;
-                }
+        if (tone === 'professional') {
+            base = `Dear ${review.userName}, \n\nWe acknowledge your review and appreciate the time you took to provide feedback. Our team is committed to excellence. `;
+        }
 
-                resolve(base);
-            }, 800);
-        });
+        if (length === 'short') {
+            base = `Hi ${review.userName}, thanks for the review! We appreciate your insights.`;
+        } else {
+            base += `\n\nWe hope to welcome you back soon!`;
+        }
+        return base;
     }
 
-    // Mock API call to update review status
+    /**
+     * Simulated Endpoint: PUT /api/reviews/:id/status
+     */
     async updateReviewStatus(reviewId: string | number, status: Review['status']): Promise<void> {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const review = MOCK_REVIEWS.find(r => r.id === reviewId);
-                if (review) review.status = status;
-                console.log(`Review ${reviewId} status updated to ${status} via API`);
-                resolve();
-            }, 400);
-        });
+        await apiClient.put(`/api/reviews/${reviewId}/status`, { status });
+        const reviews = await this.getBaseData();
+        const review = reviews.find(r => r.id === reviewId);
+        if (review) review.status = status;
     }
 
-    // Mock API call to save a written reply
+    /**
+     * Simulated Endpoint: POST /api/reviews/:id/reply
+     */
     async saveReply(reviewId: string | number, replyText: string): Promise<void> {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const review = MOCK_REVIEWS.find(r => r.id === reviewId);
-                if (review) {
-                    review.status = 'Replied';
-                }
-                console.log(`Reply for review ${reviewId} saved via API: ${replyText}`);
-                resolve();
-            }, 600);
-        });
+        await apiClient.post(`/api/reviews/${reviewId}/reply`, { replyText });
+        const reviews = await this.getBaseData();
+        const review = reviews.find(r => r.id === reviewId);
+        if (review) {
+            review.status = 'Replied';
+        }
     }
 }
 
