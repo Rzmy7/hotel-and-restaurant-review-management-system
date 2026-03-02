@@ -1,6 +1,8 @@
 import { X, Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, PenTool, Scissors, Copy, CheckCircle2, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review } from '../types/reviews';
 import { useReviews } from '../contexts/ReviewsContext';
+import { useState, useEffect } from 'react';
+import { reviewsService } from '../services/reviewsService';
 
 interface ReviewDetailModalProps {
   isOpen: boolean;
@@ -9,7 +11,68 @@ interface ReviewDetailModalProps {
 }
 
 const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) => {
-  const { navigateReview, filteredReviews } = useReviews();
+  const { navigateReview, filteredReviews, refreshData } = useReviews();
+  const [draftReply, setDraftReply] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  // Initialize draft when review changes
+  useEffect(() => {
+    if (review) {
+      setDraftReply("");
+      setIsCopied(false);
+      // Auto-generate a draft if it hasn't been replied to and is opened right away? 
+      // User can press generate instead.
+    }
+  }, [review]);
+
+  const handleGenerate = async (tone: 'professional' | 'casual' | 'standard' = 'standard', length: 'short' | 'standard' = 'standard') => {
+    setIsGenerating(true);
+    try {
+      const generated = await reviewsService.generateReply(review, tone, length);
+      setDraftReply(generated);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!draftReply) return;
+    try {
+      await navigator.clipboard.writeText(draftReply);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const handleMarkResolved = async () => {
+    setIsResolving(true);
+    try {
+      await reviewsService.updateReviewStatus(review.id, 'Replied');
+      await refreshData();
+      onClose();
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!draftReply) return;
+    setIsSaving(true);
+    try {
+      await reviewsService.saveReply(review.id, draftReply);
+      await refreshData();
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -148,27 +211,51 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
                 </div>
 
                 <div className="p-6">
-                  <div className="min-h-[140px] w-full p-4 bg-white/80 border border-blue-100/50 rounded-xl text-[14px] font-medium text-gray-700 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-400 transition-all shadow-sm shadow-blue-50">
+                  <div className="min-h-[140px] w-full p-4 bg-white/80 border border-blue-100/50 rounded-xl text-[14px] font-medium text-gray-700 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-400 transition-all shadow-sm shadow-blue-50 relative overflow-hidden">
+                    {isGenerating && (
+                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10">
+                        <RefreshCw size={24} className="text-[#4e80ee] animate-spin" />
+                      </div>
+                    )}
                     <textarea
-                      className="w-full h-full min-h-[120px] bg-transparent resize-none outline-none leading-relaxed"
-                      placeholder="AI generated response will appear here..."
-                      defaultValue={`Dear ${review.userName}, \n\nThank you so much for your feedback! We're thrilled to hear that you had a wonderful experience. \n\nWe hope to welcome you back soon!`}
+                      className="w-full h-full min-h-[120px] bg-transparent resize-none outline-none leading-relaxed relative z-0"
+                      placeholder="AI generated response will appear here. Click 'Regenerate' to automatically draft a reply."
+                      value={draftReply}
+                      onChange={(e) => setDraftReply(e.target.value)}
+                      disabled={isGenerating || isSaving}
                     />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mt-4">
-                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
-                      <RefreshCw size={14} /> Regenerate
+                    <button
+                      onClick={() => handleGenerate('standard')}
+                      disabled={isGenerating || isSaving}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                    >
+                      <RefreshCw size={14} className={isGenerating ? "animate-spin" : ""} /> Regenerate
                     </button>
-                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                    <button
+                      onClick={() => handleGenerate('professional')}
+                      disabled={isGenerating || isSaving}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                    >
                       <PenTool size={14} /> Professional Tone
                     </button>
-                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                    <button
+                      onClick={() => handleGenerate('standard', 'short')}
+                      disabled={isGenerating || isSaving}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                    >
                       <Scissors size={14} /> Shorten
                     </button>
                     <div className="flex-1" />
-                    <button className="px-4 py-2 bg-[#4e80ee] hover:bg-blue-600 text-white rounded-lg text-[12px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-lg shadow-blue-200 active:scale-95">
-                      <Copy size={14} /> Copy
+                    <button
+                      onClick={handleCopy}
+                      disabled={!draftReply || isGenerating || isCopied}
+                      className="px-4 py-2 bg-[#4e80ee] hover:bg-blue-600 disabled:bg-gray-300 disabled:shadow-none min-w-[80px] justify-center text-white rounded-lg text-[12px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-lg shadow-blue-200 active:scale-95"
+                    >
+                      {isCopied ? <CheckCircle2 size={14} className="text-white" /> : <Copy size={14} />}
+                      {isCopied ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                 </div>
@@ -271,11 +358,18 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
             Close View
           </button>
           <div className="flex items-center gap-3">
-            <button className="px-6 py-2.5 rounded-xl text-[13px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all uppercase tracking-wider flex items-center gap-1.5 active:scale-95 shadow-sm">
-              <CheckCircle2 size={16} /> Mark as Resolved
+            <button
+              onClick={handleMarkResolved}
+              disabled={isResolving || isSaving || review.status === 'Replied'}
+              className="px-6 py-2.5 rounded-xl text-[13px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 flex items-center gap-1.5 shadow-sm transition-all uppercase tracking-wider active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isResolving ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+              {review.status === 'Replied' ? 'Resolved' : 'Mark as Resolved'}
             </button>
-            <button className="px-8 py-2.5 rounded-xl text-[13px] font-black text-white bg-blue-500 hover:bg-blue-600 transition-all uppercase tracking-wider shadow-xl shadow-gray-200 active:scale-95 transform hover:-translate-y-0.5">
-              Save Changes
+            <button
+              onClick={handleSave}
+              disabled={isSaving || isResolving || !draftReply}
+              className="px-8 py-2.5 rounded-xl text-[13px] font-black text-white bg-blue-500 hover:bg-blue-600 transition-all uppercase tracking-wider shadow-xl shadow-gray-200 active:scale-95 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+              {isSaving ? <RefreshCw size={16} className="animate-spin" /> : 'Save Changes'}
             </button>
           </div>
         </div>
