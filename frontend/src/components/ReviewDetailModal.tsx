@@ -274,7 +274,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
             <button className="px-6 py-2.5 rounded-xl text-[13px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all uppercase tracking-wider flex items-center gap-1.5 active:scale-95 shadow-sm">
               <CheckCircle2 size={16} /> Mark as Resolved
             </button>
-            <button className="px-8 py-2.5 rounded-xl text-[13px] font-black text-white bg-gray-900 hover:bg-black transition-all uppercase tracking-wider shadow-xl shadow-gray-200 active:scale-95 transform hover:-translate-y-0.5">
+            <button className="px-8 py-2.5 rounded-xl text-[13px] font-black text-white bg-blue-500 hover:bg-blue-600 transition-all uppercase tracking-wider shadow-xl shadow-gray-200 active:scale-95 transform hover:-translate-y-0.5">
               Save Changes
             </button>
           </div>

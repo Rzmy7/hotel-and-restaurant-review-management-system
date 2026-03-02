@@ -35,5 +35,6 @@ export interface FilterState {
     source: string[];
     category: string[];
     language: string[];
+    status: string[];
     hasAiReply: boolean;
 }

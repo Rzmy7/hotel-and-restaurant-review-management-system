@@ -1,21 +1,17 @@
 import { Search, Check, ChevronDown, X } from 'lucide-react';
 import { useReviews } from '../contexts/ReviewsContext';
 import { useState } from 'react';
-import type { Review } from '../types/reviews';
-
 const ReviewsToolbar = () => {
-    const { filters, setSearchQuery, toggleFilter, filteredReviews, reviews } = useReviews();
+    const { filters, setSearchQuery, toggleFilter, filteredReviews, sourceOptions, categoryOptions } = useReviews();
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
 
-    // Derived distinct options (could also come from the API/Context)
     // Derived distinct options
-    const allCategories = Array.from(new Set(reviews.flatMap((r: Review) => r.categories || [])));
     const options = {
         Rating: [5, 4, 3, 2, 1],
         Sentiment: ['Positive', 'Neutral', 'Negative'],
-        Source: ['Google Reviews', 'TripAdvisor', 'Booking.com', 'Airbnb', 'Agoda'],
-        Category: allCategories.length > 0 ? allCategories : ['Food', 'Service', 'Cleanliness', 'Location', 'Value'],
+        Source: sourceOptions.length > 0 ? sourceOptions : ['Google Reviews', 'TripAdvisor', 'Booking.com', 'Airbnb', 'Agoda'],
+        Category: categoryOptions.length > 0 ? categoryOptions : ['Food', 'Service', 'Cleanliness', 'Location', 'Value'],
         Status: ['Pending', 'Replied', 'AI Draft']
     };
 
@@ -30,6 +26,7 @@ const ReviewsToolbar = () => {
             case "Sentiment": return filters.sentiment.length > 0;
             case "Source": return filters.source.length > 0;
             case "Category": return filters.category.length > 0;
+            case "Status": return filters.status.length > 0;
             default: return false;
         }
     };
@@ -45,6 +42,7 @@ const ReviewsToolbar = () => {
             case 'Sentiment': filterType = 'sentiment'; break;
             case 'Source': filterType = 'source'; break;
             case 'Category': filterType = 'category'; break;
+            case 'Status': filterType = 'status'; break;
             default: return null;
         }
 
@@ -122,7 +120,7 @@ const ReviewsToolbar = () => {
 
             {/* Filters */}
             <div className="flex items-center gap-2 flex-wrap">
-                {Object.keys(options).filter(k => k !== 'Status').map((menu) => (
+                {Object.keys(options).map((menu) => (
                     <div key={menu} className="relative">
                         <button
                             onClick={() => handleMenuClick(menu)}

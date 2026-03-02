@@ -20,6 +20,8 @@ interface ReviewsContextType {
     closeReview: () => void;
     navigateReview: (direction: 'next' | 'prev') => void;
     refreshData: () => Promise<void>;
+    sourceOptions: string[];
+    categoryOptions: string[];
 }
 
 const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
@@ -41,6 +43,7 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
             source: getParam('source'),
             category: getParam('category'),
             language: getParam('language'),
+            status: getParam('status'),
             hasAiReply: searchParams.get('ai_reply') === 'true'
         };
     }, [searchParams]);
@@ -121,6 +124,11 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
                 if (!filters.language.includes(lang)) return false;
             }
 
+            // Status
+            if (filters.status.length > 0 && !filters.status.includes(review.status)) {
+                return false;
+            }
+
             // Has AI Reply
             if (filters.hasAiReply) {
                 if (review.status === 'Pending') return false;
@@ -139,6 +147,7 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         newFilters.source.forEach(v => params.append('source', v));
         newFilters.category.forEach(v => params.append('category', v));
         newFilters.language.forEach(v => params.append('language', v));
+        newFilters.status.forEach(v => params.append('status', v));
         if (newFilters.hasAiReply) params.set('ai_reply', 'true');
         setSearchParams(params);
     };
@@ -194,6 +203,9 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSelectedReview(filteredReviews[newIndex]);
     }, [filteredReviews, selectedReview]);
 
+    const sourceOptions = useMemo(() => Array.from(new Set(reviews.map(r => r.source))).sort(), [reviews]);
+    const categoryOptions = useMemo(() => Array.from(new Set(reviews.flatMap(r => r.categories || []))).sort(), [reviews]);
+
     return (
         <ReviewsContext.Provider value={{
             reviews,
@@ -210,7 +222,9 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
             openReview,
             closeReview,
             navigateReview,
-            refreshData
+            refreshData,
+            sourceOptions,
+            categoryOptions
         }}>
             {children}
         </ReviewsContext.Provider>
