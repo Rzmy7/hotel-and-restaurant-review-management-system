@@ -1,7 +1,6 @@
 import { RefreshCw, Download, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import { useReviews } from '../contexts/ReviewsContext';
-import { ReviewsProvider } from '../contexts/ReviewsContext';
 
 // New Components
 import ReviewStats from '../components/ReviewStats';
@@ -47,13 +46,12 @@ const ReviewsPageContent = () => {
             <RefreshCw size={18} />
           </button>
 
-          <button 
+          <button
             onClick={() => setIsDateRangeOpen(true)}
-            className={`flex items-center gap-2 px-5 py-2.5 bg-white border rounded-xl text-[13px] font-bold transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm ${
-              filters.dateFrom && filters.dateTo 
-                ? 'border-blue-400 text-[#4e80ee] bg-blue-50' 
-                : 'border-gray-200 text-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 bg-white border rounded-xl text-[13px] font-bold transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm ${filters.dateFrom && filters.dateTo
+              ? 'border-blue-400 text-[#4e80ee] bg-blue-50'
+              : 'border-gray-200 text-gray-600'
+              }`}
           >
             <Calendar size={16} />
             {filters.dateFrom && filters.dateTo ? 'Filtered Result' : 'Date Range'}
@@ -97,12 +95,4 @@ const ReviewsPageContent = () => {
   );
 };
 
-const ReviewsPage = () => {
-  return (
-    <ReviewsProvider>
-      <ReviewsPageContent />
-    </ReviewsProvider>
-  );
-};
-
-export default ReviewsPage;
+export default ReviewsPageContent;

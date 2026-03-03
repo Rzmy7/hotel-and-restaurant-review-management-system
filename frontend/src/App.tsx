@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ToastProvider } from './contexts/ToastContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
+import { ReviewsProvider } from './contexts/ReviewsContext';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import Sidebar from './components/SideBar';
 import ReviewsPage from './pages/ReviewsPage';
@@ -19,8 +20,6 @@ import NotificationsPage from './pages/NotificationsPage';
 import InsightsPage from './pages/InsightsPage';
 import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
-
-
 
 const NotFound = () => {
   return (
@@ -87,7 +86,9 @@ function App() {
     <BrowserRouter>
       <ToastProvider>
         <OrganizationProvider>
-          <AppContent />
+          <ReviewsProvider>
+            <AppContent />
+          </ReviewsProvider>
         </OrganizationProvider>
       </ToastProvider>
     </BrowserRouter>

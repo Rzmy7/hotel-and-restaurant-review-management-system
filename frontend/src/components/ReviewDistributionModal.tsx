@@ -1,0 +1,305 @@
+import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { X, Star, BarChart2, Globe, ChevronDown, Check } from 'lucide-react';
+import { useReviews } from '../contexts/ReviewsContext';
+
+interface ReviewDistributionModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = ({ isOpen, onClose }) => {
+    const { reviews } = useReviews();
+    const [selectedSource, setSelectedSource] = useState<string>('All Sources');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setDropdownOpen(false);
+            }
+        };
+        if (dropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [dropdownOpen]);
+
+    // Calculate global and source distributions dynamically
+    const { globalStats, sourceStatsMap } = useMemo(() => {
+        const _globalStats = {
+            total: 0,
+            sumAvg: 0,
+            distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as Record<number, number>
+        };
+
+        const _sourceStatsMap = new Map<string, {
+            total: number;
+            sumAvg: number;
+            distribution: Record<number, number>;
+        }>();
+
+        if (!reviews || reviews.length === 0) {
+            return { globalStats: _globalStats, sourceStatsMap: _sourceStatsMap };
+        }
+
+        for (let i = 0; i < reviews.length; i++) {
+            const review = reviews[i];
+            const src = review.source || 'Other';
+            const rating = typeof review.rating === 'number' && review.rating >= 1 && review.rating <= 5
+                ? review.rating
+                : 0;
+
+            // Global stats
+            _globalStats.total += 1;
+            if (rating > 0) {
+                _globalStats.sumAvg += rating;
+                _globalStats.distribution[rating] += 1;
+            }
+
+            // Source stats
+            if (!_sourceStatsMap.has(src)) {
+                _sourceStatsMap.set(src, {
+                    total: 0,
+                    sumAvg: 0,
+                    distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+                });
+            }
+
+            const stat = _sourceStatsMap.get(src)!;
+            stat.total += 1;
+            if (rating > 0) {
+                stat.sumAvg += rating;
+                stat.distribution[rating] += 1;
+            }
+        }
+
+        return { globalStats: _globalStats, sourceStatsMap: _sourceStatsMap };
+    }, [reviews]);
+
+    const availableSources = Array.from(sourceStatsMap.keys()).sort();
+
+    // Reset selected source to 'All Sources' when data loads or gets empty
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedSource('All Sources');
+            setDropdownOpen(false);
+        }
+    }, [isOpen]);
+
+    // Helper to format stats to an array
+    const formatStats = (
+        data: { total: number; sumAvg: number; distribution: Record<number, number> },
+        isGlobal: boolean = false
+    ) => {
+        return {
+            total: data.total,
+            average: Number((data.sumAvg / Math.max(1, data.total)).toFixed(1)),
+            distribution: [5, 4, 3, 2, 1].map(r => {
+                const count = data.distribution[r];
+                const globalCount = globalStats.distribution[r];
+                const percentage = Math.round((count / Math.max(1, data.total)) * 100);
+                const globalPercentage = isGlobal ? null : Math.round((count / Math.max(1, globalCount)) * 100);
+
+                return {
+                    rating: r,
+                    count,
+                    percentage,
+                    globalPercentage
+                };
+            })
+        };
+    };
+
+    const activeData = selectedSource === 'All Sources'
+        ? formatStats(globalStats, true)
+        : sourceStatsMap.has(selectedSource)
+            ? formatStats(sourceStatsMap.get(selectedSource)!)
+            : null;
+
+    if (!isOpen) return null;
+
+    return (
+        <div
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] px-4 animate-in fade-in duration-200"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white w-full max-w-[500px] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex flex-col border-b border-gray-100 bg-white/80 sticky top-0 z-10 backdrop-blur-md shrink-0">
+                    <div className="flex items-center justify-between px-6 py-5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#5988EF] shadow-sm">
+                                <BarChart2 size={20} />
+                            </div>
+                            <div>
+                                <h2 className="text-[17px] font-black text-gray-900 tracking-tight">Review Distribution</h2>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white border border-gray-100 shadow-sm"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+
+                    {/* Source Selection Dropdown Section */}
+                    {globalStats.total > 0 && (
+                        <div className="px-6 pb-4 flex flex-col sm:flex-row sm:items-center gap-3 border-t border-gray-50 pt-4 bg-gray-50/20">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest shrink-0">
+                                Source
+                            </label>
+                            <div className="relative flex-1" ref={dropdownRef}>
+                                <button
+                                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                                    className={`w-full flex items-center justify-between bg-white border ${dropdownOpen ? 'border-[#5988EF] ring-2 ring-[#5988EF]/20' : 'border-gray-200'} text-gray-800 text-[13px] font-bold rounded-xl px-4 py-2 outline-none hover:border-[#5988EF] transition-all shadow-sm`}
+                                >
+                                    <span className="truncate">{selectedSource === 'All Sources' ? 'All Sources (Global Overview)' : selectedSource}</span>
+                                    <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {dropdownOpen && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl shadow-gray-200/50 z-50 p-2 max-h-60 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-150">
+                                        <div className="space-y-0.5">
+                                            <button
+                                                onClick={() => { setSelectedSource('All Sources'); setDropdownOpen(false); }}
+                                                className={`flex items-center justify-between w-full px-3 py-2 text-[13px] font-bold text-left rounded-lg transition-all ${selectedSource === 'All Sources'
+                                                    ? 'bg-blue-50 text-[#5988EF]'
+                                                    : 'hover:bg-gray-50 text-gray-600'
+                                                    }`}
+                                            >
+                                                <span>All Sources (Global Overview)</span>
+                                                {selectedSource === 'All Sources' && <Check size={14} className="text-[#5988EF]" />}
+                                            </button>
+
+                                            {availableSources.map(src => {
+                                                const isSelected = selectedSource === src;
+                                                return (
+                                                    <button
+                                                        key={src}
+                                                        onClick={() => { setSelectedSource(src); setDropdownOpen(false); }}
+                                                        className={`flex items-center justify-between w-full px-3 py-2 text-[13px] font-bold text-left rounded-lg transition-all ${isSelected
+                                                            ? 'bg-blue-50 text-[#5988EF]'
+                                                            : 'hover:bg-gray-50 text-gray-600'
+                                                            }`}
+                                                    >
+                                                        <span>{src}</span>
+                                                        {isSelected && <Check size={14} className="text-[#5988EF]" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/40">
+                    {!activeData ? (
+                        <div className="text-center py-10 flex flex-col items-center justify-center">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                <BarChart2 size={24} className="text-gray-300" />
+                            </div>
+                            <h3 className="text-[14px] font-bold text-gray-700 mb-1">No Data Available</h3>
+                            <p className="text-gray-500 text-[12px] font-medium">There are currently no reviews available to display.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+                            {/* Selected Source Header */}
+                            <div className="flex justify-between items-center mb-6 pb-5 border-b border-gray-50">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-black shadow-md text-sm ${selectedSource === 'All Sources' ? 'bg-gradient-to-br from-indigo-500 to-blue-600' : 'bg-gradient-to-br from-[#5988EF] to-cyan-500'}`}>
+                                        {selectedSource === 'All Sources' ? <Globe size={16} /> : selectedSource.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-[15px] font-black text-gray-800 leading-tight">{selectedSource}</h3>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                            {activeData.total.toLocaleString()} Total Reviews
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="bg-[#5988EF]/10 border border-[#5988EF]/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                    <Star size={14} className="fill-[#5988EF] text-[#5988EF]" />
+                                    <span className="text-[15px] font-black text-[#5988EF]">{activeData.average}</span>
+                                </div>
+                            </div>
+
+                            {/* Distribution Bars */}
+                            <div className="flex flex-col gap-4">
+                                {activeData.distribution.map(dist => (
+                                    <div key={dist.rating} className="flex flex-col gap-1.5 w-full group cursor-default">
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-1.5 min-w-[36px]">
+                                                <span className="text-[13px] font-bold text-gray-700 group-hover:text-amber-500 transition-colors">{dist.rating}</span>
+                                                <Star size={14} className="text-amber-400 fill-amber-400 group-hover:text-amber-500 group-hover:fill-amber-500 transition-colors" />
+                                            </div>
+
+                                            <div className="flex items-end flex-col">
+                                                <span className="text-[13px] text-gray-800 font-black">{dist.percentage}%</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden relative shadow-inner">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-700 ease-out bg-[#5988EF] shadow-md group-hover:brightness-110"
+                                                style={{ width: `${dist.percentage}%` }}
+                                            />
+                                        </div>
+
+                                        {/* Global Comparison Detail & Count */}
+                                        <div className="flex justify-between items-center text-[11px] mt-0.5">
+                                            <span className="text-gray-400 font-bold uppercase tracking-wider">{dist.count.toLocaleString()} Reviews</span>
+
+                                            {dist.globalPercentage !== null ? (
+                                                <span className="text-gray-500 font-semibold px-2 py-0.5 bg-gray-50 rounded-md">
+                                                    {dist.globalPercentage}% of all {dist.rating}★
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 font-semibold">
+                                                    Global
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 px-6 border-t border-gray-100 bg-gray-50/80 flex justify-end shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2 rounded-xl text-[12px] font-black text-gray-600 bg-white border border-gray-200 hover:text-gray-900 hover:bg-gray-50 transition-all shadow-sm uppercase tracking-widest"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ReviewDistributionModal;

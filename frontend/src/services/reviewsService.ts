@@ -2,7 +2,7 @@ import type { Review, ReviewStats, FetchReviewsParams, PaginatedResponse } from 
 import { apiClient } from '../api/client';
 
 // Mock Data
-let MOCK_REVIEWS: Review[] = [
+const MOCK_REVIEWS: Review[] = [
     {
         "id": 1,
         "rating": 4,
