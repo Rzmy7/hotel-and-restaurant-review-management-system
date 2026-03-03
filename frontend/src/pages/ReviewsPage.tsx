@@ -56,7 +56,7 @@ const ReviewsPageContent = () => {
             }`}
           >
             <Calendar size={16} />
-            {filters.dateFrom && filters.dateTo ? 'Date Filter Active' : 'Date Range'}
+            {filters.dateFrom && filters.dateTo ? 'Filtered Result' : 'Date Range'}
           </button>
 
           <button className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95">

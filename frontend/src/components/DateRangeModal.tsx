@@ -12,11 +12,16 @@ interface DateRangeModalProps {
 const DateRangeModal = ({ isOpen, onClose, onApply, initialDateFrom, initialDateTo }: DateRangeModalProps) => {
     const [dateFrom, setDateFrom] = useState(initialDateFrom || '');
     const [dateTo, setDateTo] = useState(initialDateTo || '');
+    const [selectedQuickRange, setSelectedQuickRange] = useState<'today' | 'week' | 'month' | 'quarter' | 'year' | null>(null);
 
+    // Sync local state with filter values when modal opens
     useEffect(() => {
-        setDateFrom(initialDateFrom || '');
-        setDateTo(initialDateTo || '');
-    }, [initialDateFrom, initialDateTo, isOpen]);
+        if (isOpen) {
+            setDateFrom(initialDateFrom || '');
+            setDateTo(initialDateTo || '');
+            setSelectedQuickRange(null);
+        }
+    }, [isOpen, initialDateFrom, initialDateTo]);
 
     if (!isOpen) return null;
 
@@ -28,8 +33,6 @@ const DateRangeModal = ({ isOpen, onClose, onApply, initialDateFrom, initialDate
     };
 
     const handleClear = () => {
-        setDateFrom('');
-        setDateTo('');
         onApply('', '');
         onClose();
     };
@@ -67,6 +70,17 @@ const DateRangeModal = ({ isOpen, onClose, onApply, initialDateFrom, initialDate
 
         setDateFrom(from);
         setDateTo(to);
+        setSelectedQuickRange(range);
+    };
+
+    const handleDateFromChange = (value: string) => {
+        setDateFrom(value);
+        setSelectedQuickRange(null);
+    };
+
+    const handleDateToChange = (value: string) => {
+        setDateTo(value);
+        setSelectedQuickRange(null);
     };
 
     return (
@@ -116,31 +130,51 @@ const DateRangeModal = ({ isOpen, onClose, onApply, initialDateFrom, initialDate
                             <div className="grid grid-cols-3 gap-2">
                                 <button
                                     onClick={() => handleQuickSelect('today')}
-                                    className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                                    className={`px-3 py-2 text-xs font-bold rounded-lg transition-colors border ${
+                                        selectedQuickRange === 'today'
+                                            ? 'bg-[#4e80ee] text-white border-[#4e80ee] shadow-md'
+                                            : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] border-gray-200 hover:border-blue-300'
+                                    }`}
                                 >
                                     Today
                                 </button>
                                 <button
                                     onClick={() => handleQuickSelect('week')}
-                                    className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                                    className={`px-3 py-2 text-xs font-bold rounded-lg transition-colors border ${
+                                        selectedQuickRange === 'week'
+                                            ? 'bg-[#4e80ee] text-white border-[#4e80ee] shadow-md'
+                                            : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] border-gray-200 hover:border-blue-300'
+                                    }`}
                                 >
                                     Last 7 Days
                                 </button>
                                 <button
                                     onClick={() => handleQuickSelect('month')}
-                                    className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                                    className={`px-3 py-2 text-xs font-bold rounded-lg transition-colors border ${
+                                        selectedQuickRange === 'month'
+                                            ? 'bg-[#4e80ee] text-white border-[#4e80ee] shadow-md'
+                                            : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] border-gray-200 hover:border-blue-300'
+                                    }`}
                                 >
                                     Last Month
                                 </button>
                                 <button
                                     onClick={() => handleQuickSelect('quarter')}
-                                    className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                                    className={`px-3 py-2 text-xs font-bold rounded-lg transition-colors border ${
+                                        selectedQuickRange === 'quarter'
+                                            ? 'bg-[#4e80ee] text-white border-[#4e80ee] shadow-md'
+                                            : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] border-gray-200 hover:border-blue-300'
+                                    }`}
                                 >
                                     Last Quarter
                                 </button>
                                 <button
                                     onClick={() => handleQuickSelect('year')}
-                                    className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                                    className={`px-3 py-2 text-xs font-bold rounded-lg transition-colors border ${
+                                        selectedQuickRange === 'year'
+                                            ? 'bg-[#4e80ee] text-white border-[#4e80ee] shadow-md'
+                                            : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-[#4e80ee] border-gray-200 hover:border-blue-300'
+                                    }`}
                                 >
                                     Last Year
                                 </button>
@@ -157,7 +191,7 @@ const DateRangeModal = ({ isOpen, onClose, onApply, initialDateFrom, initialDate
                                     type="date"
                                     id="dateFrom"
                                     value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
+                                    onChange={(e) => handleDateFromChange(e.target.value)}
                                     max={dateTo || undefined}
                                     className="w-full px-3 py-2.5 text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                                 />
@@ -170,7 +204,7 @@ const DateRangeModal = ({ isOpen, onClose, onApply, initialDateFrom, initialDate
                                     type="date"
                                     id="dateTo"
                                     value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
+                                    onChange={(e) => handleDateToChange(e.target.value)}
                                     min={dateFrom || undefined}
                                     className="w-full px-3 py-2.5 text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                                 />
