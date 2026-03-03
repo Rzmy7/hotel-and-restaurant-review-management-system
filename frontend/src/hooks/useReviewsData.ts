@@ -43,7 +43,10 @@ export function useReviewsData(params: FetchReviewsParams) {
         fetchReviews();
     }, [fetchReviews]);
 
-    const refresh = () => fetchReviews(true);
+    const refresh = () => {
+        reviewsService.clearCache();
+        fetchReviews(false);
+    };
 
     return {
         reviews: paginatedData.data,

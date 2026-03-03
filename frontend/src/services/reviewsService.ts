@@ -31877,6 +31877,14 @@ class ReviewsService {
             review.status = 'Replied';
         }
     }
+
+    /**
+     * Clear the cached reviews data to force a fresh fetch from the backend.
+     */
+    clearCache(): void {
+        this.cachedReviews = null;
+        this.fetchPromise = null;
+    }
 }
 
 export const reviewsService = new ReviewsService();
