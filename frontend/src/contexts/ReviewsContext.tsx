@@ -20,9 +20,10 @@ interface ReviewsContextType {
     // Filters & Actions
     filters: FilterState & { page: number };
     setSearchQuery: (query: string) => void;
-    toggleFilter: (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => void;
+    toggleFilter: (type: keyof Omit<FilterState, 'search' | 'hasAiReply' | 'dateFrom' | 'dateTo'>, value: string | number) => void;
     toggleAiReplyFilter: () => void;
     setPage: (page: number) => void;
+    setDateRange: (dateFrom: string, dateTo: string) => void;
     refreshData: () => void;
 
     // Modal State
@@ -43,7 +44,8 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSearchQuery,
         toggleFilter,
         toggleAiReplyFilter,
-        setPage
+        setPage,
+        setDateRange
     } = useReviewFilters();
 
     // 2. Fetch remote data based on active parameters
@@ -66,6 +68,12 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
         navigateReview
     } = useReviewModal(reviews);
 
+    // Wrapper function to reset page and refresh data
+    const handleRefresh = () => {
+        setPage(0);
+        refresh();
+    };
+
     return (
         <ReviewsContext.Provider value={{
             reviews,
@@ -80,7 +88,8 @@ export const ReviewsProvider: React.FC<{ children: ReactNode }> = ({ children })
             toggleFilter,
             toggleAiReplyFilter,
             setPage,
-            refreshData: refresh,
+            setDateRange,
+            refreshData: handleRefresh,
             selectedReview,
             isModalOpen,
             openReview,

@@ -31755,6 +31755,16 @@ class ReviewsService {
             filteredData = filteredData.filter(r => r.status !== 'Pending');
         }
 
+        // Apply date range filter
+        if (params.dateFrom || params.dateTo) {
+            filteredData = filteredData.filter(r => {
+                const reviewDate = new Date(r.date).getTime();
+                const fromDate = params.dateFrom ? new Date(params.dateFrom).getTime() : -Infinity;
+                const toDate = params.dateTo ? new Date(params.dateTo).getTime() : Infinity;
+                return reviewDate >= fromDate && reviewDate <= toDate;
+            });
+        }
+
         // Apply Sorting
         const sortBy = params.sortBy || 'date';
         const sortOrder = params.sortOrder || 'desc';

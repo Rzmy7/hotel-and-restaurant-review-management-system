@@ -16,6 +16,8 @@ export function useReviewFilters() {
             language: getParam('language'),
             status: getParam('status'),
             hasAiReply: searchParams.get('ai_reply') === 'true',
+            dateFrom: searchParams.get('date_from') || undefined,
+            dateTo: searchParams.get('date_to') || undefined,
             page: Number(searchParams.get('page')) || 0,
         };
     }, [searchParams]);
@@ -36,6 +38,8 @@ export function useReviewFilters() {
         newFilters.language.forEach(v => params.append('language', v));
         newFilters.status.forEach(v => params.append('status', v));
         if (newFilters.hasAiReply) params.set('ai_reply', 'true');
+        if (newFilters.dateFrom) params.set('date_from', newFilters.dateFrom);
+        if (newFilters.dateTo) params.set('date_to', newFilters.dateTo);
         if (newFilters.page > 0) params.set('page', newFilters.page.toString());
         setSearchParams(params);
     };
@@ -70,6 +74,17 @@ export function useReviewFilters() {
         updateUrlParams(newFilters);
     };
 
+    const setDateRange = (dateFrom: string, dateTo: string) => {
+        const newFilters = { 
+            ...filters, 
+            dateFrom: dateFrom || undefined, 
+            dateTo: dateTo || undefined,
+            page: 0 
+        };
+        setFilters(newFilters);
+        updateUrlParams(newFilters);
+    };
+
     // Derived Fetch Params for the Service
     const fetchParams: FetchReviewsParams = useMemo(() => {
         return {
@@ -86,6 +101,7 @@ export function useReviewFilters() {
         setSearchQuery,
         toggleFilter,
         toggleAiReplyFilter,
-        setPage
+        setPage,
+        setDateRange
     };
 }

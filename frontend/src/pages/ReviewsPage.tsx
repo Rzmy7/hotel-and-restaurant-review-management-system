@@ -1,4 +1,5 @@
 import { RefreshCw, Download, Calendar } from 'lucide-react';
+import { useState } from 'react';
 import { useReviews } from '../contexts/ReviewsContext';
 import { ReviewsProvider } from '../contexts/ReviewsContext';
 
@@ -7,9 +8,15 @@ import ReviewStats from '../components/ReviewStats';
 import ReviewsToolbar from '../components/ReviewsToolbar';
 import ReviewsTable from '../components/ReviewsTable';
 import ReviewDetailModal from '../components/ReviewDetailModal';
+import DateRangeModal from '../components/DateRangeModal';
 
 const ReviewsPageContent = () => {
-  const { stats, loading, refreshData, pagination, selectedReview, isModalOpen, closeReview } = useReviews();
+  const { stats, loading, refreshData, pagination, selectedReview, isModalOpen, closeReview, filters, setDateRange } = useReviews();
+  const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+
+  const handleDateRangeApply = (dateFrom: string, dateTo: string) => {
+    setDateRange(dateFrom, dateTo);
+  };
 
   return (
     <div className="min-h-full bg-gray-50 flex flex-col">
@@ -40,9 +47,16 @@ const ReviewsPageContent = () => {
             <RefreshCw size={18} />
           </button>
 
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm">
+          <button 
+            onClick={() => setIsDateRangeOpen(true)}
+            className={`flex items-center gap-2 px-5 py-2.5 bg-white border rounded-xl text-[13px] font-bold transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm ${
+              filters.dateFrom && filters.dateTo 
+                ? 'border-blue-400 text-[#4e80ee] bg-blue-50' 
+                : 'border-gray-200 text-gray-600'
+            }`}
+          >
             <Calendar size={16} />
-            Date Range
+            {filters.dateFrom && filters.dateTo ? 'Date Filter Active' : 'Date Range'}
           </button>
 
           <button className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95">
@@ -71,6 +85,14 @@ const ReviewsPageContent = () => {
           review={selectedReview as any}
         />
       )}
+
+      <DateRangeModal
+        isOpen={isDateRangeOpen}
+        onClose={() => setIsDateRangeOpen(false)}
+        onApply={handleDateRangeApply}
+        initialDateFrom={filters.dateFrom}
+        initialDateTo={filters.dateTo}
+      />
     </div>
   );
 };

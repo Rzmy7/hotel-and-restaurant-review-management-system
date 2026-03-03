@@ -37,6 +37,8 @@ export interface FilterState {
     language: string[];
     status: string[];
     hasAiReply: boolean;
+    dateFrom?: string;
+    dateTo?: string;
 }
 
 export interface PaginatedResponse<T> {
