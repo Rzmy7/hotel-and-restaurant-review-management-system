@@ -73,10 +73,10 @@
         "id": 8,
         "name": "hansi",
         "email": "hansiwickramage18@gmail.com",
-        "password": "$2b$12$45TCuu4r6axSUWDfTefBducl2/yAnQRk1Zy1pUSbPBIg/bNJe2UwO",
+        "password": "$2b$12$NieSNQbwg0JhJUQ8FShnTeGdGtH1nKzKE1hg1THzaqbfnWv5Zkfq6",
         "google_id": null,
-        "reset_token": "0bbd124b156c21e00fdf6bcda2d23fef",
-        "reset_token_expiry": "2026-02-24T11:23:28.990037",
+        "reset_token": null,
+        "reset_token_expiry": null,
         "role": "staff"
     },
     {
