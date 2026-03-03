@@ -17,6 +17,8 @@ import ScrapeLauncher from './components/ScrapeLauncher';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import InsightsPage from './pages/InsightsPage';
+import CompetitorsPage from './pages/CompetitorsPage';
+import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 
 
 
@@ -64,6 +66,8 @@ const AppContent = () => {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/insights" element={<InsightsPage />} />
+                <Route path="/competitors" element={<CompetitorsPage />} />
+                <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
                 <Route
                   path="/profile"
                   element={<ProfilePage />}
