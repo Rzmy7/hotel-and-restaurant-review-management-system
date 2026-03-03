@@ -39,6 +39,13 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
             changeType: 'down',
             colorScheme: 'rose',
         },
+        ratingDistribution: [
+            { rating: 5, count: 1850, percentage: 65 },
+            { rating: 4, count: 680, percentage: 24 },
+            { rating: 3, count: 200, percentage: 7 },
+            { rating: 2, count: 86, percentage: 3 },
+            { rating: 1, count: 38, percentage: 1 },
+        ],
     },
     charts: {
         sentiment: {

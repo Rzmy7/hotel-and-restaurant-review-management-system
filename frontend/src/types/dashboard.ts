@@ -75,6 +75,12 @@ export interface SentimentDistribution {
     negative: { count: number; percentage: number };
 }
 
+export interface RatingDistributionItem {
+    rating: number;
+    count: number;
+    percentage: number;
+}
+
 export interface Organization {
     id: string;
     name: string;
@@ -90,6 +96,7 @@ export interface DashboardResponse {
         activeSources: MetricTrend;
         totalReviews: MetricTrend;
         negativeReviews: MetricTrend;
+        ratingDistribution: RatingDistributionItem[];
     };
     charts: {
         sentiment: SentimentDistribution;
