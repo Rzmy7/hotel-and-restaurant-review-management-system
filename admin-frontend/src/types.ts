@@ -44,6 +44,8 @@ export interface User {
     status: 'Active' | 'Suspended';
     plan?: 'Free' | 'Basic' | 'Pro' | 'Enterprise';
     avatarColor?: string;
+    organizations?: string[]; // List of organization names
+    groups?: string[]; // List of group names
 }
 
 export interface NavItem {

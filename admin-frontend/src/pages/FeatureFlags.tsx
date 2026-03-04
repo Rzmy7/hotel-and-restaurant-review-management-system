@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, MoreVertical, Loader } from 'lucide-react';
+import { Search, Loader } from 'lucide-react';
 import { fetchFeatureFlags } from '../services/mockService';
 import type { FeatureFlag } from '../types';
 
@@ -62,12 +62,7 @@ export const FeatureFlags: React.FC = () => {
                         className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between hover:shadow-md transition-shadow"
                     >
                         <div className="flex-1">
-                            <div className="flex items-baseline gap-2 mb-1">
-                                <span className="font-medium text-gray-900">{flag.name}</span>
-                                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                    {flag.key}
-                                </span>
-                            </div>
+                            <h3 className="font-medium text-gray-900 mb-1">{flag.name}</h3>
                             <p className="text-sm text-gray-500">{flag.description}</p>
                         </div>
                         <div className="flex items-center gap-6">
@@ -87,9 +82,6 @@ export const FeatureFlags: React.FC = () => {
                                     {flag.status}
                                 </span>
                             </label>
-                            <button className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
-                                <MoreVertical size={18} />
-                            </button>
                         </div>
                     </div>
                 ))}

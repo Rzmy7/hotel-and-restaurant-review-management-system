@@ -110,16 +110,16 @@ export const fetchUsers = (): Promise<User[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { id: '1', name: 'Sarah Johnson', email: 'sarah.johnson@company.com', role: 'Admin', status: 'Active', plan: 'Enterprise', avatarColor: '#bfdbfe' },
-                { id: '2', name: 'Michael Chen', email: 'michael.chen@company.com', role: 'Manager', status: 'Active', plan: 'Pro', avatarColor: '#e9d5ff' },
-                { id: '3', name: 'Emily Rodriguez', email: 'emily.rodriguez@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fed7aa' },
-                { id: '4', name: 'David Kim', email: 'david.kim@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#fecaca' },
-                { id: '5', name: 'Jessica Taylor', email: 'jessica.taylor@company.com', role: 'Manager', status: 'Active', plan: 'Pro', avatarColor: '#ddd6fe' },
-                { id: '6', name: 'Robert Anderson', email: 'robert.anderson@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#bbf7d0' },
-                { id: '7', name: 'Maria Garcia', email: 'maria.garcia@company.com', role: 'Admin', status: 'Active', plan: 'Enterprise', avatarColor: '#fde68a' },
-                { id: '8', name: 'James Wilson', email: 'james.wilson@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#99f6e4' },
-                { id: '9', name: 'Linda Martinez', email: 'linda.martinez@company.com', role: 'Manager', status: 'Active', plan: 'Pro', avatarColor: '#c7d2fe' },
-                { id: '10', name: 'Kevin Brown', email: 'kevin.brown@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fca5a5' },
+                { id: '1', name: 'Sarah Johnson', email: 'sarah.johnson@company.com', role: 'Admin', status: 'Active', plan: 'Enterprise', avatarColor: '#bfdbfe', organizations: ['Acme Corp', 'TechStart', 'Global Solutions'], groups: ['Admins', 'Leadership', 'Security Team'] },
+                { id: '2', name: 'Michael Chen', email: 'michael.chen@company.com', role: 'Manager', status: 'Active', plan: 'Pro', avatarColor: '#e9d5ff', organizations: ['TechStart', 'InnovateCo'], groups: ['Managers', 'Developers', 'Product Team'] },
+                { id: '3', name: 'Emily Rodriguez', email: 'emily.rodriguez@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fed7aa', organizations: ['Global Solutions'], groups: ['Developers', 'Mobile Team'] },
+                { id: '4', name: 'David Kim', email: 'david.kim@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#fecaca', organizations: ['Acme Corp'], groups: ['External Contractors'] },
+                { id: '5', name: 'Jessica Taylor', email: 'jessica.taylor@company.com', role: 'Manager', status: 'Active', plan: 'Pro', avatarColor: '#ddd6fe', organizations: ['Global Solutions', 'CloudTech'], groups: ['Managers', 'Design Team', 'UX Research'] },
+                { id: '6', name: 'Robert Anderson', email: 'robert.anderson@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#bbf7d0', organizations: ['InnovateCo'], groups: ['Developers', 'Backend Team'] },
+                { id: '7', name: 'Maria Garcia', email: 'maria.garcia@company.com', role: 'Admin', status: 'Active', plan: 'Enterprise', avatarColor: '#fde68a', organizations: ['Acme Corp', 'Global Solutions'], groups: ['Admins', 'Leadership', 'Operations'] },
+                { id: '8', name: 'James Wilson', email: 'james.wilson@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#99f6e4', organizations: ['TechStart'], groups: ['Support Team'] },
+                { id: '9', name: 'Linda Martinez', email: 'linda.martinez@company.com', role: 'Manager', status: 'Active', plan: 'Pro', avatarColor: '#c7d2fe', organizations: ['CloudTech', 'InnovateCo'], groups: ['Managers', 'Data Science', 'Analytics Team'] },
+                { id: '10', name: 'Kevin Brown', email: 'kevin.brown@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fca5a5', organizations: ['Acme Corp'], groups: ['Developers', 'Frontend Team', 'QA Team'] },
             ]);
         }, 600);
     });

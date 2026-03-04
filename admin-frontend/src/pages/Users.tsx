@@ -62,6 +62,14 @@ export const UsersPage: React.FC = () => {
         setUsers([user, ...users]);
     };
 
+    const handleUserUpdate = (updatedUser: User) => {
+        setUsers(prevUsers => 
+            prevUsers.map(user => 
+                user.id === updatedUser.id ? updatedUser : user
+            )
+        );
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
@@ -108,6 +116,7 @@ export const UsersPage: React.FC = () => {
                 itemsPerPage={itemsPerPage}
                 startIndex={startIndex}
                 onPageChange={handlePageChange}
+                onUserUpdate={handleUserUpdate}
             />
         </div>
     );
