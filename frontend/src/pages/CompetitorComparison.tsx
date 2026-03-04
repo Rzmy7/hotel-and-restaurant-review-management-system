@@ -1,0 +1,261 @@
+import { useState } from 'react';
+import { ArrowLeft, Bell, ChevronDown, AlertTriangle, Lightbulb, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+    Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend,
+    BarChart, Bar
+} from 'recharts';
+
+const aspectData = [
+    { subject: 'Cleanliness', myHotel: 4.8, competitor: 4.5, fullMark: 5 },
+    { subject: 'Service', myHotel: 4.2, competitor: 4.6, fullMark: 5 },
+    { subject: 'Location', myHotel: 4.5, competitor: 4.8, fullMark: 5 },
+    { subject: 'Food', myHotel: 4.0, competitor: 4.4, fullMark: 5 },
+    { subject: 'Comfort', myHotel: 4.7, competitor: 4.5, fullMark: 5 },
+];
+
+const trendData = [
+    { name: 'Aug', myHotel: 4.3, competitor: 4.5 },
+    { name: 'Sep', myHotel: 4.2, competitor: 4.6 },
+    { name: 'Oct', myHotel: 4.3, competitor: 4.6 },
+    { name: 'Nov', myHotel: 4.4, competitor: 4.7 },
+    { name: 'Dec', myHotel: 4.5, competitor: 4.7 },
+    { name: 'Jan', myHotel: 4.6, competitor: 4.8 },
+    { name: 'Feb', myHotel: 4.7, competitor: 4.7 },
+];
+
+const sentimentData = [
+    { name: 'Positive', myHotel: 45, competitor: 55 },
+    { name: 'Neutral', myHotel: 28, competitor: 20 },
+    { name: 'Very Negative', myHotel: 8, competitor: 5 },
+];
+
+const CompetitorComparison = () => {
+    return (
+        <div className="min-h-full bg-gray-50 flex flex-col font-sans">
+            <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+                <div className="flex items-center gap-4">
+                    <button className="text-gray-600 hover:text-black transition-colors md:hidden" aria-label="Menu">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Competitor Comparison</h1>
+                        <p className="mt-1 text-sm text-gray-400">Performance comparison overview</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm min-w-[160px]">
+                            Grand Plaza Hotel
+                            <ChevronDown size={16} className="text-gray-400" />
+                        </button>
+                        <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm min-w-[160px]">
+                            Luxury Grand Resort
+                            <ChevronDown size={16} className="text-gray-400" />
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
+                        <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors relative">
+                            <Bell size={20} />
+                        </button>
+                        <div className="w-8 h-8 rounded-full bg-[#4e80ee] flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                            JD
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main className="w-full px-8 py-8 flex-1 max-w-[1400px] mx-auto space-y-8">
+                <Link to="/competitors" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                    <ArrowLeft size={16} />
+                    Back to Competitors
+                </Link>
+
+                {/* KPI Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Average Rating</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-[#4e80ee] font-medium">My Hotel</span>
+                                <span className="font-bold text-gray-900 text-[17px]">4.5</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-green-500 font-medium">Competitor</span>
+                                <span className="font-bold text-gray-900 text-[17px]">4.7</span>
+                            </div>
+                            <div className="pt-3 border-t border-gray-50 flex justify-between items-center text-sm">
+                                <span className="text-gray-600 font-medium">Gap</span>
+                                <span className="font-bold text-red-500">-0.20</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 italic mt-1">
+                                <AlertTriangle size={12} className="text-gray-400" />
+                                <span>Competitor is ahead</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Review Count</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-[#4e80ee] font-medium">My Hotel</span>
+                                <span className="font-bold text-gray-900 text-[17px]">2,234</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-green-500 font-medium">Competitor</span>
+                                <span className="font-bold text-gray-900 text-[17px]">2,847</span>
+                            </div>
+                            <div className="pt-3 border-t border-gray-50 flex justify-between items-center text-sm">
+                                <span className="text-gray-600 font-medium">Gap</span>
+                                <span className="font-bold text-red-500">-613</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 italic mt-1">
+                                <AlertTriangle size={12} className="text-gray-400" />
+                                <span>Fewer reviews than competitor</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Positive %</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-[#4e80ee] font-medium">My Hotel</span>
+                                <span className="font-bold text-gray-900 text-[17px]">85%</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-green-500 font-medium">Competitor</span>
+                                <span className="font-bold text-gray-900 text-[17px]">89%</span>
+                            </div>
+                            <div className="pt-3 border-t border-gray-50 flex justify-between items-center text-sm">
+                                <span className="text-gray-600 font-medium">Gap</span>
+                                <span className="font-bold text-red-500">-4%</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 italic mt-1">
+                                <AlertTriangle size={12} className="text-gray-400" />
+                                <span>Lower positive sentiment</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Negative %</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-[#4e80ee] font-medium">My Hotel</span>
+                                <span className="font-bold text-gray-900 text-[17px]">6%</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-green-500 font-medium">Competitor</span>
+                                <span className="font-bold text-gray-900 text-[17px]">5%</span>
+                            </div>
+                            <div className="pt-3 border-t border-gray-50 flex justify-between items-center text-sm">
+                                <span className="text-gray-600 font-medium">Gap</span>
+                                <span className="font-bold text-red-500">+1%</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 italic mt-1">
+                                <AlertTriangle size={12} className="text-gray-400" />
+                                <span>Higher negative sentiment</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Charts Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Aspect Comparison Radar */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+                        <h3 className="text-base font-bold text-gray-900 mb-6">Aspect Comparison</h3>
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={aspectData}>
+                                    <PolarGrid gridType="polygon" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 12, fontWeight: 500 }} />
+                                    <PolarRadiusAxis
+                                        angle={90}
+                                        domain={[0, 5]}
+                                        tickCount={6}
+                                        tick={{ fill: '#374151', fontSize: 11, fontWeight: 'bold' }}
+                                        axisLine={false}
+                                    />
+                                    <Radar name="Your Hotel" dataKey="myHotel" stroke="#4e80ee" fill="#4e80ee" fillOpacity={0.3} strokeWidth={2.5} dot={{ r: 4, fill: '#4e80ee' }} activeDot={{ r: 6 }} />
+                                    <Radar name="Competitor" dataKey="competitor" stroke="#22c55e" fill="#22c55e" fillOpacity={0.1} strokeWidth={2.5} dot={{ r: 4, fill: '#22c55e' }} activeDot={{ r: 6 }} />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', color: '#6b7280', paddingTop: '20px' }} />
+                                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Rating Trend Line */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+                        <h3 className="text-base font-bold text-gray-900 mb-6">Rating Trend</h3>
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={trendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#f3f4f6" />
+                                    <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
+                                    <YAxis domain={['dataMin - 0.2', 'dataMax + 0.2']} tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} width={50} />
+                                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
+                                    <Line type="monotone" dataKey="myHotel" name="Your Hotel" stroke="#4e80ee" strokeWidth={2} dot={{ r: 5, fill: '#4e80ee', strokeWidth: 0 }} activeDot={{ r: 7 }} />
+                                    <Line type="monotone" dataKey="competitor" name="Competitor" stroke="#22c55e" strokeWidth={2} dot={{ r: 5, fill: '#22c55e', strokeWidth: 0 }} activeDot={{ r: 7 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Sentiment Distribution Bar */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+                        <h3 className="text-base font-bold text-gray-900 mb-6">Sentiment Distribution</h3>
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={sentimentData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#f3f4f6" />
+                                    <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
+                                    <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                    <RechartsTooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
+                                    <Bar dataKey="competitor" name="Competitor" fill="#22c55e" radius={[2, 2, 0, 0]} />
+                                    <Bar dataKey="myHotel" name="Your Hotel" fill="#4e80ee" radius={[2, 2, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* AI-Generated Insights */}
+                <div className="bg-[#f5f8ff] rounded-xl border border-blue-100 p-6 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 text-[#4e80ee] font-black text-lg">
+                        <Lightbulb size={22} className="text-[#4e80ee]" />
+                        AI-Generated Insights
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#dcfce7] text-green-700 rounded-full text-sm font-semibold border border-green-200 shadow-sm">
+                            <CheckCircle size={16} />
+                            Service Excellence
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#dcfce7] text-green-700 rounded-full text-sm font-semibold border border-green-200 shadow-sm">
+                            <CheckCircle size={16} />
+                            Guest Comfort
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-full text-sm font-semibold border border-yellow-200 shadow-sm">
+                            <AlertTriangle size={16} />
+                            Location Perception
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    );
+};
+
+export default CompetitorComparison;

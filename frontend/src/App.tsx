@@ -19,6 +19,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import InsightsPage from './pages/InsightsPage';
 import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
+import CompetitorComparison from './pages/CompetitorComparison';
 
 
 
@@ -68,6 +69,7 @@ const AppContent = () => {
                 <Route path="/insights" element={<InsightsPage />} />
                 <Route path="/competitors" element={<CompetitorsPage />} />
                 <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
+                <Route path="/competitors/compare" element={<CompetitorComparison />} />
                 <Route
                   path="/profile"
                   element={<ProfilePage />}
