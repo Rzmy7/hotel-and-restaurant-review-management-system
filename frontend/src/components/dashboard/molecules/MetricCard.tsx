@@ -1,10 +1,10 @@
 import React from 'react';
 import { Card } from '../atoms/Card';
 import { IconBox } from '../atoms/IconBox';
-import { TrendBadge, TrendType } from '../atoms/TrendBadge';
+import { TrendBadge, type TrendType } from '../atoms/TrendBadge';
 import type { MetricTrend } from '../../../types/dashboard';
 
-export interface MetricCardProps extends Omit<MetricTrend, 'changeType'> {
+export interface MetricCardProps extends Omit<MetricTrend, 'changeType' | 'colorScheme'> {
     icon: React.ReactNode;
     label: string;
     changeType?: TrendType;

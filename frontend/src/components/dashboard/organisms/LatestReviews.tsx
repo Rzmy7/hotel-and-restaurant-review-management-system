@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReviewDetailModal from '../../ReviewDetailModal';
 import type { Review } from '../../../types/dashboard';
+import type { Review as DetailedReview } from '../../../types/reviews';
 import { Card } from '../atoms/Card';
 import { SectionHeader } from '../molecules/SectionHeader';
 
@@ -11,11 +12,21 @@ export interface LatestReviewsProps {
 
 export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
     const navigate = useNavigate();
-    const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+    const [selectedReview, setSelectedReview] = useState<DetailedReview | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const handleReviewClick = (review: Review) => {
-        setSelectedReview(review);
+        setSelectedReview({
+            id: review.id,
+            rating: review.rating,
+            userName: review.reviewerName,
+            reviewText: review.reviewText,
+            sentiment: review.sentiment,
+            categories: review.categories || [],
+            source: review.source,
+            date: review.date,
+            status: 'Pending' // Default fallback status
+        });
         setIsModalOpen(true);
     };
 
