@@ -405,16 +405,15 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
           </div>
 
         </div>
-      </div>
-    </Modal >
+      </Modal>
 
-      {/* Full Screen Image Lightbox */ }
-      < ReviewDetailLightbox
-  review = { review }
-  selectedPhotoIndex = { selectedPhotoIndex }
-  onClose = {() => setSelectedPhotoIndex(null)}
-onNavigate = { setSelectedPhotoIndex }
-  />
+      {/* Full Screen Image Lightbox */}
+      <ReviewDetailLightbox
+        review={review}
+        selectedPhotoIndex={selectedPhotoIndex}
+        onClose={() => setSelectedPhotoIndex(null)}
+        onNavigate={setSelectedPhotoIndex}
+      />
     </>
   );
 };
