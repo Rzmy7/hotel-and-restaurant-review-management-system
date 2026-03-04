@@ -1,4 +1,6 @@
 import React from 'react';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
 
 interface SetupLayoutProps {
   currentStep: number;
@@ -41,29 +43,30 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-lg shadow-sm py-12 px-14 max-w-[800px] mx-auto mt-10 w-[90%] max-md:px-6 max-md:py-8">
+        <Card className="py-12 px-14 max-w-[800px] mx-auto mt-10 w-[90%] max-md:px-6 max-md:py-8">
           {children}
 
           <div className="text-center">
             {showContinue && onContinue && (
-              <button
+              <Button
                 onClick={onContinue}
-                className="w-full max-w-[280px] mx-auto block py-3 px-8 bg-blue-500 hover:bg-blue-600 text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors mt-8"
+                className="w-full max-w-[280px] mx-auto flex mt-8"
               >
                 Continue
-              </button>
+              </Button>
             )}
 
             {showBack && currentStep > 1 && onBack && (
-              <button
+              <Button
+                variant="ghost"
                 onClick={onBack}
-                className="mt-5 py-2.5 px-6 bg-transparent hover:bg-gray-50 text-gray-500 border border-gray-200 rounded-lg text-sm cursor-pointer transition-colors"
+                className="mt-5"
               >
                 Back
-              </button>
+              </Button>
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

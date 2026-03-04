@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
-  X,
   ExternalLink,
   ShieldCheck,
   TrendingUp,
   AlertTriangle,
   Globe
 } from 'lucide-react';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
 import type { Source, SourceStatus, SyncSchedule } from '../types/sources';
 
 // Brand Logos
@@ -77,38 +78,60 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 min-w-[320px]">
-      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100">
-        {/* Header - Aligned with Dashboard branding */}
-        <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg shadow-sm uppercase tracking-tighter overflow-hidden bg-white border ${fallbackStyles}`}>
-              {logo ? (
-                <img src={logo} alt={source.platform} className="w-full h-full object-cover" />
-              ) : (
-                source.platform[0]
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Source Configuration</h2>
-                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 border border-gray-200`}>
-                  ID: #{source.id}
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">{source.platform} Source</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all">
-            <X size={20} />
-          </button>
+  const customHeader = (
+    <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10 w-full">
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg shadow-sm uppercase tracking-tighter overflow-hidden bg-white border ${fallbackStyles}`}>
+          {logo ? (
+            <img src={logo} alt={source.platform} className="w-full h-full object-cover" />
+          ) : (
+            source.platform[0]
+          )}
         </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Source Configuration</h2>
+            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 border border-gray-200`}>
+              ID: #{source.id}
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">{source.platform} Source</p>
+        </div>
+      </div>
+      {/* The generic Modal will provide the Close button */}
+    </div>
+  );
+
+  const footer = (
+    <div className="flex items-center justify-end gap-3 w-full">
+      <Button
+        variant="ghost"
+        onClick={onClose}
+        className="text-[11px] uppercase tracking-widest px-6"
+      >
+        Close Node
+      </Button>
+      <Button
+        onClick={handleSave}
+        className="px-8 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+      >
+        Save Changes
+      </Button>
+    </div>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      footer={footer}
+      className="max-w-4xl"
+    >
+      <div className="flex flex-col w-full h-full">
+        {customHeader}
 
         {/* Tab Navigation - Sophisticated branding */}
-        <div className="px-8 bg-gray-50/30 border-b border-gray-100">
+        <div className="px-8 bg-gray-50/30 border-b border-gray-100 w-full">
           <div className="flex gap-8">
             <button
               onClick={() => setActiveTab('settings')}
@@ -198,12 +221,13 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
                       </div>
                       <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Removing this source will archive its history.</p>
                     </div>
-                    <button
+                    <Button
+                      variant="danger"
                       onClick={() => onDelete(source.id)}
-                      className="px-6 py-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                      className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-sm"
                     >
                       Remove Source
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -263,23 +287,8 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 bg-gray-50/50 border-t border-gray-100 rounded-b-2xl">
-          <button
-            onClick={onClose}
-            className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors"
-          >
-            Close Node
-          </button>
-          <button
-            onClick={handleSave}
-            className="bg-[#4e80ee] hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 active:scale-95 shadow-md shadow-blue-200/50"
-          >
-            Save Changes
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
