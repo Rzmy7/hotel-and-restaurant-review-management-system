@@ -1,0 +1,21 @@
+﻿src/components/dashboard/molecules/MetricCard.tsx(4,22): error TS1484: 'TrendType' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/dashboard/molecules/MetricCard.tsx(7,18): error TS2430: Interface 'MetricCardProps' incorrectly extends interface 'Omit<MetricTrend, "changeType">'.
+  Types of property 'colorScheme' are incompatible.
+    Type '"blue" | "amber" | "indigo" | "rose" | "emerald" | undefined' is not assignable to type '"blue" | "amber" | "indigo" | "rose" | "emerald"'.
+      Type 'undefined' is not assignable to type '"blue" | "amber" | "indigo" | "rose" | "emerald"'.
+src/components/dashboard/organisms/AIInsights.tsx(24,17): error TS2322: Type '{ children: Element; title: string; subtitle: string; icon: Element; iconClassName: string; className: string; }' is not assignable to type 'IntrinsicAttributes & SectionHeaderProps'.
+  Property 'icon' does not exist on type 'IntrinsicAttributes & SectionHeaderProps'.
+src/components/dashboard/organisms/AlertsPanel.tsx(20,17): error TS2322: Type '{ children: Element; title: string; subtitle: string; icon: Element; iconClassName: string; className: string; }' is not assignable to type 'IntrinsicAttributes & SectionHeaderProps'.
+  Property 'icon' does not exist on type 'IntrinsicAttributes & SectionHeaderProps'.
+src/components/dashboard/organisms/LatestReviews.tsx(80,21): error TS2739: Type 'Review' is missing the following properties from type 'Review': userName, status
+src/components/dashboard/organisms/ReviewRatingDistribution.tsx(27,21): error TS2322: Type '{ children: Element; title: string; subtitle: string; icon: Element; iconClassName: string; className: string; }' is not assignable to type 'IntrinsicAttributes & SectionHeaderProps'.
+  Property 'icon' does not exist on type 'IntrinsicAttributes & SectionHeaderProps'.
+src/components/LatestReviews.tsx(78,11): error TS2739: Type 'Review' is missing the following properties from type 'Review': userName, status
+src/components/ReviewsToolbar.tsx(71,69): error TS2345: Argument of type '"rating" | "sentiment" | "source" | "category" | "language" | "status" | "dateFrom" | "dateTo"' is not assignable to parameter of type '"rating" | "sentiment" | "source" | "category" | "language" | "status"'.
+  Type '"dateFrom"' is not assignable to type '"rating" | "sentiment" | "source" | "category" | "language" | "status"'.
+src/components/ReviewsToolbar.tsx(92,65): error TS2345: Argument of type '"rating" | "sentiment" | "source" | "category" | "language" | "status" | "dateFrom" | "dateTo"' is not assignable to parameter of type '"rating" | "sentiment" | "source" | "category" | "language" | "status"'.
+  Type '"dateFrom"' is not assignable to type '"rating" | "sentiment" | "source" | "category" | "language" | "status"'.
+src/components/SourceStats.tsx(3,10): error TS1484: 'SourceStats' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/config/navigation.tsx(16,10): error TS1484: 'NavigationConfig' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/reviewsService.ts(31723,45): error TS2345: Argument of type 'FetchReviewsParams' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'FetchReviewsParams'.
