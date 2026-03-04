@@ -31720,7 +31720,7 @@ class ReviewsService {
      */
     async getReviews(params: FetchReviewsParams): Promise<PaginatedResponse<Review>> {
         // Simulate network call overhead from the mock layer architecture
-        await apiClient.get('/api/reviews', params);
+        await apiClient.get('/api/reviews', params as Record<string, unknown>);
 
         const baseData = await this.getBaseData();
         let filteredData = [...baseData];

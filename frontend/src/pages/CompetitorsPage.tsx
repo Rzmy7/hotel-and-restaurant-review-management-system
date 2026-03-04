@@ -136,9 +136,9 @@ const CompetitorsPage = () => {
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center justify-center gap-3">
-                                                <button className="bg-[#4e80ee] hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                                                <Link to="/competitors/compare" className="bg-[#4e80ee] hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
                                                     Compare
-                                                </button>
+                                                </Link>
                                                 <button className="text-red-400 hover:text-red-500 p-1.5 transition-colors" aria-label="Delete">
                                                     <Trash2 size={18} />
                                                 </button>
