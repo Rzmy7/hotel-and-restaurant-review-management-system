@@ -1,6 +1,6 @@
 import React from 'react';
 import { Database, Activity, PauseCircle, AlertCircle, RefreshCw } from 'lucide-react';
-import { SourceStats as SourceStatsType } from '../types/sources';
+import type { SourceStats as SourceStatsType } from '../types/sources';
 
 interface SourceStatsProps {
     stats: SourceStatsType;

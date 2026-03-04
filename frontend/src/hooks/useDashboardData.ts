@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { DashboardResponse } from '../types/dashboard';
-import { MOCK_DASHBOARD_DATA } from '../mocks/dashboardMock';
 import { useOrganizations } from '../contexts/OrganizationContext';
+import { dashboardService } from '../services/dashboardService';
 
 interface DashboardState {
     data: DashboardResponse | null;
@@ -18,37 +18,43 @@ export const useDashboardData = () => {
     });
 
     useEffect(() => {
+        let isMounted = true;
+
         const fetchData = async () => {
             if (!currentOrg) return;
 
             try {
                 setState(prev => ({ ...prev, loading: true }));
-                // Simulate API delay
-                await new Promise((resolve) => setTimeout(resolve, 1000));
 
-                // In a real app, this would be a fetch call with org ID:
-                // const response = await fetch(`/api/dashboard?orgId=${currentOrg.id}`);
-                // const data = await response.json();
+                const response = await dashboardService.getDashboardSummary(currentOrg.id);
 
-                setState({
-                    data: {
-                        ...MOCK_DASHBOARD_DATA,
-                        hotel: currentOrg,
-                        currentOrganizationId: currentOrg.id
-                    },
-                    loading: false,
-                    error: null,
-                });
+                if (isMounted) {
+                    setState({
+                        data: {
+                            ...response,
+                            hotel: currentOrg,
+                            currentOrganizationId: currentOrg.id
+                        },
+                        loading: false,
+                        error: null,
+                    });
+                }
             } catch (err) {
-                setState({
-                    data: null,
-                    loading: false,
-                    error: 'Failed to fetch dashboard data. Please try again later.',
-                });
+                if (isMounted) {
+                    setState({
+                        data: null,
+                        loading: false,
+                        error: 'Failed to fetch dashboard data. Please try again later.',
+                    });
+                }
             }
         };
 
         fetchData();
+
+        return () => {
+            isMounted = false;
+        };
     }, [currentOrg]);
 
     return state;

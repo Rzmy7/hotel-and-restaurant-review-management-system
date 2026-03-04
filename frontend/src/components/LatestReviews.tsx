@@ -75,7 +75,7 @@ const LatestReviews = ({ reviews }: LatestReviewsProps) => {
         <ReviewDetailModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          review={selectedReview}
+          review={selectedReview as any}
         />
       )}
     </>
