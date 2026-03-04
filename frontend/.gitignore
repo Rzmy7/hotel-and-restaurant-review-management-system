@@ -36,3 +36,4 @@ eslint_report.json
 api_response.json
 
 tsc_errors.txt
+build_errors.txt

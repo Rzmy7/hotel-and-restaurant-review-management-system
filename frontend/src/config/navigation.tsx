@@ -13,7 +13,7 @@ import {
     Mail,
     LogOut
 } from 'lucide-react';
-import { NavigationConfig } from '../types/navigation';
+import type { NavigationConfig } from '../types/navigation';
 
 export const navigationConfig: NavigationConfig = {
     sections: [
