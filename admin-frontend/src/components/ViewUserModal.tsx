@@ -122,7 +122,7 @@ export const ViewUserModal: React.FC<ViewUserModalProps> = ({ isOpen, onClose, u
                             </div>
                         </div>
 
-                        {user.organizations && user.organizations.length > 0 && (
+                        {user.role === 'User' && user.organizations && user.organizations.length > 0 && (
                             <div className="flex items-start gap-3">
                                 <div className="p-2 bg-gray-100 rounded-lg">
                                     <Building2 size={18} className="text-gray-600" />
@@ -140,7 +140,7 @@ export const ViewUserModal: React.FC<ViewUserModalProps> = ({ isOpen, onClose, u
                             </div>
                         )}
 
-                        {user.groups && user.groups.length > 0 && (
+                        {user.role === 'User' && user.groups && user.groups.length > 0 && (
                             <div className="flex items-start gap-3">
                                 <div className="p-2 bg-gray-100 rounded-lg">
                                     <Users size={18} className="text-gray-600" />

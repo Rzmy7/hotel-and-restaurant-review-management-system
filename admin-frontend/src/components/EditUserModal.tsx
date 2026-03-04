@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { X, Plus, Building2, Users, ChevronDown } from 'lucide-react';
 import type { User } from '../types';
 
 interface EditUserModalProps {
@@ -13,9 +13,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
     const [formData, setFormData] = useState({
         name: user.name,
         email: user.email,
-        role: user.role,
-        status: user.status,
+        plan: user.plan || 'Free',
+        organizations: user.organizations || [],
+        groups: user.groups || [],
     });
+    const [newOrg, setNewOrg] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,6 +26,30 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
             ...formData,
         });
         onClose();
+    };
+
+    const handleAddOrganization = () => {
+        if (newOrg.trim() && !formData.organizations.includes(newOrg.trim())) {
+            setFormData({
+                ...formData,
+                organizations: [...formData.organizations, newOrg.trim()]
+            });
+            setNewOrg('');
+        }
+    };
+
+    const handleRemoveOrganization = (org: string) => {
+        setFormData({
+            ...formData,
+            organizations: formData.organizations.filter(o => o !== org)
+        });
+    };
+
+    const handleRemoveFromGroup = (group: string) => {
+        setFormData({
+            ...formData,
+            groups: formData.groups.filter(g => g !== group)
+        });
     };
 
     if (!isOpen) return null;
@@ -75,36 +101,115 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                        <div className="relative">
-                            <select
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'Admin' | 'Manager' | 'User' })}
-                                className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                            >
-                                <option value="Admin">Admin</option>
-                                <option value="Manager">Manager</option>
-                                <option value="User">User</option>
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    {/* Subscription Plan - Only for regular users */}
+                    {user.role === 'User' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Subscription Plan</label>
+                            <div className="relative">
+                                <select
+                                    value={formData.plan}
+                                    onChange={(e) => setFormData({ ...formData, plan: e.target.value as 'Free' | 'Basic' | 'Pro' | 'Enterprise' })}
+                                    className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                                >
+                                    <option value="Free">Free</option>
+                                    <option value="Basic">Basic</option>
+                                    <option value="Pro">Pro</option>
+                                    <option value="Enterprise">Enterprise</option>
+                                </select>
+                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-                        <div className="relative">
-                            <select
-                                value={formData.status}
-                                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Suspended' })}
-                                className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                            >
-                                <option value="Active">Active</option>
-                                <option value="Suspended">Suspended</option>
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    {/* Organizations - Only for regular users */}
+                    {user.role === 'User' && (
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                <Building2 size={16} />
+                                Organizations
+                            </label>
+                            
+                            {/* Add new organization */}
+                            <div className="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    value={newOrg}
+                                    onChange={(e) => setNewOrg(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddOrganization();
+                                        }
+                                    }}
+                                    placeholder="Add organization"
+                                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddOrganization}
+                                    className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </div>
+                            
+                            {/* Organization badges */}
+                            {formData.organizations.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {formData.organizations.map((org) => (
+                                        <span
+                                            key={org}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium"
+                                        >
+                                            {org}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveOrganization(org)}
+                                                className="hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500">No organizations</p>
+                            )}
                         </div>
-                    </div>
+                    )}
+
+                    {/* Groups - Only for regular users */}
+                    {user.role === 'User' && (
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                <Users size={16} />
+                                Groups
+                            </label>
+                            
+                            {/* Group badges */}
+                            {formData.groups.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {formData.groups.map((group) => (
+                                        <span
+                                            key={group}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium"
+                                        >
+                                            {group}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveFromGroup(group)}
+                                                className="hover:bg-purple-100 rounded-full p-0.5 transition-colors"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500">No groups</p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-4">
