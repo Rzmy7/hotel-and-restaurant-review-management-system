@@ -80,6 +80,8 @@ const SettingsPage: React.FC = () => {
     navigate('/dashboard');
   };
 
+  const activeTabData = TABS.find(t => t.id === activeTab);
+
   return (
     <SettingsTemplate
       isSaving={saving}
@@ -88,7 +90,7 @@ const SettingsPage: React.FC = () => {
       hasUnsavedChanges={hasUnsavedChanges}
     >
       <div className="flex flex-col gap-6">
-        {/* Horizontal Navigation */}
+        {/* Horizontal Tab Navigation */}
         <nav className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-100 dark:border-slate-800/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -110,53 +112,56 @@ const SettingsPage: React.FC = () => {
           })}
         </nav>
 
-        {/* Form Content */}
-        <div className="max-w-3xl">
-          {activeTab === 'general' && (
-            <div className="animate-fade-in">
+        {/* Full-Width Content Card */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 md:p-8 min-h-[400px]">
+          {/* Active Tab Header */}
+          {activeTabData && (
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-700/50">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400 flex items-center justify-center">
+                <activeTabData.icon size={20} />
+              </div>
+              <h2 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase m-0">{activeTabData.label}</h2>
+            </div>
+          )}
+
+          {/* Tab Content */}
+          <div className="animate-fade-in">
+            {activeTab === 'general' && (
               <GeneralSettingsCard
                 data={localData.general}
                 onChange={(updates) => handleUpdateSection('general', updates)}
               />
-            </div>
-          )}
-          {activeTab === 'notifications' && (
-            <div className="animate-fade-in">
+            )}
+            {activeTab === 'notifications' && (
               <NotificationSettingsCard
                 data={localData.notifications}
                 onChange={(updates) => handleUpdateSection('notifications', updates)}
               />
-            </div>
-          )}
-          {activeTab === 'security' && (
-            <div className="animate-fade-in">
+            )}
+            {activeTab === 'security' && (
               <SecuritySettingsCard
                 data={localData.security}
                 onChange={(updates) => handleUpdateSection('security', updates)}
                 onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
                 onSessionEdit={() => showToast('Session settings are managed by admins', 'info')}
               />
-            </div>
-          )}
-          {activeTab === 'subscription' && (
-            <div className="animate-fade-in">
+            )}
+            {activeTab === 'subscription' && (
               <SubscriptionSettingsCard
                 data={localData.subscription}
                 onChange={(updates) => handleUpdateSection('subscription', updates)}
                 onPaymentEdit={() => showToast('Redirecting to secure payment portal...', 'info')}
               />
-            </div>
-          )}
-          {activeTab === 'hotelInfo' && (
-            <div className="animate-fade-in">
+            )}
+            {activeTab === 'hotelInfo' && (
               <HotelInfoSettingsCard
                 data={localData.hotelInfo}
                 onChange={(updates) => handleUpdateSection('hotelInfo', updates)}
                 onLogoUpload={() => showToast('Logo upload coming soon', 'info')}
                 onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </SettingsTemplate>
