@@ -1,0 +1,114 @@
+"""
+Configuration management for embedding service"""
+import json
+import os
+from pathlib import Path
+from typing import Dict
+
+CONFIG_FILE = Path(__file__).parent / "config.json"
+
+DEFAULT_THRESHOLDS = {
+    "oneWord": 1.3,
+    "twoWords": 1.2,
+    "threeOrMore": 1.1
+}
+
+DEFAULT_MODEL = "MiniLM"
+DEFAULT_EMBEDDING_URL = "http://localhost:8001"
+
+def load_full_config() -> Dict:
+    """Load full configuration from file"""
+    if not CONFIG_FILE.exists():
+        default_config = {
+            "thresholds": DEFAULT_THRESHOLDS,
+            "model": DEFAULT_MODEL,
+            "geminiApiKey": os.getenv("GEMINI_API_KEY", ""),
+            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL
+        }
+        save_full_config(default_config)
+        return default_config
+    
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "thresholds": DEFAULT_THRESHOLDS,
+            "model": DEFAULT_MODEL,
+            "geminiApiKey": os.getenv("GEMINI_API_KEY", ""),
+            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL
+        }
+
+def save_full_config(config: Dict) -> bool:
+    """Save full configuration to file"""
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+def load_config() -> Dict[str, float]:
+    """Load threshold configuration from file, create default if not exists"""
+    full_config = load_full_config()
+    return full_config.get("thresholds", DEFAULT_THRESHOLDS)
+
+def save_config(thresholds: Dict[str, float]) -> bool:
+    """Save threshold configuration to file"""
+    try:
+        full_config = load_full_config()
+        full_config["thresholds"] = thresholds
+        return save_full_config(full_config)
+    except Exception:
+        return False
+
+def get_model() -> str:
+    """Get current embedding model"""
+    full_config = load_full_config()
+    return full_config.get("model", DEFAULT_MODEL)
+
+def set_model(model: str) -> bool:
+    """Set embedding model"""
+    try:
+        full_config = load_full_config()
+        full_config["model"] = model
+        return save_full_config(full_config)
+    except Exception:
+        return False
+
+def get_api_settings() -> Dict:
+    """Get API settings (model, API key, service URL)"""
+    full_config = load_full_config()
+    return {
+        "model": full_config.get("model", DEFAULT_MODEL),
+        "geminiApiKey": full_config.get("geminiApiKey", ""),
+        "embeddingServiceUrl": full_config.get("embeddingServiceUrl", DEFAULT_EMBEDDING_URL)
+    }
+
+def update_api_settings(settings: Dict) -> bool:
+    """Update API settings"""
+    try:
+        full_config = load_full_config()
+        if "model" in settings:
+            full_config["model"] = settings["model"]
+        if "geminiApiKey" in settings:
+            full_config["geminiApiKey"] = settings["geminiApiKey"]
+            # Update environment variable for current session
+            os.environ["GEMINI_API_KEY"] = settings["geminiApiKey"]
+        if "embeddingServiceUrl" in settings:
+            full_config["embeddingServiceUrl"] = settings["embeddingServiceUrl"]
+        return save_full_config(full_config)
+    except Exception:
+        return False
+
+def get_threshold_by_query(query: str) -> float:
+    """Get appropriate threshold based on query word count"""
+    thresholds = load_config()
+    words = len(query.split())
+    
+    if words == 1:
+        return thresholds.get("oneWord", DEFAULT_THRESHOLDS["oneWord"])
+    elif words <= 3:
+        return thresholds.get("twoWords", DEFAULT_THRESHOLDS["twoWords"])
+    else:
+        return thresholds.get("threeOrMore", DEFAULT_THRESHOLDS["threeOrMore"])

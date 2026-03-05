@@ -1,12 +1,54 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Any
 import time
+import uuid
 
-from app.embedding import embed_text
 from app.chroma import save_embedding, collection
+from app.config import (
+    load_config, save_config, get_threshold_by_query, DEFAULT_THRESHOLDS,
+    get_model, set_model, get_api_settings, update_api_settings
+)
+from app.jobs import add_job, update_job, get_recent_jobs
 
 app = FastAPI(title="Embedding Service")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Preload models at startup
+@app.on_event("startup")
+async def startup_event():
+    """Preload the embedding model to avoid first-request delay"""
+    print("Preloading embedding model...")
+    current_model = get_model()
+    
+    if current_model == "Gemini":
+        # Gemini doesn't need preloading, it's API-based
+        print(f"Using Gemini embedding model (API-based)")
+    else:
+        # Preload MiniLM model
+        from app.embedding import model
+        print(f"MiniLM model preloaded successfully")
+
+# Dynamic embedding function based on model
+def embed_text(text: str):
+    """Embed text using the configured model"""
+    current_model = get_model()
+    
+    if current_model == "Gemini":
+        from app.gemini_embedding import embed_text as gemini_embed
+        return gemini_embed(text)
+    else:  # Default to MiniLM
+        from app.embedding import embed_text as minilm_embed
+        return minilm_embed(text)
 
 
 class Review(BaseModel):
@@ -41,40 +83,64 @@ class BatchRuleEmbedRequest(BaseModel):
     hotel_id: int
     rules: list[RuleItem]
 
+class ThresholdConfig(BaseModel):
+    oneWord: float
+    twoWords: float
+    threeOrMore: float
+
+class ModelConfig(BaseModel):
+    model: str
+
+class APISettings(BaseModel):
+    model: str = None
+    geminiApiKey: str = None
+    embeddingServiceUrl: str = None
 
 
 def get_threshold(query: str) -> float:
-    words = len(query.split())
-    if words == 1:
-        return 1.3
-    elif words <= 3:
-        return 1.2
-    return 1.1
+    """Get threshold based on query - uses configurable values"""
+    return get_threshold_by_query(query)
 
 
 @app.post("/embed")
 def embed(review: Review):
-    vector = embed_text(review.text)
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Review", "Running", 0)
+    
+    try:
+        start_time = time.time()
+        vector = embed_text(review.text)
 
-    save_embedding(
-        review.review_id,
-        vector,
-        {
-            "hotel_id": review.hotel_id,
-            "type": "review"
-        },
-        document=review.text
-    )
-
-    return {"status": "success"}
+        save_embedding(
+            review.review_id,
+            vector,
+            {
+                "hotel_id": review.hotel_id,
+                "type": "review"
+            },
+            document=review.text
+        )
+        
+        duration = f"{time.time() - start_time:.1f}s"
+        update_job(job_id, "Completed", 100, duration)
+        return {"status": "success", "job_id": job_id}
+        
+    except Exception as e:
+        update_job(job_id, "Failed", 0)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/embed/batch")
 def embed_batch(data: BatchEmbedRequest):
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Review", "Running", 0)
+    
     embedded = []
     failed = []
+    total = len(data.reviews)
+    start_time = time.time()
 
-    for review in data.reviews:
+    for idx, review in enumerate(data.reviews):
         try:
             vector = embed_text(review.text)
 
@@ -86,6 +152,8 @@ def embed_batch(data: BatchEmbedRequest):
             )
 
             embedded.append(review.review_id)
+            progress = int(((idx + 1) / total) * 100)
+            update_job(job_id, "Running", progress)
             time.sleep(1.5)
 
         except Exception as e:
@@ -93,38 +161,60 @@ def embed_batch(data: BatchEmbedRequest):
                 "review_id": review.review_id,
                 "error": str(e)
             })
+    
+    duration = f"{time.time() - start_time:.1f}s"
+    final_status = "Completed" if len(failed) == 0 else "Failed"
+    update_job(job_id, final_status, 100, duration)
 
     return {
         "embedded_count": len(embedded),
         "embedded_ids": embedded,
-        "failed": failed
+        "failed": failed,
+        "job_id": job_id
     }
 
 @app.post("/embed/rule")
 def embed_rule(rule: Rule):
-    vector = embed_text(rule.text)
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Regulation", "Running", 0)
+    
+    try:
+        start_time = time.time()
+        vector = embed_text(rule.text)
 
-    save_embedding(
-        rule.rule_id,
-        vector,
-        {
-            "hotel_id": rule.hotel_id,
-            "type": "rule"
-        },
-        document=rule.text
-    )
+        save_embedding(
+            rule.rule_id,
+            vector,
+            {
+                "hotel_id": rule.hotel_id,
+                "type": "rule"
+            },
+            document=rule.text
+        )
+        
+        duration = f"{time.time() - start_time:.1f}s"
+        update_job(job_id, "Completed", 100, duration)
 
-    return {
-        "status": "success",
-        "rule_id": rule.rule_id
-    }
+        return {
+            "status": "success",
+            "rule_id": rule.rule_id,
+            "job_id": job_id
+        }
+    except Exception as e:
+        update_job(job_id, "Failed", 0)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/embed/rule/batch")
 def embed_rule_batch(data: BatchRuleEmbedRequest):
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Regulation", "Running", 0)
+    
     embedded = []
     failed = []
+    total = len(data.rules)
+    start_time = time.time()
 
-    for rule in data.rules:
+    for idx, rule in enumerate(data.rules):
         try:
             vector = embed_text(rule.text)
 
@@ -139,7 +229,8 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
             )
 
             embedded.append(rule.rule_id)
-
+            progress = int(((idx + 1) / total) * 100)
+            update_job(job_id, "Running", progress)
             time.sleep(0.5)
 
         except Exception as e:
@@ -147,11 +238,16 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
                 "rule_id": rule.rule_id,
                 "error": str(e)
             })
+    
+    duration = f"{time.time() - start_time:.1f}s"
+    final_status = "Completed" if len(failed) == 0 else "Failed"
+    update_job(job_id, final_status, 100, duration)
 
     return {
         "embedded_count": len(embedded),
         "embedded_ids": embedded,
-        "failed": failed
+        "failed": failed,
+        "job_id": job_id
     }
 
 
@@ -216,3 +312,257 @@ def search(data: SearchRequest):
         "reviews": reviews,
         "rules": rules
     }
+
+
+@app.get("/thresholds")
+def get_thresholds() -> Dict[str, float]:
+    """Get current similarity thresholds"""
+    thresholds = load_config()
+    return thresholds
+
+
+@app.put("/thresholds")
+def update_thresholds(config: ThresholdConfig) -> Dict[str, Any]:
+    """Update similarity thresholds"""
+    thresholds = {
+        "oneWord": config.oneWord,
+        "twoWords": config.twoWords,
+        "threeOrMore": config.threeOrMore
+    }
+    
+    # Validate thresholds are within reasonable range
+    for key, value in thresholds.items():
+        if value < 0 or value > 2.0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Threshold {key} must be between 0 and 2.0"
+            )
+    
+    success = save_config(thresholds)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save configuration")
+    
+    return {"status": "success", "thresholds": thresholds}
+
+
+@app.post("/thresholds/reset")
+def reset_thresholds() -> Dict[str, Any]:
+    """Reset thresholds to default values"""
+    success = save_config(DEFAULT_THRESHOLDS)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to reset configuration")
+    
+    return {"status": "success", "thresholds": DEFAULT_THRESHOLDS}
+
+
+@app.get("/model")
+def get_current_model() -> Dict[str, str]:
+    """Get current embedding model"""
+    return {"model": get_model()}
+
+
+@app.put("/model")
+def change_model(config: ModelConfig) -> Dict[str, Any]:
+    """Change embedding model"""
+    if config.model not in ["Gemini", "MiniLM"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid model. Must be 'Gemini' or 'MiniLM'"
+        )
+    
+    success = set_model(config.model)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to change model")
+    
+    return {"status": "success", "model": config.model}
+
+
+@app.get("/jobs/recent")
+def get_jobs(limit: int = 10) -> Dict[str, Any]:
+    """Get recent embedding jobs"""
+    jobs = get_recent_jobs(limit)
+    return {"jobs": jobs}
+
+
+@app.get("/api-settings")
+def get_settings() -> Dict[str, Any]:
+    """Get API settings"""
+    settings = get_api_settings()
+    # Don't expose the full API key, just show if it's set
+    if settings.get("geminiApiKey"):
+        settings["geminiApiKey"] = "***" + settings["geminiApiKey"][-4:] if len(settings["geminiApiKey"]) > 4 else "***"
+    return settings
+
+
+@app.put("/api-settings")
+def update_settings(settings: APISettings) -> Dict[str, Any]:
+    """Update API settings"""
+    settings_dict = {}
+    if settings.model is not None:
+        if settings.model not in ["Gemini", "MiniLM"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid model. Must be 'Gemini' or 'MiniLM'"
+            )
+        settings_dict["model"] = settings.model
+    
+    if settings.geminiApiKey is not None:
+        settings_dict["geminiApiKey"] = settings.geminiApiKey
+    
+    if settings.embeddingServiceUrl is not None:
+        settings_dict["embeddingServiceUrl"] = settings.embeddingServiceUrl
+    
+    success = update_api_settings(settings_dict)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update settings")
+    
+    return {"status": "success", "settings": settings_dict}
+
+
+@app.get("/database/stats")
+def get_database_stats() -> Dict[str, Any]:
+    """Get ChromaDB statistics"""
+    try:
+        # Get collection information
+        count = collection.count()
+        
+        # Get collection name (namespace)
+        namespace = collection.name
+        
+        # ChromaDB uses HNSW index by default
+        # Most embedding models use 768 dimensions (MiniLM)
+        # Gemini uses different dimensions but we'll check metadata if available
+        dimensions = 768  # Default for MiniLM
+        
+        # Try to get a sample to determine dimensions
+        if count > 0:
+            try:
+                sample = collection.get(limit=1, include=["embeddings"])
+                embeddings = sample.get("embeddings") if sample else None
+                if embeddings is not None and len(embeddings) > 0:
+                    first_embedding = embeddings[0]
+                    if first_embedding is not None:
+                        dimensions = len(first_embedding)
+            except Exception as e:
+                print(f"Could not determine dimensions from sample: {e}")
+        
+        # Estimate storage size (rough approximation)
+        # Each vector: dimensions * 4 bytes (float32) + metadata overhead
+        estimated_bytes = count * (dimensions * 4 + 200)  # +200 for metadata
+        storage_mb = estimated_bytes / (1024 * 1024)
+        storage_gb = storage_mb / 1024
+        
+        if storage_gb >= 1:
+            storage = f"{storage_gb:.1f} GB"
+        else:
+            storage = f"{storage_mb:.1f} MB"
+        
+        return {
+            "totalVectors": count,
+            "namespace": namespace,
+            "dimensions": dimensions,
+            "indexType": "HNSW",
+            "storage": storage,
+            "isHealthy": True
+        }
+    except Exception as e:
+        print(f"Error getting database stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get database stats: {str(e)}")
+
+
+@app.post("/database/reindex")
+def reindex_database() -> Dict[str, Any]:
+    """Re-generate all embeddings using the current model"""
+    try:
+        # Get all existing documents
+        all_data = collection.get(include=["documents", "metadatas"])
+        
+        if not all_data or not all_data.get("ids"):
+            return {
+                "status": "success",
+                "message": "No documents to re-index",
+                "vectorsReindexed": 0
+            }
+        
+        ids = all_data["ids"]
+        documents = all_data.get("documents", [])
+        metadatas = all_data.get("metadatas", [])
+        
+        # Track progress
+        job_id = f"reindex_{len(ids)}"
+        add_job(job_id, "Re-index", "Running", 0)
+        
+        # Re-generate embeddings for all documents
+        total = len(ids)
+        reindexed = 0
+        new_embeddings = []
+        
+        for i, (doc_id, document, metadata) in enumerate(zip(ids, documents, metadatas)):
+            if document:  # Only re-embed if document exists
+                try:
+                    # Generate new embedding with current model
+                    new_embedding = embed_text(document)
+                    new_embeddings.append(new_embedding)
+                    reindexed += 1
+                    
+                    # Update progress every 10%
+                    if i % max(1, total // 10) == 0:
+                        progress = int((i / total) * 100)
+                        update_job(job_id, "Running", progress)
+                except Exception as e:
+                    print(f"Failed to re-embed document {doc_id}: {e}")
+                    continue
+        
+        # Update all embeddings in batch
+        if new_embeddings:
+            # Delete old entries
+            collection.delete(ids=ids[:len(new_embeddings)])
+            
+            # Add with new embeddings
+            collection.add(
+                ids=ids[:len(new_embeddings)],
+                embeddings=new_embeddings,
+                metadatas=metadatas[:len(new_embeddings)],
+                documents=documents[:len(new_embeddings)]
+            )
+        
+        update_job(job_id, "Completed", 100, f"{reindexed / max(0.1, (total / 60)):.1f}s")
+        
+        return {
+            "status": "success",
+            "message": f"Re-indexed {reindexed} vectors using {get_model()} model",
+            "vectorsReindexed": reindexed,
+            "totalVectors": total
+        }
+    except Exception as e:
+        print(f"Error re-indexing database: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to re-index database: {str(e)}")
+
+
+@app.post("/database/clear")
+def clear_database() -> Dict[str, Any]:
+    """Clear all vectors from the database (WARNING: deletes all data)"""
+    try:
+        # Get count before clearing
+        count_before = collection.count()
+        
+        # Delete all items from the collection
+        # ChromaDB requires getting all IDs first, then deleting
+        if count_before > 0:
+            # Get all IDs
+            all_items = collection.get()
+            if all_items and all_items.get("ids"):
+                collection.delete(ids=all_items["ids"])
+        
+        # Verify it's empty
+        count_after = collection.count()
+        
+        return {
+            "status": "success",
+            "message": f"Cleared {count_before} vectors from database",
+            "vectorsRemoved": count_before,
+            "currentCount": count_after
+        }
+    except Exception as e:
+        print(f"Error clearing database: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear database: {str(e)}")

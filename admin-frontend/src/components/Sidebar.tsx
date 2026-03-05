@@ -18,10 +18,10 @@ export const Sidebar: React.FC = () => {
     { to: '/organizations', icon: Building2, label: 'Organizations' },
     { to: '/users', icon: Users, label: 'Users' },
     { to: '/feature-flags', icon: Flag, label: 'Feature Flags' },
-    { to: '/settings', icon: SettingsIcon, label: 'Admin Setting' },
     { to: '/embeddings', icon: Database, label: 'Embeddings' },
     { to: '/scraping', icon: Search, label: 'Scraping' },
-    { to: '/api-manage', icon: Key, label: 'API Manage' },
+    { to: '/api-manage', icon: Key, label: 'API Management' },
+    { to: '/settings', icon: SettingsIcon, label: 'Admin Setting' },
   ];
 
   return (

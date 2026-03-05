@@ -22,7 +22,7 @@ export const Header: React.FC = () => {
             case '/scraping':
                 return { title: 'Scraping Management', subtitle: '' };
             case '/api-manage':
-                return { title: 'API Manage', subtitle: 'Manage API keys and access' };
+                return { title: 'API Management', subtitle: 'Manage API credentials and service endpoints' };
             default:
                 return { title: 'Admin Panel', subtitle: 'Welcome back' };
         }

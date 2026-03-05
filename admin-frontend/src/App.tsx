@@ -7,6 +7,7 @@ import { FeatureFlags } from './pages/FeatureFlags';
 import { Settings } from './pages/Settings';
 import { Embeddings } from './pages/Embeddings';
 import { Scraping } from './pages/Scraping';
+import { APIManage } from './pages/APIManage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="embeddings" element={<Embeddings />} />
           <Route path="scraping" element={<Scraping />} />
+          <Route path="api-manage" element={<APIManage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes> 
