@@ -42,7 +42,7 @@ const DashboardHeader: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-[40] flex justify-between items-center px-8 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100 max-md:flex-col max-md:items-start max-md:gap-4 transition-all duration-300">
+    <header className="sticky top-0 z-[40] flex justify-between items-center px-8 py-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 max-md:flex-col max-md:items-start max-md:gap-4 transition-all duration-300">
       <div className="flex items-center gap-4">
         {currentOrg && (
           <OrganizationSwitcher
@@ -57,7 +57,7 @@ const DashboardHeader: React.FC = () => {
       <div className="flex items-center gap-4 max-md:w-full max-md:justify-end">
         {/* Modern Date Range Picker */}
         <button
-          className="flex items-center gap-2 px-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 cursor-pointer transition-all hover:bg-white hover:border-blue-400 hover:text-blue-600 hover:shadow-md active:scale-95 shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 cursor-pointer transition-all hover:bg-white hover:border-blue-400 hover:text-blue-600 hover:shadow-md active:scale-95 shadow-sm dark:bg-slate-800/50 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-800 dark:hover:text-blue-400 dark:hover:border-blue-500"
           onClick={() => showToast('Date range picker coming soon', 'info')}
         >
           <CalendarDays size={16} className="text-gray-400 group-hover:text-blue-500" />
@@ -68,8 +68,8 @@ const DashboardHeader: React.FC = () => {
         <div className="relative" ref={notifRef}>
           <button
             className={`w-10 h-10 grid place-items-center rounded-xl cursor-pointer relative transition-all duration-300 active:scale-90 ${showNotifications
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-              : 'bg-white border border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:shadow-sm'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/20'
+              : 'bg-white border border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:text-blue-400'
               }`}
             onClick={toggleNotifications}
           >
@@ -91,8 +91,8 @@ const DashboardHeader: React.FC = () => {
         <div className="relative" ref={profileRef}>
           <button
             className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${showProfile
-              ? 'bg-blue-600 text-white border-blue-200 ring-4 ring-blue-50 scale-105'
-              : 'bg-blue-500 text-white border-transparent hover:scale-105 active:scale-95'
+              ? 'bg-blue-600 text-white border-blue-200 ring-4 ring-blue-50 scale-105 dark:border-blue-800 dark:ring-blue-900/50'
+              : 'bg-blue-500 text-white border-transparent hover:scale-105 active:scale-95 dark:bg-blue-600'
               }`}
             onClick={toggleProfile}
           >

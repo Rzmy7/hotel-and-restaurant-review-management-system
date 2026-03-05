@@ -2,6 +2,7 @@ export interface GeneralSettings {
     propertyName: string;
     timeZone: string;
     language: string;
+    themePreference: 'light' | 'dark' | 'system';
 }
 
 export interface NotificationSettings {

@@ -35,10 +35,10 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
                     <div
                         key={alert.id}
                         className={`flex items-start gap-3 p-4 rounded-xl border transition-all hover:shadow-md group/item ${alert.type === 'critical'
-                            ? 'bg-rose-50/20 border-rose-100/30 text-rose-900 hover:bg-rose-50/40'
+                            ? 'bg-rose-50/20 border-rose-100/30 text-rose-900 hover:bg-rose-50/40 dark:bg-rose-900/10 dark:border-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/20'
                             : alert.type === 'warning'
-                                ? 'bg-amber-50/20 border-amber-100/30 text-amber-900 hover:bg-amber-50/40'
-                                : 'bg-blue-50/20 border-blue-100/30 text-blue-900 hover:bg-blue-50/40'
+                                ? 'bg-amber-50/20 border-amber-100/30 text-amber-900 hover:bg-amber-50/40 dark:bg-amber-900/10 dark:border-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/20'
+                                : 'bg-blue-50/20 border-blue-100/30 text-blue-900 hover:bg-blue-50/40 dark:bg-blue-900/10 dark:border-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-900/20'
                             }`}
                     >
                         <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${alert.type === 'critical'

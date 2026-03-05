@@ -14,7 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
   return (
     <nav
       style={{ width: isExpanded ? 260 : 68 }}
-      className="h-full bg-white border-r border-gray-100 flex flex-col font-sans shrink-0 relative transition-[width] duration-300 ease-in-out z-20"
+      className="h-full bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 flex flex-col font-sans shrink-0 relative transition-[width] duration-300 ease-in-out z-20"
     >
       <SidebarHeader isExpanded={isExpanded} onToggle={onToggle} />
 
@@ -70,8 +70,8 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
           }}
           className={`
             flex items-center h-[60px] cursor-pointer rounded-xl transition-all duration-300 flex-1
-            ${isExpanded ? 'px-3 hover:bg-gray-50' : 'justify-center'}
-            ${isDropdownOpen ? 'bg-gray-50' : ''}
+            ${isExpanded ? 'px-3 hover:bg-gray-50 dark:hover:bg-slate-800' : 'justify-center'}
+            ${isDropdownOpen ? 'bg-gray-50 dark:bg-slate-800' : ''}
           `}
         >
           <div
@@ -88,7 +88,7 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
             ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0 ml-0'}
           `}>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-black text-sm tracking-tight truncate max-w-[110px]">
+              <span className="font-bold text-black dark:text-white text-sm tracking-tight truncate max-w-[110px]">
                 {currentOrg.name}
               </span>
               <ChevronDown size={14} className={`text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
@@ -102,7 +102,7 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
         {isExpanded && (
           <button
             onClick={onToggle}
-            className="w-8 h-10 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 transition-all duration-200 shrink-0"
+            className="w-8 h-10 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 dark:hover:bg-slate-800 transition-all duration-200 shrink-0"
           >
             <ChevronLeft size={18} />
           </button>
@@ -111,7 +111,7 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
 
       {/* Dropdown Menu */}
       {isDropdownOpen && isExpanded && (
-        <div className="absolute left-2 right-2 top-[70px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+        <div className="absolute left-2 right-2 top-[70px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
           <div className="p-2 max-h-[300px] overflow-y-auto no-scrollbar">
             <div className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
               My Organizations
@@ -124,12 +124,12 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
                   setIsDropdownOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 group/item ${org.id === currentOrg.id
-                  ? 'bg-brand/5 text-brand'
-                  : 'hover:bg-gray-50 text-gray-700 hover:text-brand'
+                  ? 'bg-brand/5 text-brand dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'hover:bg-gray-50 text-gray-700 hover:text-brand dark:hover:bg-slate-700 dark:text-gray-300 dark:hover:text-blue-400'
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${org.id === currentOrg.id ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500 group-hover/item:bg-brand/10 group-hover/item:text-brand'
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${org.id === currentOrg.id ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500 group-hover/item:bg-brand/10 group-hover/item:text-brand dark:bg-slate-700 dark:text-gray-400 dark:group-hover/item:bg-blue-900/30 dark:group-hover/item:text-blue-400'
                     }`}>
                     <Building2 size={14} />
                   </div>
@@ -137,18 +137,18 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
                     {org.name}
                   </div>
                 </div>
-                {org.id === currentOrg.id && <Check size={14} className="text-brand" />}
+                {org.id === currentOrg.id && <Check size={14} className="text-brand dark:text-blue-400" />}
               </button>
             ))}
           </div>
 
-          <div className="p-2 bg-gray-50/80 border-t border-gray-100">
+          <div className="p-2 bg-gray-50/80 dark:bg-slate-800/80 border-t border-gray-100 dark:border-slate-700">
             <button
               onClick={() => {
                 addOrganization();
                 setIsDropdownOpen(false);
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-white border border-gray-200 text-[13px] font-bold text-gray-600 hover:border-brand/40 hover:text-brand hover:shadow-sm transition-all active:scale-[0.98]"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:border-brand/40 hover:text-brand dark:hover:border-blue-500/50 dark:hover:text-blue-400 hover:shadow-sm transition-all active:scale-[0.98]"
             >
               <div className="w-8 h-8 rounded-lg bg-brand/5 text-brand flex items-center justify-center">
                 <Plus size={16} />
@@ -171,7 +171,7 @@ const SidebarSection: React.FC<{
 }> = ({ section, isExpanded, showDivider, onToggle }) => {
   return (
     <div className="mb-1">
-      {showDivider && <div className="h-px bg-gray-50 my-2 mx-2" />}
+      {showDivider && <div className="h-px bg-gray-50 dark:bg-slate-800/80 my-2 mx-2" />}
       {section.label && (
         <div className={`
           text-[10px] font-bold text-gray-400 px-3 py-1.5 tracking-[1px] uppercase overflow-hidden whitespace-nowrap transition-all duration-300
@@ -215,10 +215,10 @@ const SidebarItem: React.FC<{
       className={`
         group flex items-center h-10 rounded-xl cursor-pointer relative transition-all duration-200
         ${isActive
-          ? 'bg-brand text-white shadow-md shadow-brand/20'
+          ? 'bg-brand text-white shadow-md shadow-brand/20 dark:shadow-blue-900/20'
           : item.isDanger
-            ? 'text-red-500 hover:bg-red-50'
-            : 'text-gray-500 hover:bg-gray-50 hover:text-black'}
+            ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+            : 'text-gray-500 hover:bg-gray-50 hover:text-black dark:text-gray-400 dark:hover:bg-slate-800 dark:hover:text-white'}
         ${isExpanded ? 'px-3 gap-3' : 'justify-center mx-1'}
       `}
     >
@@ -252,7 +252,7 @@ const SidebarItem: React.FC<{
 // --- Footer Component ---
 const SidebarFooter: React.FC<{ items: SidebarItemData[]; isExpanded: boolean }> = ({ items, isExpanded }) => {
   return (
-    <div className="mt-auto px-3 pb-3 pt-6 border-t border-gray-50">
+    <div className="mt-auto px-3 pb-3 pt-6 border-t border-gray-50 dark:border-slate-800/80">
       <div className="space-y-0.5">
         {items.map(item => (
           <SidebarItem key={item.id} item={item} isExpanded={isExpanded} onToggle={() => { }} />

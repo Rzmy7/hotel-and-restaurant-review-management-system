@@ -83,8 +83,8 @@ export const SentimentChart: React.FC<SentimentChartProps> = ({ data }) => {
                         />
                     </svg>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                        <p className="m-0 text-4xl font-black text-gray-900 tracking-tighter">{positive.percentage}<span className="text-xl">%</span></p>
-                        <p className="mt-0.5 text-[10px] uppercase font-black text-[#4e80ee] tracking-widest">Positive</p>
+                        <p className="m-0 text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{positive.percentage}<span className="text-xl">%</span></p>
+                        <p className="mt-0.5 text-[10px] uppercase font-black text-[#4e80ee] dark:text-blue-400 tracking-widest">Positive</p>
                     </div>
                 </div>
 
@@ -92,49 +92,49 @@ export const SentimentChart: React.FC<SentimentChartProps> = ({ data }) => {
                 <div className="flex flex-col gap-3 flex-1 w-full">
                     <button
                         onClick={() => handleFilterClick('Positive')}
-                        className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all duration-300 cursor-pointer"
+                        className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 dark:hover:border-blue-900/50 dark:hover:bg-blue-900/20 transition-all duration-300 cursor-pointer"
                     >
-                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] dark:bg-blue-900/30 dark:text-blue-400 group-hover:scale-110 transition-transform">
                             <Smile size={20} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1.5">Positive</p>
-                            <p className="text-sm font-black text-gray-900">{positive.count} reviews</p>
+                            <p className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider leading-none mb-1.5">Positive</p>
+                            <p className="text-sm font-black text-gray-900 dark:text-white">{positive.count} reviews</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-lg font-black text-[#4e80ee]">{positive.percentage}%</p>
+                            <p className="text-lg font-black text-[#4e80ee] dark:text-blue-400">{positive.percentage}%</p>
                         </div>
                     </button>
 
                     <button
                         onClick={() => handleFilterClick('Neutral')}
-                        className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all duration-300 cursor-pointer"
+                        className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 dark:hover:border-slate-700 dark:hover:bg-slate-800/50 transition-all duration-300 cursor-pointer"
                     >
-                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 group-hover:scale-110 transition-transform">
                             <Meh size={20} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1.5">Neutral</p>
-                            <p className="text-sm font-black text-gray-900">{neutral.count} reviews</p>
+                            <p className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider leading-none mb-1.5">Neutral</p>
+                            <p className="text-sm font-black text-gray-900 dark:text-white">{neutral.count} reviews</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-lg font-black text-slate-400">{neutral.percentage}%</p>
+                            <p className="text-lg font-black text-slate-400 dark:text-slate-500">{neutral.percentage}%</p>
                         </div>
                     </button>
 
                     <button
                         onClick={() => handleFilterClick('Negative')}
-                        className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-rose-100 hover:bg-rose-50/30 transition-all duration-300 cursor-pointer"
+                        className="w-full text-left group flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-rose-100 hover:bg-rose-50/30 dark:hover:border-rose-900/50 dark:hover:bg-rose-900/20 transition-all duration-300 cursor-pointer"
                     >
-                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400 group-hover:scale-110 transition-transform">
                             <Frown size={20} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1.5">Negative</p>
-                            <p className="text-sm font-black text-gray-900">{negative.count} reviews</p>
+                            <p className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider leading-none mb-1.5">Negative</p>
+                            <p className="text-sm font-black text-gray-900 dark:text-white">{negative.count} reviews</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-lg font-black text-rose-500">{negative.percentage}%</p>
+                            <p className="text-lg font-black text-rose-500 dark:text-rose-400">{negative.percentage}%</p>
                         </div>
                     </button>
                 </div>

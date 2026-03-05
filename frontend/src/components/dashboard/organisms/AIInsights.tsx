@@ -45,12 +45,12 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
                         {strengths.map((item) => (
                             <div key={item.label} className="p-3.5 bg-blue-50/20 border border-blue-100/30 rounded-xl hover:bg-blue-50/40 transition-colors group/item">
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[13px] font-black text-gray-800">{item.label}</span>
+                                    <span className="text-[13px] font-black text-gray-800 dark:text-gray-200">{item.label}</span>
                                     <ThumbsUp size={12} className="text-[#4e80ee] opacity-0 group-hover/item:opacity-100 transition-opacity" />
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-100 text-[#4e80ee] rounded uppercase tracking-widest">Impact: {item.impact}</span>
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{item.freq} mention rate</span>
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400 rounded uppercase tracking-widest">Impact: {item.impact}</span>
+                                    <span className="text-[9px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider">{item.freq} mention rate</span>
                                 </div>
                             </div>
                         ))}
@@ -67,15 +67,15 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
                         {issues.map((item) => (
                             <div key={item.label} className="p-3.5 bg-rose-50/20 border border-rose-100/30 rounded-xl hover:bg-rose-50/40 transition-colors group/item">
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[13px] font-black text-gray-800">{item.label}</span>
+                                    <span className="text-[13px] font-black text-gray-800 dark:text-gray-200">{item.label}</span>
                                     <ThumbsDown size={12} className="text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity" />
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${item.impact === 'Critical' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${item.impact === 'Critical' ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
                                         }`}>
                                         {item.impact}
                                     </span>
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{item.freq} dissatisfaction</span>
+                                    <span className="text-[9px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider">{item.freq} dissatisfaction</span>
                                 </div>
                             </div>
                         ))}
@@ -84,15 +84,15 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
             </div>
 
             {/* AI Generated Highlight Card */}
-            <div className="p-5 bg-blue-50/40 border border-blue-100/60 rounded-2xl relative overflow-hidden group/highlight shadow-sm z-10">
+            <div className="p-5 bg-blue-50/40 dark:bg-slate-800/80 border border-blue-100/60 dark:border-blue-900/30 rounded-2xl relative overflow-hidden group/highlight shadow-sm z-10">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover/highlight:bg-blue-500/10 transition-colors duration-500"></div>
                 <div className="flex items-center gap-3 mb-3 relative z-10">
-                    <div className="p-1.5 bg-blue-100/50 rounded-lg text-blue-600">
-                        <Zap size={14} className="fill-blue-600" />
+                    <div className="p-1.5 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400">
+                        <Zap size={14} className="fill-blue-600 dark:fill-blue-400" />
                     </div>
-                    <span className="text-[10px] font-black text-blue-600/80 uppercase tracking-[0.2em] italic">AI Highlight</span>
+                    <span className="text-[10px] font-black text-blue-600/80 dark:text-blue-400/80 uppercase tracking-[0.2em] italic">AI Highlight</span>
                 </div>
-                <p className="m-0 text-[13px] font-bold text-gray-700 leading-relaxed relative z-10">
+                <p className="m-0 text-[13px] font-bold text-gray-700 dark:text-gray-200 leading-relaxed relative z-10">
                     {highlight.text}
                 </p>
                 <div className="mt-4 flex items-center gap-2 relative z-10">

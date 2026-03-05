@@ -157,27 +157,27 @@ const iconMap: Record<
 > = {
     review: {
         icon: <Star size={18} />,
-        bg: 'bg-amber-50',
-        color: 'text-amber-500',
-        ring: 'ring-amber-100',
+        bg: 'bg-amber-50 dark:bg-amber-900/20',
+        color: 'text-amber-500 dark:text-amber-400',
+        ring: 'ring-amber-100 dark:ring-amber-800/30',
     },
     alert: {
         icon: <AlertTriangle size={18} />,
-        bg: 'bg-red-50',
-        color: 'text-red-500',
-        ring: 'ring-red-100',
+        bg: 'bg-red-50 dark:bg-red-900/20',
+        color: 'text-red-500 dark:text-red-400',
+        ring: 'ring-red-100 dark:ring-red-800/30',
     },
     success: {
         icon: <CheckCircle2 size={18} />,
-        bg: 'bg-emerald-50',
-        color: 'text-emerald-500',
-        ring: 'ring-emerald-100',
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        color: 'text-emerald-500 dark:text-emerald-400',
+        ring: 'ring-emerald-100 dark:ring-emerald-800/30',
     },
     system: {
         icon: <RefreshCw size={18} />,
-        bg: 'bg-blue-50',
-        color: 'text-blue-500',
-        ring: 'ring-blue-100',
+        bg: 'bg-blue-50 dark:bg-blue-900/20',
+        color: 'text-blue-500 dark:text-blue-400',
+        ring: 'ring-blue-100 dark:ring-blue-800/30',
     },
 };
 
@@ -240,18 +240,18 @@ const NotificationsPage: React.FC = () => {
 
     // ── Render ─────────────────────────────────────────────────────
     return (
-        <div className="min-h-full bg-gray-50">
+        <div className="min-h-full bg-gray-50 dark:bg-slate-900">
             <NotificationsHeader />
 
             <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
                 {/* Toolbar — filters + bulk actions */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-wrap gap-3">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 mb-6">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex-wrap gap-3">
                         {/* Filter tabs */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <Filter
                                 size={15}
-                                className="text-gray-400 mr-1"
+                                className="text-gray-400 dark:text-slate-500 mr-1"
                             />
                             {filterTabs.map((tab) => {
                                 const isActive = activeFilter === tab.key;
@@ -270,15 +270,15 @@ const NotificationsPage: React.FC = () => {
                                             setActiveFilter(tab.key)
                                         }
                                         className={`px-3.5 py-1.5 rounded-lg text-sm font-medium cursor-pointer border transition-all ${isActive
-                                            ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                            : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700'
+                                            ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30'
+                                            : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-slate-700/50 dark:hover:text-gray-200'
                                             }`}
                                     >
                                         {tab.label}
                                         <span
                                             className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold ${isActive
                                                 ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-100 text-gray-400'
+                                                : 'bg-gray-100 text-gray-400 dark:bg-slate-700 dark:text-slate-400'
                                                 }`}
                                         >
                                             {count}
@@ -293,7 +293,7 @@ const NotificationsPage: React.FC = () => {
                             {unreadCount > 0 && (
                                 <button
                                     onClick={markAllRead}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-500 bg-transparent border border-blue-200 rounded-lg cursor-pointer transition-all hover:bg-blue-50 hover:text-blue-700"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-500 bg-transparent border border-blue-200 rounded-lg cursor-pointer transition-all hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:border-blue-800/50 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
                                 >
                                     <CheckCheck size={14} />
                                     Mark All Read
@@ -302,7 +302,7 @@ const NotificationsPage: React.FC = () => {
                             {notifications.length > 0 && (
                                 <button
                                     onClick={clearAll}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-400 bg-transparent border border-gray-200 rounded-lg cursor-pointer transition-all hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-400 bg-transparent border border-gray-200 rounded-lg cursor-pointer transition-all hover:bg-red-50 hover:text-red-500 hover:border-red-200 dark:text-gray-400 dark:border-slate-700 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800/50"
                                 >
                                     <Trash2 size={14} />
                                     Clear All
@@ -312,10 +312,10 @@ const NotificationsPage: React.FC = () => {
                     </div>
 
                     {/* Summary bar */}
-                    <div className="px-5 py-2.5 text-xs text-gray-400 bg-gray-50/60">
+                    <div className="px-5 py-2.5 text-xs text-gray-400 bg-gray-50/60 dark:text-slate-500 dark:bg-slate-900/50">
                         {unreadCount > 0 ? (
                             <>
-                                <span className="font-semibold text-blue-500">
+                                <span className="font-semibold text-blue-500 dark:text-blue-400">
                                     {unreadCount}
                                 </span>{' '}
                                 unread notification
@@ -330,16 +330,16 @@ const NotificationsPage: React.FC = () => {
 
                 {/* Notification list */}
                 {filtered.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center py-20 px-6 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-gray-100 grid place-items-center mb-4">
-                            <Bell size={28} className="text-gray-300" />
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col items-center justify-center py-20 px-6 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 grid place-items-center mb-4">
+                            <Bell size={28} className="text-gray-300 dark:text-slate-500" />
                         </div>
-                        <p className="text-base font-medium text-gray-500 m-0">
+                        <p className="text-base font-medium text-gray-500 dark:text-gray-400 m-0">
                             {activeFilter === 'all'
                                 ? "You're all caught up!"
                                 : `No ${activeFilter} notifications`}
                         </p>
-                        <p className="text-sm text-gray-400 m-0 mt-1.5 max-w-[280px]">
+                        <p className="text-sm text-gray-400 dark:text-slate-500 m-0 mt-1.5 max-w-[280px]">
                             {activeFilter === 'all'
                                 ? 'All your notifications have been cleared. New ones will appear here.'
                                 : 'Try switching to a different filter to see more notifications.'}
@@ -347,7 +347,7 @@ const NotificationsPage: React.FC = () => {
                         {activeFilter !== 'all' && (
                             <button
                                 onClick={() => setActiveFilter('all')}
-                                className="mt-4 px-4 py-2 text-sm font-medium text-blue-500 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer transition-all hover:bg-blue-100"
+                                className="mt-4 px-4 py-2 text-sm font-medium text-blue-500 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer transition-all hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:border-blue-800/50 dark:hover:bg-blue-900/40"
                             >
                                 View All Notifications
                             </button>
@@ -358,10 +358,10 @@ const NotificationsPage: React.FC = () => {
                         <div key={date} className="mb-6">
                             {/* Date group header */}
                             <div className="flex items-center gap-3 mb-3 px-1">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                                <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">
                                     {date}
                                 </span>
-                                <div className="flex-1 h-px bg-gray-200" />
+                                <div className="flex-1 h-px bg-gray-200 dark:bg-slate-700" />
                             </div>
 
                             {/* Cards */}
@@ -374,9 +374,9 @@ const NotificationsPage: React.FC = () => {
                                             onClick={() =>
                                                 markAsRead(notif.id)
                                             }
-                                            className={`bg-white rounded-xl shadow-sm border cursor-pointer transition-all group relative overflow-hidden ${notif.read
-                                                ? 'border-gray-100 hover:border-gray-200'
-                                                : 'border-blue-100 hover:border-blue-200 ring-1 ring-blue-50'
+                                            className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border cursor-pointer transition-all group relative overflow-hidden ${notif.read
+                                                ? 'border-gray-100 hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600'
+                                                : 'border-blue-100 hover:border-blue-200 ring-1 ring-blue-50 dark:border-blue-800/50 dark:hover:border-blue-700/50 dark:ring-blue-900/20'
                                                 }`}
                                         >
                                             {/* Unread indicator bar */}
@@ -397,8 +397,8 @@ const NotificationsPage: React.FC = () => {
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p
                                                             className={`text-sm m-0 truncate ${notif.read
-                                                                ? 'font-medium text-gray-700'
-                                                                : 'font-semibold text-gray-900'
+                                                                ? 'font-medium text-gray-700 dark:text-gray-300'
+                                                                : 'font-semibold text-gray-900 dark:text-white'
                                                                 }`}
                                                         >
                                                             {notif.title}
@@ -406,11 +406,11 @@ const NotificationsPage: React.FC = () => {
                                                         {!notif.read && (
                                                             <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
                                                         )}
-                                                        <span className="ml-auto text-[11px] text-gray-400 shrink-0 whitespace-nowrap">
+                                                        <span className="ml-auto text-[11px] text-gray-400 dark:text-slate-500 shrink-0 whitespace-nowrap">
                                                             {notif.time}
                                                         </span>
                                                     </div>
-                                                    <p className="text-[13px] text-gray-500 m-0 leading-relaxed line-clamp-2">
+                                                    <p className="text-[13px] text-gray-500 dark:text-slate-400 m-0 leading-relaxed line-clamp-2">
                                                         {notif.message}
                                                     </p>
 
@@ -430,7 +430,7 @@ const NotificationsPage: React.FC = () => {
                                                         e.stopPropagation();
                                                         dismiss(notif.id);
                                                     }}
-                                                    className="w-8 h-8 grid place-items-center rounded-lg text-gray-300 bg-transparent border-none cursor-pointer opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-500 transition-all shrink-0 mt-0.5"
+                                                    className="w-8 h-8 grid place-items-center rounded-lg text-gray-300 hover:bg-gray-100 hover:text-gray-500 dark:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300 bg-transparent border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5"
                                                     title="Dismiss"
                                                 >
                                                     <X size={15} />

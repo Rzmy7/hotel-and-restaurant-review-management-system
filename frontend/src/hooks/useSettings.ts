@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { settingsService } from '../services/settingsService';
-import { SettingsData } from '../types/settings';
+import type { SettingsData } from '../types/settings';
 import { useToast } from '../contexts/ToastContext';
 
 export const useSettings = () => {
@@ -43,26 +43,12 @@ export const useSettings = () => {
         }
     };
 
-    const updateSection = <K extends keyof SettingsData>(
-        section: K,
-        updates: Partial<SettingsData[K]>
-    ) => {
-        if (!data) return false;
-
-        // Optimistic update state
-        const newSectionData = { ...data[section], ...updates };
-        const fullUpdates = { [section]: newSectionData } as Partial<SettingsData>;
-
-        return updateSettings(fullUpdates);
-    };
-
     return {
         data,
         loading,
         saving,
         error,
         refreshData: loadSettings,
-        updateSettings,
-        updateSection
+        updateSettings
     };
 };

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../hooks/useSettings';
 import DashboardSkeleton from '../components/DashboardSkeleton';
@@ -13,26 +14,70 @@ import { NotificationSettingsCard } from '../components/settings/organisms/Notif
 import { SecuritySettingsCard } from '../components/settings/organisms/SecuritySettingsCard';
 import { SubscriptionSettingsCard } from '../components/settings/organisms/SubscriptionSettingsCard';
 import { HotelInfoSettingsCard } from '../components/settings/organisms/HotelInfoSettingsCard';
+import type { SettingsData } from '../types/settings';
+
+type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'hotelInfo';
+
+const TABS = [
+  { id: 'general', label: 'General Properties', icon: Globe },
+  { id: 'security', label: 'Security', icon: Lock },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'subscription', label: 'Subscription', icon: CreditCard },
+  { id: 'hotelInfo', label: 'Hotel Profile', icon: Building }
+] as const;
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data, loading, saving, updateSection } = useSettings();
+  const { data: serverData, loading, saving, updateSettings } = useSettings();
 
-  if (loading || !data) {
+  const [localData, setLocalData] = useState<SettingsData | null>(null);
+  const [activeTab, setActiveTab] = useState<TabID>('general');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    if (serverData) {
+      setLocalData(serverData);
+      setHasUnsavedChanges(false);
+    }
+  }, [serverData]);
+
+  if (loading || !localData) {
     return <DashboardSkeleton />;
   }
 
-  const handleSaveAll = () => {
-    // The form is auto-saving via the updateSection function on blur or change depending on the implementation.
-    // For a global save button, we just trigger a save confirmation since state is already up to date.
-    showToast('All settings changes have been saved', 'success');
+  const handleUpdateSection = <K extends keyof SettingsData>(
+    section: K,
+    updates: Partial<SettingsData[K]>
+  ) => {
+    setLocalData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          ...updates
+        }
+      };
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveAll = async () => {
+    if (!localData) return;
+    const success = await updateSettings(localData);
+    if (success) {
+      setHasUnsavedChanges(false);
+    }
   };
 
   const handleCancel = () => {
-    if (confirm('Are you sure you want to discard unsaved changes and return to the dashboard?')) {
-      navigate('/dashboard');
+    if (hasUnsavedChanges) {
+      if (!window.confirm('Are you sure you want to discard unsaved changes and return to the dashboard?')) {
+        return;
+      }
     }
+    navigate('/dashboard');
   };
 
   return (
@@ -40,32 +85,80 @@ const SettingsPage: React.FC = () => {
       isSaving={saving}
       onSave={handleSaveAll}
       onCancel={handleCancel}
+      hasUnsavedChanges={hasUnsavedChanges}
     >
-      <GeneralSettingsCard
-        data={data.general}
-        onChange={(updates) => updateSection('general', updates)}
-      />
-      <NotificationSettingsCard
-        data={data.notifications}
-        onChange={(updates) => updateSection('notifications', updates)}
-      />
-      <SecuritySettingsCard
-        data={data.security}
-        onChange={(updates) => updateSection('security', updates)}
-        onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
-        onSessionEdit={() => showToast('Session settings are managed by admins', 'info')}
-      />
-      <SubscriptionSettingsCard
-        data={data.subscription}
-        onChange={(updates) => updateSection('subscription', updates)}
-        onPaymentEdit={() => showToast('Redirecting to secure payment portal...', 'info')}
-      />
-      <HotelInfoSettingsCard
-        data={data.hotelInfo}
-        onChange={(updates) => updateSection('hotelInfo', updates)}
-        onLogoUpload={() => showToast('Logo upload coming soon', 'info')}
-        onLogoRemove={() => updateSection('hotelInfo', { logoUrl: undefined })}
-      />
+      <div className="flex flex-col gap-6">
+        {/* Horizontal Navigation */}
+        <nav className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-100 dark:border-slate-800/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${isActive
+                  ? 'bg-blue-50 text-[#4e80ee] shadow-sm dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
+                  }`}
+              >
+                <Icon size={18} className={isActive ? 'text-[#4e80ee] dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Form Content */}
+        <div className="max-w-3xl">
+          {activeTab === 'general' && (
+            <div className="animate-fade-in">
+              <GeneralSettingsCard
+                data={localData.general}
+                onChange={(updates) => handleUpdateSection('general', updates)}
+              />
+            </div>
+          )}
+          {activeTab === 'notifications' && (
+            <div className="animate-fade-in">
+              <NotificationSettingsCard
+                data={localData.notifications}
+                onChange={(updates) => handleUpdateSection('notifications', updates)}
+              />
+            </div>
+          )}
+          {activeTab === 'security' && (
+            <div className="animate-fade-in">
+              <SecuritySettingsCard
+                data={localData.security}
+                onChange={(updates) => handleUpdateSection('security', updates)}
+                onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
+                onSessionEdit={() => showToast('Session settings are managed by admins', 'info')}
+              />
+            </div>
+          )}
+          {activeTab === 'subscription' && (
+            <div className="animate-fade-in">
+              <SubscriptionSettingsCard
+                data={localData.subscription}
+                onChange={(updates) => handleUpdateSection('subscription', updates)}
+                onPaymentEdit={() => showToast('Redirecting to secure payment portal...', 'info')}
+              />
+            </div>
+          )}
+          {activeTab === 'hotelInfo' && (
+            <div className="animate-fade-in">
+              <HotelInfoSettingsCard
+                data={localData.hotelInfo}
+                onChange={(updates) => handleUpdateSection('hotelInfo', updates)}
+                onLogoUpload={() => showToast('Logo upload coming soon', 'info')}
+                onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </SettingsTemplate>
   );
 };

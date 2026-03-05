@@ -45,12 +45,12 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
 
   const getFallbackStyles = () => {
     switch (platform) {
-      case 'Expedia': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'Yelp': return 'bg-rose-50 text-rose-600 border-rose-100';
-      case 'Zomato': return 'bg-red-50 text-red-600 border-red-100';
-      case 'OpenTable': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case 'Hotels.com': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
-      default: return 'bg-gray-50 text-gray-400 border-gray-200';
+      case 'Expedia': return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800';
+      case 'Yelp': return 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/40 dark:text-rose-400 dark:border-rose-800';
+      case 'Zomato': return 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800';
+      case 'OpenTable': return 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800';
+      case 'Hotels.com': return 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-400 dark:border-indigo-800';
+      default: return 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600';
     }
   };
 
@@ -71,21 +71,21 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
   switch (status) {
     case 'Active':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-sm shadow-emerald-50">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-sm shadow-emerald-50 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800/50 dark:shadow-none">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
           Active
         </span>
       );
     case 'Paused':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-gray-50 text-gray-500 border border-gray-100/50 shadow-sm shadow-gray-50">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-gray-50 text-gray-500 border border-gray-100/50 shadow-sm shadow-gray-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50 dark:shadow-none">
           <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
           Paused
         </span>
       );
     case 'Error':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50 dark:bg-rose-900/40 dark:text-rose-400 dark:border-rose-800/50 dark:shadow-none">
           <AlertCircle size={10} />
           Error
         </span>
@@ -113,41 +113,41 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/50 border-b border-gray-100/50">
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Platform</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Sync</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Frequency</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Success Rate</th>
-              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+            <tr className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100/50 dark:border-slate-700/50">
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">Platform</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest text-center">Status</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">Last Sync</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest text-center">Frequency</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">Success Rate</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td colSpan={6} className="px-6 py-6"><div className="h-10 bg-gray-50 rounded" /></td>
+                  <td colSpan={6} className="px-6 py-6"><div className="h-10 bg-gray-50 dark:bg-slate-700 rounded" /></td>
                 </tr>
               ))
             ) : currentSources.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center">
-                    <div className="p-4 bg-gray-50 rounded-full mb-3 text-gray-300">
+                    <div className="p-4 bg-gray-50 dark:bg-slate-700 rounded-full mb-3 text-gray-300 dark:text-slate-500">
                       <RefreshCw size={32} />
                     </div>
-                    <p className="text-gray-500 font-medium">No sources connected yet</p>
-                    <p className="text-sm text-gray-400 mt-1">Add your first review platform to start collecting insights</p>
+                    <p className="text-gray-500 dark:text-slate-300 font-medium">No sources connected yet</p>
+                    <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">Add your first review platform to start collecting insights</p>
                   </div>
                 </td>
               </tr>
             ) : (
               currentSources.map((source) => (
-                <tr key={source.id} className="group hover:bg-blue-50/20 transition-colors">
+                <tr key={source.id} className="group hover:bg-blue-50/20 dark:hover:bg-blue-900/20 transition-colors">
                   {/* Platform */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
@@ -155,7 +155,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       <div>
                         <button
                           onClick={() => onEdit(source, 'analytics')}
-                          className="text-[13px] font-black text-gray-900 hover:text-[#4e80ee] transition-colors uppercase tracking-tight text-left block"
+                          className="text-[13px] font-black text-gray-900 dark:text-white hover:text-[#4e80ee] dark:hover:text-blue-400 transition-colors uppercase tracking-tight text-left block"
                         >
                           {source.platform}
                         </button>
@@ -163,7 +163,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                           href={source.propertyUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[10px] text-gray-400 font-bold flex items-center gap-1 hover:text-[#4e80ee] hover:underline transition-all mt-0.5 uppercase tracking-wider"
+                          className="text-[10px] text-gray-400 dark:text-slate-400 font-bold flex items-center gap-1 hover:text-[#4e80ee] dark:hover:text-blue-400 hover:underline transition-all mt-0.5 uppercase tracking-wider"
                         >
                           View Link <ExternalLink size={10} />
                         </a>
@@ -179,9 +179,9 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                   {/* Last Synced */}
                   <td className="px-6 py-5">
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-700">{formatDate(source.lastSyncedAt)}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{formatDate(source.lastSyncedAt)}</span>
                       {source.errorCount > 0 && (
-                        <span className="text-[11px] text-rose-500 font-medium mt-0.5">
+                        <span className="text-[11px] text-rose-500 dark:text-rose-400 font-medium mt-0.5">
                           {source.errorCount} failed attempts
                         </span>
                       )}
@@ -190,8 +190,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
 
                   {/* Schedule */}
                   <td className="px-6 py-4 text-center">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50/50 border border-gray-100 text-[10px] font-black text-gray-600 uppercase tracking-widest shadow-xs">
-                      <Calendar size={12} className="text-gray-400" />
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50/50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-700 text-[10px] font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest shadow-xs dark:shadow-none">
+                      <Calendar size={12} className="text-gray-400 dark:text-slate-500" />
                       {source.syncSchedule}
                     </div>
                   </td>
@@ -199,7 +199,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                   {/* Success Rate */}
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-2">
-                      <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="w-20 h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-1000 ${source.successRate > 90 ? 'bg-emerald-500' :
                             source.successRate > 70 ? 'bg-amber-500' : 'bg-rose-500'
@@ -207,8 +207,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                           style={{ width: `${source.successRate}%` }}
                         />
                       </div>
-                      <span className={`text-[13px] font-bold ${source.successRate > 90 ? 'text-emerald-600' :
-                        source.successRate > 70 ? 'text-amber-600' : 'text-rose-600'
+                      <span className={`text-[13px] font-bold ${source.successRate > 90 ? 'text-emerald-600 dark:text-emerald-400' :
+                        source.successRate > 70 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
                         }`}>
                         {source.successRate}%
                       </span>
@@ -221,14 +221,14 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       <button
                         onClick={() => onSync(source.id)}
                         disabled={source.status === 'Paused'}
-                        className="p-2 text-[#4e80ee] hover:bg-blue-50 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                        className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
                         title="Sync Now"
                       >
                         <RefreshCw size={18} />
                       </button>
                       <button
                         onClick={() => onToggleStatus(source)}
-                        className={`p-2 rounded-lg transition-all ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'
+                        className={`p-2 rounded-lg transition-all ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40' : 'text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'
                           }`}
                         title={source.status === 'Active' ? 'Pause' : 'Resume'}
                       >
@@ -236,7 +236,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       </button>
                       <button
                         onClick={() => onEdit(source)}
-                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-slate-700 rounded-lg transition-all"
                         title="Edit Settings"
                       >
                         <Edit2 size={18} />
@@ -247,7 +247,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                             onDelete(source.id);
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 rounded-lg transition-all"
                         title="Remove Source"
                       >
                         <Trash2 size={18} />
@@ -263,15 +263,15 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-500">
-            Showing <span className="text-gray-900">{page * PAGE_SIZE + 1}</span> to <span className="text-gray-900">{Math.min((page + 1) * PAGE_SIZE, sources.length)}</span> of <span className="text-gray-900">{sources.length}</span> sources
+        <div className="px-6 py-4 bg-gray-50/50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <p className="text-sm font-medium text-gray-500 dark:text-slate-400">
+            Showing <span className="text-gray-900 dark:text-white">{page * PAGE_SIZE + 1}</span> to <span className="text-gray-900 dark:text-white">{Math.min((page + 1) * PAGE_SIZE, sources.length)}</span> of <span className="text-gray-900 dark:text-white">{sources.length}</span> sources
           </p>
           <div className="flex items-center gap-2">
             <button
               disabled={page === 0}
               onClick={() => setPage(p => p - 1)}
-              className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-xs"
+              className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 transition-all shadow-xs"
             >
               Previous
             </button>

@@ -84,18 +84,18 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({ data }) => {
             >
                 <div className="flex gap-6 mt-1">
                     <div className="flex items-center gap-2 group cursor-help relative">
-                        <div className="w-2.5 h-2.5 rounded-sm border border-slate-300 bg-slate-50 group-hover:rotate-45 transition-transform" />
+                        <div className="w-2.5 h-2.5 rounded-sm border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 group-hover:rotate-45 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">Volume</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Total</span>
+                            <span className="text-[9px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-widest leading-none">Volume</span>
+                            <span className="text-[8px] font-bold text-gray-400 dark:text-slate-500 mt-1 uppercase">Total</span>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2 group cursor-help relative">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 group-hover:scale-125 transition-transform" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 dark:ring-blue-900/30 group-hover:scale-125 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest leading-none">Sentiment Score</span>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Rating</span>
+                            <span className="text-[9px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-widest leading-none">Sentiment Score</span>
+                            <span className="text-[8px] font-bold text-gray-400 dark:text-slate-500 mt-1 uppercase">Rating</span>
                         </div>
                     </div>
                 </div>
@@ -150,7 +150,7 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({ data }) => {
                             y1={p * height}
                             x2={width}
                             y2={p * height}
-                            stroke="#f1f5f9"
+                            className="stroke-slate-100 dark:stroke-slate-800"
                             strokeWidth="1"
                         />
                     ))}

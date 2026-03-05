@@ -65,7 +65,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+                className="fixed inset-0 bg-gray-900/40 dark:bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -73,7 +73,7 @@ export const Modal: React.FC<ModalProps> = ({
             {/* Modal Container */}
             <div
                 className={cn(
-                    "w-full bg-white flex flex-col rounded-3xl shadow-2xl overflow-hidden relative z-10 animate-in zoom-in-95 duration-200 max-h-[90vh]",
+                    "w-full bg-white dark:bg-slate-800 flex flex-col rounded-3xl shadow-2xl overflow-hidden relative z-10 animate-in zoom-in-95 duration-200 max-h-[90vh]",
                     sizes[size],
                     className
                 )}
@@ -83,14 +83,14 @@ export const Modal: React.FC<ModalProps> = ({
             >
                 {/* Header */}
                 {(title || description) && (
-                    <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100 bg-white/80 sticky top-0 z-10 backdrop-blur-md">
+                    <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 sticky top-0 z-10 backdrop-blur-md">
                         <div>
-                            {title && <h2 className="text-xl font-black text-gray-900 tracking-tight">{title}</h2>}
-                            {description && <p className="mt-1 text-[13px] text-gray-500 font-medium">{description}</p>}
+                            {title && <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{title}</h2>}
+                            {description && <p className="mt-1 text-[13px] text-gray-500 dark:text-slate-400 font-medium">{description}</p>}
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white border border-gray-100 shadow-sm flex-shrink-0"
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white transition-colors bg-white border border-gray-100 dark:bg-slate-800 dark:border-slate-600 shadow-sm flex-shrink-0"
                             aria-label="Close modal"
                         >
                             <X size={20} />
@@ -102,7 +102,7 @@ export const Modal: React.FC<ModalProps> = ({
                 {!title && !description && (
                     <button
                         onClick={onClose}
-                        className="absolute top-6 right-8 z-20 w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white/80 backdrop-blur border border-gray-100 shadow-sm"
+                        className="absolute top-6 right-8 z-20 w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-gray-100 dark:border-slate-600 shadow-sm"
                         aria-label="Close modal"
                     >
                         <X size={20} />
@@ -116,7 +116,7 @@ export const Modal: React.FC<ModalProps> = ({
 
                 {/* Footer */}
                 {footer && (
-                    <div className="p-4 px-8 border-t border-gray-100 bg-gray-50/50 mt-auto">
+                    <div className="p-4 px-8 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 mt-auto">
                         {footer}
                     </div>
                 )}

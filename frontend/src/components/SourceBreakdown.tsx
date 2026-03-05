@@ -66,29 +66,29 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
     const maxReviews = Math.max(...sources.map((s) => s.reviews));
 
     return (
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
             {/* Header */}
             <div className="flex items-start justify-between mb-5 gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 grid place-items-center bg-blue-50 text-blue-500 rounded-lg">
+                    <div className="w-8 h-8 grid place-items-center bg-blue-50 dark:bg-blue-900/40 text-blue-500 dark:text-blue-400 rounded-lg border border-transparent dark:border-blue-800/60">
                         <BarChart3 size={16} />
                     </div>
                     <div>
-                        <h3 className="m-0 text-base font-bold text-gray-800">Source Breakdown</h3>
-                        <p className="m-0 text-[11px] text-gray-400">Per-source performance metrics</p>
+                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Source Breakdown</h3>
+                        <p className="m-0 text-[11px] text-gray-400 dark:text-slate-400">Per-source performance metrics</p>
                     </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                <div className="flex bg-gray-100 dark:bg-slate-700/50 rounded-lg p-0.5 gap-0.5 border border-transparent dark:border-slate-600/50">
                     {TABS.map((t) => (
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
                             className={`px-3 py-1 text-[13px] font-medium rounded-md transition-all cursor-pointer border-none
                 ${tab === t.id
-                                    ? 'bg-white text-gray-800 shadow-sm'
-                                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-gray-800 shadow-sm dark:bg-slate-600 dark:text-white dark:shadow-none'
+                                    : 'bg-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
                             {t.label}
@@ -99,13 +99,13 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
 
             {/* ── OVERVIEW TAB ─────────────────────────────────────────────────── */}
             {tab === 'overview' && (
-                <div className="flex flex-col gap-0 divide-y divide-gray-100">
+                <div className="flex flex-col gap-0 divide-y divide-gray-100 dark:divide-slate-700/50">
                     {/* Column headers */}
                     <div className="grid grid-cols-[1fr_60px_60px_80px] gap-x-4 pb-2 mb-1">
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Source</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center">Reviews</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center">Share</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-right">Volume</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Source</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide text-center">Reviews</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide text-center">Share</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide text-right">Volume</span>
                     </div>
 
                     {sources.map((s) => (
@@ -113,11 +113,11 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
                             {/* Source name */}
                             <div className="flex items-center gap-2.5">
                                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                                <span className="text-sm font-medium text-gray-800">{s.name}</span>
+                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{s.name}</span>
                             </div>
 
                             {/* Review count */}
-                            <span className="text-sm font-semibold text-gray-700 text-center">{s.reviews}</span>
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 text-center">{s.reviews}</span>
 
                             {/* Share % */}
                             <span
@@ -129,7 +129,7 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
 
                             {/* Mini volume bar */}
                             <div className="flex items-center gap-2 justify-end">
-                                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden min-w-[48px]">
+                                <div className="flex-1 h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden min-w-[48px]">
                                     <div
                                         className="h-full rounded-full transition-all duration-500"
                                         style={{
@@ -146,7 +146,7 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
 
             {/* ── SENTIMENT TAB ────────────────────────────────────────────────── */}
             {tab === 'sentiment' && (
-                <div className="flex flex-col gap-0 divide-y divide-gray-100">
+                <div className="flex flex-col gap-0 divide-y divide-gray-100 dark:divide-slate-700/50">
                     {/* Legend */}
                     <div className="flex items-center gap-4 pb-3 flex-wrap">
                         {[
@@ -154,7 +154,7 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
                             { label: 'Neutral', color: '#94a3b8', Icon: Minus },
                             { label: 'Negative', color: '#f87171', Icon: ThumbsDown },
                         ].map(({ label, color, Icon }) => (
-                            <div key={label} className="flex items-center gap-1.5 text-[12px] text-gray-500">
+                            <div key={label} className="flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-slate-400">
                                 <Icon size={12} style={{ color }} />
                                 <span>{label}</span>
                             </div>
@@ -163,11 +163,11 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
 
                     {/* Column headers */}
                     <div className="grid grid-cols-[120px_1fr_56px_56px_56px] gap-x-3 py-2">
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Source</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Breakdown</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center" style={{ color: '#10b981' }}>Pos</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center">Neu</span>
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide text-center" style={{ color: '#f87171' }}>Neg</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Source</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Breakdown</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide text-center" style={{ color: '#10b981' }}>Pos</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide text-center">Neu</span>
+                        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide text-center" style={{ color: '#f87171' }}>Neg</span>
                     </div>
 
                     {sources.map((s) => {
@@ -180,31 +180,31 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ timeRange = '30d' }) 
                                 {/* Source name */}
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                                    <span className="text-sm font-medium text-gray-800 truncate">{s.name}</span>
+                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{s.name}</span>
                                 </div>
 
                                 {/* Stacked bar */}
                                 <div className="flex flex-col gap-1.5">
                                     <MiniBar positive={s.positive} neutral={s.neutral} negative={s.negative} total={total} />
-                                    <span className="text-[10px] text-gray-400">{s.reviews} total reviews</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-slate-500">{s.reviews} total reviews</span>
                                 </div>
 
                                 {/* Pos count + % */}
                                 <div className="text-center">
                                     <div className="text-sm font-semibold" style={{ color: '#10b981' }}>{s.positive}</div>
-                                    <div className="text-[10px] text-gray-400">{posPct}%</div>
+                                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{posPct}%</div>
                                 </div>
 
                                 {/* Neu count + % */}
                                 <div className="text-center">
-                                    <div className="text-sm font-semibold text-slate-500">{s.neutral}</div>
-                                    <div className="text-[10px] text-gray-400">{neuPct}%</div>
+                                    <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">{s.neutral}</div>
+                                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{neuPct}%</div>
                                 </div>
 
                                 {/* Neg count + % */}
                                 <div className="text-center">
                                     <div className="text-sm font-semibold" style={{ color: '#f87171' }}>{s.negative}</div>
-                                    <div className="text-[10px] text-gray-400">{negPct}%</div>
+                                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{negPct}%</div>
                                 </div>
                             </div>
                         );
