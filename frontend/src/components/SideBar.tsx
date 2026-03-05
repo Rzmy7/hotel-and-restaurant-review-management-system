@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronDown, Check, Plus, Building2 } from 'lucide-react';
 import { navigationConfig } from '../config/navigation';
 import type { SidebarItemData, SidebarGroupData } from '../types/navigation';
 import { useOrganizations } from '../contexts/OrganizationContext';
+import { useNavigationBlocker } from '../contexts/NavigationBlockerContext';
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -197,6 +198,7 @@ const SidebarItem: React.FC<{
 }> = ({ item, isExpanded, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { attemptNavigation } = useNavigationBlocker();
   const isActive = item.path ? location.pathname === item.path : false;
 
   const handleClick = () => {
@@ -204,7 +206,9 @@ const SidebarItem: React.FC<{
     if (isActive) {
       onToggle();
     } else {
-      navigate(item.path);
+      if (attemptNavigation(item.path)) {
+        navigate(item.path);
+      }
     }
   };
 

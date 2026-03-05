@@ -43,7 +43,7 @@ export const SettingsTemplate: React.FC<SettingsTemplateProps> = ({
                 <Button
                     variant="outline"
                     onClick={onCancel}
-                    disabled={isSaving}
+                    disabled={isSaving || hasUnsavedChanges === false}
                 >
                     Cancel Changes
                 </Button>

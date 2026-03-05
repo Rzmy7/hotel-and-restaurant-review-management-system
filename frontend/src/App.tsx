@@ -87,17 +87,20 @@ const AppContent = () => {
 };
 
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
 
 function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
         <ToastProvider>
-          <OrganizationProvider>
-            <ReviewsProvider>
-              <AppContent />
-            </ReviewsProvider>
-          </OrganizationProvider>
+          <NavigationBlockerProvider>
+            <OrganizationProvider>
+              <ReviewsProvider>
+                <AppContent />
+              </ReviewsProvider>
+            </OrganizationProvider>
+          </NavigationBlockerProvider>
         </ToastProvider>
       </BrowserRouter>
     </ThemeProvider>
