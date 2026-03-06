@@ -6,7 +6,9 @@ export const APIManage: React.FC = () => {
     const [apiSettings, setApiSettings] = useState({
         model: 'MiniLM',
         geminiApiKey: '',
-        embeddingServiceUrl: 'http://localhost:8001'
+        embeddingServiceUrl: 'http://localhost:8001',
+        mainBackendUrl: 'http://localhost:8000',
+        scrapingBackendUrl: 'http://localhost:8002'
     });
     const [showApiKey, setShowApiKey] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -19,8 +21,10 @@ export const APIManage: React.FC = () => {
             try {
                 setLoading(true);
                 
-                // Get the embedding service URL from localStorage (client-side setting)  
-                const storedUrl = localStorage.getItem('embeddingServiceUrl') || 'http://localhost:8001';
+                // Get URLs from localStorage (client-side settings)  
+                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || 'http://localhost:8001';
+                const storedMainBackendUrl = localStorage.getItem('mainBackendUrl') || 'http://localhost:8000';
+                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || 'http://localhost:8002';
                 
                 // Try to get Gemini API key from backend (server-side setting)
                 let geminiApiKey = '';
@@ -34,18 +38,24 @@ export const APIManage: React.FC = () => {
                 setApiSettings({
                     model: 'MiniLM',
                     geminiApiKey,
-                    embeddingServiceUrl: storedUrl
+                    embeddingServiceUrl: storedEmbeddingUrl,
+                    mainBackendUrl: storedMainBackendUrl,
+                    scrapingBackendUrl: storedScrapingBackendUrl
                 });
                 
                 setError(null);
             } catch (err) {
                 console.error('Failed to load API settings:', err);
                 // Don't show error on initialization - just use defaults
-                const storedUrl = localStorage.getItem('embeddingServiceUrl') || 'http://localhost:8001';
+                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || 'http://localhost:8001';
+                const storedMainBackendUrl = localStorage.getItem('mainBackendUrl') || 'http://localhost:8000';
+                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || 'http://localhost:8002';
                 setApiSettings({
                     model: 'MiniLM',
                     geminiApiKey: '',
-                    embeddingServiceUrl: storedUrl
+                    embeddingServiceUrl: storedEmbeddingUrl,
+                    mainBackendUrl: storedMainBackendUrl,
+                    scrapingBackendUrl: storedScrapingBackendUrl
                 });
             } finally {
                 setLoading(false);
@@ -60,11 +70,13 @@ export const APIManage: React.FC = () => {
             setError(null);
             setSuccess(null);
             
-            // Save embedding service URL to localStorage only (client-side setting)
+            // Save URLs to localStorage (client-side settings)
             setEmbeddingServiceUrl(apiSettings.embeddingServiceUrl);
+            localStorage.setItem('mainBackendUrl', apiSettings.mainBackendUrl);
+            localStorage.setItem('scrapingBackendUrl', apiSettings.scrapingBackendUrl);
             
             // Save Gemini API key to backend (server-side setting)
-            // Don't send embeddingServiceUrl to backend to avoid chicken-and-egg problem
+            // Don't send URLs to backend to avoid chicken-and-egg problem
             await updateAPISettings({ 
                 geminiApiKey: apiSettings.geminiApiKey 
             });
@@ -74,12 +86,12 @@ export const APIManage: React.FC = () => {
             setTimeout(() => setSuccess(null), 3000);
         } catch (err) {
             console.error('Failed to save API settings:', err);
-            setError('Failed to save API key to backend. URL was saved locally.');
+            setError('Failed to save API key to backend. URLs were saved locally.');
             
-            // Even if backend save fails, the URL is saved to localStorage
+            // Even if backend save fails, the URLs are saved to localStorage
             // So partially successful - show this to user after 5 seconds
             setTimeout(() => {
-                setError('URL saved locally. API key save failed - check if embedding service is running.');
+                setError('URLs saved locally. API key save failed - check if embedding service is running.');
             }, 100);
         } finally {
             setSaving(false);
@@ -182,10 +194,58 @@ export const APIManage: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Main Backend URL */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                        <Globe size={20} className="text-green-500" />
+                        <h2 className="text-base font-semibold text-gray-900">Main Backend URL</h2>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Service Endpoint
+                        </label>
+                        <input
+                            type="text"
+                            value={apiSettings.mainBackendUrl}
+                            onChange={(e) => setApiSettings({...apiSettings, mainBackendUrl: e.target.value})}
+                            placeholder="http://localhost:8000"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                            URL where the main backend service is running. Saved locally in your browser. Default is <code className="bg-gray-100 px-1 py-0.5 rounded">http://localhost:8000</code>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Scraping Backend URL */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                        <Globe size={20} className="text-purple-500" />
+                        <h2 className="text-base font-semibold text-gray-900">Scraping Backend URL</h2>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Service Endpoint
+                        </label>
+                        <input
+                            type="text"
+                            value={apiSettings.scrapingBackendUrl}
+                            onChange={(e) => setApiSettings({...apiSettings, scrapingBackendUrl: e.target.value})}
+                            placeholder="http://localhost:8002"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                            URL where the scraping backend service is running. Saved locally in your browser. Default is <code className="bg-gray-100 px-1 py-0.5 rounded">http://localhost:8002</code>
+                        </p>
+                    </div>
+                </div>
+
                 {/* Save Button */}
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-gray-500">
-                        Service URL saved locally. API key saved to embedding service backend.
+                        Service URLs saved locally. API key saved to embedding service backend.
                     </p>
                     <button
                         onClick={handleSaveAPISettings}

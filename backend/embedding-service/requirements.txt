@@ -7,5 +7,5 @@ python-dotenv
 sentence-transformers
 
 # for gemini embeddings
-#google-genai
-#google-api-core
+google-genai
+google-api-core

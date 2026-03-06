@@ -23,20 +23,26 @@ def load_full_config() -> Dict:
             "thresholds": DEFAULT_THRESHOLDS,
             "model": DEFAULT_MODEL,
             "geminiApiKey": os.getenv("GEMINI_API_KEY", ""),
-            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL
+            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL,
+            "isPaused": False
         }
         save_full_config(default_config)
         return default_config
     
     try:
         with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+            config = json.load(f)
+            # Ensure isPaused exists
+            if "isPaused" not in config:
+                config["isPaused"] = False
+            return config
     except Exception:
         return {
             "thresholds": DEFAULT_THRESHOLDS,
             "model": DEFAULT_MODEL,
             "geminiApiKey": os.getenv("GEMINI_API_KEY", ""),
-            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL
+            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL,
+            "isPaused": False
         }
 
 def save_full_config(config: Dict) -> bool:
@@ -112,3 +118,17 @@ def get_threshold_by_query(query: str) -> float:
         return thresholds.get("twoWords", DEFAULT_THRESHOLDS["twoWords"])
     else:
         return thresholds.get("threeOrMore", DEFAULT_THRESHOLDS["threeOrMore"])
+
+def is_service_paused() -> bool:
+    """Check if embedding service is paused"""
+    full_config = load_full_config()
+    return full_config.get("isPaused", False)
+
+def set_service_paused(paused: bool) -> bool:
+    """Set embedding service pause state"""
+    try:
+        full_config = load_full_config()
+        full_config["isPaused"] = paused
+        return save_full_config(full_config)
+    except Exception:
+        return False

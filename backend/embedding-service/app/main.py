@@ -8,7 +8,8 @@ import uuid
 from app.chroma import save_embedding, collection
 from app.config import (
     load_config, save_config, get_threshold_by_query, DEFAULT_THRESHOLDS,
-    get_model, set_model, get_api_settings, update_api_settings
+    get_model, set_model, get_api_settings, update_api_settings,
+    is_service_paused, set_service_paused
 )
 from app.jobs import add_job, update_job, get_recent_jobs
 
@@ -33,10 +34,17 @@ async def startup_event():
     if current_model == "Gemini":
         # Gemini doesn't need preloading, it's API-based
         print(f"Using Gemini embedding model (API-based)")
+        # Verify API key is configured
+        try:
+            from app.gemini_embedding import get_gemini_client
+            get_gemini_client()
+            print("✓ Gemini API key configured")
+        except Exception as e:
+            print(f"⚠ Gemini configuration issue: {e}")
     else:
         # Preload MiniLM model
         from app.embedding import model
-        print(f"MiniLM model preloaded successfully")
+        print(f"✓ MiniLM model preloaded successfully")
 
 # Dynamic embedding function based on model
 def embed_text(text: str):
@@ -44,11 +52,22 @@ def embed_text(text: str):
     current_model = get_model()
     
     if current_model == "Gemini":
-        from app.gemini_embedding import embed_text as gemini_embed
-        return gemini_embed(text)
+        try:
+            from app.gemini_embedding import embed_text as gemini_embed
+            return gemini_embed(text)
+        except Exception as e:
+            print(f"Error using Gemini model: {e}")
+            print("Falling back to MiniLM...")
+            from app.embedding import embed_text as minilm_embed
+            return minilm_embed(text)
     else:  # Default to MiniLM
         from app.embedding import embed_text as minilm_embed
         return minilm_embed(text)
+
+def wait_if_paused():
+    """Wait while service is paused, checking every 0.5 seconds"""
+    while is_service_paused():
+        time.sleep(0.5)
 
 
 class Review(BaseModel):
@@ -109,6 +128,7 @@ def embed(review: Review):
     
     try:
         start_time = time.time()
+        wait_if_paused()  # Wait if service is paused
         vector = embed_text(review.text)
 
         save_embedding(
@@ -142,6 +162,7 @@ def embed_batch(data: BatchEmbedRequest):
 
     for idx, review in enumerate(data.reviews):
         try:
+            wait_if_paused()  # Wait if service is paused before each item
             vector = embed_text(review.text)
 
             save_embedding(
@@ -180,6 +201,7 @@ def embed_rule(rule: Rule):
     
     try:
         start_time = time.time()
+        wait_if_paused()  # Wait if service is paused
         vector = embed_text(rule.text)
 
         save_embedding(
@@ -216,6 +238,7 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
 
     for idx, rule in enumerate(data.rules):
         try:
+            wait_if_paused()  # Wait if service is paused before each item
             vector = embed_text(rule.text)
 
             save_embedding(
@@ -370,17 +393,62 @@ def change_model(config: ModelConfig) -> Dict[str, Any]:
             detail="Invalid model. Must be 'Gemini' or 'MiniLM'"
         )
     
+    # Warn if switching to Gemini without API key
+    warning = None
+    if config.model == "Gemini":
+        import os
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            settings = get_api_settings()
+            api_key = settings.get("geminiApiKey", "")
+        
+        if not api_key:
+            warning = "Gemini API key not configured. Please set it via /api-settings endpoint or GEMINI_API_KEY environment variable."
+    
     success = set_model(config.model)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to change model")
     
-    return {"status": "success", "model": config.model}
+    response = {"status": "success", "model": config.model}
+    if warning:
+        response["warning"] = warning
+    
+    return response
 
 
 @app.get("/jobs/recent")
 def get_jobs(limit: int = 10) -> Dict[str, Any]:
     """Get recent embedding jobs"""
     jobs = get_recent_jobs(limit)
+    return {"jobs": jobs}
+
+
+@app.post("/service/pause")
+def pause_service() -> Dict[str, Any]:
+    """Pause the embedding service"""
+    success = set_service_paused(True)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to pause service")
+    return {"status": "success", "message": "Embedding service paused", "isPaused": True}
+
+
+@app.post("/service/resume")
+def resume_service() -> Dict[str, Any]:
+    """Resume the embedding service"""
+    success = set_service_paused(False)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to resume service")
+    return {"status": "success", "message": "Embedding service resumed", "isPaused": False}
+
+
+@app.get("/service/status")
+def get_service_status() -> Dict[str, Any]:
+    """Get embedding service status"""
+    return {
+        "isPaused": is_service_paused(),
+        "model": get_model(),
+        "status": "paused" if is_service_paused() else "running"
+    }
     return {"jobs": jobs}
 
 
@@ -500,6 +568,7 @@ def reindex_database() -> Dict[str, Any]:
         for i, (doc_id, document, metadata) in enumerate(zip(ids, documents, metadatas)):
             if document:  # Only re-embed if document exists
                 try:
+                    wait_if_paused()  # Wait if service is paused before each item
                     # Generate new embedding with current model
                     new_embedding = embed_text(document)
                     new_embeddings.append(new_embedding)

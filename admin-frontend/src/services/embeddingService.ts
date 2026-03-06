@@ -37,7 +37,7 @@ export interface EmbeddingJob {
     id: string;
     jobId: string;
     type: 'Review' | 'Regulation';
-    status: 'Completed' | 'Failed' | 'Running';
+    status: 'Completed' | 'Failed' | 'Running' | 'Paused';
     progress: number;
     duration: string;
     timestamp: string;
@@ -259,6 +259,56 @@ export const clearDatabase = async (): Promise<{ vectorsRemoved: number; message
         return await response.json();
     } catch (error) {
         console.error('Error clearing database:', error);
+        throw error;
+    }
+};
+
+/**
+ * Pause the embedding service
+ */
+export const pauseService = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${getBaseUrl()}/service/pause`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            throw new Error('Failed to pause service');
+        }
+    } catch (error) {
+        console.error('Error pausing service:', error);
+        throw error;
+    }
+};
+
+/**
+ * Resume the embedding service
+ */
+export const resumeService = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${getBaseUrl()}/service/resume`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            throw new Error('Failed to resume service');
+        }
+    } catch (error) {
+        console.error('Error resuming service:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get embedding service status
+ */
+export const getServiceStatus = async (): Promise<{ isPaused: boolean; model: string; status: string }> => {
+    try {
+        const response = await fetch(`${getBaseUrl()}/service/status`);
+        if (!response.ok) {
+            throw new Error('Failed to get service status');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error getting service status:', error);
         throw error;
     }
 };

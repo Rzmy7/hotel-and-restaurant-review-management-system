@@ -3,7 +3,8 @@
 <p>
 This service provides <strong>semantic embeddings and vector search</strong> for hotel reviews and hotel rules.
 It is built with FastAPI, ChromaDB, and Docker, and supports both
-<strong>cloud-based</strong> and <strong>locally hosted</strong> embedding models.
+<strong>cloud-based (Google Gemini)</strong> and <strong>locally hosted (MiniLM)</strong> embedding models
+with <strong>dynamic switching via API or Admin Panel</strong>.
 </p>
 
 <hr>
@@ -15,7 +16,9 @@ It is built with FastAPI, ChromaDB, and Docker, and supports both
   <li>Semantic search with hotel-level filtering</li>
   <li>Supports review and rule separation using metadata</li>
   <li>Dockerized for easy deployment</li>
-  <li>Supports cloud (Gemini) and local (MiniLM) embeddings</li>
+  <li><strong>✨ Dynamic model switching between Gemini and MiniLM</strong></li>
+  <li>Configurable via API or Admin Panel</li>
+  <li>Automatic fallback to MiniLM if Gemini fails</li>
 </ul>
 
 <hr>
@@ -27,77 +30,62 @@ It is built with FastAPI, ChromaDB, and Docker, and supports both
   <li><strong>POST /embed/rule</strong> – Embed a single hotel rule</li>
   <li><strong>POST /embed/rule/batch</strong> – Embed multiple hotel rules</li>
   <li><strong>POST /search</strong> – Semantic search for reviews and rules</li>
+  <li><strong>GET /model</strong> – Get current embedding model</li>
+  <li><strong>PUT /model</strong> – Change embedding model</li>
+  <li><strong>GET /api-settings</strong> – Get API settings (model, API key)</li>
+  <li><strong>PUT /api-settings</strong> – Update API settings</li>
+  <li><strong>GET /thresholds</strong> – Get similarity thresholds</li>
+  <li><strong>PUT /thresholds</strong> – Update similarity thresholds</li>
 </ul>
 
 <hr>
 
-<h2>Embedding Modes</h2>
+<h2>Model Switching</h2>
 
 <p>
-You must choose <strong>one embedding mode</strong> at a time.
-The rest of the system (API, search logic, and vector database) remains unchanged.
+The service now supports <strong>dynamic model switching</strong> without restarting.
+You can switch between models using the Admin Panel or via API.
 </p>
 
-<hr>
-
-<h2>Mode A – Google Gemini Embeddings</h2>
-
-<p><strong>Recommended when:</strong></p>
+<h3>Available Models</h3>
 <ul>
-  <li>VPS has low RAM (≈ 1 GB)</li>
-  <li>Internet access is available</li>
-  <li>External API usage is acceptable</li>
+  <li><strong>MiniLM</strong> (all-MiniLM-L6-v2) - Local, offline, 384 dimensions</li>
+  <li><strong>Gemini</strong> (models/text-embedding-004) - Cloud API, 768 dimensions</li>
 </ul>
 
-<p>Add your Gemini API key to the environment file:</p>
-<pre>GEMINI_API_KEY=your_api_key_here</pre>
-
-<h3>Build Docker Image</h3>
+<h3>Change Model via API</h3>
 <pre>
-docker build -t embedding-service .
+curl -X PUT http://localhost:8001/model \
+  -H "Content-Type: application/json" \
+  -d '{"model": "Gemini"}'
 </pre>
 
-<h3>Run Container (Gemini Mode)</h3>
+<h3>Configure Gemini API Key</h3>
 <pre>
-docker run -d \
-  -p 8001:8000 \
-  --env-file .env \
-  -v chroma_data:/data/chroma \
-  --name embedding_service \
-  embedding-service
+curl -X PUT http://localhost:8001/api-settings \
+  -H "Content-Type: application/json" \
+  -d '{"geminiApiKey": "your_api_key_here"}'
 </pre>
-
-<pre>
-docker run -d -p 8001:8000 --env-file .env -v chroma_data:/data/chroma --name embedding_service embedding-service
-</pre>
-
-<div class="note">
-<strong>Note:</strong> The Gemini free tier has rate limits.
-Batch embedding with throttling is recommended.
-</div>
 
 <hr>
 
-<h2>Mode B – Local Embedding Model (MiniLM)</h2>
+<h2>Installation & Setup</h2>
 
-<p><strong>Recommended when:</strong></p>
-<ul>
-  <li>No API limits are desired</li>
-  <li>Offline operation is required</li>
-  <li>VPS has at least 2 GB RAM</li>
-</ul>
-
-<h3>Build Docker Image</h3>
+<h3>1. Install Dependencies</h3>
 <pre>
-docker build --no-cache -t embedding-service .
+pip install -r requirements.txt
 </pre>
 
-<h3>Run Container (Local Mode)</h3>
+<h3>2. Configure Environment (Optional)</h3>
+<p>Create a <code>.env</code> file (optional - can also configure via Admin Panel):</p>
 <pre>
-docker run -d \
-  -p 8001:8000 \
-  -v chroma_data:/data/chroma \
-  --name embedding_service \
+GEMINI_API_KEY=your_gemini_api_key_here
+</pre>
+
+<h3>3. Run Locally</h3>
+<pre>
+uvicorn app.main:app --reload --port 8001
+</pre>
   embedding-service
 </pre>
 

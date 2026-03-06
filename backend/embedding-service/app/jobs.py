@@ -67,14 +67,24 @@ def update_job(job_id: str, status: str, progress: int = 100, duration: str = No
     _save_jobs()  # Persist to file
 
 def get_recent_jobs(limit: int = 10) -> List[Dict]:
-    """Get recent jobs"""
+    """Get recent jobs, limited to specified number"""
+    from app.config import is_service_paused
+    
     jobs_list = list(jobs_queue)
     jobs_list.reverse()  # Most recent first
     
+    # Check if service is paused
+    service_paused = is_service_paused()
+    
     # Create formatted copies for frontend (don't mutate originals)
     formatted_jobs = []
-    for job in jobs_list[:limit]:
+    for job in jobs_list[:limit]:  # Ensure we only return 'limit' number of jobs
         job_copy = job.copy()
+        
+        # If service is paused and job is running, show as paused
+        if service_paused and job_copy["status"] == "Running":
+            job_copy["status"] = "Paused"
+        
         job_time = datetime.fromisoformat(job_copy["timestamp"])
         now = datetime.now()
         diff = (now - job_time).total_seconds()

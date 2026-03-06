@@ -18,6 +18,10 @@ RUN mkdir -p /app/chroma_data
 
 ENV PYTHONUNBUFFERED=1
 
+# Optional: Set Gemini API key via environment variable
+# Can also be configured via admin panel API
+# ENV GEMINI_API_KEY=your_key_here
+
 # Volume mount points for persistent data
 VOLUME ["/app/chroma_data", "/app/config.json", "/app/jobs.json"]
 

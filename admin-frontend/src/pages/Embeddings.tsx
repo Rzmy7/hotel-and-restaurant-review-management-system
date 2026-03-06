@@ -5,7 +5,9 @@ import {
     Settings2, 
     RefreshCw, 
     ChevronDown,
-    Loader
+    Loader,
+    Pause,
+    Play
 } from 'lucide-react';
 import { 
     getThresholds, 
@@ -15,7 +17,10 @@ import {
     changeModel,
     getRecentJobs,
     getDatabaseStats,
-    reindexDatabase
+    reindexDatabase,
+    pauseService,
+    resumeService,
+    getServiceStatus
 } from '../services/embeddingService';
 import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
 
@@ -33,22 +38,26 @@ export const Embeddings: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [saveTimeout, setSaveTimeout] = useState<number | null>(null);
     const [jobsLoading, setJobsLoading] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [pauseLoading, setPauseLoading] = useState(false);
 
     // Load initial data on mount
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const [thresholdsData, modelData, jobsData, dbStats] = await Promise.all([
+                const [thresholdsData, modelData, jobsData, dbStats, serviceStatus] = await Promise.all([
                     getThresholds(),
                     getModel(),
                     getRecentJobs(10),
-                    getDatabaseStats()
+                    getDatabaseStats(),
+                    getServiceStatus()
                 ]);
                 setThresholds(thresholdsData);
                 setModelName(modelData);
                 setJobs(jobsData);
                 setVectorDb(dbStats);
+                setIsPaused(serviceStatus.isPaused);
                 setError(null);
             } catch (err) {
                 console.error('Failed to load data:', err);
@@ -65,12 +74,14 @@ export const Embeddings: React.FC = () => {
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                const [jobsData, dbStats] = await Promise.all([
+                const [jobsData, dbStats, serviceStatus] = await Promise.all([
                     getRecentJobs(10),
-                    getDatabaseStats()
+                    getDatabaseStats(),
+                    getServiceStatus()
                 ]);
                 setJobs(jobsData);
                 setVectorDb(dbStats);
+                setIsPaused(serviceStatus.isPaused);
             } catch (err) {
                 console.error('Failed to refresh data:', err);
             }
@@ -174,6 +185,34 @@ export const Embeddings: React.FC = () => {
         }
     };
 
+    const handlePauseService = async () => {
+        try {
+            setPauseLoading(true);
+            setError(null);
+            await pauseService();
+            setIsPaused(true);
+        } catch (err) {
+            console.error('Failed to pause service:', err);
+            setError('Failed to pause embedding service. Please try again.');
+        } finally {
+            setPauseLoading(false);
+        }
+    };
+
+    const handleResumeService = async () => {
+        try {
+            setPauseLoading(true);
+            setError(null);
+            await resumeService();
+            setIsPaused(false);
+        } catch (err) {
+            console.error('Failed to resume service:', err);
+            setError('Failed to resume embedding service. Please try again.');
+        } finally {
+            setPauseLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 pt-4">
             {/* Error Banner */}
@@ -182,6 +221,64 @@ export const Embeddings: React.FC = () => {
                     <p className="text-sm text-red-600">{error}</p>
                 </div>
             )}
+
+            {/* Service Status & Control */}
+            <div className={`rounded-xl shadow-sm border p-6 ${isPaused ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${isPaused ? 'bg-yellow-100' : 'bg-green-100'}`}>
+                            {isPaused ? (
+                                <Pause size={20} className="text-yellow-600" />
+                            ) : (
+                                <Play size={20} className="text-green-600" />
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="text-base font-semibold text-gray-900">Embedding Service Control</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {isPaused 
+                                    ? 'Service is paused. All embedding operations are on hold and will resume from where they stopped.' 
+                                    : 'Service is running. Embedding operations are being processed normally.'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 mr-4">
+                            <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-green-500 animate-pulse'}`}></div>
+                            <span className={`text-sm font-medium ${isPaused ? 'text-yellow-700' : 'text-green-700'}`}>
+                                {isPaused ? 'Paused' : 'Running'}
+                            </span>
+                        </div>
+                        {isPaused ? (
+                            <button
+                                onClick={handleResumeService}
+                                disabled={pauseLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {pauseLoading ? (
+                                    <Loader size={16} className="animate-spin" />
+                                ) : (
+                                    <Play size={16} />
+                                )}
+                                Resume Service
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handlePauseService}
+                                disabled={pauseLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {pauseLoading ? (
+                                    <Loader size={16} className="animate-spin" />
+                                ) : (
+                                    <Pause size={16} />
+                                )}
+                                Pause Service
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
 
             {/* Embedding Model */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -410,6 +507,7 @@ export const Embeddings: React.FC = () => {
                                         <span className={`text-sm font-medium ${
                                             job.status === 'Completed' ? 'text-green-600' : 
                                             job.status === 'Failed' ? 'text-red-500' : 
+                                            job.status === 'Paused' ? 'text-yellow-600' :
                                             'text-blue-500'
                                         }`}>
                                             {job.status}
@@ -422,6 +520,7 @@ export const Embeddings: React.FC = () => {
                                                     className={`h-full rounded-full transition-all ${
                                                         job.status === 'Completed' ? 'bg-green-500' :
                                                         job.status === 'Failed' ? 'bg-red-500' :
+                                                        job.status === 'Paused' ? 'bg-yellow-500' :
                                                         'bg-blue-500'
                                                     }`}
                                                     style={{ width: `${job.progress}%` }}
