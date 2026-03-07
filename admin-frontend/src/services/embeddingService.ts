@@ -43,12 +43,6 @@ export interface EmbeddingJob {
     timestamp: string;
 }
 
-export interface APISettings {
-    model: string;
-    geminiApiKey: string;
-    embeddingServiceUrl: string;
-}
-
 export interface VectorDbStats {
     totalVectors: number;
     namespace: string;
@@ -118,45 +112,6 @@ export const resetThresholds = async (): Promise<SimilarityThresholds> => {
 };
 
 /**
- * Get current embedding model
- */
-export const getModel = async (): Promise<string> => {
-    try {
-        const response = await fetch(`${getBaseUrl()}/model`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch model');
-        }
-        const data = await response.json();
-        return data.model;
-    } catch (error) {
-        console.error('Error fetching model:', error);
-        throw error;
-    }
-};
-
-/**
- * Change embedding model
- */
-export const changeModel = async (model: string): Promise<void> => {
-    try {
-        const response = await fetch(`${getBaseUrl()}/model`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ model }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to change model');
-        }
-    } catch (error) {
-        console.error('Error changing model:', error);
-        throw error;
-    }
-};
-
-/**
  * Get recent embedding jobs
  */
 export const getRecentJobs = async (limit: number = 10): Promise<EmbeddingJob[]> => {
@@ -169,44 +124,6 @@ export const getRecentJobs = async (limit: number = 10): Promise<EmbeddingJob[]>
         return data.jobs;
     } catch (error) {
         console.error('Error fetching jobs:', error);
-        throw error;
-    }
-};
-
-/**
- * Get API settings
- */
-export const getAPISettings = async (): Promise<APISettings> => {
-    try {
-        const response = await fetch(`${getBaseUrl()}/api-settings`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch API settings');
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching API settings:', error);
-        throw error;
-    }
-};
-
-/**
- * Update API settings
- */
-export const updateAPISettings = async (settings: Partial<APISettings>): Promise<void> => {
-    try {
-        const response = await fetch(`${getBaseUrl()}/api-settings`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(settings),
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to update API settings');
-        }
-    } catch (error) {
-        console.error('Error updating API settings:', error);
         throw error;
     }
 };
@@ -300,7 +217,7 @@ export const resumeService = async (): Promise<void> => {
 /**
  * Get embedding service status
  */
-export const getServiceStatus = async (): Promise<{ isPaused: boolean; model: string; status: string }> => {
+export const getServiceStatus = async (): Promise<{ isPaused: boolean; status: string }> => {
     try {
         const response = await fetch(`${getBaseUrl()}/service/status`);
         if (!response.ok) {

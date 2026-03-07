@@ -56,34 +56,8 @@ def check_dependencies():
         print("   ✗ SentenceTransformers not installed")
         errors.append("pip install sentence-transformers")
     
-    # Check Google GenAI (for Gemini)
-    print("\n5. Checking Google GenAI (for Gemini)...")
-    try:
-        import google.genai
-        print("   ✓ google-genai installed")
-        
-        # Check for API key
-        import os
-        if os.getenv("GEMINI_API_KEY"):
-            print("   ✓ GEMINI_API_KEY environment variable set")
-        else:
-            print("   ⚠ GEMINI_API_KEY not set (can configure via admin panel)")
-            warnings.append("Set GEMINI_API_KEY to use Gemini model")
-    except ImportError:
-        print("   ✗ google-genai not installed")
-        errors.append("pip install google-genai")
-    
-    # Check google-api-core
-    print("\n6. Checking google-api-core...")
-    try:
-        import google.api_core
-        print("   ✓ google-api-core installed")
-    except ImportError:
-        print("   ✗ google-api-core not installed")
-        errors.append("pip install google-api-core")
-    
     # Check python-dotenv
-    print("\n7. Checking python-dotenv...")
+    print("\n5. Checking python-dotenv...")
     try:
         import dotenv
         print("   ✓ python-dotenv installed")

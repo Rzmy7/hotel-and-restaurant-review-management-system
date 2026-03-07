@@ -8,10 +8,10 @@ import uuid
 from app.chroma import save_embedding, collection
 from app.config import (
     load_config, save_config, get_threshold_by_query, DEFAULT_THRESHOLDS,
-    get_model, set_model, get_api_settings, update_api_settings,
     is_service_paused, set_service_paused
 )
 from app.jobs import add_job, update_job, get_recent_jobs
+from app.embedding import embed_text
 
 app = FastAPI(title="Embedding Service")
 
@@ -29,40 +29,8 @@ app.add_middleware(
 async def startup_event():
     """Preload the embedding model to avoid first-request delay"""
     print("Preloading embedding model...")
-    current_model = get_model()
-    
-    if current_model == "Gemini":
-        # Gemini doesn't need preloading, it's API-based
-        print(f"Using Gemini embedding model (API-based)")
-        # Verify API key is configured
-        try:
-            from app.gemini_embedding import get_gemini_client
-            get_gemini_client()
-            print("✓ Gemini API key configured")
-        except Exception as e:
-            print(f"⚠ Gemini configuration issue: {e}")
-    else:
-        # Preload MiniLM model
-        from app.embedding import model
-        print(f"✓ MiniLM model preloaded successfully")
-
-# Dynamic embedding function based on model
-def embed_text(text: str):
-    """Embed text using the configured model"""
-    current_model = get_model()
-    
-    if current_model == "Gemini":
-        try:
-            from app.gemini_embedding import embed_text as gemini_embed
-            return gemini_embed(text)
-        except Exception as e:
-            print(f"Error using Gemini model: {e}")
-            print("Falling back to MiniLM...")
-            from app.embedding import embed_text as minilm_embed
-            return minilm_embed(text)
-    else:  # Default to MiniLM
-        from app.embedding import embed_text as minilm_embed
-        return minilm_embed(text)
+    from app.embedding import model
+    print(f"✓ MiniLM model preloaded successfully")
 
 def wait_if_paused():
     """Wait while service is paused, checking every 0.5 seconds"""
@@ -106,14 +74,6 @@ class ThresholdConfig(BaseModel):
     oneWord: float
     twoWords: float
     threeOrMore: float
-
-class ModelConfig(BaseModel):
-    model: str
-
-class APISettings(BaseModel):
-    model: str = None
-    geminiApiKey: str = None
-    embeddingServiceUrl: str = None
 
 
 def get_threshold(query: str) -> float:
@@ -378,44 +338,6 @@ def reset_thresholds() -> Dict[str, Any]:
     return {"status": "success", "thresholds": DEFAULT_THRESHOLDS}
 
 
-@app.get("/model")
-def get_current_model() -> Dict[str, str]:
-    """Get current embedding model"""
-    return {"model": get_model()}
-
-
-@app.put("/model")
-def change_model(config: ModelConfig) -> Dict[str, Any]:
-    """Change embedding model"""
-    if config.model not in ["Gemini", "MiniLM"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid model. Must be 'Gemini' or 'MiniLM'"
-        )
-    
-    # Warn if switching to Gemini without API key
-    warning = None
-    if config.model == "Gemini":
-        import os
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            settings = get_api_settings()
-            api_key = settings.get("geminiApiKey", "")
-        
-        if not api_key:
-            warning = "Gemini API key not configured. Please set it via /api-settings endpoint or GEMINI_API_KEY environment variable."
-    
-    success = set_model(config.model)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to change model")
-    
-    response = {"status": "success", "model": config.model}
-    if warning:
-        response["warning"] = warning
-    
-    return response
-
-
 @app.get("/jobs/recent")
 def get_jobs(limit: int = 10) -> Dict[str, Any]:
     """Get recent embedding jobs"""
@@ -446,45 +368,8 @@ def get_service_status() -> Dict[str, Any]:
     """Get embedding service status"""
     return {
         "isPaused": is_service_paused(),
-        "model": get_model(),
         "status": "paused" if is_service_paused() else "running"
     }
-    return {"jobs": jobs}
-
-
-@app.get("/api-settings")
-def get_settings() -> Dict[str, Any]:
-    """Get API settings"""
-    settings = get_api_settings()
-    # Don't expose the full API key, just show if it's set
-    if settings.get("geminiApiKey"):
-        settings["geminiApiKey"] = "***" + settings["geminiApiKey"][-4:] if len(settings["geminiApiKey"]) > 4 else "***"
-    return settings
-
-
-@app.put("/api-settings")
-def update_settings(settings: APISettings) -> Dict[str, Any]:
-    """Update API settings"""
-    settings_dict = {}
-    if settings.model is not None:
-        if settings.model not in ["Gemini", "MiniLM"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid model. Must be 'Gemini' or 'MiniLM'"
-            )
-        settings_dict["model"] = settings.model
-    
-    if settings.geminiApiKey is not None:
-        settings_dict["geminiApiKey"] = settings.geminiApiKey
-    
-    if settings.embeddingServiceUrl is not None:
-        settings_dict["embeddingServiceUrl"] = settings.embeddingServiceUrl
-    
-    success = update_api_settings(settings_dict)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to update settings")
-    
-    return {"status": "success", "settings": settings_dict}
 
 
 @app.get("/database/stats")
@@ -498,9 +383,8 @@ def get_database_stats() -> Dict[str, Any]:
         namespace = collection.name
         
         # ChromaDB uses HNSW index by default
-        # Most embedding models use 768 dimensions (MiniLM)
-        # Gemini uses different dimensions but we'll check metadata if available
-        dimensions = 768  # Default for MiniLM
+        # Embedding model uses specific dimensions (MiniLM uses 384)
+        dimensions = 384  # Default for MiniLM
         
         # Try to get a sample to determine dimensions
         if count > 0:
@@ -599,7 +483,7 @@ def reindex_database() -> Dict[str, Any]:
         
         return {
             "status": "success",
-            "message": f"Re-indexed {reindexed} vectors using {get_model()} model",
+            "message": f"Re-indexed {reindexed} vectors using MiniLM model",
             "vectorsReindexed": reindexed,
             "totalVectors": total
         }

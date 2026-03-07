@@ -13,17 +13,11 @@ DEFAULT_THRESHOLDS = {
     "threeOrMore": 1.1
 }
 
-DEFAULT_MODEL = "MiniLM"
-DEFAULT_EMBEDDING_URL = "http://localhost:8001"
-
 def load_full_config() -> Dict:
     """Load full configuration from file"""
     if not CONFIG_FILE.exists():
         default_config = {
             "thresholds": DEFAULT_THRESHOLDS,
-            "model": DEFAULT_MODEL,
-            "geminiApiKey": os.getenv("GEMINI_API_KEY", ""),
-            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL,
             "isPaused": False
         }
         save_full_config(default_config)
@@ -39,9 +33,6 @@ def load_full_config() -> Dict:
     except Exception:
         return {
             "thresholds": DEFAULT_THRESHOLDS,
-            "model": DEFAULT_MODEL,
-            "geminiApiKey": os.getenv("GEMINI_API_KEY", ""),
-            "embeddingServiceUrl": DEFAULT_EMBEDDING_URL,
             "isPaused": False
         }
 
@@ -64,45 +55,6 @@ def save_config(thresholds: Dict[str, float]) -> bool:
     try:
         full_config = load_full_config()
         full_config["thresholds"] = thresholds
-        return save_full_config(full_config)
-    except Exception:
-        return False
-
-def get_model() -> str:
-    """Get current embedding model"""
-    full_config = load_full_config()
-    return full_config.get("model", DEFAULT_MODEL)
-
-def set_model(model: str) -> bool:
-    """Set embedding model"""
-    try:
-        full_config = load_full_config()
-        full_config["model"] = model
-        return save_full_config(full_config)
-    except Exception:
-        return False
-
-def get_api_settings() -> Dict:
-    """Get API settings (model, API key, service URL)"""
-    full_config = load_full_config()
-    return {
-        "model": full_config.get("model", DEFAULT_MODEL),
-        "geminiApiKey": full_config.get("geminiApiKey", ""),
-        "embeddingServiceUrl": full_config.get("embeddingServiceUrl", DEFAULT_EMBEDDING_URL)
-    }
-
-def update_api_settings(settings: Dict) -> bool:
-    """Update API settings"""
-    try:
-        full_config = load_full_config()
-        if "model" in settings:
-            full_config["model"] = settings["model"]
-        if "geminiApiKey" in settings:
-            full_config["geminiApiKey"] = settings["geminiApiKey"]
-            # Update environment variable for current session
-            os.environ["GEMINI_API_KEY"] = settings["geminiApiKey"]
-        if "embeddingServiceUrl" in settings:
-            full_config["embeddingServiceUrl"] = settings["embeddingServiceUrl"]
         return save_full_config(full_config)
     except Exception:
         return False

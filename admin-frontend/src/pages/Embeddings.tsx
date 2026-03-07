@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Sparkles, 
     Database, 
     Settings2, 
-    RefreshCw, 
-    ChevronDown,
+    RefreshCw,
     Loader,
     Pause,
     Play
@@ -12,9 +10,7 @@ import {
 import { 
     getThresholds, 
     updateThresholds, 
-    resetThresholds, 
-    getModel, 
-    changeModel,
+    resetThresholds,
     getRecentJobs,
     getDatabaseStats,
     reindexDatabase,
@@ -25,7 +21,6 @@ import {
 import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
 
 export const Embeddings: React.FC = () => {
-    const [modelName, setModelName] = useState('MiniLM');
     const [thresholds, setThresholds] = useState<SimilarityThresholds>({
         oneWord: 1.3,
         twoWords: 1.2,
@@ -46,15 +41,13 @@ export const Embeddings: React.FC = () => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const [thresholdsData, modelData, jobsData, dbStats, serviceStatus] = await Promise.all([
+                const [thresholdsData, jobsData, dbStats, serviceStatus] = await Promise.all([
                     getThresholds(),
-                    getModel(),
                     getRecentJobs(10),
                     getDatabaseStats(),
                     getServiceStatus()
                 ]);
                 setThresholds(thresholdsData);
-                setModelName(modelData);
                 setJobs(jobsData);
                 setVectorDb(dbStats);
                 setIsPaused(serviceStatus.isPaused);
@@ -130,20 +123,6 @@ export const Embeddings: React.FC = () => {
         }
     };
 
-    const handleModelChange = async (newModel: string) => {
-        try {
-            setSaving(true);
-            await changeModel(newModel);
-            setModelName(newModel);
-            setError(null);
-        } catch (err) {
-            console.error('Failed to change model:', err);
-            setError('Failed to change model. Please try again.');
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const handleRefreshJobs = async () => {
         try {
             setJobsLoading(true);
@@ -160,7 +139,7 @@ export const Embeddings: React.FC = () => {
     const handleReindex = async () => {
         const confirmed = window.confirm(
             'Are you sure you want to re-index all vectors? ' +
-            'This will re-generate embeddings for all documents using the current model (' + modelName + '). ' +
+            'This will re-generate embeddings for all documents using the MiniLM model. ' +
             'This may take several minutes depending on the number of vectors.'
         );
         
@@ -176,7 +155,7 @@ export const Embeddings: React.FC = () => {
             const dbStats = await getDatabaseStats();
             setVectorDb(dbStats);
             
-            alert(`Successfully re-indexed ${result.vectorsReindexed.toLocaleString()} vectors using ${modelName} model.`);
+            alert(`Successfully re-indexed ${result.vectorsReindexed.toLocaleString()} vectors using MiniLM model.`);
         } catch (err) {
             console.error('Failed to re-index database:', err);
             setError('Failed to re-index database. Please check the logs and try again.');
@@ -277,41 +256,6 @@ export const Embeddings: React.FC = () => {
                             </button>
                         )}
                     </div>
-                </div>
-            </div>
-
-            {/* Embedding Model */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <Sparkles size={20} className="text-blue-500" />
-                        <h3 className="text-base font-semibold text-gray-900">Embedding Model</h3>
-                        {saving && (
-                            <Loader size={16} className="animate-spin text-blue-500" />
-                        )}
-                    </div>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
-                        Active
-                    </span>
-                </div>
-                
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Model Name</label>
-                    <div className="relative">
-                        <select
-                            value={modelName}
-                            onChange={(e) => handleModelChange(e.target.value)}
-                            disabled={saving || loading}
-                            className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-3 pr-10 text-sm text-gray-900 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <option value="Gemini">Google Gemini</option>
-                            <option value="MiniLM">MiniLM</option>
-                        </select>
-                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                        Select the embedding model used for vectorizing content. Changing this may require re-indexing.
-                    </p>
                 </div>
             </div>
 
