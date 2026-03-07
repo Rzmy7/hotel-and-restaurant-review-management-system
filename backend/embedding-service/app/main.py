@@ -135,7 +135,6 @@ def embed_batch(data: BatchEmbedRequest):
             embedded.append(review.review_id)
             progress = int(((idx + 1) / total) * 100)
             update_job(job_id, "Running", progress)
-            time.sleep(1.5)
 
         except Exception as e:
             failed.append({
@@ -214,7 +213,6 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
             embedded.append(rule.rule_id)
             progress = int(((idx + 1) / total) * 100)
             update_job(job_id, "Running", progress)
-            time.sleep(0.5)
 
         except Exception as e:
             failed.append({
