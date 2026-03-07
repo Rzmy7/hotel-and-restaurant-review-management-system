@@ -79,7 +79,7 @@ export const UsersPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6 pt-4">
+        <div className="space-y-8 pt-4">
             {/* Stats Cards */}
             <UserStatsGrid
                 allActiveUsers={allActiveUsers}

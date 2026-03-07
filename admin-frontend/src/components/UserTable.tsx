@@ -25,15 +25,15 @@ export const UserTable: React.FC<UserTableProps> = ({
     onUserUpdate,
 }) => {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
             <table className="w-full">
                 <thead>
-                    <tr className="border-b border-gray-100">
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '25%' }}>Name</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '30%' }}>Email</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '15%' }}>Role</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '15%' }}>Status</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500" style={{ width: '15%' }}>Actions</th>
+                    <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100/30">
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '25%' }}>Name</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '30%' }}>Email</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '15%' }}>Role</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '15%' }}>Status</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '15%' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>

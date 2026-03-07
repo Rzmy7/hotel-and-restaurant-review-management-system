@@ -129,18 +129,9 @@ export const fetchFeatureFlags = (): Promise<FeatureFlag[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { id: '1', name: 'Advanced Analytics Dashboard', key: 'analytics_dashboard_v2', description: 'Enable advanced analytics and reporting features for enterprise users', status: 'Enabled' },
-                { id: '2', name: 'AI-Powered Recommendations', key: 'ai_recommendations', description: 'Show AI-generated recommendations in the user interface', status: 'Enabled' },
-                { id: '3', name: 'Dark Mode', key: 'dark_mode_support', description: 'Allow users to switch between light and dark themes', status: 'Disabled' },
-                { id: '4', name: 'Multi-Language Support', key: 'i18n_support', description: 'Enable internationalization and localization features', status: 'Enabled' },
-                { id: '5', name: 'Real-time Collaboration', key: 'realtime_collab', description: 'Enable real-time collaborative editing and comments', status: 'Disabled' },
-                { id: '6', name: 'Advanced Search Filters', key: 'advanced_search', description: 'Provide enhanced search capabilities with multiple filter options', status: 'Enabled' },
-                { id: '7', name: 'Mobile App Integration', key: 'mobile_integration', description: 'Allow seamless integration with mobile applications', status: 'Disabled' },
-                { id: '8', name: 'Two-Factor Authentication', key: '2fa_required', description: 'Require two-factor authentication for enhanced security', status: 'Enabled' },
-                { id: '9', name: 'Export to PDF', key: 'pdf_export', description: 'Enable PDF export functionality for reports and documents', status: 'Enabled' },
-                { id: '10', name: 'Beta Features Access', key: 'beta_features', description: 'Grant access to experimental and beta features', status: 'Disabled' },
-                { id: '11', name: 'Custom Branding', key: 'custom_branding', description: 'Allow organizations to customize branding and colors', status: 'Enabled' },
-                { id: '12', name: 'API Rate Limiting', key: 'api_rate_limiting', description: 'Implement rate limiting for API requests', status: 'Disabled' },
+                { id: '1', name: 'Content Search by Embeddings', key: 'content_search_embeddings', description: 'Enable semantic search across reviews and content using vector embeddings', status: 'Enabled' },
+                { id: '2', name: 'Reply Regeneration Limit', key: 'reply_regeneration_limit', description: 'Set maximum number of times a reply can be regenerated per review', status: 'Enabled' },
+                { id: '3', name: 'Custom Report Generation', key: 'custom_report_generation', description: 'Allow users to create and export customized reports with selected metrics', status: 'Disabled' },
             ]);
         }, 600);
     });

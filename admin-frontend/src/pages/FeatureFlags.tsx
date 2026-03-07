@@ -39,9 +39,9 @@ export const FeatureFlags: React.FC = () => {
     );
 
     return (
-        <div className="max-w-5xl pt-4">
+        <div className="max-w-5xl pt-4 space-y-4">
             {/* Search */}
-            <div className="mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div className="relative max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
@@ -49,7 +49,7 @@ export const FeatureFlags: React.FC = () => {
                         placeholder="Search feature flags..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                 </div>
             </div>
@@ -59,13 +59,14 @@ export const FeatureFlags: React.FC = () => {
                 {filteredFlags.map((flag) => (
                     <div 
                         key={flag.id} 
-                        className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between hover:shadow-md transition-shadow"
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center justify-between hover:shadow-md transition-shadow"
                     >
                         <div className="flex-1">
-                            <h3 className="font-medium text-gray-900 mb-1">{flag.name}</h3>
-                            <p className="text-sm text-gray-500">{flag.description}</p>
+                            <h3 className="font-semibold text-gray-900 mb-1">{flag.name}</h3>
+                            <p className="text-sm text-gray-600">{flag.description}</p>
+                            <p className="text-xs text-gray-400 mt-1 font-mono">{flag.key}</p>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 ml-4">
                             {/* Toggle Switch */}
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <div className="relative">
@@ -75,10 +76,12 @@ export const FeatureFlags: React.FC = () => {
                                         checked={flag.status === 'Enabled'}
                                         onChange={() => toggleStatus(flag.id)}
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 transition-colors"></div>
+                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                     <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                                 </div>
-                                <span className={`text-sm min-w-[60px] ${flag.status === 'Enabled' ? 'text-blue-600' : 'text-gray-500'}`}>
+                                <span className={`text-sm font-medium min-w-[60px] transition-colors ${
+                                    flag.status === 'Enabled' ? 'text-blue-600' : 'text-gray-500'
+                                }`}>
                                     {flag.status}
                                 </span>
                             </label>

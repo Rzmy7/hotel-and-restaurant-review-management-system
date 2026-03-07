@@ -17,17 +17,17 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
     onAddClick
 }) => {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center justify-between gap-4 hover:shadow-lg transition-shadow duration-300">
             <div className="flex items-center gap-4 flex-1">
                 {/* Search Input */}
-                <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2.5 flex-1 max-w-xl">
-                    <Search size={18} className="text-gray-400" />
+                <div className="flex items-center gap-3 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl px-4 py-3 flex-1 max-w-xl border border-gray-200/50 focus-within:border-blue-300 focus-within:bg-white focus-within:shadow-md transition-all duration-300">
+                    <Search size={20} className="text-gray-400" />
                     <input
                         type="text"
                         placeholder="Search organizations..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="bg-transparent border-none outline-none text-sm text-gray-600 placeholder-gray-400 w-full"
+                        className="bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400 w-full font-medium"
                     />
                 </div>
                 
@@ -36,7 +36,7 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
                     <select
                         value={statusFilter}
                         onChange={(e) => onStatusChange(e.target.value)}
-                        className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-600 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm text-gray-700 font-medium cursor-pointer hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     >
                         <option>All Status</option>
                         <option>Active</option>
@@ -49,10 +49,10 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
 
             {/* Add Organization Button */}
             <button 
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
                 onClick={onAddClick}
             >
-                <Plus size={18} />
+                <Plus size={20} />
                 Add Organization
             </button>
         </div>
