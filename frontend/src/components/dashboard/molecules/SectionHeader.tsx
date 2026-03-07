@@ -26,8 +26,8 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
                     </div>
                 )}
                 <div>
-                    <h3 className="m-0 text-sm font-black text-gray-700 uppercase tracking-widest">{title}</h3>
-                    <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider">{subtitle}</p>
+                    <h3 className="m-0 text-sm font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest">{title}</h3>
+                    <p className="m-0 text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">{subtitle}</p>
                 </div>
             </div>
             {children && <div className="flex">{children}</div>}

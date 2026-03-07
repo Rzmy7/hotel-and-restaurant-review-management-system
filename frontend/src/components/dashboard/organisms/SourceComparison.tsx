@@ -89,25 +89,25 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
 
     return (
         <Card hoverEffect className="shadow-sm overflow-hidden p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 border-b border-gray-50 pb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 border-b border-gray-50 dark:border-slate-800 pb-8">
                 <div>
-                    <h3 className="m-0 text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
+                    <h3 className="m-0 text-sm font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest flex items-center gap-2">
                         Source Comparison
-                        <Info size={14} className="text-gray-300 cursor-help" />
+                        <Info size={14} className="text-gray-300 dark:text-slate-500 cursor-help" />
                     </h3>
-                    <p className="m-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">
+                    <p className="m-0 text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
                         {rawSources.length} sources identified • Top performance clustering
                     </p>
                 </div>
 
-                <div className="flex items-center gap-4 mt-4 sm:mt-0 bg-gray-50/50 px-4 py-2.5 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-4 mt-4 sm:mt-0 bg-gray-50/50 dark:bg-slate-800/50 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-slate-700">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-[#4e80ee]" />
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Positive</span>
+                        <span className="text-[9px] text-gray-400 dark:text-slate-400 font-black uppercase tracking-widest">Positive</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-rose-500" />
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Negative</span>
+                        <span className="text-[9px] text-gray-400 dark:text-slate-400 font-black uppercase tracking-widest">Negative</span>
                     </div>
                 </div>
             </div>
@@ -134,8 +134,8 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
                             })}
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-transform duration-300">
-                            <span className="text-3xl font-black text-gray-900 tracking-tighter leading-none">{totalReviews}</span>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Total</span>
+                            <span className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{totalReviews}</span>
+                            <span className="text-[9px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-[0.2em] mt-2">Total</span>
                         </div>
                     </div>
                 </div>
@@ -151,7 +151,7 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
                                 onMouseEnter={() => setHoveredSource(s.name)}
                                 onMouseLeave={() => setHoveredSource(null)}
                                 onClick={() => handleSourceClick(s.name)}
-                                className={`flex flex-col text-left group/source ${isCompact ? 'p-3' : 'p-4'} rounded-xl border-2 transition-all duration-300 focus:outline-none ${isHovered ? `${s.bgColor} ${s.borderColor} shadow-md scale-[1.02]` : 'bg-gray-50/30 border-transparent hover:bg-gray-50/60'} ${s.name !== 'Others' ? 'cursor-pointer' : 'cursor-default'}`}
+                                className={`flex flex-col text-left group/source ${isCompact ? 'p-3' : 'p-4'} rounded-xl border-2 transition-all duration-300 focus:outline-none ${isHovered ? `${s.bgColor} ${s.borderColor} shadow-md scale-[1.02]` : 'bg-gray-50/30 dark:bg-slate-800/30 border-transparent hover:bg-gray-50/60 dark:hover:bg-slate-800/60'} ${s.name !== 'Others' ? 'cursor-pointer' : 'cursor-default'}`}
                             >
                                 <div className={`flex items-center justify-between w-full ${isCompact ? 'mb-2' : 'mb-4'}`}>
                                     <div className="flex items-center gap-2.5 overflow-hidden">
@@ -160,24 +160,24 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
                                         ) : (
                                             <div className="w-3 h-3 rounded-[4px] shrink-0 shadow-sm" style={{ backgroundColor: s.color }} />
                                         )}
-                                        <span className={`font-black text-gray-900 tracking-tight truncate ${isCompact ? 'text-[13px]' : 'text-sm'}`}>{s.name}</span>
+                                        <span className={`font-black text-gray-900 dark:text-white tracking-tight truncate ${isCompact ? 'text-[13px]' : 'text-sm'}`}>{s.name}</span>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
-                                        <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-100">
+                                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-sm border border-gray-100 dark:border-slate-700">
                                             <Star size={10} className="text-amber-500 fill-amber-500" />
-                                            <span className="text-[11px] font-bold text-gray-700">{s.rating}</span>
+                                            <span className="text-[11px] font-bold text-gray-700 dark:text-gray-200">{s.rating}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className={`w-full ${isCompact ? 'space-y-2' : 'space-y-4'}`}>
-                                    <div className="flex items-end justify-between text-[10px] font-bold pb-1 border-b border-black/5">
+                                    <div className="flex items-end justify-between text-[10px] font-bold pb-1 border-b border-black/5 dark:border-white/5">
                                         <div className="flex items-baseline gap-1">
-                                            <span className={`${isCompact ? 'text-[14px]' : 'text-lg'} text-gray-900 font-black leading-none`}>{s.pct}%</span>
-                                            <span className="text-gray-400 font-medium tracking-tight">Share</span>
+                                            <span className={`${isCompact ? 'text-[14px]' : 'text-lg'} text-gray-900 dark:text-white font-black leading-none`}>{s.pct}%</span>
+                                            <span className="text-gray-400 dark:text-slate-400 font-medium tracking-tight">Share</span>
                                         </div>
                                         {!isCompact && (
-                                            <div className="flex items-center gap-1.5 text-gray-400 font-medium whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5 text-gray-400 dark:text-slate-400 font-medium whitespace-nowrap">
                                                 <Clock size={10} strokeWidth={2.5} />
                                                 <span>{s.lastSync}</span>
                                             </div>
@@ -185,9 +185,9 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
                                     </div>
 
                                     <div className={`${isCompact ? 'space-y-2' : 'space-y-3'}`}>
-                                        <div className="h-1.5 w-full bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
+                                        <div className="h-1.5 w-full bg-gray-200/50 dark:bg-slate-700/50 rounded-full overflow-hidden shadow-inner">
                                             <div
-                                                className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-800 group-hover/source:brightness-110"
+                                                className="h-full rounded-full transition-all duration-1000 ease-out bg-slate-800 dark:bg-slate-400 group-hover/source:brightness-110"
                                                 style={{
                                                     width: `${s.pct}%`,
                                                     opacity: isHovered ? 1 : 0.85
@@ -195,10 +195,10 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
                                             />
                                         </div>
 
-                                        <div className={`${isCompact ? 'p-1.5' : 'p-2'} bg-white/40 rounded-lg border border-black/5`}>
+                                        <div className={`${isCompact ? 'p-1.5' : 'p-2'} bg-white/40 dark:bg-slate-800/40 rounded-lg border border-black/5 dark:border-white/5`}>
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Sentiment</span>
-                                                <span className="text-[8px] font-black text-[#4e80ee] uppercase tabular-nums">{s.sentiment.pos}% Pos</span>
+                                                <span className="text-[8px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">Sentiment</span>
+                                                <span className="text-[8px] font-black text-[#4e80ee] dark:text-blue-400 uppercase tabular-nums">{s.sentiment.pos}% Pos</span>
                                             </div>
                                             <SentimentBar pos={s.sentiment.pos} neu={s.sentiment.neu} neg={s.sentiment.neg} />
                                         </div>

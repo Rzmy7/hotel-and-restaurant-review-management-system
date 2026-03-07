@@ -55,9 +55,12 @@ const AppContent = () => {
       <Route
         path="/*"
         element={
-          <div className="flex w-full h-full overflow-hidden">
+          <div
+            className="flex w-full h-full overflow-hidden"
+            style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
+          >
             <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
-            <main className="flex-1 flex flex-col bg-gray-50 overflow-y-auto min-w-0">
+            <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
@@ -83,17 +86,21 @@ const AppContent = () => {
   );
 };
 
+import { ThemeProvider } from './contexts/ThemeContext';
+
 function App() {
   return (
-    <BrowserRouter>
-      <ToastProvider>
-        <OrganizationProvider>
-          <ReviewsProvider>
-            <AppContent />
-          </ReviewsProvider>
-        </OrganizationProvider>
-      </ToastProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <ToastProvider>
+          <OrganizationProvider>
+            <ReviewsProvider>
+              <AppContent />
+            </ReviewsProvider>
+          </OrganizationProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

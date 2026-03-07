@@ -129,12 +129,12 @@ const ReviewSourcesPage = () => {
   };
 
   return (
-    <div className="min-h-full bg-gray-50 flex flex-col">
+    <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">
       {/* Redesigned Header - Sophisticated & Consistent */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight uppercase">
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
               Review Sources
             </h1>
             {sources.length > 0 && (
@@ -143,13 +143,13 @@ const ReviewSourcesPage = () => {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Manage your review platforms and connections</p>
+          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">Manage your review platforms and connections</p>
         </div>
 
         <div className="flex items-center gap-4">
           <button
             onClick={() => { setIsRefreshing(true); fetchData(true); }}
-            className={`w-10 h-10 grid place-items-center bg-gray-50 border border-gray-200 text-gray-400 rounded-xl transition-all duration-300 hover:border-blue-400 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-blue-600' : ''}`}
+            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
             title="Refresh System"
           >
             <RefreshCw size={18} />
@@ -157,7 +157,7 @@ const ReviewSourcesPage = () => {
 
           <button
             onClick={() => setIsHistoryOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 transition-all duration-300 hover:bg-gray-50 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-[13px] font-bold text-gray-600 dark:text-gray-300 transition-all duration-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm"
           >
             <History size={16} />
             Activity
@@ -178,34 +178,34 @@ const ReviewSourcesPage = () => {
         {stats && <SourceStats stats={stats} isLoading={isLoading} />}
 
         {/* Filters Toolbar - Modernized */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
           <div className="relative w-full md:w-96 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#4e80ee] transition-colors" size={16} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-[#4e80ee] transition-colors" size={16} />
             <input
               type="text"
               placeholder="Filter by platform..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 border border-gray-100 rounded-xl text-[13px] font-bold text-gray-700 placeholder:text-gray-400 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] transition-all outline-none"
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-700 rounded-xl text-[13px] font-bold text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] transition-all outline-none"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="flex bg-gray-100/50 p-1 rounded-xl border border-gray-100">
+            <div className="flex bg-gray-100/50 dark:bg-slate-900/50 p-1 rounded-xl border border-gray-100 dark:border-slate-700">
               {['All', 'Active', 'Paused', 'Error'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={`px-5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-300 ${statusFilter === status
-                    ? 'bg-white text-[#4e80ee] shadow-md shadow-gray-200/50 translate-y-[-1px]'
-                    : 'text-gray-400 hover:text-gray-600'
+                    ? 'bg-white dark:bg-slate-800 text-[#4e80ee] dark:text-blue-400 shadow-md shadow-gray-200/50 dark:shadow-none translate-y-[-1px]'
+                    : 'text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-gray-200'
                     }`}
                 >
                   {status}
                 </button>
               ))}
             </div>
-            <button className="w-10 h-10 grid place-items-center bg-white border border-gray-200 text-gray-400 rounded-xl hover:border-blue-400 hover:text-[#4e80ee] transition-all shadow-sm active:scale-95">
+            <button className="w-10 h-10 grid place-items-center bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] transition-all shadow-sm active:scale-95">
               <Filter size={18} />
             </button>
           </div>

@@ -71,7 +71,7 @@ const ProfilePage: React.FC<ProfilePageProps> = () => {
     };
 
     return (
-        <div className="w-full min-h-full bg-gray-50 flex flex-col">
+        <div className="w-full min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">
             <ProfileHeader
                 title="Profile"
                 subtitle="Manage your personal information"

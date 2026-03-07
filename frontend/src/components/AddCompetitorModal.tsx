@@ -77,89 +77,67 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-white rounded-xl shadow-xl w-[640px] overflow-hidden">
+    return (
+        <div className="fixed inset-0 bg-gray-900/40 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            {/* Modal Container */}
+            <div
+                className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header Section */}
+                <div className="px-8 py-6 flex items-start justify-between border-b border-gray-100 dark:border-slate-700 flex-shrink-0">
+                    <div>
+                        <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">Competitors</h2>
+                        <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">Manage your competitor list</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors p-1"
+                        aria-label="Close modal"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
 
-        <div className="px-8 pb-6 pt-6 max-h-[440px] overflow-y-auto">
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 size={24} className="animate-spin text-blue-500" />
-              <span className="ml-3 text-sm text-gray-500">Loading...</span>
+                {/* List Section */}
+                <div className="flex-1 overflow-y-auto px-8 py-4 custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-100/60 dark:border-slate-700/60 sticky top-0 bg-white dark:bg-slate-800 z-10 flex w-full">
+                                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[40%]">Competitor Name</th>
+                                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[25%] flex-1">Location</th>
+                                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[20%] flex-1">Avg Rating</th>
+                                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[15%] text-center flex-1">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50/80 dark:divide-slate-700/80 flex flex-col w-full">
+                            {MOCK_COMPETITORS.map((competitor) => (
+                                <tr key={competitor.id} className="hover:bg-gray-50/40 dark:hover:bg-slate-700/40 transition-colors flex w-full items-center">
+                                    <td className="py-[18px] w-[40%]">
+                                        <span className="font-semibold text-gray-800 dark:text-gray-200 text-[14px]">{competitor.name}</span>
+                                    </td>
+                                    <td className="py-[18px] flex-1">
+                                        <span className="text-gray-500 dark:text-slate-400 text-[14px]">{competitor.location}</span>
+                                    </td>
+                                    <td className="py-[18px] flex items-center gap-1.5 h-[60px] flex-1">
+                                        <span className="font-bold text-gray-900 dark:text-white text-[14px]">{competitor.rating}</span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                        </svg>
+                                    </td>
+                                    <td className="py-[18px] text-center flex-1">
+                                        <button className="bg-[#4e80ee] hover:bg-blue-600 text-white px-5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all hover:shadow-md active:scale-95 uppercase tracking-wide">
+                                            Add
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-          )}
-
-          {error && !loading && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-600 text-sm">{error}</p>
-              <button onClick={handleRetry} className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-700 transition-colors">
-                <RefreshCw size={12} /> Retry
-              </button>
-            </div>
-          )}
-
-          {!loading && !error && competitors.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-sm">No competitors available</p>
-              <p className="text-gray-400 text-xs mt-1">All competitors are already being tracked</p>
-            </div>
-          )}
-
-          {!loading && !error && competitors.length > 0 && (
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="pb-4 pr-6 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Competitor Name</th>
-                  <th className="pb-4 pr-6 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Location</th>
-                  <th className="pb-4 pr-6 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Avg Rating</th>
-                  <th className="pb-4 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {competitors.map((competitor, index) => (
-                  <tr key={competitor.id} className={index < competitors.length - 1 ? 'border-b border-gray-100' : ''}>
-                    <td className="py-5 pr-6 text-sm font-medium text-gray-900 whitespace-nowrap">{competitor.name}</td>
-                    <td className="py-5 pr-6 text-sm text-gray-500 whitespace-nowrap">{competitor.location}</td>
-                    <td className="py-5 pr-6 text-sm">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="font-medium text-gray-800">{competitor.avgRating > 0 ? competitor.avgRating.toFixed(1) : 'N/A'}</span>
-                        <Star size={14} fill="#fbbf24" color="#fbbf24" />
-                      </span>
-                    </td>
-                    <td className="py-5">
-                      <button
-                        onClick={() => handleAdd(competitor.id)}
-                        disabled={trackingId !== null}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-semibold disabled:text-gray-400 disabled:cursor-not-allowed inline-flex items-center gap-1"
-                      >
-                        {trackingId === competitor.id ? (
-                          <><Loader2 size={14} className="animate-spin" /> Adding...</>
-                        ) : (
-                          'ADD'
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
-
-        <div className="px-8 py-4 border-t border-gray-100 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default AddCompetitorModal;

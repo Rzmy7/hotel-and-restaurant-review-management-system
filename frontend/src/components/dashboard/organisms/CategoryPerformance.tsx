@@ -76,7 +76,7 @@ export const CategoryPerformance: React.FC = () => {
                 subtitle="Domain Metrics"
                 className="mb-8 items-center"
             >
-                <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-black uppercase tracking-widest bg-gray-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-gray-100 dark:border-slate-700">
                     Last 30 Days
                 </span>
             </SectionHeader>
@@ -90,16 +90,16 @@ export const CategoryPerformance: React.FC = () => {
                     >
                         <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] transition-all group-hover/cat:scale-110 group-hover/cat:bg-[#4e80ee] group-hover/cat:text-white">
+                                <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-50 text-[#4e80ee] dark:bg-blue-900/30 dark:text-blue-400 transition-all group-hover/cat:scale-110 group-hover/cat:bg-[#4e80ee] group-hover/cat:text-white">
                                     {iconMap[category.icon]}
                                 </div>
                                 <div>
-                                    <span className="text-sm font-black text-gray-800 block leading-tight">{category.name}</span>
-                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{category.count} reviews</span>
+                                    <span className="text-sm font-black text-gray-800 dark:text-white block leading-tight">{category.name}</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">{category.count} reviews</span>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <span className="text-sm font-black text-gray-800 block leading-tight">{category.score}%</span>
+                                <span className="text-sm font-black text-gray-800 dark:text-white block leading-tight">{category.score}%</span>
                                 <div className="flex items-center gap-1 justify-end">
                                     {getTrendIcon(category.trendType)}
                                     <span className={`text-[10px] font-black uppercase tracking-widest ${category.trendType === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -110,7 +110,7 @@ export const CategoryPerformance: React.FC = () => {
                         </div>
 
                         <div className="w-full">
-                            <div className="w-full h-2 bg-gray-50 rounded-full overflow-hidden relative shadow-inner border border-gray-100/50">
+                            <div className="w-full h-2 bg-gray-50 dark:bg-slate-800 rounded-full overflow-hidden relative shadow-inner border border-gray-100/50 dark:border-slate-700/50">
                                 <div
                                     className="h-full rounded-full transition-all duration-1000 ease-out bg-[#4e80ee] group-hover/cat:brightness-110"
                                     style={{

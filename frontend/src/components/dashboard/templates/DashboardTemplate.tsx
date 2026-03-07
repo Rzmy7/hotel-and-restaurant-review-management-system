@@ -21,7 +21,7 @@ export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data }) =>
         <>
             <DashboardHeader />
 
-            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50">
+            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50 dark:bg-transparent">
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 min-[1200px]:grid-cols-4 gap-4">
                     <MetricCard

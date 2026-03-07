@@ -84,7 +84,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
         {/* Platform Picker */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
               <Globe size={16} className="text-blue-500" />
               Source Platform
             </label>
@@ -92,11 +92,11 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
               <input
                 type="text"
                 placeholder="Search platforms..."
-                className="pl-8 pr-4 py-2 bg-gray-100 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500/20 transition-all outline-none w-48"
+                className="pl-8 pr-4 py-2 bg-gray-100 dark:bg-slate-700 border-none rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 transition-all outline-none w-48"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <Globe size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Globe size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             </div>
           </div>
 
@@ -107,8 +107,8 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
                   key={p}
                   onClick={() => setPlatform(p)}
                   className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
-                    ? 'border-blue-600 bg-blue-50/50 text-blue-700'
-                    : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200'
+                    ? 'border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
                     }`}
                 >
                   {p}
@@ -116,8 +116,8 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
                 </button>
               ))
             ) : (
-              <div className="col-span-2 py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No platforms found</p>
+              <div className="col-span-2 py-8 text-center bg-gray-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700">
+                <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest">No platforms found</p>
               </div>
             )}
           </div>
@@ -125,13 +125,13 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
 
         {/* Property URL */}
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
             <Link size={16} className="text-blue-500" />
             Property / Listing URL
           </label>
           <input
             type="text"
-            className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
+            className="w-full px-5 py-3.5 bg-gray-50 dark:bg-slate-700 border-2 border-transparent rounded-2xl text-sm font-medium text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
             placeholder="https://..."
             value={propertyUrl}
             onChange={(e) => setPropertyUrl(e.target.value)}
@@ -141,12 +141,12 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
         <div className="grid grid-cols-2 gap-6">
           {/* Schedule */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
               <Calendar size={16} className="text-blue-500" />
               Sync Schedule
             </label>
             <select
-              className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:bg-white focus:border-blue-500/20 transition-all outline-none appearance-none"
+              className="w-full px-5 py-3.5 bg-gray-50 dark:bg-slate-700 border-2 border-transparent rounded-2xl text-sm font-bold text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500/20 transition-all outline-none appearance-none"
               value={schedule}
               onChange={(e) => setSchedule(e.target.value as any)}
             >
@@ -158,13 +158,13 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
 
           {/* API Key */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
               <Key size={16} className="text-blue-500" />
               API Key (Optional)
             </label>
             <input
               type="password"
-              className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl text-sm font-medium focus:bg-white focus:border-blue-500/20 transition-all outline-none"
+              className="w-full px-5 py-3.5 bg-gray-50 dark:bg-slate-700 border-2 border-transparent rounded-2xl text-sm font-medium text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500/20 transition-all outline-none"
               placeholder="••••••••"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -173,7 +173,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
         </div>
 
         {/* Toggle & Test */}
-        <div className="pt-4 flex items-center justify-between border-t border-gray-100">
+        <div className="pt-4 flex items-center justify-between border-t border-gray-100 dark:border-slate-700">
           <div className="flex">
             <Button
               variant={isTesting ? "outline" : "outline"} // Keeping outline but custom styles
@@ -181,8 +181,8 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
               onClick={testConnection}
               disabled={isTesting || !propertyUrl}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border ${isTesting
-                ? 'bg-gray-50 text-gray-400 border-gray-100'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-[#4e80ee] hover:text-[#4e80ee] hover:shadow-blue-50'
+                ? 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'
+                : 'bg-white text-gray-700 border-gray-200 hover:border-[#4e80ee] hover:text-[#4e80ee] hover:shadow-blue-50 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600'
                 }`}
             >
               <RefreshCw size={14} className={isTesting ? 'animate-spin' : ''} />
@@ -191,7 +191,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-gray-700">Auto-Sync</span>
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Auto-Sync</span>
             <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"
@@ -199,7 +199,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
                 checked={sourceStatus}
                 onChange={(e) => setSourceStatus(e.target.checked)}
               />
-              <div className="w-12 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[19px] after:w-[19px] after:transition-all peer-checked:bg-blue-600 transition-colors"></div>
+              <div className="w-12 h-7 bg-gray-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 dark:after:border-slate-500 after:border after:rounded-full after:h-[19px] after:w-[19px] after:transition-all peer-checked:bg-blue-600 transition-colors"></div>
             </label>
           </div>
         </div>

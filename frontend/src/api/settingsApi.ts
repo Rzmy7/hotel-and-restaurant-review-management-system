@@ -1,4 +1,4 @@
-import { SettingsData } from '../types/settings';
+import type { SettingsData } from '../types/settings';
 
 // Mocked initial data
 const defaultSettings: SettingsData = {
@@ -6,6 +6,7 @@ const defaultSettings: SettingsData = {
         propertyName: 'Grand Hotel NYC',
         timeZone: 'EST (UTC-5)',
         language: 'English',
+        themePreference: 'system',
     },
     notifications: {
         emailNotifications: true,

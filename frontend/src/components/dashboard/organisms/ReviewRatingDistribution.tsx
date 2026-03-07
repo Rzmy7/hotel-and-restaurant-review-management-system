@@ -40,11 +40,11 @@ export const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> =
                     {fullStats.map(({ rating, count, percentage }) => (
                         <div key={rating} className="flex items-center gap-3 w-full group cursor-default">
                             <span className="flex items-center gap-1 min-w-[32px] justify-end">
-                                <span className="text-sm font-bold text-[#3E4756] group-hover:text-amber-500 transition-colors">{rating}</span>
+                                <span className="text-sm font-bold text-[#3E4756] dark:text-slate-300 group-hover:text-amber-500 transition-colors">{rating}</span>
                                 <Star size={14} className="text-amber-400 fill-amber-400 group-hover:text-amber-500 group-hover:fill-amber-500 transition-colors" />
                             </span>
 
-                            <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden relative">
+                            <div className="flex-1 h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden relative">
                                 <div
                                     className="h-full rounded-full transition-all duration-700 ease-out bg-[#5988EF] group-hover:opacity-90"
                                     style={{ width: `${percentage}%` }}
@@ -52,8 +52,8 @@ export const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> =
                             </div>
 
                             <div className="flex items-center justify-between min-w-[70px]">
-                                <span className="text-xs text-[#3E4756] font-bold">{percentage}%</span>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{count.toLocaleString()}</span>
+                                <span className="text-xs text-[#3E4756] dark:text-slate-300 font-bold">{percentage}%</span>
+                                <span className="text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">{count.toLocaleString()}</span>
                             </div>
                         </div>
                     ))}

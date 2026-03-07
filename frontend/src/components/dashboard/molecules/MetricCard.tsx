@@ -29,9 +29,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             </div>
 
             <div className="space-y-0.5">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</p>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider">{label}</p>
                 <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-bold text-gray-900 tracking-tight">{value}</span>
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{value}</span>
                 </div>
             </div>
         </Card>

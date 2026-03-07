@@ -11,26 +11,26 @@ const ReviewsTable = () => {
     const currentReviews = reviews;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col min-h-[500px]">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col min-h-[500px]">
             <div className="w-full">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                     <ReviewsTableHeader />
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                         {isLoading ? (
                             Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="animate-pulse">
-                                    <td colSpan={6} className="px-6 py-6"><div className="h-12 bg-gray-50 rounded" /></td>
+                                    <td colSpan={6} className="px-6 py-6"><div className="h-12 bg-gray-50 dark:bg-slate-700 rounded" /></td>
                                 </tr>
                             ))
                         ) : currentReviews.length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="px-6 py-20 text-center">
                                     <div className="flex flex-col items-center">
-                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+                                        <div className="w-16 h-16 bg-gray-50 dark:bg-slate-700 rounded-full flex items-center justify-center text-gray-300 dark:text-slate-500 mb-4">
                                             <MessageSquareQuote size={32} />
                                         </div>
-                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">No Reviews Found</h3>
-                                        <p className="text-sm text-gray-500">Adjust your filters or try a different search term.</p>
+                                        <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-1">No Reviews Found</h3>
+                                        <p className="text-sm text-gray-500 dark:text-slate-400">Adjust your filters or try a different search term.</p>
                                     </div>
                                 </td>
                             </tr>
