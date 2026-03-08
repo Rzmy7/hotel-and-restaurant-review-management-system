@@ -1,4 +1,4 @@
-import { ChevronDown, TrendingUp, Plus, Trash2, Loader2, RefreshCw } from 'lucide-react';
+import { ChevronDown, TrendingUp, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import AddCompetitorModal from '../components/AddCompetitorModal';
@@ -52,40 +52,18 @@ const CompetitorsPage = () => {
         }
     };
 
-
-    const getStatusBadge = (status: string) => {
-        const styles: Record<string, string> = {
-            Active: 'bg-green-50 text-green-700 border-green-200',
-            Pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-            Scraping: 'bg-blue-50 text-blue-700 border-blue-200',
-            Error: 'bg-red-50 text-red-700 border-red-200',
-        };
-        return (
-            <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border ${styles[status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                {status}
-            </span>
-        );
-    };
-
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             {/* Header Section */}
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
                 <div className="flex flex-col">
                     <div className="flex items-center gap-3">
-                        {/* Hamburger menu icon from mockup */}
-                        <button className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors" aria-label="Menu">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </button>
+                        
                         <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
                             Competitors
                         </h1>
                     </div>
-                    <p className="mt-1 text-sm text-gray-400 dark:text-slate-400 pl-9">
+                    <p className="mt-1 text-sm text-gray-400 dark:text-slate-400">
                         Manage your competitor list
                     </p>
                 </div>
@@ -162,7 +140,7 @@ const CompetitorsPage = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
-                                {COMPETITORS.map((competitor) => (
+                                {tracked.map((competitor) => (
                                     <tr key={competitor.id} className="hover:bg-gray-50/30 dark:hover:bg-slate-700/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="font-semibold text-gray-900 dark:text-white text-[15px]">{competitor.name}</span>
@@ -171,23 +149,23 @@ const CompetitorsPage = () => {
                                             <span className="text-gray-500 dark:text-gray-400 text-[15px]">{competitor.location}</span>
                                         </td>
                                         <td className="px-6 py-5 flex items-center gap-1">
-                                            <span className="font-bold text-gray-900 dark:text-white text-[15px]">{competitor.rating}</span>
+                                            <span className="font-bold text-gray-900 dark:text-white text-[15px]">{competitor.avgRating}</span>
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                             </svg>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className="text-gray-700 dark:text-gray-300 font-medium text-[15px]">{competitor.sentiment}%</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium text-[15px]">{competitor.sentimentScore}%</span>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className="text-gray-500 dark:text-gray-400 text-[15px]">{competitor.reviews.toLocaleString()}</span>
+                                            <span className="text-gray-500 dark:text-gray-400 text-[15px]">{competitor.reviewCount.toLocaleString()}</span>
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center justify-center gap-3">
-                                                <Link to="/competitors/compare" className="bg-[#4e80ee] hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                                                <Link to={`/competitors/compare?id=${competitor.id}`} className="bg-[#4e80ee] hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
                                                     Compare
                                                 </Link>
-                                                <button className="text-red-400 hover:text-red-500 p-1.5 transition-colors" aria-label="Delete">
+                                                <button onClick={() => handleUntrack(competitor.id)} className="text-red-400 hover:text-red-500 p-1.5 transition-colors" aria-label="Remove">
                                                     <Trash2 size={18} />
                                                 </button>
                                             </div>

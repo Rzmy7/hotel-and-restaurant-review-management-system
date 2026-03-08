@@ -52,18 +52,12 @@ const CompetitorRankingsPage = () => {
                 <div className="flex flex-col">
                     <div className="flex items-center gap-3">
                         {/* Hamburger menu icon from mockup */}
-                        <button className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors" aria-label="Menu">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </button>
+                     
                         <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
                             Competitor Rankings
                         </h1>
                     </div>
-                    <p className="mt-1 text-sm text-gray-400 dark:text-slate-400 pl-9">
+                    <p className="mt-1 text-sm text-gray-400 dark:text-slate-400">
                         Overall performance comparison
                     </p>
                 </div>
@@ -99,22 +93,22 @@ const CompetitorRankingsPage = () => {
                     {/* Card 1: Your Current Rank */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center h-[140px]">
                         <p className="text-xs font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-2">Your Current Rank</p>
-                        <h2 className="text-[44px] leading-none font-bold text-[#3b82f6] dark:text-blue-400">#2</h2>
+                        <h2 className="text-[44px] leading-none font-bold text-[#3b82f6] dark:text-blue-400">#{yourRank}</h2>
                     </div>
 
                     {/* Card 2: Total Competitors */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center h-[140px]">
                         <p className="text-xs font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-2">Total Competitors</p>
-                        <h2 className="text-[44px] leading-none font-bold text-gray-900 dark:text-white">5</h2>
+                        <h2 className="text-[44px] leading-none font-bold text-gray-900 dark:text-white">{sorted.length}</h2>
                     </div>
 
                     {/* Card 3: Top Performer */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center h-[140px]">
                         <p className="text-xs font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-2">Top Performer</p>
                         <div className="mt-1">
-                            <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">Luxury Grand Resort</h3>
+                            <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">{topPerformer?.name ?? '—'}</h3>
                             <div className="flex items-center gap-1">
-                                <span className="font-bold text-gray-700 dark:text-gray-300 text-sm">4.7</span>
+                                <span className="font-bold text-gray-700 dark:text-gray-300 text-sm">{topPerformer?.rating ?? 0}</span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                 </svg>
@@ -123,7 +117,19 @@ const CompetitorRankingsPage = () => {
                     </div>
                 </div>
 
-                {/* Rankings Overview Card */}
+                {/* Error State */}
+                {error && (
+                    <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                {loading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <Loader2 size={28} className="animate-spin text-blue-500" />
+                        <span className="ml-3 text-gray-500">Loading rankings...</span>
+                    </div>
+                ) : (
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden mt-8">
 
                     {/* Card Header */}
@@ -142,19 +148,19 @@ const CompetitorRankingsPage = () => {
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[10%]">Rank</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[30%]">Organization Name</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
-                                        <div className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <div onClick={() => handleSort('rating')} className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                                             Average Rating
                                             <ArrowUpDown size={12} className="text-gray-300 dark:text-slate-500" />
                                         </div>
                                     </th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
-                                        <div className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <div onClick={() => handleSort('sentiment')} className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                                             Sentiment Score
                                             <ArrowUpDown size={12} className="text-gray-300 dark:text-slate-500" />
                                         </div>
                                     </th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
-                                        <div className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <div onClick={() => handleSort('reviews')} className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                                             Review Count
                                             <ArrowUpDown size={12} className="text-gray-300 dark:text-slate-500" />
                                         </div>
@@ -162,7 +168,7 @@ const CompetitorRankingsPage = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
-                                {RANKINGS.map((competitor) => (
+                                {sorted.map((competitor) => (
                                     <tr
                                         key={competitor.rank}
                                         className={`transition-colors ${competitor.isYou ? 'bg-blue-50/60 hover:bg-blue-50/80 dark:bg-blue-900/20 dark:hover:bg-blue-900/40' : 'hover:bg-gray-50/30 dark:hover:bg-slate-700/50'}`}
@@ -198,6 +204,7 @@ const CompetitorRankingsPage = () => {
                         </table>
                     </div>
                 </div>
+                )}
 
             </main>
         </div>
