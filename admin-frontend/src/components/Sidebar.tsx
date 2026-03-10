@@ -9,7 +9,8 @@ import {
   Check,
   Database,
   Search,
-  Key
+  Key,
+  Activity
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -21,6 +22,7 @@ export const Sidebar: React.FC = () => {
     { to: '/embeddings', icon: Database, label: 'Embeddings' },
     { to: '/scraping', icon: Search, label: 'Scraping' },
     { to: '/api-manage', icon: Key, label: 'API Management' },
+    { to: '/monitoring', icon: Activity, label: 'Monitoring' },
     { to: '/settings', icon: SettingsIcon, label: 'Admin Setting' },
   ];
 

@@ -1,4 +1,4 @@
-import type { DashboardStats, ChartDataPoint, User, Organization, OrganizationStats, FeatureFlag, AdminSettings, SystemAlert, RecentActivity } from '../types';
+import type { DashboardStats, ChartDataPoint, User, Organization, OrganizationStats, FeatureFlag, AdminSettings, SystemAlert, RecentActivity, ServerStatus } from '../types';
 
 export const fetchDashboardStats = (): Promise<DashboardStats> => {
     return new Promise((resolve) => {
@@ -336,5 +336,57 @@ export const fetchScrapingJobs = (): Promise<import('../types').ScrapingJob[]> =
                 { id: '5', jobId: '#SCR-28482', platform: 'TripAdvisor', platformIcon: 'T', platformColor: '#00AF87', organization: 'Blue Lagoon Hotel', status: 'Completed', startTime: 'Yesterday, 06:15 PM', duration: '5m 01s', reviews: 12 }
             ]);
         }, 600);
+    });
+};
+
+export const fetchServerStatuses = (): Promise<ServerStatus[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            // Import dynamically to avoid circular dependency
+            import('lucide-react').then(({ Server, Database, Search, Globe }) => {
+                // Simulate random variations in CPU and RAM usage
+                const randomVariation = (base: number, range: number) => 
+                    Math.min(100, Math.max(0, base + (Math.random() * range * 2 - range)));
+                
+                resolve([
+                    {
+                        id: '1',
+                        name: 'Main Backend',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(45, 10)),
+                        ramUsage: Math.round(randomVariation(62, 8)),
+                        icon: Server,
+                        uptime: '45d 12h 23m'
+                    },
+                    {
+                        id: '2',
+                        name: 'Scraping Service',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(68, 15)),
+                        ramUsage: Math.round(randomVariation(54, 10)),
+                        icon: Search,
+                        uptime: '32d 8h 45m'
+                    },
+                    {
+                        id: '3',
+                        name: 'Embedding Service',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(82, 8)),
+                        ramUsage: Math.round(randomVariation(78, 12)),
+                        icon: Database,
+                        uptime: '28d 15h 12m'
+                    },
+                    {
+                        id: '4',
+                        name: 'Frontend Server',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(28, 8)),
+                        ramUsage: Math.round(randomVariation(35, 10)),
+                        icon: Globe,
+                        uptime: '52d 3h 56m'
+                    }
+                ]);
+            });
+        }, 400);
     });
 };

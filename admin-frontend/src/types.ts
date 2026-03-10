@@ -129,3 +129,13 @@ export interface ScrapingJob {
     duration: string;
     reviews: number | null;
 }
+
+export interface ServerStatus {
+    id: string;
+    name: string;
+    status: 'Online' | 'Offline' | 'Warning';
+    cpuUsage: number;
+    ramUsage: number;
+    icon: any; // LucideIcon type
+    uptime?: string;
+}

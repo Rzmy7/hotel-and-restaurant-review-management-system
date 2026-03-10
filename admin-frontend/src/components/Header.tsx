@@ -23,6 +23,8 @@ export const Header: React.FC = () => {
                 return { title: 'Scraping Management', subtitle: '' };
             case '/api-manage':
                 return { title: 'API Management', subtitle: 'Manage API credentials and service endpoints' };
+            case '/monitoring':
+                return { title: 'System Monitoring', subtitle: 'Real-time server status and performance metrics' };
             default:
                 return { title: 'Admin Panel', subtitle: 'Welcome back' };
         }

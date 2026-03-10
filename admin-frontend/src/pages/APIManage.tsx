@@ -80,11 +80,6 @@ export const APIManage: React.FC = () => {
 
     return (
         <div className="pt-4 max-w-5xl">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">API Management</h1>
-                <p className="text-gray-500 mt-1">Configure API credentials and service endpoints</p>
-            </div>
-
             {/* Success/Error Messages */}
             {error && (
                 <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
