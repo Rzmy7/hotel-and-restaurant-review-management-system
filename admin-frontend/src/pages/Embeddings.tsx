@@ -3,10 +3,11 @@ import {
     Database, 
     Settings2, 
     RefreshCw,
-    Loader,
     Pause,
-    Play
+    Play,
+    Loader
 } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { 
     getThresholds, 
     updateThresholds, 

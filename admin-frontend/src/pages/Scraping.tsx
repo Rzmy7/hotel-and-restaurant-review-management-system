@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, Settings, Loader, CheckCircle, XCircle, Grid3X3 } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, Settings, CheckCircle, XCircle, Grid3X3 } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { StatusBadge } from '../components/StatusBadge';
 import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs } from '../services/mockService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
@@ -49,11 +51,7 @@ export const Scraping: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <Loader size={32} className="animate-spin text-blue-500" />
-            </div>
-        );
+        return <LoadingSpinner size={32} />;
     }
 
     return (

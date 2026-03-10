@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Loader } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SearchBar } from '../components/SearchBar';
+import { ToggleSwitch } from '../components/ToggleSwitch';
 import { fetchFeatureFlags } from '../services/mockService';
 import type { FeatureFlag } from '../types';
 
@@ -26,11 +28,7 @@ export const FeatureFlags: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <Loader size={32} className="animate-spin text-blue-500" />
-            </div>
-        );
+        return <LoadingSpinner size={32} />;
     }
 
     const filteredFlags = flags.filter(flag =>
@@ -41,18 +39,11 @@ export const FeatureFlags: React.FC = () => {
     return (
         <div className="max-w-5xl pt-4 space-y-4">
             {/* Search */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search feature flags..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                </div>
-            </div>
+            <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search feature flags..."
+            />
 
             {/* Feature Flags List */}
             <div className="space-y-3">
@@ -68,23 +59,17 @@ export const FeatureFlags: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-4 ml-4">
                             {/* Toggle Switch */}
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <div className="relative">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={flag.status === 'Enabled'}
-                                        onChange={() => toggleStatus(flag.id)}
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                    <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                </div>
+                            <div className="flex items-center gap-2">
+                                <ToggleSwitch
+                                    checked={flag.status === 'Enabled'}
+                                    onChange={() => toggleStatus(flag.id)}
+                                />
                                 <span className={`text-sm font-medium min-w-[60px] transition-colors ${
                                     flag.status === 'Enabled' ? 'text-blue-600' : 'text-gray-500'
                                 }`}>
                                     {flag.status}
                                 </span>
-                            </label>
+                            </div>
                         </div>
                     </div>
                 ))}

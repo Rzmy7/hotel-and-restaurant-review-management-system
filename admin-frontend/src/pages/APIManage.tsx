@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Loader, Globe } from 'lucide-react';
+import { Save, Globe } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Alert } from '../components/Alert';
 import { setEmbeddingServiceUrl } from '../services/embeddingService';
 
 export const APIManage: React.FC = () => {
@@ -71,26 +73,14 @@ export const APIManage: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <Loader size={32} className="animate-spin text-blue-500" />
-            </div>
-        );
+        return <LoadingSpinner size={32} />;
     }
 
     return (
         <div className="pt-4 max-w-5xl">
             {/* Success/Error Messages */}
-            {error && (
-                <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-sm text-red-600">{error}</p>
-                </div>
-            )}
-            {success && (
-                <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-sm text-green-600">{success}</p>
-                </div>
-            )}
+            {error && <Alert type="error" message={error} className="mb-6" />}
+            {success && <Alert type="success" message={success} className="mb-6" />}
 
             <div className="space-y-6">
                 {/* Embedding Service URL */}

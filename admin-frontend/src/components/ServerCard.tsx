@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Cpu, HardDrive } from 'lucide-react';
+import { StatusBadge } from './StatusBadge';
 
 interface ServerCardProps {
     name: string;
@@ -19,18 +20,6 @@ export const ServerCard: React.FC<ServerCardProps> = ({
     icon: Icon, 
     uptime 
 }) => {
-    const statusColors = {
-        Online: 'bg-green-100 text-green-700 border-green-200',
-        Offline: 'bg-red-100 text-red-700 border-red-200',
-        Warning: 'bg-yellow-100 text-yellow-700 border-yellow-200'
-    };
-
-    const statusDotColors = {
-        Online: 'bg-green-500',
-        Offline: 'bg-red-500',
-        Warning: 'bg-yellow-500'
-    };
-
     const getCpuColor = (usage: number) => {
         if (usage >= 80) return 'text-red-600 bg-red-50';
         if (usage >= 60) return 'text-yellow-600 bg-yellow-50';
@@ -64,10 +53,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({
                         )}
                     </div>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${statusColors[status]}`}>
-                    <span className={`w-2 h-2 rounded-full ${statusDotColors[status]} animate-pulse`}></span>
-                    {status}
-                </div>
+                <StatusBadge status={status} showDot={true} />
             </div>
 
             {/* CPU Usage */}

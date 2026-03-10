@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Tabs } from '../components/Tabs';
 import { fetchSettings } from '../services/mockService';
 import type { AdminSettings } from '../types';
 
@@ -19,45 +21,20 @@ export const Settings: React.FC = () => {
         loadData();
     }, []);
 
-    if (loading || !settings) return <div className="p-8 text-gray-500">Loading...</div>;
+    if (loading || !settings) return <LoadingSpinner />;
 
     return (
         <div className="pt-4 max-w-5xl space-y-4">
             {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-                <div className="flex gap-1">
-                    <button
-                        className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-                            activeTab === 'general'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                        onClick={() => setActiveTab('general')}
-                    >
-                        General
-                    </button>
-                    <button
-                        className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-                            activeTab === 'security'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                        onClick={() => setActiveTab('security')}
-                    >
-                        Security
-                    </button>
-                    <button
-                        className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-                            activeTab === 'notifications'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                        onClick={() => setActiveTab('notifications')}
-                    >
-                        Notifications
-                    </button>
-                </div>
-            </div>
+            <Tabs
+                tabs={[
+                    { id: 'general', label: 'General' },
+                    { id: 'security', label: 'Security' },
+                    { id: 'notifications', label: 'Notifications' }
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+            />
 
             {activeTab === 'general' && (
                 <div className="space-y-4">

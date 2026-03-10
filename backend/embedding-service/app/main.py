@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 import time
 import uuid
+import psutil
+from datetime import datetime
 
 from app.chroma import save_embedding, collection
 from app.config import (
@@ -14,6 +16,9 @@ from app.jobs import add_job, update_job, get_recent_jobs
 from app.embedding import embed_text
 
 app = FastAPI(title="Embedding Service")
+
+# Store service start time for uptime calculation
+SERVICE_START_TIME = datetime.now()
 
 # Add CORS middleware
 app.add_middleware(
@@ -517,3 +522,51 @@ def clear_database() -> Dict[str, Any]:
     except Exception as e:
         print(f"Error clearing database: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to clear database: {str(e)}")
+
+
+@app.get("/health")
+def health_check() -> Dict[str, Any]:
+    """
+    Health check endpoint for system monitoring.
+    Returns server status, CPU usage, RAM usage, and uptime.
+    """
+    try:
+        # Get CPU usage
+        cpu_usage = round(psutil.cpu_percent(interval=0.5), 1)
+        
+        # Get RAM usage
+        memory = psutil.virtual_memory()
+        ram_usage = round(memory.percent, 1)
+        
+        # Calculate uptime
+        uptime_delta = datetime.now() - SERVICE_START_TIME
+        days = uptime_delta.days
+        hours, remainder = divmod(uptime_delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        uptime = f"{days}d {hours}h {minutes}m"
+        
+        # Determine status based on resource usage and service state
+        if is_service_paused():
+            status = "Warning"
+        elif cpu_usage >= 90 or ram_usage >= 90:
+            status = "Warning"
+        else:
+            status = "Online"
+        
+        return {
+            "status": status,
+            "cpu_usage": cpu_usage,
+            "ram_usage": ram_usage,
+            "uptime": uptime,
+            "service_paused": is_service_paused()
+        }
+    except Exception as e:
+        print(f"Error in health check: {e}")
+        return {
+            "status": "Warning",
+            "cpu_usage": 0.0,
+            "ram_usage": 0.0,
+            "uptime": "Unknown",
+            "service_paused": False,
+            "error": str(e)
+        }

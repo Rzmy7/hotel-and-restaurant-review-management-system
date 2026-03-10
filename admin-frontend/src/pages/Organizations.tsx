@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { OrganizationStatsGrid } from '../components/OrganizationStatsGrid';
 import { OrganizationFilters } from '../components/OrganizationFilters';
 import { OrganizationTable } from '../components/OrganizationTable';
@@ -51,11 +51,7 @@ export const Organizations: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <Loader size={32} className="animate-spin text-blue-500" />
-            </div>
-        );
+        return <LoadingSpinner size={32} />;
     }
 
     return (

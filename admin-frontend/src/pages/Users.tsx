@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { UserStatsGrid } from '../components/UserStatsGrid';
 import { UserFilters } from '../components/UserFilters';
 import { UserTable } from '../components/UserTable';
@@ -71,11 +71,7 @@ export const UsersPage: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <Loader size={32} className="animate-spin text-blue-500" />
-            </div>
-        );
+        return <LoadingSpinner size={32} />;
     }
 
     return (
