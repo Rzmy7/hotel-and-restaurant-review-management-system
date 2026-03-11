@@ -1,43 +1,50 @@
-import { ChevronDown, ArrowLeft, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ArrowLeft, ArrowUpDown, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { fetchRankings, type RankingEntry } from '../api/competitorApi';
 
-// Mock data matching the image
-const RANKINGS = [
-    {
-        rank: 1,
-        name: 'Luxury Grand Resort',
-        isYou: false,
-        rating: 4.7,
-        sentiment: 89,
-        reviews: 2847,
-    },
-    {
-        rank: 2,
-        name: 'Grand Plaza Hotel',
-        isYou: true,
-        rating: 4.5,
-        sentiment: 86,
-        reviews: 2234,
-    },
-    {
-        rank: 3,
-        name: 'Cinnamon Hotel',
-        isYou: false,
-        rating: 4.6,
-        sentiment: 85,
-        reviews: 1654,
-    },
-    {
-        rank: 4,
-        name: 'Turtle watch Hotel',
-        isYou: false,
-        rating: 4.3,
-        sentiment: 81,
-        reviews: 1432,
-    }
-];
+type SortKey = 'rating' | 'sentiment' | 'reviews';
 
 const CompetitorRankingsPage = () => {
+    const [rankings, setRankings] = useState<RankingEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [sortBy, setSortBy] = useState<SortKey>('rating');
+
+    const loadRankings = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await fetchRankings();
+            setRankings(data.rankings);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load rankings');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadRankings();
+    }, [loadRankings]);
+
+    const sorted = useMemo(() => {
+        const copy = [...rankings];
+        copy.sort((a, b) => {
+            if (sortBy === 'rating') return b.rating - a.rating;
+            if (sortBy === 'sentiment') return b.sentiment - a.sentiment;
+            return b.reviews - a.reviews;
+        });
+        return copy.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+    }, [rankings, sortBy]);
+
+    const yourRank = sorted.find(r => r.isYou)?.rank ?? '-';
+    const topPerformer = sorted[0];
+
+    const handleSort = (key: SortKey) => {
+        setSortBy(key);
+    };
+
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             {/* Header Section */}

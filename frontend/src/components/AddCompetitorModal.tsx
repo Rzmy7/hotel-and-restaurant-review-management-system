@@ -1,65 +1,81 @@
-import { X } from 'lucide-react';
-import { useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
+import { Star, Loader2, RefreshCw } from 'lucide-react';
 
-// Mock data matching the modal image
-const MOCK_COMPETITORS = [
-    {
-        id: 1,
-        name: 'Paradise Resort',
-        location: 'Beach Area',
-        rating: 4.8,
-    },
-    {
-        id: 2,
-        name: 'Jetwin hotel',
-        location: 'Downtown',
-        rating: 4.7,
-    },
-    {
-        id: 3,
-        name: 'Paradise Resort',
-        location: 'Beach Area',
-        rating: 4.6,
-    },
-    {
-        id: 4,
-        name: 'Royal Beach Resort',
-        location: 'Beachfront',
-        rating: 4.6,
-    },
-    {
-        id: 5,
-        name: 'Seaside Paradise Inn',
-        location: 'Coastal Area',
-        rating: 4.3,
-    },
-    {
-        id: 6,
-        name: 'Mountain View Lodge',
-        location: 'Hillside',
-        rating: 4.2,
-    }
-];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-interface AddCompetitorModalProps {
-    isOpen: boolean;
-    onClose: () => void;
+interface AvailableCompetitor {
+  id: number;
+  name: string;
+  location: string;
+  avgRating: number;
+  status: string;
 }
 
-const AddCompetitorModal = ({ isOpen, onClose }: AddCompetitorModalProps) => {
-    // Prevent body scroll when modal is open
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen]);
+interface AddCompetitorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddCompetitor: (competitorId: number) => Promise<void> | void;
+}
 
-    if (!isOpen) return null;
+const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
+  isOpen,
+  onClose,
+  onAddCompetitor,
+}) => {
+  const [competitors, setCompetitors] = useState<AvailableCompetitor[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [trackingId, setTrackingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    const loadAvailable = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(API_BASE + '/competitors');
+        if (!res.ok) throw new Error('API error ' + res.status);
+        const data = await res.json();
+        if (!cancelled) setCompetitors(data.available ?? []);
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load competitors');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadAvailable();
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleAdd = async (competitorId: number) => {
+    setTrackingId(competitorId);
+    try {
+      await onAddCompetitor(competitorId);
+      setCompetitors(prev => prev.filter(c => c.id !== competitorId));
+    } catch {
+      // error handled by parent
+    } finally {
+      setTrackingId(null);
+    }
+  };
+
+  const handleRetry = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(API_BASE + '/competitors');
+      if (!res.ok) throw new Error('API error ' + res.status);
+      const data = await res.json();
+      setCompetitors(data.available ?? []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load competitors');
+    } finally {
+      setLoading(false);
+    }
+  };
 
     return (
         <div className="fixed inset-0 bg-gray-900/40 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

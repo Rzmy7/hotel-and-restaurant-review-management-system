@@ -5,32 +5,92 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend,
     BarChart, Bar
 } from 'recharts';
-
-const aspectData = [
-    { subject: 'Cleanliness', myHotel: 4.8, competitor: 4.5, fullMark: 5 },
-    { subject: 'Service', myHotel: 4.2, competitor: 4.6, fullMark: 5 },
-    { subject: 'Location', myHotel: 4.5, competitor: 4.8, fullMark: 5 },
-    { subject: 'Food', myHotel: 4.0, competitor: 4.4, fullMark: 5 },
-    { subject: 'Comfort', myHotel: 4.7, competitor: 4.5, fullMark: 5 },
-];
-
-const trendData = [
-    { name: 'Aug', myHotel: 4.3, competitor: 4.5 },
-    { name: 'Sep', myHotel: 4.2, competitor: 4.6 },
-    { name: 'Oct', myHotel: 4.3, competitor: 4.6 },
-    { name: 'Nov', myHotel: 4.4, competitor: 4.7 },
-    { name: 'Dec', myHotel: 4.5, competitor: 4.7 },
-    { name: 'Jan', myHotel: 4.6, competitor: 4.8 },
-    { name: 'Feb', myHotel: 4.7, competitor: 4.7 },
-];
-
-const sentimentData = [
-    { name: 'Positive', myHotel: 45, competitor: 55 },
-    { name: 'Neutral', myHotel: 28, competitor: 20 },
-    { name: 'Very Negative', myHotel: 8, competitor: 5 },
-];
+import {
+    fetchComparison,
+    fetchAiInsights,
+    type ComparisonData,
+    type AiInsights,
+    type KpiData,
+} from '../api/competitorApi';
 
 const CompetitorComparison = () => {
+    const [searchParams] = useSearchParams();
+    const competitorId = Number(searchParams.get('id'));
+
+    const [comparison, setComparison] = useState<ComparisonData | null>(null);
+    const [insights, setInsights] = useState<AiInsights | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [insightsLoading, setInsightsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadData = useCallback(async () => {
+        if (!competitorId) {
+            setError('No competitor ID specified. Go back and click Compare on a competitor.');
+            setLoading(false);
+            return;
+        }
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await fetchComparison(competitorId);
+            setComparison(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load comparison data');
+        } finally {
+            setLoading(false);
+        }
+    }, [competitorId]);
+
+    const loadInsights = useCallback(async () => {
+        if (!competitorId) return;
+        try {
+            setInsightsLoading(true);
+            const data = await fetchAiInsights(competitorId);
+            setInsights(data);
+        } catch {
+            // silently fail for insights — not critical
+        } finally {
+            setInsightsLoading(false);
+        }
+    }, [competitorId]);
+
+    useEffect(() => {
+        loadData();
+        loadInsights();
+    }, [loadData, loadInsights]);
+
+    const renderKpi = (title: string, kpi: KpiData, formatFn?: (v: number) => string, gapLabel?: string) => {
+        const fmt = formatFn || ((v: number) => String(v));
+        const gapColor = kpi.gap < 0 ? 'text-red-500' : kpi.gap > 0 ? 'text-green-600' : 'text-gray-500';
+        const gapPrefix = kpi.gap > 0 ? '+' : '';
+        const isAhead = kpi.gap < 0;
+        return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">{title}</h3>
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-[#4e80ee] font-medium">My Hotel</span>
+                        <span className="font-bold text-gray-900 text-[17px]">{fmt(kpi.myHotel)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-green-500 font-medium">Competitor</span>
+                        <span className="font-bold text-gray-900 text-[17px]">{fmt(kpi.competitor)}</span>
+                    </div>
+                    <div className="pt-3 border-t border-gray-50 flex justify-between items-center text-sm">
+                        <span className="text-gray-600 font-medium">Gap</span>
+                        <span className={`font-bold ${gapColor}`}>{gapPrefix}{fmt(kpi.gap)}</span>
+                    </div>
+                    {isAhead && gapLabel && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 italic mt-1">
+                            <AlertTriangle size={12} className="text-gray-400" />
+                            <span>{gapLabel}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
@@ -249,8 +309,8 @@ const CompetitorComparison = () => {
                             <AlertTriangle size={16} />
                             Location Perception
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
 
             </main>
         </div>

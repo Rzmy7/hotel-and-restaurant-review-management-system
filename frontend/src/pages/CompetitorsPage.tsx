@@ -1,46 +1,71 @@
-import { ChevronDown, TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, TrendingUp, Plus, Trash2, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AddCompetitorModal from '../components/AddCompetitorModal';
-
-// Mock data matching the image
-const COMPETITORS = [
-    {
-        id: 1,
-        name: 'Luxury Grand Resort',
-        location: 'Downtown',
-        rating: 4.7,
-        sentiment: 89,
-        reviews: 2847,
-    },
-    {
-        id: 2,
-        name: 'Cinnamon Hotel',
-        location: 'Beachfront',
-        rating: 4.6,
-        sentiment: 85,
-        reviews: 1654,
-    },
-    {
-        id: 3,
-        name: 'Turtle watch Hotel',
-        location: 'Coastal Area',
-        rating: 4.3,
-        sentiment: 81,
-        reviews: 1432,
-    },
-    {
-        id: 4,
-        name: 'Turkey Lodge',
-        location: 'Hillside',
-        rating: 4.2,
-        sentiment: 79,
-        reviews: 1234,
-    }
-];
+import {
+    fetchCompetitors,
+    trackCompetitor,
+    untrackCompetitor,
+    type Competitor,
+} from '../api/competitorApi';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [tracked, setTracked] = useState<Competitor[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const loadCompetitors = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await fetchCompetitors();
+            setTracked(data.tracked ?? []);
+        } catch (err) {
+            console.error('[CompetitorsPage] Fetch error:', err);
+            setError(err instanceof Error ? err.message : 'Failed to load competitors');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadCompetitors();
+    }, [loadCompetitors]);
+
+    const handleTrack = async (competitorId: number) => {
+        try {
+            await trackCompetitor(competitorId);
+            await loadCompetitors();
+            setIsAddModalOpen(false);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to track competitor');
+        }
+    };
+
+    const handleUntrack = async (competitorId: number) => {
+        if (!confirm('Remove this competitor from your tracked list?')) return;
+        try {
+            await untrackCompetitor(competitorId);
+            await loadCompetitors();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to untrack competitor');
+        }
+    };
+
+
+    const getStatusBadge = (status: string) => {
+        const styles: Record<string, string> = {
+            Active: 'bg-green-50 text-green-700 border-green-200',
+            Pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+            Scraping: 'bg-blue-50 text-blue-700 border-blue-200',
+            Error: 'bg-red-50 text-red-700 border-red-200',
+        };
+        return (
+            <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border ${styles[status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                {status}
+            </span>
+        );
+    };
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
@@ -76,6 +101,13 @@ const CompetitorsPage = () => {
             {/* Main Content */}
             <main className="w-full px-8 py-8 flex-1 max-w-[1600px] mx-auto">
 
+                {/* Error State */}
+                {error && (
+                    <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+                        {error}
+                    </div>
+                )}
+
                 {/* Competitor List Card */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
 
@@ -99,6 +131,22 @@ const CompetitorsPage = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="flex items-center justify-center py-16">
+                            <Loader2 size={28} className="animate-spin text-blue-500" />
+                            <span className="ml-3 text-gray-500">Loading competitors...</span>
+                        </div>
+                    )}
+
+                    {/* Empty State */}
+                    {!loading && tracked.length === 0 && (
+                        <div className="text-center py-16">
+                            <p className="text-gray-500 text-lg">No competitors tracked yet</p>
+                            <p className="text-gray-400 text-sm mt-2">Click "Add Competitor" to start tracking hotels from the available pool.</p>
+                        </div>
+                    )}
 
                     {/* Table */}
                     <div className="overflow-x-auto">
@@ -156,6 +204,7 @@ const CompetitorsPage = () => {
             <AddCompetitorModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
+                onAddCompetitor={handleTrack}
             />
         </div>
     );
