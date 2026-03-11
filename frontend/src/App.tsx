@@ -21,6 +21,8 @@ import InsightsPage from './pages/InsightsPage';
 import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
+import GroupsBranchesPage from './pages/GroupsBranchesPage';
+import GroupDetailPage from './pages/GroupDetailPage';
 
 const NotFound = () => {
   return (
@@ -72,6 +74,8 @@ const AppContent = () => {
                 <Route path="/competitors" element={<CompetitorsPage />} />
                 <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
                 <Route path="/competitors/compare" element={<CompetitorComparison />} />
+                <Route path="/groups" element={<GroupsBranchesPage />} />
+                <Route path="/groups/:id" element={<GroupDetailPage />} />
                 <Route
                   path="/profile"
                   element={<ProfilePage />}
