@@ -1,0 +1,25 @@
+{
+    "sqltools.connections": [
+        {
+            "connectionTimeout": 15,
+            "mssqlOptions": {
+                "appName": "SQLTools",
+                "useUTC": true,
+                "encrypt": false,
+                "trustServerCertificate": true
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "178.128.84.124",
+            "port": 1433,
+            "driver": "MSSQL",
+            "name": "LETHYS",
+            "database": "BookingScraper",
+            "username": "sa",
+            "password": "Qwer3552"
+        }
+    ],
+    "python.analysis.extraPaths": [
+        "./backend"
+    ]
+}

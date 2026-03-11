@@ -65,18 +65,18 @@
         "email": "user@example.com",
         "password": "$2b$12$brbeKWMRjlx1WqgyYRgXkuzK2zwTmNwV6bmMUduhlpeUeLAGi7TI2",
         "google_id": null,
-        "reset_token": null,
-        "reset_token_expiry": null,
+        "reset_token": "0210176860a775d51864a65497859af1",
+        "reset_token_expiry": "2026-03-10T13:11:40.070328",
         "role": "staff"
     },
     {
         "id": 8,
         "name": "hansi",
         "email": "hansiwickramage18@gmail.com",
-        "password": "$2b$12$NieSNQbwg0JhJUQ8FShnTeGdGtH1nKzKE1hg1THzaqbfnWv5Zkfq6",
+        "password": "$2b$12$9SC3m.m1Dg51Z0d.LdXyHOCw8ZPUra.BuINfYLiHuHCzLwB33MCiq",
         "google_id": null,
-        "reset_token": null,
-        "reset_token_expiry": null,
+        "reset_token": "218e81a2e335b8ba21fb2c8b2acaeed7",
+        "reset_token_expiry": "2026-03-09T18:48:04.185858",
         "role": "staff"
     },
     {
@@ -394,6 +394,16 @@
         "name": "omali",
         "email": "oma@gmail.com",
         "password": "$2b$12$Ymnn35FC79J97QaGhm4kduUmZI1X2f6Qq1J7VA/Lo4QmdhKwJeYIa",
+        "google_id": null,
+        "reset_token": null,
+        "reset_token_expiry": null,
+        "role": "staff"
+    },
+    {
+        "id": 41,
+        "name": "bimal",
+        "email": "bimal@gmail.com",
+        "password": "$2b$12$NRW10W8bM5Vyj3iP/ImT6u00epH7TGuu7kjxB6./ytyGXdF0FJrYG",
         "google_id": null,
         "reset_token": null,
         "reset_token_expiry": null,
