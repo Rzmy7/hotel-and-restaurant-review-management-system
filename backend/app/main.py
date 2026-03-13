@@ -198,40 +198,7 @@ class ResetModel(BaseModel):
 # Auth endpoints (file-backed)
 # ----------------------
 @app.post("/signup")
-def signup(payload: SignupModel):
-    users = load_users()
-    for u in users:
-        if u["email"].lower() == payload.email.lower():
-            raise HTTPException(status_code=400, detail="Email already exists")
-
-    new_user = {
-        "id": (users[-1]["id"] + 1) if users else 1,
-        "name": payload.name,
-        "email": payload.email,
-        "password": hash_password(payload.password),
-        "google_id": None,
-        "reset_token": None,
-        "reset_token_expiry": None,
-        "role": "staff",
-    }
-
-    users.append(new_user)
-    save_users(users)
-
-    return {
-        "message": "User registered successfully",
-        "user": {
-            "id": new_user["id"],
-            "name": new_user["name"],
-            "email": new_user["email"],
-            "role": new_user["role"],
-        },
-    }
-
-
-# temporary DB signup route
-@app.post("/signup-db")
-def signup_db(payload: SignupModel, db: Session = Depends(get_db)):
+def signup(payload: SignupModel, db: Session = Depends(get_db)):
     existing_user = get_user_by_email(db, payload.email.lower())
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists in database")
@@ -264,35 +231,17 @@ def signup_db(payload: SignupModel, db: Session = Depends(get_db)):
     }
 
 
-@app.post("/login")
-def login(payload: LoginModel):
-    users = load_users()
-    for u in users:
-        if u["email"].lower() == payload.email.lower():
-            if u.get("password") and verify_password(payload.password, u.get("password")):
-                return {
-                    "message": "Login successful",
-                    "user": {
-                        "id": u["id"],
-                        "name": u["name"],
-                        "email": u["email"],
-                        "role": u.get("role", "staff"),
-                    },
-                }
-            break
-    raise HTTPException(status_code=401, detail="Invalid credentials")
-
 
 # temporary DB login route
-@app.post("/login-db")
-def login_db(payload: LoginModel, db: Session = Depends(get_db)):
+@app.post("/login")
+def login(payload: LoginModel, db: Session = Depends(get_db)):
     user = get_user_by_email(db, payload.email.lower())
 
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not user.password_hash:
-        raise HTTPException(status_code=401, detail="This account does not support password login")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -308,6 +257,14 @@ def login_db(payload: LoginModel, db: Session = Depends(get_db)):
             "roles": roles,
         },
     }
+
+    request.session["user"] = session_user
+
+    return {
+        "message": "Login successful",
+        "user": session_user
+    }
+
 
 
 # ----------------------
@@ -374,63 +331,10 @@ def check_session(request: Request):
 
 
 # ----------------------
-# Forgot / Reset password (file-based)
-# ----------------------
-@app.post("/forgot-password")
-def forgot_password(payload: EmailModel):
-    users = load_users()
-    for u in users:
-        if u["email"].lower() == payload.email.lower():
-            token = secrets.token_hex(16)
-            expiry = (datetime.utcnow() + timedelta(hours=1)).isoformat()
-            u["reset_token"] = token
-            u["reset_token_expiry"] = expiry
-            save_users(users)
-
-            reset_link = f"http://localhost:5173/reset-password/{token}"
-
-            print(f"\n{'='*60}")
-            print(f"PASSWORD RESET LINK for {u['email']}:")
-            print(f"{reset_link}")
-            print(f"{'='*60}\n")
-
-            try:
-                send_reset_email(u["email"], reset_link)
-                print(f"[info] Reset email sent successfully to {u['email']}")
-            except Exception as exc:
-                print(f"[warn] send_reset_email failed: {exc}")
-
-            return {"message": "Reset link sent"}
-
-    raise HTTPException(status_code=404, detail="User not found")
-
-
-@app.post("/reset-password/{token}")
-def reset_password(token: str, payload: ResetModel):
-    users = load_users()
-    for u in users:
-        if u.get("reset_token") == token:
-            if not u.get("reset_token_expiry"):
-                raise HTTPException(status_code=400, detail="Invalid token")
-
-            expiry = datetime.fromisoformat(u["reset_token_expiry"])
-            if expiry < datetime.utcnow():
-                raise HTTPException(status_code=400, detail="Token expired")
-
-            u["password"] = hash_password(payload.new_password)
-            u["reset_token"] = None
-            u["reset_token_expiry"] = None
-            save_users(users)
-            return {"message": "Password reset successful"}
-
-    raise HTTPException(status_code=400, detail="Invalid token")
-
-
-# ----------------------
 # Forgot / Reset password (database-based)
 # ----------------------
-@app.post("/forgot-password-db")
-def forgot_password_db(payload: EmailModel, db: Session = Depends(get_db)):
+@app.post("/forgot-password")
+def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
     try:
         user = get_user_by_email(db, payload.email.lower())
 
@@ -465,7 +369,7 @@ def forgot_password_db(payload: EmailModel, db: Session = Depends(get_db)):
         )
         db.commit()
 
-        reset_link = f"http://localhost:5173/reset-password-db/{raw_token}"
+        reset_link = f"http://localhost:5173/reset-password/{raw_token}"
 
         print(f"\n{'='*60}")
         print(f"DB PASSWORD RESET LINK for {user.email}:")
@@ -489,8 +393,8 @@ def forgot_password_db(payload: EmailModel, db: Session = Depends(get_db)):
 
 
 
-@app.post("/reset-password-db/{token}")
-def reset_password_db(token: str, payload: ResetModel, db: Session = Depends(get_db)):
+@app.post("/reset-password/{token}")
+def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db)):
     try:
         token_hash = token_sha256(token)
 
@@ -538,7 +442,7 @@ def reset_password_db(token: str, payload: ResetModel, db: Session = Depends(get
         )
 
         db.commit()
-        return {"message": "Password reset successful in database"}
+        return {"message": "Password reset successful"}
 
     except HTTPException:
         raise
