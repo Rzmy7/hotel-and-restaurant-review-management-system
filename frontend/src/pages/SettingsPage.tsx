@@ -1,22 +1,10 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-import { Globe, Bell, Lock, CreditCard, Building2, Upload, Menu } from 'lucide-react';
-=======
 import React, { useState, useEffect } from 'react';
->>>>>>> prototype-frontend
 import { useNavigate } from 'react-router-dom';
 import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../hooks/useSettings';
 import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 
-<<<<<<< HEAD
-interface SettingsPageProps {
-  toggleSidebar: () => void;
-}
-
-const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
-=======
 // Templates
 import { SettingsTemplate } from '../components/settings/templates/SettingsTemplate';
 
@@ -41,7 +29,6 @@ const TABS = [
 ] as const;
 
 const SettingsPage: React.FC = () => {
->>>>>>> prototype-frontend
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { data: serverData, loading, saving, updateSettings } = useSettings();
@@ -176,19 +163,6 @@ const SettingsPage: React.FC = () => {
   const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
-<<<<<<< HEAD
-    <div className="settings-page">
-      {/* Header */}
-      <div className="settings-header">
-        <button className="menu-btn" onClick={toggleSidebar}>
-          <Menu size={24} />
-        </button>
-        <div className="header-content">
-          <h1 className="settings-title">Settings</h1>
-          <p className="settings-subtitle">Manage your account and application preferences</p>
-        </div>
-      </div>
-=======
     <>
       <UnsavedChangesModal
         isOpen={isModalOpen}
@@ -213,7 +187,6 @@ const SettingsPage: React.FC = () => {
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
->>>>>>> prototype-frontend
 
               return (
                 <button
