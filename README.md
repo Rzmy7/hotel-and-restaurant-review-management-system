@@ -122,7 +122,7 @@ The backend handles the core logic for scraping and API services.
 
 1.  **Navigate to the admin directory**:
     ```bash
-    cd ../Admin-Frontend
+    cd ../admin-Frontend
     ```
 
 2.  **Install Dependencies**:
