@@ -1,23 +1,9 @@
 import React from 'react';
-<<<<<<< HEAD
-import DashboardHeader from '../components/DashboardHeader.tsx';
-import MetricCard from '../components/MetricCard.tsx';
-import SentimentChart from '../components/SentimentChart.tsx';
-import TrendsChart from '../components/TrendsChart.tsx';
-import LatestReviews from '../components/LatestReviews.tsx';
-import CategoryPerformance from '../components/CategoryPerformance.tsx';
-import AIInsights from '../components/AIInsights.tsx';
-import AlertsPanel from '../components/AlertsPanel.tsx';
-import ReviewSources from '../components/ReviewSources.tsx';
-import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
-import '../App.css';
-=======
 import { AlertCircle } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useToast } from '../contexts/ToastContext';
 import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 import { DashboardTemplate } from '../components/dashboard/templates/DashboardTemplate';
->>>>>>> prototype-frontend
 
 const DashboardPage: React.FC = () => {
   const { data, loading, error } = useDashboardData();

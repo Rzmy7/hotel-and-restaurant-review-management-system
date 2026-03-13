@@ -1,36 +1,3 @@
-<<<<<<< HEAD
-import { useState, useEffect } from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  Link,
-} from "react-router-dom";
-import Sidebar from "./components/SideBar";
-import ReviewsPage from "./pages/ReviewsPage";
-import DashboardPage from "./pages/DashboardPage";
-import ReviewSourcesPage from "./pages/ReviewSourcesPage";
-import SettingsPage from "./pages/SettingsPage";
-import ProfilePage from "./pages/ProfilePage";
-import LoginPage from "./pages/LoginPage";
-import SignUpPage from "./pages/SignUpPage";
-import SetupPage from "./pages/SetupPage";
-import AddSourcesPage from "./pages/AddSourcesPage";
-import ChooseSchedulePage from "./pages/ChooseSchedulePage";
-import FinishSetupPage from "./pages/FinishSetupPage";
-import ScrapeLauncher from "./components/ScrapeLauncher";
-import "./App.css";
-
-const NotFound = () => {
-  return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>404</h1>
-      <p>Page not Found</p>
-      {/* It's good practice to provide a way back */}
-      <Link to="/">Go Home</Link>
-=======
 import { useState } from 'react';
 import { ToastProvider } from './contexts/ToastContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
@@ -61,7 +28,6 @@ const NotFound = () => {
       <h1 className="text-4xl font-bold text-gray-900">404</h1>
       <p className="text-gray-500 mt-2">Page not Found</p>
       <Link to="/" className="text-blue-500 hover:text-blue-700 mt-4 inline-block">Go Home</Link>
->>>>>>> prototype-frontend
     </div>
   );
 };
@@ -74,14 +40,6 @@ const AppContent = () => {
     setIsSidebarExpanded((prev) => !prev);
   };
 
-<<<<<<< HEAD
-  // Close sidebar when route changes
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
-=======
->>>>>>> prototype-frontend
   return (
     <Routes>
       {/* Auth routes - standalone without sidebar */}
@@ -93,44 +51,6 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
 
-<<<<<<< HEAD
-      {/* Main app routes with navigation sidebar */}
-      <Route
-        path="/*"
-        element={
-          <div className="app-container">
-            <Sidebar
-              isOpen={sidebarOpen}
-              onClose={() => setSidebarOpen(false)}
-            />
-            <main className="main-content">
-              <Routes>
-                <Route
-                  path="/"
-                  element={<Navigate to="/dashboard" replace />}
-                />
-                <Route
-                  path="/dashboard"
-                  element={<DashboardPage toggleSidebar={toggleSidebar} />}
-                />
-                <Route
-                  path="/reviews"
-                  element={<ReviewsPage toggleSidebar={toggleSidebar} />}
-                />
-                <Route
-                  path="/sources"
-                  element={<ReviewSourcesPage toggleSidebar={toggleSidebar} />}
-                />
-                <Route
-                  path="/settings"
-                  element={<SettingsPage toggleSidebar={toggleSidebar} />}
-                />
-                <Route
-                  path="/profile"
-                  element={<ProfilePage toggleSidebar={toggleSidebar} />}
-                />
-
-=======
       {/* Main app routes with sidebar */}
       <Route
         path="/*"
@@ -156,7 +76,6 @@ const AppContent = () => {
                   path="/profile"
                   element={<ProfilePage />}
                 />
->>>>>>> prototype-frontend
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
