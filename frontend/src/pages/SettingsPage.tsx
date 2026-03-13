@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../hooks/useSettings';
-import DashboardSkeleton from '../components/DashboardSkeleton';
+import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 
 // Templates
 import { SettingsTemplate } from '../components/settings/templates/SettingsTemplate';

@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useToast } from '../contexts/ToastContext';
-import DashboardSkeleton from '../components/DashboardSkeleton';
+import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 import { DashboardTemplate } from '../components/dashboard/templates/DashboardTemplate';
 
 const DashboardPage: React.FC = () => {

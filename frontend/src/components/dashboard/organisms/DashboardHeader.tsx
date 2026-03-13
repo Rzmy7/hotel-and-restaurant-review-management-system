@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, CalendarDays } from 'lucide-react';
 import { useToast } from '../../../contexts/ToastContext';
-import NotificationPanel from '../../NotificationPanel';
-import ProfileDropdown from '../../ProfileDropdown';
-import OrganizationSwitcher from '../../OrganizationSwitcher';
+import NotificationPanel from '../../shared/NotificationPanel';
+import ProfileDropdown from '../../shared/ProfileDropdown';
+import OrganizationSwitcher from '../../shared/OrganizationSwitcher';
 import { useOrganizations } from '../../../contexts/OrganizationContext';
 
 export const DashboardHeader: React.FC = () => {

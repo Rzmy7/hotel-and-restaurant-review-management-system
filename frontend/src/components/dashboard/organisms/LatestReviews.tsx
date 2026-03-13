@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ReviewDetailModal from '../../ReviewDetailModal';
+import ReviewDetailModal from '../../reviews/ReviewDetailModal';
 import type { Review } from '../../../types/dashboard';
 import type { Review as DetailedReview } from '../../../types/reviews';
 import { Card } from '../atoms/Card';

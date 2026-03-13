@@ -11,7 +11,7 @@ import {
     Filter,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import NotificationsHeader from '../components/NotificationsHeader';
+import NotificationsHeader from '../components/shared/NotificationsHeader';
 
 // ── Types ──────────────────────────────────────────────────────────
 interface Notification {

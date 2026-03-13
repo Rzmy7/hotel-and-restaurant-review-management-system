@@ -1,4 +1,4 @@
-import ScrapeLauncher from "../components/ScrapeLauncher";
+import ScrapeLauncher from '../components/shared/ScrapeLauncher';
 
 const Scraper = () => {
   return (

@@ -4,8 +4,8 @@ import {
     Zap, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight,
     Minus, Lightbulb, Target, BarChart3
 } from 'lucide-react';
-import InsightsHeader from '../components/InsightsHeader';
-import SourceBreakdown from '../components/SourceBreakdown';
+import InsightsHeader from '../components/shared/InsightsHeader';
+import SourceBreakdown from '../components/sources/SourceBreakdown';
 
 // ═══════════════════════════════════════════════════════════════════
 //  MOCK DATA (keyed per time-range)

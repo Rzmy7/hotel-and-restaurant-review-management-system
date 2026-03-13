@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
-import SetupLayout from '../components/SetupLayout';
+import SetupLayout from '../components/shared/SetupLayout';
 
 const SetupPage = () => {
   const navigate = useNavigate();

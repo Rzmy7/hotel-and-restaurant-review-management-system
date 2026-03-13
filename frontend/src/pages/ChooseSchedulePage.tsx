@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SetupLayout from '../components/SetupLayout';
+import SetupLayout from '../components/shared/SetupLayout';
 import { Clock, Calendar } from 'lucide-react';
 
 type ScheduleType = 'hourly' | 'daily' | 'weekly';

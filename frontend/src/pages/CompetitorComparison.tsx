@@ -1,5 +1,6 @@
 import { ArrowLeft, Bell, ChevronDown, AlertTriangle, Lightbulb, CheckCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
     Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend,
@@ -91,6 +92,18 @@ const CompetitorComparison = () => {
         );
     };
 
+    if (loading || insightsLoading) {
+        return <div className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-slate-900"><div className="text-gray-500">Loading comparison data...</div></div>;
+    }
+
+    if (error || !comparison || !insights) {
+        return <div className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-slate-900"><div className="text-red-500">{error || 'Failed to load data.'}</div></div>;
+    }
+
+    const aspectData: any[] = [];
+    const trendData: any[] = [];
+    const sentimentData: any[] = [];
+
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
@@ -138,93 +151,10 @@ const CompetitorComparison = () => {
 
                 {/* KPI Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col">
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-4">Average Rating</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-[#4e80ee] dark:text-blue-400 font-medium">My Hotel</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">4.5</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-green-500 dark:text-green-400 font-medium">Competitor</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">4.7</span>
-                            </div>
-                            <div className="pt-3 border-t border-gray-50 dark:border-slate-700/50 flex justify-between items-center text-sm">
-                                <span className="text-gray-600 dark:text-gray-300 font-medium">Gap</span>
-                                <span className="font-bold text-red-500">-0.20</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 italic mt-1">
-                                <AlertTriangle size={12} className="text-gray-400 dark:text-slate-500" />
-                                <span>Competitor is ahead</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col">
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-4">Review Count</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-[#4e80ee] dark:text-blue-400 font-medium">My Hotel</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">2,234</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-green-500 dark:text-green-400 font-medium">Competitor</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">2,847</span>
-                            </div>
-                            <div className="pt-3 border-t border-gray-50 dark:border-slate-700/50 flex justify-between items-center text-sm">
-                                <span className="text-gray-600 dark:text-gray-300 font-medium">Gap</span>
-                                <span className="font-bold text-red-500">-613</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 italic mt-1">
-                                <AlertTriangle size={12} className="text-gray-400 dark:text-slate-500" />
-                                <span>Fewer reviews than competitor</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col">
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-4">Positive %</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-[#4e80ee] dark:text-blue-400 font-medium">My Hotel</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">85%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-green-500 dark:text-green-400 font-medium">Competitor</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">89%</span>
-                            </div>
-                            <div className="pt-3 border-t border-gray-50 dark:border-slate-700/50 flex justify-between items-center text-sm">
-                                <span className="text-gray-600 dark:text-gray-300 font-medium">Gap</span>
-                                <span className="font-bold text-red-500">-4%</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 italic mt-1">
-                                <AlertTriangle size={12} className="text-gray-400 dark:text-slate-500" />
-                                <span>Lower positive sentiment</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col">
-                        <h3 className="text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-4">Negative %</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-[#4e80ee] dark:text-blue-400 font-medium">My Hotel</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">6%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-green-500 dark:text-green-400 font-medium">Competitor</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-[17px]">5%</span>
-                            </div>
-                            <div className="pt-3 border-t border-gray-50 dark:border-slate-700/50 flex justify-between items-center text-sm">
-                                <span className="text-gray-600 dark:text-gray-300 font-medium">Gap</span>
-                                <span className="font-bold text-red-500">+1%</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 italic mt-1">
-                                <AlertTriangle size={12} className="text-gray-400 dark:text-slate-500" />
-                                <span>Higher negative sentiment</span>
-                            </div>
-                        </div>
-                    </div>
+                    {renderKpi('Average Rating', comparison.kpis.avgRating, (v) => v.toFixed(1), 'Competitor is ahead')}
+                    {renderKpi('Review Count', comparison.kpis.reviewCount, (v) => v.toLocaleString(), 'Fewer reviews than competitor')}
+                    {renderKpi('Positive %', comparison.kpis.positivePercent, (v) => `${v}%`, 'Lower positive sentiment')}
+                    {renderKpi('Negative %', comparison.kpis.negativePercent, (v) => `${v}%`, 'Higher negative sentiment')}
                 </div>
 
                 {/* Charts Grid */}
@@ -309,8 +239,8 @@ const CompetitorComparison = () => {
                             <AlertTriangle size={16} />
                             Location Perception
                         </div>
-                    </>
-                )}
+                    </div>
+                </div>
 
             </main>
         </div>

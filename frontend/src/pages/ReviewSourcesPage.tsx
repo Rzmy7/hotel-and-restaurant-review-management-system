@@ -5,11 +5,11 @@ import { sourcesService } from '../services/sourcesService';
 import type { Source, SyncLog, SourceStats as SourceStatsType } from '../types/sources';
 
 // New Components
-import SourcesTable from '../components/SourcesTable';
-import SourceStats from '../components/SourceStats';
-import SyncHistoryPanel from '../components/SyncHistoryPanel';
-import AddSourceModal from '../components/AddSourceModal';
-import EditSourceModal from '../components/EditSourceModal';
+import SourcesTable from '../components/sources/SourcesTable';
+import SourceStats from '../components/sources/SourceStats';
+import SyncHistoryPanel from '../components/shared/SyncHistoryPanel';
+import AddSourceModal from '../components/sources/AddSourceModal';
+import EditSourceModal from '../components/sources/EditSourceModal';
 
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();

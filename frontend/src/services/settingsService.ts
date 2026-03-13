@@ -1,5 +1,5 @@
 import { settingsApi } from '../api/settingsApi';
-import { SettingsData } from '../types/settings';
+import type { SettingsData } from '../types/settings';
 
 export const settingsService = {
     getSettings: async (): Promise<SettingsData> => {

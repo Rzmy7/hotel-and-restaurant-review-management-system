@@ -1,6 +1,6 @@
 import { CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SetupLayout from '../components/SetupLayout';
+import SetupLayout from '../components/shared/SetupLayout';
 
 const FinishSetupPage = () => {
   const navigate = useNavigate();

@@ -7,8 +7,8 @@ import { LatestReviews } from '../organisms/LatestReviews';
 import { CategoryPerformance } from '../organisms/CategoryPerformance';
 import { AIInsights } from '../organisms/AIInsights';
 import { AlertsPanel } from '../organisms/AlertsPanel';
-import { ReviewRatingDistribution } from '../organisms/ReviewRatingDistribution';
-import { SourceComparison } from '../organisms/SourceComparison';
+import ReviewRatingDistribution from '../../reviews/ReviewRatingDistribution';
+import SourceComparison from '../../shared/SourceComparison';
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
 import type { DashboardResponse } from '../../../types/dashboard';
 

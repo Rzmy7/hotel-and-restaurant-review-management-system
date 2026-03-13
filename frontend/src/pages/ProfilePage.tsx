@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext';
-import ProfileHeader from '../components/ProfileHeader';
-import PersonalInfoForm from '../components/PersonalInfoForm';
-import ProfileSidebar from '../components/ProfileSidebar';
+import ProfileHeader from '../components/shared/ProfileHeader';
+import PersonalInfoForm from '../components/shared/PersonalInfoForm';
+import ProfileSidebar from '../components/shared/ProfileSidebar';
 
 interface ProfilePageProps {
     toggleSidebar?: () => void; // deprecated, no longer used

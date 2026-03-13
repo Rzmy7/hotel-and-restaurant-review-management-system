@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { useReviews } from '../contexts/ReviewsContext';
 
 // New Components
-import ReviewStats from '../components/ReviewStats';
-import ReviewsToolbar from '../components/ReviewsToolbar';
-import ReviewsTable from '../components/ReviewsTable';
-import ReviewDetailModal from '../components/ReviewDetailModal';
-import DateRangeModal from '../components/DateRangeModal';
+import ReviewStats from '../components/reviews/ReviewStats';
+import ReviewsToolbar from '../components/reviews/ReviewsToolbar';
+import ReviewsTable from '../components/reviews/ReviewsTable';
+import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
+import DateRangeModal from '../components/shared/DateRangeModal';
 
 const ReviewsPageContent = () => {
   const { stats, loading, refreshData, pagination, selectedReview, isModalOpen, closeReview, filters, setDateRange } = useReviews();
