@@ -3,7 +3,7 @@ import { Building2, CheckCircle2, Clock, Search, Plus, MoreVertical, Building } 
 import { StatCard } from '../components/StatCard';
 import { fetchOrganizations, fetchOrgStats } from '../services/mockService';
 import type { Organization, OrganizationStats } from '../types';
-import './Organizations.css';
+
 
 export const Organizations: React.FC = () => {
     const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -27,14 +27,7 @@ export const Organizations: React.FC = () => {
         loadData();
     }, []);
 
-    const getStatusClass = (status: string) => {
-        switch (status) {
-            case 'Active': return 'status-badge status-active';
-            case 'Pending': return 'status-badge status-pending';
-            case 'Inactive': return 'status-badge status-inactive';
-            default: return 'status-badge';
-        }
-    };
+
 
     // Filter Logic
     const filteredOrgs = orgs.filter(org => {
@@ -57,9 +50,9 @@ export const Organizations: React.FC = () => {
     if (loading) return <div>Loading...</div>;
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="max-w-[1200px] mx-auto">
             {stats && (
-                <div className="org-stats-grid">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <StatCard
                         label="Total Organizations"
                         value={stats.total.toLocaleString()}
@@ -81,20 +74,21 @@ export const Organizations: React.FC = () => {
                 </div>
             )}
 
-            <div className="table-controls">
-                <div className="search-input-wrapper">
-                    <Search className="search-icon" size={18} />
+            <div className="flex justify-between items-center mb-4 gap-4">
+                <div className="flex-1 max-w-[400px] relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
                     <input
                         type="text"
                         placeholder="Search organizations..."
                         value={searchQuery}
                         onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                        className="w-full py-2.5 px-4 pl-10 border border-gray-200 rounded-md text-sm outline-none bg-white"
                     />
                 </div>
 
-                <div className="filter-group">
+                <div className="flex gap-4">
                     <select
-                        className="status-select"
+                        className="py-2.5 px-4 border border-gray-200 rounded-md bg-white text-gray-900 text-sm cursor-pointer outline-none"
                         value={statusFilter}
                         onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
                     >
@@ -103,47 +97,50 @@ export const Organizations: React.FC = () => {
                         <option>Pending</option>
                         <option>Inactive</option>
                     </select>
-                    <button className="btn-primary" onClick={() => alert('Add Organization Modal would open here')}>
+                    <button className="bg-black text-white px-5 py-2.5 rounded-md text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity" onClick={() => alert('Add Organization Modal would open here')}>
                         <Plus size={18} />
                         Add Organization
                     </button>
                 </div>
             </div>
 
-            <div className="white-card" style={{ overflow: 'hidden' }}>
-                <table className="data-table">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th>Organization Name</th>
-                            <th>Domain</th>
-                            <th>Number of Users</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200">Organization Name</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200">Domain</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200">Number of Users</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200">Status</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {paginatedOrgs.map((org) => (
-                            <tr key={org.id}>
-                                <td>
-                                    <div className="org-cell">
-                                        <div className="org-icon-placeholder">
+                            <tr key={org.id} className="last:border-b-0">
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500">
                                             <Building size={16} />
                                         </div>
-                                        <span style={{ fontWeight: 500 }}>{org.name}</span>
+                                        <span className="font-medium">{org.name}</span>
                                     </div>
                                 </td>
-                                <td style={{ color: 'var(--text-secondary)' }}>{org.domain}</td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <td className="px-6 py-4 text-gray-500 text-sm border-b border-gray-200">{org.domain}</td>
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <div className="flex items-center gap-2">
                                         <UsersIcon />
                                         {org.usersCount.toLocaleString()}
                                     </div>
                                 </td>
-                                <td>
-                                    <span className={getStatusClass(org.status)}>{org.status}</span>
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${org.status === 'Active' ? 'bg-green-100 text-green-800' :
+                                        org.status === 'Pending' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-red-100 text-red-700'
+                                        }`}>{org.status}</span>
                                 </td>
-                                <td>
-                                    <button style={{ color: 'var(--text-secondary)' }}>
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <button className="text-gray-500 bg-transparent border-none cursor-pointer p-0 hover:text-gray-700">
                                         <MoreVertical size={18} />
                                     </button>
                                 </td>
@@ -151,13 +148,13 @@ export const Organizations: React.FC = () => {
                         ))}
                     </tbody>
                 </table>
-                <div className="pagination">
-                    <div className="page-info">
+                <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
                         Showing {filteredOrgs.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + itemsPerPage, filteredOrgs.length)} of {filteredOrgs.length} organizations
                     </div>
-                    <div className="page-controls">
+                    <div className="flex gap-2">
                         <button
-                            className="page-btn"
+                            className="px-3 py-1.5 border border-gray-200 rounded-md bg-white text-sm text-gray-900 disabled:opacity-50"
                             disabled={currentPage === 1}
                             onClick={() => handlePageChange(currentPage - 1)}
                         >
@@ -166,14 +163,14 @@ export const Organizations: React.FC = () => {
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                             <button
                                 key={page}
-                                className={`page-btn ${currentPage === page ? 'active' : ''}`}
+                                className={`px-3 py-1.5 border border-gray-200 rounded-md text-sm ${currentPage === page ? 'bg-black text-white border-black' : 'bg-white text-gray-900'}`}
                                 onClick={() => handlePageChange(page)}
                             >
                                 {page}
                             </button>
                         ))}
                         <button
-                            className="page-btn"
+                            className="px-3 py-1.5 border border-gray-200 rounded-md bg-white text-sm text-gray-900 disabled:opacity-50"
                             disabled={currentPage === totalPages || totalPages === 0}
                             onClick={() => handlePageChange(currentPage + 1)}
                         >

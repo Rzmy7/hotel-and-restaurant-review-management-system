@@ -1,29 +1,182 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { Globe, Bell, Lock, CreditCard, Building2, Upload, Menu } from 'lucide-react';
+=======
+import React, { useState, useEffect } from 'react';
+>>>>>>> prototype-frontend
 import { useNavigate } from 'react-router-dom';
-import './SettingsPage.css';
+import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
+import { useSettings } from '../hooks/useSettings';
+import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 
+<<<<<<< HEAD
 interface SettingsPageProps {
   toggleSidebar: () => void;
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
+=======
+// Templates
+import { SettingsTemplate } from '../components/settings/templates/SettingsTemplate';
+
+// Organisms
+import { GeneralSettingsCard } from '../components/settings/organisms/GeneralSettingsCard';
+import { NotificationSettingsCard } from '../components/settings/organisms/NotificationSettingsCard';
+import { SecuritySettingsCard } from '../components/settings/organisms/SecuritySettingsCard';
+import { SubscriptionSettingsCard } from '../components/settings/organisms/SubscriptionSettingsCard';
+import { HotelInfoSettingsCard } from '../components/settings/organisms/HotelInfoSettingsCard';
+import { UnsavedChangesModal, type ChangeDetail } from '../components/settings/organisms/UnsavedChangesModal';
+import { useNavigationBlocker } from '../contexts/NavigationBlockerContext';
+import type { SettingsData } from '../types/settings';
+
+type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'hotelInfo';
+
+const TABS = [
+  { id: 'general', label: 'General Properties', icon: Globe },
+  { id: 'security', label: 'Security', icon: Lock },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'subscription', label: 'Subscription', icon: CreditCard },
+  { id: 'hotelInfo', label: 'Hotel Profile', icon: Building }
+] as const;
+
+const SettingsPage: React.FC = () => {
+>>>>>>> prototype-frontend
   const navigate = useNavigate();
-  
-  // State for toggles
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [newReviewAlerts, setNewReviewAlerts] = useState(true);
-  const [weeklySummary, setWeeklySummary] = useState(false);
-  const [twoFactorAuth, setTwoFactorAuth] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<'professional' | 'upgrade'>('professional');
-  const [billingEmail, setBillingEmail] = useState('billing@grandplazahotel.com');
-  const [hotelName, setHotelName] = useState('Grand Plaza Hotel & Spa');
-  const [websiteUrl, setWebsiteUrl] = useState('https://grandplazahotel.com');
-  const [propertyType, setPropertyType] = useState('');
-  const [primaryEmail, setPrimaryEmail] = useState('reviews@grandplazahotel.com');
-  const [phoneNumber, setPhoneNumber] = useState('+1 (555) 987-6543');
+  const { showToast } = useToast();
+  const { data: serverData, loading, saving, updateSettings } = useSettings();
+
+  const [localData, setLocalData] = useState<SettingsData | null>(null);
+  const [activeTab, setActiveTab] = useState<TabID>('general');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  const { setIsDirty, registerBlockHandler, unregisterBlockHandler } = useNavigationBlocker();
+
+  useEffect(() => {
+    setIsDirty(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setIsDirty]);
+
+  useEffect(() => {
+    registerBlockHandler((targetPath) => {
+      setPendingNavigation(targetPath);
+      setIsModalOpen(true);
+    });
+    return () => unregisterBlockHandler();
+  }, [registerBlockHandler, unregisterBlockHandler]);
+
+  useEffect(() => {
+    if (serverData) {
+      setLocalData(serverData);
+      setHasUnsavedChanges(false);
+    }
+  }, [serverData]);
+
+  if (loading || !localData) {
+    return <DashboardSkeleton />;
+  }
+
+  const getChanges = (): ChangeDetail[] => {
+    if (!serverData || !localData) return [];
+    const changes: ChangeDetail[] = [];
+
+    const compareSection = (tabName: string, serverSection: any, localSection: any, fieldLabels: Record<string, string>) => {
+      Object.keys(serverSection).forEach(key => {
+        if (serverSection[key] !== localSection[key]) {
+          changes.push({
+            tab: tabName,
+            field: fieldLabels[key] || key,
+            oldValue: serverSection[key],
+            newValue: localSection[key]
+          });
+        }
+      });
+    };
+
+    compareSection('General Properties', serverData.general, localData.general, {
+      propertyName: 'Property Name', timeZone: 'Time Zone', language: 'Language', themePreference: 'Application Theme'
+    });
+    compareSection('Security', serverData.security, localData.security, {
+      twoFactorAuth: 'Two-Factor Authentication', sessionTimeout: 'Session Timeout'
+    });
+    compareSection('Notifications', serverData.notifications, localData.notifications, {
+      emailNotifications: 'Email Notifications', newReviewAlerts: 'New Review Alerts', weeklySummary: 'Weekly Summary'
+    });
+    compareSection('Subscription', serverData.subscription, localData.subscription, {
+      plan: 'Plan', billingEmail: 'Billing Email'
+    });
+    compareSection('Hotel Profile', serverData.hotelInfo, localData.hotelInfo, {
+      hotelName: 'Hotel Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', logoUrl: 'Logo URL'
+    });
+
+    return changes;
+  };
+
+  const handleUpdateSection = <K extends keyof SettingsData>(
+    section: K,
+    updates: Partial<SettingsData[K]>
+  ) => {
+    setLocalData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          ...updates
+        }
+      };
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveAll = async () => {
+    if (!localData) return;
+    const success = await updateSettings(localData);
+    if (success) {
+      setHasUnsavedChanges(false);
+      setIsDirty(false);
+    }
+  };
+
+  const handleCancelClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleSaveClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleModalDiscard = () => {
+    if (serverData) {
+      setLocalData(serverData);
+      setHasUnsavedChanges(false);
+      setIsDirty(false);
+    }
+    setIsModalOpen(false);
+
+    if (pendingNavigation) {
+      const target = pendingNavigation;
+      setPendingNavigation(null);
+      setTimeout(() => navigate(target), 0);
+    }
+  };
+
+  const handleModalSave = async () => {
+    await handleSaveAll();
+    setIsModalOpen(false);
+    if (pendingNavigation) {
+      const target = pendingNavigation;
+      setPendingNavigation(null);
+      setTimeout(() => navigate(target), 0);
+    }
+  };
+
+  const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
+<<<<<<< HEAD
     <div className="settings-page">
       {/* Header */}
       <div className="settings-header">
@@ -35,293 +188,103 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ toggleSidebar }) => {
           <p className="settings-subtitle">Manage your account and application preferences</p>
         </div>
       </div>
+=======
+    <>
+      <UnsavedChangesModal
+        isOpen={isModalOpen}
+        changes={getChanges()}
+        onClose={() => {
+          setIsModalOpen(false);
+          setPendingNavigation(null);
+        }}
+        onDiscard={handleModalDiscard}
+        onSave={handleModalSave}
+        isSaving={saving}
+      />
+      <SettingsTemplate
+        isSaving={saving}
+        onSave={handleSaveClick}
+        onCancel={handleCancelClick}
+        hasUnsavedChanges={hasUnsavedChanges}
+      >
+        <div className="flex flex-col gap-6">
+          {/* Horizontal Tab Navigation */}
+          <nav className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-100 dark:border-slate-800/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+>>>>>>> prototype-frontend
 
-      {/* Content */}
-      <div className="settings-content">
-        {/* General Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <Globe className="section-icon" size={20} />
-            <h2 className="section-title">General</h2>
-          </div>
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${isActive
+                    ? 'bg-blue-50 text-[#4e80ee] shadow-sm dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
+                    }`}
+                >
+                  <Icon size={18} className={isActive ? 'text-[#4e80ee] dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
 
-          <div className="settings-group">
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Property Name</label>
-              </div>
-              <div className="setting-value-group">
-                <span className="setting-value">Grand Hotel NYC</span>
-                <button className="edit-button">Edit</button>
-              </div>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Time Zone</label>
-              </div>
-              <div className="setting-value-group">
-                <span className="setting-value">EST (UTC-5)</span>
-                <button className="edit-button">Edit</button>
-              </div>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Language</label>
-              </div>
-              <div className="setting-value-group">
-                <span className="setting-value">English</span>
-                <button className="edit-button">Edit</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Notifications Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <Bell className="section-icon" size={20} />
-            <h2 className="section-title">Notifications</h2>
-          </div>
-
-          <div className="settings-group">
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Email Notifications</label>
-              </div>
-              <label className="toggle-switch">
-                <input 
-                  type="checkbox" 
-                  checked={emailNotifications}
-                  onChange={(e) => setEmailNotifications(e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">New Review Alerts</label>
-              </div>
-              <label className="toggle-switch">
-                <input 
-                  type="checkbox" 
-                  checked={newReviewAlerts}
-                  onChange={(e) => setNewReviewAlerts(e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Weekly Summary</label>
-              </div>
-              <label className="toggle-switch">
-                <input 
-                  type="checkbox" 
-                  checked={weeklySummary}
-                  onChange={(e) => setWeeklySummary(e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Security Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <Lock className="section-icon" size={20} />
-            <h2 className="section-title">Security</h2>
-          </div>
-
-          <div className="settings-group">
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Two-Factor Authentication</label>
-              </div>
-              <label className="toggle-switch">
-                <input 
-                  type="checkbox" 
-                  checked={twoFactorAuth}
-                  onChange={(e) => setTwoFactorAuth(e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Password</label>
-              </div>
-              <div className="setting-value-group">
-                <span className="setting-value password-dots">••••••••</span>
-                <button className="change-button">Change</button>
-              </div>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">Session Timeout</label>
-              </div>
-              <div className="setting-value-group">
-                <span className="setting-value">30 minutes</span>
-                <button className="edit-button">Edit</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Subscription & Billing Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <CreditCard className="section-icon" size={20} />
-            <h2 className="section-title">Subscription & Billing</h2>
-          </div>
-
-          <div className="settings-group">
-            {/* Plan Selection */}
-            <div className="plan-buttons">
-              <button 
-                className={`plan-button ${selectedPlan === 'professional' ? 'active' : ''}`}
-                onClick={() => setSelectedPlan('professional')}
-              >
-                Professional Plan
-              </button>
-              <button 
-                className={`plan-button ${selectedPlan === 'upgrade' ? 'active' : ''}`}
-                onClick={() => setSelectedPlan('upgrade')}
-              >
-                Upgrade Plan
-              </button>
-            </div>
-
-            <div className="plan-details">
-              2,500 reviews/month • 5 properties • AI responses
-            </div>
-
-            {/* Billing Email */}
-            <div className="setting-item-vertical">
-              <label className="setting-label">Billing Email</label>
-              <input 
-                type="email" 
-                className="setting-input"
-                value={billingEmail}
-                onChange={(e) => setBillingEmail(e.target.value)}
-              />
-            </div>
-
-            {/* Payment Method */}
-            <div className="setting-item-vertical">
-              <label className="setting-label">Payment Method</label>
-              <div className="payment-method-card">
-                <div className="payment-info">
-                  <div className="card-icon">💳</div>
-                  <div className="card-details">
-                    <div className="card-number">Visa ****1234</div>
-                    <div className="card-expiry">Expires 12/26</div>
-                  </div>
+          {/* Full-Width Content Card */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 md:p-8 min-h-[400px]">
+            {/* Active Tab Header */}
+            {activeTabData && (
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-700/50">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400 flex items-center justify-center">
+                  <activeTabData.icon size={20} />
                 </div>
-                <button className="update-button">Update</button>
+                <h2 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase m-0">{activeTabData.label}</h2>
               </div>
-            </div>
-          </div>
-        </div>
+            )}
 
-        {/* Hotel Information Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <Building2 className="section-icon" size={20} />
-            <h2 className="section-title">Hotel Information</h2>
-          </div>
-
-          <div className="settings-group">
-            {/* Logo Upload */}
-            <div className="setting-item-vertical">
-              <div className="logo-upload-section">
-                <div className="logo-upload-box">
-                  <Upload className="upload-icon" size={32} />
-                  <span className="upload-text">Upload Hotel Logo</span>
-                </div>
-                <div className="logo-actions">
-                  <button className="change-logo-button">Change Logo</button>
-                  <button className="remove-button">Remove</button>
-                  <p className="upload-hint">Recommended 800x800px PNG</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Hotel Name */}
-            <div className="setting-item-vertical">
-              <label className="setting-label">Hotel/Brand Name</label>
-              <input 
-                type="text" 
-                className="setting-input"
-                value={hotelName}
-                onChange={(e) => setHotelName(e.target.value)}
-              />
-            </div>
-
-            {/* Website URL and Property Type */}
-            <div className="setting-item-row">
-              <div className="setting-field">
-                <label className="setting-label">Website URL</label>
-                <div className="input-with-icon">
-                  <Globe className="input-icon" size={16} />
-                  <input 
-                    type="url" 
-                    className="setting-input with-icon"
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    placeholder="https://grandplazahotel.com"
-                  />
-                </div>
-              </div>
-              <div className="setting-field">
-                <label className="setting-label">Property Type</label>
-                <input 
-                  type="text" 
-                  className="setting-input"
-                  value={propertyType}
-                  onChange={(e) => setPropertyType(e.target.value)}
-                  placeholder="e.g., Hotel, Resort, B&B"
+            {/* Tab Content */}
+            <div className="animate-fade-in">
+              {activeTab === 'general' && (
+                <GeneralSettingsCard
+                  data={localData.general}
+                  onChange={(updates) => handleUpdateSection('general', updates)}
                 />
-              </div>
-            </div>
-
-            {/* Primary Email */}
-            <div className="setting-item-vertical">
-              <label className="setting-label">Primary Email</label>
-              <input 
-                type="email" 
-                className="setting-input"
-                value={primaryEmail}
-                onChange={(e) => setPrimaryEmail(e.target.value)}
-              />
-            </div>
-
-            {/* Phone Number */}
-            <div className="setting-item-vertical">
-              <label className="setting-label">Phone Number</label>
-              <input 
-                type="tel" 
-                className="setting-input"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-              />
+              )}
+              {activeTab === 'notifications' && (
+                <NotificationSettingsCard
+                  data={localData.notifications}
+                  onChange={(updates) => handleUpdateSection('notifications', updates)}
+                />
+              )}
+              {activeTab === 'security' && (
+                <SecuritySettingsCard
+                  data={localData.security}
+                  onChange={(updates) => handleUpdateSection('security', updates)}
+                  onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
+                  onSessionEdit={() => showToast('Session settings are managed by admins', 'info')}
+                />
+              )}
+              {activeTab === 'subscription' && (
+                <SubscriptionSettingsCard
+                  data={localData.subscription}
+                  onChange={(updates) => handleUpdateSection('subscription', updates)}
+                  onPaymentEdit={() => showToast('Redirecting to secure payment portal...', 'info')}
+                />
+              )}
+              {activeTab === 'hotelInfo' && (
+                <HotelInfoSettingsCard
+                  data={localData.hotelInfo}
+                  onChange={(updates) => handleUpdateSection('hotelInfo', updates)}
+                  onLogoUpload={() => showToast('Logo upload coming soon', 'info')}
+                  onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
+                />
+              )}
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="settings-actions">
-        <button className="save-button">Save Changes</button>
-        <button className="cancel-button">Cancel</button>
-      </div>
-    </div>
+      </SettingsTemplate>
+    </>
   );
 };
 

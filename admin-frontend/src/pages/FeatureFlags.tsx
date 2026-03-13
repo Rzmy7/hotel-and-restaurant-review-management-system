@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, MoreVertical } from 'lucide-react';
 import { fetchFeatureFlags } from '../services/mockService';
 import type { FeatureFlag } from '../types';
-import './FeatureFlags.css';
+
 
 export const FeatureFlags: React.FC = () => {
     const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -34,34 +34,35 @@ export const FeatureFlags: React.FC = () => {
     );
 
     return (
-        <div className="feature-flags-container">
-            <div className="dashboard-header" style={{ marginBottom: '24px' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Enable or disable features across the platform</p>
+        <div className="max-w-[1200px] mx-auto">
+            <div className="mb-6">
+                <p className="text-gray-500 text-sm">Enable or disable features across the platform</p>
             </div>
 
-            <div className="feature-search-header">
-                <div className="feature-search-wrapper">
-                    <Search className="feature-search-icon" size={18} />
+            <div className="mb-6">
+                <div className="relative max-w-[400px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
                     <input
                         type="text"
                         placeholder="Search feature flags..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full py-3 px-4 pl-10 border border-gray-200 rounded-md text-sm outline-none bg-white"
                     />
                 </div>
             </div>
 
-            <div className="feature-list">
+            <div className="flex flex-col gap-4">
                 {filteredFlags.map((flag) => (
-                    <div key={flag.id} className="feature-card">
-                        <div className="feature-info">
-                            <div className="feature-name-row">
-                                <span className="feature-name">{flag.name}</span>
-                                <span className="feature-key">{flag.key}</span>
+                    <div key={flag.id} className="bg-white border border-gray-200 rounded-lg p-6 flex items-center justify-between hover:shadow transition-shadow">
+                        <div className="flex-1">
+                            <div className="flex items-baseline gap-2 mb-1">
+                                <span className="font-medium text-[0.95rem] text-gray-900">{flag.name}</span>
+                                <span className="font-mono text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{flag.key}</span>
                             </div>
-                            <p className="feature-description">{flag.description}</p>
+                            <p className="text-gray-500 text-sm m-0">{flag.description}</p>
                         </div>
-                        <div className="feature-actions">
+                        <div className="flex items-center gap-6">
                             <label className="toggle-switch">
                                 <input
                                     type="checkbox"
@@ -72,7 +73,7 @@ export const FeatureFlags: React.FC = () => {
                                 <span className="toggle-slider"></span>
                                 <span className="toggle-label">{flag.status}</span>
                             </label>
-                            <button className="menu-btn">
+                            <button className="text-gray-500 bg-transparent border-none cursor-pointer p-1 rounded hover:bg-gray-100">
                                 <MoreVertical size={18} />
                             </button>
                         </div>

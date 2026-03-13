@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import {
   BrowserRouter,
@@ -29,24 +30,58 @@ const NotFound = () => {
       <p>Page not Found</p>
       {/* It's good practice to provide a way back */}
       <Link to="/">Go Home</Link>
+=======
+import { useState } from 'react';
+import { ToastProvider } from './contexts/ToastContext';
+import { OrganizationProvider } from './contexts/OrganizationContext';
+import { ReviewsProvider } from './contexts/ReviewsContext';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import Sidebar from './components/shared/SideBar';
+import ReviewsPage from './pages/ReviewsPage';
+import DashboardPage from './pages/DashboardPage';
+import ReviewSourcesPage from './pages/ReviewSourcesPage';
+import SettingsPage from './pages/SettingsPage';
+import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
+import SetupPage from './pages/SetupPage';
+import AddSourcesPage from './pages/AddSourcesPage';
+import ChooseSchedulePage from './pages/ChooseSchedulePage';
+import FinishSetupPage from './pages/FinishSetupPage';
+import ScrapeLauncher from './components/shared/ScrapeLauncher';
+import ProfilePage from './pages/ProfilePage';
+import NotificationsPage from './pages/NotificationsPage';
+import InsightsPage from './pages/InsightsPage';
+import CompetitorsPage from './pages/CompetitorsPage';
+import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
+import CompetitorComparison from './pages/CompetitorComparison';
+
+const NotFound = () => {
+  return (
+    <div className="text-center mt-12">
+      <h1 className="text-4xl font-bold text-gray-900">404</h1>
+      <p className="text-gray-500 mt-2">Page not Found</p>
+      <Link to="/" className="text-blue-500 hover:text-blue-700 mt-4 inline-block">Go Home</Link>
+>>>>>>> prototype-frontend
     </div>
   );
 };
 
 // Wrapper component to handle location changes
 const AppContent = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+  const handleSidebarToggle = () => {
+    setIsSidebarExpanded((prev) => !prev);
   };
 
+<<<<<<< HEAD
   // Close sidebar when route changes
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+=======
+>>>>>>> prototype-frontend
   return (
     <Routes>
       {/* Auth routes - standalone without sidebar */}
@@ -58,6 +93,7 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
 
+<<<<<<< HEAD
       {/* Main app routes with navigation sidebar */}
       <Route
         path="/*"
@@ -94,6 +130,33 @@ const AppContent = () => {
                   element={<ProfilePage toggleSidebar={toggleSidebar} />}
                 />
 
+=======
+      {/* Main app routes with sidebar */}
+      <Route
+        path="/*"
+        element={
+          <div
+            className="flex w-full h-full overflow-hidden"
+            style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
+          >
+            <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
+            <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/reviews" element={<ReviewsPage />} />
+                <Route path="/sources" element={<ReviewSourcesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/insights" element={<InsightsPage />} />
+                <Route path="/competitors" element={<CompetitorsPage />} />
+                <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
+                <Route path="/competitors/compare" element={<CompetitorComparison />} />
+                <Route
+                  path="/profile"
+                  element={<ProfilePage />}
+                />
+>>>>>>> prototype-frontend
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
@@ -104,11 +167,24 @@ const AppContent = () => {
   );
 };
 
+import { ThemeProvider } from './contexts/ThemeContext';
+import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
+
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <ToastProvider>
+          <NavigationBlockerProvider>
+            <OrganizationProvider>
+              <ReviewsProvider>
+                <AppContent />
+              </ReviewsProvider>
+            </OrganizationProvider>
+          </NavigationBlockerProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

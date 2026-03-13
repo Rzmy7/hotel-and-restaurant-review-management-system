@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SetupLayout from '../components/SetupLayout';
+import SetupLayout from '../components/shared/SetupLayout';
 import { Clock, Calendar } from 'lucide-react';
 
 type ScheduleType = 'hourly' | 'daily' | 'weekly';
@@ -17,108 +17,22 @@ const ChooseSchedulePage = () => {
     navigate('/setup/sources');
   };
 
-  const styles = {
-    title: {
-      fontSize: '32px',
-      fontWeight: 600,
-      color: '#1f2937',
-      textAlign: 'center' as const,
-      marginBottom: '12px',
-    },
-    subtitle: {
-      fontSize: '15px',
-      color: '#9ca3af',
-      textAlign: 'center' as const,
-      marginBottom: '50px',
-    },
-    optionsContainer: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, 1fr)',
-      gap: '20px',
-      marginBottom: '60px',
-    },
-    optionCard: (selected: boolean) => ({
-      border: selected ? '2px solid #d1d5db' : '1px solid #e5e7eb',
-      borderRadius: '12px',
-      padding: '32px 24px',
-      display: 'flex',
-      flexDirection: 'column' as const,
-      alignItems: 'center',
-      cursor: 'pointer',
-      position: 'relative' as const,
-      backgroundColor: selected ? '#fafafa' : '#ffffff',
-      transition: 'all 0.2s',
-      boxShadow: selected ? '0 2px 8px rgba(0, 0, 0, 0.08)' : 'none',
-    }),
-    radioContainer: {
-      position: 'absolute' as const,
-      top: '16px',
-      right: '16px',
-      width: '20px',
-      height: '20px',
-      borderRadius: '50%',
-      border: '2px solid #d1d5db',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'white',
-    },
-    radioInner: {
-      width: '10px',
-      height: '10px',
-      borderRadius: '50%',
-      backgroundColor: '#1f2937',
-    },
-    recommendedBadge: {
-      position: 'absolute' as const,
-      top: '10px',
-      left: '10px',
-      backgroundColor: '#fef3c7',
-      color: '#92400e',
-      padding: '4px 12px',
-      borderRadius: '12px',
-      fontSize: '11px',
-      fontWeight: 600,
-    },
-    iconWrapper: (color: string) => ({
-      width: '64px',
-      height: '64px',
-      borderRadius: '50%',
-      backgroundColor: `${color}15`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: '20px',
-    }),
-    optionTitle: {
-      fontSize: '20px',
-      fontWeight: 600,
-      color: '#1f2937',
-      marginBottom: '8px',
-      textAlign: 'center' as const,
-    },
-    optionDescription: {
-      fontSize: '13px',
-      color: '#9ca3af',
-      textAlign: 'center' as const,
-      lineHeight: '1.5',
-    },
-  };
-
   const scheduleOptions = [
     {
       id: 'hourly' as ScheduleType,
       title: 'Hourly Fetching',
       description: 'Ideal for high-activity hotels with frequent reviews',
       icon: Clock,
-      iconColor: '#ef4444',
+      iconColor: 'text-red-500',
+      iconBg: 'bg-red-50',
     },
     {
       id: 'daily' as ScheduleType,
       title: 'Daily Fetching',
       description: 'Balanced schedule for most organizations',
       icon: Calendar,
-      iconColor: '#ec4899',
+      iconColor: 'text-pink-500',
+      iconBg: 'bg-pink-50',
       recommended: true,
     },
     {
@@ -126,7 +40,8 @@ const ChooseSchedulePage = () => {
       title: 'Weekly Fetching',
       description: 'For low-traffic sources or test environments',
       icon: Calendar,
-      iconColor: '#06b6d4',
+      iconColor: 'text-cyan-500',
+      iconBg: 'bg-cyan-50',
     },
   ];
 
@@ -136,47 +51,45 @@ const ChooseSchedulePage = () => {
       onContinue={handleContinue}
       onBack={handleBack}
     >
-      <h1 style={styles.title}>Choose How Often to Fetch Reviews</h1>
-      <p style={styles.subtitle}>
+      <h1 className="text-[32px] font-semibold text-gray-800 text-center mb-3">
+        Choose How Often to Fetch Reviews
+      </h1>
+      <p className="text-[15px] text-gray-400 text-center mb-12">
         Select one of the recommended schedules. You can modify this anytime in
         source settings
       </p>
 
-      <div style={styles.optionsContainer}>
+      <div className="grid grid-cols-3 gap-5 mb-14 max-md:grid-cols-1">
         {scheduleOptions.map((option) => {
           const Icon = option.icon;
           const isSelected = selectedSchedule === option.id;
-          
+
           return (
             <div
               key={option.id}
-              style={styles.optionCard(isSelected)}
+              className={`relative rounded-xl p-8 pt-10 flex flex-col items-center cursor-pointer transition-all ${isSelected
+                  ? 'border-2 border-gray-300 bg-gray-50 shadow-sm'
+                  : 'border border-gray-200 bg-white hover:border-gray-300'
+                }`}
               onClick={() => setSelectedSchedule(option.id)}
-              onMouseEnter={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.borderColor = '#e5e7eb';
-                }
-              }}
             >
               {option.recommended && (
-                <div style={styles.recommendedBadge}>Recommended</div>
+                <div className="absolute top-2.5 left-2.5 bg-amber-100 text-amber-800 py-1 px-3 rounded-xl text-[11px] font-semibold">
+                  Recommended
+                </div>
               )}
-              
-              <div style={styles.radioContainer}>
-                {isSelected && <div style={styles.radioInner} />}
+
+              {/* Radio */}
+              <div className="absolute top-4 right-4 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center bg-white">
+                {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-gray-900" />}
               </div>
 
-              <div style={styles.iconWrapper(option.iconColor)}>
-                <Icon size={32} color={option.iconColor} strokeWidth={2} />
+              <div className={`w-16 h-16 rounded-full ${option.iconBg} flex items-center justify-center mb-5`}>
+                <Icon size={32} className={option.iconColor} strokeWidth={2} />
               </div>
 
-              <div style={styles.optionTitle}>{option.title}</div>
-              <div style={styles.optionDescription}>{option.description}</div>
+              <div className="text-xl font-semibold text-gray-800 mb-2 text-center">{option.title}</div>
+              <div className="text-[13px] text-gray-400 text-center leading-relaxed">{option.description}</div>
             </div>
           );
         })}

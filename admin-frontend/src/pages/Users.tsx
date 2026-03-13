@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Plus, MoreVertical } from 'lucide-react';
 import { fetchUsers } from '../services/mockService';
 import type { User } from '../types';
-import './Users.css';
+
 
 export const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -48,20 +48,21 @@ export const UsersPage: React.FC = () => {
     if (loading) return <div>Loading...</div>;
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div className="users-table-controls">
-                <div className="user-search-wrapper">
-                    <div className="search-input-wrapper" style={{ flex: 1, maxWidth: 'none' }}>
-                        <Search className="search-icon" size={18} />
+        <div className="max-w-[1200px] mx-auto">
+            <div className="mb-6 flex justify-between gap-4">
+                <div className="flex-1 max-w-[600px] relative flex gap-4">
+                    <div className="flex-1 max-w-none relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
                         <input
                             type="text"
                             placeholder="Search users..."
                             value={searchQuery}
                             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                            className="w-full py-2.5 px-4 pl-10 border border-gray-200 rounded-md text-sm outline-none bg-white"
                         />
                     </div>
                     <select
-                        className="role-select"
+                        className="border border-gray-200 rounded-md px-4 bg-white text-gray-900 outline-none cursor-pointer min-w-[120px]"
                         value={roleFilter}
                         onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
                     >
@@ -71,30 +72,30 @@ export const UsersPage: React.FC = () => {
                         <option>User</option>
                     </select>
                 </div>
-                <button className="btn-primary" onClick={() => alert('Add User Modal would open here')}>
+                <button className="bg-black text-white px-5 py-2.5 rounded-md text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity" onClick={() => alert('Add User Modal would open here')}>
                     <Plus size={18} />
                     Add User
                 </button>
             </div>
 
-            <div className="white-card">
-                <table className="data-table">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th style={{ width: '30%' }}>Name</th>
-                            <th style={{ width: '30%' }}>Email</th>
-                            <th style={{ width: '15%' }}>Role</th>
-                            <th style={{ width: '15%' }}>Status</th>
-                            <th style={{ width: '10%' }}>Actions</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200 w-[30%]">Name</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200 w-[30%]">Email</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200 w-[15%]">Role</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200 w-[15%]">Status</th>
+                            <th className="text-left px-6 py-4 font-semibold text-gray-500 text-sm border-b border-gray-200 w-[10%]">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {paginatedUsers.map((user) => (
-                            <tr key={user.id}>
-                                <td>
-                                    <div className="user-name-cell">
+                            <tr key={user.id} className="last:border-b-0">
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <div className="flex items-center gap-4 font-medium">
                                         <div
-                                            className="avatar-initials"
+                                            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
                                             style={{ backgroundColor: user.avatarColor || '#e5e7eb' }}
                                         >
                                             {getInitials(user.name)}
@@ -102,19 +103,19 @@ export const UsersPage: React.FC = () => {
                                         <span>{user.name}</span>
                                     </div>
                                 </td>
-                                <td style={{ color: 'var(--text-secondary)' }}>
+                                <td className="px-6 py-4 text-gray-500 text-sm border-b border-gray-200">
                                     {user.email}
                                 </td>
-                                <td>
-                                    <span className="role-badge">{user.role}</span>
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <span className="px-3 py-1 rounded-md text-sm font-medium bg-gray-100 text-gray-500 inline-block min-w-[80px] text-center">{user.role}</span>
                                 </td>
-                                <td>
-                                    <span className={`status-badge-sm ${user.status === 'Active' ? 'status-active-sm' : 'status-suspended-sm'}`}>
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block text-center ${user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                         {user.status}
                                     </span>
                                 </td>
-                                <td>
-                                    <button style={{ color: 'var(--text-secondary)' }}>
+                                <td className="px-6 py-4 text-gray-900 text-sm border-b border-gray-200">
+                                    <button className="text-gray-500 bg-transparent border-none cursor-pointer p-0 hover:text-gray-700">
                                         <MoreVertical size={18} />
                                     </button>
                                 </td>
@@ -122,13 +123,13 @@ export const UsersPage: React.FC = () => {
                         ))}
                     </tbody>
                 </table>
-                <div className="pagination">
-                    <div className="page-info">
+                <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
                         Showing {filteredUsers.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
                     </div>
-                    <div className="page-controls">
+                    <div className="flex gap-2">
                         <button
-                            className="page-btn"
+                            className="px-3 py-1.5 border border-gray-200 rounded-md bg-white text-sm text-gray-900 disabled:opacity-50"
                             disabled={currentPage === 1}
                             onClick={() => handlePageChange(currentPage - 1)}
                         >
@@ -137,14 +138,14 @@ export const UsersPage: React.FC = () => {
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                             <button
                                 key={page}
-                                className={`page-btn ${currentPage === page ? 'active' : ''}`}
+                                className={`px-3 py-1.5 border border-gray-200 rounded-md text-sm ${currentPage === page ? 'bg-black text-white border-black' : 'bg-white text-gray-900'}`}
                                 onClick={() => handlePageChange(page)}
                             >
                                 {page}
                             </button>
                         ))}
                         <button
-                            className="page-btn"
+                            className="px-3 py-1.5 border border-gray-200 rounded-md bg-white text-sm text-gray-900 disabled:opacity-50"
                             disabled={currentPage === totalPages || totalPages === 0}
                             onClick={() => handlePageChange(currentPage + 1)}
                         >

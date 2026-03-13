@@ -1,5 +1,5 @@
-// src/pages/DashboardPage.tsx
 import React from 'react';
+<<<<<<< HEAD
 import DashboardHeader from '../components/DashboardHeader.tsx';
 import MetricCard from '../components/MetricCard.tsx';
 import SentimentChart from '../components/SentimentChart.tsx';
@@ -11,75 +11,43 @@ import AlertsPanel from '../components/AlertsPanel.tsx';
 import ReviewSources from '../components/ReviewSources.tsx';
 import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
 import '../App.css';
+=======
+import { AlertCircle } from 'lucide-react';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { useToast } from '../contexts/ToastContext';
+import DashboardSkeleton from '../components/shared/DashboardSkeleton';
+import { DashboardTemplate } from '../components/dashboard/templates/DashboardTemplate';
+>>>>>>> prototype-frontend
 
-interface DashboardPageProps {
-  toggleSidebar: () => void;
-}
+const DashboardPage: React.FC = () => {
+  const { data, loading, error } = useDashboardData();
+  useToast();
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ toggleSidebar }) => {
-  return (
-    <>
-      {/* Header */}
-      <DashboardHeader onMenuClick={toggleSidebar} />
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
-      <div className="content-area">
-        {/* <ScrapeLauncher /> */}
-
-        {/* Metrics Grid */}
-        <div className="metrics-grid">
-          <MetricCard
-            icon={<Star size={20} />}
-            label="Average Rating"
-            value="4.3"
-            change="+0.2"
-            changeType="up"
-          />
-          <MetricCard
-            icon={<Link2 size={20} />}
-            label="Active Sources"
-            value="3"
-          />
-          <MetricCard
-            icon={<MessageSquare size={20} />}
-            label="Total Reviews"
-            value="1,247"
-            change="+12%"
-            changeType="up"
-          />
-          <MetricCard
-            icon={<Frown size={20} />}
-            label="Negative Reviews"
-            value="89"
-            change="-3%"
-            changeType="down"
-          />
+  if (error || !data) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[600px] bg-gray-50 p-8 text-center">
+        <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 mb-6">
+          <AlertCircle size={32} />
         </div>
-
-        {/* Charts Row */}
-        <div className="dashboard-grid">
-          <SentimentChart />
-          <TrendsChart />
-        </div>
-
-        {/* Reviews and Category Row */}
-        <div className="dashboard-grid">
-          <LatestReviews />
-          <CategoryPerformance />
-        </div>
-
-        {/* AI Insights and Alerts Row */}
-        <div className="dashboard-grid">
-          <AIInsights />
-          <AlertsPanel />
-        </div>
-
-        {/* Review Sources */}
-        <div className="dashboard-grid">
-          <ReviewSources />
-        </div>
+        <h2 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">System Offline</h2>
+        <p className="text-gray-500 max-w-md mx-auto mb-8 font-medium">
+          {error || "We're having trouble connecting to the analytics engine. Please check your connection or try again later."}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+        >
+          Retry Connection
+        </button>
       </div>
-    </>
-  );
+    );
+  }
+
+  return <DashboardTemplate data={data} />;
 };
 
 export default DashboardPage;
