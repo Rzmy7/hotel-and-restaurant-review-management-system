@@ -1,33 +1,292 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const auth = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (auth.user) {
+      if (auth.user.role === "ADMIN") {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [auth.user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password, rememberMe });
-    navigate('/dashboard');
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = await auth.login(email, password);
+
+      // Redirect based on RBAC role
+      if (user.role === "ADMIN") {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
-    console.log('Google login');
+    // Open backend Google OAuth flow (backend will redirect to Google)
+    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    window.location.href = `${apiBase}/login/google`;
   };
 
-  const handleFacebookLogin = () => {
-    console.log('Facebook login');
+  const styles = {
+    pageWrapper: {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999,
+    },
+    container: {
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#e5e7eb',
+      padding: '20px',
+    },
+    loginCard: {
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      padding: '48px 40px',
+      width: '100%',
+      maxWidth: '400px',
+    },
+    errorAlert: {
+      backgroundColor: '#fee2e2',
+      borderLeft: '4px solid #dc2626',
+      color: '#991b1b',
+      padding: '12px 16px',
+      borderRadius: '4px',
+      marginBottom: '20px',
+      fontSize: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      animation: 'slideIn 0.3s ease-in-out',
+    },
+    errorIcon: {
+      width: '20px',
+      height: '20px',
+      flexShrink: 0,
+      color: '#dc2626',
+    },
+    errorText: {
+      flex: 1,
+      fontWeight: 500,
+    },
+    errorClose: {
+      background: 'none',
+      border: 'none',
+      color: '#dc2626',
+      cursor: 'pointer',
+      fontSize: '18px',
+      padding: '0',
+      width: '20px',
+      height: '20px',
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    title: {
+      fontSize: '28px',
+      fontWeight: 600,
+      color: '#1f2937',
+      textAlign: 'center' as const,
+      marginBottom: '32px',
+    },
+    formGroup: {
+      marginBottom: '20px',
+    },
+    label: {
+      display: 'block',
+      fontSize: '13px',
+      fontWeight: 500,
+      color: '#374151',
+      marginBottom: '6px',
+    },
+    inputWrapper: {
+      position: 'relative' as const,
+      display: 'flex',
+      alignItems: 'center',
+    },
+    icon: {
+      position: 'absolute' as const,
+      left: '14px',
+      color: '#9ca3af',
+      width: '16px',
+      height: '16px',
+    },
+    input: {
+      width: '100%',
+      padding: '10px 14px 10px 40px',
+      border: '1px solid #e5e7eb',
+      borderRadius: '6px',
+      fontSize: '14px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+      backgroundColor: '#f9fafb',
+    },
+    passwordInput: {
+      width: '100%',
+      padding: '10px 40px 10px 40px',
+      border: '1px solid #e5e7eb',
+      borderRadius: '6px',
+      fontSize: '14px',
+      outline: 'none',
+      transition: 'border-color 0.2s',
+      backgroundColor: '#f9fafb',
+    },
+    eyeIcon: {
+      position: 'absolute' as const,
+      right: '14px',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      width: '16px',
+      height: '16px',
+    },
+    rememberRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '24px',
+      marginTop: '16px',
+    },
+    rememberMe: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+    },
+    checkbox: {
+      width: '15px',
+      height: '15px',
+      cursor: 'pointer',
+      accentColor: '#0284c7',
+    },
+    checkboxLabel: {
+      fontSize: '13px',
+      color: '#4b5563',
+      cursor: 'pointer',
+      userSelect: 'none' as const,
+    },
+    forgotPassword: {
+      fontSize: '13px',
+      color: '#0284c7',
+      textDecoration: 'none',
+      cursor: 'pointer',
+    },
+    signInButton: {
+      width: '100%',
+      padding: '11px',
+      backgroundColor: '#0284c7',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: 600,
+      cursor: 'pointer',
+      marginBottom: '20px',
+      transition: 'background-color 0.2s',
+    },
+    signUpText: {
+      textAlign: 'center' as const,
+      fontSize: '13px',
+      color: '#6b7280',
+      marginBottom: '20px',
+    },
+    signUpLink: {
+      color: '#0284c7',
+      textDecoration: 'none',
+      fontWeight: 500,
+      cursor: 'pointer',
+      marginLeft: '4px',
+    },
+    divider: {
+      textAlign: 'center' as const,
+      fontSize: '13px',
+      color: '#9ca3af',
+      marginBottom: '20px',
+      position: 'relative' as const,
+    },
+    socialButtons: {
+      display: 'flex',
+      gap: '12px',
+    },
+    socialButton: {
+      flex: 1,
+      padding: '10px 16px',
+      backgroundColor: 'white',
+      border: '1px solid #e5e7eb',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: 500,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
+      transition: 'background-color 0.2s, border-color 0.2s',
+      color: '#374151',
+    },
   };
 
   return (
-    <div className="fixed inset-0 z-[9999]">
-      <div className="min-h-full flex items-center justify-center bg-gray-200 p-5">
-        <div className="bg-white rounded-xl shadow-sm p-12 w-full max-w-[400px]">
-          <h1 className="text-[28px] font-semibold text-gray-800 text-center mb-8">Login</h1>
+    <div style={styles.pageWrapper}>
+      <style>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+      <div style={styles.container}>
+        <div style={styles.loginCard}>
+          <h1 style={styles.title}>Login</h1>
+
+          {error && (
+            <div style={styles.errorAlert}>
+              <AlertCircle style={styles.errorIcon} />
+              <span style={styles.errorText}>{error}</span>
+              <button
+                type="button"
+                style={styles.errorClose}
+                onClick={() => setError(null)}
+                aria-label="Close alert"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* Email */}
@@ -80,24 +339,29 @@ const LoginPage = () => {
                 />
                 <span className="text-[13px] text-gray-600 select-none">Remember me</span>
               </label>
-              <a href="/forgot-password" className="text-[13px] text-blue-500 no-underline hover:underline">
+              <Link to="/forgot-password" style={styles.forgotPassword}>
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-colors mb-5"
+              style={{
+                ...styles.signInButton,
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+              disabled={loading}
             >
-              Sign In
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
           <p className="text-center text-[13px] text-gray-500 mb-5">
             Don't have an account?
-            <a href="/signup" className="text-blue-500 no-underline font-medium ml-1 hover:underline">
+            <Link to="/signup" style={styles.signUpLink}>
               Sign up
-            </a>
+            </Link>
           </p>
 
           <div className="text-center text-[13px] text-gray-400 mb-5">Or continue with</div>
@@ -115,16 +379,6 @@ const LoginPage = () => {
                 <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
               </svg>
               Google
-            </button>
-            <button
-              type="button"
-              className="flex-1 py-2.5 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 cursor-pointer flex items-center justify-center gap-2 transition-colors hover:bg-gray-50 hover:border-gray-300"
-              onClick={handleFacebookLogin}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-              Facebook
             </button>
           </div>
         </div>

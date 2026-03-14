@@ -32,6 +32,12 @@ const NotFound = () => {
   );
 };
 
+const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
 // Wrapper component to handle location changes
 const AppContent = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -45,6 +51,9 @@ const AppContent = () => {
       {/* Auth routes - standalone without sidebar */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/setup/sources" element={<AddSourcesPage />} />
       <Route path="/setup/schedule" element={<ChooseSchedulePage />} />
@@ -88,6 +97,9 @@ const AppContent = () => {
 
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function App() {
   return (
@@ -97,7 +109,9 @@ function App() {
           <NavigationBlockerProvider>
             <OrganizationProvider>
               <ReviewsProvider>
-                <AppContent />
+                <AuthProvider>
+                  <AppContent />
+                </AuthProvider>
               </ReviewsProvider>
             </OrganizationProvider>
           </NavigationBlockerProvider>

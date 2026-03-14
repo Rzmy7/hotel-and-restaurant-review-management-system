@@ -50,3 +50,6 @@ backend/app/analyzed_data_frontend.json
 backend/app/promptForFrontender.txt
 backend/app/test/services/analyzed_data_frontend.json
 backend/app/test/services/promptForFrontender.txt
+
+.vscode/
+*.vscode/
