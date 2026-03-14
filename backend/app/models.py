@@ -26,6 +26,7 @@ class User(Base):
     full_name = Column(String(200), nullable=True)
     phone = Column(String(30), nullable=True)
     profile_image_url = Column(String(500), nullable=True)
+    google_id = Column(String, nullable=True)
 
     is_active = Column(Boolean, nullable=False, default=True)
     is_email_verified = Column(Boolean, nullable=False, default=False)
