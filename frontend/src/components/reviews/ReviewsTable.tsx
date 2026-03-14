@@ -1,12 +1,17 @@
 import { MessageSquareQuote } from 'lucide-react';
-import { useReviews } from '../../contexts/ReviewsContext';
+import { useReviewsStore } from '../../stores/useReviewsStore';
+import { useReviewFilters } from '../../hooks/useReviewFilters';
 import ReviewsTableHeader from './ReviewsTableHeader';
 import ReviewsTableRow from './ReviewsTableRow';
 import ReviewsTablePagination from './ReviewsTablePagination';
 import type { Review } from '../../types/reviews';
 
 const ReviewsTable = () => {
-    const { reviews, pagination, loading: isLoading, setPage, openReview } = useReviews();
+    const reviews = useReviewsStore(state => state.reviews);
+    const loading = useReviewsStore(state => state.loading);
+    const pagination = useReviewsStore(state => state.pagination);
+    const openReview = useReviewsStore(state => state.openReview);
+    const { setPage } = useReviewFilters();
     const { page, totalPages, limit, total } = pagination;
     const currentReviews = reviews;
 
@@ -16,7 +21,7 @@ const ReviewsTable = () => {
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                     <ReviewsTableHeader />
                     <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-                        {isLoading ? (
+                        {loading ? (
                             Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="animate-pulse">
                                     <td colSpan={6} className="px-6 py-6"><div className="h-12 bg-gray-50 dark:bg-slate-700 rounded" /></td>

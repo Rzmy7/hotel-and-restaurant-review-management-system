@@ -1,9 +1,14 @@
 import { Search, Check, ChevronDown, X } from 'lucide-react';
-import { useReviews } from '../../contexts/ReviewsContext';
+import { useReviewsStore } from '../../stores/useReviewsStore';
+import { useReviewFilters } from '../../hooks/useReviewFilters';
 import { useState } from 'react';
 import type { FilterState } from '../../types/reviews';
 const ReviewsToolbar = () => {
-    const { filters, setSearchQuery, toggleFilter, pagination, sourceOptions, categoryOptions } = useReviews();
+    const sourceOptions = useReviewsStore(state => state.sourceOptions);
+    const categoryOptions = useReviewsStore(state => state.categoryOptions);
+    const pagination = useReviewsStore(state => state.pagination);
+    const { filters, setSearchQuery, toggleFilter } = useReviewFilters();
+    
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
 

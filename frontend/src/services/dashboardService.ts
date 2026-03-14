@@ -7,12 +7,15 @@ class DashboardService {
      * Fetches the dashboard summary metrics, charts, and insights.
      */
     async getDashboardSummary(orgId: string): Promise<DashboardResponse> {
-        // In a production app, we would use the apiClient to fetch real data:
-        // return apiClient.get<DashboardResponse>(`/api/organizations/${orgId}/dashboard`);
-
-        // Simulating an API call with the mock data
-        await apiClient.get(`/api/organizations/${orgId}/dashboard`);
-        return MOCK_DASHBOARD_DATA as unknown as DashboardResponse;
+        try {
+            // Attempt to hit the real API
+            const response = await apiClient.get<DashboardResponse>(`/api/organizations/${orgId}/dashboard`);
+            return response;
+        } catch (error) {
+            console.warn('Backend not detected or returned error, falling back to mock dashboard data.', error);
+            // Fallback to mock data if backend fails
+            return MOCK_DASHBOARD_DATA as unknown as DashboardResponse;
+        }
     }
 }
 

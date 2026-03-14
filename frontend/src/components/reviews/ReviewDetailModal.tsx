@@ -1,6 +1,7 @@
 import { Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, PenTool, Scissors, Copy, CheckCircle2, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review } from '../../types/reviews';
-import { useReviews } from '../../contexts/ReviewsContext';
+import { useReviewsStore } from '../../stores/useReviewsStore';
+import { useReviewFilters } from '../../hooks/useReviewFilters';
 import { useState, useEffect } from 'react';
 import { reviewsService } from '../../services/reviewsService';
 import ReviewDetailLightbox from './ReviewDetailLightbox';
@@ -14,7 +15,12 @@ interface ReviewDetailModalProps {
 }
 
 const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) => {
-  const { navigateReview, reviews, refreshData } = useReviews();
+  const navigateReview = useReviewsStore(state => state.navigateReview);
+  const reviews = useReviewsStore(state => state.reviews);
+  const refreshDataStore = useReviewsStore(state => state.refreshData);
+  const { fetchParams } = useReviewFilters();
+  const refreshData = () => refreshDataStore(fetchParams);
+
   const [draftReply, setDraftReply] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

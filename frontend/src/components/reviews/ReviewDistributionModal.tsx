@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { X, Star, BarChart2, Globe, ChevronDown, Check } from 'lucide-react';
-import { useReviews } from '../../contexts/ReviewsContext';
+import { useReviewsStore } from '../../stores/useReviewsStore';
 
 interface ReviewDistributionModalProps {
     isOpen: boolean;
@@ -8,7 +8,7 @@ interface ReviewDistributionModalProps {
 }
 
 export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = ({ isOpen, onClose }) => {
-    const { reviews } = useReviews();
+    const reviews = useReviewsStore(state => state.reviews);
     const [selectedSource, setSelectedSource] = useState<string>('All Sources');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);

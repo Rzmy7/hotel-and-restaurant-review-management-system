@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronDown, Check, Plus, Building2 } from 'lucide-react';
 import { navigationConfig } from '../../config/navigation';
 import type { SidebarItemData, SidebarGroupData } from '../../types/navigation';
-import { useOrganizations } from '../../contexts/OrganizationContext';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { useNavigationBlocker } from '../../contexts/NavigationBlockerContext';
 import { useAuth } from '../../context/AuthContext';
 import LogoutConfirmationModal from './LogoutConfirmationModal';
@@ -73,7 +73,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
  * Renders the organization switcher and the sidebar toggle button.
  */
 const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = ({ isExpanded, onToggle }) => {
-  const { organizations, currentOrg, switchOrganization, addOrganization } = useOrganizations();
+  const organizations = useOrganizationStore(state => state.organizations);
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const switchOrganization = useOrganizationStore(state => state.switchOrganization);
+  const addOrganization = useOrganizationStore(state => state.addOrganization);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

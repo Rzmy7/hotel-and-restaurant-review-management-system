@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // Providers and Contexts
 import { ToastProvider } from './contexts/ToastContext';
-import { OrganizationProvider } from './contexts/OrganizationContext';
-import { ReviewsProvider } from './contexts/ReviewsContext';
+
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
@@ -12,6 +11,9 @@ import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
 // Components
 import Sidebar from './components/shared/SideBar';
 import ScrapeLauncher from './components/shared/ScrapeLauncher';
+
+// Stores
+import { useOrganizationStore } from './stores/useOrganizationStore';
 
 // Pages - Auth & Setup
 import LoginPage from './pages/LoginPage';
@@ -72,6 +74,11 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const AppContent: React.FC = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const fetchOrganizations = useOrganizationStore(state => state.fetchOrganizations);
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, [fetchOrganizations]);
 
   /**
    * Toggles the expanded/collapsed state of the navigation sidebar.
@@ -164,13 +171,9 @@ function App() {
       <BrowserRouter>
         <ToastProvider>
           <NavigationBlockerProvider>
-            <OrganizationProvider>
-              <ReviewsProvider>
-                <AuthProvider>
-                  <AppContent />
-                </AuthProvider>
-              </ReviewsProvider>
-            </OrganizationProvider>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
           </NavigationBlockerProvider>
         </ToastProvider>
       </BrowserRouter>

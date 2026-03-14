@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { DashboardResponse } from '../types/dashboard';
-import { useOrganizations } from '../contexts/OrganizationContext';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { dashboardService } from '../services/dashboardService';
 
 interface DashboardState {
@@ -10,7 +10,7 @@ interface DashboardState {
 }
 
 export const useDashboardData = () => {
-    const { currentOrg } = useOrganizations();
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
     const [state, setState] = useState<DashboardState>({
         data: null,
         loading: true,

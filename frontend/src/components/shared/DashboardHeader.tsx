@@ -4,10 +4,13 @@ import { useToast } from '../../contexts/ToastContext';
 import NotificationPanel from '../shared/NotificationPanel';
 import ProfileDropdown from '../shared/ProfileDropdown';
 import OrganizationSwitcher from '../shared/OrganizationSwitcher';
-import { useOrganizations } from '../../contexts/OrganizationContext';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 
 const DashboardHeader: React.FC = () => {
-  const { organizations, currentOrg, switchOrganization, addOrganization } = useOrganizations();
+  const organizations = useOrganizationStore(state => state.organizations);
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const switchOrganization = useOrganizationStore(state => state.switchOrganization);
+  const addOrganization = useOrganizationStore(state => state.addOrganization);
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);

@@ -1,6 +1,8 @@
 import { RefreshCw, Download, Calendar } from 'lucide-react';
 import { useState } from 'react';
-import { useReviews } from '../contexts/ReviewsContext';
+import { useReviewsStore } from '../stores/useReviewsStore';
+import { useReviewFilters } from '../hooks/useReviewFilters';
+import { useEffect } from 'react';
 
 // New Components
 import ReviewStats from '../components/reviews/ReviewStats';
@@ -10,8 +12,26 @@ import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
 
 const ReviewsPageContent = () => {
-  const { stats, loading, refreshData, pagination, selectedReview, isModalOpen, closeReview, filters, setDateRange } = useReviews();
+  const stats = useReviewsStore(state => state.stats);
+  const loading = useReviewsStore(state => state.loading);
+  const pagination = useReviewsStore(state => state.pagination);
+  const selectedReview = useReviewsStore(state => state.selectedReview);
+  const isModalOpen = useReviewsStore(state => state.isModalOpen);
+  const closeReview = useReviewsStore(state => state.closeReview);
+  const fetchReviews = useReviewsStore(state => state.fetchReviews);
+  const refreshDataStore = useReviewsStore(state => state.refreshData);
+  
+  const { filters, setDateRange, fetchParams, setPage } = useReviewFilters();
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+
+  useEffect(() => {
+    fetchReviews(fetchParams);
+  }, [fetchParams, fetchReviews]);
+
+  const refreshData = () => {
+    setPage(0);
+    refreshDataStore(fetchParams);
+  };
 
   const handleDateRangeApply = (dateFrom: string, dateTo: string) => {
     setDateRange(dateFrom, dateTo);

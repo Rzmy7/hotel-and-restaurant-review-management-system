@@ -31720,7 +31720,9 @@ class ReviewsService {
      */
     async getReviews(params: FetchReviewsParams): Promise<PaginatedResponse<Review>> {
         // Simulate network call overhead from the mock layer architecture
-        await apiClient.get('/api/reviews', params as Record<string, unknown>);
+        try {
+            await apiClient.get('/api/reviews', params as Record<string, unknown>);
+        } catch(e) { /* ignore to allow mock fallback */ }
 
         const baseData = await this.getBaseData();
         let filteredData = [...baseData];
@@ -31800,7 +31802,9 @@ class ReviewsService {
      * Simulated Endpoint: GET /api/reviews/stats
      */
     async getStats(): Promise<ReviewStats> {
-        await apiClient.get('/api/reviews/stats');
+        try {
+            await apiClient.get('/api/reviews/stats');
+        } catch(e) { /* ignore */ }
 
         const reviews = await this.getBaseData();
         const totalReviews = reviews.length;
@@ -31842,7 +31846,9 @@ class ReviewsService {
      * Simulated Endpoint: POST /api/reviews/generate
      */
     async generateReply(review: Review, tone: 'professional' | 'casual' | 'standard' = 'standard', length: 'short' | 'standard' = 'standard'): Promise<string> {
-        await apiClient.post('/api/reviews/generate', { reviewId: review.id, tone, length });
+        try {
+            await apiClient.post('/api/reviews/generate', { reviewId: review.id, tone, length });
+        } catch(e) { /* ignore */ }
 
         let base = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
 
@@ -31870,7 +31876,9 @@ class ReviewsService {
      * Simulated Endpoint: PUT /api/reviews/:id/status
      */
     async updateReviewStatus(reviewId: string | number, status: Review['status']): Promise<void> {
-        await apiClient.put(`/api/reviews/${reviewId}/status`, { status });
+        try {
+            await apiClient.put(`/api/reviews/${reviewId}/status`, { status });
+        } catch(e) { /* ignore */ }
         const reviews = await this.getBaseData();
         const review = reviews.find(r => r.id === reviewId);
         if (review) review.status = status;
@@ -31880,7 +31888,9 @@ class ReviewsService {
      * Simulated Endpoint: POST /api/reviews/:id/reply
      */
     async saveReply(reviewId: string | number, replyText: string): Promise<void> {
-        await apiClient.post(`/api/reviews/${reviewId}/reply`, { replyText });
+        try {
+            await apiClient.post(`/api/reviews/${reviewId}/reply`, { replyText });
+        } catch(e) { /* ignore */ }
         const reviews = await this.getBaseData();
         const review = reviews.find(r => r.id === reviewId);
         if (review) {
