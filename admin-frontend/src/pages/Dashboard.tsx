@@ -10,7 +10,7 @@ import {
     fetchReviewData, 
     fetchSystemAlerts, 
     fetchRecentActivity 
-} from '../services/mockService';
+} from '../services/dashboardService';
 import type { DashboardStats, ChartDataPoint, SystemAlert, RecentActivity as RecentActivityType } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -23,19 +23,25 @@ export const Dashboard: React.FC = () => {
 
     useEffect(() => {
         const loadData = async () => {
-            const [statsData, usage, reviews, alertsData, activitiesData] = await Promise.all([
-                fetchDashboardStats(),
-                fetchUsageData(),
-                fetchReviewData(),
-                fetchSystemAlerts(),
-                fetchRecentActivity()
-            ]);
-            setStats(statsData);
-            setUsageData(usage);
-            setReviewData(reviews);
-            setAlerts(alertsData);
-            setActivities(activitiesData);
-            setLoading(false);
+            try {
+                const [statsData, usage, reviews, alertsData, activitiesData] = await Promise.all([
+                    fetchDashboardStats(),
+                    fetchUsageData(),
+                    fetchReviewData(),
+                    fetchSystemAlerts(),
+                    fetchRecentActivity()
+                ]);
+
+                setStats(statsData);
+                setUsageData(usage);
+                setReviewData(reviews);
+                setAlerts(alertsData);
+                setActivities(activitiesData);
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+            } finally {
+                setLoading(false);
+            }
         };
 
         loadData();

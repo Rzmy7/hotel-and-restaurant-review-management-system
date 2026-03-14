@@ -3,7 +3,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { OrganizationStatsGrid } from '../components/OrganizationStatsGrid';
 import { OrganizationFilters } from '../components/OrganizationFilters';
 import { OrganizationTable } from '../components/OrganizationTable';
-import { fetchOrganizations, fetchOrgStats } from '../services/mockService';
+import { fetchOrganizations, fetchOrgStats } from '../services/adminDataService';
 import type { Organization, OrganizationStats } from '../types';
 
 export const Organizations: React.FC = () => {
@@ -17,13 +17,18 @@ export const Organizations: React.FC = () => {
 
     useEffect(() => {
         const loadData = async () => {
-            const [orgData, statsData] = await Promise.all([
-                fetchOrganizations(),
-                fetchOrgStats()
-            ]);
-            setOrgs(orgData);
-            setStats(statsData);
-            setLoading(false);
+            try {
+                const [orgData, statsData] = await Promise.all([
+                    fetchOrganizations(),
+                    fetchOrgStats()
+                ]);
+                setOrgs(orgData);
+                setStats(statsData);
+            } catch (error) {
+                console.error('Failed to load organizations data:', error);
+            } finally {
+                setLoading(false);
+            }
         };
         loadData();
     }, []);

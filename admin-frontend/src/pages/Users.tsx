@@ -4,11 +4,16 @@ import { UserStatsGrid } from '../components/UserStatsGrid';
 import { UserFilters } from '../components/UserFilters';
 import { UserTable } from '../components/UserTable';
 import { AddUserModal } from '../components/AddUserModal';
-import { fetchUsers } from '../services/mockService';
+import { fetchUsers, fetchUserStats } from '../services/adminDataService';
 import type { User } from '../types';
 
 export const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
+    const [stats, setStats] = useState({
+        allActiveUsers: 0,
+        todayActiveUsers: 0,
+        todayRegistered: 0,
+    });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState('All Roles');
@@ -20,17 +25,26 @@ export const UsersPage: React.FC = () => {
 
     useEffect(() => {
         const loadData = async () => {
-            const userData = await fetchUsers();
-            setUsers(userData);
-            setLoading(false);
+            try {
+                const [userData, statsData] = await Promise.all([
+                    fetchUsers(),
+                    fetchUserStats(),
+                ]);
+                setUsers(userData);
+                setStats(statsData);
+            } catch (error) {
+                console.error('Failed to load users data:', error);
+            } finally {
+                setLoading(false);
+            }
         };
         loadData();
     }, []);
 
     // Stats calculations
-    const allActiveUsers = users.filter(u => u.status === 'Active').length;
-    const todayActiveUsers = 89; // Mock data
-    const todayRegistered = 12; // Mock data
+    const allActiveUsers = stats.allActiveUsers || users.filter(u => u.status === 'Active').length;
+    const todayActiveUsers = stats.todayActiveUsers;
+    const todayRegistered = stats.todayRegistered;
 
     // Filter Logic
     const filteredUsers = users.filter(user => {
