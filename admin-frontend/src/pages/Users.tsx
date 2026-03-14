@@ -4,7 +4,7 @@ import { UserStatsGrid } from '../components/UserStatsGrid';
 import { UserFilters } from '../components/UserFilters';
 import { UserTable } from '../components/UserTable';
 import { AddUserModal } from '../components/AddUserModal';
-import { fetchUsers, fetchUserStats } from '../services/adminDataService';
+import { createUser, deleteUser, fetchUserStats, fetchUsers, updateUser } from '../services/adminDataService';
 import type { User } from '../types';
 
 export const UsersPage: React.FC = () => {
@@ -68,20 +68,64 @@ export const UsersPage: React.FC = () => {
         }
     };
 
-    const handleAddUser = (newUser: Omit<User, 'id' | 'plan'>) => {
-        const user: User = {
-            ...newUser,
-            id: String(users.length + 1),
-        };
-        setUsers([user, ...users]);
+    const refreshStats = async () => {
+        try {
+            const latestStats = await fetchUserStats();
+            setStats(latestStats);
+        } catch (error) {
+            console.error('Failed to refresh user stats:', error);
+        }
     };
 
-    const handleUserUpdate = (updatedUser: User) => {
-        setUsers(prevUsers => 
-            prevUsers.map(user => 
-                user.id === updatedUser.id ? updatedUser : user
-            )
-        );
+    const handleAddUser = async (newUser: Omit<User, 'id' | 'plan'>) => {
+        try {
+            const createdUser = await createUser({
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role,
+                status: newUser.status,
+                organizations: newUser.organizations,
+                groups: newUser.groups,
+            });
+
+            setUsers(prevUsers => [createdUser, ...prevUsers]);
+            await refreshStats();
+        } catch (error) {
+            console.error('Failed to add user:', error);
+        }
+    };
+
+    const handleUserUpdate = async (updatedUser: User) => {
+        try {
+            const savedUser = await updateUser(updatedUser.id, {
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                status: updatedUser.status,
+                plan: updatedUser.plan,
+                organizations: updatedUser.organizations,
+                groups: updatedUser.groups,
+            });
+
+            setUsers(prevUsers =>
+                prevUsers.map(user =>
+                    user.id === savedUser.id ? savedUser : user
+                )
+            );
+            await refreshStats();
+        } catch (error) {
+            console.error('Failed to update user:', error);
+        }
+    };
+
+    const handleUserDelete = async (userId: string) => {
+        try {
+            await deleteUser(userId);
+            setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+            await refreshStats();
+        } catch (error) {
+            console.error('Failed to delete user:', error);
+        }
     };
 
     if (loading) {
@@ -127,6 +171,7 @@ export const UsersPage: React.FC = () => {
                 startIndex={startIndex}
                 onPageChange={handlePageChange}
                 onUserUpdate={handleUserUpdate}
+                onUserDelete={handleUserDelete}
             />
         </div>
     );

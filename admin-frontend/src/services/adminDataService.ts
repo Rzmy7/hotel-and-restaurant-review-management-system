@@ -7,16 +7,20 @@ const getBaseUrl = (): string => {
     return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
 };
 
-const fetchJson = async <T>(path: string): Promise<T> => {
+const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(`${getBaseUrl()}${path}`, {
-        method: 'GET',
         headers: {
             'Content-Type': 'application/json',
         },
+        ...init,
     });
 
     if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
+    }
+
+    if (response.status === 204) {
+        return undefined as T;
     }
 
     return response.json() as Promise<T>;
@@ -28,18 +32,58 @@ export interface UserStatsData {
     todayRegistered: number;
 }
 
+export interface UserUpsertPayload {
+    name: string;
+    email: string;
+    role: User['role'];
+    status: User['status'];
+    plan?: User['plan'];
+    organizations?: string[];
+    groups?: string[];
+}
+
+export interface UserUpdatePayload {
+    name?: string;
+    email?: string;
+    role?: User['role'];
+    status?: User['status'];
+    plan?: User['plan'];
+    organizations?: string[];
+    groups?: string[];
+}
+
 export const fetchOrganizations = (): Promise<Organization[]> => {
-    return fetchJson<Organization[]>('/admin/organizations');
+    return requestJson<Organization[]>('/admin/organizations', { method: 'GET' });
 };
 
 export const fetchOrgStats = (): Promise<OrganizationStats> => {
-    return fetchJson<OrganizationStats>('/admin/organizations/stats');
+    return requestJson<OrganizationStats>('/admin/organizations/stats', { method: 'GET' });
 };
 
 export const fetchUsers = (): Promise<User[]> => {
-    return fetchJson<User[]>('/admin/users');
+    return requestJson<User[]>('/admin/users', { method: 'GET' });
 };
 
 export const fetchUserStats = (): Promise<UserStatsData> => {
-    return fetchJson<UserStatsData>('/admin/users/stats');
+    return requestJson<UserStatsData>('/admin/users/stats', { method: 'GET' });
+};
+
+export const createUser = (payload: UserUpsertPayload): Promise<User> => {
+    return requestJson<User>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+};
+
+export const updateUser = (userId: string, payload: UserUpdatePayload): Promise<User> => {
+    return requestJson<User>(`/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+    });
+};
+
+export const deleteUser = async (userId: string): Promise<void> => {
+    await requestJson<{ status: string; userId: string }>(`/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+    });
 };

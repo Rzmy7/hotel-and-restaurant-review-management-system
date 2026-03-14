@@ -111,14 +111,14 @@ export const fetchUsers = (): Promise<User[]> => {
         setTimeout(() => {
             resolve([
                 { id: '1', name: 'Sarah Johnson', email: 'sarah.johnson@company.com', role: 'Admin', status: 'Active', avatarColor: '#bfdbfe' },
-                { id: '2', name: 'Michael Chen', email: 'michael.chen@company.com', role: 'Manager', status: 'Active', avatarColor: '#e9d5ff' },
+                { id: '2', name: 'Michael Chen', email: 'michael.chen@company.com', role: 'User', status: 'Active', avatarColor: '#e9d5ff' },
                 { id: '3', name: 'Emily Rodriguez', email: 'emily.rodriguez@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fed7aa', organizations: ['Global Solutions'], groups: ['Developers', 'Mobile Team'] },
                 { id: '4', name: 'David Kim', email: 'david.kim@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#fecaca', organizations: ['Acme Corp'], groups: ['External Contractors'] },
-                { id: '5', name: 'Jessica Taylor', email: 'jessica.taylor@company.com', role: 'Manager', status: 'Active', avatarColor: '#ddd6fe' },
+                { id: '5', name: 'Jessica Taylor', email: 'jessica.taylor@company.com', role: 'User', status: 'Active', avatarColor: '#ddd6fe' },
                 { id: '6', name: 'Robert Anderson', email: 'robert.anderson@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#bbf7d0', organizations: ['InnovateCo'], groups: ['Developers', 'Backend Team'] },
                 { id: '7', name: 'Maria Garcia', email: 'maria.garcia@company.com', role: 'Admin', status: 'Active', avatarColor: '#fde68a' },
                 { id: '8', name: 'James Wilson', email: 'james.wilson@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#99f6e4', organizations: ['TechStart'], groups: ['Support Team'] },
-                { id: '9', name: 'Linda Martinez', email: 'linda.martinez@company.com', role: 'Manager', status: 'Active', avatarColor: '#c7d2fe' },
+                { id: '9', name: 'Linda Martinez', email: 'linda.martinez@company.com', role: 'User', status: 'Active', avatarColor: '#c7d2fe' },
                 { id: '10', name: 'Kevin Brown', email: 'kevin.brown@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fca5a5', organizations: ['Acme Corp'], groups: ['Developers', 'Frontend Team', 'QA Team'] },
             ]);
         }, 600);

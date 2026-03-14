@@ -40,7 +40,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    role: 'Admin' | 'User' | 'Manager';
+    role: 'Admin' | 'User';
     status: 'Active' | 'Suspended';
     plan?: 'Free' | 'Basic' | 'Pro' | 'Enterprise';
     avatarColor?: string;

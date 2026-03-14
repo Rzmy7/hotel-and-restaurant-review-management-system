@@ -11,7 +11,8 @@ interface UserTableProps {
     itemsPerPage: number;
     startIndex: number;
     onPageChange: (page: number) => void;
-    onUserUpdate?: (updatedUser: User) => void;
+    onUserUpdate?: (updatedUser: User) => Promise<void> | void;
+    onUserDelete?: (userId: string) => Promise<void> | void;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({
@@ -23,6 +24,7 @@ export const UserTable: React.FC<UserTableProps> = ({
     startIndex,
     onPageChange,
     onUserUpdate,
+    onUserDelete,
 }) => {
     return (
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -38,7 +40,12 @@ export const UserTable: React.FC<UserTableProps> = ({
                 </thead>
                 <tbody>
                     {users.map((user) => (
-                        <UserRow key={user.id} user={user} onUserUpdate={onUserUpdate} />
+                        <UserRow
+                            key={user.id}
+                            user={user}
+                            onUserUpdate={onUserUpdate}
+                            onUserDelete={onUserDelete}
+                        />
                     ))}
                 </tbody>
             </table>

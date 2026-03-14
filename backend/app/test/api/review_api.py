@@ -110,10 +110,38 @@ def _get_usage_rows(cursor: pyodbc.Cursor) -> list[dict]:
 	return []
 
 
-def _get_organizations_count(cursor: pyodbc.Cursor) -> int:
-	for table_name in ["organizations", "organization", "orgs", "tenants", "companies"]:
+def _get_organization_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
+	if _table_exists(cursor, "organizations"):
+		total_organizations = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.organizations")
+
+		current_month = _month_start(date.today())
+		previous_month = _shift_month(current_month, -1)
+		next_month = _shift_month(current_month, 1)
+
+		current_count = _count_scalar(
+			cursor,
+			"""
+			SELECT COUNT(*)
+			FROM dbo.organizations
+			WHERE created_at >= ? AND created_at < ?
+			""",
+			(current_month, next_month),
+		)
+		previous_count = _count_scalar(
+			cursor,
+			"""
+			SELECT COUNT(*)
+			FROM dbo.organizations
+			WHERE created_at >= ? AND created_at < ?
+			""",
+			(previous_month, current_month),
+		)
+
+		return total_organizations, _growth(current_count, previous_count)
+
+	for table_name in ["organization", "orgs", "tenants", "companies"]:
 		if _table_exists(cursor, table_name):
-			return _count_scalar(cursor, f"SELECT COUNT(*) FROM dbo.[{table_name}]")
+			return _count_scalar(cursor, f"SELECT COUNT(*) FROM dbo.[{table_name}]"), 0.0
 
 	if _table_exists(cursor, "ProcessedReviews"):
 		return _count_scalar(
@@ -122,9 +150,9 @@ def _get_organizations_count(cursor: pyodbc.Cursor) -> int:
 			SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(source)), ''))
 			FROM dbo.ProcessedReviews
 			""",
-		)
+		), 0.0
 
-	return 0
+	return 0, 0.0
 
 
 def _get_hotel_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
@@ -165,6 +193,91 @@ def _get_hotel_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
 	return total_hotels, _growth(current_count, previous_count)
 
 
+def _get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
+	if _table_exists(cursor, "users"):
+		total_users = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.users")
+
+		active_users_today = _count_scalar(
+			cursor,
+			"""
+			SELECT COUNT(*)
+			FROM dbo.users
+			WHERE is_active = 1
+			  AND CAST(last_login_at AS date) = CAST(GETDATE() AS date)
+			""",
+		)
+
+		current_month = _month_start(date.today())
+		previous_month = _shift_month(current_month, -1)
+		next_month = _shift_month(current_month, 1)
+
+		current_user_count = _count_scalar(
+			cursor,
+			"""
+			SELECT COUNT(*)
+			FROM dbo.users
+			WHERE created_at >= ? AND created_at < ?
+			""",
+			(current_month, next_month),
+		)
+		previous_user_count = _count_scalar(
+			cursor,
+			"""
+			SELECT COUNT(*)
+			FROM dbo.users
+			WHERE created_at >= ? AND created_at < ?
+			""",
+			(previous_month, current_month),
+		)
+
+		return total_users, _growth(current_user_count, previous_user_count), active_users_today
+
+	if _table_exists(cursor, "ProcessedReviews"):
+		total_users = _count_scalar(
+			cursor,
+			"""
+			SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
+			FROM dbo.ProcessedReviews
+			""",
+		)
+
+		active_users_today = _count_scalar(
+			cursor,
+			f"""
+			SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
+			FROM dbo.ProcessedReviews
+			WHERE {PROCESSED_DATE_EXPR} = CAST(GETDATE() AS date)
+			""",
+		)
+
+		current_month = _month_start(date.today())
+		previous_month = _shift_month(current_month, -1)
+		next_month = _shift_month(current_month, 1)
+
+		current_user_count = _count_scalar(
+			cursor,
+			f"""
+			SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
+			FROM dbo.ProcessedReviews
+			WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
+			""",
+			(current_month, next_month),
+		)
+		previous_user_count = _count_scalar(
+			cursor,
+			f"""
+			SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
+			FROM dbo.ProcessedReviews
+			WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
+			""",
+			(previous_month, current_month),
+		)
+
+		return total_users, _growth(current_user_count, previous_user_count), active_users_today
+
+	return 0, 0.0, 0
+
+
 @router.get("/stats")
 def get_dashboard_stats():
 	try:
@@ -179,26 +292,11 @@ def get_dashboard_stats():
 			ai_jobs_processed = 0
 			ai_jobs_growth = 0.0
 
+			total_users, users_growth, active_users_today = _get_user_metrics(cursor)
+
 			if _table_exists(cursor, "ProcessedReviews"):
 				total_reviews = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.ProcessedReviews")
 				ai_jobs_processed = total_reviews
-
-				total_users = _count_scalar(
-					cursor,
-					"""
-					SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-					FROM dbo.ProcessedReviews
-					""",
-				)
-
-				active_users_today = _count_scalar(
-					cursor,
-					f"""
-					SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-					FROM dbo.ProcessedReviews
-					WHERE {PROCESSED_DATE_EXPR} = CAST(GETDATE() AS date)
-					""",
-				)
 
 				current_month = _month_start(date.today())
 				previous_month = _shift_month(current_month, -1)
@@ -225,32 +323,12 @@ def get_dashboard_stats():
 				reviews_growth = _growth(current_review_count, previous_review_count)
 				ai_jobs_growth = reviews_growth
 
-				current_user_count = _count_scalar(
-					cursor,
-					f"""
-					SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-					FROM dbo.ProcessedReviews
-					WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
-					""",
-					(current_month, next_month),
-				)
-				previous_user_count = _count_scalar(
-					cursor,
-					f"""
-					SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-					FROM dbo.ProcessedReviews
-					WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
-					""",
-					(previous_month, current_month),
-				)
-				users_growth = _growth(current_user_count, previous_user_count)
-
-			total_organizations = _get_organizations_count(cursor)
+			total_organizations, organizations_growth = _get_organization_metrics(cursor)
 			active_hotels, hotels_growth = _get_hotel_metrics(cursor)
 
 			return {
 				"totalOrganizations": total_organizations,
-				"organizationsGrowth": 0.0,
+				"organizationsGrowth": organizations_growth,
 				"totalUsers": total_users,
 				"usersGrowth": users_growth,
 				"activeHotels": active_hotels,
