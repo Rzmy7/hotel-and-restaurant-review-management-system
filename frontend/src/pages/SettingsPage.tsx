@@ -55,6 +55,13 @@ const SettingsPage: React.FC = () => {
   }, [registerBlockHandler, unregisterBlockHandler]);
 
   useEffect(() => {
+    if (serverData && localData) {
+      const changes = getChanges();
+      setHasUnsavedChanges(changes.length > 0);
+    }
+  }, [localData, serverData]);
+
+  useEffect(() => {
     if (serverData) {
       setLocalData(serverData);
       setHasUnsavedChanges(false);
@@ -115,7 +122,6 @@ const SettingsPage: React.FC = () => {
         }
       };
     });
-    setHasUnsavedChanges(true);
   };
 
   const handleSaveAll = async () => {
@@ -132,7 +138,11 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleSaveClick = () => {
-    setIsModalOpen(true);
+    if (hasUnsavedChanges) {
+      setIsModalOpen(true);
+    } else {
+      handleSaveAll();
+    }
   };
 
   const handleModalDiscard = () => {
