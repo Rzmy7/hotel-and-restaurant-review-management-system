@@ -146,7 +146,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mr-12">
         <button
           className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm ${isFirst ? 'text-gray-200 bg-gray-50 dark:text-slate-600 dark:bg-slate-800/50 cursor-not-allowed opacity-50' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-[#4e80ee] dark:hover:text-blue-400'}`}
           onClick={() => navigateReview('prev')}
