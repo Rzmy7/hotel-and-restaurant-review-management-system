@@ -2,6 +2,7 @@ import React from 'react';
 import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
+import { useNavigate } from 'react-router-dom';
 import type { SubscriptionSettings } from '../../../types/settings';
 
 interface SubscriptionSettingsCardProps {
@@ -15,6 +16,8 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
     onChange,
     onPaymentEdit
 }) => {
+    const navigate = useNavigate();
+
     return (
         <div className="flex flex-col">
             {/* Plan Selection */}
@@ -27,7 +30,7 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
                 </Button>
                 <Button
                     variant={data.plan === 'upgrade' ? 'primary' : 'outline'}
-                    onClick={() => onChange({ plan: 'upgrade' })}
+                    onClick={() => navigate('/subscription')}
                 >
                     Upgrade Plan
                 </Button>
