@@ -60,20 +60,10 @@ const CompetitorsPage = () => {
             {/* Header Section */}
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
-                        {/* Hamburger menu icon from mockup */}
-                        <button className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors" aria-label="Menu">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </button>
-                        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-                            Competitors
-                        </h1>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-400 dark:text-slate-400 pl-9">
+                    <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                        Competitors
+                    </h1>
+                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
                         Manage your competitor list
                     </p>
                 </div>
@@ -141,12 +131,12 @@ const CompetitorsPage = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700">
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider w-[25%]">Competitor Name</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider w-[20%]">Location</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider w-[15%]">Avg Rating</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider w-[15%]">Sentiment Score</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider w-[15%]">Review Count</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider w-[10%] text-center">Action</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[25%]">Competitor Name</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">Location</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[15%]">Avg Rating</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[15%]">Sentiment Score</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[15%]">Review Count</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[10%] text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
@@ -172,7 +162,7 @@ const CompetitorsPage = () => {
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center justify-center gap-3">
-                                                <Link to="/competitors/compare" className="bg-[#4e80ee] hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                                                <Link to={`/competitors/compare?id=${competitor.id}`} className="bg-[#4e80ee] hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
                                                     Compare
                                                 </Link>
                                                 <button onClick={() => handleUntrack(competitor.id)} className="text-red-400 hover:text-red-500 p-1.5 transition-colors" aria-label="Delete">

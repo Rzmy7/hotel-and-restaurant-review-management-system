@@ -248,7 +248,13 @@ const SidebarItem: React.FC<{
   const location = useLocation();
   const { attemptNavigation } = useNavigationBlocker();
   const { logout } = useAuth();
-  const isActive = item.path ? location.pathname === item.path : false;
+  
+  // Highlighting: Check if current path matches item path or is a sub-route of it
+  const isActive = item.path 
+    ? item.path === '/' 
+      ? location.pathname === '/' 
+      : location.pathname.startsWith(item.path)
+    : false;
 
   /**
    * Handles the item click event.

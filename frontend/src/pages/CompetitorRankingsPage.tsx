@@ -50,20 +50,10 @@ const CompetitorRankingsPage = () => {
             {/* Header Section */}
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
-                        {/* Hamburger menu icon from mockup */}
-                        <button className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors" aria-label="Menu">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </button>
-                        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-                            Competitor Rankings
-                        </h1>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-400 dark:text-slate-400 pl-9">
+                    <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                        Competitor Rankings
+                    </h1>
+                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
                         Overall performance comparison
                     </p>
                 </div>

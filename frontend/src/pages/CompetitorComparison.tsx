@@ -28,6 +28,7 @@ const CompetitorComparison = () => {
         if (!competitorId) {
             setError('No competitor ID specified. Go back and click Compare on a competitor.');
             setLoading(false);
+            setInsightsLoading(false); // Resolve insights loading too
             return;
         }
         try {
@@ -66,8 +67,8 @@ const CompetitorComparison = () => {
         const gapPrefix = kpi.gap > 0 ? '+' : '';
         const isAhead = kpi.gap < 0;
         return (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">{title}</h3>
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 flex flex-col">
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-4">{title}</h3>
                 <div className="space-y-3">
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-[#4e80ee] font-medium">My Hotel</span>
@@ -100,26 +101,17 @@ const CompetitorComparison = () => {
         return <div className="min-h-full flex items-center justify-center bg-gray-50 dark:bg-slate-900"><div className="text-red-500">{error || 'Failed to load data.'}</div></div>;
     }
 
-    const aspectData: any[] = [];
-    const trendData: any[] = [];
-    const sentimentData: any[] = [];
+    const aspectData = comparison.aspectData;
+    const trendData = comparison.trendData;
+    const sentimentData = comparison.sentimentData;
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
-                <div className="flex items-center gap-4">
-                    <button className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors md:hidden" aria-label="Menu">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                    </button>
                     <div>
-                        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Competitor Comparison</h1>
-                        <p className="mt-1 text-sm text-gray-400 dark:text-slate-400">Performance comparison overview</p>
+                        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Competitor Comparison</h1>
+                        <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">Performance comparison overview</p>
                     </div>
-                </div>
 
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -161,7 +153,7 @@ const CompetitorComparison = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Aspect Comparison Radar */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6">Aspect Comparison</h3>
+                        <h3 className="text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-6">Aspect Comparison</h3>
                         <div className="h-[280px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={aspectData}>
@@ -185,7 +177,7 @@ const CompetitorComparison = () => {
 
                     {/* Rating Trend Line */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6">Rating Trend</h3>
+                        <h3 className="text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-6">Rating Trend</h3>
                         <div className="h-[280px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={trendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
@@ -203,7 +195,7 @@ const CompetitorComparison = () => {
 
                     {/* Sentiment Distribution Bar */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-6">Sentiment Distribution</h3>
+                        <h3 className="text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-6">Sentiment Distribution</h3>
                         <div className="h-[280px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={sentimentData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
