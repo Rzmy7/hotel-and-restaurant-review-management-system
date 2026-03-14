@@ -6,18 +6,42 @@ import type { SidebarItemData, SidebarGroupData } from '../../types/navigation';
 import { useOrganizations } from '../../contexts/OrganizationContext';
 import { useNavigationBlocker } from '../../contexts/NavigationBlockerContext';
 import { useAuth } from '../../context/AuthContext';
+import LogoutConfirmationModal from './LogoutConfirmationModal';
 
+/**
+ * Props for the Sidebar component.
+ */
 interface SidebarProps {
+  /** Whether the sidebar is currently in its expanded state. */
   isExpanded: boolean;
+  /** Callback to toggle the expanded/collapsed state of the sidebar. */
   onToggle: () => void;
 }
 
+/**
+ * Main Navigation Sidebar component.
+ * Manages its own logout confirmation state and renders navigation sections and footer.
+ */
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  /**
+   * Finalizes the logout process after user confirmation.
+   */
+  const handleLogoutConfirm = () => {
+    logout();
+    navigate('/login');
+    setIsLogoutModalOpen(false);
+  };
+
   return (
-    <nav
-      style={{ width: isExpanded ? 260 : 68 }}
-      className="h-full bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 flex flex-col font-sans shrink-0 relative transition-[width] duration-300 ease-in-out z-20"
-    >
+    <>
+      <nav
+        style={{ width: isExpanded ? 260 : 68 }}
+        className="h-full bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 flex flex-col font-sans shrink-0 relative transition-[width] duration-300 ease-in-out z-20"
+      >
       <SidebarHeader isExpanded={isExpanded} onToggle={onToggle} />
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 no-scrollbar">
@@ -32,12 +56,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
         ))}
       </div>
 
-      <SidebarFooter items={navigationConfig.footer} isExpanded={isExpanded} />
-    </nav>
+        <SidebarFooter items={navigationConfig.footer} isExpanded={isExpanded} onLogoutClick={() => setIsLogoutModalOpen(true)} />
+      </nav>
+
+      <LogoutConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogoutConfirm}
+      />
+    </>
   );
 };
 
-// --- Header Component ---
+/**
+ * SidebarHeader component.
+ * Renders the organization switcher and the sidebar toggle button.
+ */
 const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = ({ isExpanded, onToggle }) => {
   const { organizations, currentOrg, switchOrganization, addOrganization } = useOrganizations();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -55,6 +89,9 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
 
   if (!currentOrg) return null;
 
+  /**
+   * Generates initials for the organization name to display in the logo.
+   */
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
@@ -164,7 +201,10 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
   );
 };
 
-// --- Section Component ---
+/**
+ * SidebarSection component.
+ * Groups navigation items under a label and manages vertical spacing.
+ */
 const SidebarSection: React.FC<{
   section: SidebarGroupData;
   isExpanded: boolean;
@@ -191,7 +231,11 @@ const SidebarSection: React.FC<{
   );
 };
 
-// --- Item Component ---
+/**
+ * SidebarItem component.
+ * Renders an individual navigation link with icon, label, and optional badge.
+ * Handles interaction logic including navigation blocking and special actions like logout.
+ */
 const SidebarItem: React.FC<{
   item: SidebarItemData;
   isExpanded: boolean;
@@ -203,12 +247,15 @@ const SidebarItem: React.FC<{
   const { logout } = useAuth();
   const isActive = item.path ? location.pathname === item.path : false;
 
+  /**
+   * Handles the item click event.
+   * Intercepts logout or navigation-blocked routes.
+   */
   const handleClick = () => {
     if (!item.path) return;
 
     if (item.id === 'logout') {
-      logout();
-      navigate('/login');
+      onToggle(); // Open modal/handle logout
       return;
     }
 
@@ -262,13 +309,25 @@ const SidebarItem: React.FC<{
   );
 };
 
-// --- Footer Component ---
-const SidebarFooter: React.FC<{ items: SidebarItemData[]; isExpanded: boolean }> = ({ items, isExpanded }) => {
+/**
+ * SidebarFooter component.
+ * Renders footer navigation items (Help, Logout, etc.) and application version.
+ */
+const SidebarFooter: React.FC<{
+  items: SidebarItemData[];
+  isExpanded: boolean;
+  onLogoutClick: () => void;
+}> = ({ items, isExpanded, onLogoutClick }) => {
   return (
     <div className="mt-auto px-3 pb-3 pt-6 border-t border-gray-50 dark:border-slate-800/80">
       <div className="space-y-0.5">
         {items.map(item => (
-          <SidebarItem key={item.id} item={item} isExpanded={isExpanded} onToggle={() => { }} />
+          <SidebarItem
+            key={item.id}
+            item={item}
+            isExpanded={isExpanded}
+            onToggle={item.id === 'logout' ? onLogoutClick : () => { }}
+          />
         ))}
       </div>
       <div className={`

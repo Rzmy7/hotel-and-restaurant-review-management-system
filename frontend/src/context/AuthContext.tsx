@@ -1,21 +1,36 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
+/**
+ * Represents a user session object.
+ */
 type User = {
+    /** Unique identifier for the user. */
     user_id: string;
+    /** User's primary email address. */
     email: string;
+    /** User's display name. */
     full_name?: string;
+    /** User's system role (e.g., ADMIN, TENANT). */
     role?: string;
 };
 
+/**
+ * Interface definition for the Authentication Context.
+ */
 type AuthContextType = {
+    /** Current authenticated user or null. */
     user: User | null;
+    /** Authenticates a user with email and password. */
     login: (email: string, password: string) => Promise<User>;
+    /** Registers a new user. */
     signup: (name: string, email: string, password: string) => Promise<User>;
+    /** Terminates the current session and clears local storage. */
     logout: () => void;
+    /** Initiates a forgot password request. */
     forgotPassword: (email: string) => Promise<void>;
+    /** Resets the user's password using a token. */
     resetPassword: (token: string, newPassword: string) => Promise<void>;
-
-    // ⭐ Added for OAuth login
+    /** Sets the user and token in state and local storage. */
     persist: (user: User | null, token?: string) => void;
 };
 
@@ -24,6 +39,10 @@ const API_BASE =
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Authentication Provider component.
+ * Manages user state, persistence, and authentication API interactions.
+ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
