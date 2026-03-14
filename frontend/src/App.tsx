@@ -23,6 +23,9 @@ import FinishSetupPage from "./pages/FinishSetupPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ScrapeLauncher from "./components/ScrapeLauncher";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+
 import "./App.css"; // styles
 
 const NotFound = () => {
@@ -63,6 +66,9 @@ const AppContent = () => {
       <Route path="/setup/schedule" element={<ChooseSchedulePage />} />
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
+
+      <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
+
 
       {/* Main app routes with navigation sidebar (protected) */}
       <Route

@@ -15,6 +15,7 @@ from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
 from app.db import Base
 
+from app.constants.roles import GROUP_OWNER, GROUP_MANAGER, GROUP_MEMBER
 
 class User(Base):
     __tablename__ = "users"
@@ -67,6 +68,8 @@ class Role(Base):
         nullable=False,
     )
 
+    users = relationship("UserRole", back_populates="role")
+
 
 class UserRole(Base):
     __tablename__ = "user_roles"
@@ -88,7 +91,7 @@ class UserRole(Base):
     )
 
     user = relationship("User", back_populates="roles")
-    role = relationship("Role")
+    role = relationship("Role", back_populates="users")
 
 
 class Session(Base):
@@ -137,14 +140,6 @@ class PasswordResetToken(Base):
 
     user = relationship("User", back_populates="password_reset_tokens")
 
-
-# ---------------------------------------------------------------
-# FIX 1: Group role constants MUST be defined BEFORE GroupMember
-# so default=GROUP_MEMBER doesn't raise NameError at import time
-# ---------------------------------------------------------------
-GROUP_MANAGER = "GROUP_MANAGER"
-GROUP_MEMBER = "GROUP_MEMBER"
-VALID_GROUP_ROLES = {GROUP_MANAGER, GROUP_MEMBER}
 
 
 class Group(Base):

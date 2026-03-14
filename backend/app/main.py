@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 from app.repositories.users_repo import get_user_by_email, create_user
 from app.repositories.roles_repo import assign_role_to_user, get_user_role_names
+from app.auth.auth_service import login_user
 
 from app.auth_utils import hash_password, verify_password
 from app.email_utils import send_reset_email
@@ -23,6 +24,8 @@ from app.db import get_db
 
 from app.repositories.groups_repo import add_member_to_group, create_group, get_user_group_role
 from app.auth_permissions import require_group_manager, require_group_member
+
+from app.auth.auth_permissions import require_admin
 
 
 
@@ -233,6 +236,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
 
 
 # temporary DB login route
+'''
 @app.post("/login")
 def login(payload: LoginModel, db: Session = Depends(get_db)):
     user = get_user_by_email(db, payload.email.lower())
@@ -247,7 +251,8 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     roles = get_user_role_names(db, user.user_id)
-
+    
+    
     return {
         "message": "Database login successful",
         "user": {
@@ -257,14 +262,21 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
             "roles": roles,
         },
     }
+'''
 
-    request.session["user"] = session_user
+@app.post("/login")
+def login(payload: LoginModel, db: Session = Depends(get_db)):
+
+    result = login_user(
+        db=db,
+        email=payload.email.lower(),
+        password=payload.password
+    )
 
     return {
         "message": "Login successful",
-        "user": session_user
+        **result
     }
-
 
 
 # ----------------------
@@ -561,6 +573,12 @@ def get_group_reviews(
     return {
         "message": "You can access group reviews"
     }
+
+
+@app.get("/admin/dashboard")
+def admin_dashboard(user=Depends(require_admin)):
+    return {"message": "Welcome Admin"}
+
 
 
 if __name__ == "__main__":

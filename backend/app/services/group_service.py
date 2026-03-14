@@ -8,7 +8,7 @@ from app.repositories.groups_repo import (
     add_member_to_group,
     remove_member_from_group as repo_remove_member_from_group,
 )
-from app.auth.permissions import require_group_manager
+from app.auth.permissions import require_group_manager # type: ignore
 
 
 def _get_group_or_404(db: Session, group_id: uuid.UUID) -> Group:

@@ -75,8 +75,8 @@
         "email": "hansiwickramage18@gmail.com",
         "password": "$2b$12$9SC3m.m1Dg51Z0d.LdXyHOCw8ZPUra.BuINfYLiHuHCzLwB33MCiq",
         "google_id": null,
-        "reset_token": "218e81a2e335b8ba21fb2c8b2acaeed7",
-        "reset_token_expiry": "2026-03-09T18:48:04.185858",
+        "reset_token": "315b14f58a0bba6910a77af43c24fe12",
+        "reset_token_expiry": "2026-03-13T05:50:21.529563",
         "role": "staff"
     },
     {
@@ -405,6 +405,16 @@
         "email": "bimal@gmail.com",
         "password": "$2b$12$NRW10W8bM5Vyj3iP/ImT6u00epH7TGuu7kjxB6./ytyGXdF0FJrYG",
         "google_id": null,
+        "reset_token": null,
+        "reset_token_expiry": null,
+        "role": "staff"
+    },
+    {
+        "id": 42,
+        "name": "sudeepa chathuranga",
+        "email": "wsudeepachathuranga@gmail.com",
+        "password": null,
+        "google_id": "112841725745185105706",
         "reset_token": null,
         "reset_token_expiry": null,
         "role": "staff"

@@ -14,22 +14,36 @@ const LoginPage = () => {
   const auth = useAuth();
 
   useEffect(() => {
-    if (auth.user) navigate('/dashboard');
-  }, [auth.user, navigate]);
+  if (auth.user) {
+    if (auth.user.role === "ADMIN") {
+      navigate("/admin-dashboard");
+    } else {
+      navigate("/dashboard");
+    }
+  }
+}, [auth.user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      await auth.login(email, password);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+
+  try {
+    const user = await auth.login(email, password);
+
+    // Redirect based on RBAC role
+    if (user.role === "ADMIN") {
+      navigate("/admin-dashboard");
+    } else {
+      navigate("/dashboard");
     }
-  };
+
+  } catch (err: any) {
+    setError(err.message || "Login failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
