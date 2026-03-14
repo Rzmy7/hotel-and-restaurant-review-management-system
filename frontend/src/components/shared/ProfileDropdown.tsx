@@ -42,10 +42,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onClose }) => {
             icon: <HelpCircle size={16} />,
             label: 'Help & Support',
             subtitle: 'Get assistance',
-            onClick: () => {
-                onClose();
-                showToast('Help center coming soon', 'info');
-            },
+            onClick: () => handleNavigate('/help'),
         },
     ];
 

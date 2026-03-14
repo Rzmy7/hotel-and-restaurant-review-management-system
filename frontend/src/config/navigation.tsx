@@ -107,7 +107,7 @@ export const navigationConfig: NavigationConfig = {
             id: 'contact',
             label: 'Contact Support',
             icon: <Mail size={20} />,
-            path: '/contact'
+            path: '/support'
         },
         {
             id: 'logout',

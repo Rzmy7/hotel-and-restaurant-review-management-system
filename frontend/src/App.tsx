@@ -32,6 +32,8 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import InsightsPage from './pages/InsightsPage';
+import HelpPage from './pages/HelpPage';
+import SupportPage from './pages/SupportPage';
 import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
@@ -131,6 +133,10 @@ const AppContent: React.FC = () => {
                 <Route path="/competitors" element={<CompetitorsPage />} />
                 <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
                 <Route path="/competitors/compare" element={<CompetitorComparison />} />
+                
+                {/* Help & Support */}
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/support" element={<SupportPage />} />
                 
                 {/* User Profile */}
                 <Route path="/profile" element={<ProfilePage />} />
