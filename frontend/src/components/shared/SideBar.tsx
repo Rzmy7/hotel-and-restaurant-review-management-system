@@ -5,6 +5,7 @@ import { navigationConfig } from '../../config/navigation';
 import type { SidebarItemData, SidebarGroupData } from '../../types/navigation';
 import { useOrganizations } from '../../contexts/OrganizationContext';
 import { useNavigationBlocker } from '../../contexts/NavigationBlockerContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -199,10 +200,18 @@ const SidebarItem: React.FC<{
   const navigate = useNavigate();
   const location = useLocation();
   const { attemptNavigation } = useNavigationBlocker();
+  const { logout } = useAuth();
   const isActive = item.path ? location.pathname === item.path : false;
 
   const handleClick = () => {
     if (!item.path) return;
+
+    if (item.id === 'logout') {
+      logout();
+      navigate('/login');
+      return;
+    }
+
     if (isActive) {
       onToggle();
     } else {
