@@ -1,4 +1,3 @@
-
 import type { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
@@ -11,7 +10,7 @@ interface StatCardProps {
 
 export const StatCard = ({ label, value, trend, icon: Icon }: StatCardProps) => {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-full">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
             <div className="flex justify-between items-start mb-6">
                 <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                     <Icon size={24} />
@@ -25,7 +24,7 @@ export const StatCard = ({ label, value, trend, icon: Icon }: StatCardProps) => 
                 <div className="text-gray-500 text-sm mb-2">
                     {label}
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-3xl font-bold text-gray-900">
                     {value}
                 </div>
             </div>

@@ -5,6 +5,10 @@ import { Organizations } from './pages/Organizations';
 import { UsersPage } from './pages/Users';
 import { FeatureFlags } from './pages/FeatureFlags';
 import { Settings } from './pages/Settings';
+import { Embeddings } from './pages/Embeddings';
+import { Scraping } from './pages/Scraping';
+import { APIManage } from './pages/APIManage';
+import { Monitoring } from './pages/Monitoring';
 
 function App() {
   return (
@@ -16,6 +20,10 @@ function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="feature-flags" element={<FeatureFlags />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="embeddings" element={<Embeddings />} />
+          <Route path="scraping" element={<Scraping />} />
+          <Route path="api-manage" element={<APIManage />} />
+          <Route path="monitoring" element={<Monitoring />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes> 

@@ -1,8 +1,6 @@
-
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, Search } from 'lucide-react';
-
+import { Bell } from 'lucide-react';
 
 export const Header: React.FC = () => {
     const location = useLocation();
@@ -14,11 +12,19 @@ export const Header: React.FC = () => {
             case '/organizations':
                 return { title: 'Organizations', subtitle: 'Manage organizations and their settings' };
             case '/users':
-                return { title: 'Users', subtitle: 'Manage system users and roles' };
+                return { title: 'Users', subtitle: 'Manage user accounts and permissions' };
             case '/feature-flags':
-                return { title: 'Feature Flags', subtitle: 'Manage global feature flags' };
+                return { title: 'Feature Flags', subtitle: 'Enable or disable features across the platform' };
             case '/settings':
                 return { title: 'Admin Settings', subtitle: 'Configure platform settings' };
+            case '/embeddings':
+                return { title: 'AI Configuration & Embeddings', subtitle: 'Manage embedding models, thresholds, and vector database connections.' };
+            case '/scraping':
+                return { title: 'Scraping Management', subtitle: '' };
+            case '/api-manage':
+                return { title: 'API Management', subtitle: 'Manage API credentials and service endpoints' };
+            case '/monitoring':
+                return { title: 'System Monitoring', subtitle: 'Real-time server status and performance metrics' };
             default:
                 return { title: 'Admin Panel', subtitle: 'Welcome back' };
         }
@@ -27,22 +33,14 @@ export const Header: React.FC = () => {
     const { title, subtitle } = getHeaderContent();
 
     return (
-        <header className="h-20 bg-gray-50 flex items-center justify-between px-6 ml-[280px] sticky top-0 z-40">
-            <div className="flex flex-col">
-                <h1 className="text-xl font-semibold text-gray-900 mb-1">{title}</h1>
-                <p className="text-gray-500 text-sm">{subtitle}</p>
+        <header className="fixed top-0 left-64 right-0 h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
+            <div className="flex items-center gap-3">
+                <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+                {subtitle && <p className="text-sm text-gray-500 hidden">{subtitle}</p>}
             </div>
 
             <div className="flex items-center gap-4">
-                <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 w-[300px] gap-2">
-                    <Search size={18} className="text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        className="border-none outline-none text-sm text-gray-900 w-full bg-transparent placeholder-gray-400"
-                    />
-                </div>
-                <button className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors">
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
                     <Bell size={20} />
                 </button>
             </div>

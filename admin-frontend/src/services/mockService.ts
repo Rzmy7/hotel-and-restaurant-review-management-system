@@ -1,4 +1,4 @@
-import type { DashboardStats, ChartDataPoint, User, Organization, OrganizationStats, FeatureFlag, AdminSettings } from '../types';
+import type { DashboardStats, ChartDataPoint, User, Organization, OrganizationStats, FeatureFlag, AdminSettings, SystemAlert, RecentActivity, ServerStatus } from '../types';
 
 export const fetchDashboardStats = (): Promise<DashboardStats> => {
     return new Promise((resolve) => {
@@ -10,6 +10,12 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
                 usersGrowth: 8.2,
                 activeHotels: 1245,
                 hotelsGrowth: 5.4,
+                totalReviews: 156789,
+                reviewsGrowth: 15.3,
+                activeUsersToday: 1247,
+                systemUptime: 99.9,
+                aiJobsProcessed: 45832,
+                aiJobsGrowth: 22.8,
             });
         }, 600);
     });
@@ -40,11 +46,14 @@ export const fetchReviewData = (): Promise<ChartDataPoint[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { label: 'Beach Paradise', value: 85 },
-                { label: 'City Suites', value: 92 },
-                { label: 'Mountain Lodge', value: 78 },
-                { label: 'Coastal Views', value: 88 },
-                { label: 'Urban Inn', value: 65 },
+                { label: 'Google', value: 7 },
+                { label: 'Booking.com', value: 5 },
+                { label: 'TripAdvisor', value: 4 },
+                { label: 'Expedia', value: 3 },
+                { label: 'Hotels.com', value: 4 },
+                { label: 'Agoda', value: 3 },
+                { label: 'Yelp', value: 5 },
+                { label: 'Trustpilot', value: 6 },
             ]);
         }, 700);
     });
@@ -88,6 +97,10 @@ export const fetchOrganizations = (): Promise<Organization[]> => {
                 { id: '6', name: 'Smart Systems', domain: 'smartsys.com', usersCount: 234, status: 'Inactive' },
                 { id: '7', name: 'Future Tech', domain: 'futuretech.io', usersCount: 1523, status: 'Active' },
                 { id: '8', name: 'CloudBase Ltd', domain: 'cloudbase.co', usersCount: 967, status: 'Active' },
+                { id: '9', name: 'NextGen Solutions', domain: 'nextgen.io', usersCount: 534, status: 'Active' },
+                { id: '10', name: 'DataFlow Inc', domain: 'dataflow.com', usersCount: 789, status: 'Pending' },
+                { id: '11', name: 'Quantum Labs', domain: 'quantumlabs.co', usersCount: 312, status: 'Active' },
+                { id: '12', name: 'Peak Systems', domain: 'peaksys.net', usersCount: 456, status: 'Active' },
             ]);
         }, 700);
     });
@@ -99,12 +112,14 @@ export const fetchUsers = (): Promise<User[]> => {
             resolve([
                 { id: '1', name: 'Sarah Johnson', email: 'sarah.johnson@company.com', role: 'Admin', status: 'Active', avatarColor: '#bfdbfe' },
                 { id: '2', name: 'Michael Chen', email: 'michael.chen@company.com', role: 'Manager', status: 'Active', avatarColor: '#e9d5ff' },
-                { id: '3', name: 'Emily Rodriguez', email: 'emily.rodriguez@company.com', role: 'User', status: 'Active', avatarColor: '#fed7aa' },
-                { id: '4', name: 'David Kim', email: 'david.kim@company.com', role: 'User', status: 'Suspended', avatarColor: '#fecaca' },
+                { id: '3', name: 'Emily Rodriguez', email: 'emily.rodriguez@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fed7aa', organizations: ['Global Solutions'], groups: ['Developers', 'Mobile Team'] },
+                { id: '4', name: 'David Kim', email: 'david.kim@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#fecaca', organizations: ['Acme Corp'], groups: ['External Contractors'] },
                 { id: '5', name: 'Jessica Taylor', email: 'jessica.taylor@company.com', role: 'Manager', status: 'Active', avatarColor: '#ddd6fe' },
-                { id: '6', name: 'Robert Anderson', email: 'robert.anderson@company.com', role: 'User', status: 'Active', avatarColor: '#bbf7d0' },
+                { id: '6', name: 'Robert Anderson', email: 'robert.anderson@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#bbf7d0', organizations: ['InnovateCo'], groups: ['Developers', 'Backend Team'] },
                 { id: '7', name: 'Maria Garcia', email: 'maria.garcia@company.com', role: 'Admin', status: 'Active', avatarColor: '#fde68a' },
-                { id: '8', name: 'James Wilson', email: 'james.wilson@company.com', role: 'User', status: 'Suspended', avatarColor: '#99f6e4' },
+                { id: '8', name: 'James Wilson', email: 'james.wilson@company.com', role: 'User', status: 'Suspended', plan: 'Free', avatarColor: '#99f6e4', organizations: ['TechStart'], groups: ['Support Team'] },
+                { id: '9', name: 'Linda Martinez', email: 'linda.martinez@company.com', role: 'Manager', status: 'Active', avatarColor: '#c7d2fe' },
+                { id: '10', name: 'Kevin Brown', email: 'kevin.brown@company.com', role: 'User', status: 'Active', plan: 'Basic', avatarColor: '#fca5a5', organizations: ['Acme Corp'], groups: ['Developers', 'Frontend Team', 'QA Team'] },
             ]);
         }, 600);
     });
@@ -114,18 +129,9 @@ export const fetchFeatureFlags = (): Promise<FeatureFlag[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { id: '1', name: 'Advanced Analytics Dashboard', key: 'analytics_dashboard_v2', description: 'Enable advanced analytics and reporting features for enterprise users', status: 'Enabled' },
-                { id: '2', name: 'AI-Powered Recommendations', key: 'ai_recommendations', description: 'Show AI-generated recommendations in the user interface', status: 'Enabled' },
-                { id: '3', name: 'Dark Mode', key: 'dark_mode_support', description: 'Allow users to switch between light and dark themes', status: 'Disabled' },
-                { id: '4', name: 'Multi-Language Support', key: 'i18n_support', description: 'Enable internationalization and localization features', status: 'Enabled' },
-                { id: '5', name: 'Real-time Collaboration', key: 'realtime_collab', description: 'Enable real-time collaborative editing and comments', status: 'Disabled' },
-                { id: '6', name: 'Advanced Search Filters', key: 'advanced_search', description: 'Provide enhanced search capabilities with multiple filter options', status: 'Enabled' },
-                { id: '7', name: 'Mobile App Integration', key: 'mobile_integration', description: 'Allow seamless integration with mobile applications', status: 'Disabled' },
-                { id: '8', name: 'Two-Factor Authentication', key: '2fa_required', description: 'Require two-factor authentication for enhanced security', status: 'Enabled' },
-                { id: '9', name: 'Export to PDF', key: 'pdf_export', description: 'Enable PDF export functionality for reports and documents', status: 'Enabled' },
-                { id: '10', name: 'Beta Features Access', key: 'beta_features', description: 'Grant access to experimental and beta features', status: 'Disabled' },
-                { id: '11', name: 'Custom Branding', key: 'custom_branding', description: 'Allow organizations to customize branding and colors', status: 'Enabled' },
-                { id: '12', name: 'API Rate Limiting', key: 'api_rate_limiting', description: 'Implement rate limiting for API requests', status: 'Disabled' },
+                { id: '1', name: 'Content Search by Embeddings', key: 'content_search_embeddings', description: 'Enable semantic search across reviews and content using vector embeddings', status: 'Enabled' },
+                { id: '2', name: 'Reply Regeneration Limit', key: 'reply_regeneration_limit', description: 'Set maximum number of times a reply can be regenerated per review', status: 'Enabled' },
+                { id: '3', name: 'Custom Report Generation', key: 'custom_report_generation', description: 'Allow users to create and export customized reports with selected metrics', status: 'Disabled' },
             ]);
         }, 600);
     });
@@ -153,5 +159,234 @@ export const fetchSettings = (): Promise<AdminSettings> => {
                 notifyFeatureUpdates: false
             });
         }, 500);
+    });
+};
+
+export const fetchSystemAlerts = (): Promise<SystemAlert[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                {
+                    id: '1',
+                    type: 'error',
+                    title: 'Scraping Job Failed',
+                    message: 'TripAdvisor scraper failed for Hotel Grand Plaza - Connection timeout',
+                    timestamp: '2 hours ago',
+                    isRead: false
+                },
+                {
+                    id: '2',
+                    type: 'warning',
+                    title: 'High API Usage',
+                    message: 'AI processing API usage at 85% of monthly limit',
+                    timestamp: '5 hours ago',
+                    isRead: false
+                },
+                {
+                    id: '3',
+                    type: 'warning',
+                    title: 'Subscription Expiring',
+                    message: '3 organizations have subscriptions expiring in 7 days',
+                    timestamp: '1 day ago',
+                    isRead: true
+                },
+                {
+                    id: '4',
+                    type: 'info',
+                    title: 'System Maintenance',
+                    message: 'Scheduled maintenance on Feb 20, 2026 at 02:00 UTC',
+                    timestamp: '1 day ago',
+                    isRead: true
+                },
+                {
+                    id: '5',
+                    type: 'error',
+                    title: 'Database Connection Issue',
+                    message: 'Intermittent connection issues detected with replica database',
+                    timestamp: '3 hours ago',
+                    isRead: false
+                }
+            ]);
+        }, 500);
+    });
+};
+
+export const fetchRecentActivity = (): Promise<RecentActivity[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                {
+                    id: '1',
+                    type: 'user_joined',
+                    title: 'New User Registration',
+                    description: 'Sarah Johnson joined Acme Hotels',
+                    timestamp: '10 minutes ago',
+                    user: 'Sarah Johnson'
+                },
+                {
+                    id: '2',
+                    type: 'scrape_completed',
+                    title: 'Scraping Completed',
+                    description: 'Booking.com scrape completed - 156 new reviews collected',
+                    timestamp: '25 minutes ago'
+                },
+                {
+                    id: '3',
+                    type: 'org_created',
+                    title: 'Organization Created',
+                    description: 'New organization "Sunset Resort Group" created',
+                    timestamp: '1 hour ago',
+                    user: 'Mike Chen'
+                },
+                {
+                    id: '4',
+                    type: 'ai_job',
+                    title: 'AI Processing Complete',
+                    description: 'Sentiment analysis completed for 2,450 reviews',
+                    timestamp: '2 hours ago'
+                },
+                {
+                    id: '5',
+                    type: 'subscription_changed',
+                    title: 'Subscription Upgraded',
+                    description: 'TechStart Inc upgraded to Enterprise plan',
+                    timestamp: '3 hours ago',
+                    user: 'David Kim'
+                },
+                {
+                    id: '6',
+                    type: 'scrape_failed',
+                    title: 'Scraping Failed',
+                    description: 'Agoda scraper rate limited - retry scheduled',
+                    timestamp: '4 hours ago'
+                },
+                {
+                    id: '7',
+                    type: 'user_joined',
+                    title: 'New User Registration',
+                    description: 'Emily Rodriguez joined Global Enterprises',
+                    timestamp: '5 hours ago',
+                    user: 'Emily Rodriguez'
+                },
+                {
+                    id: '8',
+                    type: 'ai_job',
+                    title: 'AI Response Generated',
+                    description: 'Auto-generated 45 review responses for Hotel Marina',
+                    timestamp: '6 hours ago'
+                }
+            ]);
+        }, 600);
+    });
+};
+
+export const fetchAiJobsData = (): Promise<ChartDataPoint[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                { label: 'Mon', value: 1250 },
+                { label: 'Tue', value: 1890 },
+                { label: 'Wed', value: 2100 },
+                { label: 'Thu', value: 1780 },
+                { label: 'Fri', value: 2340 },
+                { label: 'Sat', value: 980 },
+                { label: 'Sun', value: 750 }
+            ]);
+        }, 500);
+    });
+};
+
+export const fetchScrapingStats = (): Promise<import('../types').ScrapingStats> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({
+                activeJobs: 12,
+                activeJobsChange: 2,
+                completedToday: 1458,
+                successRate: 98.5,
+                failedJobs: 3,
+                requiresAttention: true,
+                reviewsIngested: 24500,
+                reviewsChange: 12
+            });
+        }, 500);
+    });
+};
+
+export const fetchScrapingPlatforms = (): Promise<import('../types').ScrapingPlatform[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                { id: '1', name: 'Booking.com', icon: 'B', color: '#003580', enabled: true, lastRun: '2h ago', status: 'active' },
+                { id: '2', name: 'TripAdvisor', icon: 'T', color: '#00AF87', enabled: true, lastRun: '45m ago', status: 'active' },
+                { id: '3', name: 'Agoda', icon: 'Ag', color: '#5E4B8B', enabled: false, lastRun: '', status: 'maintenance' }
+            ]);
+        }, 400);
+    });
+};
+
+export const fetchScrapingJobs = (): Promise<import('../types').ScrapingJob[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve([
+                { id: '1', jobId: '#SCR-28492', platform: 'Booking.com', platformIcon: 'B', platformColor: '#003580', organization: 'Grand Hotel Budapest', status: 'Running', startTime: 'Today, 10:42 AM', duration: '12m 45s', reviews: null },
+                { id: '2', jobId: '#SCR-28491', platform: 'TripAdvisor', platformIcon: 'T', platformColor: '#00AF87', organization: 'Seaside Resort & Spa', status: 'Completed', startTime: 'Today, 09:15 AM', duration: '4m 12s', reviews: 128 },
+                { id: '3', jobId: '#SCR-28488', platform: 'Agoda', platformIcon: 'Ag', platformColor: '#5E4B8B', organization: 'Mountain View Lodge', status: 'Failed', startTime: 'Yesterday, 11:30 PM', duration: '0s', reviews: 0 },
+                { id: '4', jobId: '#SCR-28485', platform: 'Booking.com', platformIcon: 'B', platformColor: '#003580', organization: 'City Center Boutique', status: 'Completed', startTime: 'Yesterday, 08:00 PM', duration: '8m 33s', reviews: 45 },
+                { id: '5', jobId: '#SCR-28482', platform: 'TripAdvisor', platformIcon: 'T', platformColor: '#00AF87', organization: 'Blue Lagoon Hotel', status: 'Completed', startTime: 'Yesterday, 06:15 PM', duration: '5m 01s', reviews: 12 }
+            ]);
+        }, 600);
+    });
+};
+
+export const fetchServerStatuses = (): Promise<ServerStatus[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            // Import dynamically to avoid circular dependency
+            import('lucide-react').then(({ Server, Database, Search, Globe }) => {
+                // Simulate random variations in CPU and RAM usage
+                const randomVariation = (base: number, range: number) => 
+                    Math.min(100, Math.max(0, base + (Math.random() * range * 2 - range)));
+                
+                resolve([
+                    {
+                        id: '1',
+                        name: 'Main Backend',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(45, 10)),
+                        ramUsage: Math.round(randomVariation(62, 8)),
+                        icon: Server,
+                        uptime: '45d 12h 23m'
+                    },
+                    {
+                        id: '2',
+                        name: 'Scraping Service',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(68, 15)),
+                        ramUsage: Math.round(randomVariation(54, 10)),
+                        icon: Search,
+                        uptime: '32d 8h 45m'
+                    },
+                    {
+                        id: '3',
+                        name: 'Embedding Service',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(82, 8)),
+                        ramUsage: Math.round(randomVariation(78, 12)),
+                        icon: Database,
+                        uptime: '28d 15h 12m'
+                    },
+                    {
+                        id: '4',
+                        name: 'Frontend Server',
+                        status: 'Online',
+                        cpuUsage: Math.round(randomVariation(28, 8)),
+                        ramUsage: Math.round(randomVariation(35, 10)),
+                        icon: Globe,
+                        uptime: '52d 3h 56m'
+                    }
+                ]);
+            });
+        }, 400);
     });
 };

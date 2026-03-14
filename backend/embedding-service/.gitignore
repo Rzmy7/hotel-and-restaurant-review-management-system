@@ -1,0 +1,38 @@
+# Model cache directory
+model_cache/
+
+# ChromaDB data directory
+chroma_data/
+
+# Jobs history
+jobs.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables
+.env
+.env.local
+
+# ChromaDB data (legacy path)
+/data/
+
+# Config files (may contain sensitive data)
+config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

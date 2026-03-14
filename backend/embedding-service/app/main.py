@@ -1,25 +1,46 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-
-from app.embedding import embed_text
-from app.chroma import save_embedding
-from app.chroma import collection
-=======
->>>>>>> temp
-from typing import List
+from typing import List, Dict, Any
 import time
+import uuid
+import psutil
+from datetime import datetime
 
-from app.gemini_embedding import embed_text
 from app.chroma import save_embedding, collection
-<<<<<<< HEAD
-=======
->>>>>>> vectordb
->>>>>>> temp
+from app.config import (
+    load_config, save_config, get_threshold_by_query, DEFAULT_THRESHOLDS,
+    is_service_paused, set_service_paused
+)
+from app.jobs import add_job, update_job, get_recent_jobs
+from app.embedding import embed_text
 
 app = FastAPI(title="Embedding Service")
+
+# Store service start time for uptime calculation
+SERVICE_START_TIME = datetime.now()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Preload models at startup
+@app.on_event("startup")
+async def startup_event():
+    """Preload the embedding model to avoid first-request delay"""
+    print("Preloading embedding model...")
+    from app.embedding import model
+    print(f"✓ MiniLM model preloaded successfully")
+
+def wait_if_paused():
+    """Wait while service is paused, checking every 0.5 seconds"""
+    while is_service_paused():
+        time.sleep(0.5)
 
 
 class Review(BaseModel):
@@ -28,11 +49,6 @@ class Review(BaseModel):
     hotel_id: int
 
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
->>>>>>> temp
 class ReviewItem(BaseModel):
     review_id: str
     text: str
@@ -59,74 +75,59 @@ class BatchRuleEmbedRequest(BaseModel):
     hotel_id: int
     rules: list[RuleItem]
 
+class ThresholdConfig(BaseModel):
+    oneWord: float
+    twoWords: float
+    threeOrMore: float
 
 
 def get_threshold(query: str) -> float:
-    words = len(query.split())
-    if words == 1:
-        return 1.3
-    elif words <= 3:
-        return 1.2
-    return 1.1
+    """Get threshold based on query - uses configurable values"""
+    return get_threshold_by_query(query)
 
 
-<<<<<<< HEAD
-=======
->>>>>>> vectordb
->>>>>>> temp
 @app.post("/embed")
 def embed(review: Review):
-    vector = embed_text(review.text)
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Review", "Running", 0)
+    
+    try:
+        start_time = time.time()
+        wait_if_paused()  # Wait if service is paused
+        vector = embed_text(review.text)
 
-    save_embedding(
-        review.review_id,
-        vector,
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-        {"hotel_id": review.hotel_id}
-=======
->>>>>>> temp
-        {
-            "hotel_id": review.hotel_id,
-            "type": "review"
-        },
-        document=review.text
-<<<<<<< HEAD
-=======
->>>>>>> vectordb
->>>>>>> temp
-    )
+        save_embedding(
+            review.review_id,
+            vector,
+            {
+                "hotel_id": review.hotel_id,
+                "type": "review"
+            },
+            document=review.text
+        )
+        
+        duration = f"{time.time() - start_time:.1f}s"
+        update_job(job_id, "Completed", 100, duration)
+        return {"status": "success", "job_id": job_id}
+        
+    except Exception as e:
+        update_job(job_id, "Failed", 0)
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {"status": "success"}
-
-<<<<<<< HEAD
-# @app.get("/debug/count")
-# def debug_count():
-#     return {"count": collection.count()}
-
-# @app.get("/debug/peek")
-# def debug_peek():
-#     return collection.peek(limit=5)
-=======
-<<<<<<< HEAD
-@app.get("/debug/count")
-def debug_count():
-    return {"count": collection.count()}
-
-@app.get("/debug/peek")
-def debug_peek():
-    return collection.peek(limit=5)
-=======
->>>>>>> temp
 
 @app.post("/embed/batch")
 def embed_batch(data: BatchEmbedRequest):
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Review", "Running", 0)
+    
     embedded = []
     failed = []
+    total = len(data.reviews)
+    start_time = time.time()
 
-    for review in data.reviews:
+    for idx, review in enumerate(data.reviews):
         try:
+            wait_if_paused()  # Wait if service is paused before each item
             vector = embed_text(review.text)
 
             save_embedding(
@@ -137,46 +138,71 @@ def embed_batch(data: BatchEmbedRequest):
             )
 
             embedded.append(review.review_id)
-            time.sleep(1.5)
+            progress = int(((idx + 1) / total) * 100)
+            update_job(job_id, "Running", progress)
 
         except Exception as e:
             failed.append({
                 "review_id": review.review_id,
                 "error": str(e)
             })
+    
+    duration = f"{time.time() - start_time:.1f}s"
+    final_status = "Completed" if len(failed) == 0 else "Failed"
+    update_job(job_id, final_status, 100, duration)
 
     return {
         "embedded_count": len(embedded),
         "embedded_ids": embedded,
-        "failed": failed
+        "failed": failed,
+        "job_id": job_id
     }
 
 @app.post("/embed/rule")
 def embed_rule(rule: Rule):
-    vector = embed_text(rule.text)
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Regulation", "Running", 0)
+    
+    try:
+        start_time = time.time()
+        wait_if_paused()  # Wait if service is paused
+        vector = embed_text(rule.text)
 
-    save_embedding(
-        rule.rule_id,
-        vector,
-        {
-            "hotel_id": rule.hotel_id,
-            "type": "rule"
-        },
-        document=rule.text
-    )
+        save_embedding(
+            rule.rule_id,
+            vector,
+            {
+                "hotel_id": rule.hotel_id,
+                "type": "rule"
+            },
+            document=rule.text
+        )
+        
+        duration = f"{time.time() - start_time:.1f}s"
+        update_job(job_id, "Completed", 100, duration)
 
-    return {
-        "status": "success",
-        "rule_id": rule.rule_id
-    }
+        return {
+            "status": "success",
+            "rule_id": rule.rule_id,
+            "job_id": job_id
+        }
+    except Exception as e:
+        update_job(job_id, "Failed", 0)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/embed/rule/batch")
 def embed_rule_batch(data: BatchRuleEmbedRequest):
+    job_id = str(uuid.uuid4())[:8]
+    add_job(job_id, "Regulation", "Running", 0)
+    
     embedded = []
     failed = []
+    total = len(data.rules)
+    start_time = time.time()
 
-    for rule in data.rules:
+    for idx, rule in enumerate(data.rules):
         try:
+            wait_if_paused()  # Wait if service is paused before each item
             vector = embed_text(rule.text)
 
             save_embedding(
@@ -190,19 +216,24 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
             )
 
             embedded.append(rule.rule_id)
-
-            time.sleep(0.5)
+            progress = int(((idx + 1) / total) * 100)
+            update_job(job_id, "Running", progress)
 
         except Exception as e:
             failed.append({
                 "rule_id": rule.rule_id,
                 "error": str(e)
             })
+    
+    duration = f"{time.time() - start_time:.1f}s"
+    final_status = "Completed" if len(failed) == 0 else "Failed"
+    update_job(job_id, final_status, 100, duration)
 
     return {
         "embedded_count": len(embedded),
         "embedded_ids": embedded,
-        "failed": failed
+        "failed": failed,
+        "job_id": job_id
     }
 
 
@@ -213,7 +244,7 @@ def search(data: SearchRequest):
 
     threshold = get_threshold(data.query)
 
-    # 1️⃣ Search REVIEWS
+    # Search REVIEWS
     review_results = collection.query(
         query_embeddings=[vector],
         n_results=data.top_k,
@@ -237,7 +268,7 @@ def search(data: SearchRequest):
         if dist < threshold
     ]
 
-    # 2️⃣ Search RULES (looser threshold, fewer results)
+    # Search RULES (looser threshold, fewer results)
     rule_results = collection.query(
         query_embeddings=[vector],
         n_results=5,
@@ -267,7 +298,275 @@ def search(data: SearchRequest):
         "reviews": reviews,
         "rules": rules
     }
-<<<<<<< HEAD
-=======
->>>>>>> vectordb
->>>>>>> temp
+
+
+@app.get("/thresholds")
+def get_thresholds() -> Dict[str, float]:
+    """Get current similarity thresholds"""
+    thresholds = load_config()
+    return thresholds
+
+
+@app.put("/thresholds")
+def update_thresholds(config: ThresholdConfig) -> Dict[str, Any]:
+    """Update similarity thresholds"""
+    thresholds = {
+        "oneWord": config.oneWord,
+        "twoWords": config.twoWords,
+        "threeOrMore": config.threeOrMore
+    }
+    
+    # Validate thresholds are within reasonable range
+    for key, value in thresholds.items():
+        if value < 0 or value > 2.0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Threshold {key} must be between 0 and 2.0"
+            )
+    
+    success = save_config(thresholds)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save configuration")
+    
+    return {"status": "success", "thresholds": thresholds}
+
+
+@app.post("/thresholds/reset")
+def reset_thresholds() -> Dict[str, Any]:
+    """Reset thresholds to default values"""
+    success = save_config(DEFAULT_THRESHOLDS)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to reset configuration")
+    
+    return {"status": "success", "thresholds": DEFAULT_THRESHOLDS}
+
+
+@app.get("/jobs/recent")
+def get_jobs(limit: int = 10) -> Dict[str, Any]:
+    """Get recent embedding jobs"""
+    jobs = get_recent_jobs(limit)
+    return {"jobs": jobs}
+
+
+@app.post("/service/pause")
+def pause_service() -> Dict[str, Any]:
+    """Pause the embedding service"""
+    success = set_service_paused(True)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to pause service")
+    return {"status": "success", "message": "Embedding service paused", "isPaused": True}
+
+
+@app.post("/service/resume")
+def resume_service() -> Dict[str, Any]:
+    """Resume the embedding service"""
+    success = set_service_paused(False)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to resume service")
+    return {"status": "success", "message": "Embedding service resumed", "isPaused": False}
+
+
+@app.get("/service/status")
+def get_service_status() -> Dict[str, Any]:
+    """Get embedding service status"""
+    return {
+        "isPaused": is_service_paused(),
+        "status": "paused" if is_service_paused() else "running"
+    }
+
+
+@app.get("/database/stats")
+def get_database_stats() -> Dict[str, Any]:
+    """Get ChromaDB statistics"""
+    try:
+        # Get collection information
+        count = collection.count()
+        
+        # Get collection name (namespace)
+        namespace = collection.name
+        
+        # ChromaDB uses HNSW index by default
+        # Embedding model uses specific dimensions (MiniLM uses 384)
+        dimensions = 384  # Default for MiniLM
+        
+        # Try to get a sample to determine dimensions
+        if count > 0:
+            try:
+                sample = collection.get(limit=1, include=["embeddings"])
+                embeddings = sample.get("embeddings") if sample else None
+                if embeddings is not None and len(embeddings) > 0:
+                    first_embedding = embeddings[0]
+                    if first_embedding is not None:
+                        dimensions = len(first_embedding)
+            except Exception as e:
+                print(f"Could not determine dimensions from sample: {e}")
+        
+        # Estimate storage size (rough approximation)
+        # Each vector: dimensions * 4 bytes (float32) + metadata overhead
+        estimated_bytes = count * (dimensions * 4 + 200)  # +200 for metadata
+        storage_mb = estimated_bytes / (1024 * 1024)
+        storage_gb = storage_mb / 1024
+        
+        if storage_gb >= 1:
+            storage = f"{storage_gb:.1f} GB"
+        else:
+            storage = f"{storage_mb:.1f} MB"
+        
+        return {
+            "totalVectors": count,
+            "namespace": namespace,
+            "dimensions": dimensions,
+            "indexType": "HNSW",
+            "storage": storage,
+            "isHealthy": True
+        }
+    except Exception as e:
+        print(f"Error getting database stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get database stats: {str(e)}")
+
+
+@app.post("/database/reindex")
+def reindex_database() -> Dict[str, Any]:
+    """Re-generate all embeddings using the current model"""
+    try:
+        # Get all existing documents
+        all_data = collection.get(include=["documents", "metadatas"])
+        
+        if not all_data or not all_data.get("ids"):
+            return {
+                "status": "success",
+                "message": "No documents to re-index",
+                "vectorsReindexed": 0
+            }
+        
+        ids = all_data["ids"]
+        documents = all_data.get("documents", [])
+        metadatas = all_data.get("metadatas", [])
+        
+        # Track progress
+        job_id = f"reindex_{len(ids)}"
+        add_job(job_id, "Re-index", "Running", 0)
+        
+        # Re-generate embeddings for all documents
+        total = len(ids)
+        reindexed = 0
+        new_embeddings = []
+        
+        for i, (doc_id, document, metadata) in enumerate(zip(ids, documents, metadatas)):
+            if document:  # Only re-embed if document exists
+                try:
+                    wait_if_paused()  # Wait if service is paused before each item
+                    # Generate new embedding with current model
+                    new_embedding = embed_text(document)
+                    new_embeddings.append(new_embedding)
+                    reindexed += 1
+                    
+                    # Update progress every 10%
+                    if i % max(1, total // 10) == 0:
+                        progress = int((i / total) * 100)
+                        update_job(job_id, "Running", progress)
+                except Exception as e:
+                    print(f"Failed to re-embed document {doc_id}: {e}")
+                    continue
+        
+        # Update all embeddings in batch
+        if new_embeddings:
+            # Delete old entries
+            collection.delete(ids=ids[:len(new_embeddings)])
+            
+            # Add with new embeddings
+            collection.add(
+                ids=ids[:len(new_embeddings)],
+                embeddings=new_embeddings,
+                metadatas=metadatas[:len(new_embeddings)],
+                documents=documents[:len(new_embeddings)]
+            )
+        
+        update_job(job_id, "Completed", 100, f"{reindexed / max(0.1, (total / 60)):.1f}s")
+        
+        return {
+            "status": "success",
+            "message": f"Re-indexed {reindexed} vectors using MiniLM model",
+            "vectorsReindexed": reindexed,
+            "totalVectors": total
+        }
+    except Exception as e:
+        print(f"Error re-indexing database: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to re-index database: {str(e)}")
+
+
+@app.post("/database/clear")
+def clear_database() -> Dict[str, Any]:
+    """Clear all vectors from the database (WARNING: deletes all data)"""
+    try:
+        # Get count before clearing
+        count_before = collection.count()
+        
+        # Delete all items from the collection
+        # ChromaDB requires getting all IDs first, then deleting
+        if count_before > 0:
+            # Get all IDs
+            all_items = collection.get()
+            if all_items and all_items.get("ids"):
+                collection.delete(ids=all_items["ids"])
+        
+        # Verify it's empty
+        count_after = collection.count()
+        
+        return {
+            "status": "success",
+            "message": f"Cleared {count_before} vectors from database",
+            "vectorsRemoved": count_before,
+            "currentCount": count_after
+        }
+    except Exception as e:
+        print(f"Error clearing database: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear database: {str(e)}")
+
+
+@app.get("/health")
+def health_check() -> Dict[str, Any]:
+    """
+    Health check endpoint for system monitoring.
+    Returns server status, CPU usage, RAM usage, and uptime.
+    """
+    try:
+        # Get CPU usage
+        cpu_usage = round(psutil.cpu_percent(interval=0.5), 1)
+        
+        # Get RAM usage
+        memory = psutil.virtual_memory()
+        ram_usage = round(memory.percent, 1)
+        
+        # Calculate uptime
+        uptime_delta = datetime.now() - SERVICE_START_TIME
+        days = uptime_delta.days
+        hours, remainder = divmod(uptime_delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        uptime = f"{days}d {hours}h {minutes}m"
+        
+        # Determine status based on resource usage and service state
+        if is_service_paused():
+            status = "Warning"
+        elif cpu_usage >= 90 or ram_usage >= 90:
+            status = "Warning"
+        else:
+            status = "Online"
+        
+        return {
+            "status": status,
+            "cpu_usage": cpu_usage,
+            "ram_usage": ram_usage,
+            "uptime": uptime,
+            "service_paused": is_service_paused()
+        }
+    except Exception as e:
+        print(f"Error in health check: {e}")
+        return {
+            "status": "Warning",
+            "cpu_usage": 0.0,
+            "ram_usage": 0.0,
+            "uptime": "Unknown",
+            "service_paused": False,
+            "error": str(e)
+        }
