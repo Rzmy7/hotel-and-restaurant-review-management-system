@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../hooks/useSettings';
+import { useTheme } from '../contexts/ThemeContext';
 import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 
 // Templates
@@ -33,6 +34,7 @@ const SettingsPage: React.FC = () => {
   const { showToast } = useToast();
   const { data: serverData, loading, saving, updateSettings } = useSettings();
 
+  const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
   const [activeTab, setActiveTab] = useState<TabID>('general');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -148,6 +150,7 @@ const SettingsPage: React.FC = () => {
   const handleModalDiscard = () => {
     if (serverData) {
       setLocalData(serverData);
+      setTheme(serverData.general.themePreference as any);
       setHasUnsavedChanges(false);
       setIsDirty(false);
     }
