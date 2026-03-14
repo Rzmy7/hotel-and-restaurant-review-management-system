@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext';
-import ProfileHeader from '../components/shared/ProfileHeader';
-import PersonalInfoForm from '../components/shared/PersonalInfoForm';
-import ProfileSidebar from '../components/shared/ProfileSidebar';
+import ProfileTemplate from '../components/profile/templates/ProfileTemplate';
 
-interface ProfilePageProps {
-    toggleSidebar?: () => void; // deprecated, no longer used
-}
-
+/**
+ * Interface defining the user's profile information.
+ */
 export interface UserProfile {
     firstName: string;
     lastName: string;
@@ -21,91 +18,92 @@ export interface UserProfile {
     avatar?: string;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = () => {
+/**
+ * ProfilePage Component.
+ * 
+ * Provides a dedicated interface for users to manage their personal information.
+ * Built with an atomic architecture for modularity and high visual fidelity.
+ * 
+ * @returns {React.FC} The redesigned Profile Page.
+ */
+const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
+    
+    /**
+     * Internal state for the user profile.
+     * In production, this would be initialized from an AuthContext or API.
+     */
     const [profile, setProfile] = useState<UserProfile>({
         firstName: 'Sarah',
         lastName: 'Johnson',
         email: 'sarah.j@grandhotel.com',
         phone: '+1 (555) 123-4567',
         jobTitle: 'Hotel Manager',
-        bio: '',
+        bio: 'Dedicated hospitality professional with over 10 years of experience in guest relations and operational management.',
         location: 'New York, NY',
         joinedDate: 'Jan 2024',
     });
 
     const [isSaving, setIsSaving] = useState(false);
 
-    const handleProfileUpdate = (updatedProfile: UserProfile) => {
-        setProfile(updatedProfile);
-    };
+    /**
+     * Handles updates to the profile state from form fields.
+     */
+    const handleUpdate = useCallback((updated: UserProfile) => {
+        setProfile(updated);
+    }, []);
 
-    const handleSaveProfile = async () => {
+    /**
+     * Persists profile changes to the backend.
+     */
+    const handleSave = useCallback(async () => {
         setIsSaving(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            showToast('Profile updated successfully!', 'success');
+            // Simulated API call
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            showToast('Account information updated successfully', 'success');
         } catch (error) {
-            showToast('Failed to save profile. ' + error, 'error');
+            showToast('Failed to synchronize changes. Please try again.', 'error');
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [showToast]);
 
-    const handleCancel = () => {
-        if (confirm('Discard unsaved changes?')) {
+    /**
+     * Discards unsaved changes and redirects to the dashboard.
+     */
+    const handleCancel = useCallback(() => {
+        if (confirm('Discard your unsaved changes and leave?')) {
             navigate('/dashboard');
         }
-    };
+    }, [navigate]);
 
-    const handlePhotoChange = (file: File) => {
+    /**
+     * Processes profile photo selection and updates the preview.
+     */
+    const handlePhotoChange = useCallback((file: File) => {
         const reader = new FileReader();
         reader.onloadend = () => {
             setProfile(prev => ({
                 ...prev,
                 avatar: reader.result as string
             }));
+            showToast('Profile photo updated in preview', 'info');
         };
         reader.readAsDataURL(file);
-    };
+    }, [showToast]);
 
     return (
-        <div className="w-full min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">
-            <ProfileHeader
-                title="Profile"
-                subtitle="Manage your personal information"
-            />
-
-            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
-                <div className="grid grid-cols-1 gap-6 
-                    lg:grid-cols-[1fr_340px] 
-                    xl:grid-cols-[1fr_380px] 
-                    xl:gap-8 
-                    items-start"
-                >
-                    {/* Left: Form */}
-                    <div className="w-full">
-                        <PersonalInfoForm
-                            profile={profile}
-                            onProfileUpdate={handleProfileUpdate}
-                            onSave={handleSaveProfile}
-                            onCancel={handleCancel}
-                            isSaving={isSaving}
-                        />
-                    </div>
-
-                    {/* Right: Sidebar Card */}
-                    <div className="w-full -order-1 lg:order-none mb-6 lg:mb-0">
-                        <ProfileSidebar
-                            profile={profile}
-                            onPhotoChange={handlePhotoChange}
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
+        <ProfileTemplate
+            profile={profile}
+            onUpdate={handleUpdate}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            onPhotoChange={handlePhotoChange}
+            isSaving={isSaving}
+        />
     );
 };
 
-export default ProfilePage;
+export default ProfilePage;
