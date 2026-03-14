@@ -26,6 +26,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 
+import OAuthSuccessPage from "./pages/OAuthSuccessPage";
+
 import "./App.css"; // styles
 
 const NotFound = () => {
@@ -68,6 +70,8 @@ const AppContent = () => {
       <Route path="/scrape" element={<ScrapeLauncher />} />
 
       <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
+
+      <Route path="/oauth-success" element={<OAuthSuccessPage />} />
 
 
       {/* Main app routes with navigation sidebar (protected) */}
