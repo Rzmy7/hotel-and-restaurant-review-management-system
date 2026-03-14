@@ -117,9 +117,6 @@ class BookingScrapeRequest(BaseModel):
     url: AnyHttpUrl
     headless: bool = True
 
-<<<<<<< HEAD
-# 5. Example Endpoint
-=======
 
 @app.post("/scrape/booking", tags=["Scraping"])
 async def start_booking_scrape(payload: BookingScrapeRequest, background_tasks: BackgroundTasks):
@@ -582,7 +579,6 @@ def get_group_reviews(
 def admin_dashboard(user=Depends(require_admin)):
     return {"message": "Welcome Admin"}
 
->>>>>>> hansi-UserManagement
 
 
 if __name__ == "__main__":
