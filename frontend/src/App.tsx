@@ -22,6 +22,14 @@ import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
 
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+
+import OAuthSuccessPage from "./pages/OAuthSuccessPage";
+
+import "./App.css"; // styles
+
 const NotFound = () => {
   return (
     <div className="text-center mt-12">
@@ -60,7 +68,12 @@ const AppContent = () => {
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       <Route path="/scrape" element={<ScrapeLauncher />} />
 
-      {/* Main app routes with sidebar */}
+      <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
+
+      <Route path="/oauth-success" element={<OAuthSuccessPage />} />
+
+
+      {/* Main app routes with navigation sidebar (protected) */}
       <Route
         path="/*"
         element={
@@ -97,7 +110,6 @@ const AppContent = () => {
 
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 

@@ -10,19 +10,23 @@ def get_user_by_email(db: Session, email: str):
 def create_user(
     db: Session,
     email: str,
-    password_hash: str | None,
+    password_hash: str | None = None,
     full_name: str | None = None,
     phone: str | None = None,
     profile_image_url: str | None = None,
+    google_id: str | None = None,   # ⭐ Added
     is_email_verified: bool = False,
 ):
+    # ------------------------------------------------
     # Create user
+    # ------------------------------------------------
     user = User(
         email=email,
         password_hash=password_hash,
         full_name=full_name,
         phone=phone,
         profile_image_url=profile_image_url,
+        google_id=google_id,  # ⭐ Save google id
         is_email_verified=is_email_verified,
     )
 
@@ -30,7 +34,9 @@ def create_user(
     db.commit()
     db.refresh(user)
 
-    # Get TENANT role from roles table
+    # ------------------------------------------------
+    # Assign TENANT role
+    # ------------------------------------------------
     role = db.query(Role).filter(Role.role_name == TENANT).first()
 
     if role:

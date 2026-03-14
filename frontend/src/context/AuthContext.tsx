@@ -14,6 +14,9 @@ type AuthContextType = {
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, newPassword: string) => Promise<void>;
+
+    // ⭐ Added for OAuth login
+    persist: (user: User | null, token?: string) => void;
 };
 
 const API_BASE =
@@ -41,6 +44,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
     }, []);
 
+    // ----------------------------------------------------
+    // Persist user + token
+    // ----------------------------------------------------
     const persist = (u: User | null, token?: string) => {
         setUser(u);
 
@@ -73,15 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const data = await res.json();
-
         const backendUser = data.user;
 
-        // 🔹 Normalize backend response
         const normalizedUser: User = {
             user_id: backendUser.id,
             email: backendUser.email,
             full_name: backendUser.name,
-            //role: backendUser.roles?.[0] || "TENANAT",
             role: backendUser.role,
         };
 
@@ -169,7 +172,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return (
         <AuthContext.Provider
-            value={{ user, login, signup, logout, forgotPassword, resetPassword }}
+            value={{
+                user,
+                login,
+                signup,
+                logout,
+                forgotPassword,
+                resetPassword,
+                persist, // ⭐ exposed
+            }}
         >
             {children}
         </AuthContext.Provider>
