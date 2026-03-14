@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import secrets
 from datetime import datetime, timedelta
 
+from app import db
 from app.repositories.users_repo import get_user_by_email, create_user
 from app.repositories.roles_repo import assign_role_to_user, get_user_role_names
 from app.auth.auth_service import login_user
@@ -269,7 +270,7 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
 
     result = login_user(
         db=db,
-        email=payload.email.lower(),
+        email=payload.email.lower(),  #generate JWT token
         password=payload.password
     )
 
@@ -290,6 +291,7 @@ async def login_google(request: Request):
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
+"""
 @app.get("/auth/google")
 async def auth_google(request: Request):
     if not getattr(oauth, "google", None):
@@ -332,6 +334,69 @@ async def auth_google(request: Request):
 
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     return RedirectResponse(url=f"{frontend_url}/dashboard", status_code=302)
+    """
+
+@app.get("/auth/google")
+async def auth_google(request: Request, db: Session = Depends(get_db)):
+
+    token = await oauth.google.authorize_access_token(request)
+    user_info = token.get("userinfo") or token
+
+    email = user_info.get("email")
+    google_id = user_info.get("sub")
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Google did not return an email")
+
+    # ---------------------------
+    # Check existing user
+    # ---------------------------
+    user = get_user_by_email(db, email.lower())
+
+    if not user:
+
+        # Create new Google user
+        user = create_user(
+            db=db,
+            email=email.lower(),
+            password_hash=None,
+            full_name=user_info.get("name") or email,
+            google_id=google_id,
+            is_email_verified=True,
+        )
+
+        assign_role_to_user(db, user.user_id, "TENANT")
+
+    else:
+        # If user exists but google_id is missing → update it
+        if not user.google_id:
+            user.google_id = google_id
+            db.commit()
+
+    # ---------------------------
+    # Get roles
+    # ---------------------------
+    roles = get_user_role_names(db, user.user_id)
+
+    # ---------------------------
+    # Create JWT token
+    # ---------------------------
+    from app.auth.jwt_service import create_access_token
+
+    access_token = create_access_token(
+        {
+            "user_id": str(user.user_id),
+            "email": user.email
+        },
+        role=roles[0] if roles else "TENANT"
+    )
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+    return RedirectResponse(
+        url=f"{frontend_url}/oauth-success?token={access_token}",
+        status_code=302
+    )
 
 
 @app.get("/check-session")
