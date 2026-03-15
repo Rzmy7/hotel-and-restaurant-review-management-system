@@ -1,158 +1,90 @@
-# Hotel and Restaurant Review Management & Analysis System
+# 🏥 Hotel and Restaurant Review Management & Analysis System
+
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![MSSQL](https://img.shields.io/badge/Database-MS%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
 
 ## 📌 Project Overview
-The **Hotel and Restaurant Review Management & Analysis System** is a sophisticated full-stack application designed to aggregate and analyze customer feedback from Booking.com. It combines automated web scraping, structured data storage, and AI-powered sentiment analysis to provide actionable insights into hotel performance.
 
-The system consists of three main components:
-1.  **Backend API**: A FastAPI-based server that handles scraping requests, data processing, and serves data to the frontend.
-2.  **User Frontend**: A modern React application for visualizing review data and insights.
-3.  **Admin Frontend**: An administrative interface for managing the system.
+The **Hotel and Restaurant Review Management & Analysis System** is a sophisticated, full-stack enterprise solution designed to revolutionize how hospitality businesses handle customer feedback. By integrating advanced web scraping, AI-powered sentiment analysis, and interactive data visualization, the system provides actionable insights to improve service quality and reputation.
 
-### 🚀 Key Features
--   **Automated Scraping**: robustly scrapes detailed review data (comments, scores, photos, stay attributes) from Booking.com using **Playwright**.
--   **AI-Powered Analysis**: Utilizes **Google GenAI** to process raw reviews and extract meaningful sentiment and summaries.
--   **Data Persistence**: Efficiently stores structured review data in **Microsoft SQL Server**.
--   **Interactive Dashboard**: Visualizes trends and insights via a responsive React UI.
+The platform aggregates data from major travel platforms like **Booking.com**, processes it using state-of-the-art LLMs (**Google Gemini**), and presents it through intuitive dashboards for both end-users and administrators.
+
+---
+
+## 🏗️ System Architecture
+
+The system is built on a modern, decoupled architecture ensuring scalability and maintainability:
+
+1.  **[Backend API](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/README.md)**: A robust FastAPI ecosystem handling scraping, auth, and AI orchestration.
+2.  **[User Frontend](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/frontend/README.md)**: A high-performance React dashboard for data visualization and insight exploration.
+3.  **[Admin Frontend](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/admin-frontend/README.md)**: A management portal for system monitoring, configuration, and data control.
+4.  **[Embedding Service](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/embedding-service/readme.md)**: A dedicated microservice for semantic search and vector-based analysis.
+
+---
+
+## 🚀 Key Features
+
+*   **🔍 Advanced Scraping**: Deep-scraping of Booking.com using **Playwright**, capturing comments, scores, stay attributes, and photos.
+*   **🧠 AI Sentiment Analysis**: Leveraging **Google GenAI** to extract granular sentiment, key themes, and executive summaries from thousands of reviews.
+*   **📊 Insight Dashboards**: Interactive charts (Recharts) and data tables for tracking performance trends over time.
+*   **📡 Real-time Monitoring**: System health and scraping status tracking via the Admin Panel.
+*   **🔗 Semantic Search**: Vector-based search for finding specific review contexts and patterns.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Component | Technologies |
+| Layer | Technology |
 | :--- | :--- |
-| **Backend** | Python 3.x, FastAPI, Playwright, PyODBC, Google GenAI |
-| **Frontend** | React, Vite, TypeScript, TailwindCSS, Lucide React |
+| **Backend** | Python 3.x, FastAPI, Playwright, PyODBC, Google GenAI, Authlib |
+| **Frontend** | React 19, Vite, TypeScript, TailwindCSS, Lucide React, Recharts |
+| **Services** | ChromaDB (Vector Store), Docker |
 | **Database** | Microsoft SQL Server |
-
----
-
-## 📋 Prerequisites
-
-Before setting up the project, ensure you have the following installed:
--   **Python 3.10+**
--   **Node.js 18+** & **npm**
--   **Microsoft SQL Server** (local or remote instance)
--   **ODBC Driver for SQL Server** (compatible with `pyodbc`)
-
----
-
-## 🔧 Installation & Setup
-
-### 1. Database Setup
-Ensure your SQL Server is running and you have a database created (e.g., `L2_Project_DB`). Update the environment variables in the backend with your credentials.
-
-### 2. Backend Setup
-The backend handles the core logic for scraping and API services.
-
-1.  **Navigate to the backend directory**:
-    ```bash
-    cd backend
-    ```
-
-2.  **Create and activate a virtual environment**:
-    ```bash
-    python -m venv venv
-    # Windows
-    venv\Scripts\activate
-    # macOS/Linux
-    source venv/bin/activate
-    ```
-
-3.  **Install Dependencies**:
-    Create or update your `requirements.txt` with the following content and install it:
-
-    **`requirements.txt`**:
-    ```text
-    fastapi
-    uvicorn[standard]
-    pydantic
-    python-dotenv
-    google-genai
-    playwright
-    pyodbc
-    ```
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Install Playwright Browsers**:
-    ```bash
-    playwright install chromium
-    ```
-
-5.  **Configure Environment Variables**:
-    Create a `.env` file in the `backend/app` directory (or where `main.py` functions expect it) with the following keys:
-    ```ini
-    DB_DRIVER=ODBC Driver 17 for SQL Server
-    DB_SERVER=localhost
-    DB_NAME=YourDatabaseName
-    DB_UID=YourUsername
-    DB_PWD=YourPassword
-    GOOGLE_API_KEY=your_google_genai_api_key
-    ```
-
-6.  **Run the Server**:
-    ```bash
-    # From the backend directory
-    cd backend/app/test
-    python main.py
-    ```
-    The API will be available at `http://127.0.0.1:8000`.
-
-### 3. Frontend Setup (User UI)
-
-1.  **Navigate to the frontend directory**:
-    ```bash
-    cd ../../frontend
-    ```
-
-2.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
-
-3.  **Run the Development Server**:
-    ```bash
-    npm run dev
-    ```
-    The application will run at `http://localhost:5173`.(or on an available port)
-
-### 4. Admin Frontend Setup
-
-1.  **Navigate to the admin directory**:
-    ```bash
-    cd ../admin-Frontend
-    ```
-
-2.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
-
-3.  **Run the Development Server**:
-    ```bash
-    npm run dev
-    ```
-    The application will run at `http://localhost:5174`.(or on an available port)
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-e:\L2 Project\UI\L2_project_UI
-├── backend/                  # Python FastAPI Backend
-│   ├── app/
-│   │   ├── main.py           # API Entry Point
-|   |   ├── .env              # Environment Variables
-│   │   ├── test/             # Scraping & Processing Logic
-│   │   │   ├── scraping/     # Playwright Scraper
-│   │   │   └── services/     # AI Processing Services
-│   └── requirements.txt
-├── frontend/                 # User Dashboard (React + Vite)
-└── Admin-Frontend/           # Admin Interface (React + Vite)
+.
+├── backend/                # Python FastAPI Backend & Scraping Logic
+│   ├── app/                # Core API Implementation
+│   ├── scraping/           # Playwright Scraper Engine
+│   └── embedding-service/  # Vector Search Microservice
+├── frontend/               # User Dashboard (React + Vite)
+├── admin-frontend/         # System Admin Portal (React + Vite)
+└── docs/                   # System Documentation & Diagrams
 ```
 
 ---
+
+## 📋 Quick Start
+
+### Prerequisites
+*   **Python 3.10+**
+*   **Node.js 18+** & **npm**
+*   **Microsoft SQL Server**
+*   **Docker** (for Embedding Service)
+
+### Setup Guide
+For detailed setup instructions, please refer to the individual component READMEs:
+
+1.  **[Database Setup](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/README.md#database-setup)**
+2.  **[Backend Configuration](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/README.md#installation--setup)**
+3.  **[Frontend Installation](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/frontend/README.md#getting-started)**
+4.  **[Admin Setup](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/admin-frontend/README.md#getting-started)**
+
+---
+
+## 📄 Documentation
+
+Comprehensive system documentation, including architecture diagrams and database schemas, can be found in the **[docs](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/docs/README.md)** folder.
+
+---
+
+---
+
 **License**: Private / Proprietary
+© 2026 Hotel & Restaurant Review Management System

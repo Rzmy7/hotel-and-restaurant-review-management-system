@@ -1,73 +1,60 @@
-# React + TypeScript + Vite
+# 🛠️ System Administration Panel
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The **Admin Frontend** is a dedicated management interface for the **Hotel and Restaurant Review Management System**. It provides administrators with the tools necessary to monitor scrapers, manage system configuration, and oversee the health of the entire ecosystem.
 
-Currently, two official plugins are available:
+## ✨ Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **🕵️ Scraper Orchestration**: Trigger and monitor web scraping jobs for Booking.com.
+*   **🏥 System Health Monitoring**: Real-time visualization of backend resource usage (CPU, RAM) and database status.
+*   **⚙️ Global Configuration**: Manage API keys (Gemini, etc.) and system-wide settings without code changes.
+*   **📊 Review Oversight**: View processed review data and AI-generated insights for quality control.
+*   **🔐 Access Management**: Overview of user roles and permissions within the system.
 
-## React Compiler
+---
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+## 🏗️ Technical Architecture
 
-## Expanding the ESLint configuration
+*   **Core**: React 19 + TypeScript
+*   **Build System**: Vite
+*   **Styling**: TailwindCSS & Lucide React
+*   **Navigation**: React Router 7
+*   **Communication**: Fetch API integration with the FastAPI backend.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🔧 Getting Started
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 🚀 Installation & Setup
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1.  **Navigate to admin-frontend**:
+    ```bash
+    cd admin-frontend
+    ```
+
+2.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Launch Development Server**:
+    ```bash
+    npm run dev
+    ```
+    Access the Admin Panel at: `http://localhost:5174` (or next available port).
+
+---
+
+## 📂 Project Structure
+
+```text
+src/
+├── components/   # Admin-specific UI components (Status cards, Logs)
+├── layouts/      # Dashboard and auth layouts
+├── pages/        # Management views (Scrapers, Systems, Reviews)
+├── services/     # API service layer for admin tasks
+└── types.ts      # Global admin type definitions
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+**[← Back to Root](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/README.md)** | **[Go to Embedding Service →](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/embedding-service/readme.md)**

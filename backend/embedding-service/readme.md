@@ -1,176 +1,69 @@
-<h1>Embedding Service</h1>
+# 🧠 Embedding Service
 
-<p>
-This service provides <strong>semantic embeddings and vector search</strong> for hotel reviews and hotel rules.
-It is built with FastAPI, ChromaDB, and Docker, and supports both
-<strong>cloud-based (Google Gemini)</strong> and <strong>locally hosted (MiniLM)</strong> embedding models
-with <strong>dynamic switching via API or Admin Panel</strong>.
-</p>
+The **Embedding Service** is a specialized microservice providing **semantic embeddings and vector search** capabilities for hotel reviews and administrative rules. Built with **FastAPI**, **ChromaDB**, and **Dockerized** for seamless deployment, it supports both cloud-based and local execution.
 
-<hr>
+---
 
-<h2>Features</h2>
-<ul>
-  <li>Single and batch review embedding</li>
-  <li>Single and batch hotel rule embedding</li>
-  <li>Semantic search with hotel-level filtering</li>
-  <li>Supports review and rule separation using metadata</li>
-  <li>Dockerized for easy deployment</li>
-  <li><strong>✨ Dynamic model switching between Gemini and MiniLM</strong></li>
-  <li>Configurable via API or Admin Panel</li>
-  <li>Automatic fallback to MiniLM if Gemini fails</li>
-</ul>
+## 🌟 Key Features
 
-<hr>
+*   **⚡ High-Performance Embedding**: Single and batch processing for reviews and hotel rules.
+*   **🔍 Semantic Search**: Advanced vector search with hotel-level filtering and metadata separation.
+*   **✨ Dynamic Model Switching**: Seamlessly toggle between **Google Gemini** (Cloud) and **MiniLM** (Local) via API or Admin Panel.
+*   **🛡️ Robust Error Handling**: Automatic fallback to local MiniLM if Gemini API connectivity fails.
+*   **📦 Containerized**: Fully Docker-ready with volume persistence for ChromaDB data.
 
-<h2>API Overview</h2>
-<ul>
-  <li><strong>POST /embed</strong> – Embed a single review</li>
-  <li><strong>POST /embed/batch</strong> – Embed multiple reviews</li>
-  <li><strong>POST /embed/rule</strong> – Embed a single hotel rule</li>
-  <li><strong>POST /embed/rule/batch</strong> – Embed multiple hotel rules</li>
-  <li><strong>POST /search</strong> – Semantic search for reviews and rules</li>
-  <li><strong>GET /model</strong> – Get current embedding model</li>
-  <li><strong>PUT /model</strong> – Change embedding model</li>
-  <li><strong>GET /api-settings</strong> – Get API settings (model, API key)</li>
-  <li><strong>PUT /api-settings</strong> – Update API settings</li>
-  <li><strong>GET /thresholds</strong> – Get similarity thresholds</li>
-  <li><strong>PUT /thresholds</strong> – Update similarity thresholds</li>
-</ul>
+---
 
-<hr>
+## 🛠️ Architecture & API
 
-<h2>Model Switching</h2>
+### Model Specifications
+-   **MiniLM** (`all-MiniLM-L6-v2`): Local, offline, 384 dimensions. Ideal for low-latency, private search.
+-   **Gemini** (`models/text-embedding-004`): Cloud-based, 768 dimensions. Superior semantic accuracy.
 
-<p>
-The service now supports <strong>dynamic model switching</strong> without restarting.
-You can switch between models using the Admin Panel or via API.
-</p>
+### Primary Endpoints
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/embed/batch` | `POST` | Process multiple reviews for vector storage |
+| `/search` | `POST` | Perform semantic query across reviews/rules |
+| `/model` | `PUT` | Switch between Gemini and MiniLM models |
+| `/api-settings` | `PUT` | Update API keys and configuration |
 
-<h3>Available Models</h3>
-<ul>
-  <li><strong>MiniLM</strong> (all-MiniLM-L6-v2) - Local, offline, 384 dimensions</li>
-  <li><strong>Gemini</strong> (models/text-embedding-004) - Cloud API, 768 dimensions</li>
-</ul>
+---
 
-<h3>Change Model via API</h3>
-<pre>
-curl -X PUT http://localhost:8001/model \
-  -H "Content-Type: application/json" \
-  -d '{"model": "Gemini"}'
-</pre>
+## 🔧 Installation & Setup
 
-<h3>Configure Gemini API Key</h3>
-<pre>
-curl -X PUT http://localhost:8001/api-settings \
-  -H "Content-Type: application/json" \
-  -d '{"geminiApiKey": "your_api_key_here"}'
-</pre>
+### 🚀 Local Execution
+1.  **Install dependencies**: `pip install -r requirements.txt`
+2.  **Run service**: `uvicorn app.main:app --reload --port 8001`
 
-<hr>
-
-<h2>Installation & Setup</h2>
-
-<h3>1. Install Dependencies</h3>
-<pre>
-pip install -r requirements.txt
-</pre>
-
-<h3>2. Configure Environment (Optional)</h3>
-<p>Create a <code>.env</code> file (optional - can also configure via Admin Panel):</p>
-<pre>
-GEMINI_API_KEY=your_gemini_api_key_here
-</pre>
-
-<h3>3. Run Locally</h3>
-<pre>
-uvicorn app.main:app --reload --port 8001
-</pre>
-  embedding-service
-</pre>
-
-<pre>
+### 🐳 Docker Deployment
+```bash
+# Build & Run
+docker build -t embedding-service .
 docker run -d -p 8001:8000 -v chroma_data:/data/chroma --name embedding_service embedding-service
-</pre>
+```
+> [!IMPORTANT]
+> **First Startup**: The local embedding model is downloaded automatically (~30-90 seconds).
 
-<div class="note">
-<strong>First startup:</strong> The local embedding model is downloaded automatically.
-This may take 30–90 seconds on first run.
-</div>
+---
 
-<hr>
+## ⚠️ Model Compatibility Warning
+Embeddings generated by different models (Gemini vs MiniLM) are **NOT compatible**. When switching models, you must clear the vector store:
 
-<h2>Switching Between Embedding Modes</h2>
-
-<div class="important">
-<strong>Important:</strong> Embeddings generated by different models are NOT compatible.
-You must delete the vector database when switching embedding modes.
-</div>
-
-<h3>Delete Existing Embeddings</h3>
-<pre>
+```bash
+# Clear vector data
 docker volume rm chroma_data
-</pre>
+# Re-index all data after service restart
+```
 
-<p>
-After deleting the volume, restart the container and re-embed all reviews and rules.
-</p>
+---
 
-<hr>
+## 💹 Deployment Specs
+| VPS RAM | Recommended Mode |
+| :--- | :--- |
+| **1 GB** | Gemini API |
+| **2 GB** | Local MiniLM (Recommended) |
 
-<h2>Verify the Service</h2>
+---
 
-<h3>Check Running Containers</h3>
-<pre>
-docker ps
-</pre>
-
-<h3>View Logs</h3>
-<pre>
-docker logs embedding_service
-</pre>
-
-<h3>Open API Documentation</h3>
-<pre>
-http://localhost:8001/docs
-</pre>
-
-<hr>
-
-<h2>Deployment Recommendations</h2>
-
-<table border="1" cellpadding="8" cellspacing="0">
-  <tr>
-    <th>VPS RAM</th>
-    <th>Recommended Mode</th>
-  </tr>
-  <tr>
-    <td>1 GB</td>
-    <td>Gemini API</td>
-  </tr>
-  <tr>
-    <td>2 GB</td>
-    <td>Local MiniLM (Recommended)</td>
-  </tr>
-</table>
-
-<hr>
-
-<h2>Design Summary</h2>
-
-<p>
-The embedding service embeds both hotel reviews and hotel rules into a shared vector
-database using metadata separation. Semantic search retrieves relevant reviews and rules
-to support AI-based reply generation that remains context-aware and policy-compliant.
-</p>
-
-<hr>
-
-<h2>Summary</h2>
-<ul>
-  <li>Dockerized semantic embedding service</li>
-  <li>Supports hotel reviews and hotel rules</li>
-  <li>Supports Gemini and local embedding models</li>
-  <li>Batch embedding with safe resource usage</li>
-  <li>Semantic search with metadata-based filtering</li>
-</ul>
+**[← Back to Root](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/README.md)** | **[Go to Admin Panel →](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/admin-frontend/README.md)**
