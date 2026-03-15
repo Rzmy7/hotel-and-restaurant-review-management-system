@@ -22,12 +22,12 @@ export const Card: React.FC<CardProps> = ({
     };
 
     const hoverClasses = hoverEffect
-        ? `transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/40 hover:-translate-y-0.5 group ${borderSchemes[colorScheme]}`
+        ? `transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/40 dark:hover:shadow-none hover:-translate-y-0.5 group ${borderSchemes[colorScheme]}`
         : '';
 
     return (
         <div
-            className={`p-4 bg-white border border-gray-100 rounded-xl relative overflow-hidden ${hoverClasses} ${className}`}
+            className={`p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-800 rounded-xl relative overflow-hidden ${hoverClasses} ${className}`}
             {...props}
         >
             {children}

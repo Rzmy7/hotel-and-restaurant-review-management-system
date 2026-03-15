@@ -35,10 +35,10 @@ const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
                 className="flex items-center gap-2 group cursor-pointer text-left focus:outline-none"
             >
                 <div className="relative">
-                    <h1 className="text-xl font-black text-gray-900 m-0 leading-tight tracking-tight group-hover:text-blue-600 transition-colors duration-300">
+                    <h1 className="text-xl font-black text-gray-900 dark:text-white m-0 leading-tight tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
                         {currentOrg.name}
                     </h1>
-                    <p className="mt-0.5 text-[10px] font-bold text-gray-400 m-0 leading-none uppercase tracking-[0.2em]">
+                    <p className="mt-0.5 text-[10px] font-bold text-gray-400 dark:text-slate-500 m-0 leading-none uppercase tracking-[0.2em]">
                         {currentOrg.status === 'Active' ? 'Review Analytics Hub' : 'System Offline'}
                     </p>
                     <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-500"></div>
@@ -50,7 +50,7 @@ const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute left-0 mt-3 w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-2 max-h-[300px] overflow-y-auto">
                         <div className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                             Your Organizations
@@ -63,8 +63,8 @@ const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
                                     setIsOpen(false);
                                 }}
                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group/item ${org.id === currentOrg.id
-                                    ? 'bg-blue-50 text-blue-600'
-                                    : 'hover:bg-gray-50 text-gray-700 hover:text-blue-600'
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                    : 'hover:bg-gray-50 dark:hover:bg-slate-700/50 text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
@@ -81,15 +81,15 @@ const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
                         ))}
                     </div>
 
-                    <div className="p-2 bg-gray-50/80 border-t border-gray-100">
-                        <button
+                    <div className="p-2 bg-gray-50/80 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700">
+                         <button
                             onClick={() => {
                                 onAdd();
                                 setIsOpen(false);
                             }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-bold text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:shadow-md transition-all active:scale-[0.98]"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm font-bold text-gray-600 dark:text-slate-400 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-md transition-all active:scale-[0.98]"
                         >
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                                 <Plus size={18} />
                             </div>
                             <span>Add New Organization</span>

@@ -112,7 +112,7 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({ data }) => {
                 </div>
 
                 {/* Y-Axis Labels - Volume (Right) */}
-                <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between py-0 text-[10px] font-black text-slate-400/80 pl-2 items-start h-[200px]">
+                <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between py-0 text-[10px] font-black text-slate-400/80 dark:text-slate-500/80 pl-2 items-start h-[200px]">
                     <span>{maxVolume}</span>
                     <span>{Math.round(maxVolume * 0.75)}</span>
                     <span>{Math.round(maxVolume * 0.5)}</span>
@@ -121,9 +121,9 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({ data }) => {
                 </div>
 
                 {/* X-Axis Labels - Time (Bottom) */}
-                <div className="absolute bottom-[-32px] left-10 right-10 h-6 text-[9px] font-black text-gray-300 uppercase tracking-[0.05em] flex justify-between">
+                <div className="absolute bottom-[-32px] left-10 right-10 h-6 text-[9px] font-black text-gray-300 dark:text-slate-600 uppercase tracking-[0.05em] flex justify-between">
                     {data.map((point, i) => (
-                        <span key={i} className="hover:text-gray-500 cursor-default transition-colors">
+                        <span key={i} className="hover:text-gray-500 dark:hover:text-slate-400 cursor-default transition-colors">
                             {point.label}
                         </span>
                     ))}

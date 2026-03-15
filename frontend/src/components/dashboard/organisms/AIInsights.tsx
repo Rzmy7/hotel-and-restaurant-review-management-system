@@ -39,11 +39,11 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#4e80ee]"></div>
-                        <h4 className="m-0 text-[10px] font-black text-gray-400 uppercase tracking-widest">Key Strengths</h4>
+                        <h4 className="m-0 text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Key Strengths</h4>
                     </div>
                     <div className="space-y-2.5">
                         {strengths.map((item) => (
-                            <div key={item.label} className="p-3.5 bg-blue-50/20 border border-blue-100/30 rounded-xl hover:bg-blue-50/40 transition-colors group/item">
+                            <div key={item.label} className="p-3.5 bg-blue-50/20 border border-blue-100/30 dark:bg-blue-900/10 dark:border-blue-900/30 rounded-xl hover:bg-blue-50/40 dark:hover:bg-blue-900/20 transition-colors group/item">
                                 <div className="flex items-center justify-between mb-1.5">
                                     <span className="text-[13px] font-black text-gray-800 dark:text-gray-200">{item.label}</span>
                                     <ThumbsUp size={12} className="text-[#4e80ee] opacity-0 group-hover/item:opacity-100 transition-opacity" />
@@ -61,11 +61,11 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ data }) => {
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                        <h4 className="m-0 text-[10px] font-black text-gray-400 uppercase tracking-widest">Critical Issues</h4>
+                        <h4 className="m-0 text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Critical Issues</h4>
                     </div>
                     <div className="space-y-2.5">
                         {issues.map((item) => (
-                            <div key={item.label} className="p-3.5 bg-rose-50/20 border border-rose-100/30 rounded-xl hover:bg-rose-50/40 transition-colors group/item">
+                            <div key={item.label} className="p-3.5 bg-rose-50/20 border border-rose-100/30 dark:bg-rose-900/10 dark:border-rose-900/30 rounded-xl hover:bg-rose-50/40 dark:hover:bg-rose-900/20 transition-colors group/item">
                                 <div className="flex items-center justify-between mb-1.5">
                                     <span className="text-[13px] font-black text-gray-800 dark:text-gray-200">{item.label}</span>
                                     <ThumbsDown size={12} className="text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity" />

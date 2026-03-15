@@ -53,6 +53,7 @@ export const SentimentChart: React.FC<SentimentChartProps> = ({ data }) => {
                         <circle
                             cx="100" cy="100" r="82" fill="none"
                             stroke="#f8fafc" strokeWidth="20"
+                            className="dark:stroke-slate-800"
                         />
                         {/* Positive Segment */}
                         <circle
