@@ -30,7 +30,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
                 </button>
             </SectionHeader>
 
-            <div className="flex-1 overflow-y-auto pr-2 space-y-3 -mr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent" style={{ maxHeight: 220 }}>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-3 -mr-2 no-scrollbar" style={{ maxHeight: 220 }}>
                 {alerts.map((alert) => (
                     <div
                         key={alert.id}
