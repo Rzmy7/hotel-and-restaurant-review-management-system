@@ -1,27 +1,37 @@
 # ⚙️ Backend API Service
 
-The backend of the **Hotel and Restaurant Review Management System** is a high-performance API ecosystem built with **FastAPI**. It handles complex tasks including automated web scraping, AI-driven data processing, and secure data storage.
+The backend of the **Hotel and Restaurant Review Management System** is a production-grade **Domain-Driven Modular Monolith** built with **FastAPI**. It handles automated web scraping, AI-driven analysis, and secure business logic across multiple encapsulated domains.
 
 ## 🌟 Core Responsibilities
 
 *   **🌐 Scraping Engine**: Orchestrates **Playwright** to extract granular review data from Booking.com.
-*   **🤖 AI Orchestration**: Integrates with **Google Gemini** for sentiment analysis and review summarization.
-*   **🔐 Authentication & RBAC**: Secure user management using **Authlib** and custom Role-Based Access Control.
-*   **🗄️ Data Management**: Structured storage and retrieval using **Microsoft SQL Server** via `pyodbc`.
-*   **🏥 Health Monitoring**: Real-time system diagnostics and process tracking.
+*   **🤖 AI Orchestration**: Integrates with **Google Gemini** for sentiment analysis, categorization, and summarization.
+*   **🔐 Auth & RBAC**: Secure user management using **JWT**, **Bcrypt**, and role-based permissions (System & Group levels).
+*   **🗄️ Data Management**: High-performance storage using **SQL Server** via `pyodbc` and **SQLAlchemy**.
+*   **🏥 Health Monitoring**: Real-time system diagnostics and database connectivity tracking.
 
 ---
 
-## 🏗️ Architecture & Modules
+## 🏗️ Project Architecture
 
-The backend is organized into several key modules for better maintainability:
+The system follows a modular architecture where each business domain is self-contained:
 
-*   `app/main.py`: The central entry point for the FastAPI application.
-*   `app/auth/`: Secure authentication flows and token management.
-*   `app/services/`: Business logic, including GenAI integration and scraping orchestration.
-*   `app/repositories/`: Data access layer for SQL Server interactions.
-*   `scraping/`: Specialized logic for Playwright-based web extraction.
-*   `embedding-service/`: (Sidecar) Microservice for vector-based search and analysis.
+```text
+backend/app/
+├── main.py                 # Thin entry point & router registration
+├── core/                   # Infrastructure (Config, Database, Security, Dependencies)
+├── middleware/             # Cross-cutting concerns (Permissions, Auth Guards)
+├── modules/                # DOMAIN MODULES
+│   ├── admin/              # User & Organization management
+│   ├── auth/               # Login, Signup, OAuth, and User Models
+│   ├── competitors/        # Competitor tracking, scraping, and analytics
+│   ├── dashboard/          # Global KPI aggregation and reporting
+│   ├── groups/             # Collaborative group management
+│   └── reviews/            # Review processing and sentiment analysis
+├── constants/              # Shared system-wide constants
+├── scripts/                # Database seeding and migration scripts
+└── tests/                  # Connectivity and integration tests
+```
 
 ---
 
@@ -29,10 +39,10 @@ The backend is organized into several key modules for better maintainability:
 
 *   **Framework**: FastAPI
 *   **Scraping**: Playwright (Chromium)
-*   **AI**: Google GenAI (Gemini)
-*   **Auth**: Authlib, Passlib (Bcrypt)
-*   **Database**: Microsoft SQL Server
-*   **Drivers**: PyODBC (ODBC Driver 17/18)
+*   **AI**: Google GenAI (Gemini 2.5)
+*   **ORM**: SQLAlchemy 2.0
+*   **Database**: Microsoft SQL Server (ODBC Driver 18)
+*   **Security**: Python-JOSE, Passlib (Bcrypt)
 
 ---
 
@@ -41,49 +51,42 @@ The backend is organized into several key modules for better maintainability:
 ### 📋 Prerequisites
 *   **Python 3.10+**
 *   **Microsoft SQL Server**
-*   **ODBC Driver for SQL Server**
+*   **ODBC Driver 18 for SQL Server**
 
 ### 🚀 Getting Started
 
 1.  **Environment Setup**:
     ```bash
-    # Navigate to backend
-    cd backend
-
     # Create & activate venv
     python -m venv venv
-    .\venv\Scripts\activate
-    ```
-
-2.  **Install Dependencies**:
-    ```bash
+    .\venv\Scripts\activate  # Windows
+    
+    # Install dependencies
     pip install -r requirements.txt
     playwright install chromium
     ```
 
-3.  **Configure Environment**:
-    Create a `.env` file in the `backend/app/` directory:
-    ```ini
-    DB_SERVER=localhost
-    DB_NAME=L2_Project_DB
-    DB_UID=sa
-    DB_PWD=your_password
-    GOOGLE_API_KEY=your_gemini_key
+2.  **Configure Environment**:
+    Create a `.env` file in the `backend/` directory by copying the example:
+    ```bash
+    cp .env.example .env
+    ```
+    *Note: Ensure `DATABASE_URL` includes `TrustServerCertificate=yes` for local/dev servers.*
+
+3.  **Verify Setup**:
+    Run the connectivity suite to ensure the DB and AI keys are working:
+    ```bash
+    $env:PYTHONPATH = ".;$env:PYTHONPATH"; python tests/test_db_connectivity.py
     ```
 
 4.  **Launch the Server**:
     ```bash
-    # From the backend/app directory
-    uvicorn main:app --reload
+    uvicorn app.main:app --reload
     ```
-    API Docs available at: `http://localhost:8000/docs`
+    API Docs: `http://localhost:8000/docs`
 
 ---
 
-## 🔍 Monitoring & Health
-The API includes built-in endpoints for monitoring system health:
-- `GET /health`: Detailed system diagnostics (CPU, Memory, DB Connectivity).
-
----
-
-**[← Back to Root](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/README.md)** | **[Go to Frontend →](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/frontend/README.md)**
+## 🏥 Monitoring & Health
+- `GET /health`: CPU, Memory, and Uptime diagnostics.
+- `GET /db-test`: Instant database availability check.
