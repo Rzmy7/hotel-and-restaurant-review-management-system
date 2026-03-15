@@ -1,12 +1,15 @@
 import type { SettingsData } from '../types/settings';
 
 // Mocked initial data
+const STORAGE_KEY = 'vite-ui-theme';
+const savedTheme = (localStorage.getItem(STORAGE_KEY) as 'light' | 'dark' | 'system') || 'system';
+
 const defaultSettings: SettingsData = {
     general: {
         propertyName: 'Grand Hotel NYC',
         timeZone: 'EST (UTC-5)',
         language: 'English',
-        themePreference: 'system',
+        themePreference: savedTheme,
     },
     notifications: {
         emailNotifications: true,
