@@ -13,16 +13,13 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.core.config import SECRET_KEY, CORS_ORIGINS
 
 # ── Router imports ──────────────────────────────────────────────────
-from app.routers import (
-    health,
-    auth,
-    reviews,
-    scraping,
-    competitors,
-    dashboard,
-    admin,
-    groups,
-)
+from app.core import health
+from app.modules.auth.router import router as auth_router
+from app.modules.reviews.router import router as reviews_router
+from app.modules.competitors.router import router as competitors_router
+from app.modules.dashboard.router import router as dashboard_router
+from app.modules.admin.router import router as admin_router
+from app.modules.groups.router import router as groups_router
 
 # ── App factory ─────────────────────────────────────────────────────
 
@@ -47,13 +44,12 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 # ── Register routers ───────────────────────────────────────────────
 
 app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(reviews.router)
-app.include_router(scraping.router)
-app.include_router(competitors.router)
-app.include_router(dashboard.router)
-app.include_router(admin.router)
-app.include_router(groups.router)
+app.include_router(auth_router)
+app.include_router(reviews_router)
+app.include_router(competitors_router)
+app.include_router(dashboard_router)
+app.include_router(admin_router)
+app.include_router(groups_router)
 
 # ── Dev server ──────────────────────────────────────────────────────
 

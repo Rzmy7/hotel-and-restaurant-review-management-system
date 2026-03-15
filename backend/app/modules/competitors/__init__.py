@@ -1,0 +1,1 @@
+# competitors domain module

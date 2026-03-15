@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
-from app.models import Role
+from app.modules.auth.models import Role
 from app.constants.roles import SYSTEM_ADMIN, TENANT
 
 
