@@ -1,0 +1,24 @@
+import json
+import os
+from datetime import datetime
+from typing import List
+from platforms.booking.extractor import BookingReviewData
+from core.config import setup_logger, config
+
+logger = setup_logger("booking_storage")
+
+def save_to_json(reviews: List[BookingReviewData], org_name: str) -> str:
+    if not os.path.exists(config.output_dir):
+        os.makedirs(config.output_dir)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    clean_org_name = "".join([c if c.isalnum() else "_" for c in org_name]).strip("_")
+    filename = f"booking_{clean_org_name}_{timestamp}.json"
+    filepath = os.path.join(config.output_dir, filename)
+
+    data = [review.model_dump() for review in reviews]
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"Saved {len(reviews)} Booking reviews to {filepath}")
+    return filepath

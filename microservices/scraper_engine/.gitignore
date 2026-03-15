@@ -1,0 +1,38 @@
+# Environment & secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+
+# Playwright persistent profiles (contains session cookies)
+platforms/google/chrome_profile/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug artifacts
+debug_*.png
+debug_*.jpg
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Output files (generated JSON backups)
+output/
+
+# Logs
+*.log
