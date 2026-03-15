@@ -4,11 +4,16 @@ import { UserStatsGrid } from '../components/UserStatsGrid';
 import { UserFilters } from '../components/UserFilters';
 import { UserTable } from '../components/UserTable';
 import { AddUserModal } from '../components/AddUserModal';
-import { fetchUsers } from '../services/mockService';
+import { createUser, deleteUser, fetchUserStats, fetchUsers, updateUser } from '../services/adminDataService';
 import type { User } from '../types';
 
 export const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
+    const [stats, setStats] = useState({
+        allActiveUsers: 0,
+        todayActiveUsers: 0,
+        todayRegistered: 0,
+    });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState('All Roles');
@@ -20,17 +25,26 @@ export const UsersPage: React.FC = () => {
 
     useEffect(() => {
         const loadData = async () => {
-            const userData = await fetchUsers();
-            setUsers(userData);
-            setLoading(false);
+            try {
+                const [userData, statsData] = await Promise.all([
+                    fetchUsers(),
+                    fetchUserStats(),
+                ]);
+                setUsers(userData);
+                setStats(statsData);
+            } catch (error) {
+                console.error('Failed to load users data:', error);
+            } finally {
+                setLoading(false);
+            }
         };
         loadData();
     }, []);
 
     // Stats calculations
-    const allActiveUsers = users.filter(u => u.status === 'Active').length;
-    const todayActiveUsers = 89; // Mock data
-    const todayRegistered = 12; // Mock data
+    const allActiveUsers = stats.allActiveUsers || users.filter(u => u.status === 'Active').length;
+    const todayActiveUsers = stats.todayActiveUsers;
+    const todayRegistered = stats.todayRegistered;
 
     // Filter Logic
     const filteredUsers = users.filter(user => {
@@ -54,20 +68,64 @@ export const UsersPage: React.FC = () => {
         }
     };
 
-    const handleAddUser = (newUser: Omit<User, 'id' | 'plan'>) => {
-        const user: User = {
-            ...newUser,
-            id: String(users.length + 1),
-        };
-        setUsers([user, ...users]);
+    const refreshStats = async () => {
+        try {
+            const latestStats = await fetchUserStats();
+            setStats(latestStats);
+        } catch (error) {
+            console.error('Failed to refresh user stats:', error);
+        }
     };
 
-    const handleUserUpdate = (updatedUser: User) => {
-        setUsers(prevUsers => 
-            prevUsers.map(user => 
-                user.id === updatedUser.id ? updatedUser : user
-            )
-        );
+    const handleAddUser = async (newUser: Omit<User, 'id' | 'plan'>) => {
+        try {
+            const createdUser = await createUser({
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role,
+                status: newUser.status,
+                organizations: newUser.organizations,
+                groups: newUser.groups,
+            });
+
+            setUsers(prevUsers => [createdUser, ...prevUsers]);
+            await refreshStats();
+        } catch (error) {
+            console.error('Failed to add user:', error);
+        }
+    };
+
+    const handleUserUpdate = async (updatedUser: User) => {
+        try {
+            const savedUser = await updateUser(updatedUser.id, {
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                status: updatedUser.status,
+                plan: updatedUser.plan,
+                organizations: updatedUser.organizations,
+                groups: updatedUser.groups,
+            });
+
+            setUsers(prevUsers =>
+                prevUsers.map(user =>
+                    user.id === savedUser.id ? savedUser : user
+                )
+            );
+            await refreshStats();
+        } catch (error) {
+            console.error('Failed to update user:', error);
+        }
+    };
+
+    const handleUserDelete = async (userId: string) => {
+        try {
+            await deleteUser(userId);
+            setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+            await refreshStats();
+        } catch (error) {
+            console.error('Failed to delete user:', error);
+        }
     };
 
     if (loading) {
@@ -113,6 +171,7 @@ export const UsersPage: React.FC = () => {
                 startIndex={startIndex}
                 onPageChange={handlePageChange}
                 onUserUpdate={handleUserUpdate}
+                onUserDelete={handleUserDelete}
             />
         </div>
     );

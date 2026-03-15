@@ -6,7 +6,7 @@ interface EditUserModalProps {
     isOpen: boolean;
     onClose: () => void;
     user: User;
-    onSave: (updatedUser: User) => void;
+    onSave: (updatedUser: User) => Promise<void> | void;
 }
 
 export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, onSave }) => {
@@ -18,14 +18,22 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
         groups: user.groups || [],
     });
     const [newOrg, setNewOrg] = useState('');
+    const [saving, setSaving] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({
-            ...user,
-            ...formData,
-        });
-        onClose();
+        try {
+            setSaving(true);
+            await Promise.resolve(
+                onSave({
+                    ...user,
+                    ...formData,
+                })
+            );
+            onClose();
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleAddOrganization = () => {
@@ -216,15 +224,17 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                         <button
                             type="button"
                             onClick={onClose}
+                            disabled={saving}
                             className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
+                            disabled={saving}
                             className="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
                         >
-                            Save Changes
+                            {saving ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </form>

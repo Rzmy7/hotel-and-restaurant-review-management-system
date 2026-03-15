@@ -48,7 +48,6 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                     >
                         <option>All Roles</option>
                         <option>Admin</option>
-                        <option>Manager</option>
                         <option>User</option>
                     </select>
                     <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />

@@ -5,25 +5,33 @@ import type { User } from '../types';
 interface AddUserModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (user: Omit<User, 'id' | 'plan'>) => void;
+    onAdd: (user: Omit<User, 'id' | 'plan'>) => Promise<void> | void;
 }
 
 export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAdd }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        role: 'Admin' as 'Admin' | 'Manager',
+        role: 'User' as 'Admin' | 'User',
     });
+    const [submitting, setSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onAdd({
-            ...formData,
-            status: 'Active',
-            avatarColor: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
-        });
-        setFormData({ name: '', email: '', role: 'Admin' });
-        onClose();
+        try {
+            setSubmitting(true);
+            await Promise.resolve(
+                onAdd({
+                    ...formData,
+                    status: 'Active',
+                    avatarColor: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+                })
+            );
+            setFormData({ name: '', email: '', role: 'User' });
+            onClose();
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -80,15 +88,15 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
                         <div className="relative">
                             <select
                                 value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'Admin' | 'Manager' })}
+                                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'Admin' | 'User' })}
                                 className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                             >
                                 <option value="Admin">Admin</option>
-                                <option value="Manager">Manager</option>
+                                <option value="User">User</option>
                             </select>
                             <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Only Admins and Managers can be added by administrators</p>
+                        <p className="text-xs text-gray-500 mt-1">Create users with Admin or User role</p>
                     </div>
 
                     {/* Actions */}
@@ -96,15 +104,17 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
                         <button
                             type="button"
                             onClick={onClose}
+                            disabled={submitting}
                             className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
+                            disabled={submitting}
                             className="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
                         >
-                            Add User
+                            {submitting ? 'Adding...' : 'Add User'}
                         </button>
                     </div>
                 </form>
