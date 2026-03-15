@@ -11,3 +11,5 @@ google-genai
 playwright
 pyodbc
 psutil
+python-jose[cryptography]
+sqlalchemy

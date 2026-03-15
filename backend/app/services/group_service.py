@@ -1,14 +1,20 @@
+"""
+Group business logic (service layer).
+
+Fixed broken imports from original services/group_service.py.
+"""
+
 import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import Group, GroupMember, GROUP_MANAGER, GROUP_MEMBER
+from app.models import Group, GroupMember
+from app.constants.roles import GROUP_MANAGER, GROUP_MEMBER
 from app.repositories.groups_repo import (
     create_group,
     add_member_to_group,
-    remove_member_from_group as repo_remove_member_from_group,
 )
-from app.auth.permissions import require_group_manager # type: ignore
+from app.auth.permissions import require_group_manager
 
 
 def _get_group_or_404(db: Session, group_id: uuid.UUID) -> Group:
@@ -34,7 +40,7 @@ def add_group_member_service(
     group_id: uuid.UUID,
     user_id: uuid.UUID,
     role: str,
-    current_user
+    current_user,
 ):
     _get_group_or_404(db, group_id)
     require_group_manager(group_id, current_user, db)
@@ -49,7 +55,7 @@ def transfer_group_ownership(
     db: Session,
     group_id: uuid.UUID,
     new_manager_user_id: uuid.UUID,
-    current_user
+    current_user,
 ):
     _get_group_or_404(db, group_id)
     require_group_manager(group_id, current_user, db)
@@ -88,7 +94,6 @@ def remove_group_member(db: Session, group_id: uuid.UUID, user_id: uuid.UUID, cu
     if not target:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    # Prevent deleting last manager
     if target.role == GROUP_MANAGER:
         manager_count = (
             db.query(GroupMember)
@@ -98,9 +103,9 @@ def remove_group_member(db: Session, group_id: uuid.UUID, user_id: uuid.UUID, cu
         if manager_count <= 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot remove last GROUP_MANAGER"
+                detail="Cannot remove last GROUP_MANAGER",
             )
 
-    repo_remove_member_from_group(db, group_id, user_id)
+    db.delete(target)
     db.commit()
     return {"message": "Member removed successfully"}
