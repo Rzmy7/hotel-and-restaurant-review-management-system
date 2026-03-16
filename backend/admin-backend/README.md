@@ -12,6 +12,11 @@ This backend is wired to **real SQL Server data** (no static mock payloads).
 - `GET /dashboard/reviews`
 - `GET /dashboard/alerts`
 - `GET /dashboard/activities`
+- `GET /monitoring/admin-backend-status`
+- `GET /monitoring/admin-backend-usage`
+- `GET /monitoring/scraping/platforms` (platforms from SQL database)
+- `GET /monitoring/scraping/stats` (proxied from scraping backend runtime APIs)
+- `GET /monitoring/scraping/jobs` (proxied from scraping backend runtime APIs)
 
 These routes match the contract used in `admin-frontend/src/services/dashboardService.ts`.
 
@@ -26,6 +31,7 @@ DB_NAME=L2_Project_DB
 DB_UID=sa
 DB_PWD=your_password
 CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174
+SCRAPING_BACKEND_URL=http://localhost:8001
 ```
 
 The query strategy is aligned with your existing backend test routes in `backend/app/test/api/review_api.py`.

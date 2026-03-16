@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, Settings, CheckCircle, XCircle, Grid3X3 } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { StatusBadge } from '../components/StatusBadge';
-import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs } from '../services/mockService';
+import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
 export const Scraping: React.FC = () => {
@@ -10,29 +9,84 @@ export const Scraping: React.FC = () => {
     const [platforms, setPlatforms] = useState<ScrapingPlatform[]>([]);
     const [jobs, setJobs] = useState<ScrapingJob[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
 
     useEffect(() => {
-        const loadData = async () => {
+        const loadData = async (isRefresh = false) => {
+            try {
+                if (isRefresh) {
+                    setRefreshing(true);
+                } else {
+                    setLoading(true);
+                }
+                setError(null);
+
+                const [statsData, platformsData, jobsData] = await Promise.all([
+                    fetchScrapingStats(),
+                    fetchScrapingPlatforms(),
+                    fetchScrapingJobs(),
+                ]);
+                setStats(statsData);
+                setPlatforms(platformsData);
+                setJobs(jobsData);
+            } catch (err) {
+                console.error('Failed to load scraping data:', err);
+                setError('Failed to load scraping data. Check admin-backend and scraping service connectivity.');
+            } finally {
+                setLoading(false);
+                setRefreshing(false);
+            }
+        };
+
+        loadData();
+
+        const interval = setInterval(() => {
+            loadData(true);
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleRefresh = async () => {
+        try {
+            setRefreshing(true);
+            setError(null);
             const [statsData, platformsData, jobsData] = await Promise.all([
                 fetchScrapingStats(),
                 fetchScrapingPlatforms(),
-                fetchScrapingJobs()
+                fetchScrapingJobs(),
             ]);
             setStats(statsData);
             setPlatforms(platformsData);
             setJobs(jobsData);
-            setLoading(false);
-        };
-        loadData();
-    }, []);
+        } catch (err) {
+            console.error('Failed to refresh scraping data:', err);
+            setError('Failed to refresh scraping data.');
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     const togglePlatform = (id: string) => {
         setPlatforms(prev => prev.map(p =>
             p.id === id ? { ...p, enabled: !p.enabled } : p
         ));
     };
+
+    const filteredJobs = jobs.filter(job => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) {
+            return true;
+        }
+        return (
+            job.jobId.toLowerCase().includes(query)
+            || job.organization.toLowerCase().includes(query)
+            || job.platform.toLowerCase().includes(query)
+        );
+    });
 
     const formatNumber = (num: number): string => {
         if (num >= 1000) {
@@ -56,6 +110,12 @@ export const Scraping: React.FC = () => {
 
     return (
         <div className="space-y-6 pt-4">
+            {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                </div>
+            )}
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -184,8 +244,11 @@ export const Scraping: React.FC = () => {
                             <Filter size={16} />
                             Filter
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
-                            <RefreshCw size={16} />
+                        <button
+                            onClick={handleRefresh}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600"
+                        >
+                            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
                             Refresh
                         </button>
                     </div>
@@ -206,7 +269,7 @@ export const Scraping: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {jobs.map(job => (
+                            {filteredJobs.map(job => (
                                 <tr key={job.id} className="border-b border-gray-100 hover:bg-gray-50">
                                     <td className="py-4 px-4 text-sm font-mono text-gray-500">{job.jobId}</td>
                                     <td className="py-4 px-4">
@@ -257,7 +320,7 @@ export const Scraping: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Showing 1 to 5 of 128 jobs</span>
+                    <span className="text-sm text-gray-500">Showing {filteredJobs.length} of {jobs.length} jobs</span>
                     <div className="flex items-center gap-1">
                         <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50" disabled>Previous</button>
                         <button className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium">1</button>
