@@ -11,6 +11,7 @@ class DashboardStats(BaseModel):
     usersGrowth: float
     hotelsGrowth: float
     totalReviews: int
+    reviewsCollectedToday: int
     reviewsGrowth: float
     activeUsersToday: int
     systemUptime: float

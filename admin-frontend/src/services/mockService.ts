@@ -11,6 +11,7 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
                 activeHotels: 1245,
                 hotelsGrowth: 5.4,
                 totalReviews: 156789,
+                reviewsCollectedToday: 327,
                 reviewsGrowth: 15.3,
                 activeUsersToday: 1247,
                 systemUptime: 99.9,

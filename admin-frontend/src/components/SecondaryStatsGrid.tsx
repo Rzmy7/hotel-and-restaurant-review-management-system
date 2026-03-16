@@ -13,7 +13,7 @@ export const SecondaryStatsGrid: React.FC<SecondaryStatsGridProps> = ({ stats })
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ActiveUsersCard activeUsersToday={stats.activeUsersToday} />
             <ReviewsCollectedCard 
-                totalReviews={stats.totalReviews} 
+                reviewsCollectedToday={stats.reviewsCollectedToday} 
                 reviewsGrowth={stats.reviewsGrowth} 
             />
             <SystemUptimeCard systemUptime={stats.systemUptime} />

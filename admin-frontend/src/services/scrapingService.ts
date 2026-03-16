@@ -19,6 +19,67 @@ interface CreateScrapingPlatformPayload {
     enabled: boolean;
 }
 
+interface UpdateScrapingPlatformPayload {
+    name: string;
+    tableName: string;
+    attributes: {
+        name: string;
+        type: string;
+        nullable: boolean;
+    }[];
+    baseUrl?: string;
+    enabled: boolean;
+}
+
+interface ScrapingPlatformDetailsResponse {
+    id: string;
+    name: string;
+    tableName: string;
+    attributes: {
+        name: string;
+        type: string;
+        nullable: boolean;
+    }[];
+    baseUrl?: string;
+    enabled: boolean;
+}
+
+interface RawScrapingPlatformDetailsResponse {
+    id?: string;
+    name?: string;
+    tableName?: string;
+    table_name?: string;
+    attributes?: Array<{
+        name?: string;
+        column_name?: string;
+        type?: string;
+        data_type?: string;
+        nullable?: boolean;
+        is_nullable?: boolean;
+    }>;
+    baseUrl?: string;
+    base_url?: string;
+    enabled?: boolean;
+}
+
+const normalizeTableAttributes = (attributes: RawScrapingPlatformDetailsResponse['attributes']) => {
+    if (!Array.isArray(attributes)) {
+        return [];
+    }
+
+    return attributes
+        .map((attr) => ({
+            name: String(attr.name ?? attr.column_name ?? '').trim(),
+            type: String(attr.type ?? attr.data_type ?? '').trim(),
+            nullable: typeof attr.nullable === 'boolean'
+                ? attr.nullable
+                : typeof attr.is_nullable === 'boolean'
+                    ? attr.is_nullable
+                    : true,
+        }))
+        .filter((attr) => attr.name || attr.type);
+};
+
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(`${getBaseUrl()}${path}`, {
         headers: {
@@ -59,6 +120,25 @@ export const fetchScrapingJobs = (): Promise<ScrapingJob[]> => {
 export const createScrapingPlatform = (payload: CreateScrapingPlatformPayload): Promise<ScrapingPlatform> => {
     return requestJson<ScrapingPlatform>('/monitoring/scraping/platforms', {
         method: 'POST',
+        body: JSON.stringify(payload),
+    });
+};
+
+export const fetchScrapingPlatformDetails = async (platformId: string): Promise<ScrapingPlatformDetailsResponse> => {
+    const raw = await requestJson<RawScrapingPlatformDetailsResponse>(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`);
+    return {
+        id: String(raw.id ?? platformId),
+        name: String(raw.name ?? ''),
+        tableName: String(raw.tableName ?? raw.table_name ?? ''),
+        attributes: normalizeTableAttributes(raw.attributes),
+        baseUrl: String(raw.baseUrl ?? raw.base_url ?? ''),
+        enabled: typeof raw.enabled === 'boolean' ? raw.enabled : true,
+    };
+};
+
+export const updateScrapingPlatform = (platformId: string, payload: UpdateScrapingPlatformPayload): Promise<ScrapingPlatform> => {
+    return requestJson<ScrapingPlatform>(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`, {
+        method: 'PUT',
         body: JSON.stringify(payload),
     });
 };

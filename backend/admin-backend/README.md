@@ -16,6 +16,8 @@ This backend is wired to **real SQL Server data** (no static mock payloads).
 - `GET /monitoring/admin-backend-usage`
 - `GET /monitoring/scraping/platforms` (platforms from SQL database)
 - `POST /monitoring/scraping/platforms` (create platform in SQL `sources`)
+- `GET /monitoring/scraping/platforms/{platform_id}` (single platform metadata + editable table attributes)
+- `PUT /monitoring/scraping/platforms/{platform_id}` (update platform, table name, and table attributes)
 - `GET /monitoring/scraping/stats` (proxied from scraping backend runtime APIs)
 - `GET /monitoring/scraping/jobs` (proxied from scraping backend runtime APIs)
 

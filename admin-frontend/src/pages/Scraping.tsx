@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
+import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
 type TableAttributeFormRow = {
@@ -30,10 +30,13 @@ export const Scraping: React.FC = () => {
     const [addPlatformError, setAddPlatformError] = useState<string | null>(null);
     const [platformForm, setPlatformForm] = useState(defaultPlatformForm);
     const [addPlatformFile, setAddPlatformFile] = useState<File | null>(null);
-    const [uploadingPlatformId, setUploadingPlatformId] = useState<string | null>(null);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const pendingUploadRef = useRef<{ id: string; name: string } | null>(null);
+    const [isEditPlatformOpen, setIsEditPlatformOpen] = useState(false);
+    const [editPlatformId, setEditPlatformId] = useState<string | null>(null);
+    const [editPlatformLoading, setEditPlatformLoading] = useState(false);
+    const [editPlatformSubmitting, setEditPlatformSubmitting] = useState(false);
+    const [editPlatformError, setEditPlatformError] = useState<string | null>(null);
+    const [editPlatformForm, setEditPlatformForm] = useState(defaultPlatformForm);
+    const [editPlatformFile, setEditPlatformFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
 
@@ -45,6 +48,16 @@ export const Scraping: React.FC = () => {
             setPlatformForm(defaultPlatformForm);
         }
     }, [isAddPlatformOpen]);
+
+    useEffect(() => {
+        if (!isEditPlatformOpen) {
+            setEditPlatformId(null);
+            setEditPlatformFile(null);
+            setEditPlatformError(null);
+            setEditPlatformLoading(false);
+            setEditPlatformForm(defaultPlatformForm);
+        }
+    }, [isEditPlatformOpen]);
 
     useEffect(() => {
         const loadData = async (isRefresh = false) => {
@@ -150,26 +163,141 @@ export const Scraping: React.FC = () => {
         }
     };
 
-    const handleUploadButtonClick = (id: string, name: string) => {
-        pendingUploadRef.current = { id, name };
-        fileInputRef.current?.click();
+    const normalizePlatformAttributes = (rows: TableAttributeFormRow[]) => {
+        const normalizedAttributes = rows
+            .map((attr) => ({
+                name: attr.name.trim(),
+                type: attr.type.trim(),
+                nullable: attr.nullable,
+            }))
+            .filter((attr) => attr.name || attr.type);
+
+        if (normalizedAttributes.length === 0) {
+            return {
+                attributes: null,
+                error: 'At least one table attribute is required.',
+            };
+        }
+        if (normalizedAttributes.some((attr) => !attr.name || !attr.type)) {
+            return {
+                attributes: null,
+                error: 'Each table attribute must include both name and type.',
+            };
+        }
+
+        return {
+            attributes: normalizedAttributes,
+            error: null,
+        };
     };
 
-    const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !pendingUploadRef.current) return;
-        const { id, name } = pendingUploadRef.current;
-        e.target.value = '';
-        pendingUploadRef.current = null;
+    const openEditPlatformModal = async (platform: ScrapingPlatform) => {
+        setIsEditPlatformOpen(true);
+        setEditPlatformId(platform.id);
+        setEditPlatformLoading(true);
+        setEditPlatformError(null);
+        setEditPlatformFile(null);
+
+        setEditPlatformForm({
+            name: platform.name,
+            tableName: (platform.tableName || '').trim(),
+            attributes: Array.isArray(platform.attributes) && platform.attributes.length > 0
+                ? platform.attributes.map((attr) => ({
+                    name: attr.name,
+                    type: attr.type,
+                    nullable: attr.nullable,
+                }))
+                : [{ name: '', type: 'NVARCHAR(255)', nullable: true }],
+            baseUrl: platform.baseUrl || '',
+            enabled: platform.enabled,
+        });
+
         try {
-            setUploadingPlatformId(id);
-            setUploadError(null);
-            await uploadPlatformScript(id, name, file);
+            const details = await fetchScrapingPlatformDetails(platform.id);
+            setEditPlatformForm((previous) => ({
+                name: details.name || previous.name,
+                tableName: details.tableName || previous.tableName,
+                attributes: details.attributes.length > 0
+                    ? details.attributes.map((attr) => ({
+                        name: attr.name,
+                        type: attr.type,
+                        nullable: attr.nullable,
+                    }))
+                    : previous.attributes,
+                baseUrl: details.baseUrl || previous.baseUrl,
+                enabled: typeof details.enabled === 'boolean' ? details.enabled : previous.enabled,
+            }));
         } catch (err) {
-            console.error('Failed to upload scraping file:', err);
-            setUploadError(err instanceof Error ? err.message : 'Scraping file upload failed.');
+            console.error('Failed to load platform details:', err);
+            setEditPlatformError(err instanceof Error ? err.message : 'Failed to load platform details.');
         } finally {
-            setUploadingPlatformId(null);
+            setEditPlatformLoading(false);
+        }
+    };
+
+    const handleUpdatePlatform = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editPlatformId) {
+            setEditPlatformError('No platform selected.');
+            return;
+        }
+        if (!editPlatformForm.name.trim()) {
+            setEditPlatformError('Platform name is required.');
+            return;
+        }
+        if (!editPlatformForm.tableName.trim()) {
+            setEditPlatformError('Table name is required.');
+            return;
+        }
+
+        const normalized = normalizePlatformAttributes(editPlatformForm.attributes);
+        if (normalized.error) {
+            setEditPlatformError(normalized.error);
+            return;
+        }
+        if (!normalized.attributes) {
+            setEditPlatformError('At least one table attribute is required.');
+            return;
+        }
+
+        try {
+            setEditPlatformSubmitting(true);
+            setEditPlatformError(null);
+
+            const updatedPlatform = await updateScrapingPlatform(editPlatformId, {
+                name: editPlatformForm.name.trim(),
+                tableName: editPlatformForm.tableName.trim(),
+                attributes: normalized.attributes,
+                baseUrl: editPlatformForm.baseUrl.trim() || undefined,
+                enabled: editPlatformForm.enabled,
+            });
+
+            setPlatforms(prev => prev.map((platform) => (
+                platform.id === editPlatformId
+                    ? {
+                        ...platform,
+                        ...updatedPlatform,
+                    }
+                    : platform
+            )));
+
+            if (editPlatformFile) {
+                try {
+                    await uploadPlatformScript(editPlatformId, updatedPlatform.name, editPlatformFile);
+                } catch (uploadErr) {
+                    console.error('Failed to upload scraping file:', uploadErr);
+                    setEditPlatformError(uploadErr instanceof Error ? uploadErr.message : 'Platform updated, but scraping file upload failed.');
+                    setEditPlatformSubmitting(false);
+                    return;
+                }
+            }
+
+            setIsEditPlatformOpen(false);
+        } catch (err) {
+            console.error('Failed to update platform:', err);
+            setEditPlatformError(err instanceof Error ? err.message : 'Failed to update platform.');
+        } finally {
+            setEditPlatformSubmitting(false);
         }
     };
 
@@ -184,20 +312,13 @@ export const Scraping: React.FC = () => {
             return;
         }
 
-        const normalizedAttributes = platformForm.attributes
-            .map((attr) => ({
-                name: attr.name.trim(),
-                type: attr.type.trim(),
-                nullable: attr.nullable,
-            }))
-            .filter((attr) => attr.name || attr.type);
-
-        if (normalizedAttributes.length === 0) {
-            setAddPlatformError('At least one table attribute is required.');
+        const normalized = normalizePlatformAttributes(platformForm.attributes);
+        if (normalized.error) {
+            setAddPlatformError(normalized.error);
             return;
         }
-        if (normalizedAttributes.some((attr) => !attr.name || !attr.type)) {
-            setAddPlatformError('Each table attribute must include both name and type.');
+        if (!normalized.attributes) {
+            setAddPlatformError('At least one table attribute is required.');
             return;
         }
 
@@ -207,7 +328,7 @@ export const Scraping: React.FC = () => {
             const createdPlatform = await createScrapingPlatform({
                 name: platformForm.name.trim(),
                 tableName: platformForm.tableName.trim(),
-                attributes: normalizedAttributes,
+                attributes: normalized.attributes,
                 baseUrl: platformForm.baseUrl.trim() || undefined,
                 enabled: platformForm.enabled,
             });
@@ -271,14 +392,6 @@ export const Scraping: React.FC = () => {
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}
-                </div>
-            )}
-            {uploadError && (
-                <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700 flex items-center justify-between">
-                    <span>Upload error: {uploadError}</span>
-                    <button onClick={() => setUploadError(null)} className="ml-4 text-orange-500 hover:text-orange-700">
-                        <X size={14} />
-                    </button>
                 </div>
             )}
 
@@ -388,12 +501,12 @@ export const Scraping: React.FC = () => {
                                 <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                             </label>
                             <button
-                                onClick={() => handleUploadButtonClick(platform.id, platform.name)}
-                                title="Upload scraping file"
-                                disabled={uploadingPlatformId === platform.id}
-                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-40"
+                                onClick={() => openEditPlatformModal(platform)}
+                                title="Edit platform"
+                                aria-label="Edit platform"
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                             >
-                                <Upload size={16} className={uploadingPlatformId === platform.id ? 'animate-pulse' : ''} />
+                                <Pencil size={16} />
                             </button>
                             <button
                                 onClick={() => handleDeletePlatform(platform.id, platform.name)}
@@ -585,13 +698,192 @@ export const Scraping: React.FC = () => {
                 </div>
             )}
 
-            {/* Hidden file input shared by all per-platform re-upload buttons */}
-            <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileInputChange}
-            />
+            {isEditPlatformOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => !editPlatformSubmitting && setIsEditPlatformOpen(false)} />
+                    <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-xl mx-4">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                            <h3 className="text-base font-semibold text-gray-900">Edit Platform</h3>
+                            <button
+                                disabled={editPlatformSubmitting}
+                                onClick={() => setIsEditPlatformOpen(false)}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-40"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {editPlatformLoading ? (
+                            <div className="p-8 flex items-center justify-center">
+                                <LoadingSpinner size={24} />
+                            </div>
+                        ) : (
+                            <form onSubmit={handleUpdatePlatform} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                                {editPlatformError && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                        {editPlatformError}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Platform Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={editPlatformForm.name}
+                                        onChange={(e) => setEditPlatformForm(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="e.g. Expedia"
+                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Base URL</label>
+                                    <input
+                                        type="url"
+                                        value={editPlatformForm.baseUrl}
+                                        onChange={(e) => setEditPlatformForm(prev => ({ ...prev, baseUrl: e.target.value }))}
+                                        placeholder="https://www.example.com"
+                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Table Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={editPlatformForm.tableName}
+                                        onChange={(e) => setEditPlatformForm(prev => ({ ...prev, tableName: e.target.value }))}
+                                        placeholder="e.g. expedia_reviews"
+                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Use letters, numbers, and underscores only.</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-medium text-gray-700">Table Attributes</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditPlatformForm(prev => ({
+                                                ...prev,
+                                                attributes: [...prev.attributes, { name: '', type: 'NVARCHAR(255)', nullable: true }],
+                                            }))}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                                        >
+                                            <Plus size={14} />
+                                            Add Attribute
+                                        </button>
+                                    </div>
+
+                                    {editPlatformForm.attributes.map((attr, index) => (
+                                        <div key={`${index}-${attr.name}`} className="grid grid-cols-12 gap-2 items-center">
+                                            <input
+                                                type="text"
+                                                value={attr.name}
+                                                onChange={(e) => setEditPlatformForm(prev => ({
+                                                    ...prev,
+                                                    attributes: prev.attributes.map((row, rowIndex) => (
+                                                        rowIndex === index ? { ...row, name: e.target.value } : row
+                                                    )),
+                                                }))}
+                                                placeholder="column_name"
+                                                className="col-span-5 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={attr.type}
+                                                onChange={(e) => setEditPlatformForm(prev => ({
+                                                    ...prev,
+                                                    attributes: prev.attributes.map((row, rowIndex) => (
+                                                        rowIndex === index ? { ...row, type: e.target.value } : row
+                                                    )),
+                                                }))}
+                                                placeholder="NVARCHAR(255)"
+                                                className="col-span-4 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <label className="col-span-2 inline-flex items-center justify-center gap-1 text-xs text-gray-600">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={attr.nullable}
+                                                    onChange={(e) => setEditPlatformForm(prev => ({
+                                                        ...prev,
+                                                        attributes: prev.attributes.map((row, rowIndex) => (
+                                                            rowIndex === index ? { ...row, nullable: e.target.checked } : row
+                                                        )),
+                                                    }))}
+                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                                Null
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditPlatformForm(prev => ({
+                                                    ...prev,
+                                                    attributes: prev.attributes.filter((_, rowIndex) => rowIndex !== index),
+                                                }))}
+                                                disabled={editPlatformForm.attributes.length <= 1}
+                                                className="col-span-1 inline-flex justify-center text-gray-400 hover:text-red-600 disabled:opacity-30"
+                                                title="Remove attribute"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    <p className="text-xs text-gray-500">Examples: INT, BIGINT, BIT, DATE, DATETIME, DECIMAL(10,2), VARCHAR(255), NVARCHAR(255)</p>
+                                </div>
+
+                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={editPlatformForm.enabled}
+                                        onChange={(e) => setEditPlatformForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    Enable platform
+                                </label>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Upload New Scraping File <span className="font-normal text-gray-400">(optional)</span>
+                                    </label>
+                                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => setEditPlatformFile(e.target.files?.[0] ?? null)}
+                                        />
+                                        {editPlatformFile
+                                            ? <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium"><Upload size={13} />{editPlatformFile.name}</span>
+                                            : <span className="flex items-center gap-1.5"><Upload size={14} />Click to upload new scraping file</span>
+                                        }
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        disabled={editPlatformSubmitting}
+                                        onClick={() => setIsEditPlatformOpen(false)}
+                                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={editPlatformSubmitting || !editPlatformId}
+                                        className="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-60"
+                                    >
+                                        {editPlatformSubmitting ? 'Saving...' : 'Update Platform'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Job Status Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">

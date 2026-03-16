@@ -1,4 +1,6 @@
+import json
 import os
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -16,6 +18,20 @@ PROCESSED_DATE_EXPR = "CAST(COALESCE(reviewDate, CONVERT(date, scrapedAt), CONVE
 PROCESSED_ACTIVITY_EXPR = (
     "COALESCE(CAST(lastUpdated AS datetime), CAST(firstSeen AS datetime), "
     "CAST(scrapedAt AS datetime), CAST(reviewDate AS datetime))"
+)
+
+REVIEW_TABLE_DATE_CANDIDATES = (
+    "reviewdate",
+    "review_date",
+    "posted_date",
+    "posteddate",
+    "scrapedat",
+    "firstseen",
+    "lastupdated",
+    "created_at",
+    "createdat",
+    "updated_at",
+    "updatedat",
 )
 
 
@@ -104,6 +120,284 @@ def _table_exists(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -
         (schema, table_name),
     ).fetchone()
     return row is not None
+
+
+def _get_table_column_map(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -> dict[str, str]:
+    rows = _execute_query(
+        cursor,
+        """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+        """,
+        (schema, table_name),
+    ).fetchall()
+    return {str(row[0]).lower(): str(row[0]) for row in rows}
+
+
+def _is_valid_sql_identifier(value: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value))
+
+
+def _normalize_source_table_name(value: Any) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return ""
+
+    normalized = normalized.replace("[", "").replace("]", "")
+    normalized = re.sub(r"^dbo\.", "", normalized, flags=re.IGNORECASE)
+    return normalized.strip()
+
+
+def _resolve_sources_review_tables_column(columns: set[str]) -> str | None:
+    for candidate in (
+        "review_tables",
+        "review_table",
+        "reviews_table",
+        "review_table_name",
+        "table_name",
+        "source_table",
+        "source_table_name",
+        "target_table",
+        "scrape_table",
+    ):
+        if candidate in columns:
+            return candidate
+    return None
+
+
+def _parse_review_table_names(raw_value: Any) -> list[str]:
+    raw_text = str(raw_value or "").strip()
+    if not raw_text:
+        return []
+
+    candidates: list[str] = []
+    if raw_text.startswith("[") and raw_text.endswith("]"):
+        try:
+            parsed = json.loads(raw_text)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, list):
+            candidates.extend(str(item or "").strip() for item in parsed)
+
+    if not candidates:
+        candidates.extend(part.strip() for part in re.split(r"[,;|\n\r]+", raw_text))
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        table_name = _normalize_source_table_name(candidate)
+        lowered = table_name.lower()
+        if not table_name or lowered in seen or not _is_valid_sql_identifier(table_name):
+            continue
+        seen.add(lowered)
+        normalized.append(table_name)
+
+    return normalized
+
+
+def _resolve_review_table_date_expr(column_map: dict[str, str]) -> str | None:
+    expressions = [f"TRY_CAST([{column_map[key]}] AS date)" for key in REVIEW_TABLE_DATE_CANDIDATES if key in column_map]
+    if not expressions:
+        return None
+    if len(expressions) == 1:
+        return expressions[0]
+    return f"COALESCE({', '.join(expressions)})"
+
+
+def _get_review_table_metrics(
+    cursor: pyodbc.Cursor,
+    table_name: str,
+    current_month: date,
+    next_month: date,
+    previous_month: date,
+) -> dict[str, int]:
+    normalized_table_name = _normalize_source_table_name(table_name)
+    if not normalized_table_name or not _is_valid_sql_identifier(normalized_table_name) or not _table_exists(cursor, normalized_table_name):
+        return {"total": 0, "today": 0, "currentMonth": 0, "previousMonth": 0}
+
+    column_map = _get_table_column_map(cursor, normalized_table_name)
+    date_expr = _resolve_review_table_date_expr(column_map)
+
+    if not date_expr:
+        return {
+            "total": _count_scalar(cursor, f"SELECT COUNT(*) FROM dbo.[{normalized_table_name}]"),
+            "today": 0,
+            "currentMonth": 0,
+            "previousMonth": 0,
+        }
+
+    row = _execute_query(
+        cursor,
+        f"""
+        SELECT
+            COUNT(*) AS total_reviews,
+            SUM(CASE WHEN {date_expr} = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS reviews_today,
+            SUM(CASE WHEN {date_expr} >= ? AND {date_expr} < ? THEN 1 ELSE 0 END) AS reviews_current_month,
+            SUM(CASE WHEN {date_expr} >= ? AND {date_expr} < ? THEN 1 ELSE 0 END) AS reviews_previous_month
+        FROM dbo.[{normalized_table_name}]
+        """,
+        (current_month, next_month, previous_month, current_month),
+    ).fetchone()
+
+    return {
+        "total": int(row[0] or 0) if row else 0,
+        "today": int(row[1] or 0) if row else 0,
+        "currentMonth": int(row[2] or 0) if row else 0,
+        "previousMonth": int(row[3] or 0) if row else 0,
+    }
+
+
+def _get_review_metrics_from_sources(cursor: pyodbc.Cursor) -> dict[str, Any]:
+    if not _table_exists(cursor, "sources"):
+        return {
+            "configured": False,
+            "totalReviews": 0,
+            "reviewsCollectedToday": 0,
+            "reviewsGrowth": 0.0,
+            "byPlatform": [],
+        }
+
+    source_columns = _get_table_column_map(cursor, "sources")
+    review_tables_col = _resolve_sources_review_tables_column(set(source_columns))
+    platform_name_col = source_columns.get("platform_name")
+
+    if not review_tables_col or not platform_name_col:
+        return {
+            "configured": False,
+            "totalReviews": 0,
+            "reviewsCollectedToday": 0,
+            "reviewsGrowth": 0.0,
+            "byPlatform": [],
+        }
+
+    rows = _execute_query(
+        cursor,
+        f"SELECT [{platform_name_col}], [{source_columns[review_tables_col]}] FROM dbo.sources ORDER BY [{platform_name_col}]",
+    ).fetchall()
+
+    current_month = _month_start(date.today())
+    previous_month = _shift_month(current_month, -1)
+    next_month = _shift_month(current_month, 1)
+
+    total_reviews = 0
+    reviews_collected_today = 0
+    current_month_reviews = 0
+    previous_month_reviews = 0
+    configured = False
+    seen_tables: set[str] = set()
+    platform_totals: dict[str, int] = {}
+
+    for row in rows:
+        platform_name = str(row[0] or "Unknown").strip() or "Unknown"
+        table_names = _parse_review_table_names(row[1])
+        if table_names:
+            configured = True
+
+        for table_name in table_names:
+            lowered = table_name.lower()
+            if lowered in seen_tables:
+                continue
+            seen_tables.add(lowered)
+
+            table_metrics = _get_review_table_metrics(cursor, table_name, current_month, next_month, previous_month)
+            total_reviews += table_metrics["total"]
+            reviews_collected_today += table_metrics["today"]
+            current_month_reviews += table_metrics["currentMonth"]
+            previous_month_reviews += table_metrics["previousMonth"]
+            platform_totals[platform_name] = platform_totals.get(platform_name, 0) + table_metrics["total"]
+
+    by_platform = [
+        ChartDataPoint(label=platform_name, value=review_total)
+        for platform_name, review_total in sorted(platform_totals.items(), key=lambda item: item[1], reverse=True)
+        if review_total > 0
+    ]
+
+    return {
+        "configured": configured,
+        "totalReviews": total_reviews,
+        "reviewsCollectedToday": reviews_collected_today,
+        "reviewsGrowth": _growth(current_month_reviews, previous_month_reviews),
+        "byPlatform": by_platform[:8],
+    }
+
+
+def _get_review_metrics(cursor: pyodbc.Cursor) -> dict[str, Any]:
+    source_metrics = _get_review_metrics_from_sources(cursor)
+    if source_metrics["configured"]:
+        return source_metrics
+
+    total_reviews = 0
+    reviews_collected_today = 0
+    reviews_growth = 0.0
+    by_platform: list[ChartDataPoint] = []
+
+    if _table_exists(cursor, "ProcessedReviews"):
+        total_reviews = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.ProcessedReviews")
+        reviews_collected_today = _count_scalar(
+            cursor,
+            f"""
+            SELECT COUNT(*)
+            FROM dbo.ProcessedReviews
+            WHERE {PROCESSED_DATE_EXPR} = CAST(GETDATE() AS date)
+            """,
+        )
+
+        current_month = _month_start(date.today())
+        previous_month = _shift_month(current_month, -1)
+        next_month = _shift_month(current_month, 1)
+
+        current_review_count = _count_scalar(
+            cursor,
+            f"""
+            SELECT COUNT(*)
+            FROM dbo.ProcessedReviews
+            WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
+            """,
+            (current_month, next_month),
+        )
+        previous_review_count = _count_scalar(
+            cursor,
+            f"""
+            SELECT COUNT(*)
+            FROM dbo.ProcessedReviews
+            WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
+            """,
+            (previous_month, current_month),
+        )
+        reviews_growth = _growth(current_review_count, previous_review_count)
+
+        rows = cursor.execute(
+            """
+            SELECT TOP 8
+                COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS sourceLabel,
+                COUNT(*) AS total
+            FROM dbo.ProcessedReviews
+            GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
+            ORDER BY COUNT(*) DESC
+            """
+        ).fetchall()
+        by_platform = [ChartDataPoint(label=str(row[0]), value=int(row[1])) for row in rows]
+
+    elif _table_exists(cursor, "reviews"):
+        total_reviews = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.reviews")
+        reviews_collected_today = _count_scalar(
+            cursor,
+            """
+            SELECT COUNT(*)
+            FROM dbo.reviews
+            WHERE CAST(posted_date AS date) = CAST(GETDATE() AS date)
+            """,
+        )
+        by_platform = [ChartDataPoint(label="Booking.com", value=total_reviews)]
+
+    return {
+        "configured": False,
+        "totalReviews": total_reviews,
+        "reviewsCollectedToday": reviews_collected_today,
+        "reviewsGrowth": reviews_growth,
+        "byPlatform": by_platform,
+    }
 
 
 def _count_scalar(cursor: pyodbc.Cursor, query: str, params: tuple[Any, ...] = ()) -> int:
@@ -371,44 +665,21 @@ def get_dashboard_stats() -> DashboardStats:
         with pyodbc.connect(_connection_string()) as conn:
             cursor = conn.cursor()
 
-            total_reviews = 0
             total_users = 0
             active_users_today = 0
-            reviews_growth = 0.0
             users_growth = 0.0
             ai_jobs_processed = 0
             ai_jobs_growth = 0.0
 
             total_users, users_growth, active_users_today = _get_user_metrics(cursor)
 
-            if _table_exists(cursor, "ProcessedReviews"):
-                total_reviews = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.ProcessedReviews")
-                ai_jobs_processed = total_reviews
+            review_metrics = _get_review_metrics(cursor)
+            total_reviews = int(review_metrics["totalReviews"])
+            reviews_collected_today = int(review_metrics["reviewsCollectedToday"])
+            reviews_growth = float(review_metrics["reviewsGrowth"])
 
-                current_month = _month_start(date.today())
-                previous_month = _shift_month(current_month, -1)
-                next_month = _shift_month(current_month, 1)
-
-                current_review_count = _count_scalar(
-                    cursor,
-                    f"""
-                    SELECT COUNT(*)
-                    FROM dbo.ProcessedReviews
-                    WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
-                    """,
-                    (current_month, next_month),
-                )
-                previous_review_count = _count_scalar(
-                    cursor,
-                    f"""
-                    SELECT COUNT(*)
-                    FROM dbo.ProcessedReviews
-                    WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
-                    """,
-                    (previous_month, current_month),
-                )
-                reviews_growth = _growth(current_review_count, previous_review_count)
-                ai_jobs_growth = reviews_growth
+            ai_jobs_processed = total_reviews
+            ai_jobs_growth = reviews_growth
 
             total_organizations, organizations_growth = _get_organization_metrics(cursor)
             active_hotels, hotels_growth = _get_hotel_metrics(cursor)
@@ -421,6 +692,7 @@ def get_dashboard_stats() -> DashboardStats:
                 activeHotels=active_hotels,
                 hotelsGrowth=hotels_growth,
                 totalReviews=total_reviews,
+                reviewsCollectedToday=reviews_collected_today,
                 reviewsGrowth=reviews_growth,
                 activeUsersToday=active_users_today,
                 systemUptime=99.9,
@@ -464,25 +736,7 @@ def get_review_data() -> list[ChartDataPoint]:
     try:
         with pyodbc.connect(_connection_string()) as conn:
             cursor = conn.cursor()
-
-            if _table_exists(cursor, "ProcessedReviews"):
-                rows = cursor.execute(
-                    """
-                    SELECT TOP 8
-                        COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS sourceLabel,
-                        COUNT(*) AS total
-                    FROM dbo.ProcessedReviews
-                    GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
-                    ORDER BY COUNT(*) DESC
-                    """
-                ).fetchall()
-                return [ChartDataPoint(label=str(row[0]), value=int(row[1])) for row in rows]
-
-            if _table_exists(cursor, "reviews"):
-                total_raw_reviews = _count_scalar(cursor, "SELECT COUNT(*) FROM dbo.reviews")
-                return [ChartDataPoint(label="Booking.com", value=total_raw_reviews)]
-
-            return []
+            return list(_get_review_metrics(cursor)["byPlatform"])
 
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch review source data: {error}")

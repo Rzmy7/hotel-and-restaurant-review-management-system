@@ -6,6 +6,7 @@ export interface DashboardStats {
     usersGrowth: number;
     hotelsGrowth: number;
     totalReviews: number;
+    reviewsCollectedToday: number;
     reviewsGrowth: number;
     activeUsersToday: number;
     systemUptime: number;
@@ -128,6 +129,13 @@ export interface ScrapingPlatform {
     enabled: boolean;
     lastRun: string;
     status: 'active' | 'maintenance';
+    baseUrl?: string;
+    tableName?: string;
+    attributes?: {
+        name: string;
+        type: string;
+        nullable: boolean;
+    }[];
 }
 
 export interface ScrapingJob {

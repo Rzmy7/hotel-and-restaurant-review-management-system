@@ -33,6 +33,14 @@ class ScrapingTableAttributePayload(BaseModel):
     nullable: bool = True
 
 
+class ScrapingPlatformUpdatePayload(BaseModel):
+    name: str
+    tableName: str
+    attributes: list[ScrapingTableAttributePayload]
+    baseUrl: str | None = None
+    enabled: bool = True
+
+
 def _to_relative_timestamp(value: datetime | date | None) -> str:
     if value is None:
         return "never"
@@ -194,11 +202,417 @@ def _create_dynamic_platform_table(
         raise HTTPException(status_code=500, detail=f"Table '{table_name}' was not created")
 
 
+def _sql_type_from_information_schema_row(
+    data_type: str | None,
+    char_len: int | None,
+    numeric_precision: int | None,
+    numeric_scale: int | None,
+) -> str:
+    normalized = (data_type or "").strip().lower()
+
+    if normalized in {"varchar", "nvarchar", "char", "nchar", "varbinary"}:
+        if char_len == -1:
+            return f"{normalized.upper()}(MAX)"
+        if char_len is None:
+            return normalized.upper()
+        return f"{normalized.upper()}({int(char_len)})"
+
+    if normalized in {"decimal", "numeric"}:
+        precision = int(numeric_precision) if numeric_precision is not None else 18
+        scale = int(numeric_scale) if numeric_scale is not None else 0
+        return f"DECIMAL({precision},{scale})"
+
+    return normalized.upper()
+
+
+def _normalize_table_attributes(attributes: list[ScrapingTableAttributePayload]) -> list[dict[str, str | bool]]:
+    if not attributes:
+        raise HTTPException(status_code=400, detail="At least one table attribute is required")
+
+    normalized_attrs: list[dict[str, str | bool]] = []
+    seen_names: set[str] = set()
+
+    for attr in attributes:
+        column_name = (attr.name or "").strip()
+        if not _is_valid_sql_identifier(column_name):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid attribute name '{column_name}'. Use letters, numbers, and underscore only; "
+                    "must start with letter/underscore."
+                ),
+            )
+
+        normalized_name = column_name.lower()
+        if normalized_name in seen_names:
+            raise HTTPException(status_code=400, detail=f"Duplicate attribute name '{column_name}'")
+        seen_names.add(normalized_name)
+
+        normalized_attrs.append(
+            {
+                "name": column_name,
+                "type": _normalize_sql_type(attr.type),
+                "nullable": bool(attr.nullable),
+            }
+        )
+
+    return normalized_attrs
+
+
+def _fetch_table_attributes(cursor: pyodbc.Cursor, table_name: str | None) -> list[dict[str, str | bool]]:
+    sanitized = (table_name or "").strip()
+    if not sanitized or not _is_valid_sql_identifier(sanitized) or not _table_exists(cursor, sanitized):
+        return []
+
+    rows = _execute_query(
+        cursor,
+        """
+        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION
+        """,
+        (sanitized,),
+    ).fetchall()
+
+    attributes: list[dict[str, str | bool]] = []
+    for row in rows:
+        attributes.append(
+            {
+                "name": str(row[0]),
+                "type": _sql_type_from_information_schema_row(row[1], row[2], row[3], row[4]),
+                "nullable": str(row[5] or "YES").upper() == "YES",
+            }
+        )
+
+    return attributes
+
+
+def _sync_dynamic_platform_table(
+    cursor: pyodbc.Cursor,
+    current_table_name: str | None,
+    next_table_name: str,
+    attributes: list[ScrapingTableAttributePayload],
+) -> str:
+    target_table_name = (next_table_name or "").strip()
+    if not target_table_name:
+        raise HTTPException(status_code=400, detail="Table name is required")
+
+    if not _is_valid_sql_identifier(target_table_name):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid table name. Use letters, numbers, and underscore only; must start with letter/underscore.",
+        )
+
+    desired_attributes = _normalize_table_attributes(attributes)
+    desired_by_lower = {str(attr["name"]).lower(): attr for attr in desired_attributes}
+
+    existing_table_name = (current_table_name or "").strip()
+    if existing_table_name and not _is_valid_sql_identifier(existing_table_name):
+        raise HTTPException(status_code=500, detail="Stored platform table name is invalid")
+
+    if existing_table_name and not _table_exists(cursor, existing_table_name):
+        existing_table_name = ""
+
+    if not existing_table_name:
+        if _table_exists(cursor, target_table_name):
+            raise HTTPException(status_code=409, detail=f"Table '{target_table_name}' already exists")
+        _create_dynamic_platform_table(cursor, target_table_name, attributes)
+        return target_table_name
+
+    if existing_table_name.lower() != target_table_name.lower():
+        if _table_exists(cursor, target_table_name):
+            raise HTTPException(status_code=409, detail=f"Table '{target_table_name}' already exists")
+        try:
+            cursor.execute("EXEC sp_rename ?, ?", (f"dbo.{existing_table_name}", target_table_name))
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to rename table '{existing_table_name}' to '{target_table_name}': {exc}",
+            ) from exc
+
+    if not _table_exists(cursor, target_table_name):
+        raise HTTPException(status_code=500, detail=f"Table '{target_table_name}' was not found after rename")
+
+    existing_rows = _execute_query(
+        cursor,
+        """
+        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION
+        """,
+        (target_table_name,),
+    ).fetchall()
+
+    existing_by_lower: dict[str, dict[str, str | bool]] = {}
+    for row in existing_rows:
+        column_name = str(row[0])
+        existing_by_lower[column_name.lower()] = {
+            "name": column_name,
+            "type": _sql_type_from_information_schema_row(row[1], row[2], row[3], row[4]),
+            "nullable": str(row[5] or "YES").upper() == "YES",
+        }
+
+    row_count = int(_execute_query(cursor, f"SELECT COUNT(1) FROM dbo.[{target_table_name}]").fetchone()[0] or 0)
+
+    for key, desired in desired_by_lower.items():
+        existing = existing_by_lower.get(key)
+        desired_name = str(desired["name"])
+        desired_type = str(desired["type"])
+        desired_nullable = bool(desired["nullable"])
+
+        if existing is None:
+            if not desired_nullable and row_count > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Cannot add NOT NULL column '{desired_name}' to non-empty table '{target_table_name}'. "
+                        "Add it as nullable first or clear existing rows."
+                    ),
+                )
+            try:
+                cursor.execute(
+                    f"ALTER TABLE dbo.[{target_table_name}] ADD [{desired_name}] {desired_type} {'NULL' if desired_nullable else 'NOT NULL'}"
+                )
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to add column '{desired_name}' on table '{target_table_name}': {exc}",
+                ) from exc
+            continue
+
+        existing_name = str(existing["name"])
+        existing_type = str(existing["type"])
+        existing_nullable = bool(existing["nullable"])
+        if existing_type != desired_type or existing_nullable != desired_nullable:
+            try:
+                cursor.execute(
+                    f"ALTER TABLE dbo.[{target_table_name}] ALTER COLUMN [{existing_name}] {desired_type} {'NULL' if desired_nullable else 'NOT NULL'}"
+                )
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to alter column '{existing_name}' on table '{target_table_name}': {exc}",
+                ) from exc
+
+    for key, existing in existing_by_lower.items():
+        if key in desired_by_lower:
+            continue
+        existing_name = str(existing["name"])
+        try:
+            cursor.execute(f"ALTER TABLE dbo.[{target_table_name}] DROP COLUMN [{existing_name}]")
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to drop column '{existing_name}' from table '{target_table_name}': {exc}",
+            ) from exc
+
+    return target_table_name
+
+
+def _find_platform_row(cursor: pyodbc.Cursor, platform_id: str, select_cols_sql: str) -> pyodbc.Row | None:
+    try:
+        source_id = int(platform_id)
+        return _execute_query(
+            cursor,
+            f"SELECT TOP 1 {select_cols_sql} FROM dbo.sources WHERE source_id = ?",
+            (source_id,),
+        ).fetchone()
+    except ValueError:
+        return _execute_query(
+            cursor,
+            f"SELECT TOP 1 {select_cols_sql} FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+            (platform_id,),
+        ).fetchone()
+
+
+def _get_platform_details_from_db(platform_id: str) -> dict[str, object]:
+    try:
+        with pyodbc.connect(_connection_string()) as connection:
+            cursor = connection.cursor()
+
+            if not _table_exists(cursor, "sources"):
+                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+
+            columns = _get_table_columns(cursor, "sources")
+            table_name_col = _resolve_sources_review_table_column(columns)
+            if not table_name_col:
+                raise HTTPException(status_code=400, detail="sources table has no review_table or table_name column")
+
+            enabled_col = (
+                "is_enabled" if "is_enabled" in columns
+                else "is_active" if "is_active" in columns
+                else None
+            )
+            has_base_url = "base_url" in columns
+
+            select_cols = "source_id, platform_name"
+            if has_base_url:
+                select_cols += ", base_url"
+            select_cols += f", {table_name_col}"
+            if enabled_col:
+                select_cols += f", {enabled_col}"
+
+            row = _find_platform_row(cursor, platform_id, select_cols)
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+
+            found_id = int(row[0])
+            found_name = str(row[1] or "").strip()
+
+            index = 2
+            base_url = str(row[index]).strip() if has_base_url and row[index] is not None else ""
+            if has_base_url:
+                index += 1
+
+            table_name = str(row[index]).strip() if row[index] is not None else ""
+            index += 1
+
+            enabled = True
+            if enabled_col:
+                enabled = bool(row[index]) if row[index] is not None else True
+
+            return {
+                "id": str(found_id),
+                "name": found_name,
+                "baseUrl": base_url,
+                "tableName": table_name,
+                "attributes": _fetch_table_attributes(cursor, table_name),
+                "enabled": enabled,
+            }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch platform details: {exc}") from exc
+
+
+def _update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePayload) -> dict[str, object]:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Platform name is required")
+
+    table_name = (payload.tableName or "").strip()
+    if not table_name:
+        raise HTTPException(status_code=400, detail="Table name is required")
+
+    if not payload.attributes:
+        raise HTTPException(status_code=400, detail="At least one table attribute is required")
+
+    base_url = payload.baseUrl.strip() if payload.baseUrl else None
+
+    try:
+        with pyodbc.connect(_connection_string()) as connection:
+            cursor = connection.cursor()
+
+            if not _table_exists(cursor, "sources"):
+                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+
+            columns = _get_table_columns(cursor, "sources")
+            if "platform_name" not in columns:
+                raise HTTPException(status_code=500, detail="sources table is missing required platform_name column")
+
+            table_name_col = _resolve_sources_review_table_column(columns)
+            if not table_name_col:
+                raise HTTPException(status_code=400, detail="sources table has no review_table or table_name column")
+
+            enabled_col = (
+                "is_enabled" if "is_enabled" in columns
+                else "is_active" if "is_active" in columns
+                else None
+            )
+            has_base_url = "base_url" in columns
+
+            select_cols = "source_id, platform_name"
+            if has_base_url:
+                select_cols += ", base_url"
+            select_cols += f", {table_name_col}"
+            if enabled_col:
+                select_cols += f", {enabled_col}"
+
+            row = _find_platform_row(cursor, platform_id, select_cols)
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+
+            found_id = int(row[0])
+            index = 2
+            if has_base_url:
+                index += 1
+            current_table_name = str(row[index]).strip() if row[index] is not None else ""
+            index += 1
+
+            current_enabled = True
+            if enabled_col:
+                current_enabled = bool(row[index]) if row[index] is not None else True
+
+            duplicate = _execute_query(
+                cursor,
+                "SELECT TOP 1 source_id FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?) AND source_id <> ?",
+                (name, found_id),
+            ).fetchone()
+            if duplicate is not None:
+                raise HTTPException(status_code=409, detail=f"Platform '{name}' already exists")
+
+            resolved_table_name = _sync_dynamic_platform_table(cursor, current_table_name, table_name, payload.attributes)
+
+            update_columns = ["platform_name = ?"]
+            update_values: list[str | bool | None] = [name]
+
+            if has_base_url:
+                update_columns.append("base_url = ?")
+                update_values.append(base_url)
+
+            update_columns.append(f"{table_name_col} = ?")
+            update_values.append(resolved_table_name)
+
+            effective_enabled = current_enabled
+            if enabled_col:
+                effective_enabled = payload.enabled
+                update_columns.append(f"{enabled_col} = ?")
+                update_values.append(payload.enabled)
+
+            update_values.append(found_id)
+            _execute_query(
+                cursor,
+                f"UPDATE dbo.sources SET {', '.join(update_columns)} WHERE source_id = ?",
+                tuple(update_values),
+            )
+            connection.commit()
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to update platform: {exc}") from exc
+
+    icon, color = _platform_visuals(name)
+    return {
+        "id": str(found_id),
+        "name": name,
+        "icon": icon,
+        "color": color,
+        "enabled": effective_enabled,
+        "lastRun": "never",
+        "status": "active" if effective_enabled else "maintenance",
+        "baseUrl": base_url or "",
+        "tableName": resolved_table_name,
+        "attributes": _normalize_table_attributes(payload.attributes),
+    }
+
+
 def _resolve_sources_review_table_column(columns: set[str]) -> str | None:
-    if "review_table" in columns:
-        return "review_table"
-    if "table_name" in columns:
-        return "table_name"
+    for candidate in (
+        "review_table",
+        "table_name",
+        "review_table_name",
+        "reviews_table",
+        "source_table",
+        "source_table_name",
+        "target_table",
+        "scrape_table",
+    ):
+        if candidate in columns:
+            return candidate
     return None
 
 
@@ -221,7 +635,7 @@ def _drop_dynamic_platform_table(cursor: pyodbc.Cursor, table_name: str | None) 
         raise HTTPException(status_code=500, detail=f"Failed to drop table '{sanitized}': {exc}") from exc
 
 
-def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
+def _fetch_platforms_from_db() -> list[dict[str, object]]:
     try:
         with pyodbc.connect(_connection_string()) as connection:
             cursor = connection.cursor()
@@ -240,6 +654,9 @@ def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
                 has_base_url = "base_url" in columns
                 if has_base_url:
                     select_cols += ", base_url"
+                table_name_col = _resolve_sources_review_table_column(columns)
+                if table_name_col:
+                    select_cols += f", {table_name_col}"
 
                 rows = _execute_query(
                     cursor,
@@ -265,11 +682,24 @@ def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
                         ).fetchall()
                         last_synced = {int(row[0]): row[1] for row in sync_rows if row[0] is not None}
 
-                platforms: list[dict[str, str | bool]] = []
+                platforms: list[dict[str, object]] = []
                 for row in rows:
                     source_id = int(row[0])
                     platform_name = str(row[1] or "Platform").strip()
                     icon, color = _platform_visuals(platform_name)
+
+                    row_index = 2
+                    base_url = ""
+                    if has_base_url:
+                        base_url = str(row[row_index]).strip() if row[row_index] is not None else ""
+                        row_index += 1
+
+                    table_name = ""
+                    if table_name_col:
+                        table_name = str(row[row_index]).strip() if row[row_index] is not None else ""
+                        row_index += 1
+
+                    table_attributes = _fetch_table_attributes(cursor, table_name)
 
                     enabled = True
                     if is_active_col:
@@ -290,6 +720,9 @@ def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
                             "enabled": enabled,
                             "lastRun": _to_relative_timestamp(last_synced.get(source_id)),
                             "status": "active" if enabled else "maintenance",
+                            "baseUrl": base_url,
+                            "tableName": table_name,
+                            "attributes": table_attributes,
                         }
                     )
                 return platforms
@@ -325,6 +758,9 @@ def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
                             "enabled": True,
                             "lastRun": _to_relative_timestamp(row[1]),
                             "status": "active",
+                            "baseUrl": "",
+                            "tableName": "",
+                            "attributes": [],
                         }
                     )
                 return platforms
@@ -517,7 +953,7 @@ def admin_backend_usage() -> dict[str, float]:
 
 
 @router.get("/scraping/platforms")
-def scraping_platforms() -> list[dict[str, str | bool]]:
+def scraping_platforms() -> list[dict[str, object]]:
     """
     Returns scraping platform configuration from the SQL database.
     """
@@ -530,6 +966,22 @@ def create_scraping_platform(payload: ScrapingPlatformCreatePayload) -> dict[str
     Creates a scraping platform entry in the SQL database sources table.
     """
     return _create_platform_in_db(payload)
+
+
+@router.get("/scraping/platforms/{platform_id}")
+def scraping_platform_details(platform_id: str) -> dict[str, object]:
+    """
+    Returns editable platform metadata and table attributes for one platform.
+    """
+    return _get_platform_details_from_db(platform_id)
+
+
+@router.put("/scraping/platforms/{platform_id}")
+def update_scraping_platform(platform_id: str, payload: ScrapingPlatformUpdatePayload) -> dict[str, object]:
+    """
+    Updates platform metadata and synchronizes its backing review table schema.
+    """
+    return _update_platform_in_db(platform_id, payload)
 
 
 @router.patch("/scraping/platforms/{platform_id}/toggle")
