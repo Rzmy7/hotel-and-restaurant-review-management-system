@@ -10,6 +10,7 @@ import { Scraping } from './pages/Scraping';
 import { APIManage } from './pages/APIManage';
 import { Monitoring } from './pages/Monitoring';
 import { SubscriptionPlans } from './pages/SubscriptionPlans';
+import { Broadcasting } from './pages/Broadcasting';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="api-manage" element={<APIManage />} />
           <Route path="monitoring" element={<Monitoring />} />
           <Route path="subscription-plans" element={<SubscriptionPlans />} />
+          <Route path="broadcasting" element={<Broadcasting />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes> 
