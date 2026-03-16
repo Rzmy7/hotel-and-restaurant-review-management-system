@@ -235,9 +235,26 @@ def _get_user_row_by_id(cursor: pyodbc.Cursor, user_id: str, columns: set[str]):
 
 def _load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
     if _table_exists(cursor, "organizations"):
-        rows = _execute_query(
-            cursor,
+        org_cols = _get_table_columns(cursor, "organizations")
+        has_is_active = "is_active" in org_cols
+
+        if has_is_active:
+            select_sql = """
+            SELECT
+                organization_id,
+                organization_name,
+                country,
+                city,
+                organization_type,
+                created_at,
+                updated_at,
+                deleted_at,
+                is_active
+            FROM dbo.organizations
+            ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
             """
+        else:
+            select_sql = """
             SELECT
                 organization_id,
                 organization_name,
@@ -249,8 +266,9 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                 deleted_at
             FROM dbo.organizations
             ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
-            """,
-        ).fetchall()
+            """
+
+        rows = _execute_query(cursor, select_sql).fetchall()
 
         organizations: list[OrganizationSummary] = []
         for index, row in enumerate(rows, start=1):
@@ -270,13 +288,24 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                 if type_slug:
                     domain = f"{type_slug}.{domain}"
 
+            if has_is_active:
+                is_active_val = row[8]
+                if is_active_val is None:
+                    status = "Pending"
+                elif bool(is_active_val):
+                    status = "Active"
+                else:
+                    status = "Inactive"
+            else:
+                status = _org_status_from_organization_row(row[5], row[7])
+
             organizations.append(
                 OrganizationSummary(
                     id=organization_id,
                     name=organization_name,
                     domain=domain,
                     usersCount=0,
-                    status=_org_status_from_organization_row(row[5], row[7]),
+                    status=status,
                 )
             )
 

@@ -9,6 +9,12 @@ const getBaseUrl = (): string => {
 
 interface CreateScrapingPlatformPayload {
     name: string;
+    tableName: string;
+    attributes: {
+        name: string;
+        type: string;
+        nullable: boolean;
+    }[];
     baseUrl?: string;
     enabled: boolean;
 }

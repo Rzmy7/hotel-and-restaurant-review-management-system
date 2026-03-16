@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import date, datetime
 from urllib.parse import urlparse
 
@@ -20,8 +21,16 @@ DEFAULT_SCRAPING_BACKEND_URL = os.getenv("SCRAPING_BACKEND_URL", "http://localho
 
 class ScrapingPlatformCreatePayload(BaseModel):
     name: str
+    tableName: str
+    attributes: list["ScrapingTableAttributePayload"]
     baseUrl: str | None = None
     enabled: bool = True
+
+
+class ScrapingTableAttributePayload(BaseModel):
+    name: str
+    type: str
+    nullable: bool = True
 
 
 def _to_relative_timestamp(value: datetime | date | None) -> str:
@@ -72,6 +81,144 @@ def _get_table_columns(cursor: pyodbc.Cursor, table_name: str, schema: str = "db
         (schema, table_name),
     ).fetchall()
     return {str(row[0]) for row in rows}
+
+
+def _is_valid_sql_identifier(value: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value))
+
+
+def _normalize_sql_type(raw_type: str) -> str:
+    value = (raw_type or "").strip().lower()
+    if not value:
+        raise HTTPException(status_code=400, detail="Attribute type is required")
+
+    simple_allowed = {
+        "int",
+        "bigint",
+        "smallint",
+        "tinyint",
+        "bit",
+        "float",
+        "real",
+        "date",
+        "time",
+        "datetime",
+        "datetime2",
+        "smalldatetime",
+        "text",
+        "ntext",
+    }
+    if value in simple_allowed:
+        return value.upper()
+
+    decimal_match = re.fullmatch(r"decimal\((\d{1,2})\s*,\s*(\d{1,2})\)", value)
+    if decimal_match:
+        precision = int(decimal_match.group(1))
+        scale = int(decimal_match.group(2))
+        if precision < 1 or precision > 38:
+            raise HTTPException(status_code=400, detail="DECIMAL precision must be between 1 and 38")
+        if scale < 0 or scale > precision:
+            raise HTTPException(status_code=400, detail="DECIMAL scale must be between 0 and precision")
+        return f"DECIMAL({precision},{scale})"
+
+    length_match = re.fullmatch(r"(varbinary|varchar|nvarchar|char|nchar)\((max|\d{1,5})\)", value)
+    if length_match:
+        base_type = length_match.group(1).upper()
+        length = length_match.group(2)
+        if length == "max":
+            return f"{base_type}(MAX)"
+        length_value = int(length)
+        if length_value <= 0:
+            raise HTTPException(status_code=400, detail=f"{base_type} length must be greater than 0")
+        if base_type in {"NCHAR", "NVARCHAR"} and length_value > 4000:
+            raise HTTPException(status_code=400, detail=f"{base_type} length cannot exceed 4000")
+        if base_type in {"CHAR", "VARCHAR", "VARBINARY"} and length_value > 8000:
+            raise HTTPException(status_code=400, detail=f"{base_type} length cannot exceed 8000")
+        return f"{base_type}({length_value})"
+
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Unsupported attribute type. Allowed examples: INT, BIGINT, BIT, DATE, DATETIME, "
+            "DECIMAL(10,2), VARCHAR(255), NVARCHAR(255), NVARCHAR(MAX)"
+        ),
+    )
+
+
+def _create_dynamic_platform_table(
+    cursor: pyodbc.Cursor,
+    table_name: str,
+    attributes: list[ScrapingTableAttributePayload],
+) -> None:
+    if not _is_valid_sql_identifier(table_name):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid table name. Use letters, numbers, and underscore only; must start with letter/underscore.",
+        )
+
+    if _table_exists(cursor, table_name):
+        raise HTTPException(status_code=409, detail=f"Table '{table_name}' already exists")
+
+    if not attributes:
+        raise HTTPException(status_code=400, detail="At least one table attribute is required")
+
+    column_sql: list[str] = []
+    seen_names: set[str] = set()
+    for attr in attributes:
+        column_name = (attr.name or "").strip()
+        if not _is_valid_sql_identifier(column_name):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid attribute name '{column_name}'. Use letters, numbers, and underscore only; "
+                    "must start with letter/underscore."
+                ),
+            )
+
+        normalized_name = column_name.lower()
+        if normalized_name in seen_names:
+            raise HTTPException(status_code=400, detail=f"Duplicate attribute name '{column_name}'")
+        seen_names.add(normalized_name)
+
+        sql_type = _normalize_sql_type(attr.type)
+        null_sql = "NULL" if attr.nullable else "NOT NULL"
+        column_sql.append(f"[{column_name}] {sql_type} {null_sql}")
+
+    create_sql = f"CREATE TABLE dbo.[{table_name}] ({', '.join(column_sql)})"
+    try:
+        cursor.execute(create_sql)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create table '{table_name}': {exc}") from exc
+
+    if not _table_exists(cursor, table_name):
+        raise HTTPException(status_code=500, detail=f"Table '{table_name}' was not created")
+
+
+def _resolve_sources_review_table_column(columns: set[str]) -> str | None:
+    if "review_table" in columns:
+        return "review_table"
+    if "table_name" in columns:
+        return "table_name"
+    return None
+
+
+def _drop_dynamic_platform_table(cursor: pyodbc.Cursor, table_name: str | None) -> None:
+    if not table_name:
+        return
+
+    sanitized = table_name.strip()
+    if not sanitized:
+        return
+    if not _is_valid_sql_identifier(sanitized):
+        # Do not execute dynamic DROP on unsafe identifiers.
+        return
+    if not _table_exists(cursor, sanitized):
+        return
+
+    try:
+        cursor.execute(f"DROP TABLE dbo.[{sanitized}]")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to drop table '{sanitized}': {exc}") from exc
 
 
 def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
@@ -255,6 +402,12 @@ def _create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, 
     if not name:
         raise HTTPException(status_code=400, detail="Platform name is required")
 
+    table_name = (payload.tableName or "").strip()
+    if not table_name:
+        raise HTTPException(status_code=400, detail="Table name is required")
+    if not payload.attributes:
+        raise HTTPException(status_code=400, detail="At least one table attribute is required")
+
     base_url = payload.baseUrl.strip() if payload.baseUrl else None
 
     try:
@@ -276,12 +429,19 @@ def _create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, 
             if existing is not None:
                 raise HTTPException(status_code=409, detail=f"Platform '{name}' already exists")
 
+            _create_dynamic_platform_table(cursor, table_name, payload.attributes)
+
             insert_columns = ["platform_name"]
             insert_values: list[str | bool | None] = [name]
 
             if "base_url" in columns:
                 insert_columns.append("base_url")
                 insert_values.append(base_url)
+
+            table_name_col = _resolve_sources_review_table_column(columns)
+            if table_name_col:
+                insert_columns.append(table_name_col)
+                insert_values.append(table_name)
 
             enabled_col = (
                 "is_enabled" if "is_enabled" in columns
@@ -449,18 +609,24 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
             if not _table_exists(cursor, "sources"):
                 raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
 
+            columns = _get_table_columns(cursor, "sources")
+            table_name_col = _resolve_sources_review_table_column(columns)
+            select_cols = "source_id, platform_name"
+            if table_name_col:
+                select_cols += f", {table_name_col}"
+
             # Accept both integer IDs and platform name slugs for resilience.
             try:
                 source_id = int(platform_id)
                 row = _execute_query(
                     cursor,
-                    "SELECT TOP 1 source_id, platform_name FROM dbo.sources WHERE source_id = ?",
+                    f"SELECT TOP 1 {select_cols} FROM dbo.sources WHERE source_id = ?",
                     (source_id,),
                 ).fetchone()
             except ValueError:
                 row = _execute_query(
                     cursor,
-                    "SELECT TOP 1 source_id, platform_name FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+                    f"SELECT TOP 1 {select_cols} FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
                     (platform_id,),
                 ).fetchone()
 
@@ -469,12 +635,23 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
 
             found_id = int(row[0])
             found_name = str(row[1])
+            review_table = str(row[2]).strip() if table_name_col and row[2] is not None else None
+
+            # Remove linked org-source rows first when the table exists.
+            if _table_exists(cursor, "organization_sources"):
+                _execute_query(
+                    cursor,
+                    "DELETE FROM dbo.organization_sources WHERE source_id = ?",
+                    (found_id,),
+                )
 
             _execute_query(
                 cursor,
                 "DELETE FROM dbo.sources WHERE source_id = ?",
                 (found_id,),
             )
+
+            _drop_dynamic_platform_table(cursor, review_table)
             connection.commit()
 
     except HTTPException:

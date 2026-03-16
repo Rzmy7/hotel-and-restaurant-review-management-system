@@ -4,6 +4,20 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
+type TableAttributeFormRow = {
+    name: string;
+    type: string;
+    nullable: boolean;
+};
+
+const defaultPlatformForm = {
+    name: '',
+    tableName: '',
+    attributes: [{ name: '', type: 'NVARCHAR(255)', nullable: true }] as TableAttributeFormRow[],
+    baseUrl: '',
+    enabled: true,
+};
+
 export const Scraping: React.FC = () => {
     const [stats, setStats] = useState<ScrapingStats | null>(null);
     const [platforms, setPlatforms] = useState<ScrapingPlatform[]>([]);
@@ -14,11 +28,7 @@ export const Scraping: React.FC = () => {
     const [isAddPlatformOpen, setIsAddPlatformOpen] = useState(false);
     const [addPlatformSubmitting, setAddPlatformSubmitting] = useState(false);
     const [addPlatformError, setAddPlatformError] = useState<string | null>(null);
-    const [platformForm, setPlatformForm] = useState({
-        name: '',
-        baseUrl: '',
-        enabled: true,
-    });
+    const [platformForm, setPlatformForm] = useState(defaultPlatformForm);
     const [addPlatformFile, setAddPlatformFile] = useState<File | null>(null);
     const [uploadingPlatformId, setUploadingPlatformId] = useState<string | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
@@ -32,6 +42,7 @@ export const Scraping: React.FC = () => {
         if (!isAddPlatformOpen) {
             setAddPlatformFile(null);
             setAddPlatformError(null);
+            setPlatformForm(defaultPlatformForm);
         }
     }, [isAddPlatformOpen]);
 
@@ -168,12 +179,35 @@ export const Scraping: React.FC = () => {
             setAddPlatformError('Platform name is required.');
             return;
         }
+        if (!platformForm.tableName.trim()) {
+            setAddPlatformError('Table name is required.');
+            return;
+        }
+
+        const normalizedAttributes = platformForm.attributes
+            .map((attr) => ({
+                name: attr.name.trim(),
+                type: attr.type.trim(),
+                nullable: attr.nullable,
+            }))
+            .filter((attr) => attr.name || attr.type);
+
+        if (normalizedAttributes.length === 0) {
+            setAddPlatformError('At least one table attribute is required.');
+            return;
+        }
+        if (normalizedAttributes.some((attr) => !attr.name || !attr.type)) {
+            setAddPlatformError('Each table attribute must include both name and type.');
+            return;
+        }
 
         try {
             setAddPlatformSubmitting(true);
             setAddPlatformError(null);
             const createdPlatform = await createScrapingPlatform({
                 name: platformForm.name.trim(),
+                tableName: platformForm.tableName.trim(),
+                attributes: normalizedAttributes,
                 baseUrl: platformForm.baseUrl.trim() || undefined,
                 enabled: platformForm.enabled,
             });
@@ -413,6 +447,93 @@ export const Scraping: React.FC = () => {
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Optional, but useful for organization-source linking.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Table Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={platformForm.tableName}
+                                    onChange={(e) => setPlatformForm(prev => ({ ...prev, tableName: e.target.value }))}
+                                    placeholder="e.g. expedia_reviews"
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Use letters, numbers, and underscores only.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="block text-sm font-medium text-gray-700">Table Attributes</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPlatformForm(prev => ({
+                                            ...prev,
+                                            attributes: [...prev.attributes, { name: '', type: 'NVARCHAR(255)', nullable: true }],
+                                        }))}
+                                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                                    >
+                                        <Plus size={14} />
+                                        Add Attribute
+                                    </button>
+                                </div>
+
+                                {platformForm.attributes.map((attr, index) => (
+                                    <div key={`${index}-${attr.name}`} className="grid grid-cols-12 gap-2 items-center">
+                                        <input
+                                            type="text"
+                                            value={attr.name}
+                                            onChange={(e) => setPlatformForm(prev => ({
+                                                ...prev,
+                                                attributes: prev.attributes.map((row, rowIndex) => (
+                                                    rowIndex === index ? { ...row, name: e.target.value } : row
+                                                )),
+                                            }))}
+                                            placeholder="column_name"
+                                            className="col-span-5 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={attr.type}
+                                            onChange={(e) => setPlatformForm(prev => ({
+                                                ...prev,
+                                                attributes: prev.attributes.map((row, rowIndex) => (
+                                                    rowIndex === index ? { ...row, type: e.target.value } : row
+                                                )),
+                                            }))}
+                                            placeholder="NVARCHAR(255)"
+                                            className="col-span-4 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <label className="col-span-2 inline-flex items-center justify-center gap-1 text-xs text-gray-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={attr.nullable}
+                                                onChange={(e) => setPlatformForm(prev => ({
+                                                    ...prev,
+                                                    attributes: prev.attributes.map((row, rowIndex) => (
+                                                        rowIndex === index ? { ...row, nullable: e.target.checked } : row
+                                                    )),
+                                                }))}
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            Null
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPlatformForm(prev => ({
+                                                ...prev,
+                                                attributes: prev.attributes.filter((_, rowIndex) => rowIndex !== index),
+                                            }))}
+                                            disabled={platformForm.attributes.length <= 1}
+                                            className="col-span-1 inline-flex justify-center text-gray-400 hover:text-red-600 disabled:opacity-30"
+                                            title="Remove attribute"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                <p className="text-xs text-gray-500">Examples: INT, BIGINT, BIT, DATE, DATETIME, DECIMAL(10,2), VARCHAR(255), NVARCHAR(255)</p>
                             </div>
 
                             <label className="flex items-center gap-2 text-sm text-gray-700">
