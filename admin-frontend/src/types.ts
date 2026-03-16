@@ -69,6 +69,19 @@ export interface OrganizationStats {
     pending: number;
 }
 
+export interface OrgSource {
+    organization_source_id: number;
+    source_id: number;
+    platform_name: string;
+    external_url: string | null;
+    last_synced_at: string | null;
+}
+
+export interface AvailableSource {
+    source_id: number;
+    platform_name: string;
+}
+
 export interface FeatureFlag {
     id: string;
     key: string;

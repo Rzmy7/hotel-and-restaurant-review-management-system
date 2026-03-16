@@ -4,6 +4,7 @@ from datetime import date, datetime
 
 import pyodbc
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.dashboard_router import _connection_string, _execute_query, _table_exists
 from app.models import (
@@ -17,6 +18,19 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin Data"])
+
+
+class OrganizationUpdatePayload(BaseModel):
+    name: str
+
+
+class OrgSourcesUpdateItem(BaseModel):
+    source_id: int
+    external_url: str | None = None
+
+
+class OrgSourcesUpdatePayload(BaseModel):
+    sources: list[OrgSourcesUpdateItem]
 
 PROCESSED_ACTIVITY_EXPR = (
     "COALESCE(CAST(lastUpdated AS datetime), CAST(firstSeen AS datetime), "
@@ -358,6 +372,254 @@ def get_organization_stats() -> OrganizationStats:
             )
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch organization stats: {error}")
+
+
+@router.get("/sources")
+def get_all_sources() -> list[dict]:
+    """Returns all available scraping sources/platforms."""
+    try:
+        with pyodbc.connect(_connection_string()) as conn:
+            cursor = conn.cursor()
+            if not _table_exists(cursor, "sources"):
+                return []
+            rows = _execute_query(
+                cursor,
+                "SELECT source_id, platform_name FROM dbo.sources ORDER BY platform_name",
+            ).fetchall()
+            return [
+                {"source_id": int(row[0]), "platform_name": str(row[1] or "").strip()}
+                for row in rows
+            ]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch sources: {exc}") from exc
+
+
+@router.get("/organizations/{org_id}/sources")
+def get_org_sources(org_id: str) -> list[dict]:
+    """Returns sources linked to an organization via organization_sources."""
+    try:
+        org_id_int = int(org_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="org_id must be numeric")
+
+    try:
+        with pyodbc.connect(_connection_string()) as conn:
+            cursor = conn.cursor()
+            if not _table_exists(cursor, "organization_sources"):
+                return []
+
+            if _table_exists(cursor, "sources"):
+                rows = _execute_query(
+                    cursor,
+                    """
+                    SELECT os.organization_source_id, os.source_id, s.platform_name,
+                           os.external_url, os.last_synced_at
+                    FROM dbo.organization_sources os
+                    JOIN dbo.sources s ON s.source_id = os.source_id
+                    WHERE os.organization_id = ?
+                    ORDER BY s.platform_name
+                    """,
+                    (org_id_int,),
+                ).fetchall()
+            else:
+                rows = _execute_query(
+                    cursor,
+                    """
+                    SELECT organization_source_id, source_id, NULL,
+                           external_url, last_synced_at
+                    FROM dbo.organization_sources
+                    WHERE organization_id = ?
+                    """,
+                    (org_id_int,),
+                ).fetchall()
+
+            return [
+                {
+                    "organization_source_id": int(row[0]),
+                    "source_id": int(row[1]),
+                    "platform_name": str(row[2] or "Unknown").strip(),
+                    "external_url": str(row[3]).strip() if row[3] else None,
+                    "last_synced_at": str(row[4]) if row[4] else None,
+                }
+                for row in rows
+            ]
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch org sources: {exc}") from exc
+
+
+@router.patch("/organizations/{org_id}")
+def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict:
+    """Updates an organization's name."""
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Organization name cannot be empty")
+
+    try:
+        org_id_int = int(org_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="org_id must be numeric")
+
+    try:
+        with pyodbc.connect(_connection_string()) as conn:
+            cursor = conn.cursor()
+            if not _table_exists(cursor, "organizations"):
+                raise HTTPException(status_code=400, detail="organizations table not found")
+
+            row = _execute_query(
+                cursor,
+                "SELECT TOP 1 organization_id FROM dbo.organizations WHERE organization_id = ?",
+                (org_id_int,),
+            ).fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Organization not found")
+
+            org_cols = _get_table_columns(cursor, "organizations")
+            if "updated_at" in org_cols:
+                _execute_query(
+                    cursor,
+                    "UPDATE dbo.organizations SET organization_name = ?, updated_at = ? WHERE organization_id = ?",
+                    (name, datetime.utcnow(), org_id_int),
+                )
+            else:
+                _execute_query(
+                    cursor,
+                    "UPDATE dbo.organizations SET organization_name = ? WHERE organization_id = ?",
+                    (name, org_id_int),
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to update organization: {exc}") from exc
+
+    return {"id": org_id, "name": name, "status": "updated"}
+
+
+@router.put("/organizations/{org_id}/sources")
+def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[dict]:
+    """Replaces all source links for an organization."""
+    try:
+        org_id_int = int(org_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="org_id must be numeric")
+
+    try:
+        with pyodbc.connect(_connection_string()) as conn:
+            cursor = conn.cursor()
+            if not _table_exists(cursor, "organization_sources"):
+                raise HTTPException(status_code=400, detail="organization_sources table not found")
+
+            _execute_query(
+                cursor,
+                "DELETE FROM dbo.organization_sources WHERE organization_id = ?",
+                (org_id_int,),
+            )
+
+            now = datetime.utcnow()
+            org_src_cols = _get_table_columns(cursor, "organization_sources")
+            has_created_at = "created_at" in org_src_cols
+
+            for item in payload.sources:
+                if has_created_at:
+                    _execute_query(
+                        cursor,
+                        """
+                        INSERT INTO dbo.organization_sources
+                            (organization_id, source_id, external_url, created_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (org_id_int, item.source_id, item.external_url, now),
+                    )
+                else:
+                    _execute_query(
+                        cursor,
+                        """
+                        INSERT INTO dbo.organization_sources
+                            (organization_id, source_id, external_url)
+                        VALUES (?, ?, ?)
+                        """,
+                        (org_id_int, item.source_id, item.external_url),
+                    )
+
+            conn.commit()
+
+            if _table_exists(cursor, "sources"):
+                rows = _execute_query(
+                    cursor,
+                    """
+                    SELECT os.organization_source_id, os.source_id, s.platform_name,
+                           os.external_url, os.last_synced_at
+                    FROM dbo.organization_sources os
+                    JOIN dbo.sources s ON s.source_id = os.source_id
+                    WHERE os.organization_id = ?
+                    ORDER BY s.platform_name
+                    """,
+                    (org_id_int,),
+                ).fetchall()
+            else:
+                rows = []
+
+            return [
+                {
+                    "organization_source_id": int(row[0]),
+                    "source_id": int(row[1]),
+                    "platform_name": str(row[2] or "Unknown").strip(),
+                    "external_url": str(row[3]).strip() if row[3] else None,
+                    "last_synced_at": str(row[4]) if row[4] else None,
+                }
+                for row in rows
+            ]
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to update org sources: {exc}") from exc
+
+
+@router.delete("/organizations/{org_id}")
+def delete_organization(org_id: str) -> dict:
+    """Deletes an organization and its linked source entries."""
+    try:
+        org_id_int = int(org_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="org_id must be numeric")
+
+    try:
+        with pyodbc.connect(_connection_string()) as conn:
+            cursor = conn.cursor()
+            if not _table_exists(cursor, "organizations"):
+                raise HTTPException(status_code=400, detail="organizations table not found")
+
+            row = _execute_query(
+                cursor,
+                "SELECT TOP 1 organization_id, organization_name FROM dbo.organizations WHERE organization_id = ?",
+                (org_id_int,),
+            ).fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Organization not found")
+
+            found_name = str(row[1] or "").strip()
+
+            if _table_exists(cursor, "organization_sources"):
+                _execute_query(
+                    cursor,
+                    "DELETE FROM dbo.organization_sources WHERE organization_id = ?",
+                    (org_id_int,),
+                )
+
+            _execute_query(
+                cursor,
+                "DELETE FROM dbo.organizations WHERE organization_id = ?",
+                (org_id_int,),
+            )
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete organization: {exc}") from exc
+
+    return {"status": "deleted", "id": org_id, "name": found_name}
 
 
 @router.get("/users", response_model=list[AdminUser])

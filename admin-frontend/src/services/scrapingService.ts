@@ -63,7 +63,7 @@ export const deleteScrapingPlatform = (platformId: string): Promise<{ status: st
     });
 };
 
-export const toggleScrapingPlatform = (platformId: string): Promise<{ id: string; name: string; enabled: boolean; status: string }> => {
+export const toggleScrapingPlatform = (platformId: string): Promise<{ id: string; name: string; enabled: boolean; status: 'active' | 'maintenance' }> => {
     return requestJson(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}/toggle`, {
         method: 'PATCH',
     });

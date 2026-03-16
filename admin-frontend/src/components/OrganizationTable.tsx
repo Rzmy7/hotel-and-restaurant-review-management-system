@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building, MoreVertical } from 'lucide-react';
+import { Building, Pencil, Trash2 } from 'lucide-react';
 import { Pagination } from './Pagination';
 import type { Organization } from '../types';
 
@@ -11,6 +11,8 @@ interface OrganizationTableProps {
     itemsPerPage: number;
     startIndex: number;
     onPageChange: (page: number) => void;
+    onEdit: (org: Organization) => void;
+    onDelete: (org: Organization) => void;
 }
 
 export const OrganizationTable: React.FC<OrganizationTableProps> = ({
@@ -20,7 +22,9 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
     totalItems,
     itemsPerPage,
     startIndex,
-    onPageChange
+    onPageChange,
+    onEdit,
+    onDelete,
 }) => {
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
@@ -60,9 +64,22 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
                                 </span>
                             </td>
                             <td className="px-6 py-4">
-                                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:shadow-md">
-                                    <MoreVertical size={18} />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => onEdit(org)}
+                                        title="Edit organization"
+                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(org)}
+                                        title="Delete organization"
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     ))}

@@ -1,12 +1,11 @@
 import React from 'react';
-import { Search, Plus, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 
 interface OrganizationFiltersProps {
     searchQuery: string;
     statusFilter: string;
     onSearchChange: (value: string) => void;
     onStatusChange: (value: string) => void;
-    onAddClick: () => void;
 }
 
 export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
