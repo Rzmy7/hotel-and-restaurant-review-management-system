@@ -2,6 +2,8 @@
 
 FastAPI service that provides the API required by the admin dashboard page in `admin-frontend`.
 
+This backend is wired to **real SQL Server data** (no static mock payloads).
+
 ## Implemented endpoints
 
 - `GET /health`
@@ -12,6 +14,21 @@ FastAPI service that provides the API required by the admin dashboard page in `a
 - `GET /dashboard/activities`
 
 These routes match the contract used in `admin-frontend/src/services/dashboardService.ts`.
+
+## Database configuration
+
+Create a `.env` file in this folder (or copy `.env.example`) and set:
+
+```ini
+DB_DRIVER=ODBC Driver 17 for SQL Server
+DB_SERVER=localhost
+DB_NAME=L2_Project_DB
+DB_UID=sa
+DB_PWD=your_password
+CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174
+```
+
+The query strategy is aligned with your existing backend test routes in `backend/app/test/api/review_api.py`.
 
 ## Run locally (Windows PowerShell)
 

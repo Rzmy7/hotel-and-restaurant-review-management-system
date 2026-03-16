@@ -1,12 +1,11 @@
 import os
-from typing import List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.data import DASHBOARD_STATS, RECENT_ACTIVITY, REVIEW_DATA, SYSTEM_ALERTS, USAGE_DATA
-from app.models import ChartDataPoint, DashboardStats, RecentActivity, SystemAlert
+from app.admin_router import router as admin_router
+from app.dashboard_router import router as dashboard_router
 
 load_dotenv()
 
@@ -29,6 +28,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(dashboard_router)
+app.include_router(admin_router)
+
 
 @app.get("/")
 def root() -> dict[str, str]:
@@ -42,28 +44,3 @@ def root() -> dict[str, str]:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "healthy"}
-
-
-@app.get("/dashboard/stats", response_model=DashboardStats)
-def get_dashboard_stats() -> DashboardStats:
-    return DASHBOARD_STATS
-
-
-@app.get("/dashboard/usage", response_model=List[ChartDataPoint])
-def get_dashboard_usage() -> List[ChartDataPoint]:
-    return USAGE_DATA
-
-
-@app.get("/dashboard/reviews", response_model=List[ChartDataPoint])
-def get_dashboard_reviews() -> List[ChartDataPoint]:
-    return REVIEW_DATA
-
-
-@app.get("/dashboard/alerts", response_model=List[SystemAlert])
-def get_dashboard_alerts() -> List[SystemAlert]:
-    return SYSTEM_ALERTS
-
-
-@app.get("/dashboard/activities", response_model=List[RecentActivity])
-def get_dashboard_activities() -> List[RecentActivity]:
-    return RECENT_ACTIVITY
