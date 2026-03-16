@@ -20,6 +20,7 @@ from app.modules.competitors.router import router as competitors_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.admin.router import router as admin_router
 from app.modules.groups.router import router as groups_router
+from app.modules.source.routers import router as source_router
 
 # ── App factory ─────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ app.include_router(competitors_router)
 app.include_router(dashboard_router)
 app.include_router(admin_router)
 app.include_router(groups_router)
+app.include_router(source_router)
 
 # ── Dev server ──────────────────────────────────────────────────────
 

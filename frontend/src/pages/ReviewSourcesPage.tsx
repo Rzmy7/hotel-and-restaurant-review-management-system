@@ -87,7 +87,7 @@ const ReviewSourcesPage = () => {
     }
   };
 
-  const handleDeleteSource = async (id: number) => {
+  const handleDeleteSource = async (id: string | number) => {
     try {
       await sourcesService.deleteSource(id);
       await fetchData(true);
@@ -111,7 +111,7 @@ const ReviewSourcesPage = () => {
     }
   };
 
-  const handleSyncNow = async (id: number) => {
+  const handleSyncNow = async (id: string | number) => {
     const source = sources.find(s => s.id === id);
     if (!source) return;
 

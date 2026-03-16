@@ -21,9 +21,9 @@ import GoogleLogo from '../../assets/source-logo/Google.jpeg';
 interface SourcesTableProps {
   sources: Source[];
   onEdit: (source: Source, tab?: 'settings' | 'analytics') => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string | number) => void;
   onToggleStatus: (source: Source) => void;
-  onSync: (id: number) => void;
+  onSync: (id: string | number) => void;
   isLoading?: boolean;
 }
 

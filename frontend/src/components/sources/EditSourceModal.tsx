@@ -22,7 +22,7 @@ interface EditSourceModalProps {
   onClose: () => void;
   source: Source | null;
   onSave: (source: Source) => void;
-  onDelete: (sourceId: number) => void;
+  onDelete: (sourceId: string | number) => void;
   initialTab?: 'settings' | 'analytics';
 }
 

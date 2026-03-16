@@ -18,7 +18,7 @@ export type SyncStatus = 'Success' | 'Failed' | 'In Progress';
 export type SyncSchedule = 'Hourly' | 'Daily' | 'Weekly';
 
 export interface Source {
-    id: number;
+    id: string | number;
     platform: SourcePlatform;
     status: SourceStatus;
     lastSyncedAt: string | null;
@@ -31,8 +31,8 @@ export interface Source {
 }
 
 export interface SyncLog {
-    id: string;
-    sourceId: number;
+    id: string | number;
+    sourceId: string | number;
     platform: SourcePlatform;
     status: SyncStatus;
     timestamp: string;
