@@ -51,9 +51,6 @@ export const Organizations: React.FC = () => {
         }
     };
 
-    const handleAddOrganization = () => {
-        alert('Add Organization Modal would open here');
-    };
 
     if (loading) {
         return <LoadingSpinner size={32} />;
@@ -70,7 +67,6 @@ export const Organizations: React.FC = () => {
                 statusFilter={statusFilter}
                 onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }}
                 onStatusChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}
-                onAddClick={handleAddOrganization}
             />
 
             {/* Organizations Table */}
