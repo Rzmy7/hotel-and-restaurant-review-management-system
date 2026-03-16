@@ -40,7 +40,8 @@ import SubscriptionPage from './pages/SubscriptionPage';
 import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
-import AdminDashboardPage from "./pages/AdminDashboardPage";
+import GroupsBranchesPage from './pages/GroupsBranchesPage';
+import GroupDetailPage from './pages/GroupDetailPage';
 
 // Styles
 import "./App.css";
@@ -110,7 +111,7 @@ const AppContent: React.FC = () => {
       
       {/* Utility/Admin Routes */}
       <Route path="/scrape" element={<ScrapeLauncher />} />
-      <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
+      <Route path="/admin-dashboard" element={<DashboardPage />} />
 
       {/* 
         Main Application Shell
@@ -141,16 +142,12 @@ const AppContent: React.FC = () => {
                 <Route path="/competitors" element={<CompetitorsPage />} />
                 <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
                 <Route path="/competitors/compare" element={<CompetitorComparison />} />
-                
-                {/* Help & Support */}
-                <Route path="/help" element={<HelpPage />} />
-                <Route path="/support" element={<SupportPage />} />
-                <Route path="/subscription" element={<SubscriptionPage />} />
-                
-                {/* User Profile */}
-                <Route path="/profile" element={<ProfilePage />} />
-                
-                {/* Fallback for undefined routes within the main shell */}
+                <Route path="/groups" element={<GroupsBranchesPage />} />
+                <Route path="/groups/:id" element={<GroupDetailPage />} />
+                <Route
+                  path="/profile"
+                  element={<ProfilePage />}
+                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
