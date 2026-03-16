@@ -4,7 +4,7 @@ import {
   Plus, Building2, Users, Hotel, Crown, Shield, Eye,
   Trash2, MoreVertical,
 } from 'lucide-react';
-import CreateGroupModal from '../components/CreateGroupModal';
+import CreateGroupModal from '../components/groups/CreateGroupModal';
 
 type UserRole = 'owner' | 'manager' | 'member';
 

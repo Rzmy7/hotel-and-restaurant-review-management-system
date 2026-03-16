@@ -1,7 +1,7 @@
 import { ChevronDown, TrendingUp, Plus, Trash2, Loader2, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import AddCompetitorModal from '../components/AddCompetitorModal';
+import AddCompetitorModal from '../components/competitors/AddCompetitorModal';
 import {
     fetchCompetitors,
     trackCompetitor,
