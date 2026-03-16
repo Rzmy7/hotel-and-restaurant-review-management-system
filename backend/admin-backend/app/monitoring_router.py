@@ -7,6 +7,7 @@ import pyodbc
 import requests
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.dashboard_router import _connection_string, _execute_query, _table_exists
 
@@ -15,6 +16,12 @@ router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
 load_dotenv()
 
 DEFAULT_SCRAPING_BACKEND_URL = os.getenv("SCRAPING_BACKEND_URL", "http://localhost:8001").rstrip("/")
+
+
+class ScrapingPlatformCreatePayload(BaseModel):
+    name: str
+    baseUrl: str | None = None
+    enabled: bool = True
 
 
 def _to_relative_timestamp(value: datetime | date | None) -> str:
@@ -74,28 +81,42 @@ def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
 
             if _table_exists(cursor, "sources"):
                 columns = _get_table_columns(cursor, "sources")
-                is_active_col = "is_active" if "is_active" in columns else None
+                # Prefer the newer is_enabled column; fall back to is_active.
+                is_active_col = (
+                    "is_enabled" if "is_enabled" in columns
+                    else "is_active" if "is_active" in columns
+                    else None
+                )
+
+                # Only select base_url if it actually exists in the table.
+                select_cols = "source_id, platform_name"
+                has_base_url = "base_url" in columns
+                if has_base_url:
+                    select_cols += ", base_url"
 
                 rows = _execute_query(
                     cursor,
-                    """
-                    SELECT source_id, platform_name, base_url
-                    FROM dbo.sources
-                    ORDER BY source_id
-                    """,
+                    f"SELECT {select_cols} FROM dbo.sources ORDER BY source_id",
                 ).fetchall()
 
                 last_synced: dict[int, datetime | date | None] = {}
                 if _table_exists(cursor, "organization_sources"):
-                    sync_rows = _execute_query(
-                        cursor,
-                        """
-                        SELECT source_id, MAX(last_synced_at) AS last_synced_at
-                        FROM dbo.organization_sources
-                        GROUP BY source_id
-                        """,
-                    ).fetchall()
-                    last_synced = {int(row[0]): row[1] for row in sync_rows if row[0] is not None}
+                    org_cols = _get_table_columns(cursor, "organization_sources")
+                    # Find any timestamp column that tracks last sync.
+                    sync_ts_col = next(
+                        (c for c in ("last_synced_at", "synced_at", "updated_at", "last_run_at") if c in org_cols),
+                        None,
+                    )
+                    if sync_ts_col:
+                        sync_rows = _execute_query(
+                            cursor,
+                            f"""
+                            SELECT source_id, MAX({sync_ts_col}) AS last_synced_at
+                            FROM dbo.organization_sources
+                            GROUP BY source_id
+                            """,
+                        ).fetchall()
+                        last_synced = {int(row[0]): row[1] for row in sync_rows if row[0] is not None}
 
                 platforms: list[dict[str, str | bool]] = []
                 for row in rows:
@@ -161,8 +182,10 @@ def _fetch_platforms_from_db() -> list[dict[str, str | bool]]:
                     )
                 return platforms
 
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch platforms from database: {exc}") from exc
 
     return []
 
@@ -227,6 +250,81 @@ def _organization_from_url(url: str | None) -> str:
     return host or "Unknown"
 
 
+def _create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, str | bool]:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Platform name is required")
+
+    base_url = payload.baseUrl.strip() if payload.baseUrl else None
+
+    try:
+        with pyodbc.connect(_connection_string()) as connection:
+            cursor = connection.cursor()
+
+            if not _table_exists(cursor, "sources"):
+                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+
+            columns = _get_table_columns(cursor, "sources")
+            if "platform_name" not in columns:
+                raise HTTPException(status_code=500, detail="sources table is missing required platform_name column")
+
+            existing = _execute_query(
+                cursor,
+                "SELECT TOP 1 source_id FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+                (name,),
+            ).fetchone()
+            if existing is not None:
+                raise HTTPException(status_code=409, detail=f"Platform '{name}' already exists")
+
+            insert_columns = ["platform_name"]
+            insert_values: list[str | bool | None] = [name]
+
+            if "base_url" in columns:
+                insert_columns.append("base_url")
+                insert_values.append(base_url)
+
+            enabled_col = (
+                "is_enabled" if "is_enabled" in columns
+                else "is_active" if "is_active" in columns
+                else None
+            )
+            if enabled_col:
+                insert_columns.append(enabled_col)
+                insert_values.append(payload.enabled)
+
+            placeholders = ", ".join("?" for _ in insert_columns)
+            columns_sql = ", ".join(insert_columns)
+            _execute_query(
+                cursor,
+                f"INSERT INTO dbo.sources ({columns_sql}) VALUES ({placeholders})",
+                tuple(insert_values),
+            )
+            connection.commit()
+
+            created = _execute_query(
+                cursor,
+                "SELECT TOP 1 source_id FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?) ORDER BY source_id DESC",
+                (name,),
+            ).fetchone()
+            created_id = str(created[0]) if created is not None else name.lower().replace(" ", "-")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create platform: {exc}") from exc
+
+    icon, color = _platform_visuals(name)
+    return {
+        "id": created_id,
+        "name": name,
+        "icon": icon,
+        "color": color,
+        "enabled": payload.enabled,
+        "lastRun": "never",
+        "status": "active" if payload.enabled else "maintenance",
+    }
+
+
 def _server_usage() -> tuple[float, float]:
     cpu_percent = psutil.cpu_percent(interval=0.2)
     ram_percent = psutil.virtual_memory().percent
@@ -264,6 +362,127 @@ def scraping_platforms() -> list[dict[str, str | bool]]:
     Returns scraping platform configuration from the SQL database.
     """
     return _fetch_platforms_from_db()
+
+
+@router.post("/scraping/platforms")
+def create_scraping_platform(payload: ScrapingPlatformCreatePayload) -> dict[str, str | bool]:
+    """
+    Creates a scraping platform entry in the SQL database sources table.
+    """
+    return _create_platform_in_db(payload)
+
+
+@router.patch("/scraping/platforms/{platform_id}/toggle")
+def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
+    """
+    Flips the enabled/disabled state of a scraping platform in the DB.
+    Works with both is_enabled and is_active column names.
+    """
+    try:
+        with pyodbc.connect(_connection_string()) as connection:
+            cursor = connection.cursor()
+
+            if not _table_exists(cursor, "sources"):
+                raise HTTPException(status_code=400, detail="sources table does not exist")
+
+            columns = _get_table_columns(cursor, "sources")
+            enabled_col = (
+                "is_enabled" if "is_enabled" in columns
+                else "is_active" if "is_active" in columns
+                else None
+            )
+            if not enabled_col:
+                raise HTTPException(status_code=400, detail="sources table has no is_enabled or is_active column")
+
+            try:
+                source_id = int(platform_id)
+                row = _execute_query(
+                    cursor,
+                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.sources WHERE source_id = ?",
+                    (source_id,),
+                ).fetchone()
+            except ValueError:
+                row = _execute_query(
+                    cursor,
+                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+                    (platform_id,),
+                ).fetchone()
+
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+
+            found_id = int(row[0])
+            found_name = str(row[1])
+            current_enabled = bool(row[2]) if row[2] is not None else True
+            new_enabled = not current_enabled
+
+            _execute_query(
+                cursor,
+                f"UPDATE dbo.sources SET {enabled_col} = ? WHERE source_id = ?",
+                (new_enabled, found_id),
+            )
+            connection.commit()
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to toggle platform: {exc}") from exc
+
+    return {
+        "id": str(found_id),
+        "name": found_name,
+        "enabled": new_enabled,
+        "status": "active" if new_enabled else "maintenance",
+    }
+
+
+@router.delete("/scraping/platforms/{platform_id}")
+def delete_scraping_platform(platform_id: str) -> dict[str, str]:
+    """
+    Deletes a scraping platform from the SQL database sources table by its source_id.
+    Also cascades removal of linked organization_sources rows if the DB enforces FK cascades.
+    """
+    try:
+        with pyodbc.connect(_connection_string()) as connection:
+            cursor = connection.cursor()
+
+            if not _table_exists(cursor, "sources"):
+                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+
+            # Accept both integer IDs and platform name slugs for resilience.
+            try:
+                source_id = int(platform_id)
+                row = _execute_query(
+                    cursor,
+                    "SELECT TOP 1 source_id, platform_name FROM dbo.sources WHERE source_id = ?",
+                    (source_id,),
+                ).fetchone()
+            except ValueError:
+                row = _execute_query(
+                    cursor,
+                    "SELECT TOP 1 source_id, platform_name FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+                    (platform_id,),
+                ).fetchone()
+
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+
+            found_id = int(row[0])
+            found_name = str(row[1])
+
+            _execute_query(
+                cursor,
+                "DELETE FROM dbo.sources WHERE source_id = ?",
+                (found_id,),
+            )
+            connection.commit()
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete platform: {exc}") from exc
+
+    return {"status": "deleted", "id": str(found_id), "name": found_name}
 
 
 @router.get("/scraping/stats")

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, Settings, CheckCircle, XCircle, Grid3X3 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs } from '../services/scrapingService';
+import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
 export const Scraping: React.FC = () => {
@@ -11,8 +11,29 @@ export const Scraping: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isAddPlatformOpen, setIsAddPlatformOpen] = useState(false);
+    const [addPlatformSubmitting, setAddPlatformSubmitting] = useState(false);
+    const [addPlatformError, setAddPlatformError] = useState<string | null>(null);
+    const [platformForm, setPlatformForm] = useState({
+        name: '',
+        baseUrl: '',
+        enabled: true,
+    });
+    const [addPlatformFile, setAddPlatformFile] = useState<File | null>(null);
+    const [uploadingPlatformId, setUploadingPlatformId] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const pendingUploadRef = useRef<{ id: string; name: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
+
+    // Reset modal file state whenever the Add Platform modal closes.
+    useEffect(() => {
+        if (!isAddPlatformOpen) {
+            setAddPlatformFile(null);
+            setAddPlatformError(null);
+        }
+    }, [isAddPlatformOpen]);
 
     useEffect(() => {
         const loadData = async (isRefresh = false) => {
@@ -24,17 +45,28 @@ export const Scraping: React.FC = () => {
                 }
                 setError(null);
 
-                const [statsData, platformsData, jobsData] = await Promise.all([
+                const [statsResult, platformsResult, jobsResult] = await Promise.allSettled([
                     fetchScrapingStats(),
                     fetchScrapingPlatforms(),
                     fetchScrapingJobs(),
                 ]);
-                setStats(statsData);
-                setPlatforms(platformsData);
-                setJobs(jobsData);
+
+                if (statsResult.status === 'fulfilled') setStats(statsResult.value);
+                if (platformsResult.status === 'fulfilled') setPlatforms(platformsResult.value);
+                if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
+
+                // Surface an error only when platforms specifically fail — that's a DB issue worth flagging.
+                const errors: string[] = [];
+                if (platformsResult.status === 'rejected') {
+                    errors.push(`Platforms: ${platformsResult.reason instanceof Error ? platformsResult.reason.message : 'failed to load'}`);
+                }
+                if (statsResult.status === 'rejected' && jobsResult.status === 'rejected') {
+                    errors.push('Scraping service is unreachable (stats and jobs unavailable).');
+                }
+                if (errors.length > 0) setError(errors.join(' | '));
             } catch (err) {
                 console.error('Failed to load scraping data:', err);
-                setError('Failed to load scraping data. Check admin-backend and scraping service connectivity.');
+                setError('Failed to load scraping data. Check admin-backend connectivity.');
             } finally {
                 setLoading(false);
                 setRefreshing(false);
@@ -54,14 +86,17 @@ export const Scraping: React.FC = () => {
         try {
             setRefreshing(true);
             setError(null);
-            const [statsData, platformsData, jobsData] = await Promise.all([
+            const [statsResult, platformsResult, jobsResult] = await Promise.allSettled([
                 fetchScrapingStats(),
                 fetchScrapingPlatforms(),
                 fetchScrapingJobs(),
             ]);
-            setStats(statsData);
-            setPlatforms(platformsData);
-            setJobs(jobsData);
+            if (statsResult.status === 'fulfilled') setStats(statsResult.value);
+            if (platformsResult.status === 'fulfilled') setPlatforms(platformsResult.value);
+            if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
+            if (platformsResult.status === 'rejected') {
+                setError(`Platforms: ${platformsResult.reason instanceof Error ? platformsResult.reason.message : 'failed to load'}`);
+            }
         } catch (err) {
             console.error('Failed to refresh scraping data:', err);
             setError('Failed to refresh scraping data.');
@@ -70,10 +105,99 @@ export const Scraping: React.FC = () => {
         }
     };
 
-    const togglePlatform = (id: string) => {
+    const togglePlatform = async (id: string) => {
+        // Optimistic update.
         setPlatforms(prev => prev.map(p =>
-            p.id === id ? { ...p, enabled: !p.enabled } : p
+            p.id === id ? { ...p, enabled: !p.enabled, status: p.enabled ? 'maintenance' : 'active' } : p
         ));
+        try {
+            const updated = await toggleScrapingPlatform(id);
+            // Sync with confirmed server value.
+            setPlatforms(prev => prev.map(p =>
+                p.id === id ? { ...p, enabled: updated.enabled, status: updated.status } : p
+            ));
+        } catch (err) {
+            // Rollback on failure.
+            setPlatforms(prev => prev.map(p =>
+                p.id === id ? { ...p, enabled: !p.enabled, status: p.enabled ? 'active' : 'maintenance' } : p
+            ));
+            console.error('Failed to toggle platform:', err);
+            setError(err instanceof Error ? err.message : 'Failed to toggle platform.');
+        }
+    };
+
+    const handleDeletePlatform = async (id: string, name: string) => {
+        if (!window.confirm(`Remove platform "${name}"? This cannot be undone.`)) {
+            return;
+        }
+        try {
+            await deleteScrapingPlatform(id);
+            setPlatforms(prev => prev.filter(p => p.id !== id));
+        } catch (err) {
+            console.error('Failed to delete platform:', err);
+            setError(err instanceof Error ? err.message : 'Failed to delete platform.');
+        }
+    };
+
+    const handleUploadButtonClick = (id: string, name: string) => {
+        pendingUploadRef.current = { id, name };
+        fileInputRef.current?.click();
+    };
+
+    const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !pendingUploadRef.current) return;
+        const { id, name } = pendingUploadRef.current;
+        e.target.value = '';
+        pendingUploadRef.current = null;
+        try {
+            setUploadingPlatformId(id);
+            setUploadError(null);
+            await uploadPlatformScript(id, name, file);
+        } catch (err) {
+            console.error('Failed to upload scraping file:', err);
+            setUploadError(err instanceof Error ? err.message : 'Scraping file upload failed.');
+        } finally {
+            setUploadingPlatformId(null);
+        }
+    };
+
+    const handleCreatePlatform = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!platformForm.name.trim()) {
+            setAddPlatformError('Platform name is required.');
+            return;
+        }
+
+        try {
+            setAddPlatformSubmitting(true);
+            setAddPlatformError(null);
+            const createdPlatform = await createScrapingPlatform({
+                name: platformForm.name.trim(),
+                baseUrl: platformForm.baseUrl.trim() || undefined,
+                enabled: platformForm.enabled,
+            });
+
+            setPlatforms(prev => [...prev, createdPlatform]);
+
+            if (addPlatformFile) {
+                try {
+                    await uploadPlatformScript(createdPlatform.id, createdPlatform.name, addPlatformFile);
+                } catch (uploadErr) {
+                    console.error('Failed to upload scraping file:', uploadErr);
+                    setAddPlatformError(uploadErr instanceof Error ? uploadErr.message : 'Platform created, but scraping file upload failed.');
+                    setAddPlatformSubmitting(false);
+                    return;
+                }
+            }
+
+            setIsAddPlatformOpen(false);
+        } catch (err) {
+            console.error('Failed to create platform:', err);
+            setAddPlatformError(err instanceof Error ? err.message : 'Failed to create platform.');
+        } finally {
+            setAddPlatformSubmitting(false);
+        }
     };
 
     const filteredJobs = jobs.filter(job => {
@@ -113,6 +237,14 @@ export const Scraping: React.FC = () => {
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}
+                </div>
+            )}
+            {uploadError && (
+                <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700 flex items-center justify-between">
+                    <span>Upload error: {uploadError}</span>
+                    <button onClick={() => setUploadError(null)} className="ml-4 text-orange-500 hover:text-orange-700">
+                        <X size={14} />
+                    </button>
                 </div>
             )}
 
@@ -172,6 +304,13 @@ export const Scraping: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-500">Global Frequency:</span>
+                        <button
+                            onClick={() => setIsAddPlatformOpen(true)}
+                            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                            <Plus size={16} />
+                            Add Platform
+                        </button>
                         <select 
                             value={globalFrequency} 
                             onChange={(e) => setGlobalFrequency(e.target.value)}
@@ -214,13 +353,124 @@ export const Scraping: React.FC = () => {
                                 <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 transition-colors"></div>
                                 <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                             </label>
-                            <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded">
-                                <Settings size={16} />
+                            <button
+                                onClick={() => handleUploadButtonClick(platform.id, platform.name)}
+                                title="Upload scraping file"
+                                disabled={uploadingPlatformId === platform.id}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-40"
+                            >
+                                <Upload size={16} className={uploadingPlatformId === platform.id ? 'animate-pulse' : ''} />
+                            </button>
+                            <button
+                                onClick={() => handleDeletePlatform(platform.id, platform.name)}
+                                title="Remove platform"
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            >
+                                <Trash2 size={16} />
                             </button>
                         </div>
                     ))}
                 </div>
             </div>
+
+            {isAddPlatformOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setIsAddPlatformOpen(false)} />
+                    <div className="relative w-full max-w-md rounded-xl bg-white shadow-xl mx-4">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                            <h3 className="text-base font-semibold text-gray-900">Add New Platform</h3>
+                            <button onClick={() => setIsAddPlatformOpen(false)} className="p-1 rounded hover:bg-gray-100 text-gray-500">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreatePlatform} className="p-5 space-y-4">
+                            {addPlatformError && (
+                                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                    {addPlatformError}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Platform Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={platformForm.name}
+                                    onChange={(e) => setPlatformForm(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="e.g. Expedia"
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Base URL</label>
+                                <input
+                                    type="url"
+                                    value={platformForm.baseUrl}
+                                    onChange={(e) => setPlatformForm(prev => ({ ...prev, baseUrl: e.target.value }))}
+                                    placeholder="https://www.example.com"
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Optional, but useful for organization-source linking.</p>
+                            </div>
+
+                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                                <input
+                                    type="checkbox"
+                                    checked={platformForm.enabled}
+                                    onChange={(e) => setPlatformForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                Enable platform immediately
+                            </label>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    Scraping Script <span className="font-normal text-gray-400">(optional)</span>
+                                </label>
+                                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(e) => setAddPlatformFile(e.target.files?.[0] ?? null)}
+                                    />
+                                    {addPlatformFile
+                                        ? <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium"><Upload size={13} />{addPlatformFile.name}</span>
+                                        : <span className="flex items-center gap-1.5"><Upload size={14} />Click to upload scraping file</span>
+                                    }
+                                </label>
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    disabled={addPlatformSubmitting}
+                                    onClick={() => setIsAddPlatformOpen(false)}
+                                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={addPlatformSubmitting}
+                                    className="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600"
+                                >
+                                    {addPlatformSubmitting ? 'Adding...' : 'Add Platform'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Hidden file input shared by all per-platform re-upload buttons */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileInputChange}
+            />
 
             {/* Job Status Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
