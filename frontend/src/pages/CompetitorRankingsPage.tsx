@@ -1,15 +1,23 @@
-import { ChevronDown, ArrowLeft, ArrowUpDown, Loader2 } from 'lucide-react';
+import { ChevronDown, ArrowLeft, ArrowUpDown, Check, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchRankings, type RankingEntry } from '../api/competitorApi';
 
 type SortKey = 'rating' | 'sentiment' | 'reviews';
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+    { key: 'rating', label: 'Average Rating' },
+    { key: 'sentiment', label: 'Sentiment Score' },
+    { key: 'reviews', label: 'Review Count' },
+];
 
 const CompetitorRankingsPage = () => {
     const [rankings, setRankings] = useState<RankingEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortKey>('rating');
+    const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+    const sortMenuRef = useRef<HTMLDivElement>(null);
 
     const loadRankings = useCallback(async () => {
         try {
@@ -28,6 +36,22 @@ const CompetitorRankingsPage = () => {
         loadRankings();
     }, [loadRankings]);
 
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
+                setIsSortMenuOpen(false);
+            }
+        };
+
+        if (isSortMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isSortMenuOpen]);
+
     const sorted = useMemo(() => {
         const copy = [...rankings];
         copy.sort((a, b) => {
@@ -40,9 +64,11 @@ const CompetitorRankingsPage = () => {
 
     const yourRank = sorted.find(r => r.isYou)?.rank ?? '-';
     const topPerformer = sorted[0];
+    const activeSortLabel = SORT_OPTIONS.find((option) => option.key === sortBy)?.label ?? 'Average Rating';
 
     const handleSort = (key: SortKey) => {
         setSortBy(key);
+        setIsSortMenuOpen(false);
     };
 
     return (
@@ -62,16 +88,6 @@ const CompetitorRankingsPage = () => {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors shadow-sm min-w-[160px]">
-                        Grand Plaza Hotel
-                        <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                    </button>
-                    <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors shadow-sm min-w-[140px]">
-                        Last 30 Days
-                        <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                    </button>
-                </div>
             </header>
 
             {/* Main Content */}
@@ -135,9 +151,32 @@ const CompetitorRankingsPage = () => {
                     {/* Card Header */}
                     <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Rankings Overview</h2>
-                        <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
-                            Average Rating
-                        </button>
+                        <div className="relative" ref={sortMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setIsSortMenuOpen((open) => !open)}
+                                className={`flex min-w-[170px] items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border rounded-lg text-sm text-gray-700 dark:text-gray-200 transition-colors shadow-sm ${isSortMenuOpen ? 'border-blue-300 dark:border-blue-500 bg-blue-50/60 dark:bg-slate-700' : 'border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                            >
+                                {activeSortLabel}
+                                <ChevronDown size={16} className={`text-gray-400 dark:text-slate-500 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isSortMenuOpen && (
+                                <div className="absolute right-0 top-full z-20 mt-2 w-[200px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                                    {SORT_OPTIONS.map((option) => (
+                                        <button
+                                            key={option.key}
+                                            type="button"
+                                            onClick={() => handleSort(option.key)}
+                                            className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors ${sortBy === option.key ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-slate-700/70'}`}
+                                        >
+                                            <span>{option.label}</span>
+                                            {sortBy === option.key && <Check size={16} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Table */}
@@ -148,22 +187,22 @@ const CompetitorRankingsPage = () => {
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[10%]">Rank</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[30%]">Organization Name</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
-                                        <div onClick={() => handleSort('rating')} className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <button type="button" onClick={() => handleSort('rating')} className={`flex items-center gap-1.5 transition-colors ${sortBy === 'rating' ? 'text-blue-600 dark:text-blue-400' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`}>
                                             Average Rating
                                             <ArrowUpDown size={12} className="text-gray-300 dark:text-slate-500" />
-                                        </div>
+                                        </button>
                                     </th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
-                                        <div onClick={() => handleSort('sentiment')} className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <button type="button" onClick={() => handleSort('sentiment')} className={`flex items-center gap-1.5 transition-colors ${sortBy === 'sentiment' ? 'text-blue-600 dark:text-blue-400' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`}>
                                             Sentiment Score
                                             <ArrowUpDown size={12} className="text-gray-300 dark:text-slate-500" />
-                                        </div>
+                                        </button>
                                     </th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
-                                        <div onClick={() => handleSort('reviews')} className="flex items-center gap-1.5 cursor-pointer hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <button type="button" onClick={() => handleSort('reviews')} className={`flex items-center gap-1.5 transition-colors ${sortBy === 'reviews' ? 'text-blue-600 dark:text-blue-400' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`}>
                                             Review Count
                                             <ArrowUpDown size={12} className="text-gray-300 dark:text-slate-500" />
-                                        </div>
+                                        </button>
                                     </th>
                                 </tr>
                             </thead>

@@ -1,6 +1,6 @@
-import { ChevronDown, TrendingUp, Plus, Trash2, Loader2 } from 'lucide-react';
+import { ChevronDown, TrendingUp, Plus, Trash2, Loader2, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import AddCompetitorModal from '../components/AddCompetitorModal';
 import {
     fetchCompetitors,
@@ -8,12 +8,17 @@ import {
     untrackCompetitor,
     type Competitor,
 } from '../api/competitorApi';
+import { DOMAIN_OPTIONS, inferCompetitorDomain, type CompetitorDomain } from '../utils/competitorDomain';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [tracked, setTracked] = useState<Competitor[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedDomain, setSelectedDomain] = useState<CompetitorDomain>('Hotel');
+    const [isDomainMenuOpen, setIsDomainMenuOpen] = useState(false);
+    const domainMenuRef = useRef<HTMLDivElement>(null);
+
     const loadCompetitors = useCallback(async () => {
         try {
             setLoading(true);
@@ -31,6 +36,22 @@ const CompetitorsPage = () => {
     useEffect(() => {
         loadCompetitors();
     }, [loadCompetitors]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (domainMenuRef.current && !domainMenuRef.current.contains(event.target as Node)) {
+                setIsDomainMenuOpen(false);
+            }
+        };
+
+        if (isDomainMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isDomainMenuOpen]);
 
     const handleTrack = async (competitorId: number) => {
         try {
@@ -52,6 +73,8 @@ const CompetitorsPage = () => {
         }
     };
 
+    const filteredTracked = tracked.filter((competitor) => inferCompetitorDomain(competitor) === selectedDomain);
+
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             {/* Header Section */}
@@ -69,10 +92,35 @@ const CompetitorsPage = () => {
                 </div>
 
                 <div className="flex items-center">
-                    <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm w-32">
-                        Hotel
-                        <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                    </button>
+                    <div className="relative" ref={domainMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setIsDomainMenuOpen((open) => !open)}
+                            className={`flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border rounded-lg text-sm text-gray-700 dark:text-gray-200 transition-colors shadow-sm min-w-[156px] ${isDomainMenuOpen ? 'border-blue-300 dark:border-blue-500 bg-blue-50/60 dark:bg-slate-700' : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}
+                        >
+                            {selectedDomain}
+                            <ChevronDown size={16} className={`text-gray-400 dark:text-slate-500 transition-transform ${isDomainMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isDomainMenuOpen && (
+                            <div className="absolute right-0 top-full z-20 mt-2 w-[220px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                                {DOMAIN_OPTIONS.map((domain) => (
+                                    <button
+                                        key={domain}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedDomain(domain);
+                                            setIsDomainMenuOpen(false);
+                                        }}
+                                        className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors ${selectedDomain === domain ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-slate-700/70'}`}
+                                    >
+                                        <span>{domain}</span>
+                                        {selectedDomain === domain && <Check size={16} />}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -119,14 +167,15 @@ const CompetitorsPage = () => {
                     )}
 
                     {/* Empty State */}
-                    {!loading && tracked.length === 0 && (
+                    {!loading && filteredTracked.length === 0 && (
                         <div className="text-center py-16">
-                            <p className="text-gray-500 text-lg">No competitors tracked yet</p>
-                            <p className="text-gray-400 text-sm mt-2">Click "Add Competitor" to start tracking hotels from the available pool.</p>
+                            <p className="text-gray-500 text-lg">No {selectedDomain === 'Hotel' ? 'hotel' : 'restaurant'} competitors tracked yet</p>
+                            <p className="text-gray-400 text-sm mt-2">Click "Add Competitor" to start tracking {selectedDomain === 'Hotel' ? 'hotels' : 'restaurants'} from the available pool.</p>
                         </div>
                     )}
 
                     {/* Table */}
+                    {!loading && filteredTracked.length > 0 && (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -140,7 +189,7 @@ const CompetitorsPage = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
-                                {tracked.map((competitor) => (
+                                {filteredTracked.map((competitor) => (
                                     <tr key={competitor.id} className="hover:bg-gray-50/30 dark:hover:bg-slate-700/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="font-semibold text-gray-900 dark:text-white text-[15px]">{competitor.name}</span>
@@ -175,6 +224,7 @@ const CompetitorsPage = () => {
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </div>
 
             </main>
@@ -183,6 +233,7 @@ const CompetitorsPage = () => {
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onAddCompetitor={handleTrack}
+                selectedDomain={selectedDomain}
             />
         </div>
     );

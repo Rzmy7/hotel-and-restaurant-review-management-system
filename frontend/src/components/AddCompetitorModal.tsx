@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, X } from 'lucide-react';
+import { inferCompetitorDomain, type CompetitorDomain } from '../utils/competitorDomain';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -9,18 +10,21 @@ interface AvailableCompetitor {
   location: string;
   avgRating: number;
   status: string;
+  bookingUrl?: string;
 }
 
 interface AddCompetitorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddCompetitor: (competitorId: number) => Promise<void> | void;
+  selectedDomain: CompetitorDomain;
 }
 
 const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
   isOpen,
   onClose,
   onAddCompetitor,
+  selectedDomain,
 }) => {
   const [competitors, setCompetitors] = useState<AvailableCompetitor[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,6 +81,8 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
     }
   };
 
+  const filteredCompetitors = competitors.filter((competitor) => inferCompetitorDomain(competitor) === selectedDomain);
+
     return (
         <div className="fixed inset-0 bg-gray-900/40 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             {/* Modal Container */}
@@ -88,7 +94,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
                 <div className="px-8 py-6 flex items-start justify-between border-b border-gray-100 dark:border-slate-700 flex-shrink-0">
                     <div>
                         <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">Competitors</h2>
-                        <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">Manage your competitor list</p>
+                        <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">Available {selectedDomain === 'Hotel' ? 'hotel' : 'restaurant'} competitors</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -114,6 +120,11 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
                             </button>
                         </div>
                     ) : (
+                    filteredCompetitors.length === 0 ? (
+                    <div className="flex items-center justify-center py-12 text-sm text-gray-400 dark:text-slate-500">
+                      No available {selectedDomain === 'Hotel' ? 'hotel' : 'restaurant'} competitors found.
+                    </div>
+                    ) : (
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-gray-100/60 dark:border-slate-700/60 sticky top-0 bg-white dark:bg-slate-800 z-10 flex w-full">
@@ -124,7 +135,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50/80 dark:divide-slate-700/80 flex flex-col w-full">
-                            {competitors.map((competitor) => (
+                          {filteredCompetitors.map((competitor) => (
                                 <tr key={competitor.id} className="hover:bg-gray-50/40 dark:hover:bg-slate-700/40 transition-colors flex w-full items-center">
                                     <td className="py-[18px] w-[40%]">
                                         <span className="font-semibold text-gray-800 dark:text-gray-200 text-[14px]">{competitor.name}</span>
@@ -151,6 +162,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
                             ))}
                         </tbody>
                     </table>
+                      )
                     )}
                 </div>
             </div>
