@@ -1,11 +1,22 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Plus, 
+  CheckCircle2, 
+  Globe, 
+  Search, 
+  ExternalLink,
+  MessageSquare,
+  Star
+} from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 
 interface ReviewSource {
   id: string;
   name: string;
-  icon: string;
+  type: string;
   connected: boolean;
 }
 
@@ -13,12 +24,12 @@ const AddSourcesPage = () => {
   const navigate = useNavigate();
   const [customSourceUrl, setCustomSourceUrl] = useState('');
   const [sources, setSources] = useState<ReviewSource[]>([
-    { id: '1', name: 'Google Reviews', icon: 'G', connected: false },
-    { id: '2', name: 'Booking.com', icon: 'G', connected: false },
-    { id: '3', name: 'Google Reviews', icon: 'G', connected: true },
-    { id: '4', name: 'Booking.com', icon: 'G', connected: false },
-    { id: '5', name: 'Google Reviews', icon: 'G', connected: false },
-    { id: '6', name: 'Trip Advisor', icon: 'G', connected: false },
+    { id: '1', name: 'Google Reviews', type: 'google', connected: true },
+    { id: '2', name: 'Booking.com', type: 'booking', connected: false },
+    { id: '3', name: 'TripAdvisor', type: 'tripadvisor', connected: false },
+    { id: '4', name: 'Facebook business', type: 'facebook', connected: false },
+    { id: '5', name: 'Yelp', type: 'yelp', connected: false },
+    { id: '6', name: 'Trustpilot', type: 'trustpilot', connected: false },
   ]);
 
   const handleContinue = () => {
@@ -37,7 +48,6 @@ const AddSourcesPage = () => {
 
   const handleConnectCustomSource = () => {
     if (customSourceUrl.trim()) {
-      console.log('Connecting custom source:', customSourceUrl);
       alert('Custom source connection feature coming soon!');
     }
   };
@@ -48,74 +58,87 @@ const AddSourcesPage = () => {
       onContinue={handleContinue}
       onBack={handleBack}
     >
-      <h1 className="text-[28px] font-semibold text-gray-800 text-center mb-10">
-        Connect your Review Sources
-      </h1>
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">
+            Connect Sources
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">
+            Link your review platforms to start aggregating feedback
+        </p>
+      </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8 max-md:grid-cols-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
         {sources.map((source) => (
           <div
             key={source.id}
-            className={`rounded-lg py-4 px-5 flex items-center justify-between transition-colors ${source.connected
-                ? 'border-2 border-gray-300 bg-gray-50'
-                : 'border-2 border-dashed border-gray-300 bg-white'
-              }`}
+            className={`
+              relative p-4 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between
+              ${source.connected 
+                ? 'border-blue-600 bg-blue-50/30 dark:bg-blue-900/10' 
+                : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-200 dark:hover:border-slate-700'}
+            `}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-semibold text-gray-500">
-                {source.icon}
+            <div className="flex items-center gap-4">
+              <div className={`
+                w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-colors
+                ${source.connected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}
+              `}>
+                {source.name.charAt(0)}
               </div>
-              <div className="text-sm font-medium text-gray-800">{source.name}</div>
+              <div>
+                <div className="text-[14px] font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                    {source.name}
+                </div>
+                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
+                    {source.connected ? 'Verified' : 'Available'}
+                </div>
+              </div>
             </div>
-            {source.connected ? (
-              <button
-                className="py-1.5 px-4 bg-gray-800 text-white border-none rounded-full text-[13px] font-medium flex items-center gap-1.5 cursor-pointer"
-                onClick={() => handleConnect(source.id)}
-              >
-                Connected
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M20 6L9 17L4 12"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            ) : (
-              <button
-                className="py-1.5 px-5 bg-gray-200 hover:bg-gray-300 text-gray-700 border-none rounded-md text-[13px] font-medium cursor-pointer transition-colors"
-                onClick={() => handleConnect(source.id)}
-              >
-                Add
-              </button>
-            )}
+
+            <Button
+              size="sm"
+              variant={source.connected ? 'primary' : 'outline'}
+              onClick={() => handleConnect(source.id)}
+              className={`h-9 px-4 text-[11px] font-black uppercase tracking-widest rounded-lg ${source.connected ? 'shadow-lg shadow-blue-500/20' : ''}`}
+              leftIcon={source.connected ? <CheckCircle2 size={14} /> : <Plus size={14} />}
+            >
+              {source.connected ? 'Added' : 'Add'}
+            </Button>
           </div>
         ))}
       </div>
 
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <div className="text-[15px] font-semibold text-gray-800 text-center mb-1.5">
-          Don't you see your source ?
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 md:p-8 border border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-blue-600 shadow-sm border border-slate-100 dark:border-slate-800 text-lg">
+                <Globe size={18} />
+            </div>
+            <h3 className="text-[15px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                Add Custom Source
+            </h3>
         </div>
-        <div className="text-[13px] text-gray-500 text-center mb-5">
-          Manually add a source by providing the URL to the review page
-        </div>
-        <div className="flex gap-3 items-center max-md:flex-col">
-          <input
-            type="text"
-            placeholder="https://www.booking.com/hotel/us/westin-beach-resort-cosmo.html"
-            value={customSourceUrl}
-            onChange={(e) => setCustomSourceUrl(e.target.value)}
-            className="flex-1 py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-[13px] text-gray-500 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 max-md:w-full"
-          />
-          <button
-            className="py-3 px-8 bg-gray-200 hover:bg-gray-300 text-gray-700 border-none rounded-md text-[13px] font-medium cursor-pointer whitespace-nowrap transition-colors"
+        <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium mb-6">
+            Can't find your platform? Provide the direct link to your property's review page.
+        </p>
+        
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type="text"
+              placeholder="https://www.booking.com/hotel/..."
+              value={customSourceUrl}
+              onChange={(e) => setCustomSourceUrl(e.target.value)}
+              className="pl-11 h-12 bg-white dark:bg-slate-900"
+            />
+          </div>
+          <Button
             onClick={handleConnectCustomSource}
+            className="h-12 px-8 font-black uppercase text-[12px] tracking-widest"
+            leftIcon={<ExternalLink size={16} />}
           >
             Connect
-          </button>
+          </Button>
         </div>
       </div>
     </SetupLayout>
