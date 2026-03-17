@@ -62,6 +62,26 @@ def _table_exists(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -
     return row is not None
 
 
+def _get_table_columns(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -> set[str]:
+    rows = cursor.execute(
+        """
+        SELECT LOWER(COLUMN_NAME)
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+        """,
+        schema,
+        table_name,
+    ).fetchall()
+    return {str(row[0]) for row in rows}
+
+
+def _pick_existing_column(columns: set[str], candidates: list[str]) -> str | None:
+    for candidate in candidates:
+        if candidate.lower() in columns:
+            return candidate
+    return None
+
+
 def _to_datetime(value) -> datetime | None:
     if value is None:
         return None
@@ -99,13 +119,6 @@ def _email_from_name(name: str, index: int) -> str:
     if not slug:
         slug = f"user{index}"
     return f"{slug}@local.user"
-
-
-def _domain_from_name(name: str, index: int) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "", name.lower())
-    if not slug:
-        slug = f"org{index}"
-    return f"{slug}.local"
 
 
 def _org_status_from_organization_row(created_at_value, deleted_at_value) -> str:
@@ -243,8 +256,61 @@ def _get_user_row_by_id(cursor: pyodbc.Cursor, user_id: str):
     ).fetchone()
 
 
+def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
+    if not _table_exists(cursor, "user_organizations"):
+        return {}
+
+    user_org_columns = _get_table_columns(cursor, "user_organizations")
+    org_id_column = _pick_existing_column(user_org_columns, ["organization_id"])
+    email_column = _pick_existing_column(user_org_columns, ["email"])
+    created_column = _pick_existing_column(user_org_columns, ["created_at", "updated_at"])
+
+    if org_id_column is None or email_column is None:
+        return {}
+
+    order_by_parts = []
+    if created_column:
+        order_by_parts.append(f"uo.[{created_column}] DESC")
+    order_by_parts.append(f"uo.[{org_id_column}]")
+    order_by_sql = ", ".join(order_by_parts)
+
+    rows = cursor.execute(
+        f"""
+        WITH ranked_owners AS (
+            SELECT
+                uo.[{org_id_column}] AS organization_id,
+                uo.[{email_column}] AS email,
+                ROW_NUMBER() OVER (
+                    PARTITION BY uo.[{org_id_column}]
+                    ORDER BY {order_by_sql}
+                ) AS row_number
+            FROM dbo.user_organizations uo
+            WHERE uo.[{email_column}] IS NOT NULL
+              AND LTRIM(RTRIM(uo.[{email_column}])) <> ''
+        )
+        SELECT organization_id, email
+        FROM ranked_owners
+        WHERE row_number = 1
+        """
+    ).fetchall()
+
+    owner_emails: dict[str, str] = {}
+    for row in rows:
+        if row[0] is None:
+            continue
+
+        email = str(row[1] or "").strip()
+        if not email:
+            continue
+
+        owner_emails[str(row[0])] = email
+
+    return owner_emails
+
+
 def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
     if _table_exists(cursor, "organizations"):
+        owner_emails = _load_organization_owner_emails(cursor)
         rows = cursor.execute(
             """
             SELECT
@@ -265,25 +331,12 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
         for index, row in enumerate(rows, start=1):
             organization_id = str(row[0]) if row[0] is not None else str(index)
             organization_name = str(row[1]).strip() if row[1] else f"Organization {organization_id}"
-            country = str(row[2]).strip() if row[2] else ""
-            city = str(row[3]).strip() if row[3] else ""
-            organization_type = str(row[4]).strip() if row[4] else ""
-
-            location_bits = [value for value in [city, country] if value]
-            location_slug = re.sub(r"[^a-z0-9]+", "-", "-".join(location_bits).lower()).strip("-")
-            domain = _domain_from_name(organization_name, index)
-            if location_slug:
-                domain = f"{location_slug}.{domain}"
-            elif organization_type:
-                type_slug = re.sub(r"[^a-z0-9]+", "-", organization_type.lower()).strip("-")
-                if type_slug:
-                    domain = f"{type_slug}.{domain}"
 
             organizations.append(
                 {
                     "id": organization_id,
                     "name": organization_name,
-                    "domain": domain,
+                    "owner": owner_emails.get(organization_id, ""),
                     "usersCount": 0,
                     "status": _org_status_from_organization_row(row[5], row[7]),
                 }
@@ -312,7 +365,7 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
                 {
                     "id": str(index),
                     "name": name,
-                    "domain": _domain_from_name(name, index),
+                    "owner": "",
                     "usersCount": int(row[1]) if row[1] is not None else 0,
                     "status": _org_status_from_date(row[2]),
                 }
@@ -340,7 +393,7 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
                 {
                     "id": str(index),
                     "name": name,
-                    "domain": _domain_from_name(name, index),
+                    "owner": "",
                     "usersCount": int(row[1]) if row[1] is not None else 0,
                     "status": _org_status_from_date(row[2]),
                 }

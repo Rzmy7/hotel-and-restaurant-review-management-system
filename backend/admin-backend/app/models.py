@@ -52,7 +52,7 @@ class RecentActivity(BaseModel):
 class OrganizationSummary(BaseModel):
     id: str
     name: str
-    domain: str
+    owner: str
     usersCount: int
     status: Literal["Active", "Pending", "Inactive"]
     iconUrl: Optional[str] = None

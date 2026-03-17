@@ -58,7 +58,7 @@ export interface NavItem {
 export interface Organization {
     id: string;
     name: string;
-    domain: string;
+    owner: string;
     usersCount: number;
     status: 'Active' | 'Pending' | 'Inactive';
     iconUrl?: string;

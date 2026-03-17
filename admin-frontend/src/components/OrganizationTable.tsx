@@ -41,7 +41,7 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
                 <thead>
                     <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100/30">
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '35%' }}>Organization Name</th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '30%' }}>Domain</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '30%' }}>Owner</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '20%' }}>Status</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '15%' }}>Actions</th>
                     </tr>
@@ -57,7 +57,7 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
                                     <span className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{org.name}</span>
                                 </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-600 font-medium">{org.domain}</td>
+                            <td className="px-6 py-4 text-gray-600 font-medium">{org.owner || '—'}</td>
                             <td className="px-6 py-4">
                                 <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${getStatusBadgeClass(org.status)}`}>
                                     {org.status}

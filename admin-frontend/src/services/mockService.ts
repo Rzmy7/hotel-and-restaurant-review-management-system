@@ -90,18 +90,18 @@ export const fetchOrganizations = (): Promise<Organization[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { id: '1', name: 'Acme Corporation', domain: 'acme.com', usersCount: 1247, status: 'Active' },
-                { id: '2', name: 'TechStart Inc', domain: 'techstart.io', usersCount: 892, status: 'Active' },
-                { id: '3', name: 'Global Enterprises', domain: 'globalent.com', usersCount: 2156, status: 'Active' },
-                { id: '4', name: 'Innovate Labs', domain: 'innovatelabs.co', usersCount: 445, status: 'Pending' },
-                { id: '5', name: 'Digital Solutions', domain: 'digitalsol.net', usersCount: 678, status: 'Active' },
-                { id: '6', name: 'Smart Systems', domain: 'smartsys.com', usersCount: 234, status: 'Inactive' },
-                { id: '7', name: 'Future Tech', domain: 'futuretech.io', usersCount: 1523, status: 'Active' },
-                { id: '8', name: 'CloudBase Ltd', domain: 'cloudbase.co', usersCount: 967, status: 'Active' },
-                { id: '9', name: 'NextGen Solutions', domain: 'nextgen.io', usersCount: 534, status: 'Active' },
-                { id: '10', name: 'DataFlow Inc', domain: 'dataflow.com', usersCount: 789, status: 'Pending' },
-                { id: '11', name: 'Quantum Labs', domain: 'quantumlabs.co', usersCount: 312, status: 'Active' },
-                { id: '12', name: 'Peak Systems', domain: 'peaksys.net', usersCount: 456, status: 'Active' },
+                { id: '1', name: 'Acme Corporation', owner: 'owner@acme.com', usersCount: 1247, status: 'Active' },
+                { id: '2', name: 'TechStart Inc', owner: 'owner@techstart.io', usersCount: 892, status: 'Active' },
+                { id: '3', name: 'Global Enterprises', owner: 'owner@globalent.com', usersCount: 2156, status: 'Active' },
+                { id: '4', name: 'Innovate Labs', owner: 'owner@innovatelabs.co', usersCount: 445, status: 'Pending' },
+                { id: '5', name: 'Digital Solutions', owner: 'owner@digitalsol.net', usersCount: 678, status: 'Active' },
+                { id: '6', name: 'Smart Systems', owner: 'owner@smartsys.com', usersCount: 234, status: 'Inactive' },
+                { id: '7', name: 'Future Tech', owner: 'owner@futuretech.io', usersCount: 1523, status: 'Active' },
+                { id: '8', name: 'CloudBase Ltd', owner: 'owner@cloudbase.co', usersCount: 967, status: 'Active' },
+                { id: '9', name: 'NextGen Solutions', owner: 'owner@nextgen.io', usersCount: 534, status: 'Active' },
+                { id: '10', name: 'DataFlow Inc', owner: 'owner@dataflow.com', usersCount: 789, status: 'Pending' },
+                { id: '11', name: 'Quantum Labs', owner: 'owner@quantumlabs.co', usersCount: 312, status: 'Active' },
+                { id: '12', name: 'Peak Systems', owner: 'owner@peaksys.net', usersCount: 456, status: 'Active' },
             ]);
         }, 700);
     });
