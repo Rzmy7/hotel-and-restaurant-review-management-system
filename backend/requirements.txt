@@ -13,3 +13,5 @@ pyodbc
 psutil
 python-jose[cryptography]
 sqlalchemy
+apscheduler
+httpx

@@ -6,11 +6,22 @@ app/routers/ and business logic in app/services/.
 """
 
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import SECRET_KEY, CORS_ORIGINS
+from app.modules.scheduler import setup_scheduler, start_scheduler, stop_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup actions
+    setup_scheduler()
+    start_scheduler()
+    yield
+    # Shutdown actions
+    stop_scheduler()
 
 # ── Router imports ──────────────────────────────────────────────────
 from app.core import health
@@ -28,6 +39,7 @@ app = FastAPI(
     title="Hotel & Restaurant Review Management API",
     description="Production-grade API for review aggregation, competitor analysis, and AI insights.",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 # ── Middleware ──────────────────────────────────────────────────────

@@ -18,7 +18,7 @@ const ReviewSourcesPage = () => {
 
   // Temporary hardcoded IDs until context is integrated
   const tenantId = 'D7A3E7C9-8F2B-4B1A-9C1A-1A2B3C4D5E6F';
-  const organizationId = 'A1B2C3D4-E5F6-4A1B-8C2D-3E4F5A6B7C8D';
+  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
 
   // React Query: Sources
   const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({
@@ -33,12 +33,12 @@ const ReviewSourcesPage = () => {
   });
 
   // React Query: Sync Logs (Paginated)
-  const { 
-    data: infiniteLogs, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage, 
-    isLoading: isLoadingLogs 
+  const {
+    data: infiniteLogs,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isLoadingLogs
   } = useInfiniteQuery({
     queryKey: ['syncLogs', tenantId, organizationId],
     queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(tenantId, organizationId, pageParam as number, 10),
