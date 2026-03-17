@@ -34,10 +34,8 @@ type AuthContextType = {
     persist: (user: User | null, token?: string) => void;
 };
 
-const API_BASE =
-    (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { apiClient } from '../api/client';
 
 /**
  * Authentication Provider component.
@@ -86,18 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string) => {
-        const res = await fetch(`${API_BASE}/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
-        });
-
-        if (!res.ok) {
-            const payload = await res.json().catch(() => ({}));
-            throw new Error((payload && payload.detail) || "Login failed");
-        }
-
-        const data = await res.json();
+        const data = await apiClient.post<any>('/login', { email, password });
         const backendUser = data.user;
 
         const normalizedUser: User = {
@@ -116,18 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // SIGNUP
     // ----------------------------------------------------
     const signup = async (name: string, email: string, password: string) => {
-        const res = await fetch(`${API_BASE}/signup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password }),
-        });
-
-        if (!res.ok) {
-            const payload = await res.json().catch(() => ({}));
-            throw new Error((payload && payload.detail) || "Signup failed");
-        }
-
-        const payload = await res.json();
+        const payload = await apiClient.post<any>('/signup', { name, email, password });
 
         if (payload.user) {
             const backendUser = payload.user;
@@ -157,36 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // FORGOT PASSWORD
     // ----------------------------------------------------
     const forgotPassword = async (email: string) => {
-        const res = await fetch(`${API_BASE}/forgot-password`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
-        });
-
-        if (!res.ok) {
-            const payload = await res.json().catch(() => ({}));
-            throw new Error(
-                (payload && payload.detail) || "Forgot password failed"
-            );
-        }
+        await apiClient.post<any>('/forgot-password', { email });
     };
 
     // ----------------------------------------------------
     // RESET PASSWORD
     // ----------------------------------------------------
     const resetPassword = async (token: string, newPassword: string) => {
-        const res = await fetch(`${API_BASE}/reset-password/${token}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ new_password: newPassword }),
-        });
-
-        if (!res.ok) {
-            const payload = await res.json().catch(() => ({}));
-            throw new Error(
-                (payload && payload.detail) || "Reset password failed"
-            );
-        }
+        await apiClient.post<any>(`/reset-password/${token}`, { new_password: newPassword });
     };
 
     return (

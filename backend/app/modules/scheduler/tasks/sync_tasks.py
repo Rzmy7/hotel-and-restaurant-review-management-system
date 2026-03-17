@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Scraper microservice URL, default to 8001 if backend is on 8000
 SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8000")
 
-async def trigger_platform_scrape(platform_name: str, url: str) -> bool:
+def trigger_platform_scrape(platform_name: str, url: str) -> bool:
     """
     Trigger the scraper microservice for a specific platform.
     Mapping logic handles typical names like 'Google Reviews' -> 'google'.
@@ -29,8 +29,8 @@ async def trigger_platform_scrape(platform_name: str, url: str) -> bool:
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
     
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, json=payload, timeout=20.0)
+        with httpx.Client() as client:
+            response = client.post(endpoint, json=payload, timeout=20.0)
             response.raise_for_status()
             logger.info(f"Scrape triggered successfully: {response.json()}")
             return True
@@ -41,14 +41,19 @@ async def trigger_platform_scrape(platform_name: str, url: str) -> bool:
          logger.error(f"Unexpected error triggering scraper: {e}")
          return False
 
-async def process_pending_syncs():
+def process_pending_syncs():
     """
     Scheduled task to find pending sources and trigger their sync.
     Runs every minute.
     """
     logger.info("Running scheduled sync check...")
     
-    db = SessionLocal()
+    try:
+        db = SessionLocal()
+    except Exception as e:
+        logger.error(f"Database unavailable for sync check: {e}")
+        return
+
     try:
         now_utc = datetime.now(timezone.utc)
         
@@ -72,18 +77,18 @@ async def process_pending_syncs():
                 continue
 
             # Trigger the microservice
-            is_success = await trigger_platform_scrape(
+            is_success = trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
                 url=source.source_url
             )
             
             # Update sync times immediately if trigger was successful
-            # In a true distributed system we might wait for a webhook, but this fulfills the scheduling requirement
             if is_success:
                 complete_sync_task(db, source.source_id)
                 logger.info(f"Updated scheduling timestamps for Source ID {source.source_id}")
                 
     except Exception as e:
-        logger.error(f"Error during scheduled sync processing: {e}", exc_info=True)
+        # Avoid massive tracebacks on timeout by just logging the error string
+        logger.error(f"Error during scheduled sync processing: {e}")
     finally:
         db.close()

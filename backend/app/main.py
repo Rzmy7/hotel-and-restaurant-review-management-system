@@ -25,11 +25,11 @@ async def lifespan(app: FastAPI):
 
 # ── Router imports ──────────────────────────────────────────────────
 from app.core import health
-from app.modules.auth.router import router as auth_router
-from app.modules.reviews.router import router as reviews_router
-from app.modules.competitors.router import router as competitors_router
-from app.modules.dashboard.router import router as dashboard_router
-from app.modules.admin.router import router as admin_router
+from app.modules.auth.routes import router as auth_router
+from app.modules.reviews.routes import router as reviews_router
+from app.modules.competitors.routes import router as competitors_router
+from app.modules.dashboard.routes import router as dashboard_router
+from app.modules.admin.routes import router as admin_router
 from app.modules.groups.router import router as groups_router
 from app.modules.source.routers import router as source_router
 

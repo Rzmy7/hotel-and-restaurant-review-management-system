@@ -8,8 +8,7 @@ import {
     MOCK_COMPARISON,
     MOCK_AI_INSIGHTS
 } from '../mocks/competitorMock';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { apiClient } from '../api/client';
 
 // ---------- Types ----------
 
@@ -86,8 +85,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
 /** Get all competitors (tracked + available pool) */
 export async function fetchCompetitors(): Promise<CompetitorListResponse> {
     try {
-        const res = await fetch(`${API_BASE}/competitors`);
-        return await handleResponse<CompetitorListResponse>(res);
+        return await apiClient.get<CompetitorListResponse>(`/competitors`);
     } catch (error) {
         console.warn('Competitors API failed, falling back to mock data:', error);
         return MOCK_COMPETITORS;
@@ -96,57 +94,33 @@ export async function fetchCompetitors(): Promise<CompetitorListResponse> {
 
 /** Admin: add a new competitor to the available pool */
 export async function addCompetitor(name: string, location: string, bookingUrl: string): Promise<{ message: string; competitor: Competitor }> {
-    const res = await fetch(`${API_BASE}/competitors`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, location, bookingUrl }),
-    });
-    return handleResponse(res);
+    return await apiClient.post<{ message: string; competitor: Competitor }>(`/competitors`, { name, location, bookingUrl });
 }
 
 /** User: start tracking a competitor from the available pool */
 export async function trackCompetitor(competitorId: number): Promise<{ message: string; competitor: Competitor }> {
-    const res = await fetch(`${API_BASE}/competitors/track`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ competitorId }),
-    });
-    return handleResponse(res);
+    return await apiClient.post<{ message: string; competitor: Competitor }>(`/competitors/track`, { competitorId });
 }
 
 /** User: stop tracking a competitor */
 export async function untrackCompetitor(competitorId: number): Promise<{ message: string }> {
-    const res = await fetch(`${API_BASE}/competitors/untrack`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ competitorId }),
-    });
-    return handleResponse(res);
+    return await apiClient.post<{ message: string }>(`/competitors/untrack`, { competitorId });
 }
 
 /** Admin: permanently delete a competitor */
 export async function deleteCompetitor(competitorId: number): Promise<{ message: string }> {
-    const res = await fetch(`${API_BASE}/competitors/${competitorId}`, {
-        method: 'DELETE',
-    });
-    return handleResponse(res);
+    return await apiClient.delete<{ message: string }>(`/competitors/${competitorId}`);
 }
 
 /** Trigger scraping for a competitor's Booking.com page */
 export async function scrapeCompetitor(competitorId: number, headless = true): Promise<{ message: string; competitorId: number }> {
-    const res = await fetch(`${API_BASE}/competitors/${competitorId}/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headless }),
-    });
-    return handleResponse(res);
+    return await apiClient.post<{ message: string; competitorId: number }>(`/competitors/${competitorId}/scrape`, { headless });
 }
 
 /** Get rankings: your hotel + all tracked competitors */
 export async function fetchRankings(): Promise<RankingsData> {
     try {
-        const res = await fetch(`${API_BASE}/competitors/rankings`);
-        return await handleResponse<RankingsData>(res);
+        return await apiClient.get<RankingsData>(`/competitors/rankings`);
     } catch (error) {
         console.warn('Rankings API failed, falling back to mock data:', error);
         return MOCK_RANKINGS;
@@ -156,8 +130,7 @@ export async function fetchRankings(): Promise<RankingsData> {
 /** Get full comparison data between your hotel and a competitor */
 export async function fetchComparison(competitorId: number): Promise<ComparisonData> {
     try {
-        const res = await fetch(`${API_BASE}/competitors/${competitorId}/compare`);
-        return await handleResponse<ComparisonData>(res);
+        return await apiClient.get<ComparisonData>(`/competitors/${competitorId}/compare`);
     } catch (error) {
         console.warn(`Comparison API failed for ID ${competitorId}, falling back to mock data:`, error);
         return MOCK_COMPARISON(competitorId);
@@ -167,8 +140,7 @@ export async function fetchComparison(competitorId: number): Promise<ComparisonD
 /** Get real-time AI comparison insights */
 export async function fetchAiInsights(competitorId: number): Promise<AiInsights> {
     try {
-        const res = await fetch(`${API_BASE}/competitors/${competitorId}/insights`);
-        return await handleResponse<AiInsights>(res);
+        return await apiClient.get<AiInsights>(`/competitors/${competitorId}/insights`);
     } catch (error) {
         console.warn(`AI Insights API failed for ID ${competitorId}, falling back to mock data:`, error);
         return MOCK_AI_INSIGHTS;

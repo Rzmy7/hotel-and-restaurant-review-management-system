@@ -11,6 +11,7 @@ import SourceStats from '../components/sources/SourceStats';
 import SyncHistoryPanel from '../components/shared/SyncHistoryPanel';
 import AddSourceModal from '../components/sources/AddSourceModal';
 import EditSourceModal from '../components/sources/EditSourceModal';
+import PageHeader from '../components/shared/PageHeader';
 
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
@@ -140,23 +141,11 @@ const ReviewSourcesPage = () => {
 
   return (
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">
-      {/* Redesigned Header - Sophisticated & Consistent */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
-              Review Sources
-            </h1>
-            {sources.length > 0 && (
-              <span className="text-[10px] font-black bg-[#4e80ee] text-white px-2 py-0.5 rounded-lg shadow-sm shadow-blue-100 uppercase tracking-widest">
-                {sources.length} Connected
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">Manage your review platforms and connections</p>
-        </div>
-
-        <div className="flex items-center gap-4">
+      <PageHeader 
+        title="Review Sources" 
+        subtitle="Manage your review platforms and connections"
+        badge={sources.length > 0 ? `${sources.length} Connected` : null}
+      >
           <button
             onClick={() => { queryClient.invalidateQueries({ queryKey: ['sources'] }); }}
             className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
@@ -180,8 +169,7 @@ const ReviewSourcesPage = () => {
             <Plus size={18} />
             Add Source
           </button>
-        </div>
-      </header>
+      </PageHeader>
 
       <main className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
         {/* Stats Section */}

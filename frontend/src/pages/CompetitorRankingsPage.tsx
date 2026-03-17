@@ -1,7 +1,7 @@
 import { ChevronDown, ArrowLeft, ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchRankings, type RankingEntry } from '../api/competitorApi';
+import { fetchRankings, type RankingEntry } from '../services/competitorService';
 
 type SortKey = 'rating' | 'sentiment' | 'reviews';
 

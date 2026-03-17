@@ -1,4 +1,4 @@
-import type { Competitor, CompetitorListResponse, RankingsData, ComparisonData, AiInsights } from '../api/competitorApi';
+import type { Competitor, CompetitorListResponse, RankingsData, ComparisonData, AiInsights } from '../services/competitorService';
 
 export const MOCK_COMPETITORS: CompetitorListResponse = {
     tracked: [

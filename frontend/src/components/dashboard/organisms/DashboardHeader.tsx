@@ -5,6 +5,7 @@ import NotificationPanel from '../../shared/NotificationPanel';
 import ProfileDropdown from '../../shared/ProfileDropdown';
 import OrganizationSwitcher from '../../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../../stores/useOrganizationStore';
+import PageHeader from '../../shared/PageHeader';
 
 export const DashboardHeader: React.FC = () => {
     const organizations = useOrganizationStore(state => state.organizations);
@@ -44,21 +45,18 @@ export const DashboardHeader: React.FC = () => {
         setShowNotifications(false);
     };
 
-    return (
-        <header className="sticky top-0 z-[40] flex justify-between items-center px-8 py-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 max-md:flex-col max-md:items-start max-md:gap-4 transition-all duration-300">
-            <div className="flex items-center gap-4">
-                {currentOrg && (
-                    <OrganizationSwitcher
-                        currentOrg={currentOrg}
-                        organizations={organizations}
-                        onSwitch={switchOrganization}
-                        onAdd={addOrganization}
-                    />
-                )}
-            </div>
+    const titleComponent = currentOrg ? (
+        <OrganizationSwitcher
+            currentOrg={currentOrg}
+            organizations={organizations}
+            onSwitch={switchOrganization}
+            onAdd={addOrganization}
+        />
+    ) : null;
 
-            <div className="flex items-center gap-4 max-md:w-full max-md:justify-end">
-                {/* Modern Date Range Picker */}
+    return (
+        <PageHeader title={titleComponent}>
+            {/* Modern Date Range Picker */}
                 <button
                     className="flex items-center gap-2 px-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-[13px] font-bold text-gray-600 cursor-pointer transition-all hover:bg-white hover:border-blue-400 hover:text-blue-600 hover:shadow-md active:scale-95 shadow-sm dark:bg-slate-800/50 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-800 dark:hover:text-blue-400 dark:hover:border-blue-500"
                     onClick={() => showToast('Date range picker coming soon', 'info')}
@@ -106,8 +104,7 @@ export const DashboardHeader: React.FC = () => {
                         <ProfileDropdown onClose={() => setShowProfile(false)} />
                     )}
                 </div>
-            </div>
-        </header>
+        </PageHeader>
     );
 };
 

@@ -12,7 +12,7 @@ import {
     type ComparisonData,
     type AiInsights,
     type KpiData,
-} from '../api/competitorApi';
+} from '../services/competitorService';
 
 const CompetitorComparison = () => {
     const [searchParams] = useSearchParams();

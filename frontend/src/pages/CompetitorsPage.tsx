@@ -1,88 +1,74 @@
 import { ChevronDown, TrendingUp, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PageHeader from '../components/shared/PageHeader';
 import AddCompetitorModal from '../components/competitors/AddCompetitorModal';
 import {
     fetchCompetitors,
     trackCompetitor,
     untrackCompetitor,
     type Competitor,
-} from '../api/competitorApi';
+} from '../services/competitorService';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [tracked, setTracked] = useState<Competitor[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const loadCompetitors = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await fetchCompetitors();
-            setTracked(data.tracked ?? []);
-        } catch (err) {
-            console.error('[CompetitorsPage] Fetch error:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load competitors');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        loadCompetitors();
-    }, [loadCompetitors]);
+    const { data, isLoading: loading, error } = useQuery({
+        queryKey: ['competitors'],
+        queryFn: fetchCompetitors,
+    });
 
-    const handleTrack = async (competitorId: number) => {
-        try {
-            await trackCompetitor(competitorId);
-            await loadCompetitors();
+    const tracked = data?.tracked ?? [];
+    const errorMessage = error instanceof Error ? error.message : null;
+
+    const trackMutation = useMutation({
+        mutationFn: trackCompetitor,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['competitors'] });
             setIsAddModalOpen(false);
-        } catch (err) {
+        },
+        onError: (err: any) => {
             alert(err instanceof Error ? err.message : 'Failed to track competitor');
         }
+    });
+
+    const untrackMutation = useMutation({
+        mutationFn: untrackCompetitor,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['competitors'] });
+        },
+        onError: (err: any) => {
+            alert(err instanceof Error ? err.message : 'Failed to untrack competitor');
+        }
+    });
+
+    const handleTrack = async (competitorId: number) => {
+        trackMutation.mutate(competitorId);
     };
 
     const handleUntrack = async (competitorId: number) => {
         if (!confirm('Remove this competitor from your tracked list?')) return;
-        try {
-            await untrackCompetitor(competitorId);
-            await loadCompetitors();
-        } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to untrack competitor');
-        }
+        untrackMutation.mutate(competitorId);
     };
-
-
-
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
-            {/* Header Section */}
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
-                <div className="flex flex-col">
-                    <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
-                        Competitors
-                    </h1>
-                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
-                        Manage your competitor list
-                    </p>
-                </div>
-
-                <div className="flex items-center">
-                    <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm w-32">
-                        Hotel
-                        <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                    </button>
-                </div>
-            </header>
+            <PageHeader title="Competitors" subtitle="Manage your competitor list">
+                <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm w-32">
+                    Hotel
+                    <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
+                </button>
+            </PageHeader>
 
             {/* Main Content */}
             <main className="w-full px-8 py-8 flex-1 max-w-[1600px] mx-auto">
 
                 {/* Error State */}
-                {error && (
+                {errorMessage && (
                     <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
-                        {error}
+                        {errorMessage}
                     </div>
                 )}
 
@@ -140,7 +126,7 @@ const CompetitorsPage = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
-                                {tracked.map((competitor) => (
+                                {tracked.map((competitor: Competitor) => (
                                     <tr key={competitor.id} className="hover:bg-gray-50/30 dark:hover:bg-slate-700/50 transition-colors">
                                         <td className="px-6 py-5">
                                             <span className="font-semibold text-gray-900 dark:text-white text-[15px]">{competitor.name}</span>

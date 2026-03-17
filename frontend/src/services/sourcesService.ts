@@ -1,4 +1,5 @@
 import type { Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '../types/sources';
+import { apiClient } from '../api/client';
 
 // Mock Data
 const MOCK_SOURCES: Source[] = [
@@ -100,14 +101,10 @@ const MOCK_SYNC_LOGS: SyncLog[] = [
     },
 ];
 
-const API_BASE_URL = 'http://localhost:8000';
-
 class SourcesService {
     async getPlatforms(): Promise<any[]> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/platforms`);
-            if (!response.ok) throw new Error('Failed to fetch platforms');
-            return await response.json();
+            return await apiClient.get<any[]>('/source/platforms');
         } catch (error) {
             console.error('Fetch platforms failed:', error);
             return [];
@@ -132,9 +129,7 @@ class SourcesService {
 
     async getSources(tenantId: string, organizationId: string): Promise<Source[]> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
-            if (!response.ok) throw new Error('Backend error');
-            const data = await response.json();
+            const data = await apiClient.get<{sources: any[]}>(`/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
             return data.sources.map((s: any) => this.mapBackendSourceToFrontend(s));
         } catch (error) {
             console.warn('Backend fetch failed, falling back to mock data:', error);
@@ -146,9 +141,7 @@ class SourcesService {
 
     async getStats(tenantId: string, organizationId: string): Promise<SourceStats> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
-            if (!response.ok) throw new Error('Backend error');
-            const data = await response.json();
+            const data = await apiClient.get<any>(`/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
             return {
                 totalSources: data.stats.total_sources,
                 activeSources: data.stats.active_sources,
@@ -171,9 +164,7 @@ class SourcesService {
     async getSyncLogs(tenantId: string, organizationId: string, page: number = 0, limit: number = 10): Promise<SyncLog[]> {
         const skip = page * limit;
         try {
-            const response = await fetch(`${API_BASE_URL}/source/tenants/${tenantId}/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
-            if (!response.ok) throw new Error('Failed to fetch sync logs');
-            return await response.json();
+            return await apiClient.get<SyncLog[]>(`/source/tenants/${tenantId}/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
         } catch (error) {
             console.warn('Backend fetch for sync logs failed, falling back to mock data:', error);
             return new Promise((resolve) => {
@@ -187,21 +178,15 @@ class SourcesService {
 
     async addSource(tenantId: string, organizationId: string, sourceData: any): Promise<Source> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tenant_id: tenantId,
-                    organization_id: organizationId,
-                    platform_id: sourceData.platformId,
-                    source_url: sourceData.propertyUrl,
-                    source_status: sourceData.status.toLowerCase(),
-                    fetching_frequency: sourceData.syncSchedule.toLowerCase(),
-                }),
+            const newSource = await apiClient.post<any>('/source/', {
+                tenant_id: tenantId,
+                organization_id: organizationId,
+                platform_id: sourceData.platformId,
+                source_url: sourceData.propertyUrl,
+                source_status: sourceData.status.toLowerCase(),
+                fetching_frequency: sourceData.syncSchedule.toLowerCase(),
             });
 
-            if (!response.ok) throw new Error('Failed to add source');
-            const newSource = await response.json();
             return this.mapBackendSourceToFrontend(newSource);
         } catch (error) {
             console.error('Add source failed:', error);
@@ -216,14 +201,7 @@ class SourcesService {
             if (updates.status) payload.source_status = updates.status.toLowerCase();
             if (updates.syncSchedule) payload.fetching_frequency = updates.syncSchedule.toLowerCase();
 
-            const response = await fetch(`${API_BASE_URL}/source/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) throw new Error('Update failed');
-            const data = await response.json();
+            const data = await apiClient.patch<any>(`/source/${id}`, payload);
             return this.mapBackendSourceToFrontend(data);
         } catch (error) {
             console.error('Update source failed:', error);
@@ -233,8 +211,7 @@ class SourcesService {
 
     async deleteSource(id: string | number): Promise<void> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/${id}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Delete failed');
+            await apiClient.delete(`/source/${id}`);
         } catch (error) {
             console.error('Delete source failed:', error);
             throw error;
@@ -243,8 +220,7 @@ class SourcesService {
 
     async triggerSync(id: string | number): Promise<void> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/${id}/sync`, { method: 'POST' });
-            if (!response.ok) throw new Error('Sync failed');
+            await apiClient.post(`/source/${id}/sync`);
         } catch (error) {
             console.error('Sync trigger failed:', error);
             throw error;
