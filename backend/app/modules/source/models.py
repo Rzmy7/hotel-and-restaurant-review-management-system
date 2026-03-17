@@ -141,3 +141,36 @@ class SourceSource(Base):
     tenant = relationship("TenantSource", back_populates="sources")
     organization = relationship("OrganizationSource", back_populates="sources")
     platform = relationship("PlatformSource", back_populates="sources")
+    sync_logs = relationship(
+        "SyncLogSource", back_populates="source", cascade="all, delete-orphan"
+    )
+
+
+class SyncLogSource(Base):
+    __tablename__ = "sync_log_source"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('Success', 'Failed', 'In Progress')",
+            name="ck_sync_log_source_status",
+        ),
+    )
+
+    log_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    source_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("sources_source.source_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status = Column(String(20), nullable=False)
+    timestamp = Column(
+        DateTime(timezone=True),
+        server_default=func.sysutcdatetime(),
+        nullable=False,
+        index=True,
+    )
+    duration_ms = Column(Integer, nullable=False, default=0)
+    reviews_fetched = Column(Integer, nullable=False, default=0)
+    error_message = Column(String(1000), nullable=True)
+
+    source = relationship("SourceSource", back_populates="sync_logs")

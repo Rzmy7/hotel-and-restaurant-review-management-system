@@ -89,4 +89,22 @@ class OrganizationRead(BaseModel):
     class Config:
         from_attributes = True
 
+# --- Sync Log Schemas ---
+class SyncLogRead(BaseModel):
+    id: uuid.UUID
+    sourceId: uuid.UUID
+    platform: str
+    status: str
+    timestamp: datetime
+    durationMs: int
+    reviewsFetched: int
+    errorMessage: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class SyncLogBulk(BaseModel):
+    logs: List[SyncLogRead]
+    total: int
+
 

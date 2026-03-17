@@ -6,9 +6,20 @@ interface SyncHistoryPanelProps {
     onClose: () => void;
     logs: SyncLog[];
     isLoading?: boolean;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
+    onLoadMore?: () => void;
 }
 
-const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ isOpen, onClose, logs, isLoading }) => {
+const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ 
+    isOpen, 
+    onClose, 
+    logs, 
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore
+}) => {
     if (!isOpen) return null;
 
     return (
@@ -34,8 +45,8 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ isOpen, onClose, lo
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
-                    {isLoading ? (
+                <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
+                    {isLoading && logs.length === 0 ? (
                         <div className="space-y-4">
                             {[1, 2, 3, 4].map((i) => (
                                 <div key={i} className="h-24 bg-gray-50 animate-pulse rounded-xl" />
@@ -88,6 +99,29 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ isOpen, onClose, lo
                                     )}
                                 </div>
                             ))}
+
+                            {hasNextPage && (
+                                <button
+                                    onClick={onLoadMore}
+                                    disabled={isFetchingNextPage}
+                                    className="w-full py-3 px-4 bg-white border border-gray-100 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm flex items-center justify-center gap-2"
+                                >
+                                    {isFetchingNextPage ? (
+                                        <>
+                                            <Clock size={14} className="animate-spin" />
+                                            Loading more...
+                                        </>
+                                    ) : (
+                                        'Show Older Activity'
+                                    )}
+                                </button>
+                            )}
+
+                            {!hasNextPage && logs.length > 0 && (
+                                <p className="text-center py-4 text-[11px] text-gray-400 font-medium italic">
+                                    You've reached the end of the activity history
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>

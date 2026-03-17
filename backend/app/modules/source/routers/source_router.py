@@ -7,10 +7,25 @@ from app.core.database import get_db
 from app.modules.source.services import source_service
 from app.modules.source.schemas import (
     SourceCreate, SourceUpdate, SourceRead, 
-    PlatformRead, OrganizationRead, OrganizationSourceDetails
+    PlatformRead, OrganizationRead, OrganizationSourceDetails,
+    SyncLogRead
 )
 
 router = APIRouter()
+
+@router.get(
+    "/tenants/{tenant_id}/organizations/{organization_id}/sync-logs", 
+    response_model=List[SyncLogRead]
+)
+def get_sync_logs(
+    tenant_id: uuid.UUID, 
+    organization_id: uuid.UUID, 
+    skip: int = 0,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """Fetch recent synchronization logs for an organization with pagination."""
+    return source_service.get_sync_logs(db, tenant_id, organization_id, skip, limit)
 
 @router.get("/platforms", response_model=List[PlatformRead])
 def get_platforms(db: Session = Depends(get_db)):

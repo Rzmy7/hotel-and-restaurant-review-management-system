@@ -4,10 +4,11 @@ import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status
 
-from app.modules.source.models import TenantSource, OrganizationSource, PlatformSource, SourceSource
+from app.modules.source.models import TenantSource, OrganizationSource, PlatformSource, SourceSource, SyncLogSource
 from app.modules.source.schemas import (
     SourceCreate, SourceUpdate, SourceRead, 
-    PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats
+    PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
+    SyncLogRead
 )
 
 def get_platforms(db: Session) -> List[PlatformSource]:
@@ -169,7 +170,6 @@ def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
     ).filter(
         SourceSource.tenant_id == tenant_id
     ).all()
-
     return [
         SourceRead(
             source_id=s.source_id,
@@ -185,4 +185,32 @@ def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
             success_rate=s.success_rate,
             created_at=s.created_at
         ) for s in sources
+    ]
+
+def get_sync_logs(
+    db: Session, tenant_id: uuid.UUID, organization_id: uuid.UUID, skip: int = 0, limit: int = 10
+) -> List[SyncLogRead]:
+    # Fetch logs for sources belonging to this organization/tenant
+    logs = db.query(SyncLogSource).join(
+        SourceSource, SyncLogSource.source_id == SourceSource.source_id
+    ).options(
+        joinedload(SyncLogSource.source).joinedload(SourceSource.platform)
+    ).filter(
+        SourceSource.tenant_id == tenant_id,
+        SourceSource.organization_id == organization_id
+    ).order_by(
+        SyncLogSource.timestamp.desc()
+    ).offset(skip).limit(limit).all()
+
+    return [
+        SyncLogRead(
+            id=log.log_id,
+            sourceId=log.source_id,
+            platform=log.source.platform.platform_name,
+            status=log.status,
+            timestamp=log.timestamp,
+            durationMs=log.duration_ms,
+            reviewsFetched=log.reviews_fetched,
+            errorMessage=log.error_message
+        ) for log in logs
     ]

@@ -168,10 +168,21 @@ class SourcesService {
         }
     }
 
-    async getSyncLogs(): Promise<SyncLog[]> {
-        return new Promise((resolve) => {
-            setTimeout(() => resolve([...MOCK_SYNC_LOGS]), 300);
-        });
+    async getSyncLogs(tenantId: string, organizationId: string, page: number = 0, limit: number = 10): Promise<SyncLog[]> {
+        const skip = page * limit;
+        try {
+            const response = await fetch(`${API_BASE_URL}/source/tenants/${tenantId}/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
+            if (!response.ok) throw new Error('Failed to fetch sync logs');
+            return await response.json();
+        } catch (error) {
+            console.warn('Backend fetch for sync logs failed, falling back to mock data:', error);
+            return new Promise((resolve) => {
+                // For mock, just return a slice if it's the first page
+                const start = page * limit;
+                const end = start + limit;
+                setTimeout(() => resolve(MOCK_SYNC_LOGS.slice(start, end)), 300);
+            });
+        }
     }
 
     async addSource(tenantId: string, organizationId: string, sourceData: any): Promise<Source> {

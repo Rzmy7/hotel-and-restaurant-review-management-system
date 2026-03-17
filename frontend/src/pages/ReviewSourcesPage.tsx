@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { sourcesService } from '../services/sourcesService';
@@ -32,11 +32,21 @@ const ReviewSourcesPage = () => {
     queryFn: () => sourcesService.getStats(tenantId, organizationId),
   });
 
-  // React Query: Sync Logs
-  const { data: logs = [], isLoading: isLoadingLogs } = useQuery({
-    queryKey: ['syncLogs'],
-    queryFn: () => sourcesService.getSyncLogs(),
+  // React Query: Sync Logs (Paginated)
+  const { 
+    data: infiniteLogs, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    isLoading: isLoadingLogs 
+  } = useInfiniteQuery({
+    queryKey: ['syncLogs', tenantId, organizationId],
+    queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(tenantId, organizationId, pageParam as number, 10),
+    getNextPageParam: (lastPage: SyncLog[], allPages: SyncLog[][]) => lastPage.length === 10 ? allPages.length : undefined,
+    initialPageParam: 0,
   });
+
+  const logs = useMemo(() => infiniteLogs?.pages.flat() || [], [infiniteLogs]);
 
   // Mutations
   const addSourceMutation = useMutation({
@@ -231,7 +241,10 @@ const ReviewSourcesPage = () => {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         logs={logs}
-        isLoading={isLoading}
+        isLoading={isLoadingLogs}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadMore={fetchNextPage}
       />
 
       <AddSourceModal
