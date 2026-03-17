@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // Providers and Contexts
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from './contexts/ToastContext';
+
+const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -167,17 +170,19 @@ const AppContent: React.FC = () => {
  */
 function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <ToastProvider>
-          <NavigationBlockerProvider>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
-          </NavigationBlockerProvider>
-        </ToastProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <BrowserRouter>
+          <ToastProvider>
+            <NavigationBlockerProvider>
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </NavigationBlockerProvider>
+          </ToastProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

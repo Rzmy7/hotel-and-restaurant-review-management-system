@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { sourcesService } from '../services/sourcesService';
@@ -13,13 +14,74 @@ import EditSourceModal from '../components/sources/EditSourceModal';
 
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
-  // State
-  const [sources, setSources] = useState<Source[]>([]);
-  const [stats, setStats] = useState<SourceStatsType | null>(null);
-  const [logs, setLogs] = useState<SyncLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Temporary hardcoded IDs until context is integrated
+  const tenantId = 'D7A3E7C9-8F2B-4B1A-9C1A-1A2B3C4D5E6F';
+  const organizationId = 'A1B2C3D4-E5F6-4A1B-8C2D-3E4F5A6B7C8D';
+
+  // React Query: Sources
+  const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({
+    queryKey: ['sources', tenantId, organizationId],
+    queryFn: () => sourcesService.getSources(tenantId, organizationId),
+  });
+
+  // React Query: Stats
+  const { data: stats = null, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['sourceStats', tenantId, organizationId],
+    queryFn: () => sourcesService.getStats(tenantId, organizationId),
+  });
+
+  // React Query: Sync Logs
+  const { data: logs = [], isLoading: isLoadingLogs } = useQuery({
+    queryKey: ['syncLogs'],
+    queryFn: () => sourcesService.getSyncLogs(),
+  });
+
+  // Mutations
+  const addSourceMutation = useMutation({
+    mutationFn: (newSourceData: Partial<Source>) => sourcesService.addSource(tenantId, organizationId, newSourceData as any),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+      queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
+      showToast('New source added successfully', 'success');
+    },
+    onError: () => showToast('Failed to add source', 'error'),
+  });
+
+  const updateSourceMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string | number, updates: Partial<Source> }) => sourcesService.updateSource(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+      showToast('Source updated successfully', 'success');
+    },
+    onError: () => showToast('Failed to update source', 'error'),
+  });
+
+  const deleteSourceMutation = useMutation({
+    mutationFn: (id: string | number) => sourcesService.deleteSource(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+      queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
+      showToast('Source removed successfully', 'info');
+    },
+    onError: () => showToast('Failed to delete source', 'error'),
+  });
+
+  const triggerSyncMutation = useMutation({
+    mutationFn: (id: string | number) => sourcesService.triggerSync(id),
+    onSuccess: (_: any, id: string | number) => {
+      const source = sources.find((s: Source) => s.id === id);
+      showToast(`Sync triggered for ${source?.platform || 'source'}`, 'success');
+      // Simulate follow up
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['sources'] }), 2000);
+    },
+    onError: () => showToast('Sync failed', 'error'),
+  });
+
+  // Combined Loading States
+  const isLoading = isLoadingSources || isLoadingStats || isLoadingLogs;
+  const isRefreshing = isRefreshingSources;
 
   // UI State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -32,31 +94,6 @@ const ReviewSourcesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
 
-  // Fetch Data
-  const fetchData = async (silent = false) => {
-    if (!silent) setIsLoading(true);
-    try {
-      const [sourcesData, statsData, logsData] = await Promise.all([
-        sourcesService.getSources(),
-        sourcesService.getStats(),
-        sourcesService.getSyncLogs()
-      ]);
-      setSources(sourcesData);
-      setStats(statsData);
-      setLogs(logsData);
-    } catch (error) {
-      showToast('Failed to fetch sources data', 'error');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   // Filtered Sources
   const filteredSources = useMemo(() => {
     return sources.filter(source => {
@@ -68,64 +105,27 @@ const ReviewSourcesPage = () => {
 
   // Handlers
   const handleAddSource = async (newSourceData: Partial<Source>) => {
-    try {
-      await sourcesService.addSource(newSourceData as any);
-      await fetchData(true);
-      showToast('New source added successfully', 'success');
-    } catch (error) {
-      showToast('Failed to add source', 'error');
-    }
+    await addSourceMutation.mutateAsync(newSourceData);
+    setIsAddModalOpen(false);
   };
 
   const handleUpdateSource = async (updatedSource: Source) => {
-    try {
-      await sourcesService.updateSource(updatedSource.id, updatedSource);
-      await fetchData(true);
-      showToast('Source updated successfully', 'success');
-    } catch (error) {
-      showToast('Failed to update source', 'error');
-    }
+    await updateSourceMutation.mutateAsync({ id: updatedSource.id, updates: updatedSource });
+    setIsEditModalOpen(false);
   };
 
   const handleDeleteSource = async (id: string | number) => {
-    try {
-      await sourcesService.deleteSource(id);
-      await fetchData(true);
-      showToast('Source removed successfully', 'info');
-    } catch (error) {
-      showToast('Failed to delete source', 'error');
-    }
+    await deleteSourceMutation.mutateAsync(id);
+    setIsEditModalOpen(false);
   };
 
   const handleToggleStatus = async (source: Source) => {
     const newStatus = source.status === 'Active' ? 'Paused' : 'Active';
-    try {
-      await sourcesService.updateSource(source.id, { status: newStatus });
-      await fetchData(true);
-      showToast(
-        newStatus === 'Active' ? `${source.platform} resumed` : `${source.platform} paused`,
-        'success'
-      );
-    } catch (error) {
-      showToast('Failed to toggle status', 'error');
-    }
+    await updateSourceMutation.mutateAsync({ id: source.id, updates: { status: newStatus } });
   };
 
   const handleSyncNow = async (id: string | number) => {
-    const source = sources.find(s => s.id === id);
-    if (!source) return;
-
-    showToast(`Starting sync for ${source.platform}...`, 'info');
-    try {
-      await sourcesService.triggerSync(id);
-      // Simulate real-time update
-      setTimeout(() => {
-        fetchData(true);
-        showToast(`Sync completed for ${source.platform}`, 'success');
-      }, 2000);
-    } catch (error) {
-      showToast('Sync failed', 'error');
-    }
+    triggerSyncMutation.mutate(id);
   };
 
   return (
@@ -148,7 +148,7 @@ const ReviewSourcesPage = () => {
 
         <div className="flex items-center gap-4">
           <button
-            onClick={() => { setIsRefreshing(true); fetchData(true); }}
+            onClick={() => { queryClient.invalidateQueries({ queryKey: ['sources'] }); }}
             className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
             title="Refresh System"
           >

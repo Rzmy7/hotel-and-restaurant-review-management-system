@@ -95,12 +95,20 @@ const MOCK_SYNC_LOGS: SyncLog[] = [
     },
 ];
 
-// Fixed IDs for development
-const CURRENT_TENANT_ID = 'D7A3E7C9-8F2B-4B1A-9C1A-1A2B3C4D5E6F';
-const CURRENT_ORG_ID = 'A1B2C3D4-E5F6-4A1B-8C2D-3E4F5A6B7C8D';
-const API_BASE_URL = 'http://localhost:8001';
+const API_BASE_URL = 'http://localhost:8000';
 
 class SourcesService {
+    async getPlatforms(): Promise<any[]> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/source/platforms`);
+            if (!response.ok) throw new Error('Failed to fetch platforms');
+            return await response.json();
+        } catch (error) {
+            console.error('Fetch platforms failed:', error);
+            return [];
+        }
+    }
+
     private mapBackendSourceToFrontend(s: any): Source {
         return {
             id: s.source_id,
@@ -110,16 +118,16 @@ class SourcesService {
             syncSchedule: (s.fetching_frequency.charAt(0).toUpperCase() + s.fetching_frequency.slice(1)) as SyncSchedule,
             propertyUrl: s.source_url,
             successRate: Math.round(s.success_rate * 100),
-            errorCount: 0, // Not provided by backend yet
+            errorCount: 0, 
             nextRunAt: s.next_synced_at,
             createdAt: s.created_at,
         };
     }
 
-    async getSources(): Promise<Source[]> {
+    async getSources(tenantId: string, organizationId: string): Promise<Source[]> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/tenants/${CURRENT_TENANT_ID}/organizations/${CURRENT_ORG_ID}/sources`);
-            if (!response.ok) throw new Error('Backend unavailable');
+            const response = await fetch(`${API_BASE_URL}/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            if (!response.ok) throw new Error('Backend error');
             const data = await response.json();
             return data.sources.map((s: any) => this.mapBackendSourceToFrontend(s));
         } catch (error) {
@@ -130,17 +138,17 @@ class SourcesService {
         }
     }
 
-    async getStats(): Promise<SourceStats> {
+    async getStats(tenantId: string, organizationId: string): Promise<SourceStats> {
         try {
-            const response = await fetch(`${API_BASE_URL}/source/tenants/${CURRENT_TENANT_ID}/organizations/${CURRENT_ORG_ID}/sources`);
-            if (!response.ok) throw new Error('Backend unavailable');
+            const response = await fetch(`${API_BASE_URL}/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            if (!response.ok) throw new Error('Backend error');
             const data = await response.json();
             return {
                 totalSources: data.stats.total_sources,
                 activeSources: data.stats.active_sources,
                 pausedSources: data.stats.paused_sources,
                 errorSources: data.stats.sync_error_count,
-                totalReviewsFetched: 1540, // Mock value as not implementation in backend yet
+                totalReviewsFetched: 1540,
             };
         } catch (error) {
             const sources = MOCK_SOURCES;
@@ -155,31 +163,23 @@ class SourcesService {
     }
 
     async getSyncLogs(): Promise<SyncLog[]> {
-        // Sync logs are not implemented in backend yet, strictly mock for now
         return new Promise((resolve) => {
             setTimeout(() => resolve([...MOCK_SYNC_LOGS]), 300);
         });
     }
 
-    async addSource(source: Omit<Source, 'id' | 'lastSyncedAt' | 'successRate' | 'errorCount' | 'nextRunAt' | 'createdAt'>): Promise<Source> {
+    async addSource(tenantId: string, organizationId: string, sourceData: any): Promise<Source> {
         try {
-            // Find platform_id for the given platform name (this would normally be fetched)
-            // For now, let's assume we can post it.
-            // Actually, we should fetch platforms first to get the ID.
-            const platformsRes = await fetch(`${API_BASE_URL}/source/platforms`);
-            const platforms = await platformsRes.json();
-            const platform = platforms.find((p: any) => p.platform_name === source.platform);
-
             const response = await fetch(`${API_BASE_URL}/source/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tenant_id: CURRENT_TENANT_ID,
-                    organization_id: CURRENT_ORG_ID,
-                    platform_id: platform?.platform_id || 1,
-                    source_url: source.propertyUrl,
-                    source_status: source.status.toLowerCase(),
-                    fetching_frequency: source.syncSchedule.toLowerCase(),
+                    tenant_id: tenantId,
+                    organization_id: organizationId,
+                    platform_id: sourceData.platformId,
+                    source_url: sourceData.propertyUrl,
+                    source_status: sourceData.status.toLowerCase(),
+                    fetching_frequency: sourceData.syncSchedule.toLowerCase(),
                 }),
             });
 
@@ -187,25 +187,13 @@ class SourcesService {
             const newSource = await response.json();
             return this.mapBackendSourceToFrontend(newSource);
         } catch (error) {
-            console.error('Add source failed, using mock implementation:', error);
-            const newSource: Source = {
-                ...source,
-                id: Math.floor(Math.random() * 100000),
-                lastSyncedAt: null,
-                successRate: 0,
-                errorCount: 0,
-                nextRunAt: source.status === 'Active' ? new Date(Date.now() + 1000 * 60 * 5).toISOString() : null,
-                createdAt: new Date().toISOString(),
-            };
-            MOCK_SOURCES.push(newSource);
-            return newSource;
+            console.error('Add source failed:', error);
+            throw error;
         }
     }
 
     async updateSource(id: string | number, updates: Partial<Source>): Promise<Source> {
         try {
-            if (typeof id === 'number') throw new Error('Mock ID cannot be updated on backend');
-
             const payload: any = {};
             if (updates.propertyUrl) payload.source_url = updates.propertyUrl;
             if (updates.status) payload.source_status = updates.status.toLowerCase();
@@ -221,31 +209,28 @@ class SourcesService {
             const data = await response.json();
             return this.mapBackendSourceToFrontend(data);
         } catch (error) {
-            const index = MOCK_SOURCES.findIndex(s => s.id === id);
-            if (index === -1) throw new Error('Source not found');
-            MOCK_SOURCES[index] = { ...MOCK_SOURCES[index], ...updates };
-            return MOCK_SOURCES[index];
+            console.error('Update source failed:', error);
+            throw error;
         }
     }
 
     async deleteSource(id: string | number): Promise<void> {
         try {
-            if (typeof id === 'number') throw new Error('Mock ID');
             const response = await fetch(`${API_BASE_URL}/source/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Delete failed');
         } catch (error) {
-            const index = MOCK_SOURCES.findIndex(s => s.id === id);
-            if (index !== -1) MOCK_SOURCES.splice(index, 1);
+            console.error('Delete source failed:', error);
+            throw error;
         }
     }
 
     async triggerSync(id: string | number): Promise<void> {
         try {
-            if (typeof id === 'number') throw new Error('Mock ID');
             const response = await fetch(`${API_BASE_URL}/source/${id}/sync`, { method: 'POST' });
             if (!response.ok) throw new Error('Sync failed');
         } catch (error) {
-            console.log(`Triggering mock sync for source ${id}`);
+            console.error('Sync trigger failed:', error);
+            throw error;
         }
     }
 }

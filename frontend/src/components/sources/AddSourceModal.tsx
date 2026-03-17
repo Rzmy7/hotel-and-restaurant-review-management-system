@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Globe, Link, Key, Calendar, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import type { Source, SourcePlatform } from '../../types/sources';
+import type { Source } from '../../types/sources';
+import { sourcesService } from '../../services/sourcesService';
 
 interface AddSourceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (source: Partial<Source>) => void;
+  onSave: (source: any) => void;
 }
 
 const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
-  const [platform, setPlatform] = useState<SourcePlatform>('TripAdvisor');
+  const { data: platforms = [], isLoading: isLoadingPlatforms } = useQuery({
+    queryKey: ['platforms'],
+    queryFn: () => sourcesService.getPlatforms(),
+    enabled: isOpen
+  });
+
+  const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null);
   const [propertyUrl, setPropertyUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [schedule, setSchedule] = useState<'Hourly' | 'Daily' | 'Weekly'>('Daily');
@@ -19,18 +27,24 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
   const [isTesting, setIsTesting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Set default platform once loaded
+  useEffect(() => {
+    if (isOpen && platforms.length > 0 && !selectedPlatformId) {
+      setSelectedPlatformId(platforms[0].platform_id);
+    }
+  }, [isOpen, platforms, selectedPlatformId]);
+
   if (!isOpen) return null;
 
   const handleSubmit = () => {
-    if (!propertyUrl) return;
+    if (!propertyUrl || !selectedPlatformId) return;
 
-    const newSource: Partial<Source> = {
-      platform,
+    onSave({
+      platformId: selectedPlatformId,
       propertyUrl,
       syncSchedule: schedule,
-      status: (sourceStatus ? 'Active' : 'Paused') as any,
-    };
-    onSave(newSource);
+      status: sourceStatus ? 'Active' : 'Paused',
+    });
     onClose();
     // Reset form
     setPropertyUrl('');
@@ -43,13 +57,8 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
     setTimeout(() => setIsTesting(false), 2000);
   };
 
-  const allPlatforms: SourcePlatform[] = [
-    'TripAdvisor', 'Booking.com', 'Google Reviews', 'Airbnb', 'Agoda',
-    'Expedia', 'Yelp', 'Zomato', 'OpenTable', 'Hotels.com', 'Custom'
-  ];
-
-  const filteredPlatforms = allPlatforms.filter(p =>
-    p.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPlatforms = platforms.filter((p: any) =>
+    p.platform_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const footer = (
@@ -101,18 +110,22 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
           </div>
 
           <div className="max-h-[160px] overflow-y-auto pr-2 grid grid-cols-2 gap-3 custom-scrollbar">
-            {filteredPlatforms.length > 0 ? (
-              filteredPlatforms.map((p) => (
+            {isLoadingPlatforms ? (
+              <div className="col-span-2 py-8 text-center bg-gray-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700">
+                <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest animate-pulse">Loading Platforms...</p>
+              </div>
+            ) : filteredPlatforms.length > 0 ? (
+              filteredPlatforms.map((p: any) => (
                 <button
-                  key={p}
-                  onClick={() => setPlatform(p)}
-                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${platform === p
+                  key={p.platform_id}
+                  onClick={() => setSelectedPlatformId(p.platform_id)}
+                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${selectedPlatformId === p.platform_id
                     ? 'border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                     : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
                     }`}
                 >
-                  {p}
-                  {platform === p && <ShieldCheck size={16} />}
+                  {p.platform_name}
+                  {selectedPlatformId === p.platform_id && <ShieldCheck size={16} />}
                 </button>
               ))
             ) : (
