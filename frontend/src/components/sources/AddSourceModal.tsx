@@ -10,9 +10,10 @@ interface AddSourceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (source: any) => void;
+  existingPlatformIds?: number[];
 }
 
-const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
+const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: AddSourceModalProps) => {
   const { data: platforms = [], isLoading: isLoadingPlatforms } = useQuery({
     queryKey: ['platforms'],
     queryFn: () => sourcesService.getPlatforms(),
@@ -30,9 +31,12 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
   // Set default platform once loaded
   useEffect(() => {
     if (isOpen && platforms.length > 0 && !selectedPlatformId) {
-      setSelectedPlatformId(platforms[0].platform_id);
+      const firstAvailable = platforms.find((p: any) => !existingPlatformIds.includes(p.platform_id));
+      if (firstAvailable) {
+        setSelectedPlatformId(firstAvailable.platform_id);
+      }
     }
-  }, [isOpen, platforms, selectedPlatformId]);
+  }, [isOpen, platforms, selectedPlatformId, existingPlatformIds]);
 
   if (!isOpen) return null;
 
@@ -115,19 +119,26 @@ const AddSourceModal = ({ isOpen, onClose, onSave }: AddSourceModalProps) => {
                 <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest animate-pulse">Loading Platforms...</p>
               </div>
             ) : filteredPlatforms.length > 0 ? (
-              filteredPlatforms.map((p: any) => (
-                <button
-                  key={p.platform_id}
-                  onClick={() => setSelectedPlatformId(p.platform_id)}
-                  className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${selectedPlatformId === p.platform_id
-                    ? 'border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
-                    }`}
-                >
-                  {p.platform_name}
-                  {selectedPlatformId === p.platform_id && <ShieldCheck size={16} />}
-                </button>
-              ))
+              filteredPlatforms.map((p: any) => {
+                const isAlreadyAdded = existingPlatformIds.includes(p.platform_id);
+                return (
+                  <button
+                    key={p.platform_id}
+                    onClick={() => !isAlreadyAdded && setSelectedPlatformId(p.platform_id)}
+                    disabled={isAlreadyAdded}
+                    title={isAlreadyAdded ? "This platform has already been added to this organization" : ""}
+                    className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${selectedPlatformId === p.platform_id
+                      ? 'border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      : isAlreadyAdded
+                        ? 'border-gray-100 bg-gray-100/50 text-gray-300 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800/20 dark:text-slate-600'
+                        : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
+                      }`}
+                  >
+                    {p.platform_name}
+                    {selectedPlatformId === p.platform_id && <ShieldCheck size={16} />}
+                  </button>
+                );
+              })
             ) : (
               <div className="col-span-2 py-8 text-center bg-gray-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700">
                 <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest">No platforms found</p>

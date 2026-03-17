@@ -238,6 +238,7 @@ const ReviewSourcesPage = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSave={handleAddSource}
+        existingPlatformIds={sources.map(s => s.platformId)}
       />
 
       {selectedSource && (

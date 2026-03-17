@@ -4,6 +4,7 @@ import type { Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '.
 const MOCK_SOURCES: Source[] = [
     {
         id: 1,
+        platformId: 1,
         platform: 'TripAdvisor',
         status: 'Active',
         lastSyncedAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
@@ -16,6 +17,7 @@ const MOCK_SOURCES: Source[] = [
     },
     {
         id: 2,
+        platformId: 2,
         platform: 'Booking.com',
         status: 'Active',
         lastSyncedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
@@ -28,6 +30,7 @@ const MOCK_SOURCES: Source[] = [
     },
     {
         id: 3,
+        platformId: 3,
         platform: 'Google Reviews',
         status: 'Paused',
         lastSyncedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
@@ -40,6 +43,7 @@ const MOCK_SOURCES: Source[] = [
     },
     {
         id: 4,
+        platformId: 4,
         platform: 'Airbnb',
         status: 'Error',
         lastSyncedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
@@ -52,6 +56,7 @@ const MOCK_SOURCES: Source[] = [
     },
     {
         id: 5,
+        platformId: 5,
         platform: 'Agoda',
         status: 'Active',
         lastSyncedAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
@@ -112,6 +117,7 @@ class SourcesService {
     private mapBackendSourceToFrontend(s: any): Source {
         return {
             id: s.source_id,
+            platformId: s.platform_id,
             platform: s.platform_name,
             status: (s.source_status.charAt(0).toUpperCase() + s.source_status.slice(1)) as SourceStatus,
             lastSyncedAt: s.last_synced_at,

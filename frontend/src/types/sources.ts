@@ -19,6 +19,7 @@ export type SyncSchedule = 'Hourly' | 'Daily' | 'Weekly';
 
 export interface Source {
     id: string | number;
+    platformId: number;
     platform: SourcePlatform;
     status: SourceStatus;
     lastSyncedAt: string | null;
