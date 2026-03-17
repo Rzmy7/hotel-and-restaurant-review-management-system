@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AuthLayout } from '../components/shared/AuthLayout';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -51,340 +54,136 @@ const LoginPage = () => {
     window.location.href = `${apiBase}/login/google`;
   };
 
-  const styles = {
-    pageWrapper: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 9999,
-    },
-    container: {
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#e5e7eb',
-      padding: '20px',
-    },
-    loginCard: {
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      padding: '48px 40px',
-      width: '100%',
-      maxWidth: '400px',
-    },
-    errorAlert: {
-      backgroundColor: '#fee2e2',
-      borderLeft: '4px solid #dc2626',
-      color: '#991b1b',
-      padding: '12px 16px',
-      borderRadius: '4px',
-      marginBottom: '20px',
-      fontSize: '14px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      animation: 'slideIn 0.3s ease-in-out',
-    },
-    errorIcon: {
-      width: '20px',
-      height: '20px',
-      flexShrink: 0,
-      color: '#dc2626',
-    },
-    errorText: {
-      flex: 1,
-      fontWeight: 500,
-    },
-    errorClose: {
-      background: 'none',
-      border: 'none',
-      color: '#dc2626',
-      cursor: 'pointer',
-      fontSize: '18px',
-      padding: '0',
-      width: '20px',
-      height: '20px',
-      flexShrink: 0,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    title: {
-      fontSize: '28px',
-      fontWeight: 600,
-      color: '#1f2937',
-      textAlign: 'center' as const,
-      marginBottom: '32px',
-    },
-    formGroup: {
-      marginBottom: '20px',
-    },
-    label: {
-      display: 'block',
-      fontSize: '13px',
-      fontWeight: 500,
-      color: '#374151',
-      marginBottom: '6px',
-    },
-    inputWrapper: {
-      position: 'relative' as const,
-      display: 'flex',
-      alignItems: 'center',
-    },
-    icon: {
-      position: 'absolute' as const,
-      left: '14px',
-      color: '#9ca3af',
-      width: '16px',
-      height: '16px',
-    },
-    input: {
-      width: '100%',
-      padding: '10px 14px 10px 40px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '14px',
-      outline: 'none',
-      transition: 'border-color 0.2s',
-      backgroundColor: '#f9fafb',
-    },
-    passwordInput: {
-      width: '100%',
-      padding: '10px 40px 10px 40px',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '14px',
-      outline: 'none',
-      transition: 'border-color 0.2s',
-      backgroundColor: '#f9fafb',
-    },
-    eyeIcon: {
-      position: 'absolute' as const,
-      right: '14px',
-      color: '#9ca3af',
-      cursor: 'pointer',
-      width: '16px',
-      height: '16px',
-    },
-    rememberRow: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '24px',
-      marginTop: '16px',
-    },
-    rememberMe: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '6px',
-    },
-    checkbox: {
-      width: '15px',
-      height: '15px',
-      cursor: 'pointer',
-      accentColor: '#0284c7',
-    },
-    checkboxLabel: {
-      fontSize: '13px',
-      color: '#4b5563',
-      cursor: 'pointer',
-      userSelect: 'none' as const,
-    },
-    forgotPassword: {
-      fontSize: '13px',
-      color: '#0284c7',
-      textDecoration: 'none',
-      cursor: 'pointer',
-    },
-    signInButton: {
-      width: '100%',
-      padding: '11px',
-      backgroundColor: '#0284c7',
-      color: 'white',
-      border: 'none',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: 600,
-      cursor: 'pointer',
-      marginBottom: '20px',
-      transition: 'background-color 0.2s',
-    },
-    signUpText: {
-      textAlign: 'center' as const,
-      fontSize: '13px',
-      color: '#6b7280',
-      marginBottom: '20px',
-    },
-    signUpLink: {
-      color: '#0284c7',
-      textDecoration: 'none',
-      fontWeight: 500,
-      cursor: 'pointer',
-      marginLeft: '4px',
-    },
-    divider: {
-      textAlign: 'center' as const,
-      fontSize: '13px',
-      color: '#9ca3af',
-      marginBottom: '20px',
-      position: 'relative' as const,
-    },
-    socialButtons: {
-      display: 'flex',
-      gap: '12px',
-    },
-    socialButton: {
-      flex: 1,
-      padding: '10px 16px',
-      backgroundColor: 'white',
-      border: '1px solid #e5e7eb',
-      borderRadius: '6px',
-      fontSize: '14px',
-      fontWeight: 500,
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '8px',
-      transition: 'background-color 0.2s, border-color 0.2s',
-      color: '#374151',
-    },
-  };
-
   return (
-    <div style={styles.pageWrapper}>
-      <style>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-      <div style={styles.container}>
-        <div style={styles.loginCard}>
-          <h1 style={styles.title}>Login</h1>
+    <AuthLayout 
+      title="Welcome Back" 
+      description="Enter your credentials to access your account"
+    >
+      {error && (
+        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center justify-between mb-6 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-500" />
+            <span className="text-sm font-bold text-rose-700">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-rose-500 hover:text-rose-700 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
-          {error && (
-            <div style={styles.errorAlert}>
-              <AlertCircle style={styles.errorIcon} />
-              <span style={styles.errorText}>{error}</span>
-              <button
-                type="button"
-                style={styles.errorClose}
-                onClick={() => setError(null)}
-                aria-label="Close alert"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-1.5">
+          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+            Email Address
+          </label>
+          <div className="relative group">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type="email"
+              placeholder="name@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-11"
+              required
+            />
+          </div>
+        </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Email */}
-            <div className="mb-5">
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Email</label>
-              <div className="relative flex items-center">
-                <Mail size={16} className="absolute left-3.5 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full py-2.5 pl-10 pr-3.5 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none transition-colors focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="mb-5">
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Password</label>
-              <div className="relative flex items-center">
-                <Lock size={16} className="absolute left-3.5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full py-2.5 px-10 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none transition-colors focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer p-0"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember + Forgot */}
-            <div className="flex justify-between items-center mb-6 mt-4">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-[15px] h-[15px] cursor-pointer accent-blue-500"
-                />
-                <span className="text-[13px] text-gray-600 select-none">Remember me</span>
-              </label>
-              <Link to="/forgot-password" style={styles.forgotPassword}>
-                Forgot password?
-              </Link>
-            </div>
-
-            <button
-              type="submit"
-              style={{
-                ...styles.signInButton,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-              disabled={loading}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center px-1">
+            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              Password
+            </label>
+            <Link 
+              to="/forgot-password" 
+              className="text-[12px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-
-          <p className="text-center text-[13px] text-gray-500 mb-5">
-            Don't have an account?
-            <Link to="/signup" style={styles.signUpLink}>
-              Sign up
+              Forgot?
             </Link>
-          </p>
-
-          <div className="text-center text-[13px] text-gray-400 mb-5">Or continue with</div>
-
-          <div className="flex gap-3">
+          </div>
+          <div className="relative group">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="px-11"
+              required
+            />
             <button
               type="button"
-              className="flex-1 py-2.5 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 cursor-pointer flex items-center justify-center gap-2 transition-colors hover:bg-gray-50 hover:border-gray-300"
-              onClick={handleGoogleLogin}
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
             >
-              <svg width="16" height="16" viewBox="0 0 18 18">
-                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" />
-                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" />
-                <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" />
-                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
-              </svg>
-              Google
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div className="flex items-center gap-3 px-1">
+          <div className="relative flex items-center">
+            <input
+              type="checkbox"
+              id="remember"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+            />
+          </div>
+          <label htmlFor="remember" className="text-sm font-bold text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+            Keep me signed in
+          </label>
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-12 text-sm uppercase tracking-widest"
+          isLoading={loading}
+        >
+          {loading ? 'Authenticating...' : 'Sign In To Dashboard'}
+        </Button>
+
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100 dark:border-slate-800"></div>
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white dark:bg-slate-800 px-4 text-[12px] font-black text-gray-400 uppercase tracking-[0.2em]">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="w-full h-12 flex items-center justify-center gap-3 bg-white dark:bg-slate-700 border-2 border-gray-100 dark:border-slate-600 rounded-xl font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-600 transition-all active:scale-[0.98]"
+        >
+          <svg width="20" height="20" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" />
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" />
+            <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" />
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+          </svg>
+          Google Workspace
+        </button>
+
+        <p className="text-center mt-8">
+          <span className="text-gray-500 font-medium">New to system? </span>
+          <Link 
+            to="/signup" 
+            className="text-blue-600 font-black hover:text-blue-700 transition-colors uppercase text-sm tracking-tight"
+          >
+            Create Account
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 };
 
-export default LoginPage;
+export default LoginPage;

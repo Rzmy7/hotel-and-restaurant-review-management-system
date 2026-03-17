@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AuthLayout } from '../components/shared/AuthLayout';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 
 const ForgotPasswordPage = () => {
   const { forgotPassword } = useAuth();
@@ -17,7 +21,7 @@ const ForgotPasswordPage = () => {
 
     try {
       await forgotPassword(email);
-      setMessage('Password reset link sent. Please check your email.');
+      setMessage('A password reset link has been sent to your email address.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset link');
     } finally {
@@ -26,33 +30,60 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f3f4f6', padding: 16 }}>
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 420, background: '#fff', padding: 24, borderRadius: 10, border: '1px solid #e5e7eb' }}>
-        <h1 style={{ marginTop: 0, marginBottom: 8 }}>Forgot Password</h1>
-        <p style={{ marginTop: 0, marginBottom: 16, color: '#6b7280' }}>Enter your account email to receive a reset link.</p>
+    <AuthLayout 
+      title="Reset Password" 
+      description="Enter your email to receive a recovery link"
+    >
+      {message && (
+        <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded-xl flex items-start gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+          <span className="text-sm font-bold text-emerald-700 leading-snug">{message}</span>
+        </div>
+      )}
 
-        <label htmlFor="email" style={{ display: 'block', marginBottom: 6 }}>Email</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ width: '100%', padding: 10, marginBottom: 12, border: '1px solid #d1d5db', borderRadius: 8 }}
-        />
+      {error && (
+        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="w-5 h-5 text-rose-500" />
+          <span className="text-sm font-bold text-rose-700">{error}</span>
+        </div>
+      )}
 
-        {message && <p style={{ color: '#065f46', marginBottom: 12 }}>{message}</p>}
-        {error && <p style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-1.5">
+          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+            Email Address
+          </label>
+          <div className="relative group">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type="email"
+              placeholder="name@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-11"
+              required
+            />
+          </div>
+        </div>
 
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: '#0284c7', color: '#fff' }}>
-          {loading ? 'Sending...' : 'Send Reset Link'}
-        </button>
+        <Button
+          type="submit"
+          className="w-full h-12 text-sm uppercase tracking-widest"
+          isLoading={loading}
+        >
+          {loading ? 'Processing...' : 'Send Recovery Link'}
+        </Button>
 
-        <p style={{ marginBottom: 0, marginTop: 12 }}>
-          <Link to="/login">Back to login</Link>
+        <p className="text-center mt-8">
+          <Link 
+            to="/login" 
+            className="text-gray-500 font-bold hover:text-blue-600 transition-colors uppercase text-[12px] tracking-widest inline-flex items-center gap-2"
+          >
+            Back to login
+          </Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 };
 

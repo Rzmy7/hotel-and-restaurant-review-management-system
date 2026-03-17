@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
-import { Clock, Calendar } from 'lucide-react';
+import { Clock, Calendar, Zap, Sparkles } from 'lucide-react';
 
 type ScheduleType = 'hourly' | 'daily' | 'weekly';
 
@@ -21,27 +21,24 @@ const ChooseSchedulePage = () => {
     {
       id: 'hourly' as ScheduleType,
       title: 'Hourly Fetching',
-      description: 'Ideal for high-activity hotels with frequent reviews',
-      icon: Clock,
-      iconColor: 'text-red-500',
-      iconBg: 'bg-red-50',
+      description: 'Ideal for high-activity properties with frequent reviews',
+      icon: Zap,
+      color: 'rose',
     },
     {
       id: 'daily' as ScheduleType,
       title: 'Daily Fetching',
-      description: 'Balanced schedule for most organizations',
+      description: 'The perfectly balanced schedule for most businesses',
       icon: Calendar,
-      iconColor: 'text-pink-500',
-      iconBg: 'bg-pink-50',
+      color: 'blue',
       recommended: true,
     },
     {
       id: 'weekly' as ScheduleType,
       title: 'Weekly Fetching',
-      description: 'For low-traffic sources or test environments',
-      icon: Calendar,
-      iconColor: 'text-cyan-500',
-      iconBg: 'bg-cyan-50',
+      description: 'Suited for smaller sources or test environments',
+      icon: Clock,
+      color: 'cyan',
     },
   ];
 
@@ -51,15 +48,16 @@ const ChooseSchedulePage = () => {
       onContinue={handleContinue}
       onBack={handleBack}
     >
-      <h1 className="text-[32px] font-semibold text-gray-800 text-center mb-3">
-        Choose How Often to Fetch Reviews
-      </h1>
-      <p className="text-[15px] text-gray-400 text-center mb-12">
-        Select one of the recommended schedules. You can modify this anytime in
-        source settings
-      </p>
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">
+            Fetch Frequency
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">
+            Choose how often we should aggregate your latest reviews
+        </p>
+      </div>
 
-      <div className="grid grid-cols-3 gap-5 mb-14 max-md:grid-cols-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {scheduleOptions.map((option) => {
           const Icon = option.icon;
           const isSelected = selectedSchedule === option.id;
@@ -67,32 +65,48 @@ const ChooseSchedulePage = () => {
           return (
             <div
               key={option.id}
-              className={`relative rounded-xl p-8 pt-10 flex flex-col items-center cursor-pointer transition-all ${isSelected
-                  ? 'border-2 border-gray-300 bg-gray-50 shadow-sm'
-                  : 'border border-gray-200 bg-white hover:border-gray-300'
-                }`}
               onClick={() => setSelectedSchedule(option.id)}
+              className={`
+                group relative rounded-3xl p-8 flex flex-col items-center cursor-pointer transition-all duration-300 border-2
+                ${isSelected
+                  ? 'border-blue-600 bg-blue-50/30 dark:bg-blue-900/10 shadow-lg shadow-blue-500/10'
+                  : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-100 dark:hover:border-blue-900/30 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none'
+                }`}
             >
               {option.recommended && (
-                <div className="absolute top-2.5 left-2.5 bg-amber-100 text-amber-800 py-1 px-3 rounded-xl text-[11px] font-semibold">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-950 py-1 px-4 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5">
+                  <Sparkles size={10} />
                   Recommended
                 </div>
               )}
 
-              {/* Radio */}
-              <div className="absolute top-4 right-4 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center bg-white">
-                {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-gray-900" />}
+              {/* Selection Indicator */}
+              <div className="absolute top-4 right-4 w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center bg-white dark:bg-slate-800 group-hover:border-blue-300 transition-colors">
+                {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-in zoom-in duration-300" />}
               </div>
 
-              <div className={`w-16 h-16 rounded-full ${option.iconBg} flex items-center justify-center mb-5`}>
-                <Icon size={32} className={option.iconColor} strokeWidth={2} />
+              <div className={`
+                w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300
+                ${isSelected ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30 rotate-3' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:scale-110 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600'}
+              `}>
+                <Icon size={32} strokeWidth={2.5} />
               </div>
 
-              <div className="text-xl font-semibold text-gray-800 mb-2 text-center">{option.title}</div>
-              <div className="text-[13px] text-gray-400 text-center leading-relaxed">{option.description}</div>
+              <h3 className={`text-[17px] font-black uppercase tracking-tight mb-3 text-center transition-colors ${isSelected ? 'text-blue-600' : 'text-slate-900 dark:text-white'}`}>
+                {option.title}
+              </h3>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 text-center font-medium leading-relaxed">
+                {option.description}
+              </p>
             </div>
           );
         })}
+      </div>
+
+      <div className="bg-blue-50/50 dark:bg-blue-900/5 rounded-2xl p-6 border border-blue-100/50 dark:border-blue-900/20 text-center">
+        <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+            Note: You can easily modify the fetching schedule for each source individually later in the source settings.
+        </p>
       </div>
     </SetupLayout>
   );

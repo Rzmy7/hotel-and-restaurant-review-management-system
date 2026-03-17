@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AuthLayout } from '../components/shared/AuthLayout';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 
 const SignUpPage = () => {
   const [fullName, setFullName] = useState('');
@@ -10,13 +13,14 @@ const SignUpPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [accountType, setAccountType] = useState<'tenant' | 'observer'>('tenant');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const auth = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!auth.user) return;
     const setupComplete = localStorage.getItem('setupComplete') !== 'false';
     navigate(setupComplete ? '/dashboard' : '/setup');
@@ -25,182 +29,190 @@ const SignUpPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Passwords do not match!');
       return;
     }
     if (!acceptedTerms) {
-      alert('Please accept the Terms of Service and Privacy Policy');
+      setError('Please accept the Terms of Service and Privacy Policy');
       return;
     }
 
     setLoading(true);
+    setError(null);
     try {
       await auth.signup(fullName, email, password);
       // signup auto-signs in (AuthContext persists user)
       localStorage.setItem('setupComplete', 'false');
       navigate('/setup');
     } catch (err: any) {
-      alert(err.message || 'Signup failed');
+      setError(err.message || 'Signup failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const inputClasses =
-    'w-full py-2.5 pl-10 pr-3.5 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none transition-colors box-border focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20';
-  const passwordInputClasses =
-    'w-full py-2.5 px-10 border border-gray-200 rounded-lg text-sm bg-gray-50 outline-none transition-colors box-border focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20';
+  const handleGoogleLogin = () => {
+    // Open backend Google OAuth flow (backend will redirect to Google)
+    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    window.location.href = `${apiBase}/login/google`;
+  };
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-auto">
-      <div className="min-h-full flex items-center justify-center bg-gray-200 py-10 px-5">
-        <div className="bg-white rounded-xl shadow-sm p-10 w-full max-w-[480px] my-auto">
-          <h1 className="text-[28px] font-semibold text-gray-800 text-center mb-2">Sign up</h1>
-          <p className="text-sm text-gray-500 text-center mb-7">Create Your Account</p>
-
-          <form onSubmit={handleSubmit}>
-            {/* Full Name */}
-            <div className="mb-[18px]">
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Full Name</label>
-              <div className="relative flex items-center">
-                <User size={16} className="absolute left-3.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={inputClasses}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div className="mb-[18px]">
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Email</label>
-              <div className="relative flex items-center">
-                <Mail size={16} className="absolute left-3.5 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClasses}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="mb-[18px]">
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Password</label>
-              <div className="relative flex items-center">
-                <Lock size={16} className="absolute left-3.5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={passwordInputClasses}
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer p-0"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div className="mb-[18px]">
-              <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Confirm Password</label>
-              <div className="relative flex items-center">
-                <Lock size={16} className="absolute left-3.5 text-gray-400" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={passwordInputClasses}
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute right-3.5 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer p-0"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Account Type */}
-            <div className="mb-[18px]">
-              <label className="block text-[13px] font-semibold text-gray-700 mb-2.5">Account Type</label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${accountType === 'tenant'
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                    }`}
-                  onClick={() => setAccountType('tenant')}
-                >
-                  Tenant
-                </button>
-                <button
-                  type="button"
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${accountType === 'observer'
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                    }`}
-                  onClick={() => setAccountType('observer')}
-                >
-                  Group Observer
-                </button>
-              </div>
-            </div>
-
-            {/* Terms */}
-            <div className="flex items-start gap-2 mb-5">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="w-4 h-4 cursor-pointer accent-blue-500 shrink-0 mt-0.5"
-              />
-              <span className="text-[13px] text-gray-600 leading-relaxed">
-                I accept the{' '}
-                <a href="/terms" className="text-blue-500 no-underline hover:underline">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="/privacy" className="text-blue-500 no-underline hover:underline">
-                  Privacy Policy
-                </a>
-              </span>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-colors mb-4"
-            >
-              Create Account
-            </button>
-          </form>
-
-          <p className="text-center text-[13px] text-gray-500">
-            Already have an account?
-            <a href="/login" className="text-blue-500 no-underline font-medium ml-1 hover:underline">
-              Login
-            </a>
-          </p>
+    <AuthLayout 
+      title="Create Account" 
+      description="Join our platform to start managing your reviews"
+    >
+      {error && (
+        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="w-5 h-5 text-rose-500" />
+          <span className="text-sm font-bold text-rose-700">{error}</span>
         </div>
-      </div>
-    </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+            Full Name
+          </label>
+          <div className="relative group">
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type="text"
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="pl-11"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+            Email Address
+          </label>
+          <div className="relative group">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+            <Input
+              type="email"
+              placeholder="name@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-11"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+              Password
+            </label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="px-11"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+              Confirm
+            </label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Input
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="px-11"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 py-2 px-1">
+          <div className="relative flex items-center mt-0.5">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+            />
+          </div>
+          <label htmlFor="terms" className="text-[12px] font-medium text-gray-500 dark:text-gray-400 leading-snug cursor-pointer select-none">
+            I agree to the <Link to="/terms" className="text-blue-600 font-bold hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-blue-600 font-bold hover:underline">Privacy Policy</Link>
+          </label>
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-12 text-sm uppercase tracking-widest mt-4"
+          isLoading={loading}
+        >
+          {loading ? 'Creating Account...' : 'Get Started Now'}
+        </Button>
+
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100 dark:border-slate-800"></div>
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white dark:bg-slate-800 px-4 text-[12px] font-black text-gray-400 uppercase tracking-[0.2em]">
+              Or join with
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="w-full h-12 flex items-center justify-center gap-3 bg-white dark:bg-slate-700 border-2 border-gray-100 dark:border-slate-600 rounded-xl font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-600 transition-all active:scale-[0.98]"
+        >
+          <svg width="20" height="20" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" />
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" />
+            <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" />
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+          </svg>
+          Google Workspace
+        </button>
+
+        <p className="text-center mt-6">
+          <span className="text-gray-500 font-medium text-sm">Already a member? </span>
+          <Link 
+            to="/login" 
+            className="text-blue-600 font-black hover:text-blue-700 transition-colors uppercase text-sm tracking-tight"
+          >
+            Sign In
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 };
 
