@@ -15,7 +15,7 @@ export type SourceStatus = 'Active' | 'Paused' | 'Error';
 
 export type SyncStatus = 'Success' | 'Failed' | 'In Progress';
 
-export type SyncSchedule = 'Hourly' | 'Daily' | 'Weekly';
+export type SyncSchedule = 'daily' | 'three_days' | 'weekly';
 
 export interface Source {
     id: string | number;

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Globe, Link, Key, Calendar, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import type { Source } from '../../types/sources';
+import type { Source, SyncSchedule } from '../../types/sources';
 import { sourcesService } from '../../services/sourcesService';
 
 interface AddSourceModalProps {
@@ -23,7 +23,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
   const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null);
   const [propertyUrl, setPropertyUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [schedule, setSchedule] = useState<'Hourly' | 'Daily' | 'Weekly'>('Daily');
+  const [schedule, setSchedule] = useState<SyncSchedule>('daily');
   const [sourceStatus, setSourceStatus] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,7 +53,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
     // Reset form
     setPropertyUrl('');
     setApiKey('');
-    setSchedule('Daily');
+    setSchedule('daily');
   };
 
   const testConnection = () => {
@@ -174,9 +174,9 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
               value={schedule}
               onChange={(e) => setSchedule(e.target.value as any)}
             >
-              <option value="Hourly">Every Hour</option>
-              <option value="Daily">Once Daily</option>
-              <option value="Weekly">Once Weekly</option>
+              <option value="daily">Once Daily</option>
+              <option value="three_days">Every 3 Days</option>
+              <option value="weekly">Once Weekly</option>
             </select>
           </div>
 

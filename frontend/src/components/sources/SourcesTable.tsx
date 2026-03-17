@@ -192,7 +192,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                   <td className="px-6 py-4 text-center">
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50/50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-700 text-[10px] font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest shadow-xs dark:shadow-none">
                       <Calendar size={12} className="text-gray-400 dark:text-slate-500" />
-                      {source.syncSchedule}
+                      {source.syncSchedule === 'three_days' ? '3 Days' : source.syncSchedule.charAt(0).toUpperCase() + source.syncSchedule.slice(1)}
                     </div>
                   </td>
 

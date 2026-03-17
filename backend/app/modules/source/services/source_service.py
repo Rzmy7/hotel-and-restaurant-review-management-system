@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 import uuid
@@ -6,10 +7,24 @@ from fastapi import HTTPException, status
 
 from app.modules.source.models import TenantSource, OrganizationSource, PlatformSource, SourceSource, SyncLogSource
 from app.modules.source.schemas import (
-    SourceCreate, SourceUpdate, SourceRead, 
+    SourceCreate, SourceUpdate, SourceRead, FetchingFrequency,
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
     SyncLogRead
 )
+
+def calculate_next_sync_time(base_time: datetime, frequency: FetchingFrequency) -> datetime:
+    """Calculate the next sync time based on base_time and frequency."""
+    if frequency == FetchingFrequency.DAILY:
+        delta = timedelta(days=1)
+    elif frequency == FetchingFrequency.THREE_DAYS:
+        delta = timedelta(days=3)
+    elif frequency == FetchingFrequency.WEEKLY:
+        delta = timedelta(days=7)
+    else:
+        delta = timedelta(days=1)  # Default to daily
+    
+    return base_time + delta
+
 
 def get_platforms(db: Session) -> List[PlatformSource]:
     return db.query(PlatformSource).all()
@@ -92,13 +107,15 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
             detail="A source link already exists for this organization and platform."
         )
 
+    now = datetime.now(timezone.utc)
     new_source = SourceSource(
         tenant_id=source_data.tenant_id,
         organization_id=source_data.organization_id,
         platform_id=source_data.platform_id,
         source_url=source_data.source_url,
         source_status=source_data.source_status,
-        fetching_frequency=source_data.fetching_frequency
+        fetching_frequency=source_data.fetching_frequency,
+        next_synced_at=calculate_next_sync_time(now, source_data.fetching_frequency)
     )
     
     db.add(new_source)
@@ -134,6 +151,12 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
         raise HTTPException(status_code=404, detail="Source not found")
     
     update_data = source_data.dict(exclude_unset=True)
+    
+    # Check if frequency is being updated to recalculate next_synced_at
+    if "fetching_frequency" in update_data and update_data["fetching_frequency"] != source.fetching_frequency:
+        base_time = source.last_synced_at or source.created_at
+        source.next_synced_at = calculate_next_sync_time(base_time, update_data["fetching_frequency"])
+
     for key, value in update_data.items():
         setattr(source, key, value)
     
@@ -214,3 +237,34 @@ def get_sync_logs(
             errorMessage=log.error_message
         ) for log in logs
     ]
+
+def complete_sync_task(db: Session, source_id: uuid.UUID) -> SourceRead:
+    """Finalize a sync task, update timestamps, and schedule the next sync."""
+    source = db.query(SourceSource).options(
+        joinedload(SourceSource.platform)
+    ).filter(SourceSource.source_id == source_id).first()
+    
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    
+    now = datetime.now(timezone.utc)
+    source.last_synced_at = now
+    source.next_synced_at = calculate_next_sync_time(now, source.fetching_frequency)
+    
+    db.commit()
+    db.refresh(source)
+    
+    return SourceRead(
+        source_id=source.source_id,
+        tenant_id=source.tenant_id,
+        organization_id=source.organization_id,
+        platform_id=source.platform_id,
+        platform_name=source.platform.platform_name,
+        source_url=source.source_url,
+        source_status=source.source_status,
+        fetching_frequency=source.fetching_frequency,
+        last_synced_at=source.last_synced_at,
+        next_synced_at=source.next_synced_at,
+        success_rate=source.success_rate,
+        created_at=source.created_at
+    )

@@ -19,9 +19,9 @@ class PlatformStatus(str, enum.Enum):
     INACTIVE = "inactive"
 
 class FetchingFrequency(str, enum.Enum):
-    HOURLY = "hourly"
-    DAILY = "daily"
-    WEEKLY = "weekly"
+    DAILY = "daily"         # 1 day
+    THREE_DAYS = "three_days" # 3 days
+    WEEKLY = "weekly"       # 7 days
 
 # --- Platform Schemas ---
 class PlatformRead(BaseModel):

@@ -66,7 +66,7 @@ END
 IF @GoogleID IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.sources_source WHERE tenant_id = @TenantID AND organization_id = @Org1ID AND platform_id = @GoogleID)
 BEGIN
     INSERT INTO dbo.sources_source (source_id, tenant_id, organization_id, platform_id, source_url, source_status, fetching_frequency, success_rate, created_at)
-    VALUES (NEWID(), @TenantID, @Org1ID, @GoogleID, 'https://www.google.com/maps/place/Grand+Plaza+NY', 'active', 'hourly', 0.98, GETUTCDATE());
+    VALUES (NEWID(), @TenantID, @Org1ID, @GoogleID, 'https://www.google.com/maps/place/Grand+Plaza+NY', 'active', 'daily', 0.98, GETUTCDATE());
 END
 
 -- Org 2: London

@@ -28,7 +28,7 @@ interface EditSourceModalProps {
 
 const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab = 'settings' }: EditSourceModalProps) => {
   const [activeTab, setActiveTab] = useState<'settings' | 'analytics'>(initialTab);
-  const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('Daily');
+  const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('daily');
   const [status, setStatus] = useState<SourceStatus>('Active');
 
   useEffect(() => {
@@ -195,16 +195,20 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
               <div className="space-y-2">
                 <label className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Sync Frequency</label>
                 <div className="grid grid-cols-3 gap-3">
-                  {['Hourly', 'Daily', 'Weekly'].map((s) => (
+                  {[
+                    { val: 'daily', label: 'Daily' }, 
+                    { val: 'three_days', label: '3 Days' }, 
+                    { val: 'weekly', label: 'Weekly' }
+                  ].map((s) => (
                     <button
-                      key={s}
-                      onClick={() => setSyncSchedule(s as SyncSchedule)}
-                      className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${syncSchedule === s
+                      key={s.val}
+                      onClick={() => setSyncSchedule(s.val as SyncSchedule)}
+                      className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${syncSchedule === s.val
                         ? 'bg-blue-50 border-blue-200 text-[#4e80ee] dark:bg-blue-900/30 dark:border-blue-800/50 dark:text-blue-400 shadow-sm'
                         : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600'
                         }`}
                     >
-                      {s}
+                      {s.label}
                     </button>
                   ))}
                 </div>
