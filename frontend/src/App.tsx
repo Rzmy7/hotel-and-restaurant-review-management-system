@@ -26,6 +26,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import SetupPage from './pages/SetupPage';
 import AddSourcesPage from './pages/AddSourcesPage';
 import ChooseSchedulePage from './pages/ChooseSchedulePage';
+import ChoosePlanPage from './pages/ChoosePlanPage';
 import FinishSetupPage from './pages/FinishSetupPage';
 import OAuthSuccessPage from "./pages/OAuthSuccessPage";
 
@@ -109,6 +110,7 @@ const AppContent: React.FC = () => {
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/setup/sources" element={<AddSourcesPage />} />
       <Route path="/setup/schedule" element={<ChooseSchedulePage />} />
+      <Route path="/setup/plan" element={<ChoosePlanPage />} />
       <Route path="/setup/finish" element={<FinishSetupPage />} />
       
       {/* Utility/Admin Routes */}
