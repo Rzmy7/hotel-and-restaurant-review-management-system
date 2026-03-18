@@ -31,6 +31,15 @@ const LoginPage = () => {
     try {
       const user = await auth.login(email, password);
 
+      // add local storage part
+      /*localStorage.setItem("authUser", JSON.stringify({
+        user_id: user.user_id,   // 🔥 NEW
+        email: user.email,
+        role: user.role
+      }));    */
+
+
+
       // Redirect based on RBAC role
       if (user.role === "ADMIN") {
         navigate("/admin-dashboard");
