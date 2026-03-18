@@ -10,7 +10,7 @@ const ChooseSchedulePage = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleType>('daily');
 
   const handleContinue = () => {
-    navigate('/setup/finish');
+    navigate('/setup/plan');
   };
 
   const handleBack = () => {

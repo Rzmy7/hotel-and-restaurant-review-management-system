@@ -11,8 +11,10 @@ interface PricingCardProps {
   period: string;
   description: string;
   features: string[];
-  buttonText: string;
+  buttonText?: string;
   isPopular?: boolean;
+  isSelected?: boolean;
+  onClick?: () => void;
 }
 
 /**
@@ -28,9 +30,26 @@ export const PricingCard: React.FC<PricingCardProps> = ({
   features,
   buttonText,
   isPopular = false,
+  isSelected,
+  onClick,
 }) => {
+  const isPrimaryButton = isSelected !== undefined ? isSelected : isPopular;
+
   return (
-    <div className={`relative flex flex-col p-8 rounded-[2rem] border transition-all duration-500 hover:scale-[1.02] bg-white dark:bg-slate-800/80 backdrop-blur-sm ${isPopular ? 'border-blue-200 shadow-2xl shadow-blue-500/10 dark:border-blue-900/50' : 'border-gray-100 dark:border-slate-700/50 shadow-xl shadow-gray-200/20 dark:shadow-none'}`}>
+    <div 
+      onClick={onClick}
+      className={`relative flex flex-col p-8 rounded-[2rem] border transition-all duration-500 hover:scale-[1.02] bg-white dark:bg-slate-800/80 backdrop-blur-sm 
+        ${onClick ? 'cursor-pointer' : ''}
+        ${isSelected ? 'border-blue-600 shadow-lg shadow-blue-500/10 scale-[1.02] ring-2 ring-blue-600/20' : ''}
+        ${!isSelected && isPopular ? 'border-blue-200 shadow-2xl shadow-blue-500/10 dark:border-blue-900/50' : ''}
+        ${!isSelected && !isPopular ? 'border-gray-100 dark:border-slate-700/50 shadow-xl shadow-gray-200/20 dark:shadow-none' : ''}
+      `}
+    >
+      {isSelected && (
+        <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center bg-white dark:bg-slate-800 z-10">
+          <div className="w-3 h-3 rounded-full bg-blue-600 animate-in zoom-in duration-300" />
+        </div>
+      )}
       {isPopular && <PricingBadge label="Most Popular" />}
       
       <div className="flex flex-col gap-6 mb-8">
@@ -53,12 +72,14 @@ export const PricingCard: React.FC<PricingCardProps> = ({
         ))}
       </div>
 
-      <Button 
-        variant={isPopular ? 'primary' : 'outline'} 
-        className={`w-full py-6 text-sm uppercase tracking-widest shadow-lg ${isPopular ? 'shadow-blue-200 dark:shadow-none' : ''}`}
-      >
-        {buttonText}
-      </Button>
+      {buttonText && (
+        <Button 
+          variant={isPrimaryButton ? 'primary' : 'outline'} 
+          className={`w-full py-6 text-sm uppercase tracking-widest shadow-lg ${isPrimaryButton ? 'shadow-blue-200 dark:shadow-none' : ''}`}
+        >
+          {buttonText}
+        </Button>
+      )}
     </div>
   );
 };

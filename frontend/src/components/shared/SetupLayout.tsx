@@ -13,6 +13,7 @@ interface SetupLayoutProps {
   showBack?: boolean;
   isContinueLoading?: boolean;
   isContinueDisabled?: boolean;
+  maxWidthClass?: string;
 }
 
 const SetupLayout: React.FC<SetupLayoutProps> = ({
@@ -24,18 +25,20 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
   showBack = true,
   isContinueLoading = false,
   isContinueDisabled = false,
+  maxWidthClass = 'max-w-3xl',
 }) => {
   const navigate = useNavigate();
   const steps = [
     { number: 1, label: 'Organization' },
     { number: 2, label: 'Sources' },
     { number: 3, label: 'Schedule' },
-    { number: 4, label: 'Finish' },
+    { number: 4, label: 'Plan' },
+    { number: 5, label: 'Finish' },
   ];
 
   const handleExit = () => {
     if (confirm('Are you sure you want to exit setup? Your progress might not be saved.')) {
-      navigate('/login');
+      navigate('/dashboard');
     }
   };
 
@@ -94,7 +97,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col items-center">
-            <Card className="w-full max-w-3xl p-8 md:p-12 shadow-2xl shadow-blue-500/5 animate-in fade-in slide-in-from-bottom-6 duration-700 mb-20 relative overflow-hidden">
+            <Card className={`w-full ${maxWidthClass} p-8 md:p-12 shadow-2xl shadow-blue-500/5 animate-in fade-in slide-in-from-bottom-6 duration-700 mb-20 relative overflow-hidden`}>
                 {/* Subtle gradient accent */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50" />
                 
@@ -126,7 +129,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
                                     className="gap-2 px-10 font-black uppercase text-[12px] tracking-widest h-11 shadow-lg shadow-blue-500/20"
                                     rightIcon={<ChevronRight size={16} />}
                                 >
-                                    {currentStep === 4 ? 'Complete Setup' : 'Continue'}
+                                    {currentStep === 5 ? 'Complete Setup' : 'Continue'}
                                 </Button>
                             )}
                         </div>

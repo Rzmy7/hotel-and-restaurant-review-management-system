@@ -12,7 +12,7 @@ const FinishSetupPage = () => {
     // Simulate API call for completion
     setTimeout(() => {
         localStorage.setItem('setupComplete', 'true');
-        navigate('/login');
+        navigate('/dashboard');
     }, 1500);
   };
 
@@ -36,9 +36,9 @@ const FinishSetupPage = () => {
 
   return (
     <SetupLayout
-      currentStep={4}
+      currentStep={5}
       onContinue={handleFinish}
-      onBack={() => navigate('/setup/schedule')}
+      onBack={() => navigate('/setup/plan')}
       isContinueLoading={isFinishing}
     >
       <div className="flex flex-col items-center text-center">
