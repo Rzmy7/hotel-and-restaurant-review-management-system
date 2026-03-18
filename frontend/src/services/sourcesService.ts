@@ -121,7 +121,7 @@ class SourcesService {
             syncSchedule: (s.fetching_frequency.charAt(0).toUpperCase() + s.fetching_frequency.slice(1)) as SyncSchedule,
             propertyUrl: s.source_url,
             successRate: Math.round(s.success_rate * 100),
-            errorCount: 0, 
+            errorCount: 0,
             nextRunAt: s.next_synced_at,
             createdAt: s.created_at,
         };
@@ -129,7 +129,7 @@ class SourcesService {
 
     async getSources(tenantId: string, organizationId: string): Promise<Source[]> {
         try {
-            const data = await apiClient.get<{sources: any[]}>(`/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            const data = await apiClient.get<{ sources: any[] }>(`/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
             return data.sources.map((s: any) => this.mapBackendSourceToFrontend(s));
         } catch (error) {
             console.warn('Backend fetch failed, falling back to mock data:', error);

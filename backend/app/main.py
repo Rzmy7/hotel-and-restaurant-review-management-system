@@ -56,13 +56,13 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # ── Register routers ───────────────────────────────────────────────
 
-app.include_router(health.router)
-app.include_router(auth_router)
-app.include_router(reviews_router)
-app.include_router(competitors_router)
-app.include_router(dashboard_router)
-app.include_router(admin_router)
-app.include_router(groups_router)
+app.include_router(health.router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(reviews_router, prefix="/api")
+app.include_router(competitors_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
+app.include_router(groups_router, prefix="/api")
 app.include_router(source_router)
 
 # ── Dev server ──────────────────────────────────────────────────────

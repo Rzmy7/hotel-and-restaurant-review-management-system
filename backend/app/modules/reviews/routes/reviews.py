@@ -11,6 +11,7 @@ from app.modules.reviews.services.review_service import (
     remove_all_reviews_from_db,
     count_all_reviews,
 )
+from app.modules.dashboard.services.stats_service import get_stats
 
 router = APIRouter()
 
@@ -42,5 +43,21 @@ def delete_all_reviews():
         if success:
             return {"status": "success", "message": "All reviews deleted."}
         raise HTTPException(status_code=500, detail="Failed to delete reviews.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/reviews/stats")
+def reviews_stats():
+    """Retrieve summarized KPIs for the reviews page."""
+    try:
+        stats = get_stats()
+        # Ensure keys match frontend ReviewStats interface
+        return {
+            "totalReviews": stats["totalReviews"],
+            "averageRating": stats["averageRating"],
+            "pendingReplies": stats["pendingReviews"],
+            "sentimentScore": 75,  # Mocked sentiment for now as it's missing in service
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
