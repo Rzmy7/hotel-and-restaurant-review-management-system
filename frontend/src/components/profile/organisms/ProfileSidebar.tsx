@@ -7,10 +7,11 @@ import type { UserProfile } from '../../../pages/ProfilePage';
 
 interface ProfileSidebarProps {
     profile: UserProfile;
+    memberSince: string;
     onPhotoChange: (file: File) => void;
 }
 
-const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange }) => {
+const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile,memberSince, onPhotoChange }) => {
     const initials = `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`.toUpperCase();
 
     return (
@@ -38,7 +39,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange 
                 </div>
             </div>
 
-            <div className="bg-[#4e80ee]/5 dark:bg-[#4e80ee]/10 rounded-3xl border border-[#4e80ee]/10 p-6 flex items-center gap-4">
+            {/*<div className="bg-[#4e80ee]/5 dark:bg-[#4e80ee]/10 rounded-3xl border border-[#4e80ee]/10 p-6 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[#4e80ee] flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-200 dark:shadow-none">
                     <Briefcase size={20} />
                 </div>
@@ -49,8 +50,8 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ profile, onPhotoChange 
                     <p className="text-[13px] font-bold text-gray-700 dark:text-slate-300">
                         Senior Account Administrator
                     </p>
-                </div>
-            </div>
+                </div> 
+            </div>   */}
         </aside>
     );
 };

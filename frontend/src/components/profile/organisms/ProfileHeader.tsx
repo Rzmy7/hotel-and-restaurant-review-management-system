@@ -1,10 +1,14 @@
 import React from 'react';
 
+interface ProfileHeaderProps {
+    memberSince: string;
+}
+
 /**
  * Redesigned ProfileHeader.
- * Follows the premium glassmorphism design.
+ * Now supports dynamic memberSince
  */
-const ProfileHeader: React.FC = () => {
+const ProfileHeader: React.FC<ProfileHeaderProps> = ({ memberSince }) => {
     return (
         <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-6 flex items-center justify-between transition-all duration-300">
             <div className="flex flex-col">
@@ -20,14 +24,14 @@ const ProfileHeader: React.FC = () => {
                     Manage your identity, security, and personal preferences
                 </p>
             </div>
-            
+
             <div className="flex items-center gap-4 max-md:hidden text-right">
                 <div className="text-right">
                     <p className="text-[10px] text-gray-400 dark:text-slate-500 font-black uppercase tracking-widest leading-none">
                         Member Since
                     </p>
                     <p className="text-[12px] text-gray-600 dark:text-slate-300 font-bold mt-1">
-                        January 2024
+                        {memberSince || "N/A"}
                     </p>
                 </div>
             </div>
