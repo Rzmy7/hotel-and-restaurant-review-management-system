@@ -101,9 +101,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const backendUser = data.user;
 
         const normalizedUser: User = {
-            user_id: backendUser.id,
+            user_id: backendUser.user_id,
             email: backendUser.email,
-            full_name: backendUser.name,
+            full_name: `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim(),
             role: backendUser.role,
         };
 
@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             const backendUser = payload.user;
 
             const normalizedUser: User = {
-                user_id: backendUser.id,
+                user_id: backendUser.user_id,
                 email: backendUser.email,
                 full_name: backendUser.name,
                 role: backendUser.roles?.[0] || "TENANT",
