@@ -28,6 +28,7 @@ from app.auth_permissions import require_group_manager, require_group_member
 
 from app.auth.auth_permissions import require_admin
 
+from app.api.profile_routes import router as profile_router
 
 
 # to identify
@@ -68,6 +69,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+
+app.include_router(profile_router)
 
 # ----------------------
 # Load environment + session
@@ -203,19 +208,39 @@ class ResetModel(BaseModel):
 # ----------------------
 @app.post("/signup")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
+
     existing_user = get_user_by_email(db, payload.email.lower())
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already exists in database")
+        raise HTTPException(
+            status_code=400,
+            detail="Email already exists in database"
+        )
 
+    # -----------------------------
+    # Split Full Name
+    # -----------------------------
+    name_parts = payload.name.strip().split(" ", 1)
+
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else None
+
+    # -----------------------------
+    # Create User
+    # -----------------------------
     user = create_user(
         db=db,
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
-        full_name=payload.name,
+        first_name=first_name,
+        last_name=last_name,
         is_email_verified=False,
     )
 
+    # -----------------------------
+    # Assign Default Role
+    # -----------------------------
     assigned = assign_role_to_user(db, user.user_id, "TENANT")
+
     if not assigned:
         raise HTTPException(
             status_code=500,
@@ -228,7 +253,8 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         "message": "User registered successfully in database",
         "user": {
             "id": str(user.user_id),
-            "name": user.full_name,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
             "email": user.email,
             "roles": roles,
         },
