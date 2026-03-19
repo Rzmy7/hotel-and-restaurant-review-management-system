@@ -14,7 +14,7 @@ Platform plugin for extracting reviews from Google Maps place listings. Uses a *
 | `config.py` | CSS selectors for Google Maps review elements (review cards, star ratings, text, images, sort button) |
 | `extractor.py` | DOM parsing — extracts author, rating (from aria-label star count), text, date, author badge (Local Guide, etc.), photos, and owner replies |
 | `logic.py` | Orchestrator — navigates to URL, clicks Reviews tab (with 4 strategies including auto sign-in fallback), scrolls review panel to load all reviews, extracts batches |
-| `models.py` | `save_reviews_to_db()` — resolves/creates Organization + OrganizationSource, upserts into `reviews` + `google_reviews` + `review_media` |
+| `models.py` | `save_reviews_to_db()` — saves reviews directly linked to a `source_id`; upserts into `reviews` + `google_reviews` + `review_media` |
 | `storage.py` | JSON file output for debugging/backup |
 
 ## Prerequisites

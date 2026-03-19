@@ -14,7 +14,7 @@ Platform plugin for extracting reviews from Booking.com hotel properties. Uses P
 | `config.py` | CSS selectors using Booking.com's `[data-testid]` attribute system |
 | `extractor.py` | DOM parsing — extracts score, title, positive/negative text, nationality, traveler type, stay date, nights, room name, and user-uploaded images |
 | `logic.py` | Orchestrator — navigates to review URL, handles pagination, extracts per page, saves batches |
-| `models.py` | `save_reviews_to_db()` — resolves/creates Organization + OrganizationSource, upserts into `reviews` + `booking_reviews` + `review_media` |
+| `models.py` | `save_reviews_to_db()` — saves reviews directly linked to a `source_id`; upserts into `reviews` + `booking_reviews` + `review_media` |
 | `storage.py` | JSON file output for debugging/backup |
 
 ## Technical Notes

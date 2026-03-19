@@ -31,5 +31,5 @@ All CSS selectors are centralized in `config.py` for easy maintenance if TripAdv
 
 ## API Endpoints
 
-- `POST /tripadvisor/scrape`: Trigger a background scrape job.
-- `GET /tripadvisor/reviews`: Fetch stored TripAdvisor reviews with optional site URL filtering.
+- `POST /api/tripadvisor/scrape`: Trigger a background scrape job.
+- `GET /api/tripadvisor/reviews`: Fetch stored TripAdvisor reviews.

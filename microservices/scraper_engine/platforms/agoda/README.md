@@ -14,7 +14,7 @@ Platform plugin for extracting reviews from Agoda hotel properties. Uses Playwri
 | `config.py` | CSS selectors and DOM locators for Agoda's review UI (tab selectors, review cards, pagination buttons) |
 | `extractor.py` | DOM parsing logic — extracts rating, author, nationality, text, heading, dates, room type, traveler type, images from review cards |
 | `logic.py` | Main orchestrator — navigates to URL, clicks Agoda reviews tab (bypasses embedded Booking.com reviews), handles pagination, calls extractor per page, saves batches to DB |
-| `models.py` | `save_reviews_to_db()` — resolves/creates Organization + OrganizationSource, upserts into unified `reviews` + `agoda_reviews` + `review_media` tables |
+| `models.py` | `save_reviews_to_db()` — saves reviews directly linked to a `source_id`; upserts into unified `reviews` + `agoda_reviews` + `review_media` tables |
 | `storage.py` | JSON file output for debugging/backup |
 
 ## Technical Notes
