@@ -238,7 +238,7 @@ def get_sync_logs(
         ) for log in logs
     ]
 
-def complete_sync_task(db: Session, source_id: uuid.UUID) -> SourceRead:
+def complete_sync_task(db: Session, source_id: uuid.UUID, new_review_count: int = 0) -> SourceRead:
     """Finalize a sync task, update timestamps, and schedule the next sync."""
     source = db.query(SourceSource).options(
         joinedload(SourceSource.platform)
@@ -250,6 +250,15 @@ def complete_sync_task(db: Session, source_id: uuid.UUID) -> SourceRead:
     now = datetime.now(timezone.utc)
     source.last_synced_at = now
     source.next_synced_at = calculate_next_sync_time(now, source.fetching_frequency)
+    
+    # Create a sync log entry
+    sync_log = SyncLogSource(
+        source_id=source.source_id,
+        status="Success",
+        timestamp=now,
+        reviews_fetched=new_review_count
+    )
+    db.add(sync_log)
     
     db.commit()
     db.refresh(source)

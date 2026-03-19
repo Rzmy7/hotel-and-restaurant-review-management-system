@@ -34,7 +34,8 @@ def save_reviews_to_db(reviews: list, source_id: str):
 
         for r in reviews:
             # Create a new review entry in the central reviews table
-            review_entry = Review(source_id=source_id)
+            platform_id = r.get("external_review_id")
+            review_entry = Review(source_id=source_id, platform_review_id=platform_id)
             session.add(review_entry)
             session.flush()
 

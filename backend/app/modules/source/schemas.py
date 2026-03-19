@@ -107,4 +107,7 @@ class SyncLogBulk(BaseModel):
     logs: List[SyncLogRead]
     total: int
 
+class SyncCompleteRequest(BaseModel):
+    new_review_count: int = 0
+
 

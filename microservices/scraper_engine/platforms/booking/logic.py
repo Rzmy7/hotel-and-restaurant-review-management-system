@@ -240,6 +240,20 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             logger.info(f"Total reviews extracted: {len(cumulative_reviews)}. Saving full backup to JSON.")
             save_to_json(cumulative_reviews, str(source_id))
             
+            # Identify new reviews vs existing ones
+            from core.database import get_session
+            from core.utils import identify_new_reviews
+            
+            session = get_session()
+            new_count = 0
+            try:
+                new_count, _ = identify_new_reviews(session, source_id, cumulative_reviews)
+                logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
+            except Exception as e:
+                logger.warning(f"Could not identify new reviews: {e}")
+            finally:
+                session.close()
+
             if job_id:
                 job_manager.update_job(
                     job_id, status=JobStatus.COMPLETED,
@@ -258,7 +272,7 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             )
 
             # Notify backend of completion
-            notify_backend_sync_complete(str(source_id))
+            notify_backend_sync_complete(str(source_id), new_review_count=new_count)
 
             return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
@@ -267,7 +281,7 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="Scrape concluded without detecting new reviews.", reviews=0)
             
             # Notify backend even if no new reviews were found
-            notify_backend_sync_complete(str(source_id))
+            notify_backend_sync_complete(str(source_id), new_review_count=0)
             
             return {"status": "warning", "message": "No new reviews found.", "count": 0, "data": []}
             

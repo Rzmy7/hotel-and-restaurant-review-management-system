@@ -508,7 +508,21 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
                 seen_ids.add(r.id)
                 all_reviews.append(r)
 
-        logger.info(f"Extracted {len(all_reviews)} unique reviews.")
+        logger.info(f"Extracted {len(all_reviews)} unique reviews from DOM.")
+
+        # Identify new reviews vs existing ones
+        from core.database import get_session
+        from core.utils import identify_new_reviews
+        
+        session = get_session()
+        new_count = 0
+        try:
+            new_count, new_ids = identify_new_reviews(session, source_id, all_reviews)
+            logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
+        except Exception as e:
+            logger.warning(f"Could not identify new reviews: {e}")
+        finally:
+            session.close()
 
         # Save to database in batches
         if all_reviews:
@@ -548,7 +562,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
             )
 
             # Notify backend of completion
-            notify_backend_sync_complete(str(source_id))
+            notify_backend_sync_complete(str(source_id), new_review_count=new_count)
 
             return {"status": "success", "count": f"Stored {len(all_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
@@ -557,7 +571,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="No reviews found.", reviews=0)
             
             # Notify backend even if no reviews were found
-            notify_backend_sync_complete(str(source_id))
+            notify_backend_sync_complete(str(source_id), new_review_count=0)
             
             return {"status": "warning", "message": "No reviews found.", "count": 0}
 

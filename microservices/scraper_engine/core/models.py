@@ -54,11 +54,13 @@ class Review(Base):
 
     review_id  = Column(Integer, primary_key=True, autoincrement=True)
     source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)
+    platform_review_id = Column(Unicode(255), nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
         Index('IX_reviews_source', 'source_id'),
+        Index('IX_reviews_platform_id', 'source_id', 'platform_review_id'),
     )
 
     # Relationships
