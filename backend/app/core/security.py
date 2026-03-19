@@ -49,3 +49,25 @@ def create_access_token(user_id: str, role: str) -> str:
 def decode_access_token(token: str) -> dict:
     """Decode and verify a JWT access token."""
     return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+
+
+def create_invite_token(group_id: str, role: str, hotel_name: str, location: str) -> str:
+    """Create a signed JWT token for group/hotel invitations."""
+    payload = {
+        "group_id": str(group_id),
+        "role": role,
+        "hotel_name": hotel_name,
+        "location": location,
+        "type": "invite",
+        "exp": datetime.utcnow() + timedelta(days=7),
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_invite_token(token: str) -> dict:
+    """Decode and verify a group invite token."""
+    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    if payload.get("type") != "invite":
+        from jose import JWTError
+        raise JWTError("Invalid token type")
+    return payload

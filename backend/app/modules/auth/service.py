@@ -108,6 +108,35 @@ def send_reset_email(to_email: str, link: str) -> None:
         server.quit()
 
 
+def send_group_invite_email(to_email: str, group_name: str, hotel_name: str, inviter_name: str, link: str) -> None:
+    """Send a group/hotel invitation email."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        return
+
+    body = (
+        f"Hello,\n\n"
+        f"{inviter_name} has invited your hotel '{hotel_name}' to join the group '{group_name}'.\n\n"
+        f"Click the link below to accept the invitation and add your hotel:\n"
+        f"{link}\n\n"
+        f"If you don't have an account, you will be prompted to sign up first."
+    )
+
+    msg = MIMEText(body)
+    msg["Subject"] = f"Invitation: Join {group_name} on Hotel System"
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = to_email
+
+    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+    try:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
+    finally:
+        server.quit()
+
+
 # ── OAuth ───────────────────────────────────────────────────────────
 
 oauth = OAuth()

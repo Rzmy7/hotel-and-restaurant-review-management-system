@@ -25,10 +25,18 @@ def create_user(
     google_id: str | None = None,
     is_email_verified: bool = False,
 ):
+    # Split full_name into first/last for the actual DB columns
+    first_name, last_name = None, None
+    if full_name:
+        parts = full_name.strip().split(" ", 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else None
+
     user = User(
         email=email,
         password_hash=password_hash,
-        full_name=full_name,
+        first_name=first_name,
+        last_name=last_name,
         phone=phone,
         profile_image_url=profile_image_url,
         google_id=google_id,

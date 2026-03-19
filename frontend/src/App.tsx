@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 
 // Providers and Contexts
 import { ToastProvider } from './contexts/ToastContext';
@@ -42,6 +42,7 @@ import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
 import GroupsBranchesPage from './pages/GroupsBranchesPage';
 import GroupDetailPage from './pages/GroupDetailPage';
+import AcceptInvitePage from './pages/AcceptInvitePage';
 
 // Styles
 import "./App.css";
@@ -65,7 +66,11 @@ const NotFound: React.FC = () => {
  */
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
   return <>{children}</>;
 };
 
@@ -142,8 +147,9 @@ const AppContent: React.FC = () => {
                 <Route path="/competitors" element={<CompetitorsPage />} />
                 <Route path="/competitors/rankings" element={<CompetitorRankingsPage />} />
                 <Route path="/competitors/compare" element={<CompetitorComparison />} />
-                <Route path="/groups" element={<GroupsBranchesPage />} />
-                <Route path="/groups/:id" element={<GroupDetailPage />} />
+                <Route path="/groups" element={<RequireAuth><GroupsBranchesPage /></RequireAuth>} />
+                <Route path="/groups/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
+                <Route path="/accept-invite" element={<RequireAuth><AcceptInvitePage /></RequireAuth>} />
                 <Route
                   path="/profile"
                   element={<ProfilePage />}

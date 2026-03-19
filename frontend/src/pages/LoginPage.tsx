@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,17 +11,17 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const auth = useAuth();
 
   useEffect(() => {
     if (auth.user) {
-      if (auth.user.role === "ADMIN") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/dashboard");
-      }
+      const from = location.state?.from?.pathname 
+        ? location.state.from.pathname + (location.state.from.search || '')
+        : (auth.user.role === "ADMIN" ? "/admin-dashboard" : "/dashboard");
+      navigate(from, { replace: true });
     }
-  }, [auth.user, navigate]);
+  }, [auth.user, navigate, location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,12 +31,10 @@ const LoginPage = () => {
     try {
       const user = await auth.login(email, password);
 
-      // Redirect based on RBAC role
-      if (user.role === "ADMIN") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/dashboard");
-      }
+      const from = location.state?.from?.pathname 
+        ? location.state.from.pathname + (location.state.from.search || '')
+        : (user.role === "ADMIN" ? "/admin-dashboard" : "/dashboard");
+      navigate(from, { replace: true });
 
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -47,7 +45,7 @@ const LoginPage = () => {
 
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
-    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8001";
     window.location.href = `${apiBase}/login/google`;
   };
 

@@ -22,14 +22,19 @@ class User(Base):
     user_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=True)
-    full_name = Column(String(200), nullable=True)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
     phone = Column(String(30), nullable=True)
     profile_image_url = Column(String(500), nullable=True)
-    google_id = Column(String, nullable=True)
+    google_id = Column(String(255), nullable=True)
+    job_title = Column(String(255), nullable=True)
+    bio = Column(String, nullable=True)       # NVARCHAR(MAX) in DB
+    location = Column(String(255), nullable=True)
 
     is_active = Column(Boolean, nullable=False, default=True)
     is_email_verified = Column(Boolean, nullable=False, default=False)
     is_phone_verified = Column(Boolean, nullable=False, default=False)
+    is_super_admin = Column(Boolean, nullable=False, default=False)
 
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
@@ -42,6 +47,12 @@ class User(Base):
         server_default=func.sysutcdatetime(),
         nullable=False,
     )
+
+    @property
+    def full_name(self) -> str:
+        """Computed convenience property — combines first + last name."""
+        parts = [self.first_name, self.last_name]
+        return " ".join(p for p in parts if p) or self.email.split("@")[0]
 
     roles = relationship(
         "UserRole", back_populates="user", cascade="all, delete-orphan"

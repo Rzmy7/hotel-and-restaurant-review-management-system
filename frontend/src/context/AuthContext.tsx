@@ -35,7 +35,7 @@ type AuthContextType = {
 };
 
 const API_BASE =
-    (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    (import.meta.env.VITE_API_BASE as string) || "http://localhost:8001";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

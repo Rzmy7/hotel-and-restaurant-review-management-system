@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Building2, Users, Hotel, Crown, Shield, Eye,
@@ -6,10 +6,10 @@ import {
 } from 'lucide-react';
 import CreateGroupModal from '../components/groups/CreateGroupModal';
 
-type UserRole = 'owner' | 'manager' | 'member';
+type UserRole = 'owner' | 'member';
 
 interface Group {
-  id: number;
+  id: string;
   name: string;
   description: string;
   hotelCount: number;
@@ -18,99 +18,104 @@ interface Group {
   createdAt: string;
 }
 
-const MOCK_GROUPS: Group[] = [
-  {
-    id: 1,
-    name: 'Luxury Hotels Sri Lanka',
-    description: 'Premium luxury hotel properties across Sri Lanka',
-    hotelCount: 4,
-    memberCount: 8,
-    currentUserRole: 'owner',
-    createdAt: '2025-12-15',
-  },
-  {
-    id: 2,
-    name: 'Beach Resorts Collection',
-    description: 'Coastal and beach resort properties',
-    hotelCount: 3,
-    memberCount: 5,
-    currentUserRole: 'manager',
-    createdAt: '2026-01-20',
-  },
-  {
-    id: 3,
-    name: 'City Hotels Network',
-    description: 'Urban hotel properties in major cities',
-    hotelCount: 6,
-    memberCount: 12,
-    currentUserRole: 'member',
-    createdAt: '2026-02-10',
-  },
-  {
-    id: 4,
-    name: 'Mountain Retreats',
-    description: 'Hill country and mountain resort properties',
-    hotelCount: 2,
-    memberCount: 4,
-    currentUserRole: 'owner',
-    createdAt: '2026-03-01',
-  },
-];
+const API = 'http://localhost:8001';
+
+/** Fetch wrapper that automatically attaches the JWT token from localStorage */
+const authFetch = (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('token');
+  return fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers as Record<string, string> || {}),
+    },
+  });
+};
+
 
 const roleBadge: Record<UserRole, { label: string; color: string; icon: React.ReactNode }> = {
   owner: { label: 'Owner', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: <Crown size={12} /> },
-  manager: { label: 'Manager', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: <Shield size={12} /> },
   member: { label: 'Member', color: 'bg-gray-50 text-gray-600 border-gray-200', icon: <Eye size={12} /> },
 };
 
-const CURRENT_USER_IS_OWNER = true;
-
 const GroupsBranchesPage = () => {
   const navigate = useNavigate();
-  const [groups, setGroups] = useState<Group[]>(MOCK_GROUPS);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
-  const handleCreateGroup = (name: string, description: string) => {
-    const newGroup: Group = {
-      id: Date.now(),
-      name,
-      description,
-      hotelCount: 0,
-      memberCount: 1,
-      currentUserRole: 'owner',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setGroups(prev => [newGroup, ...prev]);
-    setIsCreateModalOpen(false);
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  const fetchGroups = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authFetch(`${API}/groups`);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      setGroups(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      setError('Could not load groups. Is the backend running?');
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteGroup = (groupId: number) => {
+  const handleCreateGroup = async (name: string, description: string) => {
+    try {
+      const res = await authFetch(`${API}/groups`, {
+        method: 'POST',
+        body: JSON.stringify({ name, description }),
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      setIsCreateModalOpen(false);
+      fetchGroups();
+    } catch (e) {
+      console.error('Failed to create group:', e);
+      alert('Failed to create group. Make sure backend is running and you are logged in.');
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
     const group = groups.find(g => g.id === groupId);
-    if (group?.currentUserRole !== 'owner') return;
-    if (!confirm(`Delete "${group.name}"? This action cannot be undone.`)) return;
-    setGroups(prev => prev.filter(g => g.id !== groupId));
+    if (!group || group.currentUserRole !== 'owner') return;
+    if (!confirm(`Delete "${group.name}"? This cannot be undone.`)) return;
+    try {
+      const res = await authFetch(`${API}/groups/${groupId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      setGroups(prev => prev.filter(g => g.id !== groupId));
+    } catch (e) {
+      console.error('Failed to delete group:', e);
+      alert('Could not delete group.');
+    }
   };
+
+  const isOwner = (role: UserRole) => role === 'owner';
 
   return (
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Groups & Branches</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Groups &amp; Branches</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Manage your hotel groups — add hotels, invite members, assign roles
           </p>
         </div>
-        {CURRENT_USER_IS_OWNER && (
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <Plus size={18} />
-            Create Group
-          </button>
-        )}
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <Plus size={18} />
+          Create Group
+        </button>
       </header>
 
       {/* Content */}
@@ -157,7 +162,18 @@ const GroupsBranchesPage = () => {
         </div>
 
         {/* Groups Grid */}
-        {groups.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+            <p className="text-gray-500">Loading groups...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <Building2 size={48} className="mx-auto text-red-300 mb-4" />
+            <p className="text-red-500 font-semibold">{error}</p>
+            <button onClick={fetchGroups} className="mt-3 text-blue-600 text-sm underline">Retry</button>
+          </div>
+        ) : groups.length === 0 ? (
           <div className="text-center py-20">
             <Building2 size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
             <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-300">No groups yet</h3>
@@ -166,7 +182,7 @@ const GroupsBranchesPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {groups.map((group) => {
-              const badge = roleBadge[group.currentUserRole];
+              const badge = roleBadge[group.currentUserRole] || roleBadge['member'];
               return (
                 <div
                   key={group.id}
@@ -194,7 +210,7 @@ const GroupsBranchesPage = () => {
                         </div>
                       </div>
 
-                      {group.currentUserRole === 'owner' && (
+                      {isOwner(group.currentUserRole) && (
                         <div className="relative">
                           <button
                             onClick={(e) => {
@@ -224,7 +240,7 @@ const GroupsBranchesPage = () => {
                     </div>
 
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
-                      {group.description}
+                      {group.description || 'No description provided.'}
                     </p>
 
                     {/* Stats */}
@@ -246,7 +262,7 @@ const GroupsBranchesPage = () => {
                       onClick={() => navigate(`/groups/${group.id}`)}
                       className="w-full py-2.5 bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-semibold hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all"
                     >
-                      {group.currentUserRole === 'member' ? 'View Group' : 'Manage Group'}
+                      {isOwner(group.currentUserRole) ? 'Manage Group' : 'View Group'}
                     </button>
                   </div>
                 </div>
