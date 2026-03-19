@@ -19,20 +19,39 @@ class GooglePlaywrightBrowser:
         self.context = None
         self.page = None
 
-    def start(self):
-        logger.info(f"Launching Playwright Chromium with persistent profile (headless={config.headless})")
-        logger.info(f"Profile dir: {PROFILE_DIR}")
+    def start(self, job_id: str = None):
+        # Use a unique subdirectory within the profile for each job if concurrency is needed,
+        # but for persistence we want the same folder. 
+        # To avoid "Access is denied" locks from zombie processes, we'll use the job_id if provided.
+        profile_path = PROFILE_DIR
+        if job_id:
+            profile_path = os.path.join(PROFILE_DIR, f"job_{job_id}")
 
-        os.makedirs(PROFILE_DIR, exist_ok=True)
+        logger.info(f"Launching Playwright Chromium with persistent profile (headless={config.headless})")
+        logger.info(f"Profile dir: {profile_path}")
+
+        os.makedirs(profile_path, exist_ok=True)
 
         self.playwright = sync_playwright().start()
-        self.context = self.playwright.chromium.launch_persistent_context(
-            user_data_dir=PROFILE_DIR,
-            headless=config.headless,
-            args=["--disable-blink-features=AutomationControlled"],
-            viewport={"width": 1920, "height": 1080},
-            locale="en-US",
-        )
+        try:
+            self.context = self.playwright.chromium.launch_persistent_context(
+                user_data_dir=profile_path,
+                headless=config.headless,
+                args=["--disable-blink-features=AutomationControlled"],
+                viewport={"width": 1920, "height": 1080},
+                locale="en-US",
+            )
+        except Exception as e:
+            logger.error(f"Failed to launch browser with profile {profile_path}: {e}")
+            # Fallback to a temporary profile if persistent one is locked
+            logger.warning("Falling back to temporary profile...")
+            self.context = self.playwright.chromium.launch_persistent_context(
+                user_data_dir="", # Temporary
+                headless=config.headless,
+                args=["--disable-blink-features=AutomationControlled"],
+                viewport={"width": 1920, "height": 1080},
+                locale="en-US",
+            )
         # Use the default page or create one
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         return self.page

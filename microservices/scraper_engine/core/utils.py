@@ -12,8 +12,8 @@ def notify_backend_sync_complete(source_id: str):
         logger.warning("No source_id provided for backend notification.")
         return
 
-    # Endpoint: http://127.0.0.1:8000/source/tasks/{source_id}/sync-complete
-    url = f"{config.backend_url}/source/tasks/{source_id}/sync-complete"
+    # Endpoint: http://127.0.0.1:8000/api/source/tasks/{source_id}/sync-complete
+    url = f"{config.backend_url}/api/source/tasks/{source_id}/sync-complete"
     
     logger.info(f"Notifying backend of sync completion for source {source_id} at {url}")
     

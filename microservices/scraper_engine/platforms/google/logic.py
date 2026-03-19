@@ -92,6 +92,29 @@ def sign_in_google(page) -> bool:
         page.locator("#passwordNext").click()
         time.sleep(6)
 
+        # Check for "Sign in faster" (passkey enrollment) speedbump
+        if "passkeyenrollment" in page.url or "speedbump/passkey" in page.url:
+            logger.info("Detected 'Sign in faster' speedbump. Clicking 'Not now'...")
+            try:
+                # Try multiple locators for "Not now"
+                not_now_btn = page.locator('button:has-text("Not now"), [aria-label="Not now"]').first
+                if not_now_btn.count() > 0:
+                    not_now_btn.click()
+                    time.sleep(5)
+            except Exception as e:
+                logger.warning(f"Could not click 'Not now' on speedbump: {e}")
+
+        # Check for other common speedbumps (e.g., recovery email)
+        if "recovery" in page.url or "confirm" in page.url:
+             try:
+                confirm_btn = page.locator('button:has-text("Confirm"), button:has-text("Next")').first
+                if confirm_btn.count() > 0:
+                    logger.info("Detected recovery/confirm speedbump. Clicking confirm...")
+                    confirm_btn.click()
+                    time.sleep(5)
+             except Exception:
+                 pass
+
         # Check result
         result_url = page.url
         if "challenge" in result_url or "signin" in result_url:
@@ -113,12 +136,44 @@ def sign_in_google(page) -> bool:
         return False
 
 
+def handle_google_speedbumps(page):
+    """Detects and bypasses Google speedbumps like 'Sign in faster' or 'Protect your account'."""
+    try:
+        # Check if we are stuck on a Google Accounts URL instead of Maps
+        if "accounts.google.com" in page.url:
+            if "passkeyenrollment" in page.url or "speedbump" in page.url:
+                logger.info("Detected 'Sign in faster' speedbump. Clicking 'Not now'...")
+                not_now_btn = page.locator('button:has-text("Not now"), [aria-label="Not now"]').first
+                if not_now_btn.count() > 0:
+                    not_now_btn.click()
+                    time.sleep(5)
+                    return True
+            
+            if "recovery" in page.url or "confirm" in page.url:
+                logger.info("Detected recovery/confirm speedbump. Clicking 'Confirm'...")
+                confirm_btn = page.locator('button:has-text("Confirm"), button:has-text("Next"), button:has-text("Continue")').first
+                if confirm_btn.count() > 0:
+                    confirm_btn.click()
+                    time.sleep(5)
+                    return True
+    except Exception as e:
+        logger.warning(f"Error handling speedbumps: {e}")
+    return False
+
+
 def click_reviews_tab(page):
     """Clicks the 'Reviews' tab on the Google Maps place page. Uses multiple strategies."""
     
-    # Strategy 1: Playwright locator
+    # Strategy 0: Check if speedbumps are blocking us
+    handle_google_speedbumps(page)
+
+    # Strategy 1: Playwright locator (text based)
     try:
-        reviews_tab = page.locator("button[role='tab']").filter(has_text="Reviews").first
+        # Check for buttons OR links with "Reviews" text
+        reviews_tab = page.locator("button, a").filter(has_text=re.compile(r"^Reviews$", re.I)).first
+        if reviews_tab.count() == 0:
+             reviews_tab = page.locator("button, a").filter(has_text=re.compile(r"Reviews", re.I)).first
+        
         if reviews_tab.count() > 0:
             logger.info("Strategy 1: Clicking 'Reviews' tab via Playwright locator.")
             reviews_tab.click()
@@ -135,38 +190,53 @@ def click_reviews_tab(page):
 
     # Strategy 2: JavaScript click on matching tab
     try:
-        logger.info("Strategy 2: Using JavaScript to click Reviews tab.")
-        page.evaluate("""
+        logger.info("Strategy 2: Searching all buttons/links for 'Reviews' text via JS.")
+        found = page.evaluate("""
             (() => {
-                const tabs = document.querySelectorAll('button[role="tab"]');
-                for (const tab of tabs) {
-                    if (tab.innerText && tab.innerText.includes('Reviews')) {
-                        tab.click();
+                const els = document.querySelectorAll('button, a, div[role="button"]');
+                for (const el of els) {
+                    const text = el.innerText || '';
+                    if (/^Reviews$/i.test(text.trim()) || (text.includes('Reviews') && text.length < 20)) {
+                        el.click();
                         return true;
                     }
                 }
                 return false;
             })()
         """)
-        time.sleep(5)
-        
-        card_count = page.locator(google_selectors.review_card).count()
-        if card_count > 0:
-            logger.info(f"Strategy 2 succeeded. {card_count} review cards found.")
-            return
-        logger.warning("Strategy 2 clicked but no review cards appeared.")
+        if found:
+            time.sleep(5)
+            card_count = page.locator(google_selectors.review_card).count()
+            if card_count > 0:
+                logger.info(f"Strategy 2 succeeded. {card_count} review cards found.")
+                return
+        logger.warning("Strategy 2 failed or no cards found.")
     except Exception as e:
         logger.warning(f"Strategy 2 failed: {e}")
 
+    # Strategy 2.5: Click the "123 reviews" link/text (often near rating)
+    try:
+        logger.info("Strategy 2.5: Clicking review count text (e.g. '152 reviews').")
+        review_text_link = page.locator('button[aria-label*="reviews"], span:has-text("reviews")').first
+        if review_text_link.count() > 0:
+            review_text_link.click()
+            time.sleep(4)
+            card_count = page.locator(google_selectors.review_card).count()
+            if card_count > 0:
+                logger.info(f"Strategy 2.5 succeeded via clicking review count text.")
+                return
+    except Exception:
+        pass
+
     # Strategy 3: click any aria-label containing "review"
     try:
-        logger.info("Strategy 3: Trying aria-label based selector.")
+        logger.info("Strategy 3: Trying aria-label based selector via JS.")
         page.evaluate("""
             (() => {
-                const btns = document.querySelectorAll('button[aria-label]');
+                const btns = document.querySelectorAll('button[aria-label], a[aria-label]');
                 for (const b of btns) {
                     const label = b.getAttribute('aria-label') || '';
-                    if (label.toLowerCase().includes('review')) {
+                    if (label.toLowerCase().includes('review') && !label.toLowerCase().includes('write')) {
                         b.click();
                         return true;
                     }
@@ -189,42 +259,35 @@ def click_reviews_tab(page):
         logger.info("Strategy 4: Not signed in. Attempting automatic Google sign-in...")
         if sign_in_google(page):
             logger.info("Sign-in complete. Retrying Reviews tab click strategies...")
-            # Retry Strategy 1 after sign-in
+            # Recursively call click_reviews_tab ONCE after sign-in
+            # (using a simple flag to avoid infinite recursion would be better, but for now we just try direct)
             try:
-                reviews_tab = page.locator("button[role='tab']").filter(has_text="Reviews").first
-                if reviews_tab.count() > 0:
-                    reviews_tab.click()
-                    time.sleep(4)
-                    card_count = page.locator(google_selectors.review_card).count()
-                    if card_count > 0:
-                        logger.info(f"Post-signin: Reviews tab clicked. {card_count} cards found.")
-                        return
-            except Exception as e:
-                logger.warning(f"Post-signin Strategy 1 failed: {e}")
-
-            # Retry Strategy 2 after sign-in
-            try:
-                page.evaluate("""
-                    (() => {
-                        const tabs = document.querySelectorAll('button[role="tab"]');
-                        for (const tab of tabs) {
-                            if (tab.innerText && tab.innerText.includes('Reviews')) {
-                                tab.click();
-                                return true;
-                            }
-                        }
-                        return false;
-                    })()
-                """)
+                page.evaluate("document.querySelectorAll('button').forEach(b => { if(b.innerText.includes('Reviews')) b.click() })")
                 time.sleep(5)
-                card_count = page.locator(google_selectors.review_card).count()
-                if card_count > 0:
-                    logger.info(f"Post-signin Strategy 2 succeeded. {card_count} review cards found.")
+                if page.locator(google_selectors.review_card).count() > 0:
                     return
-            except Exception as e:
-                logger.warning(f"Post-signin Strategy 2 failed: {e}")
+            except Exception: pass
     else:
         logger.info("User IS signed in, but reviews still not loading.")
+
+    # Strategy 5: "Force" Reviews via URL modification if possible
+    # Google Maps URL pattern for reviews list usually includes !9m1!1b1
+    current_url = page.url
+    if "!9m1!1b1" not in current_url and "/maps/place/" in current_url:
+        logger.info("Strategy 5: Attempting to force Reviews view via URL suffix.")
+        force_url = current_url
+        if "?" in force_url:
+            force_url = force_url.replace("?", "/data=!9m1!1b1?")
+        else:
+            force_url += "/data=!9m1!1b1"
+        try:
+            page.goto(force_url, wait_until="domcontentloaded")
+            time.sleep(6)
+            if page.locator(google_selectors.review_card).count() > 0:
+                logger.info("Strategy 5: Force URL success.")
+                return
+        except Exception as e:
+            logger.warning(f"Strategy 5 failed: {e}")
 
     # Final wait: give Google Maps extra time to render
     try:
@@ -372,7 +435,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
     init_db()
 
     browser_controller = GooglePlaywrightBrowser()
-    page = browser_controller.start()
+    page = browser_controller.start(job_id=job_id)
 
     audit_logger.info(
         category=u'SCRAPE',

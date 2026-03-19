@@ -57,6 +57,18 @@ class ScrapePool:
         job_manager.update_job(job_id, status=JobStatus.PENDING, progress="Queued — waiting for available slot...")
 
         def _wrapped():
+            import asyncio
+            # Playwright Sync API detects the main thread's loop even in child threads
+            # in some environments. We must ensure no loop is active in this thread.
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If somehow a loop is running here, we clear it for the sync API
+                    asyncio.set_event_loop(asyncio.new_event_loop())
+            except RuntimeError:
+                # No loop in this thread, which is what we want
+                pass
+
             try:
                 job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Scraper starting...")
                 result = fn(*args, **kwargs)

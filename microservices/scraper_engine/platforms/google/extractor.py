@@ -97,7 +97,7 @@ class GoogleExtractor:
             try:
                 reply_container = review.locator(config.reply_container)
                 if reply_container.count() > 0:
-                    reply_text_node = reply_container.locator(".wiI7pd").first
+                    reply_text_node = reply_container.locator(config.review_text).first
                     reply = reply_text_node.text_content(timeout=1000).strip() if reply_text_node.count() > 0 else ""
                 else:
                     reply = ""

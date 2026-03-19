@@ -63,7 +63,7 @@ app.include_router(competitors_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(groups_router, prefix="/api")
-app.include_router(source_router)
+app.include_router(source_router, prefix="/api")
 
 # ── Dev server ──────────────────────────────────────────────────────
 
