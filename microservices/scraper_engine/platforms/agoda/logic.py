@@ -10,6 +10,7 @@ from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from platforms.agoda.config import agoda_selectors
 from core.audit import audit_logger
+from core.utils import notify_backend_sync_complete
 
 logger = setup_logger("agoda_logic")
 
@@ -83,10 +84,10 @@ def parse_pages(pages_str: str):
     except ValueError:
         return 1, 1
 
-def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str = None):
+def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str = None, source_id: str = None):
     config.headless = headless
         
-    logger.info(f"Starting API scraper for URL: {url} (Headless: {headless}, Pages: {pages})")
+    logger.info(f"Starting API scraper for URL: {url} (Headless: {headless}, Pages: {pages}, source_id: {source_id})")
 
     if job_id:
         job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
@@ -100,14 +101,13 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
     audit_logger.info(
         category=u'SCRAPE',
         action=u'SCRAPE_START',
-        target_type=u'ORGANIZATION_SOURCE',
-        target_id=url,
-        details={"platform": "agoda", "pages": pages, "headless": headless, "job_id": job_id}
+        target_type=u'SOURCE',
+        target_id=str(source_id),
+        details={"platform": "agoda", "pages": pages, "headless": headless, "job_id": job_id, "url": url}
     )
     
     all_reviews = []
     cumulative_reviews = []
-    org_name = url.split("/")[-2] if "/" in url else "agoda_hotel"
     
     try:
         page.goto(url)
@@ -215,7 +215,7 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
                 all_reviews = all_reviews[batch_count * 20:]
                 
                 logger.info(f"Batch threshold reached. Saving {len(to_save)} reviews to database.")
-                save_reviews_to_db(to_save, org_name, url)
+                save_reviews_to_db(to_save, source_id)
             
             if current_page < end_page:
                 # Try to click next
@@ -238,11 +238,11 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
         # Final Storage logic
         if all_reviews:
             logger.info(f"Saving final batch of {len(all_reviews)} reviews to database.")
-            save_reviews_to_db(all_reviews, org_name, url)
+            save_reviews_to_db(all_reviews, source_id)
             
         if cumulative_reviews:
             logger.info(f"Total reviews extracted: {len(cumulative_reviews)}. Saving full backup to JSON.")
-            save_to_json(cumulative_reviews, org_name)
+            save_to_json(cumulative_reviews, str(source_id))
             
             if job_id:
                 job_manager.update_job(
@@ -256,16 +256,23 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
             audit_logger.info(
                 category=u'SCRAPE',
                 action=u'SCRAPE_COMPLETE',
-                target_type=u'ORGANIZATION_SOURCE',
-                target_id=url,
+                target_type=u'SOURCE',
+                target_id=str(source_id),
                 details={"reviews_saved": len(cumulative_reviews), "job_id": job_id}
             )
 
-            return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "hotel": org_name}
+            # Notify backend of completion
+            notify_backend_sync_complete(str(source_id))
+
+            return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
             logger.warning("No new reviews were extracted.")
             if job_id:
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="Scrape concluded without detecting new reviews.", reviews=0)
+            
+            # Notify backend even if no new reviews were found (the task finished correctly)
+            notify_backend_sync_complete(str(source_id))
+            
             return {"status": "warning", "message": "No new reviews found.", "count": 0, "data": []}
             
     except Exception as e:
@@ -276,9 +283,9 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
         audit_logger.error(
             category=u'SCRAPE',
             action=u'SCRAPE_FAILED',
-            target_type=u'ORGANIZATION_SOURCE',
-            target_id=url,
-            details={"error": str(e), "job_id": job_id},
+            target_type=u'SOURCE',
+            target_id=str(source_id),
+            details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
         return {"status": "error", "message": str(e), "count": 0, "data": []}

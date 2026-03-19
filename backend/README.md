@@ -59,7 +59,7 @@ backend/app/
     ```bash
     # Create & activate venv
     python -m venv venv
-    .\venv\Scripts\activate  # Windows
+    venv\Scripts\activate  # Windows
     
     # Install dependencies
     pip install -r requirements.txt

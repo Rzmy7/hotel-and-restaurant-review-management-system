@@ -1,4 +1,13 @@
-"""System monitoring endpoints — health, jobs, pool status, metrics."""
+"""
+System Monitoring Endpoints
+===========================
+GET  /api/system/health   — service health + DB connection + pool info
+GET  /api/system/jobs     — active scrape jobs
+GET  /api/system/jobs/all — all jobs (incl. completed/failed)
+GET  /api/system/pool     — thread pool stats
+PUT  /api/system/pool     — resize the thread pool at runtime
+GET  /api/system/metrics  — python/OS/CPU info
+"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import time
@@ -11,10 +20,12 @@ from sqlalchemy import text
 
 router = APIRouter(prefix="/system", tags=["System Monitoring"])
 
+# Track application start time for uptime calculation
 START_TIME = time.time()
 
 
 class PoolConfigRequest(BaseModel):
+    """Request body for resizing the scrape thread pool."""
     max_workers: int
 
 

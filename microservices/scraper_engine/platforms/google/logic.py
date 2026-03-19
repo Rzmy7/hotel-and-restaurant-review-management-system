@@ -12,6 +12,7 @@ from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from platforms.google.config import google_selectors
 from core.audit import audit_logger
+from core.utils import notify_backend_sync_complete
 
 load_dotenv()
 logger = setup_logger("google_logic")
@@ -352,7 +353,7 @@ def scroll_reviews(page, target_count: int, max_scrolls: int = 500, job_id: str 
     return final_count
 
 
-def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str = None):
+def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str = None, source_id: str = None):
     """
     Main orchestrator for Google Maps review scraping.
     Since Google Maps uses infinite scroll (not pages), the 'pages' param
@@ -362,7 +363,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
     """
     config.headless = headless
     
-    logger.info(f"Starting Google Reviews scraper for URL: {url} (Headless: {headless}, Target: {pages})")
+    logger.info(f"Starting Google Reviews scraper for URL: {url} (Headless: {headless}, Target: {pages}, source_id: {source_id})")
 
     if job_id:
         job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
@@ -376,14 +377,13 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
     audit_logger.info(
         category=u'SCRAPE',
         action=u'SCRAPE_START',
-        target_type=u'ORGANIZATION_SOURCE',
-        target_id=url,
-        details={"platform": "google", "target": pages, "headless": headless, "job_id": job_id}
+        target_type=u'SOURCE',
+        target_id=str(source_id),
+        details={"platform": "google", "target": pages, "headless": headless, "job_id": job_id, "url": url}
     )
 
     all_reviews = []
     seen_ids = set()
-    org_name = "google_place"
     
     try:
         # Navigate to the Google Maps URL
@@ -397,12 +397,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
         # Dismiss consent dialog if present
         dismiss_consent(page)
 
-        # Extract org name from the page title
-        try:
-            title = page.title()
-            org_name = title.split(" - ")[0].strip().replace(" ", "_").lower() if title else "google_place"
-        except Exception:
-            pass
+
 
         # Click the Reviews tab
         click_reviews_tab(page)
@@ -458,7 +453,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
             for i in range(0, len(all_reviews), batch_size):
                 batch = all_reviews[i:i + batch_size]
                 logger.info(f"Saving batch {i // batch_size + 1} ({len(batch)} reviews) to database.")
-                save_reviews_to_db(batch, org_name, url)
+                save_reviews_to_db(batch, source_id)
                 
                 if job_id:
                     job_manager.update_job(
@@ -470,7 +465,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
                     )
 
             # Save JSON backup
-            save_to_json(all_reviews, org_name)
+            save_to_json(all_reviews, str(source_id))
 
             if job_id:
                 job_manager.update_job(
@@ -484,16 +479,23 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
             audit_logger.info(
                 category=u'SCRAPE',
                 action=u'SCRAPE_COMPLETE',
-                target_type=u'ORGANIZATION_SOURCE',
-                target_id=url,
+                target_type=u'SOURCE',
+                target_id=str(source_id),
                 details={"reviews_saved": len(all_reviews), "job_id": job_id}
             )
 
-            return {"status": "success", "count": f"Stored {len(all_reviews)} reviews in DB & JSON", "place": org_name}
+            # Notify backend of completion
+            notify_backend_sync_complete(str(source_id))
+
+            return {"status": "success", "count": f"Stored {len(all_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
             logger.warning("No reviews were extracted.")
             if job_id:
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="No reviews found.", reviews=0)
+            
+            # Notify backend even if no reviews were found
+            notify_backend_sync_complete(str(source_id))
+            
             return {"status": "warning", "message": "No reviews found.", "count": 0}
 
     except Exception as e:
@@ -504,9 +506,9 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
         audit_logger.error(
             category=u'SCRAPE',
             action=u'SCRAPE_FAILED',
-            target_type=u'ORGANIZATION_SOURCE',
-            target_id=url,
-            details={"error": str(e), "job_id": job_id},
+            target_type=u'SOURCE',
+            target_id=str(source_id),
+            details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
         return {"status": "error", "message": str(e), "count": 0}

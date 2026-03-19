@@ -1,130 +1,86 @@
 """
-Database Administration Endpoints — operates on the unified schema.
+Database Admin Endpoints
+========================
+Utility endpoints for DB inspection and maintenance.
+GET  /api/db/stats     — table row counts
+DELETE /api/db/reviews/{platform}  — purge all reviews for a platform
 """
 from fastapi import APIRouter, HTTPException
 from core.database import get_session
-from sqlalchemy import text
+from core.models import Source, Review, ReviewMedia
 from core.config import setup_logger
-from core.models import (
-    Organization, Source, OrganizationSource,
-    Review, AgodaReviewDetail, BookingReviewDetail, GoogleReviewDetail,
-    ReviewMedia
-)
+from sqlalchemy import func as sa_func
 
-logger = setup_logger("db_admin")
-router = APIRouter(prefix="/db", tags=["Database Administration"])
+logger = setup_logger("db_admin_api")
+router = APIRouter(prefix="/db", tags=["Database Admin"])
 
 
 @router.get("/stats")
 def get_db_stats():
-    """Aggregates row counts across the unified schema."""
+    """Returns row counts for all major tables."""
     session = get_session()
     try:
-        total_orgs = session.query(Organization).count()
+        total_sources = session.query(Source).count()
         total_reviews = session.query(Review).count()
         total_media = session.query(ReviewMedia).count()
 
         # Per-platform breakdown
-        platforms = session.query(Source).all()
-        platform_stats = {}
-        for src in platforms:
-            review_count = session.query(Review).join(OrganizationSource).filter(
-                OrganizationSource.source_id == src.source_id
-            ).count()
-            org_count = session.query(OrganizationSource).filter_by(
-                source_id=src.source_id
-            ).count()
-            platform_stats[src.platform_name.lower()] = {
-                "organizations": org_count,
+        platforms = (
+            session.query(Source.platform_name, sa_func.count(Source.source_id))
+            .group_by(Source.platform_name)
+            .all()
+        )
+        platform_breakdown = {}
+        for platform, source_count in platforms:
+            review_count = (
+                session.query(Review)
+                .join(Source, Review.source_id == Source.source_id)
+                .filter(Source.platform_name == platform)
+                .count()
+            )
+            platform_breakdown[platform] = {
+                "sources": source_count,
                 "reviews": review_count
             }
 
         return {
-            "total_organizations": total_orgs,
+            "total_sources": total_sources,
             "total_reviews": total_reviews,
             "total_media": total_media,
-            "platforms": platform_stats
+            "by_platform": platform_breakdown
         }
     except Exception as e:
-        logger.error(f"Error fetching DB stats: {e}")
+        logger.error(f"Stats query failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
 
 
 @router.delete("/reviews/{platform}")
-def delete_reviews(platform: str):
-    """Purges all reviews for a given platform."""
+def purge_reviews_by_platform(platform: str):
+    """
+    Purge all reviews for a given platform name.
+    This cascades through review_media and platform detail tables.
+    """
     session = get_session()
     try:
-        source = session.query(Source).filter(
-            Source.platform_name.ilike(platform)
-        ).first()
-        if not source:
-            raise HTTPException(status_code=400, detail=f"Invalid platform: {platform}. Use 'Agoda', 'Booking', or 'Google'.")
+        sources = session.query(Source).filter_by(platform_name=platform.lower()).all()
+        if not sources:
+            raise HTTPException(status_code=404, detail=f"No sources found for platform: {platform}")
 
-        # Get all org_source_ids for this platform
-        os_ids = [os.organization_source_id for os in
-                  session.query(OrganizationSource).filter_by(source_id=source.source_id).all()]
-
-        if not os_ids:
-            return {"status": "success", "deleted_reviews": 0, "platform": platform}
-
-        count = session.query(Review).filter(
-            Review.organization_source_id.in_(os_ids)
-        ).delete(synchronize_session='fetch')
+        total_deleted = 0
+        for source in sources:
+            count = session.query(Review).filter_by(source_id=source.source_id).delete()
+            total_deleted += count
 
         session.commit()
-        logger.info(f"Purged {count} reviews from {platform}")
-        return {"status": "success", "deleted_reviews": count, "platform": platform}
+        logger.info(f"Purged {total_deleted} reviews for platform '{platform}'")
+        return {"status": "purged", "platform": platform, "reviews_deleted": total_deleted}
     except HTTPException:
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Review Deletion Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
-
-
-@router.delete("/organizations/{platform}")
-def delete_organizations_by_platform(platform: str):
-    """Deletes all organizations linked to a given platform (and cascade reviews)."""
-    session = get_session()
-    try:
-        source = session.query(Source).filter(
-            Source.platform_name.ilike(platform)
-        ).first()
-        if not source:
-            raise HTTPException(status_code=400, detail=f"Invalid platform: {platform}")
-
-        # Delete OrganizationSource links for this platform
-        count = session.query(OrganizationSource).filter_by(
-            source_id=source.source_id
-        ).delete(synchronize_session='fetch')
-
-        session.commit()
-        logger.info(f"Purged {count} organization-source links from {platform}")
-        return {"status": "success", "deleted_links": count, "platform": platform}
-    except HTTPException:
-        raise
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
-
-
-@router.post("/vacuum")
-def vacuum_database():
-    """Performs manual storage maintenance via DBCC SHRINKDATABASE."""
-    session = get_session()
-    try:
-        session.execute(text("DBCC SHRINKDATABASE(0)"))
-        session.commit()
-        return {"status": "success", "message": "Database optimized and shrunk."}
-    except Exception as e:
-        session.rollback()
+        logger.error(f"Purge failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()

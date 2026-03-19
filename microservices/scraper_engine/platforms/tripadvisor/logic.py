@@ -15,6 +15,7 @@ from core.database import init_db
 from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from core.audit import audit_logger
+from core.utils import notify_backend_sync_complete
 
 logger = setup_logger("tripadvisor_logic")
 
@@ -83,7 +84,7 @@ def parse_pages(pages_str: str) -> tuple[int, int | None]:
     return 0, int(pages_str)
 
 
-def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id: str = None):
+def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id: str = None, source_id: str = None):
     """
     Main entry point for TripAdvisor scraping.
 
@@ -92,9 +93,10 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         headless: Run browser headless
         pages: "*" for all, "5" for first 5 pages, "2-7" for pages 2 to 7
         job_id: Job tracking ID from job_manager
+        source_id: Source ID provided by the main backend
     """
     config.headless = headless
-    logger.info(f"Starting TripAdvisor scraper: {url} (headless={headless}, pages={pages})")
+    logger.info(f"Starting TripAdvisor scraper: {url} (headless={headless}, pages={pages}, source_id={source_id})")
 
     if job_id:
         job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing...")
@@ -107,14 +109,13 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
     audit_logger.info(
         category="SCRAPE",
         action="SCRAPE_START",
-        target_type="ORGANIZATION_SOURCE",
-        target_id=url,
-        details={"platform": "tripadvisor", "pages": pages, "headless": headless, "job_id": job_id}
+        target_type="SOURCE",
+        target_id=str(source_id),
+        details={"platform": "tripadvisor", "pages": pages, "headless": headless, "job_id": job_id, "url": url}
     )
 
     all_reviews = []
     seen_ids = set()
-    org_name = "tripadvisor_place"
 
     try:
         logger.info(f"Navigating to {url}")
@@ -125,12 +126,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         dismiss_cookie_banner(page)
         human_delay(1, 2)
 
-        # Extract org name from page title
-        try:
-            title = page.title()
-            org_name = title.split(" - ")[0].strip() if title else "tripadvisor_place"
-        except Exception:
-            pass
+
 
         extractor = TripAdvisorExtractor(page)
 
@@ -218,7 +214,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             # Save in batches of 50
             if len(all_reviews) > 0 and len(all_reviews) % 50 == 0:
                 logger.info(f"Saving batch of {len(all_reviews)} reviews...")
-                save_reviews_to_db(all_reviews[-50:], org_name, url)
+                save_reviews_to_db(all_reviews[-50:], source_id)
 
             # Pagination check
             if effective_end and current_offset + REVIEWS_PER_PAGE >= effective_end:
@@ -241,8 +237,8 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         # Final save
         if all_reviews:
             logger.info(f"Saving {len(all_reviews)} total reviews to database.")
-            save_reviews_to_db(all_reviews, org_name, url)
-            save_to_json(all_reviews, org_name.replace(" ", "_").lower())
+            save_reviews_to_db(all_reviews, source_id)
+            save_to_json(all_reviews, str(source_id))
 
             if job_id:
                 job_manager.update_job(
@@ -257,15 +253,23 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             audit_logger.info(
                 category="SCRAPE",
                 action="SCRAPE_COMPLETE",
-                target_type="ORGANIZATION_SOURCE",
-                target_id=url,
+                target_type="SOURCE",
+                target_id=str(source_id),
                 details={"reviews_saved": len(all_reviews), "job_id": job_id}
             )
-            return {"status": "success", "count": len(all_reviews), "hotel": org_name}
+            
+            # Notify backend of completion
+            notify_backend_sync_complete(str(source_id))
+
+            return {"status": "success", "count": len(all_reviews), "source_id": source_id}
         else:
             logger.warning("No reviews found.")
             if job_id:
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="No reviews found.", reviews=0)
+            
+            # Notify backend even if no reviews were found
+            notify_backend_sync_complete(str(source_id))
+            
             return {"status": "warning", "message": "No reviews found.", "count": 0}
 
     except Exception as e:
@@ -275,9 +279,9 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         audit_logger.error(
             category="SCRAPE",
             action="SCRAPE_FAILED",
-            target_type="ORGANIZATION_SOURCE",
-            target_id=url,
-            details={"error": str(e), "job_id": job_id},
+            target_type="SOURCE",
+            target_id=str(source_id),
+            details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
         return {"status": "error", "message": str(e), "count": 0}

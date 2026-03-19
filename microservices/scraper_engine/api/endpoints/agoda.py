@@ -1,79 +1,83 @@
-"""Agoda scrape + review retrieval endpoints — reads from unified schema."""
+"""
+Agoda Scrape Endpoint
+=====================
+POST /api/agoda/scrape — triggers playwright scraper via the thread pool.
+Body: { source_id, source_url, headless?, pages? }
+"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from platforms.agoda.logic import scrape_agoda
+from typing import Optional
 from core.database import get_session
+from core.models import Source
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
 from core.config import setup_logger
-from core.models import Review, OrganizationSource, Source, AgodaReviewDetail, ReviewMedia
-from sqlalchemy.orm import joinedload
+from platforms.agoda.logic import scrape_agoda
 
 logger = setup_logger("agoda_api")
-router = APIRouter(prefix="/agoda", tags=["Agoda Reviews"])
+router = APIRouter(prefix="/agoda", tags=["Agoda"])
 
+
+# ── Request Schema ──
 class AgodaScrapeRequest(BaseModel):
-    url: str
-    headless: bool = True
-    pages: str = "1"
+    """Payload for triggering an Agoda scrape job."""
+    source_id: str                  # Provided by the main backend
+    source_url: str                 # Agoda hotel URL
+    headless: Optional[bool] = True # Run browser headless?
+    pages: Optional[str] = "1"     # Number of pages: "1", "5", "1-10", "*"
+
 
 @router.post("/scrape")
-def trigger_agoda_scrape(request: AgodaScrapeRequest):
-    """Triggers the Playwright scraper via the thread pool (max 7 concurrent)."""
-    logger.info(f"API Request to scrape {request.url} (Headless: {request.headless}, Pages: {request.pages})")
-    try:
-        job_id = job_manager.create_job(platform="agoda", url=request.url)
-        scrape_pool.submit(job_id, scrape_agoda, request.url, request.headless, request.pages, job_id)
-        pool = scrape_pool.get_pool_status()
-        return {"status": "submitted", "job_id": job_id, "pool": pool, "message": "Job submitted to scrape pool."}
-    except Exception as e:
-        logger.error(f"Agoda API Exception: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+def trigger_agoda_scrape(body: AgodaScrapeRequest):
+    """
+    Upserts the source in the database and submits a scrape job to the
+    thread pool. Returns the job_id for real-time monitoring.
+    """
+    logger.info(f"Scrape request: source_id={body.source_id}, url={body.source_url}")
 
-@router.get("/reviews")
-def get_agoda_reviews(hotel_url: str = None, limit: int = 100, skip: int = 0):
-    """Retrieve stored Agoda reviews from the unified database."""
+    # Upsert the source record
     session = get_session()
     try:
-        source = session.query(Source).filter_by(platform_name="Agoda").first()
+        source = session.query(Source).filter_by(source_id=body.source_id).first()
         if not source:
-            return {"total_returned": 0, "data": []}
-
-        query = session.query(Review).join(OrganizationSource).filter(
-            OrganizationSource.source_id == source.source_id
-        ).options(
-            joinedload(Review.agoda_detail),
-            joinedload(Review.media)
-        )
-
-        if hotel_url:
-            query = query.filter(OrganizationSource.external_url == hotel_url)
-
-        reviews = query.order_by(Review.review_id).offset(skip).limit(limit).all()
-
-        result = []
-        for r in reviews:
-            entry = {
-                "review_id": r.review_id,
-                "external_id": r.external_review_id,
-                "author": r.author,
-                "rating": float(r.rating) if r.rating else None,
-                "title": r.review_title,
-                "text": r.review_text,
-                "date": r.review_date,
-                "reply": r.reply_text,
-                "media": [{"url": m.media_url, "type": m.media_type} for m in r.media] if r.media else [],
-            }
-            if r.agoda_detail:
-                entry["reviewer_nationality"] = r.agoda_detail.reviewer_nationality
-                entry["stayed_dates"] = r.agoda_detail.stayed_dates
-                entry["traveler_type"] = r.agoda_detail.traveler_type
-                entry["room_type"] = r.agoda_detail.room_type
-            result.append(entry)
-
-        return {"total_returned": len(result), "data": result}
+            # Check if source_url already exists with a different ID
+            conflict = session.query(Source).filter_by(source_url=body.source_url).first()
+            if conflict:
+                logger.warning(f"URL conflict: {body.source_url} already exists with ID {conflict.source_id}. Replacing it.")
+                session.delete(conflict)
+                session.commit() # Commit delete before inserting new one to avoid IntegrityError
+            
+            source = Source(
+                source_id=body.source_id,
+                source_url=body.source_url,
+                platform_name="agoda"
+            )
+            session.add(source)
+        else:
+            source.source_url = body.source_url
+        session.commit()
     except Exception as e:
-        logger.error(f"Database query failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        session.rollback()
+        logger.error(f"Source upsert failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Source upsert failed: {str(e)}")
     finally:
         session.close()
+
+    # Submit the scrape job
+    try:
+        job_id = job_manager.create_job(platform="agoda", url=body.source_url)
+        scrape_pool.submit(
+            job_id, scrape_agoda,
+            body.source_url, body.headless, body.pages, job_id, body.source_id
+        )
+        pool = scrape_pool.get_pool_status()
+        return {
+            "status": "submitted",
+            "job_id": job_id,
+            "source_id": body.source_id,
+            "pool": pool,
+            "message": "Agoda scrape job submitted to pool."
+        }
+    except Exception as e:
+        logger.error(f"Job submission failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

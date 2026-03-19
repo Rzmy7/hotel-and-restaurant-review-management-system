@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string) => {
-        const data = await apiClient.post<any>('/login', { email, password });
+        const data = await apiClient.post<any>('/api/login', { email, password });
         const backendUser = data.user;
 
         const normalizedUser: User = {
@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // SIGNUP
     // ----------------------------------------------------
     const signup = async (name: string, email: string, password: string) => {
-        const payload = await apiClient.post<any>('/signup', { name, email, password });
+        const payload = await apiClient.post<any>('/api/signup', { name, email, password });
 
         if (payload.user) {
             const backendUser = payload.user;
@@ -133,14 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // FORGOT PASSWORD
     // ----------------------------------------------------
     const forgotPassword = async (email: string) => {
-        await apiClient.post<any>('/forgot-password', { email });
+        await apiClient.post<any>('/api/forgot-password', { email });
     };
 
     // ----------------------------------------------------
     // RESET PASSWORD
     // ----------------------------------------------------
     const resetPassword = async (token: string, newPassword: string) => {
-        await apiClient.post<any>(`/reset-password/${token}`, { new_password: newPassword });
+        await apiClient.post<any>(`/api/reset-password/${token}`, { new_password: newPassword });
     };
 
     return (

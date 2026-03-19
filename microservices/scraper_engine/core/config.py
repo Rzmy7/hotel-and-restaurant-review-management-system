@@ -18,6 +18,7 @@ class BaseScraperConfig(BaseModel):
     db_uid: str = ""
     db_pwd: str = ""
     trust_server_certificate: str = "yes"
+    backend_url: str = "http://127.0.0.1:8000"
     
 def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
@@ -40,5 +41,6 @@ config = BaseScraperConfig(
     db_name=os.getenv("DB_NAME", ""),
     db_uid=os.getenv("DB_UID", ""),
     db_pwd=os.getenv("DB_PWD", ""),
-    trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes")
+    trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes"),
+    backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000")
 )

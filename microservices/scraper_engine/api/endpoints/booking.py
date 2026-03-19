@@ -1,83 +1,83 @@
-"""Booking.com scrape + review retrieval endpoints — reads from unified schema."""
+"""
+Booking Scrape Endpoint
+=======================
+POST /api/booking/scrape — triggers playwright scraper via the thread pool.
+Body: { source_id, source_url, headless?, pages? }
+"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from platforms.booking.logic import scrape_booking
+from typing import Optional
 from core.database import get_session
+from core.models import Source
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
 from core.config import setup_logger
-from core.models import Review, OrganizationSource, Source, BookingReviewDetail, ReviewMedia
-from sqlalchemy.orm import joinedload
+from platforms.booking.logic import scrape_booking
 
 logger = setup_logger("booking_api")
-router = APIRouter(prefix="/booking", tags=["Booking.com Reviews"])
+router = APIRouter(prefix="/booking", tags=["Booking"])
 
+
+# ── Request Schema ──
 class BookingScrapeRequest(BaseModel):
-    url: str
-    headless: bool = True
-    pages: str = "1"
+    """Payload for triggering a Booking.com scrape job."""
+    source_id: str
+    source_url: str
+    headless: Optional[bool] = True
+    pages: Optional[str] = "1"
+
 
 @router.post("/scrape")
-def trigger_booking_scrape(request: BookingScrapeRequest):
-    """Triggers the Playwright scraper via the thread pool (max 7 concurrent)."""
-    logger.info(f"API Request to scrape {request.url} (Headless: {request.headless}, Pages: {request.pages})")
-    try:
-        job_id = job_manager.create_job(platform="booking", url=request.url)
-        scrape_pool.submit(job_id, scrape_booking, request.url, request.headless, request.pages, job_id)
-        pool = scrape_pool.get_pool_status()
-        return {"status": "submitted", "job_id": job_id, "pool": pool, "message": "Job submitted to scrape pool."}
-    except Exception as e:
-        logger.error(f"Booking API Exception: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+def trigger_booking_scrape(body: BookingScrapeRequest):
+    """
+    Upserts the source in the database and submits a scrape job to the
+    thread pool. Returns the job_id for real-time monitoring.
+    """
+    logger.info(f"Scrape request: source_id={body.source_id}, url={body.source_url}")
 
-@router.get("/reviews")
-def get_booking_reviews(hotel_url: str = None, limit: int = 100, skip: int = 0):
-    """Retrieve stored Booking.com reviews from the unified database."""
+    # Upsert the source record
     session = get_session()
     try:
-        source = session.query(Source).filter_by(platform_name="Booking").first()
+        source = session.query(Source).filter_by(source_id=body.source_id).first()
         if not source:
-            return {"total_returned": 0, "data": []}
-
-        query = session.query(Review).join(OrganizationSource).filter(
-            OrganizationSource.source_id == source.source_id
-        ).options(
-            joinedload(Review.booking_detail),
-            joinedload(Review.media)
-        )
-
-        if hotel_url:
-            query = query.filter(OrganizationSource.external_url == hotel_url)
-
-        reviews = query.order_by(Review.review_id).offset(skip).limit(limit).all()
-
-        result = []
-        for r in reviews:
-            entry = {
-                "review_id": r.review_id,
-                "external_id": r.external_review_id,
-                "author": r.author,
-                "score": float(r.rating) if r.rating else None,
-                "title": r.review_title,
-                "text": r.review_text,
-                "date": r.review_date,
-                "reply": r.reply_text,
-                "media": [{"url": m.media_url, "type": m.media_type} for m in r.media] if r.media else [],
-            }
-            if r.booking_detail:
-                entry["reviewer_nationality"] = r.booking_detail.reviewer_nationality
-                entry["positive_txt"] = r.booking_detail.positive_txt
-                entry["negative_txt"] = r.booking_detail.negative_txt
-                entry["reviewer_stay_date"] = r.booking_detail.reviewer_stay_date
-                entry["num_of_nights"] = r.booking_detail.num_of_nights
-                entry["traveler_type"] = r.booking_detail.traveler_type
-                entry["room_name"] = r.booking_detail.room_name
-                entry["posted_date"] = r.booking_detail.posted_date
-            result.append(entry)
-
-        return {"total_returned": len(result), "data": result}
+            # Check if source_url already exists with a different ID
+            conflict = session.query(Source).filter_by(source_url=body.source_url).first()
+            if conflict:
+                logger.warning(f"URL conflict: {body.source_url} already exists with ID {conflict.source_id}. Replacing it.")
+                session.delete(conflict)
+                session.commit() # Commit delete before inserting new one to avoid IntegrityError
+            
+            source = Source(
+                source_id=body.source_id,
+                source_url=body.source_url,
+                platform_name="booking"
+            )
+            session.add(source)
+        else:
+            source.source_url = body.source_url
+        session.commit()
     except Exception as e:
-        logger.error(f"Database query failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        session.rollback()
+        logger.error(f"Source upsert failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Source upsert failed: {str(e)}")
     finally:
         session.close()
+
+    # Submit the scrape job
+    try:
+        job_id = job_manager.create_job(platform="booking", url=body.source_url)
+        scrape_pool.submit(
+            job_id, scrape_booking,
+            body.source_url, body.headless, body.pages, job_id, body.source_id
+        )
+        pool = scrape_pool.get_pool_status()
+        return {
+            "status": "submitted",
+            "job_id": job_id,
+            "source_id": body.source_id,
+            "pool": pool,
+            "message": "Booking scrape job submitted to pool."
+        }
+    except Exception as e:
+        logger.error(f"Job submission failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

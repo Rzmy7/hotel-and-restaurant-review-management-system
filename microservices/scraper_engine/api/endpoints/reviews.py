@@ -1,160 +1,167 @@
 """
-Reviews API — Global review queries across all organizations and platforms.
+Centralized Reviews Retrieval Endpoint
+=======================================
+GET /api/reviews/{source_id} — returns all reviews for a source,
+including full platform-specific detail columns and attached media.
 """
 from fastapi import APIRouter, HTTPException
-from typing import Optional
 from core.database import get_session
-from core.config import setup_logger
 from core.models import (
-    Review, OrganizationSource, Source, Organization,
-    AgodaReviewDetail, BookingReviewDetail, GoogleReviewDetail, ReviewMedia
+    Source, Review,
+    AgodaReviewDetail, BookingReviewDetail,
+    GoogleReviewDetail, TripAdvisorReviewDetail,
+    ReviewMedia
 )
+from core.config import setup_logger
 from sqlalchemy.orm import joinedload
 
 logger = setup_logger("reviews_api")
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
-def _serialize_review(r):
-    """Serialize a Review ORM object to dict with subtype details."""
-    entry = {
-        "review_id": r.review_id,
-        "organization_source_id": r.organization_source_id,
-        "platform": r.organization_source.source.platform_name if r.organization_source and r.organization_source.source else None,
-        "organization": r.organization_source.organization.organization_name if r.organization_source and r.organization_source.organization else None,
-        "external_review_id": r.external_review_id,
-        "rating": float(r.rating) if r.rating else None,
-        "author": r.author,
-        "review_text": r.review_text,
-        "review_title": r.review_title,
-        "review_date": r.review_date,
-        "reply_text": r.reply_text,
-        "sentiment_score": r.sentiment_score,
-        "sentiment_label": r.sentiment_label,
-        "media": [{"url": m.media_url, "type": m.media_type} for m in r.media] if r.media else [],
-        "created_at": str(r.created_at) if r.created_at else None
+def _serialize_agoda(detail: AgodaReviewDetail) -> dict:
+    """Convert an Agoda detail row into a JSON-friendly dict."""
+    return {
+        "rating": float(detail.rating) if detail.rating else None,
+        "review_heading": detail.review_heading,
+        "author": detail.author,
+        "review_text": detail.review_text,
+        "review_date": detail.review_date,
+        "reviewer_nationality": detail.reviewer_nationality,
+        "stay_date": detail.stay_date,
+        "num_of_nights": detail.num_of_nights,
+        "traveler_type": detail.traveler_type,
+        "room_type": detail.room_type,
+        "reply": detail.reply,
     }
-    if r.agoda_detail:
-        entry["agoda"] = {
-            "nationality": r.agoda_detail.reviewer_nationality,
-            "stayed_dates": r.agoda_detail.stayed_dates,
-            "traveler_type": r.agoda_detail.traveler_type,
-            "room_type": r.agoda_detail.room_type,
-        }
-    if r.booking_detail:
-        entry["booking"] = {
-            "nationality": r.booking_detail.reviewer_nationality,
-            "positive_txt": r.booking_detail.positive_txt,
-            "negative_txt": r.booking_detail.negative_txt,
-            "stay_date": r.booking_detail.reviewer_stay_date,
-            "num_of_nights": r.booking_detail.num_of_nights,
-            "traveler_type": r.booking_detail.traveler_type,
-            "room_name": r.booking_detail.room_name,
-            "posted_date": r.booking_detail.posted_date,
-        }
-    if r.google_detail:
-        entry["google"] = {
-            "author_badge": r.google_detail.author_badge,
-            "place_url": r.google_detail.place_url,
-        }
-    return entry
 
 
-@router.get("")
-def list_reviews(
-    platform: Optional[str] = None,
-    organization_id: Optional[int] = None,
-    min_rating: Optional[float] = None,
-    max_rating: Optional[float] = None,
-    author: Optional[str] = None,
-    limit: int = 100,
-    skip: int = 0
-):
+def _serialize_booking(detail: BookingReviewDetail) -> dict:
+    """Convert a Booking detail row into a JSON-friendly dict."""
+    return {
+        "rating": float(detail.rating) if detail.rating else None,
+        "review_heading": detail.review_heading,
+        "author": detail.author,
+        "positive_text": detail.positive_text,
+        "negative_text": detail.negative_text,
+        "review_date": detail.review_date,
+        "stay_date": detail.stay_date,
+        "num_of_nights": detail.num_of_nights,
+        "traveler_type": detail.traveler_type,
+        "room_type": detail.room_type,
+        "reviewer_nationality": detail.reviewer_nationality,
+        "reply": detail.reply,
+    }
+
+
+def _serialize_google(detail: GoogleReviewDetail) -> dict:
+    """Convert a Google detail row into a JSON-friendly dict."""
+    return {
+        "rating": float(detail.rating) if detail.rating else None,
+        "author": detail.author,
+        "review_text": detail.review_text,
+        "review_date": detail.review_date,
+        "author_badge": detail.author_badge,
+        "reply": detail.reply,
+    }
+
+
+def _serialize_tripadvisor(detail: TripAdvisorReviewDetail) -> dict:
+    """Convert a TripAdvisor detail row into a JSON-friendly dict."""
+    return {
+        "rating": float(detail.rating) if detail.rating else None,
+        "review_heading": detail.review_heading,
+        "author": detail.author,
+        "review_text": detail.review_text,
+        "review_date": detail.review_date,
+        "reviewer_nationality": detail.reviewer_nationality,
+        "stay_date": detail.stay_date,
+        "traveler_type": detail.traveler_type,
+        "rating_value": float(detail.rating_value) if detail.rating_value else None,
+        "rating_rooms": float(detail.rating_rooms) if detail.rating_rooms else None,
+        "rating_location": float(detail.rating_location) if detail.rating_location else None,
+        "rating_cleanliness": float(detail.rating_cleanliness) if detail.rating_cleanliness else None,
+        "rating_service": float(detail.rating_service) if detail.rating_service else None,
+        "rating_sleep_quality": float(detail.rating_sleep_quality) if detail.rating_sleep_quality else None,
+    }
+
+
+# Map platform names to their serializer + relationship attribute
+_PLATFORM_SERIALIZERS = {
+    "agoda":       ("agoda_detail",       _serialize_agoda),
+    "booking":     ("booking_detail",     _serialize_booking),
+    "google":      ("google_detail",      _serialize_google),
+    "tripadvisor": ("tripadvisor_detail", _serialize_tripadvisor),
+}
+
+
+@router.get("/{source_id}")
+def get_reviews_by_source(source_id: str, limit: int = 100, skip: int = 0):
     """
-    Query reviews globally with optional filters.
-    - platform: 'Agoda', 'Booking', 'Google'
-    - organization_id: filter by specific organization
-    - min_rating / max_rating: rating range
-    - author: partial match on author name
+    Retrieve all reviews for a given source_id.
+    Returns platform-specific details and attached media for each review.
     """
     session = get_session()
     try:
-        query = session.query(Review).join(OrganizationSource).join(Source).join(Organization)
+        # Verify the source exists and determine platform
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found")
 
-        if platform:
-            query = query.filter(Source.platform_name.ilike(platform))
-        if organization_id:
-            query = query.filter(OrganizationSource.organization_id == organization_id)
-        if min_rating is not None:
-            query = query.filter(Review.rating >= min_rating)
-        if max_rating is not None:
-            query = query.filter(Review.rating <= max_rating)
-        if author:
-            query = query.filter(Review.author.ilike(f"%{author}%"))
+        platform = source.platform_name.lower()
+        detail_attr, serializer = _PLATFORM_SERIALIZERS.get(platform, (None, None))
 
-        total = query.count()
-
-        query = query.options(
-            joinedload(Review.media),
-            joinedload(Review.agoda_detail),
-            joinedload(Review.booking_detail),
-            joinedload(Review.google_detail),
-            joinedload(Review.organization_source).joinedload(OrganizationSource.source),
-            joinedload(Review.organization_source).joinedload(OrganizationSource.organization)
+        # Build the query with eager loading
+        query = (
+            session.query(Review)
+            .filter(Review.source_id == source_id)
+            .options(joinedload(Review.media))
         )
 
+        # Eagerly load the correct platform detail relationship
+        if detail_attr:
+            query = query.options(joinedload(getattr(Review, detail_attr)))
+
+        total = session.query(Review).filter(Review.source_id == source_id).count()
         reviews = query.order_by(Review.review_id.desc()).offset(skip).limit(limit).all()
-        results = [_serialize_review(r) for r in reviews]
 
-        return {"total": total, "returned": len(results), "data": results}
-    except Exception as e:
-        logger.error(f"Review query failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
+        results = []
+        for r in reviews:
+            # Get the platform detail object from the review
+            detail_obj = getattr(r, detail_attr, None) if detail_attr else None
 
+            entry = {
+                "review_id": r.review_id,
+                "source_id": r.source_id,
+                "platform": platform,
+                "created_at": str(r.created_at) if r.created_at else None,
+                # Platform-specific detail fields
+                "detail": serializer(detail_obj) if detail_obj and serializer else None,
+                # Attached media
+                "media": [
+                    {
+                        "media_id": m.media_id,
+                        "url": m.media_url,
+                        "thumbnail": m.thumbnail_url,
+                        "type": m.media_type
+                    }
+                    for m in r.media
+                ] if r.media else [],
+            }
+            results.append(entry)
 
-@router.get("/{review_id}")
-def get_review(review_id: int):
-    """Get a single review by ID with full detail."""
-    session = get_session()
-    try:
-        review = session.query(Review).options(
-            joinedload(Review.media),
-            joinedload(Review.agoda_detail),
-            joinedload(Review.booking_detail),
-            joinedload(Review.google_detail),
-            joinedload(Review.organization_source).joinedload(OrganizationSource.source),
-            joinedload(Review.organization_source).joinedload(OrganizationSource.organization)
-        ).filter_by(review_id=review_id).first()
-
-        if not review:
-            raise HTTPException(status_code=404, detail="Review not found")
-
-        return _serialize_review(review)
+        return {
+            "source_id": source_id,
+            "platform": platform,
+            "source_url": source.source_url,
+            "total": total,
+            "returned": len(results),
+            "data": results
+        }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
-
-
-@router.delete("/{review_id}")
-def delete_review(review_id: int):
-    """Delete a single review by ID (cascade deletes media and subtypes)."""
-    session = get_session()
-    try:
-        review = session.query(Review).filter_by(review_id=review_id).first()
-        if not review:
-            raise HTTPException(status_code=404, detail="Review not found")
-        session.delete(review)
-        session.commit()
-        return {"status": "deleted", "review_id": review_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        session.rollback()
+        logger.error(f"Failed to fetch reviews for source {source_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()

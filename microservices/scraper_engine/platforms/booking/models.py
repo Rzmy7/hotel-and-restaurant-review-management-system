@@ -1,93 +1,72 @@
-"""Booking — saves scraped reviews into the unified schema."""
+"""
+Booking — saves scraped reviews into the new source-centric schema.
+===================================================================
+Receives reviews from the scraper logic and persists them into:
+  sources → reviews → booking_reviews + review_media
+"""
 from core.database import get_session
 from core.config import setup_logger
-from core.models import Organization, Source, OrganizationSource, Review, BookingReviewDetail, ReviewMedia
-from sqlalchemy.sql import func
+from core.models import Source, Review, BookingReviewDetail, ReviewMedia
 
 logger = setup_logger("booking_database")
 
 
-def _resolve_org_source(session, hotel_name: str, hotel_url: str) -> OrganizationSource:
-    source = session.query(Source).filter_by(platform_name="Booking").first()
-    if not source:
-        source = Source(platform_name="Booking", base_url="https://www.booking.com")
-        session.add(source)
-        session.flush()
+def save_reviews_to_db(reviews, source_id: str):
+    """
+    Persist a batch of extracted Booking reviews to the database.
 
-    org_source = session.query(OrganizationSource).filter_by(
-        source_id=source.source_id, external_url=hotel_url
-    ).first()
-    if org_source:
-        org_source.last_synced_at = func.now()
-        return org_source
-
-    org = session.query(Organization).filter_by(organization_name=hotel_name).first()
-    if not org:
-        org = Organization(organization_name=hotel_name)
-        session.add(org)
-        session.flush()
-
-    org_source = OrganizationSource(
-        organization_id=org.organization_id,
-        source_id=source.source_id,
-        external_url=hotel_url,
-        last_synced_at=func.now()
-    )
-    session.add(org_source)
-    session.flush()
-    return org_source
-
-
-def save_reviews_to_db(reviews, hotel_name: str, hotel_url: str):
+    Args:
+        reviews:   List of review dataclass objects from the extractor.
+        source_id: The source_id this batch belongs to (provided by API).
+    """
     if not reviews:
         return
+
     session = get_session()
     try:
-        org_source = _resolve_org_source(session, hotel_name, hotel_url)
-        os_id = org_source.organization_source_id
-        logger.info(f"Writing {len(reviews)} Booking reviews for '{hotel_name}' (os_id={os_id})")
+        # Verify the source exists
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        if not source:
+            logger.error(f"Source {source_id} not found — cannot save reviews.")
+            return
+
+        logger.info(f"Writing {len(reviews)} Booking reviews for source_id={source_id}")
 
         for r in reviews:
-            review_entry = session.query(Review).filter_by(
-                organization_source_id=os_id, external_review_id=r.id
-            ).first()
-            if not review_entry:
-                review_entry = Review(organization_source_id=os_id, external_review_id=r.id)
-                session.add(review_entry)
-                session.flush()
+            # Create a new review entry in the central reviews table
+            review_entry = Review(source_id=source_id)
+            session.add(review_entry)
+            session.flush()
 
-            review_entry.rating = r.score
-            review_entry.author = getattr(r, 'author', '')
-            review_entry.review_title = r.title
-            review_entry.review_date = getattr(r, 'posted_date', None)
-            review_entry.reply_text = getattr(r, 'reply', None)
-            parts = []
-            if r.positive_txt:
-                parts.append(f"[+] {r.positive_txt}")
-            if r.negative_txt:
-                parts.append(f"[-] {r.negative_txt}")
-            review_entry.review_text = "\n".join(parts) if parts else None
+            # Create the Booking-specific detail row
+            detail = BookingReviewDetail(
+                review_id=review_entry.review_id,
+                rating=getattr(r, 'score', None),
+                review_heading=getattr(r, 'title', None),
+                author=getattr(r, 'author', None),
+                positive_text=getattr(r, 'positive_txt', None),
+                negative_text=getattr(r, 'negative_txt', None),
+                review_date=getattr(r, 'posted_date', None),
+                stay_date=getattr(r, 'reviewer_stay_date', None),
+                num_of_nights=getattr(r, 'num_of_nights', None),
+                traveler_type=getattr(r, 'traveler_type', None),
+                room_type=getattr(r, 'room_name', None),
+                reviewer_nationality=getattr(r, 'reviewer_nationality', None),
+                reply=getattr(r, 'reply', None),
+            )
+            session.add(detail)
 
-            detail = session.query(BookingReviewDetail).filter_by(review_id=review_entry.review_id).first()
-            if not detail:
-                detail = BookingReviewDetail(review_id=review_entry.review_id)
-                session.add(detail)
-            detail.reviewer_nationality = getattr(r, 'reviewer_nationality', None)
-            detail.positive_txt = r.positive_txt
-            detail.negative_txt = r.negative_txt
-            detail.reviewer_stay_date = r.reviewer_stay_date
-            detail.num_of_nights = r.num_of_nights
-            detail.traveler_type = r.traveler_type
-            detail.room_name = r.room_name
-            detail.posted_date = getattr(r, 'posted_date', None)
-
-            session.query(ReviewMedia).filter_by(review_id=review_entry.review_id).delete()
+            # Attach media (photos)
             if hasattr(r, 'photo') and r.photo:
                 for img in r.photo:
-                    session.add(ReviewMedia(review_id=review_entry.review_id, media_url=img.src, media_type='image'))
+                    session.add(ReviewMedia(
+                        review_id=review_entry.review_id,
+                        media_url=getattr(img, 'src', str(img)),
+                        media_type='image'
+                    ))
 
         session.commit()
-        logger.info(f"Committed {len(reviews)} Booking reviews.")
+        logger.info(f"Committed {len(reviews)} Booking reviews for source_id={source_id}.")
     except Exception as e:
         session.rollback()
         logger.error(f"Booking DB write failed: {e}", exc_info=True)

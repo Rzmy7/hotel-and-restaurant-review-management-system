@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List
 import uuid
 
+
+
 from app.core.database import get_db
 from app.modules.source.services import source_service
 from app.modules.source.schemas import (
@@ -10,6 +12,8 @@ from app.modules.source.schemas import (
     PlatformRead, OrganizationRead, OrganizationSourceDetails,
     SyncLogRead
 )
+from app.modules.scheduler.tasks.sync_tasks import trigger_platform_scrape
+
 
 router = APIRouter()
 
@@ -77,6 +81,10 @@ def delete_source(source_id: uuid.UUID, db: Session = Depends(get_db)):
 def sync_source(source_id: uuid.UUID, db: Session = Depends(get_db)):
     """Manually trigger a data sync for a source."""
     # This would typically trigger a Celery task
+    source = source_service.get_source_by_id(db, source_id)
+    platform_name = source.platform_name
+    source_url = source.source_url
+    trigger_platform_scrape(str(platform_name), str(source_url), str(source_id))  
     return {"message": "Sync triggered successfully", "source_id": str(source_id)}
 
 

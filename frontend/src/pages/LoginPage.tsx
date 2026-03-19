@@ -51,12 +51,12 @@ const LoginPage = () => {
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
     const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
-    window.location.href = `${apiBase}/login/google`;
+    window.location.href = `${apiBase}/api/login/google`;
   };
 
   return (
-    <AuthLayout 
-      title="Welcome Back" 
+    <AuthLayout
+      title="Welcome Back"
       description="Enter your credentials to access your account"
     >
       {error && (
@@ -97,8 +97,8 @@ const LoginPage = () => {
             <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider">
               Password
             </label>
-            <Link 
-              to="/forgot-password" 
+            <Link
+              to="/forgot-password"
               className="text-[12px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
             >
               Forgot?
@@ -174,8 +174,8 @@ const LoginPage = () => {
 
         <p className="text-center mt-8">
           <span className="text-gray-500 font-medium">New to system? </span>
-          <Link 
-            to="/signup" 
+          <Link
+            to="/signup"
             className="text-blue-600 font-black hover:text-blue-700 transition-colors uppercase text-sm tracking-tight"
           >
             Create Account
@@ -186,4 +186,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default LoginPage;

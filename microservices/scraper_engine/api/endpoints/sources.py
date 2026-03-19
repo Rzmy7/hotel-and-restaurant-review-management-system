@@ -1,88 +1,111 @@
 """
-Sources API — Platform Registry Endpoints
+Sources Management Endpoints
+=============================
+GET  /api/sources           — list all scraped sources with review counts
+GET  /api/sources/{id}      — single source detail
+DELETE /api/sources/{id}    — delete source and cascade all reviews
 """
 from fastapi import APIRouter, HTTPException
 from core.database import get_session
+from core.models import Source, Review
 from core.config import setup_logger
-from core.models import Source, OrganizationSource, Review
-from sqlalchemy.orm import joinedload
+from sqlalchemy import func as sa_func
 
 logger = setup_logger("sources_api")
-router = APIRouter(prefix="/sources", tags=["Sources / Platforms"])
+router = APIRouter(prefix="/sources", tags=["Sources"])
 
 
 @router.get("")
-def list_sources():
-    """List all registered platforms with review counts."""
+def list_sources(limit: int = 100, skip: int = 0):
+    """List all known sources with their review counts."""
     session = get_session()
     try:
-        sources = session.query(Source).order_by(Source.source_id).all()
-
+        # Query sources with aggregated review counts
+        query = (
+            session.query(
+                Source,
+                sa_func.count(Review.review_id).label("review_count")
+            )
+            .outerjoin(Review, Source.source_id == Review.source_id)
+            .group_by(Source.source_id, Source.source_url, Source.platform_name, Source.created_at)
+            .order_by(Source.source_id)
+            .offset(skip)
+            .limit(limit)
+        )
+        total = session.query(Source).count()
         results = []
-        for s in sources:
-            review_count = session.query(Review).join(OrganizationSource).filter(
-                OrganizationSource.source_id == s.source_id
-            ).count()
-            org_count = session.query(OrganizationSource).filter_by(
-                source_id=s.source_id
-            ).count()
-
+        for source, review_count in query.all():
             results.append({
-                "source_id": s.source_id,
-                "platform_name": s.platform_name,
-                "base_url": s.base_url,
-                "linked_organizations": org_count,
-                "total_reviews": review_count,
-                "created_at": str(s.created_at) if s.created_at else None
+                "source_id": source.source_id,
+                "platform_name": source.platform_name,
+                "source_url": source.source_url,
+                "review_count": review_count,
+                "created_at": str(source.created_at) if source.created_at else None
             })
 
-        return {"total": len(results), "data": results}
+        return {"total": total, "returned": len(results), "data": results}
     except Exception as e:
+        logger.error(f"Failed to list sources: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
 
 
 @router.get("/{source_id}")
-def get_source(source_id: int):
-    """Get source details with linked organizations."""
+def get_source(source_id: str):
+    """Get details for a single source."""
     session = get_session()
     try:
         source = session.query(Source).filter_by(source_id=source_id).first()
         if not source:
             raise HTTPException(status_code=404, detail="Source not found")
 
-        linked = session.query(OrganizationSource).options(
-            joinedload(OrganizationSource.organization)
-        ).filter_by(source_id=source_id).all()
-
-        orgs_data = []
-        for os_link in linked:
-            review_count = session.query(Review).filter_by(
-                organization_source_id=os_link.organization_source_id
-            ).count()
-            orgs_data.append({
-                "organization_id": os_link.organization.organization_id,
-                "organization_name": os_link.organization.organization_name,
-                "external_url": os_link.external_url,
-                "review_count": review_count,
-                "last_synced_at": str(os_link.last_synced_at) if os_link.last_synced_at else None
-            })
-
-        total_reviews = session.query(Review).join(OrganizationSource).filter(
-            OrganizationSource.source_id == source_id
-        ).count()
+        review_count = session.query(Review).filter_by(source_id=source_id).count()
 
         return {
             "source_id": source.source_id,
             "platform_name": source.platform_name,
-            "base_url": source.base_url,
-            "total_reviews": total_reviews,
-            "organizations": orgs_data
+            "source_url": source.source_url,
+            "review_count": review_count,
+            "created_at": str(source.created_at) if source.created_at else None
         }
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get source {source_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
+
+
+@router.delete("/{source_id}")
+def delete_source(source_id: str):
+    """
+    Delete a source and cascade-delete all associated reviews,
+    platform details, and media.
+    """
+    session = get_session()
+    try:
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found")
+
+        platform = source.platform_name
+        url = source.source_url
+        session.delete(source)
+        session.commit()
+
+        return {
+            "status": "deleted",
+            "source_id": source_id,
+            "platform_name": platform,
+            "source_url": url
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to delete source {source_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()

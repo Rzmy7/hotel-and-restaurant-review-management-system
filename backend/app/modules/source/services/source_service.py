@@ -268,3 +268,27 @@ def complete_sync_task(db: Session, source_id: uuid.UUID) -> SourceRead:
         success_rate=source.success_rate,
         created_at=source.created_at
     )
+
+def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
+    source = db.query(SourceSource).options(
+        joinedload(SourceSource.platform)
+    ).filter(SourceSource.source_id == source_id).first()
+    
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    
+    return SourceRead(
+        source_id=source.source_id,
+        tenant_id=source.tenant_id,
+        organization_id=source.organization_id,
+        platform_id=source.platform_id,
+        platform_name=source.platform.platform_name,
+        source_url=source.source_url,
+        source_status=source.source_status,
+        fetching_frequency=source.fetching_frequency,
+        last_synced_at=source.last_synced_at,
+        next_synced_at=source.next_synced_at,
+        success_rate=source.success_rate,
+        created_at=source.created_at
+    )
+    

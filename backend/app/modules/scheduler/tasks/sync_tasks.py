@@ -11,18 +11,19 @@ from app.modules.source.services.source_service import complete_sync_task
 logger = logging.getLogger(__name__)
 
 # Scraper microservice URL, default to 8001 if backend is on 8000
-SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8000")
+SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001")
 
-def trigger_platform_scrape(platform_name: str, url: str) -> bool:
+def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """
     Trigger the scraper microservice for a specific platform.
     Mapping logic handles typical names like 'Google Reviews' -> 'google'.
     """
     platform_key = platform_name.lower().replace(" reviews", "").replace(".com", "")
     
-    endpoint = f"{SCRAPER_API_BASE_URL}/{platform_key}/scrape"
+    endpoint = f"{SCRAPER_API_BASE_URL}/api/{platform_key}/scrape"
     payload = {
-        "url": url,
+        "source_id": str(source_id),
+        "source_url": url,
         "headless": True
     }
     
@@ -77,15 +78,12 @@ def process_pending_syncs():
                 continue
 
             # Trigger the microservice
-            is_success = trigger_platform_scrape(
+            trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
-                url=source.source_url
+                url=source.source_url,
+                source_id=source.source_id
             )
-            
-            # Update sync times immediately if trigger was successful
-            if is_success:
-                complete_sync_task(db, source.source_id)
-                logger.info(f"Updated scheduling timestamps for Source ID {source.source_id}")
+            # Timestamps will be updated via callback to /source/tasks/{source_id}/sync-complete
                 
     except Exception as e:
         # Avoid massive tracebacks on timeout by just logging the error string

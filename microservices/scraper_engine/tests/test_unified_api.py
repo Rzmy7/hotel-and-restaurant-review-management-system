@@ -1,113 +1,147 @@
-"""Comprehensive test for all API endpoints."""
-import urllib.request
-import json
+"""
+Test Suite — Scraper Engine API
+================================
+Tests for all API endpoints after the source-centric redesign.
+Run with: pytest tests/ -v
 
-BASE = "http://127.0.0.1:8000"
+These tests require a running server on http://127.0.0.1:8001.
+Start the server with: uvicorn api.main:app --host 127.0.0.1 --port 8001
+"""
+import requests
+import sys
 
-def test(method, path, body=None):
-    url = f"{BASE}{path}"
-    data = json.dumps(body).encode() if body else None
-    req = urllib.request.Request(url, data=data, method=method)
-    if body:
-        req.add_header("Content-Type", "application/json")
+BASE_URL = "http://127.0.0.1:8001/api"
+
+# ── Helpers ──
+passed = 0
+failed = 0
+
+
+def test(method: str, path: str, body: dict = None, expect_status: int = 200) -> dict | None:
+    """Fire an HTTP request and validate the status code."""
+    global passed, failed
+    url = f"{BASE_URL}{path}"
+    label = f"{method.upper()} {path}"
+
     try:
-        resp = urllib.request.urlopen(req)
-        result = json.loads(resp.read())
-        summary = json.dumps(result, indent=2, ensure_ascii=False)[:400]
-        print(f"  OK  {method} {path}")
-        print(f"       {summary}\n")
-        return result
-    except Exception as e:
-        body_text = getattr(e, 'read', lambda: b'')().decode()[:200]
-        print(f"  FAIL {method} {path} -> {e}")
-        print(f"       {body_text}\n")
+        if method.upper() == "GET":
+            resp = requests.get(url, timeout=10)
+        elif method.upper() == "POST":
+            resp = requests.post(url, json=body, timeout=10)
+        elif method.upper() == "DELETE":
+            resp = requests.delete(url, timeout=10)
+        else:
+            print(f"  ❌ Unknown HTTP method: {method}")
+            failed += 1
+            return None
+
+        if resp.status_code == expect_status:
+            print(f"  ✅ {label} → {resp.status_code}")
+            passed += 1
+            return resp.json() if resp.text else None
+        else:
+            print(f"  ❌ {label} → {resp.status_code} (expected {expect_status})")
+            print(f"     Response: {resp.text[:300]}")
+            failed += 1
+            return None
+    except requests.exceptions.ConnectionError:
+        print(f"  ❌ {label} → Connection refused (is the server running?)")
+        failed += 1
         return None
 
-print("=" * 60)
-print("1. SOURCES")
-print("=" * 60)
-test("GET", "/api/v1/sources")
 
-print("=" * 60)
-print("2. DB STATS")
-print("=" * 60)
-test("GET", "/api/v1/db/stats")
+def run_all_tests():
+    global passed, failed
 
-print("=" * 60)
-print("3. CREATE ORG + SOURCES (single call)")
-print("=" * 60)
-org = test("POST", "/api/v1/organizations", {
-    "organization_name": "Hilton Colombo",
-    "sources": [
-        {"platform": "Booking", "url": "https://www.booking.com/hotel/lk/hilton-colombo.html"},
-        {"platform": "Agoda", "url": "https://www.agoda.com/hilton-colombo"},
-        {"platform": "Google", "url": "https://maps.app.goo.gl/hilton123"}
-    ]
-})
+    # ═══════════════════════════════════════════
+    # 1. System Health
+    # ═══════════════════════════════════════════
+    print("\n═══ System Health ═══")
+    test("GET", "/system/health")
+    test("GET", "/system/metrics")
+    test("GET", "/system/pool")
+    test("GET", "/system/jobs")
+    test("GET", "/system/jobs/all")
 
-if org:
-    oid = org["organization_id"]
+    # ═══════════════════════════════════════════
+    # 2. Sources — create via scrape upsert
+    # ═══════════════════════════════════════════
+    print("\n═══ Scrape Triggers (Source Upsert) ═══")
+    # Note: These tests will actually try to scrape, so we just validate the API response
+    agoda_result = test("POST", "/agoda/scrape", {
+        "source_id": 9901,
+        "source_url": "https://www.agoda.com/test-hotel",
+        "headless": True,
+        "pages": "1"
+    })
 
-    print("=" * 60)
-    print("4. GET ORG DETAIL")
-    print("=" * 60)
-    test("GET", f"/api/v1/organizations/{oid}")
+    booking_result = test("POST", "/booking/scrape", {
+        "source_id": 9902,
+        "source_url": "https://www.booking.com/hotel/test",
+        "headless": True,
+        "pages": "1"
+    })
 
-    print("=" * 60)
-    print("5. LIST ORG SOURCES")
-    print("=" * 60)
-    test("GET", f"/api/v1/organizations/{oid}/sources")
+    google_result = test("POST", "/google/scrape", {
+        "source_id": 9903,
+        "source_url": "https://maps.app.goo.gl/test123",
+        "headless": True,
+        "pages": "1"
+    })
 
-    print("=" * 60)
-    print("6. ORG STATS")
-    print("=" * 60)
-    test("GET", f"/api/v1/organizations/{oid}/stats")
+    tripadvisor_result = test("POST", "/tripadvisor/scrape", {
+        "source_id": 9904,
+        "source_url": "https://www.tripadvisor.com/Hotel-test",
+        "headless": True,
+        "pages": "1"
+    })
 
-    print("=" * 60)
-    print("7. ORG REVIEWS")
-    print("=" * 60)
-    test("GET", f"/api/v1/organizations/{oid}/reviews")
+    # ═══════════════════════════════════════════
+    # 3. Sources CRUD
+    # ═══════════════════════════════════════════
+    print("\n═══ Sources CRUD ═══")
+    test("GET", "/sources")
+    test("GET", "/sources/9901")
+    test("GET", "/sources/99999", expect_status=404)  # Should not exist
 
-    print("=" * 60)
-    print("8. UPDATE ORG")
-    print("=" * 60)
-    test("PUT", f"/api/v1/organizations/{oid}", {"organization_name": "Hilton Colombo Residence"})
+    # ═══════════════════════════════════════════
+    # 4. Reviews Retrieval
+    # ═══════════════════════════════════════════
+    print("\n═══ Reviews Retrieval ═══")
+    test("GET", "/reviews/9901")
+    test("GET", "/reviews/9902")
+    test("GET", "/reviews/9903")
+    test("GET", "/reviews/9904")
+    test("GET", "/reviews/99999", expect_status=404)
 
-    print("=" * 60)
-    print("9. UNLINK SOURCE (Google)")
-    print("=" * 60)
-    test("DELETE", f"/api/v1/organizations/{oid}/sources/Google")
+    # ═══════════════════════════════════════════
+    # 5. DB Admin
+    # ═══════════════════════════════════════════
+    print("\n═══ Database Admin ═══")
+    test("GET", "/db/stats")
 
-    print("=" * 60)
-    print("10. ADD SOURCE BACK")
-    print("=" * 60)
-    test("POST", f"/api/v1/organizations/{oid}/sources", {"platform": "Google", "url": "https://maps.app.goo.gl/new123"})
+    # ═══════════════════════════════════════════
+    # 6. Cleanup — delete test sources
+    # ═══════════════════════════════════════════
+    print("\n═══ Cleanup ═══")
+    test("DELETE", "/sources/9901")
+    test("DELETE", "/sources/9902")
+    test("DELETE", "/sources/9903")
+    test("DELETE", "/sources/9904")
 
-    print("=" * 60)
-    print("11. LIST ALL ORGS")
-    print("=" * 60)
-    test("GET", "/api/v1/organizations")
+    # Verify deletion
+    test("GET", "/sources/9901", expect_status=404)
 
-    print("=" * 60)
-    print("12. GLOBAL REVIEWS (all platforms)")
-    print("=" * 60)
-    test("GET", "/api/v1/reviews?limit=5")
+    # ═══════════════════════════════════════════
+    # Summary
+    # ═══════════════════════════════════════════
+    print(f"\n{'═' * 40}")
+    print(f"  Results: {passed} passed, {failed} failed")
+    print(f"{'═' * 40}")
 
-    print("=" * 60)
-    print("13. DELETE ORG (cleanup)")
-    print("=" * 60)
-    test("DELETE", f"/api/v1/organizations/{oid}")
+    return 0 if failed == 0 else 1
 
-print("=" * 60)
-print("14. PLATFORM ENDPOINTS (backward compat)")
-print("=" * 60)
-test("GET", "/agoda/reviews?limit=1")
-test("GET", "/booking/reviews?limit=1")
-test("GET", "/google/reviews?limit=1")
 
-print("=" * 60)
-print("15. SOURCES DETAIL")
-print("=" * 60)
-test("GET", "/api/v1/sources/1")
-
-print("\n*** ALL TESTS COMPLETE ***")
+if __name__ == "__main__":
+    exit_code = run_all_tests()
+    sys.exit(exit_code)
