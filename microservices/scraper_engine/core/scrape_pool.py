@@ -9,6 +9,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Dict, Callable, Any
 from core.config import setup_logger
+from core.queue import job_queue
 from core.job_manager import job_manager, JobStatus
 
 logger = setup_logger("scrape_pool")
@@ -20,9 +21,9 @@ DEFAULT_MAX_WORKERS = 7
 class ScrapePool:
     """
     Centralized thread pool for all scraping operations.
-    - Processes up to `max_workers` jobs simultaneously
-    - Excess jobs are automatically queued by the executor
-    - Tracks futures for status reporting
+    - Manages an explicit JobQueue for First-Come-First-Serve (FCFS).
+    - Submits up to `max_workers` to the ThreadPoolExecutor.
+    - Excess jobs stay in the queue until slots free up.
     """
 
     def __init__(self, max_workers: int = DEFAULT_MAX_WORKERS):
@@ -47,73 +48,98 @@ class ScrapePool:
         self._executor = ThreadPoolExecutor(max_workers=count, thread_name_prefix="scraper")
         # Let old executor finish its running tasks gracefully
         old_executor.shutdown(wait=False)
+        
+        # After resizing, we might have new slots available
+        self._process_queue()
 
     def submit(self, job_id: str, fn: Callable, *args, **kwargs) -> str:
         """
-        Submit a scrape job to the pool. Returns the job_id.
-        The job will execute immediately if a slot is available,
-        otherwise it is queued and will run when a slot frees up.
+        Submit a scrape job to the pool. 
+        If slots are available, it runs immediately.
+        Otherwise, it is added to the FCFS queue.
         """
-        job_manager.update_job(job_id, status=JobStatus.PENDING, progress="Queued — waiting for available slot...")
+        with self._lock:
+            # If we have free slots, submit immediately
+            if self.active_count < self._max_workers:
+                self._submit_to_executor(job_id, fn, *args, **kwargs)
+                return job_id
+        
+        # Otherwise, add to the explicit queue
+        job_manager.update_job(job_id, status=JobStatus.QUEUED, progress=f"Queued — position: {job_queue.size + 1}")
+        job_queue.push(job_id, kwargs.get("platform", "unknown"), fn, *args, **kwargs)
+        logger.info(f"Job {job_id} added to queue (Pool busy: {self.active_count}/{self._max_workers})")
+        return job_id
+
+    def _submit_to_executor(self, job_id: str, fn: Callable, *args, **kwargs):
+        """Internal helper to wrap and submit a job to the ThreadPoolExecutor."""
+        job_manager.update_job(job_id, status=JobStatus.PENDING, progress="Preparing to run...")
 
         def _wrapped():
             import asyncio
-            # Playwright Sync API detects the main thread's loop even in child threads
-            # in some environments. We must ensure no loop is active in this thread.
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    # If somehow a loop is running here, we clear it for the sync API
                     asyncio.set_event_loop(asyncio.new_event_loop())
             except RuntimeError:
-                # No loop in this thread, which is what we want
                 pass
 
             try:
                 job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Scraper starting...")
                 result = fn(*args, **kwargs)
                 return result
-            except Exception as e:
+            except BaseException as e:
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
-                job_manager.update_job(job_id, status=JobStatus.FAILED, progress=f"Error: {str(e)}")
+                job_manager.update_job(job_id, status=JobStatus.FAILED, progress=f"Error: {type(e).__name__}")
                 raise
             finally:
                 with self._lock:
                     self._futures.pop(job_id, None)
+                self._process_queue()
 
         future = self._executor.submit(_wrapped)
+        self._futures[job_id] = future
+        logger.info(f"Job {job_id} started (Active: {self.active_count}/{self._max_workers})")
 
+    def _process_queue(self):
+        """Pick the next job from the queue and submit it if slots are available."""
         with self._lock:
-            self._futures[job_id] = future
-
-        logger.info(f"Job {job_id} submitted to pool ({self.active_count}/{self._max_workers} slots busy, {self.queued_count} queued)")
-        return job_id
+            while self.active_count < self._max_workers:
+                next_job = job_queue.pop()
+                if not next_job:
+                    break
+                
+                logger.info(f"Picking Job {next_job.job_id} from queue...")
+                self._submit_to_executor(
+                    next_job.job_id, 
+                    next_job.fn, 
+                    *next_job.args, 
+                    **next_job.kwargs
+                )
 
     @property
     def active_count(self) -> int:
-        """Number of jobs currently running."""
-        with self._lock:
-            return sum(1 for f in self._futures.values() if f.running())
+        """Number of jobs currently running in the executor."""
+        # Note: self._futures only contains jobs that have been submitted to the executor
+        return sum(1 for f in self._futures.values() if not f.done())
 
     @property
     def queued_count(self) -> int:
-        """Number of jobs waiting in queue."""
-        with self._lock:
-            return sum(1 for f in self._futures.values() if not f.running() and not f.done())
+        """Number of jobs waiting in the explicit queue."""
+        return job_queue.size
 
     @property
     def total_pending(self) -> int:
-        """Total jobs in the pool (running + queued)."""
-        with self._lock:
-            return sum(1 for f in self._futures.values() if not f.done())
+        """Total jobs (running + queued)."""
+        return self.active_count + self.queued_count
 
     def get_pool_status(self) -> dict:
-        """Returns current pool statistics."""
+        """Returns current pool and queue statistics."""
         return {
             "max_workers": self._max_workers,
             "active_jobs": self.active_count,
             "queued_jobs": self.queued_count,
-            "total_pending": self.total_pending
+            "total_pending": self.total_pending,
+            "queue_ids": job_queue.get_all_queued_ids()
         }
 
     def shutdown(self, wait: bool = True):

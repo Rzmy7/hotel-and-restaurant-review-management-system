@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 
 class JobStatus:
     PENDING = "pending"
+    QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -77,7 +78,7 @@ class JobManager:
         return list(self.jobs.values())
 
     def get_active_jobs(self) -> List[Dict[str, Any]]:
-        return [j for j in self.jobs.values() if j["status"] in [JobStatus.PENDING, JobStatus.RUNNING]]
+        return [j for j in self.jobs.values() if j["status"] in [JobStatus.QUEUED, JobStatus.PENDING, JobStatus.RUNNING]]
 
 # Global singleton
 job_manager = JobManager()

@@ -91,6 +91,15 @@ def configure_pool(body: PoolConfigRequest):
     }
 
 
+@router.get("/queue")
+def get_queue_details():
+    """Returns the list of jobs currently waiting in the FCFS queue."""
+    return {
+        "size": scrape_pool.queued_count,
+        "queue": scrape_pool.get_pool_status()["queue_ids"]
+    }
+
+
 @router.get("/metrics")
 def system_metrics():
     """Returns application environment footprint."""
