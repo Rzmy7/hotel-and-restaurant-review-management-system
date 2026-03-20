@@ -23,6 +23,7 @@ DB_SERVER: str = os.getenv("DB_SERVER", "")
 DB_NAME: str = os.getenv("DB_NAME", "")
 DB_UID: str = os.getenv("DB_UID", "")
 DB_PWD: str = os.getenv("DB_PWD", "")
+DB_ENCRYPT: str = os.getenv("DB_ENCRYPT", "yes")
 
 # ── SMTP ────────────────────────────────────────────────────────────
 SMTP_EMAIL: str | None = os.getenv("SMTP_EMAIL")

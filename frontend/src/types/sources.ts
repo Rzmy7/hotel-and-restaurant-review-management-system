@@ -11,7 +11,7 @@ export type SourcePlatform =
     | 'Hotels.com'
     | 'Custom';
 
-export type SourceStatus = 'Active' | 'Paused' | 'Error';
+export type SourceStatus = 'Active' | 'Paused' | 'Error' | 'In Queue' | 'Syncing';
 
 export type SyncStatus = 'Success' | 'Failed' | 'In Progress';
 
@@ -26,6 +26,10 @@ export interface Source {
     syncSchedule: SyncSchedule;
     propertyUrl: string;
     successRate: number;
+    num_of_syncs: number;
+    success_sync_count: number;
+    platform_num_of_syncs: number;
+    platform_success_sync_count: number;
     errorCount: number;
     nextRunAt: string | null;
     createdAt: string;

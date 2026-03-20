@@ -13,6 +13,8 @@ class SourceStatus(str, enum.Enum):
     ACTIVE = "active"
     PAUSED = "paused"
     ERROR = "error"
+    QUEUED = "queued"
+    RUNNING = "running"
 
 class PlatformStatus(str, enum.Enum):
     ACTIVE = "active"
@@ -30,6 +32,8 @@ class PlatformRead(BaseModel):
     base_url: Optional[str]
     fetching_type: SourceType
     platform_status: PlatformStatus
+    num_of_syncs: int
+    success_sync_count: int
     success_rate: float
     created_at: datetime
 
@@ -61,6 +65,10 @@ class SourceRead(BaseModel):
     fetching_frequency: FetchingFrequency
     last_synced_at: Optional[datetime]
     next_synced_at: Optional[datetime]
+    num_of_syncs: int
+    success_sync_count: int
+    platform_num_of_syncs: int
+    platform_success_sync_count: int
     success_rate: float
     created_at: datetime
 
@@ -107,7 +115,15 @@ class SyncLogBulk(BaseModel):
     logs: List[SyncLogRead]
     total: int
 
-class SyncCompleteRequest(BaseModel):
+class SyncStatus(str, enum.Enum):
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+class SyncStatusRequest(BaseModel):
+    status: SyncStatus
     new_review_count: int = 0
+    error_message: Optional[str] = None
 
 

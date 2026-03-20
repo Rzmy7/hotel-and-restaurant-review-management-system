@@ -67,10 +67,6 @@ class PlatformSource(Base):
         CheckConstraint(
             "platform_status IN ('active', 'inactive')",
             name="ck_platforms_source_platform_status",
-        ),
-        CheckConstraint(
-            "success_rate >= 0 AND success_rate <= 1",
-            name="ck_platforms_source_success_rate",
         )
     )
 
@@ -79,7 +75,8 @@ class PlatformSource(Base):
     base_url = Column(String(500), nullable=True)
     fetching_type = Column(String(20), nullable=False)
     platform_status = Column(String(20), nullable=False, default="active")
-    success_rate = Column(Float, nullable=False, default=0.0)
+    num_of_syncs = Column(Integer, nullable=False, default=0)
+    success_sync_count = Column(Integer, nullable=False, default=0)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),
@@ -97,16 +94,12 @@ class SourceSource(Base):
             name="uq_sources_source_tenant_org_platform"
         ),
         CheckConstraint(
-            "source_status IN ('active', 'paused', 'error')",
+            "source_status IN ('active', 'paused', 'error', 'queued', 'running')",
             name="ck_sources_source_source_status",
         ),
         CheckConstraint(
             "fetching_frequency IN ('hourly', 'daily', 'weekly')",
             name="ck_sources_source_fetching_frequency",
-        ),
-        CheckConstraint(
-            "success_rate >= 0 AND success_rate <= 1",
-            name="ck_sources_source_success_rate",
         )
     )
 
@@ -131,7 +124,8 @@ class SourceSource(Base):
     fetching_frequency = Column(String(20), nullable=False, default="daily")
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
     next_synced_at = Column(DateTime(timezone=True), nullable=True)
-    success_rate = Column(Float, nullable=False, default=0.0)
+    num_of_syncs = Column(Integer, nullable=False, default=0)
+    success_sync_count = Column(Integer, nullable=False, default=0)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),

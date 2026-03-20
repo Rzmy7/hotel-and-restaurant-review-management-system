@@ -24,6 +24,7 @@ def get_engine():
         f"DATABASE={config.db_name};"
         f"UID={config.db_uid};"
         f"PWD={config.db_pwd};"
+        f"Encrypt={config.db_encrypt};"
         f"TrustServerCertificate={config.trust_server_certificate};"
     )
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"

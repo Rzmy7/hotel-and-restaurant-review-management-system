@@ -90,6 +90,20 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
           Error
         </span>
       );
+    case 'In Queue':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100/50 shadow-sm shadow-amber-50 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800/50 dark:shadow-none">
+          <Calendar size={10} />
+          In Queue
+        </span>
+      );
+    case 'Syncing':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100/50 shadow-sm shadow-blue-50 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800/50 dark:shadow-none">
+          <RefreshCw size={10} className="animate-spin" />
+          Syncing
+        </span>
+      );
   }
 };
 
@@ -155,7 +169,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       <div>
                         <button
                           onClick={() => onEdit(source, 'analytics')}
-                          className="text-[13px] font-black text-gray-900 dark:text-white hover:text-[#4e80ee] dark:hover:text-blue-400 transition-colors uppercase tracking-tight text-left block"
+                          disabled={source.status === 'In Queue' || source.status === 'Syncing'}
+                          className="text-[13px] font-black text-gray-900 dark:text-white hover:text-[#4e80ee] dark:hover:text-blue-400 transition-colors uppercase tracking-tight text-left block disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {source.platform}
                         </button>
@@ -198,21 +213,27 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
 
                   {/* Success Rate */}
                   <td className="px-6 py-5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-1000 ${source.successRate > 90 ? 'bg-emerald-500' :
-                            source.successRate > 70 ? 'bg-amber-500' : 'bg-rose-500'
-                            }`}
-                          style={{ width: `${source.successRate}%` }}
-                        />
-                      </div>
-                      <span className={`text-[13px] font-bold ${source.successRate > 90 ? 'text-emerald-600 dark:text-emerald-400' :
-                        source.successRate > 70 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
-                        }`}>
-                        {source.successRate}%
+                    {source.num_of_syncs === 0 && source.platform_num_of_syncs === 0 ? (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 uppercase tracking-tight">
+                        Unknown
                       </span>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-1.5 bg-gray-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ${source.successRate > 90 ? 'bg-emerald-500' :
+                              source.successRate > 70 ? 'bg-amber-500' : 'bg-rose-500'
+                              }`}
+                            style={{ width: `${source.successRate}%` }}
+                          />
+                        </div>
+                        <span className={`text-[13px] font-bold tabular-nums ${source.successRate > 90 ? 'text-emerald-600 dark:text-emerald-400' :
+                          source.successRate > 70 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                          }`}>
+                          {source.successRate}%
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Actions */}
@@ -220,23 +241,25 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                     <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onSync(source.id)}
-                        disabled={source.status === 'Paused'}
-                        className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
-                        title="Sync Now"
+                        disabled={source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing'}
+                        className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                        title={source.status === 'In Queue' || source.status === 'Syncing' ? 'Sync in progress' : 'Sync Now'}
                       >
-                        <RefreshCw size={18} />
+                        <RefreshCw size={18} className={source.status === 'Syncing' ? 'animate-spin' : ''} />
                       </button>
                       <button
                         onClick={() => onToggleStatus(source)}
-                        className={`p-2 rounded-lg transition-all ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40' : 'text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'
+                        disabled={source.status === 'Syncing'}
+                        className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40' : 'text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'
                           }`}
                         title={source.status === 'Active' ? 'Pause' : 'Resume'}
                       >
-                        {source.status === 'Active' ? <Pause size={18} /> : <Play size={18} />}
+                        {source.status === 'Active' ? <Pause size={18} /> : (source.status === 'Syncing' ? <Pause size={18} /> : <Play size={18} />)}
                       </button>
                       <button
                         onClick={() => onEdit(source)}
-                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-slate-700 rounded-lg transition-all"
+                        disabled={source.status === 'In Queue' || source.status === 'Syncing'}
+                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Edit Settings"
                       >
                         <Edit2 size={18} />

@@ -58,6 +58,7 @@ class ScrapePool:
         If slots are available, it runs immediately.
         Otherwise, it is added to the FCFS queue.
         """
+        source_id = kwargs.get("source_id")
         with self._lock:
             # If we have free slots, submit immediately
             if self.active_count < self._max_workers:
@@ -67,12 +68,19 @@ class ScrapePool:
         # Otherwise, add to the explicit queue
         job_manager.update_job(job_id, status=JobStatus.QUEUED, progress=f"Queued — position: {job_queue.size + 1}")
         job_queue.push(job_id, kwargs.get("platform", "unknown"), fn, *args, **kwargs)
+        
+        # Notify backend that job is QUEUED
+        if source_id:
+            from core.utils import notify_backend_sync_status
+            notify_backend_sync_status(source_id, "QUEUED")
+            
         logger.info(f"Job {job_id} added to queue (Pool busy: {self.active_count}/{self._max_workers})")
         return job_id
 
     def _submit_to_executor(self, job_id: str, fn: Callable, *args, **kwargs):
         """Internal helper to wrap and submit a job to the ThreadPoolExecutor."""
         job_manager.update_job(job_id, status=JobStatus.PENDING, progress="Preparing to run...")
+        source_id = kwargs.get("source_id")
 
         def _wrapped():
             import asyncio
@@ -85,11 +93,23 @@ class ScrapePool:
 
             try:
                 job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Scraper starting...")
+                
+                # Notify backend that job is RUNNING
+                if source_id:
+                    from core.utils import notify_backend_sync_status
+                    notify_backend_sync_status(source_id, "RUNNING")
+                
                 result = fn(*args, **kwargs)
                 return result
             except BaseException as e:
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
                 job_manager.update_job(job_id, status=JobStatus.FAILED, progress=f"Error: {type(e).__name__}")
+                
+                # Notify backend that job has FAILED
+                if source_id:
+                    from core.utils import notify_backend_sync_status
+                    notify_backend_sync_status(source_id, "FAILED", error_message=str(e))
+                
                 raise
             finally:
                 with self._lock:

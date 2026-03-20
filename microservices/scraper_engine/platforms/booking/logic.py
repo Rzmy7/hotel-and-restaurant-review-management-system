@@ -10,7 +10,7 @@ from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from platforms.booking.config import booking_selectors
 from core.audit import audit_logger
-from core.utils import notify_backend_sync_complete
+from core.utils import notify_backend_sync_status
 
 logger = setup_logger("booking_logic")
 
@@ -272,7 +272,7 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             )
 
             # Notify backend of completion
-            notify_backend_sync_complete(str(source_id), new_review_count=new_count)
+            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
 
             return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
@@ -281,7 +281,7 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="Scrape concluded without detecting new reviews.", reviews=0)
             
             # Notify backend even if no new reviews were found
-            notify_backend_sync_complete(str(source_id), new_review_count=0)
+            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=0)
             
             return {"status": "warning", "message": "No new reviews found.", "count": 0, "data": []}
             
@@ -298,6 +298,9 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
+        # Notify backend of failure
+        notify_backend_sync_status(str(source_id), "FAILED")
+        
         return {"status": "error", "message": str(e), "count": 0, "data": []}
     finally:
         browser_controller.stop()

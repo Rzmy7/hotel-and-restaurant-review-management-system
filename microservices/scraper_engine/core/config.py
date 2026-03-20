@@ -17,6 +17,7 @@ class BaseScraperConfig(BaseModel):
     db_name: str = ""
     db_uid: str = ""
     db_pwd: str = ""
+    db_encrypt: str = "yes"
     trust_server_certificate: str = "yes"
     backend_url: str = "http://127.0.0.1:8000"
     
@@ -41,6 +42,7 @@ config = BaseScraperConfig(
     db_name=os.getenv("DB_NAME", ""),
     db_uid=os.getenv("DB_UID", ""),
     db_pwd=os.getenv("DB_PWD", ""),
+    db_encrypt=os.getenv("DB_ENCRYPT", "yes"),
     trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes"),
     backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000")
 )

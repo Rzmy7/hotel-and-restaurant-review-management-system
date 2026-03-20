@@ -12,7 +12,7 @@ from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from platforms.google.config import google_selectors
 from core.audit import audit_logger
-from core.utils import notify_backend_sync_complete
+from core.utils import notify_backend_sync_status
 
 load_dotenv()
 logger = setup_logger("google_logic")
@@ -562,7 +562,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
             )
 
             # Notify backend of completion
-            notify_backend_sync_complete(str(source_id), new_review_count=new_count)
+            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
 
             return {"status": "success", "count": f"Stored {len(all_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
@@ -571,7 +571,7 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="No reviews found.", reviews=0)
             
             # Notify backend even if no reviews were found
-            notify_backend_sync_complete(str(source_id), new_review_count=0)
+            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=0)
             
             return {"status": "warning", "message": "No reviews found.", "count": 0}
 
@@ -588,6 +588,9 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
             details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
+        # Notify backend of failure
+        notify_backend_sync_status(str(source_id), "FAILED")
+        
         return {"status": "error", "message": str(e), "count": 0}
     finally:
         browser_controller.stop()

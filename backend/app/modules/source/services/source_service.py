@@ -7,9 +7,9 @@ from fastapi import HTTPException, status
 
 from app.modules.source.models import TenantSource, OrganizationSource, PlatformSource, SourceSource, SyncLogSource
 from app.modules.source.schemas import (
-    SourceCreate, SourceUpdate, SourceRead, FetchingFrequency,
+    SourceCreate, SourceUpdate, SourceRead, FetchingFrequency, SourceStatus,
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
-    SyncLogRead
+    SyncLogRead, SyncStatus, SyncStatusRequest
 )
 
 def calculate_next_sync_time(base_time: datetime, frequency: FetchingFrequency) -> datetime:
@@ -24,10 +24,46 @@ def calculate_next_sync_time(base_time: datetime, frequency: FetchingFrequency) 
         delta = timedelta(days=1)  # Default to daily
     
     return base_time + delta
+    
+def calculate_success_rate(
+    success_count: int, 
+    total_syncs: int, 
+    platform_success_count: int, 
+    platform_total_syncs: int
+) -> float:
+    """
+    Calculate success rate based on the following logic:
+    - PSR = platform_success / platform_total
+    - ISR = source_success / source_total
+    - If source_total == 0: Rate = PSR
+    - If source_total > 0: Rate = (PSR + ISR) / 2
+    """
+    psr = 0.0
+    if platform_total_syncs > 0:
+        psr = platform_success_count / platform_total_syncs
+        
+    if total_syncs == 0:
+        return round(psr * 100, 2)
+        
+    isr = success_count / total_syncs
+    return round(((psr + isr) / 2) * 100, 2)
 
 
-def get_platforms(db: Session) -> List[PlatformSource]:
-    return db.query(PlatformSource).all()
+def get_platforms(db: Session) -> List[PlatformRead]:
+    platforms = db.query(PlatformSource).all()
+    return [
+        PlatformRead(
+            platform_id=p.platform_id,
+            platform_name=p.platform_name,
+            base_url=p.base_url,
+            fetching_type=p.fetching_type,
+            platform_status=p.platform_status,
+            num_of_syncs=p.num_of_syncs,
+            success_sync_count=p.success_sync_count,
+            success_rate=round((p.success_sync_count / p.num_of_syncs) * 100, 2) if p.num_of_syncs > 0 else 0.0,
+            created_at=p.created_at
+        ) for p in platforms
+    ]
 
 def get_organizations_by_tenant(db: Session, tenant_id: uuid.UUID) -> List[OrganizationSource]:
     return db.query(OrganizationSource).filter(OrganizationSource.tenant_id == tenant_id).all()
@@ -67,7 +103,16 @@ def get_organization_sources_with_stats(
             fetching_frequency=source.fetching_frequency,
             last_synced_at=source.last_synced_at,
             next_synced_at=source.next_synced_at,
-            success_rate=source.success_rate,
+            num_of_syncs=source.num_of_syncs,
+            success_sync_count=source.success_sync_count,
+            platform_num_of_syncs=source.platform.num_of_syncs,
+            platform_success_sync_count=source.platform.success_sync_count,
+            success_rate=calculate_success_rate(
+                source.success_sync_count, 
+                source.num_of_syncs,
+                source.platform.success_sync_count,
+                source.platform.num_of_syncs
+            ),
             created_at=source.created_at
         ))
         
@@ -103,7 +148,7 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_VALUE,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="A source link already exists for this organization and platform."
         )
 
@@ -138,7 +183,16 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
         fetching_frequency=source.fetching_frequency,
         last_synced_at=source.last_synced_at,
         next_synced_at=source.next_synced_at,
-        success_rate=source.success_rate,
+        num_of_syncs=source.num_of_syncs,
+        success_sync_count=source.success_sync_count,
+        platform_num_of_syncs=source.platform.num_of_syncs,
+        platform_success_sync_count=source.platform.success_sync_count,
+        success_rate=calculate_success_rate(
+            source.success_sync_count,
+            source.num_of_syncs,
+            source.platform.success_sync_count,
+            source.platform.num_of_syncs
+        ),
         created_at=source.created_at,
     )
 
@@ -174,7 +228,16 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
         fetching_frequency=source.fetching_frequency,
         last_synced_at=source.last_synced_at,
         next_synced_at=source.next_synced_at,
-        success_rate=source.success_rate,
+        num_of_syncs=source.num_of_syncs,
+        success_sync_count=source.success_sync_count,
+        platform_num_of_syncs=source.platform.num_of_syncs,
+        platform_success_sync_count=source.platform.success_sync_count,
+        success_rate=calculate_success_rate(
+            source.success_sync_count,
+            source.num_of_syncs,
+            source.platform.success_sync_count,
+            source.platform.num_of_syncs
+        ),
         created_at=source.created_at,
     )
 
@@ -238,8 +301,8 @@ def get_sync_logs(
         ) for log in logs
     ]
 
-def complete_sync_task(db: Session, source_id: uuid.UUID, new_review_count: int = 0) -> SourceRead:
-    """Finalize a sync task, update timestamps, and schedule the next sync."""
+def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusRequest) -> SourceRead:
+    """Update the sync status of a source and record logs if necessary."""
     source = db.query(SourceSource).options(
         joinedload(SourceSource.platform)
     ).filter(SourceSource.source_id == source_id).first()
@@ -247,19 +310,51 @@ def complete_sync_task(db: Session, source_id: uuid.UUID, new_review_count: int 
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
     
-    now = datetime.now(timezone.utc)
-    source.last_synced_at = now
-    source.next_synced_at = calculate_next_sync_time(now, source.fetching_frequency)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     
-    # Create a sync log entry
-    sync_log = SyncLogSource(
-        source_id=source.source_id,
-        status="Success",
-        timestamp=now,
-        reviews_fetched=new_review_count
-    )
-    db.add(sync_log)
-    
+    # Handle status-specific logic
+    if request.status == SyncStatus.COMPLETED:
+        source.last_synced_at = now
+        source.next_synced_at = calculate_next_sync_time(now, source.fetching_frequency)
+        source.source_status = SourceStatus.ACTIVE
+        
+        # Update counts
+        source.num_of_syncs += 1
+        source.success_sync_count += 1
+        source.platform.num_of_syncs += 1
+        source.platform.success_sync_count += 1
+        
+        # Create a sync log entry
+        sync_log = SyncLogSource(
+            source_id=source.source_id,
+            status="Success",
+            timestamp=now,
+            reviews_fetched=request.new_review_count
+        )
+        db.add(sync_log)
+        
+    elif request.status == SyncStatus.FAILED:
+        source.source_status = SourceStatus.ERROR
+        
+        # Update counts
+        source.num_of_syncs += 1
+        source.platform.num_of_syncs += 1
+        
+        # Create a failure log entry
+        sync_log = SyncLogSource(
+            source_id=source.source_id,
+            status="Failed",
+            timestamp=now,
+            error_message=request.error_message
+        )
+        db.add(sync_log)
+        
+    elif request.status == SyncStatus.RUNNING:
+        source.source_status = SourceStatus.RUNNING
+        
+    elif request.status == SyncStatus.QUEUED:
+        source.source_status = SourceStatus.QUEUED
+
     db.commit()
     db.refresh(source)
     
@@ -274,7 +369,16 @@ def complete_sync_task(db: Session, source_id: uuid.UUID, new_review_count: int 
         fetching_frequency=source.fetching_frequency,
         last_synced_at=source.last_synced_at,
         next_synced_at=source.next_synced_at,
-        success_rate=source.success_rate,
+        num_of_syncs=source.num_of_syncs,
+        success_sync_count=source.success_sync_count,
+        platform_num_of_syncs=source.platform.num_of_syncs,
+        platform_success_sync_count=source.platform.success_sync_count,
+        success_rate=calculate_success_rate(
+            source.success_sync_count,
+            source.num_of_syncs,
+            source.platform.success_sync_count,
+            source.platform.num_of_syncs
+        ),
         created_at=source.created_at
     )
 
@@ -297,7 +401,16 @@ def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
         fetching_frequency=source.fetching_frequency,
         last_synced_at=source.last_synced_at,
         next_synced_at=source.next_synced_at,
-        success_rate=source.success_rate,
+        num_of_syncs=source.num_of_syncs,
+        success_sync_count=source.success_sync_count,
+        platform_num_of_syncs=source.platform.num_of_syncs,
+        platform_success_sync_count=source.platform.success_sync_count,
+        success_rate=calculate_success_rate(
+            source.success_sync_count,
+            source.num_of_syncs,
+            source.platform.success_sync_count,
+            source.platform.num_of_syncs
+        ),
         created_at=source.created_at
     )
     

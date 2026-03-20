@@ -12,6 +12,10 @@ const MOCK_SOURCES: Source[] = [
         syncSchedule: 'daily',
         propertyUrl: 'https://tripadvisor.com/hotel/1',
         successRate: 98,
+        num_of_syncs: 50,
+        success_sync_count: 49,
+        platform_num_of_syncs: 1000,
+        platform_success_sync_count: 950,
         errorCount: 0,
         nextRunAt: new Date(Date.now() + 1000 * 60 * 58).toISOString(),
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
@@ -25,6 +29,10 @@ const MOCK_SOURCES: Source[] = [
         syncSchedule: 'three_days',
         propertyUrl: 'https://booking.com/hotel/2',
         successRate: 100,
+        num_of_syncs: 20,
+        success_sync_count: 20,
+        platform_num_of_syncs: 800,
+        platform_success_sync_count: 780,
         errorCount: 0,
         nextRunAt: new Date(Date.now() + 1000 * 60 * 60 * 23.75).toISOString(),
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
@@ -38,6 +46,10 @@ const MOCK_SOURCES: Source[] = [
         syncSchedule: 'daily',
         propertyUrl: 'https://google.com/maps/place/3',
         successRate: 85,
+        num_of_syncs: 10,
+        success_sync_count: 8,
+        platform_num_of_syncs: 500,
+        platform_success_sync_count: 450,
         errorCount: 12,
         nextRunAt: null,
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
@@ -51,6 +63,10 @@ const MOCK_SOURCES: Source[] = [
         syncSchedule: 'weekly',
         propertyUrl: 'https://airbnb.com/rooms/4',
         successRate: 45,
+        num_of_syncs: 5,
+        success_sync_count: 2,
+        platform_num_of_syncs: 200,
+        platform_success_sync_count: 150,
         errorCount: 3,
         nextRunAt: new Date(Date.now() + 1000 * 60 * 10).toISOString(),
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
@@ -64,6 +80,10 @@ const MOCK_SOURCES: Source[] = [
         syncSchedule: 'daily',
         propertyUrl: 'https://agoda.com/hotel/5',
         successRate: 92,
+        num_of_syncs: 15,
+        success_sync_count: 14,
+        platform_num_of_syncs: 400,
+        platform_success_sync_count: 380,
         errorCount: 2,
         nextRunAt: new Date(Date.now() + 1000 * 60 * 45).toISOString(),
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
@@ -104,7 +124,7 @@ const MOCK_SYNC_LOGS: SyncLog[] = [
 class SourcesService {
     async getPlatforms(): Promise<any[]> {
         try {
-            return await apiClient.get<any[]>('/source/platforms');
+            return await apiClient.get<any[]>('/api/source/platforms');
         } catch (error) {
             console.error('Fetch platforms failed:', error);
             return [];
@@ -116,11 +136,20 @@ class SourcesService {
             id: s.source_id,
             platformId: s.platform_id,
             platform: s.platform_name,
-            status: (s.source_status.charAt(0).toUpperCase() + s.source_status.slice(1)) as SourceStatus,
+            status: (() => {
+                const s_lower = s.source_status.toLowerCase();
+                if (s_lower === 'queued') return 'In Queue';
+                if (s_lower === 'running') return 'Syncing';
+                return (s_lower.charAt(0).toUpperCase() + s_lower.slice(1)) as SourceStatus;
+            })(),
             lastSyncedAt: s.last_synced_at,
             syncSchedule: (s.fetching_frequency.charAt(0).toUpperCase() + s.fetching_frequency.slice(1)) as SyncSchedule,
             propertyUrl: s.source_url,
-            successRate: Math.round(s.success_rate * 100),
+            successRate: s.success_rate,
+            num_of_syncs: s.num_of_syncs,
+            success_sync_count: s.success_sync_count,
+            platform_num_of_syncs: s.platform_num_of_syncs,
+            platform_success_sync_count: s.platform_success_sync_count,
             errorCount: 0,
             nextRunAt: s.next_synced_at,
             createdAt: s.created_at,
@@ -129,7 +158,7 @@ class SourcesService {
 
     async getSources(tenantId: string, organizationId: string): Promise<Source[]> {
         try {
-            const data = await apiClient.get<{ sources: any[] }>(`/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            const data = await apiClient.get<{ sources: any[] }>(`/api/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
             return data.sources.map((s: any) => this.mapBackendSourceToFrontend(s));
         } catch (error) {
             console.warn('Backend fetch failed, falling back to mock data:', error);
@@ -141,7 +170,7 @@ class SourcesService {
 
     async getStats(tenantId: string, organizationId: string): Promise<SourceStats> {
         try {
-            const data = await apiClient.get<any>(`/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            const data = await apiClient.get<any>(`/api/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
             return {
                 totalSources: data.stats.total_sources,
                 activeSources: data.stats.active_sources,
@@ -164,7 +193,7 @@ class SourcesService {
     async getSyncLogs(tenantId: string, organizationId: string, page: number = 0, limit: number = 10): Promise<SyncLog[]> {
         const skip = page * limit;
         try {
-            return await apiClient.get<SyncLog[]>(`/source/tenants/${tenantId}/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
+            return await apiClient.get<SyncLog[]>(`/api/source/tenants/${tenantId}/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
         } catch (error) {
             console.warn('Backend fetch for sync logs failed, falling back to mock data:', error);
             return new Promise((resolve) => {
@@ -178,7 +207,7 @@ class SourcesService {
 
     async addSource(tenantId: string, organizationId: string, sourceData: any): Promise<Source> {
         try {
-            const newSource = await apiClient.post<any>('/source/', {
+            const newSource = await apiClient.post<any>('/api/source/', {
                 tenant_id: tenantId,
                 organization_id: organizationId,
                 platform_id: sourceData.platformId,
@@ -201,7 +230,7 @@ class SourcesService {
             if (updates.status) payload.source_status = updates.status.toLowerCase();
             if (updates.syncSchedule) payload.fetching_frequency = updates.syncSchedule.toLowerCase();
 
-            const data = await apiClient.patch<any>(`/source/${id}`, payload);
+            const data = await apiClient.patch<any>(`/api/source/${id}`, payload);
             return this.mapBackendSourceToFrontend(data);
         } catch (error) {
             console.error('Update source failed:', error);
@@ -211,7 +240,7 @@ class SourcesService {
 
     async deleteSource(id: string | number): Promise<void> {
         try {
-            await apiClient.delete(`/source/${id}`);
+            await apiClient.delete(`/api/source/${id}`);
         } catch (error) {
             console.error('Delete source failed:', error);
             throw error;
@@ -220,7 +249,7 @@ class SourcesService {
 
     async triggerSync(id: string | number): Promise<void> {
         try {
-            await apiClient.post(`/source/${id}/sync`);
+            await apiClient.post(`/api/source/${id}/sync`);
         } catch (error) {
             console.error('Sync trigger failed:', error);
             throw error;

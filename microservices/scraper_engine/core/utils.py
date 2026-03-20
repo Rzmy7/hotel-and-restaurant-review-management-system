@@ -37,22 +37,28 @@ def identify_new_reviews(session, source_id: str, scraped_reviews: list) -> tupl
     return len(new_review_ids), new_review_ids
 
 
-def notify_backend_sync_complete(source_id: str, new_review_count: int = 0):
+def notify_backend_sync_status(source_id: str, status: str, new_review_count: int = 0, error_message: str = None):
     """
-    Notifies the backend that a scrape sync task has completed.
+    Notifies the backend about the current status of a sync task.
+    Statuses: QUEUED, RUNNING, COMPLETED, FAILED
     """
     if not source_id:
         logger.warning("No source_id provided for backend notification.")
         return
 
     try:
-        url = f"{config.backend_url}/api/source/tasks/{source_id}/sync-complete"
-        logger.info(f"Notifying backend of sync completion for source {source_id} at {url} with {new_review_count} new reviews.")
+        # User changed endpoint from sync-complete to sync-status
+        url = f"{config.backend_url}/api/source/tasks/{source_id}/sync-status"
+        logger.info(f"Notifying backend of sync status '{status}' for source {source_id} at {url}")
 
-        payload = {"new_review_count": new_review_count}
+        payload = {
+            "status": status,
+            "new_review_count": new_review_count,
+            "error_message": error_message
+        }
         response = httpx.post(url, json=payload, timeout=10)
         response.raise_for_status()
-        logger.info(f"Backend notified successfully for source {source_id}.")
+        logger.info(f"Backend notified successfully for source {source_id} status {status}.")
     except httpx.HTTPError as e:
         logger.error(f"HTTP error notifying backend: {e}")
     except Exception as e:
