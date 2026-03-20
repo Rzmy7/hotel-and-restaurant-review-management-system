@@ -20,10 +20,10 @@ class JobQueue:
         self._queue = deque()
         self._lock = threading.Lock()
 
-    def push(self, job_id: str, platform: str, fn: Callable, *args, **kwargs):
+    def push(self, _queue_job_id: str, _queue_platform: str, _queue_fn: Callable, *args, **kwargs):
         """Adds a job to the end of the queue."""
         with self._lock:
-            self._queue.append(QueuedJob(job_id, platform, fn, args, kwargs))
+            self._queue.append(QueuedJob(_queue_job_id, _queue_platform, _queue_fn, args, kwargs))
 
     def pop(self) -> Optional[QueuedJob]:
         """Removes and returns the first job in the queue."""

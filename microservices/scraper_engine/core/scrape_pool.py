@@ -15,7 +15,7 @@ from core.job_manager import job_manager, JobStatus
 logger = setup_logger("scrape_pool")
 
 # Default max concurrent scrape jobs — change via set_max_workers()
-DEFAULT_MAX_WORKERS = 7
+DEFAULT_MAX_WORKERS = 3
 
 
 class ScrapePool:
