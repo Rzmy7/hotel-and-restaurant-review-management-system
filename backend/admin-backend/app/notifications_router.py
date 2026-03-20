@@ -41,7 +41,7 @@ def _connection_string() -> str:
     )
 
 
-def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
+def _ensure_notifications_schema(cursor: pyodbc.Cursor) -> None:
     cursor.execute(
         """
         IF OBJECT_ID('dbo.notifications', 'U') IS NULL
@@ -50,26 +50,43 @@ def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
                 notification_id UNIQUEIDENTIFIER NOT NULL
                     CONSTRAINT PK_notifications PRIMARY KEY
                     CONSTRAINT DF_notifications_notification_id DEFAULT NEWID(),
-                user_id UNIQUEIDENTIFIER NOT NULL,
                 title NVARCHAR(200) NOT NULL,
                 message NVARCHAR(MAX) NOT NULL,
                 notification_type NVARCHAR(30) NOT NULL
                     CONSTRAINT DF_notifications_type DEFAULT 'info',
-                is_read BIT NOT NULL
-                    CONSTRAINT DF_notifications_is_read DEFAULT 0,
                 created_at DATETIME2(7) NOT NULL
                     CONSTRAINT DF_notifications_created_at DEFAULT SYSUTCDATETIME(),
-                read_at DATETIME2(7) NULL,
-                CONSTRAINT FK_notifications_users
-                    FOREIGN KEY (user_id)
-                    REFERENCES dbo.users(user_id)
-                    ON DELETE CASCADE,
                 CONSTRAINT CK_notifications_type_valid
                     CHECK (notification_type IN ('info', 'success', 'warning', 'error', 'maintenance', 'announcement'))
             );
 
-            CREATE INDEX IX_notifications_user_read_created
-                ON dbo.notifications (user_id, is_read, created_at DESC);
+            CREATE INDEX IX_notifications_created_at
+                ON dbo.notifications (created_at DESC);
+        END;
+
+        IF OBJECT_ID('dbo.user_notifications', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.user_notifications (
+                notification_id UNIQUEIDENTIFIER NOT NULL,
+                user_id UNIQUEIDENTIFIER NOT NULL,
+                is_read BIT NOT NULL
+                    CONSTRAINT DF_user_notifications_is_read DEFAULT 0,
+                read_at DATETIME2(7) NULL,
+                delivered_at DATETIME2(7) NOT NULL
+                    CONSTRAINT DF_user_notifications_delivered_at DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_user_notifications PRIMARY KEY (notification_id, user_id),
+                CONSTRAINT FK_user_notifications_notification
+                    FOREIGN KEY (notification_id)
+                    REFERENCES dbo.notifications(notification_id)
+                    ON DELETE CASCADE,
+                CONSTRAINT FK_user_notifications_user
+                    FOREIGN KEY (user_id)
+                    REFERENCES dbo.users(user_id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE INDEX IX_user_notifications_user_read_notification
+                ON dbo.user_notifications (user_id, is_read, notification_id);
         END;
         """
     )
@@ -117,7 +134,7 @@ def get_admin_notifications(
     connection = pyodbc.connect(_connection_string())
     try:
         cursor = connection.cursor()
-        _ensure_notifications_table(cursor)
+        _ensure_notifications_schema(cursor)
 
         target_user_id = _resolve_target_user_id(cursor, userId)
         safe_limit = max(1, min(limit, 100))
@@ -125,17 +142,19 @@ def get_admin_notifications(
         rows = cursor.execute(
             f"""
             SELECT TOP {safe_limit}
-                CAST(notification_id AS NVARCHAR(36)) AS notification_id,
-                CAST(user_id AS NVARCHAR(36)) AS user_id,
-                title,
-                message,
-                notification_type,
-                CAST(COALESCE(is_read, 0) AS BIT) AS is_read,
-                created_at,
-                read_at
-            FROM dbo.notifications
-            WHERE user_id = ?
-            ORDER BY created_at DESC
+                CAST(un.notification_id AS NVARCHAR(36)) AS notification_id,
+                CAST(un.user_id AS NVARCHAR(36)) AS user_id,
+                n.title,
+                n.message,
+                n.notification_type,
+                CAST(COALESCE(un.is_read, 0) AS BIT) AS is_read,
+                n.created_at,
+                un.read_at
+            FROM dbo.user_notifications AS un
+            INNER JOIN dbo.notifications AS n
+                ON n.notification_id = un.notification_id
+            WHERE un.user_id = ?
+            ORDER BY n.created_at DESC
             """,
             target_user_id,
         ).fetchall()
@@ -167,14 +186,14 @@ def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
     connection = pyodbc.connect(_connection_string())
     try:
         cursor = connection.cursor()
-        _ensure_notifications_table(cursor)
+        _ensure_notifications_schema(cursor)
 
         target_user_id = _resolve_target_user_id(cursor, userId)
 
         row = cursor.execute(
             """
             SELECT COUNT(*)
-            FROM dbo.notifications
+            FROM dbo.user_notifications
             WHERE user_id = ? AND COALESCE(is_read, 0) = 0
             """,
             target_user_id,
@@ -198,14 +217,14 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
     connection = pyodbc.connect(_connection_string())
     try:
         cursor = connection.cursor()
-        _ensure_notifications_table(cursor)
+        _ensure_notifications_schema(cursor)
 
         target_user_id = _resolve_target_user_id(cursor, userId)
 
         row = cursor.execute(
             """
             SELECT 1
-            FROM dbo.notifications
+            FROM dbo.user_notifications
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,
@@ -217,7 +236,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
 
         cursor.execute(
             """
-            UPDATE dbo.notifications
+            UPDATE dbo.user_notifications
             SET is_read = 1,
                 read_at = ?
             WHERE notification_id = ? AND user_id = ?
@@ -244,14 +263,14 @@ def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
     connection = pyodbc.connect(_connection_string())
     try:
         cursor = connection.cursor()
-        _ensure_notifications_table(cursor)
+        _ensure_notifications_schema(cursor)
 
         target_user_id = _resolve_target_user_id(cursor, userId)
         now_utc = datetime.utcnow()
 
         cursor.execute(
             """
-            UPDATE dbo.notifications
+            UPDATE dbo.user_notifications
             SET is_read = 1,
                 read_at = ?
             WHERE user_id = ? AND COALESCE(is_read, 0) = 0

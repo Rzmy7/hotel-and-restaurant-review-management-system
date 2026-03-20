@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.models import Notification
+from app.models import UserNotification
 from app.repositories.notifications_repo import (
     create_notification,
     list_notifications_for_user,
@@ -41,16 +41,17 @@ class MarkAllReadResponse(BaseModel):
     updated: int
 
 
-def _to_response(notification: Notification) -> NotificationResponse:
+def _to_response(user_notification: UserNotification) -> NotificationResponse:
+    content = user_notification.notification
     return NotificationResponse(
-        id=str(notification.notification_id),
-        userId=str(notification.user_id),
-        title=notification.title,
-        message=notification.message,
-        type=notification.notification_type,
-        isRead=notification.is_read,
-        createdAt=notification.created_at.isoformat() if notification.created_at else "",
-        readAt=notification.read_at.isoformat() if notification.read_at else None,
+        id=str(user_notification.notification_id),
+        userId=str(user_notification.user_id),
+        title=content.title,
+        message=content.message,
+        type=content.notification_type,
+        isRead=user_notification.is_read,
+        createdAt=content.created_at.isoformat() if content.created_at else "",
+        readAt=user_notification.read_at.isoformat() if user_notification.read_at else None,
     )
 
 

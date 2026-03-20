@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models import Notification
+from app.models import Notification, UserNotification
 
 
 def create_notification(
@@ -11,17 +11,35 @@ def create_notification(
     title: str,
     message: str,
     notification_type: str = "info",
-) -> Notification:
+) -> UserNotification:
     notification = Notification(
-        user_id=user_id,
         title=title,
         message=message,
         notification_type=notification_type,
     )
     db.add(notification)
+
+    db.flush()
+
+    user_notification = UserNotification(
+        notification_id=notification.notification_id,
+        user_id=user_id,
+        is_read=False,
+    )
+    db.add(user_notification)
+
     db.commit()
-    db.refresh(notification)
-    return notification
+    db.refresh(user_notification)
+
+    return (
+        db.query(UserNotification)
+        .join(Notification, UserNotification.notification_id == Notification.notification_id)
+        .filter(
+            UserNotification.notification_id == notification.notification_id,
+            UserNotification.user_id == user_id,
+        )
+        .first()
+    )
 
 
 def list_notifications_for_user(
@@ -30,10 +48,15 @@ def list_notifications_for_user(
     limit: int = 50,
     offset: int = 0,
     unread_only: bool = False,
-) -> list[Notification]:
-    query = db.query(Notification).filter(Notification.user_id == user_id)
+) -> list[UserNotification]:
+    query = (
+        db.query(UserNotification)
+        .join(Notification, UserNotification.notification_id == Notification.notification_id)
+        .filter(UserNotification.user_id == user_id)
+    )
+
     if unread_only:
-        query = query.filter(Notification.is_read.is_(False))
+        query = query.filter(UserNotification.is_read.is_(False))
 
     return (
         query.order_by(Notification.created_at.desc())
@@ -45,10 +68,10 @@ def list_notifications_for_user(
 
 def count_unread_notifications(db: Session, user_id: uuid.UUID) -> int:
     return (
-        db.query(Notification)
+        db.query(UserNotification)
         .filter(
-            Notification.user_id == user_id,
-            Notification.is_read.is_(False),
+            UserNotification.user_id == user_id,
+            UserNotification.is_read.is_(False),
         )
         .count()
     )
@@ -58,12 +81,12 @@ def mark_notification_as_read(
     db: Session,
     notification_id: uuid.UUID,
     user_id: uuid.UUID,
-) -> Notification | None:
+) -> UserNotification | None:
     notification = (
-        db.query(Notification)
+        db.query(UserNotification)
         .filter(
-            Notification.notification_id == notification_id,
-            Notification.user_id == user_id,
+            UserNotification.notification_id == notification_id,
+            UserNotification.user_id == user_id,
         )
         .first()
     )
@@ -82,10 +105,10 @@ def mark_notification_as_read(
 
 def mark_all_notifications_as_read(db: Session, user_id: uuid.UUID) -> int:
     unread = (
-        db.query(Notification)
+        db.query(UserNotification)
         .filter(
-            Notification.user_id == user_id,
-            Notification.is_read.is_(False),
+            UserNotification.user_id == user_id,
+            UserNotification.is_read.is_(False),
         )
         .all()
     )

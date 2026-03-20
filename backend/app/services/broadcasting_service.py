@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.constants.roles import SYSTEM_ADMIN
-from app.models import BroadcastEvent, Notification, Role, User, UserRole
+from app.models import BroadcastEvent, Notification, Role, User, UserNotification, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -243,18 +243,25 @@ def _create_notifications_for_recipients(
     if not recipient_ids:
         return
 
-    notifications = [
-        Notification(
+    notification = Notification(
+        title=subject,
+        message=body,
+        notification_type=message_type,
+        created_at=created_at,
+    )
+    db.add(notification)
+    db.flush()
+
+    user_notifications = [
+        UserNotification(
+            notification_id=notification.notification_id,
             user_id=user_id,
-            title=subject,
-            message=body,
-            notification_type=message_type,
             is_read=False,
-            created_at=created_at,
+            delivered_at=created_at,
         )
         for user_id in recipient_ids
     ]
-    db.add_all(notifications)
+    db.add_all(user_notifications)
 
 
 async def send_broadcast(

@@ -56,7 +56,7 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     notifications = relationship(
-        "Notification",
+        "UserNotification",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -216,23 +216,45 @@ class Notification(Base):
     )
 
     notification_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UNIQUEIDENTIFIER,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
-        nullable=False,
-    )
     title = Column(String(200), nullable=False)
     message = Column(String, nullable=False)
     notification_type = Column(String(30), nullable=False, default="info")
-    is_read = Column(Boolean, nullable=False, default=False)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),
         nullable=False,
     )
+
+    recipients = relationship(
+        "UserNotification",
+        back_populates="notification",
+        cascade="all, delete-orphan",
+    )
+
+
+class UserNotification(Base):
+    __tablename__ = "user_notifications"
+
+    notification_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("notifications.notification_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    is_read = Column(Boolean, nullable=False, default=False)
     read_at = Column(DateTime(timezone=True), nullable=True)
+    delivered_at = Column(
+        DateTime(timezone=True),
+        server_default=func.sysutcdatetime(),
+        nullable=False,
+    )
 
     user = relationship("User", back_populates="notifications")
+    notification = relationship("Notification", back_populates="recipients")
 
 
 class BroadcastEvent(Base):
