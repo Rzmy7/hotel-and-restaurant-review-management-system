@@ -143,7 +143,6 @@ export const fetchSettings = (): Promise<AdminSettings> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({
-                platformName: 'AdminPanel Platform',
                 timezone: '',
                 language: '',
                 dateFormat: 'MM/DD/YYYY',
@@ -153,12 +152,10 @@ export const fetchSettings = (): Promise<AdminSettings> => {
                 passwordStrength: 'Strong (Alpha-numeric + Special Char)',
                 sessionTimeout: '30 Minutes',
                 allowNewSignups: false,
-                notifyNewReviews: true,
-                notifyLowRating: true,
-                notifyWeeklyDigest: false,
-                notifyAiReply: true,
-                notifySystemAlerts: true,
-                notifyFeatureUpdates: false
+                notifyApiLimitReaching: true,
+                notifyServerOverloading: true,
+                notifyServerConnectionFailed: true,
+                notifyScrapingFailures: true
             });
         }, 500);
     });

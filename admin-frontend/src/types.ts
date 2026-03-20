@@ -79,7 +79,6 @@ export interface FeatureFlag {
 }
 
 export interface AdminSettings {
-    platformName: string;
     timezone: string;
     language: string;
     dateFormat: string;
@@ -89,12 +88,10 @@ export interface AdminSettings {
     passwordStrength: string;
     sessionTimeout: string;
     allowNewSignups: boolean;
-    notifyNewReviews: boolean;
-    notifyLowRating: boolean;
-    notifyWeeklyDigest: boolean;
-    notifyAiReply: boolean;
-    notifySystemAlerts: boolean;
-    notifyFeatureUpdates: boolean;
+    notifyApiLimitReaching: boolean;
+    notifyServerOverloading: boolean;
+    notifyServerConnectionFailed: boolean;
+    notifyScrapingFailures: boolean;
 }
 
 export interface ScrapingStats {
