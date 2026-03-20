@@ -75,7 +75,7 @@ export const Header: React.FC = () => {
     return (
         <header className="fixed top-0 left-64 right-0 h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
             <div className="flex items-center gap-3">
-                <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+                <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
                 {subtitle && <p className="text-sm text-gray-500 hidden">{subtitle}</p>}
             </div>
 

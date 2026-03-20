@@ -663,21 +663,6 @@ export const SubscriptionPlans: React.FC = () => {
     return (
         <div className="pt-4 space-y-6 max-w-7xl">
 
-            {/* Page Header */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Subscription Plans</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage pricing tiers, features, and availability for your customers</p>
-                </div>
-                <button
-                    onClick={openAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                    <Plus size={16} />
-                    Add Plan
-                </button>
-            </div>
-
             {/* Stats Strip */}
             <div className="grid grid-cols-3 gap-4">
                 {[
@@ -693,20 +678,29 @@ export const SubscriptionPlans: React.FC = () => {
                 ))}
             </div>
 
-            {/* Billing Toggle */}
-            <div className="flex items-center gap-1 self-start bg-gray-100 p-1 rounded-xl w-fit">
+            {/* Billing Toggle & Add Plan Button */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 self-start bg-gray-100 p-1 rounded-xl w-fit">
+                    <button
+                        onClick={() => setBillingCycle('monthly')}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Monthly
+                    </button>
+                    <button
+                        onClick={() => setBillingCycle('annual')}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'annual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Annual
+                        <span className="ml-1.5 text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">Save up to 20%</span>
+                    </button>
+                </div>
                 <button
-                    onClick={() => setBillingCycle('monthly')}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={openAdd}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
                 >
-                    Monthly
-                </button>
-                <button
-                    onClick={() => setBillingCycle('annual')}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'annual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    Annual
-                    <span className="ml-1.5 text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">Save up to 20%</span>
+                    <Plus size={16} />
+                    Add Plan
                 </button>
             </div>
 

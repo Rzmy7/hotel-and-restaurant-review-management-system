@@ -27,6 +27,7 @@ from app.repositories.groups_repo import add_member_to_group, create_group, get_
 from app.auth_permissions import require_group_manager, require_group_member
 
 from app.auth.auth_permissions import require_admin
+from app.auth.broadcasting_routes import router as broadcasting_router
 
 
 
@@ -74,6 +75,11 @@ app.add_middleware(
 # ----------------------
 load_dotenv()
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "dev-secret"))
+
+# ----------------------
+# Include routers
+# ----------------------
+app.include_router(broadcasting_router)
 
 # ----------------------
 # Password reset config
