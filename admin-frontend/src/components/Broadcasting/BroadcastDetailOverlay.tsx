@@ -1,7 +1,8 @@
 import React from 'react';
 import { X, Mail, Bell } from 'lucide-react';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { BroadcastRecord, Channel, BroadcastStatus, MessageType, MESSAGE_TYPES } from './types';
+import { MESSAGE_TYPES } from './types';
+import type { BroadcastRecord, Channel, BroadcastStatus, MessageType } from './types';
 
 interface DetailOverlayProps {
     record: BroadcastRecord;

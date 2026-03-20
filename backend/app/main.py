@@ -28,6 +28,7 @@ from app.auth_permissions import require_group_manager, require_group_member
 
 from app.auth.auth_permissions import require_admin
 from app.auth.broadcasting_routes import router as broadcasting_router
+from app.auth.notifications_routes import router as notifications_router
 
 
 
@@ -80,6 +81,7 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "dev-se
 # Include routers
 # ----------------------
 app.include_router(broadcasting_router)
+app.include_router(notifications_router)
 
 # ----------------------
 # Password reset config

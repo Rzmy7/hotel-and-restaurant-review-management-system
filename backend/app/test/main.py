@@ -29,6 +29,8 @@ from services.competitor_service import (
 )
 from api.review_api import router as dashboard_router
 from api.admin_api import router as admin_router
+from api.broadcasting_api import router as broadcasting_router
+from api.notifications_api import router as notifications_router
 
 load_dotenv()  # Load environment variables
 
@@ -98,6 +100,8 @@ app.add_middleware(
 
 app.include_router(dashboard_router)
 app.include_router(admin_router)
+app.include_router(broadcasting_router)
+app.include_router(notifications_router)
 
 # ==========================================
 # 4. DATABASE HELPERS

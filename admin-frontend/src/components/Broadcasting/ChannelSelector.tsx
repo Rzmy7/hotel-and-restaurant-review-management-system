@@ -1,5 +1,6 @@
 import React from 'react';
-import { Channel, CHANNELS } from './types';
+import { CHANNELS } from './types';
+import type { Channel } from './types';
 import { Mail, Bell } from 'lucide-react';
 
 interface ChannelSelectorProps {

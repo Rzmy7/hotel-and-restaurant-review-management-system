@@ -1,6 +1,7 @@
-import React from 'lucide-react';
+import React from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
-import { ComposeForm, CHANNELS, MESSAGE_TYPES, AUDIENCE_OPTIONS, MessageType } from './types';
+import { CHANNELS, MESSAGE_TYPES, AUDIENCE_OPTIONS } from './types';
+import type { ComposeForm, MessageType } from './types';
 
 interface PreviewModalProps {
     form: ComposeForm;

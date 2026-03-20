@@ -5,8 +5,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.admin_router import router as admin_router
+from app.broadcasting_router import router as broadcasting_router
 from app.dashboard_router import router as dashboard_router
 from app.monitoring_router import router as monitoring_router
+from app.notifications_router import router as notifications_router
 
 load_dotenv()
 
@@ -32,6 +34,8 @@ app.add_middleware(
 app.include_router(dashboard_router)
 app.include_router(admin_router)
 app.include_router(monitoring_router)
+app.include_router(broadcasting_router)
+app.include_router(notifications_router)
 
 
 @app.get("/")

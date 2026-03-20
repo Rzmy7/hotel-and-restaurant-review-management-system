@@ -1,5 +1,6 @@
 import React from 'react';
-import { MessageType, MESSAGE_TYPES } from './types';
+import { MESSAGE_TYPES } from './types';
+import type { MessageType } from './types';
 
 interface MessageTypeSelectorProps {
     value: MessageType;

@@ -1,115 +1,69 @@
-import type { BroadcastRecord, ComposeForm } from './types';
+import type { BroadcastRecord, ComposeForm } from '../components/Broadcasting/types';
 
-const API_BASE = 'http://localhost:8000/api/broadcasting'; // TODO: Replace with actual API server
+const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
+
+const getBaseUrl = (): string => {
+    const stored = localStorage.getItem('mainBackendUrl');
+    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
+};
+
+const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
+    const response = await fetch(`${getBaseUrl()}${path}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        ...init,
+    });
+
+    if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+};
 
 export const broadcastingService = {
-    // Get all broadcast history
     async getHistory(): Promise<BroadcastRecord[]> {
-        try {
-            const response = await fetch(`${API_BASE}/history`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            if (!response.ok) throw new Error(`Failed to fetch history: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error fetching broadcast history:', error);
-            throw error;
-        }
+        return requestJson<BroadcastRecord[]>('/api/broadcasting/history', { method: 'GET' });
     },
 
-    // Send a broadcast
     async sendBroadcast(form: ComposeForm): Promise<{ success: boolean; broadcastId: string; message: string }> {
-        try {
-            const response = await fetch(`${API_BASE}/send`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
-            });
-            if (!response.ok) throw new Error(`Failed to send broadcast: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error sending broadcast:', error);
-            throw error;
-        }
+        return requestJson('/api/broadcasting/send', {
+            method: 'POST',
+            body: JSON.stringify(form),
+        });
     },
 
-    // Get broadcast detail
     async getBroadcastDetail(broadcastId: string): Promise<BroadcastRecord> {
-        try {
-            const response = await fetch(`${API_BASE}/${broadcastId}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            if (!response.ok) throw new Error(`Failed to fetch broadcast detail: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error fetching broadcast detail:', error);
-            throw error;
-        }
+        return requestJson<BroadcastRecord>(`/api/broadcasting/${encodeURIComponent(broadcastId)}`, {
+            method: 'GET',
+        });
     },
 
-    // Get estimated recipient count for audience
-    async getEstimatedRecipients(audienceType: string, audienceValue?: string): Promise<{ count: number }> {
-        try {
-            const params = new URLSearchParams();
-            params.append('audienceType', audienceType);
-            if (audienceValue) params.append('audienceValue', audienceValue);
+    async getEstimatedRecipients(audienceType: string, audienceValue?: string): Promise<number> {
+        const params = new URLSearchParams();
+        params.append('audienceType', audienceType);
+        if (audienceValue) params.append('audienceValue', audienceValue);
 
-            const response = await fetch(`${API_BASE}/estimate-recipients?${params}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            if (!response.ok) throw new Error(`Failed to estimate recipients: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error estimating recipients:', error);
-            throw error;
-        }
+        const result = await requestJson<{ count: number }>(`/api/broadcasting/estimate-recipients?${params}`, {
+            method: 'GET',
+        });
+        return result.count;
     },
 
-    // Get broadcast statistics
     async getStatistics(): Promise<{ total: number; sent: number; scheduled: number; failed: number }> {
-        try {
-            const response = await fetch(`${API_BASE}/statistics`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            if (!response.ok) throw new Error(`Failed to fetch statistics: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error fetching broadcast statistics:', error);
-            throw error;
-        }
+        return requestJson('/api/broadcasting/statistics', { method: 'GET' });
     },
 
-    // Resend a scheduled broadcast
     async resendBroadcast(broadcastId: string): Promise<{ success: boolean; message: string }> {
-        try {
-            const response = await fetch(`${API_BASE}/${broadcastId}/resend`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            if (!response.ok) throw new Error(`Failed to resend broadcast: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error resending broadcast:', error);
-            throw error;
-        }
+        return requestJson(`/api/broadcasting/${encodeURIComponent(broadcastId)}/resend`, {
+            method: 'POST',
+        });
     },
 
-    // Cancel a scheduled broadcast
     async cancelBroadcast(broadcastId: string): Promise<{ success: boolean; message: string }> {
-        try {
-            const response = await fetch(`${API_BASE}/${broadcastId}/cancel`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            if (!response.ok) throw new Error(`Failed to cancel broadcast: ${response.status}`);
-            return response.json();
-        } catch (error) {
-            console.error('Error canceling broadcast:', error);
-            throw error;
-        }
+        return requestJson(`/api/broadcasting/${encodeURIComponent(broadcastId)}/cancel`, {
+            method: 'POST',
+        });
     },
 };

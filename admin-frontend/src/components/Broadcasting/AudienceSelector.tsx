@@ -1,7 +1,7 @@
 import React from 'react';
-import { AudienceType, AUDIENCE_OPTIONS } from './types';
+import { AUDIENCE_OPTIONS } from './types';
+import type { AudienceType } from './types';
 import { Users, UserCheck } from 'lucide-react';
-import { ChevronDown } from 'lucide-react';
 
 interface AudienceSelectorProps {
     audienceType: AudienceType;
@@ -21,8 +21,6 @@ export const AudienceSelector: React.FC<AudienceSelectorProps> = ({
     onAudienceTypeChange,
     onAudienceValueChange,
 }) => {
-    const selectedAudience = AUDIENCE_OPTIONS.find(a => a.value === audienceType)!;
-
     return (
         <div>
             <label className="block text-sm font-semibold text-gray-900 mb-3">Target Audience *</label>
