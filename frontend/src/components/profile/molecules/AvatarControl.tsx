@@ -1,17 +1,34 @@
 import React from 'react';
 import { Camera } from 'lucide-react';
+import { validateImage } from "../../../validators/fileValidator";
 
 interface AvatarControlProps {
     onPhotoChange: (file: File) => void;
 }
 
 const AvatarControl: React.FC<AvatarControlProps> = ({ onPhotoChange }) => {
+    // Reference to hidden file input
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+    // HANDLE FILE CHANGE
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) onPhotoChange(file);
+
+        if (!file) return;
+
+        try {
+            //  Use centralized validator
+            validateImage(file);
+
+            //  If valid → send to parent
+            onPhotoChange(file);
+
+        } catch (error: any) {
+            //  Show error message
+            alert(error.message);
+        }
     };
+
 
     return (
         <div className="relative group">
@@ -22,6 +39,8 @@ const AvatarControl: React.FC<AvatarControlProps> = ({ onPhotoChange }) => {
                 onChange={handleFileChange}
                 className="hidden"
             />
+
+            { /*CAMERA BUTTON*/}
             <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}

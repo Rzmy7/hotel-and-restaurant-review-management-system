@@ -126,24 +126,53 @@ const ProfilePage: React.FC = () => {
         }
     }, [navigate]);
 
+
     const handlePhotoChange = useCallback(
-        (file: File) => {
-            const reader = new FileReader();
+    async (file: File) => {
+        try {
+            //  STEP 1: Show instant preview (UX)
+            const previewUrl = URL.createObjectURL(file);
 
-            reader.onloadend = () => {
-                setProfile((prev) => ({
-                    ...prev,
-                    avatar: reader.result as string,
-                }));
+            setProfile((prev) => ({
+                ...prev,
+                avatar: previewUrl,
+            }));
 
-                showToast("Photo updated (preview only)", "info");
-            };
+            // STEP 2: Prepare form data for upload
+            const formData = new FormData();
+            formData.append("file", file);
 
-            reader.readAsDataURL(file);
-        },
-        [showToast]
-    );
+            // STEP 3: Call backend API
+            const res = await fetch("http://127.0.0.1:8000/users/me/upload-image", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
 
+            if (!res.ok) throw new Error("Upload failed");
+
+            const data = await res.json();
+
+            console.log("UPLOAD RESPONSE:", data);
+
+            //  STEP 4: Update profile with REAL image URL (IMPORTANT)
+            setProfile((prev) => ({
+                ...prev,
+                avatar: data.profile_image_url,
+            }));
+
+            //  STEP 5: Show success message
+            showToast("Profile image updated successfully ✅", "success");
+
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to upload image", "error");
+        }
+    },
+    [token, showToast]
+);
 
     const formatMemberSince = (dateString: string) => {
         if (!dateString) return "";
