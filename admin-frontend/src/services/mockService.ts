@@ -131,8 +131,9 @@ export const fetchFeatureFlags = (): Promise<FeatureFlag[]> => {
         setTimeout(() => {
             resolve([
                 { id: '1', name: 'Content Search by Embeddings', key: 'content_search_embeddings', description: 'Enable semantic search across reviews and content using vector embeddings', status: 'Enabled' },
-                { id: '2', name: 'Reply Regeneration Limit', key: 'reply_regeneration_limit', description: 'Set maximum number of times a reply can be regenerated per review', status: 'Enabled' },
+                { id: '2', name: 'Reply Regeneration Limit', key: 'reply_regeneration_limit', description: 'Set maximum number of times a reply can be regenerated per review', status: 'Enabled', limit: 3 },
                 { id: '3', name: 'Custom Report Generation', key: 'custom_report_generation', description: 'Allow users to create and export customized reports with selected metrics', status: 'Disabled' },
+                { id: '4', name: 'Must Two-Factor Authentication', key: 'must_two_factor_authentication', description: 'Require two-factor authentication for all users', status: 'Disabled' },
             ]);
         }, 600);
     });
@@ -387,6 +388,27 @@ export const fetchServerStatuses = (): Promise<ServerStatus[]> => {
                         uptime: '52d 3h 56m'
                     }
                 ]);
+            });
+        }, 400);
+    });
+};
+
+// Toggle maintenance mode - API endpoint ready
+// TODO: Replace with actual API endpoint: POST /api/maintenance/toggle or PATCH /api/settings/maintenance
+export const toggleMaintenanceMode = (maintenanceEnabled: boolean): Promise<{ success: boolean; maintenanceMode: boolean }> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            // Replace this with actual API call:
+            // return fetch('http://API_SERVER/api/settings/maintenance', {
+            //   method: 'PATCH',
+            //   headers: { 'Content-Type': 'application/json' },
+            //   body: JSON.stringify({ maintenanceMode: maintenanceEnabled })
+            // }).then(res => res.json());
+            
+            // Mock response
+            resolve({
+                success: true,
+                maintenanceMode: maintenanceEnabled
             });
         }, 400);
     });

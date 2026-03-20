@@ -6,7 +6,6 @@ export interface DashboardStats {
     usersGrowth: number;
     hotelsGrowth: number;
     totalReviews: number;
-    reviewsCollectedToday: number;
     reviewsGrowth: number;
     activeUsersToday: number;
     systemUptime: number;
@@ -58,7 +57,7 @@ export interface NavItem {
 export interface Organization {
     id: string;
     name: string;
-    owner: string;
+    domain: string;
     usersCount: number;
     status: 'Active' | 'Pending' | 'Inactive';
     iconUrl?: string;
@@ -70,25 +69,13 @@ export interface OrganizationStats {
     pending: number;
 }
 
-export interface OrgSource {
-    organization_source_id: number;
-    source_id: number;
-    platform_name: string;
-    external_url: string | null;
-    last_synced_at: string | null;
-}
-
-export interface AvailableSource {
-    source_id: number;
-    platform_name: string;
-}
-
 export interface FeatureFlag {
     id: string;
     key: string;
     name: string;
     description: string;
     status: 'Enabled' | 'Disabled';
+    limit?: number;
 }
 
 export interface AdminSettings {
@@ -129,13 +116,6 @@ export interface ScrapingPlatform {
     enabled: boolean;
     lastRun: string;
     status: 'active' | 'maintenance';
-    baseUrl?: string;
-    tableName?: string;
-    attributes?: {
-        name: string;
-        type: string;
-        nullable: boolean;
-    }[];
 }
 
 export interface ScrapingJob {

@@ -27,6 +27,19 @@ export const FeatureFlags: React.FC = () => {
         ));
     };
 
+    const updateLimit = (id: string, inputValue: string) => {
+        const parsedValue = Number.parseInt(inputValue, 10);
+
+        setFlags(prevFlags => prevFlags.map(flag =>
+            flag.id === id
+                ? {
+                    ...flag,
+                    limit: Number.isNaN(parsedValue) ? undefined : Math.max(1, parsedValue)
+                }
+                : flag
+        ));
+    };
+
     if (loading) {
         return <LoadingSpinner size={32} />;
     }
@@ -55,9 +68,26 @@ export const FeatureFlags: React.FC = () => {
                         <div className="flex-1">
                             <h3 className="font-semibold text-gray-900 mb-1">{flag.name}</h3>
                             <p className="text-sm text-gray-600">{flag.description}</p>
-                            <p className="text-xs text-gray-400 mt-1 font-mono">{flag.key}</p>
                         </div>
                         <div className="flex items-center gap-4 ml-4">
+                            {flag.key === 'reply_regeneration_limit' && (
+                                <div className="flex items-center gap-2">
+                                    <label
+                                        htmlFor={`reply-limit-${flag.id}`}
+                                        className="text-sm font-medium text-gray-700"
+                                    >
+                                        Limit
+                                    </label>
+                                    <input
+                                        id={`reply-limit-${flag.id}`}
+                                        type="number"
+                                        min={1}
+                                        value={flag.limit ?? ''}
+                                        onChange={(e) => updateLimit(flag.id, e.target.value)}
+                                        className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            )}
                             {/* Toggle Switch */}
                             <div className="flex items-center gap-2">
                                 <ToggleSwitch

@@ -4,7 +4,6 @@ import {
     Mail,
     Bell,
     Users,
-    Building2,
     UserCheck,
     ChevronDown,
     CheckCircle2,
@@ -169,16 +168,6 @@ const AUDIENCE_OPTIONS: { value: AudienceType; label: string; icon: React.ReactN
         subOptions: [
             { value: 'admin', label: 'Admins only' },
             { value: 'user', label: 'Users (non-admin)' },
-        ],
-    },
-    {
-        value: 'organization',
-        label: 'By Organization',
-        icon: <Building2 size={16} />,
-        subOptions: [
-            { value: 'active', label: 'Active organizations' },
-            { value: 'pending', label: 'Pending organizations' },
-            { value: 'inactive', label: 'Inactive organizations' },
         ],
     },
     {
@@ -519,16 +508,6 @@ export const Broadcasting: React.FC = () => {
 
     return (
         <div className="pt-4 space-y-5 max-w-6xl">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Message Broadcasting</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Send announcements, alerts, and notifications to your user base
-                    </p>
-                </div>
-            </div>
-
             {/* Success Banner */}
             {sentBanner && (
                 <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
