@@ -68,7 +68,8 @@ def trigger_agoda_scrape(body: AgodaScrapeRequest):
         job_id = job_manager.create_job(platform="agoda", url=body.source_url)
         scrape_pool.submit(
             job_id, scrape_agoda,
-            body.source_url, body.headless, body.pages, job_id, body.source_id
+            url=body.source_url, headless=body.headless, pages=body.pages, 
+            job_id=job_id, source_id=body.source_id, platform="agoda"
         )
         pool = scrape_pool.get_pool_status()
         return {

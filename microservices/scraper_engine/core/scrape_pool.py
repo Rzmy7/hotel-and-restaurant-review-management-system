@@ -52,35 +52,39 @@ class ScrapePool:
         # After resizing, we might have new slots available
         self._process_queue()
 
-    def submit(self, job_id: str, fn: Callable, *args, **kwargs) -> str:
+    def submit(self, _pool_job_id: str, _pool_fn: Callable, *args, **kwargs) -> str:
         """
         Submit a scrape job to the pool. 
         If slots are available, it runs immediately.
         Otherwise, it is added to the FCFS queue.
         """
         source_id = kwargs.get("source_id")
+        platform = kwargs.pop("platform", "unknown")
+        
         with self._lock:
             # If we have free slots, submit immediately
             if self.active_count < self._max_workers:
-                self._submit_to_executor(job_id, fn, *args, **kwargs)
-                return job_id
+                self._submit_to_executor(_pool_job_id, _pool_fn, *args, **kwargs)
+                return _pool_job_id
         
         # Otherwise, add to the explicit queue
-        job_manager.update_job(job_id, status=JobStatus.QUEUED, progress=f"Queued — position: {job_queue.size + 1}")
-        job_queue.push(job_id, kwargs.get("platform", "unknown"), fn, *args, **kwargs)
+        job_manager.update_job(_pool_job_id, status=JobStatus.QUEUED, progress=f"Queued — position: {job_queue.size + 1}")
+        job_queue.push(_pool_job_id, platform, _pool_fn, *args, **kwargs)
         
         # Notify backend that job is QUEUED
         if source_id:
             from core.utils import notify_backend_sync_status
             notify_backend_sync_status(source_id, "QUEUED")
             
-        logger.info(f"Job {job_id} added to queue (Pool busy: {self.active_count}/{self._max_workers})")
-        return job_id
+        logger.info(f"Job {_pool_job_id} added to queue (Pool busy: {self.active_count}/{self._max_workers})")
+        return _pool_job_id
 
-    def _submit_to_executor(self, job_id: str, fn: Callable, *args, **kwargs):
+    def _submit_to_executor(self, _pool_job_id: str, _pool_fn: Callable, *args, **kwargs):
         """Internal helper to wrap and submit a job to the ThreadPoolExecutor."""
-        job_manager.update_job(job_id, status=JobStatus.PENDING, progress="Preparing to run...")
+        job_manager.update_job(_pool_job_id, status=JobStatus.PENDING, progress="Preparing to run...")
         source_id = kwargs.get("source_id")
+        # Ensure platform is NOT in kwargs when calling the scraper function
+        kwargs.pop("platform", None)
 
         def _wrapped():
             import asyncio
@@ -92,18 +96,18 @@ class ScrapePool:
                 pass
 
             try:
-                job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Scraper starting...")
+                job_manager.update_job(_pool_job_id, status=JobStatus.RUNNING, progress="Scraper starting...")
                 
                 # Notify backend that job is RUNNING
                 if source_id:
                     from core.utils import notify_backend_sync_status
                     notify_backend_sync_status(source_id, "RUNNING")
                 
-                result = fn(*args, **kwargs)
+                result = _pool_fn(*args, **kwargs)
                 return result
             except BaseException as e:
-                logger.error(f"Job {job_id} failed: {e}", exc_info=True)
-                job_manager.update_job(job_id, status=JobStatus.FAILED, progress=f"Error: {type(e).__name__}")
+                logger.error(f"Job {_pool_job_id} failed: {e}", exc_info=True)
+                job_manager.update_job(_pool_job_id, status=JobStatus.FAILED, progress=f"Error: {type(e).__name__}")
                 
                 # Notify backend that job has FAILED
                 if source_id:
@@ -113,12 +117,12 @@ class ScrapePool:
                 raise
             finally:
                 with self._lock:
-                    self._futures.pop(job_id, None)
+                    self._futures.pop(_pool_job_id, None)
                 self._process_queue()
 
         future = self._executor.submit(_wrapped)
-        self._futures[job_id] = future
-        logger.info(f"Job {job_id} started (Active: {self.active_count}/{self._max_workers})")
+        self._futures[_pool_job_id] = future
+        logger.info(f"Job {_pool_job_id} started (Active: {self.active_count}/{self._max_workers})")
 
     def _process_queue(self):
         """Pick the next job from the queue and submit it if slots are available."""

@@ -16,6 +16,7 @@ import PageHeader from '../components/shared/PageHeader';
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const [lastSyncTriggeredAt, setLastSyncTriggeredAt] = useState<number | null>(null);
 
   // Temporary hardcoded IDs until context is integrated
   const tenantId = 'D7A3E7C9-8F2B-4B1A-9C1A-1A2B3C4D5E6F';
@@ -25,6 +26,15 @@ const ReviewSourcesPage = () => {
   const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({
     queryKey: ['sources', tenantId, organizationId],
     queryFn: () => sourcesService.getSources(tenantId, organizationId),
+    refetchInterval: (query) => {
+      const sources = query.state.data as Source[] | undefined;
+      const hasActiveSync = sources?.some(s => s.status === 'In Queue' || s.status === 'Syncing');
+      
+      // If we just triggered a sync, poll for at least 30 seconds to catch the status change
+      const wasRecentlyTriggered = lastSyncTriggeredAt && (Date.now() - lastSyncTriggeredAt < 30000);
+      
+      return (hasActiveSync || wasRecentlyTriggered) ? 5000 : false;
+    }
   });
 
   // React Query: Stats
@@ -83,9 +93,13 @@ const ReviewSourcesPage = () => {
     mutationFn: (id: string | number) => sourcesService.triggerSync(id),
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
-      showToast(`Sync triggered for ${source?.platform || 'source'}`, 'success');
-      // Simulate follow up
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['sources'] }), 2000);
+      showToast(`Sync queued for ${source?.platform || 'source'}`, 'success');
+      
+      // Update trigger time to start polling
+      setLastSyncTriggeredAt(Date.now());
+      
+      // Invalidate immediately to show "In Queue"
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
     },
     onError: () => showToast('Sync failed', 'error'),
   });

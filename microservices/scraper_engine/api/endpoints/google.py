@@ -68,7 +68,8 @@ def trigger_google_scrape(body: GoogleScrapeRequest):
         job_id = job_manager.create_job(platform="google", url=body.source_url)
         scrape_pool.submit(
             job_id, scrape_google,
-            body.source_url, body.headless, body.pages, job_id, body.source_id
+            url=body.source_url, headless=body.headless, pages=body.pages, 
+            job_id=job_id, source_id=body.source_id, platform="google"
         )
         pool = scrape_pool.get_pool_status()
         return {

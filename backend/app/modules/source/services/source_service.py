@@ -350,10 +350,10 @@ def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusReq
         db.add(sync_log)
         
     elif request.status == SyncStatus.RUNNING:
-        source.source_status = SourceStatus.RUNNING
+        source.source_status = SourceStatus.RUNNING.value
         
     elif request.status == SyncStatus.QUEUED:
-        source.source_status = SourceStatus.QUEUED
+        source.source_status = SourceStatus.QUEUED.value
 
     db.commit()
     db.refresh(source)

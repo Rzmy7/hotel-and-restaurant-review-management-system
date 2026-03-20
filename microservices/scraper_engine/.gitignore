@@ -36,3 +36,7 @@ output/
 
 # Logs
 *.log
+
+# tmp files
+tmp/
+tmp/*
