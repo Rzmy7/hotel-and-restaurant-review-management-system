@@ -4,6 +4,7 @@ from app.constants.roles import TENANT
 
 
 def get_user_by_email(db: Session, email: str):
+    # Find a user using email
     return db.query(User).filter(User.email == email).first()
 
 
@@ -25,6 +26,8 @@ def create_user(
     google_id: str | None = None,
     is_email_verified: bool = False,
 ):
+    
+    # Create a new user and assign default role (TENANT)
 
     # ------------------------------------------------
     # Create user
@@ -43,6 +46,7 @@ def create_user(
         is_email_verified=is_email_verified,
     )
 
+    # Save user to DB
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -65,6 +69,7 @@ def create_user(
 
 
 def get_user_profile(db: Session, user_id):
+    # Get full user profile by ID
     return db.query(User).filter(User.user_id == user_id).first()
 
 def update_user_profile(
