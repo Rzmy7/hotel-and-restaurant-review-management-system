@@ -27,7 +27,6 @@ from app.repositories.groups_repo import add_member_to_group, create_group, get_
 from app.auth_permissions import require_group_manager, require_group_member
 
 from app.auth.auth_permissions import require_admin
-
 from app.api.profile_routes import router as profile_router
 
 from app.api.organization_api import router as org_router
@@ -36,6 +35,8 @@ from app.api.onboarding_api import router as onboarding_router
 from app.api.user_api import router as user_router
 
 from app.api.organization_api import router as organization_router
+
+from app.api.user_organization_api import router as user_org_router
 
 
 # to identify
@@ -89,6 +90,8 @@ app.include_router(user_router, prefix="/api")
 
 
 app.include_router(organization_router)
+
+app.include_router(user_org_router)
 
 # ----------------------
 # Load environment + session

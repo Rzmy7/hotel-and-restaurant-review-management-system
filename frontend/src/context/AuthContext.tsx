@@ -65,6 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     const checkUserOrganizations = async () => {
         try {
+            console.log("Fetching organizations...");
+
             const token = localStorage.getItem("token");
 
             if (!token) {
@@ -79,6 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 },
             });
 
+            console.log("Response status:", res.status);
+
             if (!res.ok) {
                 console.error("Failed to fetch organizations:", res.status);
                 return;
@@ -88,23 +92,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
             console.log("Organizations API response:", data);
 
-            // ✅ FIX: backend returns array directly OR inside object
             const orgList = Array.isArray(data)
                 ? data
                 : data.organizations || [];
 
-            // Save organization IDs
+            console.log("Processed org list:", orgList);
+            
+            // save organizations
+            localStorage.setItem("organizations", JSON.stringify(orgList));
+
+            //  Extract IDs separately if needed
             const orgIds = orgList.map((org: any) => org.organization_id);
+            localStorage.setItem("organization_ids", JSON.stringify(orgIds));
 
-            localStorage.setItem("organizations", JSON.stringify(orgIds));
-
-            // Save current organization (first one)
-            if (orgIds.length > 0) {
-                localStorage.setItem("current_organization", orgIds[0]);
+            //  Set current organization
+            if (orgList.length > 0) {
+                localStorage.setItem(
+                    "current_organization",
+                    orgList[0].organization_id
+                );
             }
 
-            // Redirect logic
-            if (orgIds.length === 0) {
+            // Redirect
+            if (orgList.length === 0) {
                 window.location.href = "/no-organization";
             } else {
                 window.location.href = "/dashboard";
@@ -146,6 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Save user + token
         persist(normalizedUser, data.access_token);
 
+        console.log("Calling checkUserOrganizations...");
         // Check organizations after login
         await checkUserOrganizations();
 
