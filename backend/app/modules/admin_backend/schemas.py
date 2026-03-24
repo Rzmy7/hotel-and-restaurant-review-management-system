@@ -1,6 +1,15 @@
+"""
+Pydantic schemas for the admin_backend module.
+
+Migrated from admin-backend/app/models.py and inline schemas in the routers.
+"""
+
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+# ── Dashboard schemas ───────────────────────────────────────────────
 
 
 class DashboardStats(BaseModel):
@@ -49,6 +58,9 @@ class RecentActivity(BaseModel):
     user: Optional[str] = None
 
 
+# ── Organization schemas ────────────────────────────────────────────
+
+
 class OrganizationSummary(BaseModel):
     id: str
     name: str
@@ -62,6 +74,22 @@ class OrganizationStats(BaseModel):
     total: int
     active: int
     pending: int
+
+
+class OrganizationUpdatePayload(BaseModel):
+    name: str
+
+
+class OrgSourcesUpdateItem(BaseModel):
+    source_id: int
+    external_url: str | None = None
+
+
+class OrgSourcesUpdatePayload(BaseModel):
+    sources: list[OrgSourcesUpdateItem]
+
+
+# ── User schemas ────────────────────────────────────────────────────
 
 
 class AdminUser(BaseModel):
@@ -105,3 +133,53 @@ class AdminUserUpdatePayload(BaseModel):
 class DeleteUserResponse(BaseModel):
     status: str
     userId: str
+
+
+# ── Monitoring / scraping schemas ───────────────────────────────────
+
+
+class ScrapingTableAttributePayload(BaseModel):
+    name: str
+    type: str
+    nullable: bool = True
+
+
+class ScrapingPlatformCreatePayload(BaseModel):
+    name: str
+    tableName: str
+    attributes: list[ScrapingTableAttributePayload]
+    baseUrl: str | None = None
+    enabled: bool = True
+
+
+class ScrapingPlatformUpdatePayload(BaseModel):
+    name: str
+    tableName: str
+    attributes: list[ScrapingTableAttributePayload]
+    baseUrl: str | None = None
+    enabled: bool = True
+
+
+# ── Broadcasting schemas ────────────────────────────────────────────
+
+
+class BroadcastCreate(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=120)
+    body: str = Field(..., min_length=1, max_length=5000)
+    channel: Literal["email", "notification", "both"]
+    audienceType: Literal["all", "role", "plan"]
+    audienceValue: Optional[str] = None
+    messageType: Literal["info", "warning", "maintenance", "announcement"]
+    scheduleType: Literal["now", "scheduled"]
+    scheduledAt: Optional[str] = None
+
+
+class EstimatedRecipientsResponse(BaseModel):
+    count: int
+
+
+class StatisticsResponse(BaseModel):
+    total: int
+    sent: int
+    scheduled: int
+    failed: int

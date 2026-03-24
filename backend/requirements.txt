@@ -10,4 +10,6 @@ python-jose[cryptography]
 sqlalchemy
 apscheduler
 httpx
+requests
 sqlalchemy
+itsdangerous

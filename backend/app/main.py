@@ -6,8 +6,14 @@ app/routers/ and business logic in app/services/.
 """
 
 import os
+import json
+from pathlib import Path
+from pydantic import BaseModel, AnyHttpUrl, EmailStr, Field
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Request, Response, status
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from app.core.database import get_db
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -32,11 +38,11 @@ from app.modules.dashboard.routes import router as dashboard_router
 from app.modules.admin.routes import router as admin_router
 from app.modules.groups.router import router as groups_router
 from app.modules.source.routers import router as source_router
+from app.modules.admin_backend import router as admin_backend_router
 
 # ── App factory ─────────────────────────────────────────────────────
-from app.auth.auth_permissions import require_admin
-from app.auth.broadcasting_routes import router as broadcasting_router
-from app.auth.notifications_routes import router as notifications_router
+from app.middleware.permissions import require_admin
+
 
 
 
@@ -80,8 +86,6 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 # ----------------------
 # Include routers
 # ----------------------
-app.include_router(broadcasting_router)
-app.include_router(notifications_router)
 
 # ----------------------
 # Password reset config
@@ -660,9 +664,10 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(groups_router, prefix="/api")
 app.include_router(source_router, prefix="/api")
+app.include_router(admin_backend_router)
 
 # ── Dev server ──────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
