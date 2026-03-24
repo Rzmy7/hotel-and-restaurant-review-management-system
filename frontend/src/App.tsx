@@ -42,6 +42,8 @@ import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 
+import NoOrganizationPage from "./pages/NoOrganizationPage";
+
 // Styles
 import "./App.css";
 
@@ -152,6 +154,10 @@ const AppContent: React.FC = () => {
                 
                 {/* Fallback for undefined routes within the main shell */}
                 <Route path="*" element={<NotFound />} />
+
+                {/* User directed to here when not select organization */}
+                <Route path="/no-organization" element={<NoOrganizationPage />} />
+
               </Routes>
             </main>
           </div>

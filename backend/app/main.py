@@ -30,6 +30,13 @@ from app.auth.auth_permissions import require_admin
 
 from app.api.profile_routes import router as profile_router
 
+from app.api.organization_api import router as org_router
+from app.api.onboarding_api import router as onboarding_router
+
+from app.api.user_api import router as user_router
+
+from app.api.organization_api import router as organization_router
+
 
 # to identify
 print("RUNNING: backend/app/main.py")
@@ -65,6 +72,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
     ],
+    
+    
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,6 +82,13 @@ app.add_middleware(
 
 
 app.include_router(profile_router)
+
+app.include_router(org_router, prefix="/api")
+app.include_router(onboarding_router, prefix="/api")
+app.include_router(user_router, prefix="/api")
+
+
+app.include_router(organization_router)
 
 # ----------------------
 # Load environment + session
