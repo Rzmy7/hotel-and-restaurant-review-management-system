@@ -35,6 +35,10 @@ const ProfilePage: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    // 🔥 ADD THIS
+    const [isUploading, setIsUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
     /**
      * Load profile (AUTO-FILL LOGIC)
      */
@@ -128,51 +132,71 @@ const ProfilePage: React.FC = () => {
 
 
     const handlePhotoChange = useCallback(
-    async (file: File) => {
-        try {
-            //  STEP 1: Show instant preview (UX)
-            const previewUrl = URL.createObjectURL(file);
+        async (file: File) => {
+            let previewUrl = "";
+            let previousAvatar = profile.avatar; // 🔥 store old image
 
-            setProfile((prev) => ({
-                ...prev,
-                avatar: previewUrl,
-            }));
+            try {
+                // 🔄 START LOADING
+                setIsUploading(true);
 
-            // STEP 2: Prepare form data for upload
-            const formData = new FormData();
-            formData.append("file", file);
+                // STEP 1: Show instant preview (UX)
+                previewUrl = URL.createObjectURL(file);
 
-            // STEP 3: Call backend API
-            const res = await fetch("http://127.0.0.1:8000/users/me/upload-image", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                body: formData,
-            });
+                setProfile((prev) => ({
+                    ...prev,
+                    avatar: previewUrl,
+                }));
 
-            if (!res.ok) throw new Error("Upload failed");
+                // STEP 2: Prepare form data
+                const formData = new FormData();
+                formData.append("file", file);
 
-            const data = await res.json();
+                // STEP 3: Call backend
+                const res = await fetch("http://127.0.0.1:8000/users/me/upload-image", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: formData,
+                });
 
-            console.log("UPLOAD RESPONSE:", data);
+                if (!res.ok) throw new Error("Upload failed");
 
-            //  STEP 4: Update profile with REAL image URL (IMPORTANT)
-            setProfile((prev) => ({
-                ...prev,
-                avatar: data.profile_image_url,
-            }));
+                const data = await res.json();
 
-            //  STEP 5: Show success message
-            showToast("Profile image updated successfully ✅", "success");
+                console.log("UPLOAD RESPONSE:", data);
 
-        } catch (error) {
-            console.error(error);
-            showToast("Failed to upload image", "error");
-        }
-    },
-    [token, showToast]
-);
+                // STEP 4: Replace preview with real URL
+                setProfile((prev) => ({
+                    ...prev,
+                    avatar: data.profile_image_url,
+                }));
+
+                // 🧹 Clean memory (important)
+                URL.revokeObjectURL(previewUrl);
+
+                // STEP 5: Success message
+                showToast("Profile image updated successfully ✅", "success");
+
+            } catch (error) {
+                console.error(error);
+
+                // ❌ RESTORE OLD IMAGE (IMPORTANT UX FIX)
+                setProfile((prev) => ({
+                    ...prev,
+                    avatar: previousAvatar,
+                }));
+
+                showToast("Failed to upload image", "error");
+
+            } finally {
+                // 🔄 STOP LOADING
+                setIsUploading(false);
+            }
+        },
+        [token, showToast, profile.avatar]
+    );
 
     const formatMemberSince = (dateString: string) => {
         if (!dateString) return "";

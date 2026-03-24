@@ -12,6 +12,9 @@ interface ProfileTemplateProps {
     onCancel: () => void;
     onPhotoChange: (file: File) => void;
     isSaving: boolean;
+
+    isUploading: boolean;
+    uploadError?: string | null;
 }
 
 const ProfileTemplate: React.FC<ProfileTemplateProps> = ({
