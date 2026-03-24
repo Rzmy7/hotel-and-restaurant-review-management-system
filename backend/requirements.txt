@@ -13,3 +13,4 @@ httpx
 requests
 sqlalchemy
 itsdangerous
+bcrypt
