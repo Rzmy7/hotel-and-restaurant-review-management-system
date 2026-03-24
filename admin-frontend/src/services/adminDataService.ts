@@ -1,4 +1,4 @@
-import type { Organization, OrganizationStats, User } from '../types';
+import type { AvailableSource, Organization, OrganizationStats, OrgSource, User } from '../types';
 
 const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
 
@@ -58,6 +58,35 @@ export const fetchOrganizations = (): Promise<Organization[]> => {
 
 export const fetchOrgStats = (): Promise<OrganizationStats> => {
     return requestJson<OrganizationStats>('/admin/organizations/stats', { method: 'GET' });
+};
+
+export const fetchOrgSources = (orgId: string): Promise<OrgSource[]> => {
+    return requestJson<OrgSource[]>(`/admin/organizations/${encodeURIComponent(orgId)}/sources`);
+};
+
+export const fetchAllSources = (): Promise<AvailableSource[]> => {
+    return requestJson<AvailableSource[]>('/admin/sources');
+};
+
+export const updateOrganization = (orgId: string, name: string): Promise<{ id: string; name: string }> => {
+    return requestJson(`/admin/organizations/${encodeURIComponent(orgId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+    });
+};
+
+export const updateOrgSources = (
+    orgId: string,
+    sources: { source_id: number; external_url: string | null }[],
+): Promise<OrgSource[]> => {
+    return requestJson(`/admin/organizations/${encodeURIComponent(orgId)}/sources`, {
+        method: 'PUT',
+        body: JSON.stringify({ sources }),
+    });
+};
+
+export const deleteOrganization = (orgId: string): Promise<{ status: string }> => {
+    return requestJson(`/admin/organizations/${encodeURIComponent(orgId)}`, { method: 'DELETE' });
 };
 
 export const fetchUsers = (): Promise<User[]> => {

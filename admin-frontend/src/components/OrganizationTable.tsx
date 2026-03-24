@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building, MoreVertical } from 'lucide-react';
+import { Building, Pencil, Trash2 } from 'lucide-react';
 import { Pagination } from './Pagination';
 import type { Organization } from '../types';
 
@@ -11,6 +11,8 @@ interface OrganizationTableProps {
     itemsPerPage: number;
     startIndex: number;
     onPageChange: (page: number) => void;
+    onEdit: (org: Organization) => void;
+    onDelete: (org: Organization) => void;
 }
 
 export const OrganizationTable: React.FC<OrganizationTableProps> = ({
@@ -20,7 +22,9 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
     totalItems,
     itemsPerPage,
     startIndex,
-    onPageChange
+    onPageChange,
+    onEdit,
+    onDelete,
 }) => {
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
@@ -37,7 +41,7 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
                 <thead>
                     <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100/30">
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '35%' }}>Organization Name</th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '30%' }}>Domain</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '30%' }}>Owner</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '20%' }}>Status</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '15%' }}>Actions</th>
                     </tr>
@@ -53,16 +57,29 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
                                     <span className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{org.name}</span>
                                 </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-600 font-medium">{org.domain}</td>
+                            <td className="px-6 py-4 text-gray-600 font-medium">{org.owner || '—'}</td>
                             <td className="px-6 py-4">
                                 <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${getStatusBadgeClass(org.status)}`}>
                                     {org.status}
                                 </span>
                             </td>
                             <td className="px-6 py-4">
-                                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:shadow-md">
-                                    <MoreVertical size={18} />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => onEdit(org)}
+                                        title="Edit organization"
+                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(org)}
+                                        title="Delete organization"
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     ))}

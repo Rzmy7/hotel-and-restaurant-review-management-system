@@ -25,7 +25,7 @@ const getServerUrls = () => {
 /**
  * Fetch health status from a server
  */
-const fetchServerHealth = async (url: string, timeout: number = 5000): Promise<{
+const fetchServerHealth = async (url: string, healthPath: string = '/health', timeout: number = 5000): Promise<{
     status: 'Online' | 'Offline' | 'Warning';
     cpuUsage: number;
     ramUsage: number;
@@ -35,7 +35,7 @@ const fetchServerHealth = async (url: string, timeout: number = 5000): Promise<{
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-        const response = await fetch(`${url}/health`, {
+        const response = await fetch(`${url}${healthPath}`, {
             method: 'GET',
             signal: controller.signal,
             headers: {
@@ -50,11 +50,18 @@ const fetchServerHealth = async (url: string, timeout: number = 5000): Promise<{
         }
 
         const data = await response.json();
+        const rawStatus = String(data.status || 'online').toLowerCase();
+        const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
+            rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
+                ? 'Online'
+                : rawStatus === 'warning' || rawStatus === 'degraded'
+                    ? 'Warning'
+                    : 'Offline';
         
         return {
-            status: data.status || 'Online',
-            cpuUsage: data.cpu_usage || data.cpuUsage || 0,
-            ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || 0,
+            status: normalizedStatus,
+            cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
+            ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
             uptime: data.uptime || '0d 0h 0m'
         };
     } catch (error) {
@@ -84,19 +91,21 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
         id: string;
         name: string;
         url: string;
+        healthPath: string;
         icon: any;
     }> = [
-        { id: '1', name: 'Main Backend', url: urls.mainBackend, icon: Server },
-        { id: '2', name: 'Scraping Service', url: urls.scraping, icon: Search },
-        { id: '3', name: 'Embedding Service', url: urls.embedding, icon: Database },
-        { id: '4', name: 'Frontend Server', url: urls.frontend, icon: Globe }
+        // Main Backend card reads admin-backend server stats endpoint (same server context).
+        { id: '1', name: 'Main Backend', url: urls.mainBackend, healthPath: '/monitoring/main-backend-status', icon: Server },
+        { id: '2', name: 'Scraping Service', url: urls.scraping, healthPath: '/health', icon: Search },
+        { id: '3', name: 'Embedding Service', url: urls.embedding, healthPath: '/health', icon: Database },
+        { id: '4', name: 'Frontend Server', url: urls.frontend, healthPath: '/health', icon: Globe }
     ];
 
     // Fetch all server statuses in parallel
     const results = await Promise.allSettled(
         servers.map(async (server) => {
             try {
-                const health = await fetchServerHealth(server.url);
+                const health = await fetchServerHealth(server.url, server.healthPath);
                 return {
                     id: server.id,
                     name: server.name,
@@ -146,16 +155,16 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
 export const fetchSingleServerStatus = async (serverName: 'mainBackend' | 'scraping' | 'embedding' | 'frontend'): Promise<ServerStatus | null> => {
     const urls = getServerUrls();
     const urlMap = {
-        mainBackend: { url: urls.mainBackend, name: 'Main Backend', icon: Server, id: '1' },
-        scraping: { url: urls.scraping, name: 'Scraping Service', icon: Search, id: '2' },
-        embedding: { url: urls.embedding, name: 'Embedding Service', icon: Database, id: '3' },
-        frontend: { url: urls.frontend, name: 'Frontend Server', icon: Globe, id: '4' }
+        mainBackend: { url: urls.mainBackend, healthPath: '/monitoring/main-backend-status', name: 'Main Backend', icon: Server, id: '1' },
+        scraping: { url: urls.scraping, healthPath: '/health', name: 'Scraping Service', icon: Search, id: '2' },
+        embedding: { url: urls.embedding, healthPath: '/health', name: 'Embedding Service', icon: Database, id: '3' },
+        frontend: { url: urls.frontend, healthPath: '/health', name: 'Frontend Server', icon: Globe, id: '4' }
     };
 
     const server = urlMap[serverName];
     
     try {
-        const health = await fetchServerHealth(server.url);
+        const health = await fetchServerHealth(server.url, server.healthPath);
         return {
             id: server.id,
             name: server.name,

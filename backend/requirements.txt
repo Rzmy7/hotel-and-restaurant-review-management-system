@@ -2,11 +2,6 @@ fastapi
 uvicorn[standard]
 pydantic
 python-dotenv
-authlib
-passlib[bcrypt]==1.7.4
-bcrypt==3.2.2
-itsdangerous
-email-validator
 google-genai
 playwright
 pyodbc
@@ -15,3 +10,4 @@ python-jose[cryptography]
 sqlalchemy
 apscheduler
 httpx
+sqlalchemy

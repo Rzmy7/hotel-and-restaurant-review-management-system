@@ -11,6 +11,7 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
                 activeHotels: 1245,
                 hotelsGrowth: 5.4,
                 totalReviews: 156789,
+                reviewsCollectedToday: 327,
                 reviewsGrowth: 15.3,
                 activeUsersToday: 1247,
                 systemUptime: 99.9,
@@ -89,18 +90,18 @@ export const fetchOrganizations = (): Promise<Organization[]> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([
-                { id: '1', name: 'Acme Corporation', domain: 'acme.com', usersCount: 1247, status: 'Active' },
-                { id: '2', name: 'TechStart Inc', domain: 'techstart.io', usersCount: 892, status: 'Active' },
-                { id: '3', name: 'Global Enterprises', domain: 'globalent.com', usersCount: 2156, status: 'Active' },
-                { id: '4', name: 'Innovate Labs', domain: 'innovatelabs.co', usersCount: 445, status: 'Pending' },
-                { id: '5', name: 'Digital Solutions', domain: 'digitalsol.net', usersCount: 678, status: 'Active' },
-                { id: '6', name: 'Smart Systems', domain: 'smartsys.com', usersCount: 234, status: 'Inactive' },
-                { id: '7', name: 'Future Tech', domain: 'futuretech.io', usersCount: 1523, status: 'Active' },
-                { id: '8', name: 'CloudBase Ltd', domain: 'cloudbase.co', usersCount: 967, status: 'Active' },
-                { id: '9', name: 'NextGen Solutions', domain: 'nextgen.io', usersCount: 534, status: 'Active' },
-                { id: '10', name: 'DataFlow Inc', domain: 'dataflow.com', usersCount: 789, status: 'Pending' },
-                { id: '11', name: 'Quantum Labs', domain: 'quantumlabs.co', usersCount: 312, status: 'Active' },
-                { id: '12', name: 'Peak Systems', domain: 'peaksys.net', usersCount: 456, status: 'Active' },
+                { id: '1', name: 'Acme Corporation', owner: 'owner@acme.com', usersCount: 1247, status: 'Active' },
+                { id: '2', name: 'TechStart Inc', owner: 'owner@techstart.io', usersCount: 892, status: 'Active' },
+                { id: '3', name: 'Global Enterprises', owner: 'owner@globalent.com', usersCount: 2156, status: 'Active' },
+                { id: '4', name: 'Innovate Labs', owner: 'owner@innovatelabs.co', usersCount: 445, status: 'Pending' },
+                { id: '5', name: 'Digital Solutions', owner: 'owner@digitalsol.net', usersCount: 678, status: 'Active' },
+                { id: '6', name: 'Smart Systems', owner: 'owner@smartsys.com', usersCount: 234, status: 'Inactive' },
+                { id: '7', name: 'Future Tech', owner: 'owner@futuretech.io', usersCount: 1523, status: 'Active' },
+                { id: '8', name: 'CloudBase Ltd', owner: 'owner@cloudbase.co', usersCount: 967, status: 'Active' },
+                { id: '9', name: 'NextGen Solutions', owner: 'owner@nextgen.io', usersCount: 534, status: 'Active' },
+                { id: '10', name: 'DataFlow Inc', owner: 'owner@dataflow.com', usersCount: 789, status: 'Pending' },
+                { id: '11', name: 'Quantum Labs', owner: 'owner@quantumlabs.co', usersCount: 312, status: 'Active' },
+                { id: '12', name: 'Peak Systems', owner: 'owner@peaksys.net', usersCount: 456, status: 'Active' },
             ]);
         }, 700);
     });
@@ -130,8 +131,9 @@ export const fetchFeatureFlags = (): Promise<FeatureFlag[]> => {
         setTimeout(() => {
             resolve([
                 { id: '1', name: 'Content Search by Embeddings', key: 'content_search_embeddings', description: 'Enable semantic search across reviews and content using vector embeddings', status: 'Enabled' },
-                { id: '2', name: 'Reply Regeneration Limit', key: 'reply_regeneration_limit', description: 'Set maximum number of times a reply can be regenerated per review', status: 'Enabled' },
+                { id: '2', name: 'Reply Regeneration Limit', key: 'reply_regeneration_limit', description: 'Set maximum number of times a reply can be regenerated per review', status: 'Enabled', limit: 3 },
                 { id: '3', name: 'Custom Report Generation', key: 'custom_report_generation', description: 'Allow users to create and export customized reports with selected metrics', status: 'Disabled' },
+                { id: '4', name: 'Must Two-Factor Authentication', key: 'must_two_factor_authentication', description: 'Require two-factor authentication for all users', status: 'Disabled' },
             ]);
         }, 600);
     });
@@ -141,7 +143,6 @@ export const fetchSettings = (): Promise<AdminSettings> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({
-                platformName: 'AdminPanel Platform',
                 timezone: '',
                 language: '',
                 dateFormat: 'MM/DD/YYYY',
@@ -151,12 +152,10 @@ export const fetchSettings = (): Promise<AdminSettings> => {
                 passwordStrength: 'Strong (Alpha-numeric + Special Char)',
                 sessionTimeout: '30 Minutes',
                 allowNewSignups: false,
-                notifyNewReviews: true,
-                notifyLowRating: true,
-                notifyWeeklyDigest: false,
-                notifyAiReply: true,
-                notifySystemAlerts: true,
-                notifyFeatureUpdates: false
+                notifyApiLimitReaching: true,
+                notifyServerOverloading: true,
+                notifyServerConnectionFailed: true,
+                notifyScrapingFailures: true
             });
         }, 500);
     });
@@ -386,6 +385,27 @@ export const fetchServerStatuses = (): Promise<ServerStatus[]> => {
                         uptime: '52d 3h 56m'
                     }
                 ]);
+            });
+        }, 400);
+    });
+};
+
+// Toggle maintenance mode - API endpoint ready
+// TODO: Replace with actual API endpoint: POST /api/maintenance/toggle or PATCH /api/settings/maintenance
+export const toggleMaintenanceMode = (maintenanceEnabled: boolean): Promise<{ success: boolean; maintenanceMode: boolean }> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            // Replace this with actual API call:
+            // return fetch('http://API_SERVER/api/settings/maintenance', {
+            //   method: 'PATCH',
+            //   headers: { 'Content-Type': 'application/json' },
+            //   body: JSON.stringify({ maintenanceMode: maintenanceEnabled })
+            // }).then(res => res.json());
+            
+            // Mock response
+            resolve({
+                success: true,
+                maintenanceMode: maintenanceEnabled
             });
         }, 400);
     });

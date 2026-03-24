@@ -1,12 +1,11 @@
 import React from 'react';
-import { Search, Plus, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 
 interface OrganizationFiltersProps {
     searchQuery: string;
     statusFilter: string;
     onSearchChange: (value: string) => void;
     onStatusChange: (value: string) => void;
-    onAddClick: () => void;
 }
 
 export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
@@ -14,7 +13,6 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
     statusFilter,
     onSearchChange,
     onStatusChange,
-    onAddClick
 }) => {
     return (
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center justify-between gap-4 hover:shadow-lg transition-shadow duration-300">
@@ -46,15 +44,6 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
                     <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
             </div>
-
-            {/* Add Organization Button */}
-            <button 
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
-                onClick={onAddClick}
-            >
-                <Plus size={20} />
-                Add Organization
-            </button>
         </div>
     );
 };

@@ -47,14 +47,6 @@ export const Settings: React.FC = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Platform Name</label>
-                                <input
-                                    type="text"
-                                    defaultValue={settings.platformName}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">System Timezone</label>
                                 <input
                                     type="text"
@@ -190,22 +182,22 @@ export const Settings: React.FC = () => {
                 <div className="space-y-4">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                         <div className="mb-4">
-                            <h2 className="text-base font-semibold text-gray-900">Email Notifications</h2>
-                            <p className="text-sm text-gray-500">Configure email notification preferences</p>
+                            <h2 className="text-base font-semibold text-gray-900">Admin Notifications</h2>
+                            <p className="text-sm text-gray-500">Configure operational alerts for administrators</p>
                         </div>
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">New Reviews</h3>
-                                    <p className="text-sm text-gray-500">Receive email notifications when new reviews are submitted</p>
+                                    <h3 className="text-sm font-semibold text-gray-900">API Limit Reaching</h3>
+                                    <p className="text-sm text-gray-500">Get alerted when API usage is close to configured limits</p>
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <div className="relative">
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"
-                                            defaultChecked
+                                            defaultChecked={settings.notifyApiLimitReaching}
                                         />
                                         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                         <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
@@ -217,15 +209,15 @@ export const Settings: React.FC = () => {
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Low Rating Alerts</h3>
-                                    <p className="text-sm text-gray-500">Get notified when a review with low rating is received</p>
+                                    <h3 className="text-sm font-semibold text-gray-900">Server Overloading</h3>
+                                    <p className="text-sm text-gray-500">Notify when server resource usage stays above safe thresholds</p>
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <div className="relative">
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"
-                                            defaultChecked
+                                            defaultChecked={settings.notifyServerOverloading}
                                         />
                                         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                         <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
@@ -237,41 +229,15 @@ export const Settings: React.FC = () => {
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Weekly Digest</h3>
-                                    <p className="text-sm text-gray-500">Receive a weekly summary of platform activity</p>
+                                    <h3 className="text-sm font-semibold text-gray-900">Server Connection Failed</h3>
+                                    <p className="text-sm text-gray-500">Alert when backend services or databases lose connectivity</p>
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <div className="relative">
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <div className="mb-4">
-                            <h2 className="text-base font-semibold text-gray-900">App Notifications</h2>
-                            <p className="text-sm text-gray-500">Configure in-app notification preferences</p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">System Alerts</h3>
-                                    <p className="text-sm text-gray-500">Critical system notifications and maintenance updates</p>
-                                </div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            defaultChecked
+                                            defaultChecked={settings.notifyServerConnectionFailed}
                                         />
                                         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                         <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
@@ -283,14 +249,15 @@ export const Settings: React.FC = () => {
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Feature Updates</h3>
-                                    <p className="text-sm text-gray-500">Notifications about new features and improvements</p>
+                                    <h3 className="text-sm font-semibold text-gray-900">Scraping Failures</h3>
+                                    <p className="text-sm text-gray-500">Receive notifications when scraping jobs fail or repeatedly error</p>
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <div className="relative">
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"
+                                            defaultChecked={settings.notifyScrapingFailures}
                                         />
                                         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                         <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>

@@ -2,12 +2,12 @@ import React from 'react';
 import { MessageSquare } from 'lucide-react';
 
 interface ReviewsCollectedCardProps {
-    totalReviews: number;
+    reviewsCollectedToday: number;
     reviewsGrowth: number;
 }
 
 export const ReviewsCollectedCard: React.FC<ReviewsCollectedCardProps> = ({ 
-    totalReviews, 
+    reviewsCollectedToday, 
     reviewsGrowth 
 }) => {
     return (
@@ -16,7 +16,7 @@ export const ReviewsCollectedCard: React.FC<ReviewsCollectedCardProps> = ({
                 <div>
                     <p className="text-sm text-gray-500 mb-1">Reviews Collected Today</p>
                     <p className="text-2xl font-bold text-gray-900">
-                        {totalReviews.toLocaleString()}
+                        {reviewsCollectedToday.toLocaleString()}
                     </p>
                 </div>
                 <div className="p-3 bg-cyan-100 rounded-lg">
