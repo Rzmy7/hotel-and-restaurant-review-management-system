@@ -35,7 +35,7 @@ const SetupPage = () => {
         }
 
         try {
-            await axios.post(
+            const response = await axios.post(
                 "http://localhost:8000/api/organizations",
                 {
                     organization_name: organizationName,
@@ -48,10 +48,60 @@ const SetupPage = () => {
                 }
             );
 
+            const organizationId = response?.data?.organization_id;
+
+            const storedOrganizations = localStorage.getItem("organizations");
+            const parsedOrganizations = storedOrganizations ? JSON.parse(storedOrganizations) : [];
+            const organizations = Array.isArray(parsedOrganizations) ? parsedOrganizations : [];
+
+            const organizationExists = organizations.some((org: any) =>
+                org?.organization_id === organizationId ||
+                org?.organization_name === organizationName
+            );
+
+            if (!organizationExists) {
+                organizations.push({
+                    organization_id: organizationId,
+                    organization_name: organizationName,
+                });
+            }
+
+            localStorage.setItem("organizations", JSON.stringify(organizations));
+
+            const organizationIds = organizations
+                .map((org: any) => org?.organization_id)
+                .filter(Boolean);
+            localStorage.setItem("organization_ids", JSON.stringify(organizationIds));
+
+            if (organizationId) {
+                localStorage.setItem("current_organization", organizationId);
+            }
+
             navigate("/setup/sources"); // next step
 
         } catch (error) {
             console.error(error);
+
+            if (axios.isAxiosError(error)) {
+                const status = error.response?.status;
+                const detail = String(error.response?.data?.detail || "").toLowerCase();
+                const message = String(error.response?.data?.message || "").toLowerCase();
+
+                const isDuplicateJoin =
+                    status === 409 ||
+                    detail.includes("already") ||
+                    detail.includes("duplicate") ||
+                    detail.includes("unique") ||
+                    message.includes("already") ||
+                    message.includes("duplicate") ||
+                    message.includes("unique");
+
+                if (isDuplicateJoin) {
+                    alert("You have already joined this organization");
+                    return;
+                }
+            }
+
             alert("Server error");
         }
     };
@@ -61,6 +111,13 @@ const SetupPage = () => {
     // ----------------------------------------
     const handleSkip = () => {
         console.log("⏭️ Skip clicked");
+
+        const setupComplete = localStorage.getItem("setupComplete") === "true";
+        if (!setupComplete) {
+            localStorage.removeItem("organizations");
+            localStorage.removeItem("organization_ids");
+            localStorage.removeItem("current_organization");
+        }
 
         // don't call API (not needed now)
         // direct navigation

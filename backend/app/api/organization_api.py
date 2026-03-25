@@ -34,33 +34,59 @@ def create_organization(
 
     tenant_id = tenant_result[0]
 
-    # insert organization
-    result = db.execute(
+    # check if organization already exists
+    existing_org = db.execute(
         text("""
-            INSERT INTO dbo.organizations_source 
-            (organization_id, organization_name, tenant_id, created_at, updated_at)
-            OUTPUT INSERTED.organization_id
-            VALUES (NEWID(), :name, :tenant_id, GETDATE(), GETDATE())
+            SELECT organization_id
+            FROM dbo.organizations_source
+            WHERE organization_name = :name
         """),
-        {
-            "name": organization_name,
-            "tenant_id": tenant_id
-        }
-    )
+        {"name": organization_name}
+    ).fetchone()
 
-    org_id = result.fetchone()[0]
+    if existing_org:
+        org_id = existing_org[0]
+    else:
+        # insert organization
+        result = db.execute(
+            text("""
+                INSERT INTO dbo.organizations_source 
+                (organization_id, organization_name, tenant_id, created_at, updated_at)
+                OUTPUT INSERTED.organization_id
+                VALUES (NEWID(), :name, :tenant_id, GETDATE(), GETDATE())
+            """),
+            {
+                "name": organization_name,
+                "tenant_id": tenant_id
+            }
+        )
+
+        org_id = result.fetchone()[0]
 
     # link user to organization
-    db.execute(
+    existing_user_org = db.execute(
         text("""
-            INSERT INTO dbo.user_organizations (user_id, organization_id)
-            VALUES (:user_id, :org_id)
+            SELECT 1
+            FROM dbo.user_organizations
+            WHERE user_id = :user_id AND organization_id = :org_id
         """),
         {
             "user_id": user.user_id,
             "org_id": org_id
         }
-    )
+    ).fetchone()
+
+    if not existing_user_org:
+        db.execute(
+            text("""
+                INSERT INTO dbo.user_organizations (user_id, organization_id)
+                VALUES (:user_id, :org_id)
+            """),
+            {
+                "user_id": user.user_id,
+                "org_id": org_id
+            }
+        )
 
     db.commit()
 
