@@ -45,6 +45,7 @@ import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import { maintenanceService } from './services/maintenanceService';
 
 // Styles
 import "./App.css";
@@ -58,6 +59,22 @@ const NotFound: React.FC = () => {
       <h1 className="text-4xl font-bold text-gray-900">404</h1>
       <p className="text-gray-500 mt-2">Page not Found</p>
       <Link to="/" className="text-blue-500 hover:text-blue-700 mt-4 inline-block">Go Home</Link>
+    </div>
+  );
+};
+
+const MaintenancePage: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center px-6">
+      <div className="max-w-xl w-full bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-8 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Platform Under Maintenance</h1>
+        <p className="mt-3 text-sm text-gray-600 dark:text-slate-300">
+          The platform is temporarily unavailable while maintenance is in progress.
+        </p>
+        <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
+          Please check back shortly.
+        </p>
+      </div>
     </div>
   );
 };
@@ -78,11 +95,43 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const AppContent: React.FC = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceLoaded, setMaintenanceLoaded] = useState(false);
   const fetchOrganizations = useOrganizationStore(state => state.fetchOrganizations);
 
   useEffect(() => {
     fetchOrganizations();
   }, [fetchOrganizations]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadMaintenanceStatus = async () => {
+      try {
+        const result = await maintenanceService.getStatus();
+        if (mounted) {
+          setMaintenanceMode(!!result.maintenanceMode);
+        }
+      } catch (error) {
+        console.error('Failed to load maintenance status:', error);
+        if (mounted) {
+          setMaintenanceMode(false);
+        }
+      } finally {
+        if (mounted) {
+          setMaintenanceLoaded(true);
+        }
+      }
+    };
+
+    loadMaintenanceStatus();
+    const intervalId = window.setInterval(loadMaintenanceStatus, 30000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   /**
    * Toggles the expanded/collapsed state of the navigation sidebar.
@@ -90,6 +139,14 @@ const AppContent: React.FC = () => {
   const handleSidebarToggle = () => {
     setIsSidebarExpanded((prev) => !prev);
   };
+
+  if (!maintenanceLoaded) {
+    return null;
+  }
+
+  if (maintenanceMode) {
+    return <MaintenancePage />;
+  }
 
   return (
     <Routes>

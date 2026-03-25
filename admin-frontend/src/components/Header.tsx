@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, AlertCircle } from 'lucide-react';
-import { fetchSettings } from '../services/mockService';
-import { toggleMaintenanceMode } from '../services/mockService';
+import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { notificationsService } from '../services/notificationsService';
 import type { AdminNotification } from '../services/notificationsService';
 
@@ -21,13 +20,19 @@ export const Header: React.FC = () => {
     useEffect(() => {
         const loadMaintenanceStatus = async () => {
             try {
-                const settings = await fetchSettings();
-                setMaintenanceMode(settings.maintenanceMode);
+                const result = await maintenanceService.getStatus();
+                setMaintenanceMode(!!result.maintenanceMode);
             } catch (err) {
                 console.error('Failed to load maintenance status:', err);
             }
         };
         loadMaintenanceStatus();
+
+        const unsubscribe = onMaintenanceModeUpdated((nextMode) => {
+            setMaintenanceMode(nextMode);
+        });
+
+        return unsubscribe;
     }, []);
 
     useEffect(() => {
@@ -135,9 +140,10 @@ export const Header: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await toggleMaintenanceMode(!maintenanceMode);
+            const response = await maintenanceService.setStatus(!maintenanceMode);
             if (response.success) {
                 setMaintenanceMode(response.maintenanceMode);
+                emitMaintenanceModeUpdated(response.maintenanceMode);
             } else {
                 setError('Failed to toggle maintenance mode');
             }

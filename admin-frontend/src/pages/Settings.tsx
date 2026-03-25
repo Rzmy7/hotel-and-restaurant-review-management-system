@@ -3,6 +3,7 @@ import { Save } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
 import { fetchSettings } from '../services/mockService';
+import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import type { AdminSettings } from '../types';
 
 export const Settings: React.FC = () => {
@@ -10,16 +11,49 @@ export const Settings: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
     const [maintenanceMode, setMaintenanceMode] = useState(false);
+    const [isMaintenanceSaving, setIsMaintenanceSaving] = useState(false);
+    const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
             const data = await fetchSettings();
             setSettings(data);
-            setMaintenanceMode(data.maintenanceMode);
+            try {
+                const status = await maintenanceService.getStatus();
+                setMaintenanceMode(!!status.maintenanceMode);
+            } catch {
+                setMaintenanceMode(data.maintenanceMode);
+            }
             setLoading(false);
         };
         loadData();
+
+        const unsubscribe = onMaintenanceModeUpdated((nextMode) => {
+            setMaintenanceMode(nextMode);
+        });
+
+        return unsubscribe;
     }, []);
+
+    const handleMaintenanceChange = async (nextMode: boolean) => {
+        setIsMaintenanceSaving(true);
+        setMaintenanceError(null);
+
+        try {
+            const response = await maintenanceService.setStatus(nextMode);
+            if (!response.success) {
+                throw new Error('Failed to update maintenance mode');
+            }
+
+            setMaintenanceMode(response.maintenanceMode);
+            emitMaintenanceModeUpdated(response.maintenanceMode);
+        } catch (error) {
+            console.error('Failed to update maintenance mode:', error);
+            setMaintenanceError('Failed to update maintenance mode. Please try again.');
+        } finally {
+            setIsMaintenanceSaving(false);
+        }
+    };
 
     if (loading || !settings) return <LoadingSpinner />;
 
@@ -93,13 +127,17 @@ export const Settings: React.FC = () => {
                                     type="checkbox"
                                     className="sr-only peer"
                                     checked={maintenanceMode}
-                                    onChange={() => setMaintenanceMode(!maintenanceMode)}
+                                    onChange={(event) => handleMaintenanceChange(event.target.checked)}
+                                    disabled={isMaintenanceSaving}
                                 />
                                 <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                 <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                             </div>
                         </label>
                     </div>
+                    {maintenanceError && (
+                        <div className="text-sm text-red-600">{maintenanceError}</div>
+                    )}
 
                     {/* Save Button */}
                     <div className="flex justify-end">
