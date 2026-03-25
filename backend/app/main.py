@@ -37,6 +37,7 @@ from app.api.user_api import router as user_router
 from app.api.organization_api import router as organization_router
 
 from app.api.user_organization_api import router as user_org_router
+from app.api.source_api import router as source_router
 
 
 # to identify
@@ -92,6 +93,8 @@ app.include_router(user_router, prefix="/api")
 app.include_router(organization_router)
 
 app.include_router(user_org_router)
+
+app.include_router(source_router)
 
 # ----------------------
 # Load environment + session
