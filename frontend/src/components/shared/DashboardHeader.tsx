@@ -5,6 +5,7 @@ import NotificationPanel from '../shared/NotificationPanel';
 import ProfileDropdown from '../shared/ProfileDropdown';
 import OrganizationSwitcher from '../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
+import { notificationsService } from '../../services/notificationsService';
 
 const DashboardHeader: React.FC = () => {
   const organizations = useOrganizationStore(state => state.organizations);
@@ -14,7 +15,7 @@ const DashboardHeader: React.FC = () => {
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +34,21 @@ const DashboardHeader: React.FC = () => {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications, showProfile]);
+
+  useEffect(() => {
+    const refreshUnreadCount = async () => {
+      try {
+        const result = await notificationsService.getUnreadCount();
+        setUnreadCount(result.count || 0);
+      } catch (error) {
+        console.error('Failed to load unread notifications count:', error);
+      }
+    };
+
+    refreshUnreadCount();
+    const intervalId = window.setInterval(refreshUnreadCount, 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const toggleNotifications = () => {
     setShowNotifications((prev) => !prev);

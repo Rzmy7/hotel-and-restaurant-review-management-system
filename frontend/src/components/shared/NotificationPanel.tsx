@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import {
     X,
     Star,
@@ -8,9 +9,10 @@ import {
     Bell,
     ChevronRight,
 } from 'lucide-react';
+import { notificationsService } from '../../services/notificationsService';
 
 export interface Notification {
-    id: number;
+    id: string;
     type: 'review' | 'alert' | 'success' | 'system';
     title: string;
     message: string;
@@ -18,48 +20,28 @@ export interface Notification {
     read: boolean;
 }
 
-const defaultNotifications: Notification[] = [
-    {
-        id: 1,
-        type: 'review',
-        title: 'New 5-Star Review',
-        message: 'A guest left a glowing review on TripAdvisor praising your staff.',
-        time: '2 min ago',
-        read: false,
-    },
-    {
-        id: 2,
-        type: 'alert',
-        title: 'Negative Review Detected',
-        message: 'A 1-star review on Booking.com mentions cleanliness issues.',
-        time: '18 min ago',
-        read: false,
-    },
-    {
-        id: 3,
-        type: 'success',
-        title: 'Source Sync Complete',
-        message: 'Google Reviews synced successfully — 12 new reviews imported.',
-        time: '1 hour ago',
-        read: false,
-    },
-    {
-        id: 4,
-        type: 'system',
-        title: 'Weekly Report Ready',
-        message: 'Your performance summary for Feb 10 – 16 is available.',
-        time: '3 hours ago',
-        read: true,
-    },
-    {
-        id: 5,
-        type: 'review',
-        title: 'Review Response Needed',
-        message: 'A guest on Airbnb asked a follow-up question on their review.',
-        time: '5 hours ago',
-        read: true,
-    },
-];
+const mapNotificationType = (type: string): Notification['type'] => {
+    switch (type) {
+        case 'success':
+            return 'success';
+        case 'warning':
+        case 'error':
+            return 'alert';
+        case 'maintenance':
+        case 'announcement':
+            return 'review';
+        case 'info':
+        default:
+            return 'system';
+    }
+};
+
+const formatNotificationTime = (value: string | null): string => {
+    if (!value) return 'Unknown time';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'Unknown time';
+    return parsed.toLocaleString();
+};
 
 const iconMap: Record<Notification['type'], { icon: React.ReactNode; bg: string; color: string }> = {
     review: {
@@ -90,7 +72,7 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, onUnreadCountChange }) => {
-    const [notifications, setNotifications] = useState<Notification[]>(defaultNotifications);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
 
     const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -99,18 +81,57 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, onUnread
         onUnreadCountChange?.(next.filter((n) => !n.read).length);
     };
 
-    const markAsRead = (id: number) => {
-        updateNotifications(
-            notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-        );
+    const refreshNotifications = async () => {
+        try {
+            const [listResult, unreadResult] = await Promise.all([
+                notificationsService.getNotifications(20),
+                notificationsService.getUnreadCount(),
+            ]);
+
+            const mapped = (listResult.notifications || []).map((item) => ({
+                id: item.notification_id,
+                type: mapNotificationType(item.notification_type),
+                title: item.title || 'Notification',
+                message: item.message || '',
+                time: formatNotificationTime(item.created_at),
+                read: !!item.is_read,
+            }));
+
+            setNotifications(mapped);
+            onUnreadCountChange?.(unreadResult.count || 0);
+        } catch (error) {
+            console.error('Failed to load notifications:', error);
+        }
     };
 
-    const dismiss = (id: number) => {
+    useEffect(() => {
+        refreshNotifications();
+        const intervalId = window.setInterval(refreshNotifications, 30000);
+        return () => window.clearInterval(intervalId);
+    }, []);
+
+    const markAsRead = async (id: string) => {
+        try {
+            await notificationsService.markAsRead(id);
+            updateNotifications(
+                notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+            );
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    };
+
+    const dismiss = (id: string) => {
         updateNotifications(notifications.filter((n) => n.id !== id));
     };
 
-    const markAllRead = () => {
-        updateNotifications(notifications.map((n) => ({ ...n, read: true })));
+    const markAllRead = async () => {
+        try {
+            await notificationsService.markAllAsRead();
+            updateNotifications(notifications.map((n) => ({ ...n, read: true })));
+        } catch (error) {
+            console.error('Failed to mark all notifications as read:', error);
+        }
     };
 
     const clearAll = () => {

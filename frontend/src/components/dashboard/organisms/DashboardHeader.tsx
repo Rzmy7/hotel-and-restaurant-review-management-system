@@ -6,6 +6,7 @@ import ProfileDropdown from '../../shared/ProfileDropdown';
 import OrganizationSwitcher from '../../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../../stores/useOrganizationStore';
 import PageHeader from '../../shared/PageHeader';
+import { notificationsService } from '../../../services/notificationsService';
 
 export const DashboardHeader: React.FC = () => {
     const organizations = useOrganizationStore(state => state.organizations);
@@ -15,7 +16,7 @@ export const DashboardHeader: React.FC = () => {
     const { showToast } = useToast();
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(3);
+    const [unreadCount, setUnreadCount] = useState(0);
     const notifRef = useRef<HTMLDivElement>(null);
     const profileRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +35,22 @@ export const DashboardHeader: React.FC = () => {
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showNotifications, showProfile]);
+
+    useEffect(() => {
+        const refreshUnreadCount = async () => {
+            try {
+                const result = await notificationsService.getUnreadCount();
+                setUnreadCount(result.count || 0);
+            } catch (error) {
+                console.error('Failed to load unread notifications count:', error);
+            }
+        };
+
+        refreshUnreadCount();
+        const intervalId = window.setInterval(refreshUnreadCount, 30000);
+
+        return () => window.clearInterval(intervalId);
+    }, []);
 
     const toggleNotifications = () => {
         setShowNotifications((prev) => !prev);

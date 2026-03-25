@@ -7,14 +7,14 @@ import UnreadIndicator, { UnreadDot } from '../atoms/UnreadIndicator';
 import ActionIconBtn from '../atoms/ActionIconBtn';
 
 interface NotificationItemProps {
-    id: number;
+    id: string;
     type: NotificationType;
     title: string;
     message: string;
     time: string;
     read: boolean;
-    onRead: (id: number) => void;
-    onDismiss: (id: number) => void;
+    onRead: (id: string) => void;
+    onDismiss: (id: string) => void;
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({

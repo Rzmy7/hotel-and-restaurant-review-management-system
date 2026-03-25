@@ -6,7 +6,7 @@ import EmptyState from '../molecules/EmptyState';
 import type { NotificationType } from '../atoms/NotificationIcon';
 
 export interface Notification {
-    id: number;
+    id: string;
     type: NotificationType;
     title: string;
     message: string;
@@ -21,8 +21,8 @@ interface NotificationsTemplateProps {
     onFilterChange: (filter: string) => void;
     counts: Record<string, number>;
     unreadCount: number;
-    onMarkAsRead: (id: number) => void;
-    onDismiss: (id: number) => void;
+    onMarkAsRead: (id: string) => void;
+    onDismiss: (id: string) => void;
     onMarkAllRead: () => void;
     onClearAll: () => void;
 }
