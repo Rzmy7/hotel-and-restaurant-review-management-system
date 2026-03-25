@@ -77,10 +77,16 @@ class PlatformSource(Base):
     platform_status = Column(String(20), nullable=False, default="active")
     num_of_syncs = Column(Integer, nullable=False, default=0)
     success_sync_count = Column(Integer, nullable=False, default=0)
+    success_rate = Column(Float, nullable=False, default=0.0)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),
         nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        onupdate=func.sysutcdatetime(),
+        nullable=True,
     )
 
     sources = relationship("SourceSource", back_populates="platform")
@@ -126,6 +132,7 @@ class SourceSource(Base):
     next_synced_at = Column(DateTime(timezone=True), nullable=True)
     num_of_syncs = Column(Integer, nullable=False, default=0)
     success_sync_count = Column(Integer, nullable=False, default=0)
+    success_rate = Column(Float, nullable=False, default=0.0)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),
