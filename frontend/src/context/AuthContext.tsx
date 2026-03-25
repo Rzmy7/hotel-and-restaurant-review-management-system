@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { normalizeRole } from '../utils/authRole';
 
 /**
  * Represents a user session object.
@@ -91,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             user_id: backendUser.id,
             email: backendUser.email,
             full_name: backendUser.name,
-            role: backendUser.role,
+            role: normalizeRole(backendUser.role || backendUser.roles),
         };
 
         persist(normalizedUser, data.access_token);
@@ -112,10 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 user_id: backendUser.id,
                 email: backendUser.email,
                 full_name: backendUser.name,
-                role: backendUser.roles?.[0] || "TENANT",
+                role: normalizeRole(backendUser.role || backendUser.roles),
             };
 
-            persist(normalizedUser);
+            persist(normalizedUser, payload.access_token);
             return normalizedUser;
         }
 

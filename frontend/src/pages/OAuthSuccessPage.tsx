@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getDashboardPathForRole, isExternalDestination, normalizeRole } from '../utils/authRole';
 
 export default function OAuthSuccessPage() {
 
@@ -30,14 +31,18 @@ export default function OAuthSuccessPage() {
                 user_id: payload.user_id,
                 email: payload.email,
                 full_name: payload.full_name,
-                role: payload.role || payload.roles
+                role: normalizeRole(payload.role || payload.roles)
             };
 
             // Save user + token using AuthContext
             persist(user, token);
 
-            // Redirect to dashboard
-            navigate("/dashboard");
+            const destination = getDashboardPathForRole(user.role);
+            if (isExternalDestination(destination)) {
+                window.location.href = destination;
+                return;
+            }
+            navigate(destination);
 
         } catch (err) {
 

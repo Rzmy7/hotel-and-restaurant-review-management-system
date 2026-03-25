@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -18,11 +19,12 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (auth.user) {
-      if (auth.user.role === "ADMIN") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/dashboard");
+      const destination = getDashboardPathForRole(auth.user.role);
+      if (isExternalDestination(destination)) {
+        window.location.href = destination;
+        return;
       }
+      navigate(destination);
     }
   }, [auth.user, navigate]);
 
@@ -33,13 +35,12 @@ const LoginPage = () => {
 
     try {
       const user = await auth.login(email, password);
-
-      // Redirect based on RBAC role
-      if (user.role === "ADMIN") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/dashboard");
+      const destination = getDashboardPathForRole(user.role);
+      if (isExternalDestination(destination)) {
+        window.location.href = destination;
+        return;
       }
+      navigate(destination);
 
     } catch (err: any) {
       setError(err.message || "Login failed");

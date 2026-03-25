@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
 
 const SignUpPage = () => {
   const [fullName, setFullName] = useState('');
@@ -22,8 +23,12 @@ const SignUpPage = () => {
 
   useEffect(() => {
     if (!auth.user) return;
-    const setupComplete = localStorage.getItem('setupComplete') !== 'false';
-    navigate(setupComplete ? '/dashboard' : '/setup');
+    const destination = getDashboardPathForRole(auth.user.role);
+    if (isExternalDestination(destination)) {
+      window.location.href = destination;
+      return;
+    }
+    navigate(destination);
   }, [auth.user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,10 +45,13 @@ const SignUpPage = () => {
     setLoading(true);
     setError(null);
     try {
-      await auth.signup(fullName, email, password);
-      // signup auto-signs in (AuthContext persists user)
-      localStorage.setItem('setupComplete', 'false');
-      navigate('/setup');
+      const user = await auth.signup(fullName, email, password);
+      const destination = getDashboardPathForRole(user.role);
+      if (isExternalDestination(destination)) {
+        window.location.href = destination;
+        return;
+      }
+      navigate(destination);
     } catch (err: any) {
       setError(err.message || 'Signup failed');
     } finally {
@@ -54,7 +62,7 @@ const SignUpPage = () => {
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
     const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
-    window.location.href = `${apiBase}/login/google`;
+    window.location.href = `${apiBase}/api/login/google`;
   };
 
   return (

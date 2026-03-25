@@ -47,9 +47,18 @@ GENAI_KEY: str | None = os.getenv("GENAI_KEY")
 PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 
 # ── CORS allowed origins ────────────────────────────────────────────
-CORS_ORIGINS: list[str] = [
+DEFAULT_CORS_ORIGINS: list[str] = [
     "http://localhost:5173",
     "http://localhost:5174",
+    "http://localhost:4000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
+    "http://127.0.0.1:4000",
 ]
+
+_cors_from_env = os.getenv("CORS_ORIGINS", "")
+if _cors_from_env.strip():
+    parsed = [origin.strip() for origin in _cors_from_env.split(",") if origin.strip()]
+    CORS_ORIGINS: list[str] = list(dict.fromkeys(DEFAULT_CORS_ORIGINS + parsed))
+else:
+    CORS_ORIGINS = DEFAULT_CORS_ORIGINS

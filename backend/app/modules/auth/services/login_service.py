@@ -8,13 +8,13 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.security import verify_password, create_access_token
-from app.modules.auth.models import User
+from app.modules.auth.repository import get_user_by_email
 from app.modules.auth.repository import get_user_primary_role
 
 
 def login_user(db: Session, email: str, password: str) -> dict:
     """Authenticate a user by email/password and return a JWT token."""
-    user = db.query(User).filter(User.email == email).first()
+    user = get_user_by_email(db, email)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
