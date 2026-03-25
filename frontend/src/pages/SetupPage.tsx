@@ -113,14 +113,24 @@ const SetupPage = () => {
         console.log("⏭️ Skip clicked");
 
         const setupComplete = localStorage.getItem("setupComplete") === "true";
+        const existingOrgIdsRaw = localStorage.getItem("organization_ids");
+        const existingOrgIds = existingOrgIdsRaw ? JSON.parse(existingOrgIdsRaw) : [];
+        const hasExistingOrganizations = Array.isArray(existingOrgIds) && existingOrgIds.length > 0;
+
+        if (hasExistingOrganizations) {
+            // User came from dashboard with existing organizations
+            // Keep org-related localStorage values untouched
+            navigate("/dashboard");
+            return;
+        }
+
+        // New user / no existing organizations: keep current behavior
         if (!setupComplete) {
             localStorage.removeItem("organizations");
             localStorage.removeItem("organization_ids");
             localStorage.removeItem("current_organization");
         }
 
-        // don't call API (not needed now)
-        // direct navigation
         navigate("/no-organization");
     };
 
