@@ -12,3 +12,4 @@ playwright
 pyodbc
 psutil
 PyJWT
+supabase
