@@ -23,9 +23,6 @@ from app.email_utils import send_reset_email
 from app.oauth import oauth
 from app.db import get_db
 
-from app.repositories.groups_repo import add_member_to_group, create_group, get_user_group_role
-from app.auth_permissions import require_group_manager, require_group_member
-
 from app.auth.auth_permissions import require_admin
 from app.api.profile_routes import router as profile_router
 
@@ -606,83 +603,6 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     return user
-
-
-@app.post("/groups")
-def create_group_api(
-    group_name: str,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-
-    group = create_group(db, group_name, current_user["id"])
-
-    add_member_to_group(
-        db,
-        group.group_id,
-        current_user["id"],
-        "GROUP_MANAGER"
-    )
-
-    return {
-        "message": "Group created successfully",
-        "group_id": str(group.group_id),
-        "group_name": group.group_name
-    }
-
-
-@app.post("/groups/{group_id}/members")
-def add_member_api(
-    group_id: str,
-    user_id: str,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-
-    require_group_manager(group_id, current_user, db)
-
-    member = add_member_to_group(
-        db,
-        group_id,
-        user_id,
-        "GROUP_MEMBER"
-    )
-
-    return {
-        "message": "User added to group",
-        "group_id": group_id,
-        "user_id": user_id,
-        "role": member.role
-    }
-
-
-@app.get("/groups/{group_id}/my-role")
-def get_my_group_role(
-    group_id: str,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-
-    role = get_user_group_role(db, group_id, current_user["id"])
-
-    return {
-        "group_id": group_id,
-        "role": role
-    }
-
-
-@app.get("/groups/{group_id}/reviews")
-def get_group_reviews(
-    group_id: str,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-
-    require_group_member(group_id, current_user, db)
-
-    return {
-        "message": "You can access group reviews"
-    }
 
 
 @app.get("/admin/dashboard")
