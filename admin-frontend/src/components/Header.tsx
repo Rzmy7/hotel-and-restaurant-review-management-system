@@ -173,6 +173,8 @@ export const Header: React.FC = () => {
                 return { title: 'Subscription Plans', subtitle: 'Manage pricing tiers, features, and availability for your customers' };
             case '/broadcasting':
                 return { title: 'Message Broadcasting', subtitle: 'Send announcements, alerts, and notifications to your user base' };
+            case '/reply-generation':
+                return { title: 'Reply Generation', subtitle: 'Configure AI provider, API keys, and embedding context settings' };
             default:
                 return { title: 'Admin Panel', subtitle: 'Welcome back' };
         }

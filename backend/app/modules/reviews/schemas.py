@@ -36,3 +36,22 @@ class ReviewModel(BaseModel):
 class BookingScrapeRequest(BaseModel):
     url: AnyHttpUrl
     headless: bool = True
+
+
+class ReplyGenerationRequest(BaseModel):
+    reviewId: str | int
+    tone: Optional[str] = "standard"
+    length: Optional[str] = "standard"
+    reviewText: str = Field(..., min_length=1)
+    userName: str = Field(default="Guest")
+    sentiment: Optional[str] = "Neutral"
+    source: Optional[str] = None
+    language: Optional[str] = None
+    hotelId: Optional[int] = 1
+
+
+class ReplyGenerationResponse(BaseModel):
+    reply: str
+    provider: str
+    similarReviewsUsed: int
+    rulesUsed: int

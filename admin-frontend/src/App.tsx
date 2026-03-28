@@ -11,6 +11,7 @@ import { APIManage } from './pages/APIManage';
 import { Monitoring } from './pages/Monitoring';
 import { SubscriptionPlans } from './pages/SubscriptionPlans';
 import { Broadcasting } from './pages/Broadcasting';
+import { ReplyGeneration } from './pages/ReplyGeneration';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="monitoring" element={<Monitoring />} />
           <Route path="subscription-plans" element={<SubscriptionPlans />} />
           <Route path="broadcasting" element={<Broadcasting />} />
+          <Route path="reply-generation" element={<ReplyGeneration />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes> 

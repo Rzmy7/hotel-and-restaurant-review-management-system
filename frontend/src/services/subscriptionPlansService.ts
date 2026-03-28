@@ -44,7 +44,30 @@ export interface SubscriptionPlan {
     features: SubscriptionPlanFeature[];
 }
 
+export interface SubscriptionFeatureUsage {
+    id: string;
+    key: string;
+    name: string;
+    enabled: boolean;
+    used: number;
+    limit: number | null;
+    balance: number | null;
+}
+
+export interface SubscriptionUsageSummary {
+    userId: string;
+    planId: string | null;
+    planName: string | null;
+    features: SubscriptionFeatureUsage[];
+}
+
 export const fetchSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
     const plans = await requestJson<SubscriptionPlan[]>('/admin/subscription-plans', { method: 'GET' });
     return plans.filter((plan) => plan.isActive);
+};
+
+export const fetchSubscriptionUsage = (userId: string): Promise<SubscriptionUsageSummary> => {
+    return requestJson<SubscriptionUsageSummary>(`/admin/subscription-usage/${encodeURIComponent(userId)}`, {
+        method: 'GET',
+    });
 };

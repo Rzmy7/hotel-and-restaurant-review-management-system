@@ -190,6 +190,23 @@ class DeleteSubscriptionPlanResponse(BaseModel):
     planId: str
 
 
+class SubscriptionFeatureUsage(BaseModel):
+    id: str
+    key: str
+    name: str
+    enabled: bool
+    used: int
+    limit: int | None = None
+    balance: int | None = None
+
+
+class SubscriptionUsageSummary(BaseModel):
+    userId: str
+    planId: str | None = None
+    planName: str | None = None
+    features: list[SubscriptionFeatureUsage] = Field(default_factory=list)
+
+
 # ── Monitoring / scraping schemas ───────────────────────────────────
 
 
@@ -230,6 +247,34 @@ class GeneralSettingsPayload(BaseModel):
     language: str = Field(..., min_length=1, max_length=32)
     dateFormat: str = Field(..., min_length=1, max_length=64)
     currency: str = Field(..., min_length=1, max_length=64)
+
+
+class ReplyGenerationSettingsResponse(BaseModel):
+    googleApiKey: str
+    claudeApiKey: str
+    selectedModel: str
+    similarReviewsCount: int
+    googleRequestCount: int
+    claudeRequestCount: int
+
+
+class ReplyGenerationSettingsPayload(BaseModel):
+    googleApiKey: str = Field(default="", max_length=512)
+    claudeApiKey: str = Field(default="", max_length=512)
+    selectedModel: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=128)
+    similarReviewsCount: int = Field(default=3, ge=1, le=20)
+
+
+class ReplyGenerationApiTestPayload(BaseModel):
+    provider: Literal["google", "claude"]
+    apiKey: str = Field(..., min_length=1, max_length=512)
+    model: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class ReplyGenerationApiTestResponse(BaseModel):
+    provider: Literal["google", "claude"]
+    success: bool
+    message: str
 
 
 # ── Broadcasting schemas ────────────────────────────────────────────

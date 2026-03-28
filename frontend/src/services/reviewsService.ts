@@ -31843,33 +31843,48 @@ class ReviewsService {
     }
 
     /**
-     * Simulated Endpoint: POST /api/reviews/generate
+     * Endpoint: POST /api/reviews/generate
      */
     async generateReply(review: Review, tone: 'professional' | 'casual' | 'standard' = 'standard', length: 'short' | 'standard' = 'standard'): Promise<string> {
         try {
-            await apiClient.post('/api/reviews/generate', { reviewId: review.id, tone, length });
-        } catch(e) { /* ignore */ }
+            const result = await apiClient.post<{ reply: string }>('/api/reviews/generate', {
+                reviewId: review.id,
+                tone,
+                length,
+                reviewText: review.reviewText,
+                userName: review.userName,
+                sentiment: review.sentiment,
+                source: review.source,
+            });
 
-        let base = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
+            if (result?.reply && typeof result.reply === 'string') {
+                return result.reply;
+            }
+        } catch (e) {
+            console.warn('Backend reply generation failed, falling back to local template.', e);
+        }
+
+        let fallback = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
 
         if (review.sentiment === 'Positive') {
-            base += "We're thrilled to hear that you had a wonderful experience. ";
+            fallback += "We're thrilled to hear that you had a wonderful experience. ";
         } else if (review.sentiment === 'Negative') {
-            base += "We sincerely apologize that your experience did not meet expectations. We take this seriously and will improve. ";
+            fallback += "We sincerely apologize that your experience did not meet expectations. We take this seriously and will improve. ";
         } else {
-            base += "We appreciate your balanced feedback and will use it to enhance our services. ";
+            fallback += "We appreciate your balanced feedback and will use it to enhance our services. ";
         }
 
         if (tone === 'professional') {
-            base = `Dear ${review.userName}, \n\nWe acknowledge your review and appreciate the time you took to provide feedback. Our team is committed to excellence. `;
+            fallback = `Dear ${review.userName}, \n\nWe acknowledge your review and appreciate the time you took to provide feedback. Our team is committed to excellence. `;
         }
 
         if (length === 'short') {
-            base = `Hi ${review.userName}, thanks for the review! We appreciate your insights.`;
+            fallback = `Hi ${review.userName}, thanks for the review! We appreciate your insights.`;
         } else {
-            base += `\n\nWe hope to welcome you back soon!`;
+            fallback += `\n\nWe hope to welcome you back soon!`;
         }
-        return base;
+
+        return fallback;
     }
 
     /**

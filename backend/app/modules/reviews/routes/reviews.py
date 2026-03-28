@@ -6,11 +6,13 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 
 from app.modules.reviews.schemas import ReviewModel
+from app.modules.reviews.schemas import ReplyGenerationRequest, ReplyGenerationResponse
 from app.modules.reviews.services.review_service import (
     get_all_reviews_from_db,
     remove_all_reviews_from_db,
     count_all_reviews,
 )
+from app.modules.reviews.services.reply_generation_service import generate_review_reply
 from app.modules.dashboard.services.stats_service import get_stats
 
 router = APIRouter()
@@ -61,3 +63,15 @@ def reviews_stats():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/reviews/generate", response_model=ReplyGenerationResponse)
+def generate_reply(payload: ReplyGenerationRequest):
+    """Generate an AI reply using admin-selected provider + embedding context."""
+    try:
+        result = generate_review_reply(payload)
+        return ReplyGenerationResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Reply generation failed: {exc}") from exc
