@@ -22,7 +22,10 @@ from app.modules.admin_backend.services.system_settings_service import (
     DEFAULT_REPLY_CLAUDE_MODEL,
     DEFAULT_REPLY_GOOGLE_MODEL,
     DEFAULT_REPLY_SELECTED_MODEL,
+    DEFAULT_REPLY_USE_EMBEDDING_RULES,
+    DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
     ensure_system_settings_table,
+    get_setting_bool,
     get_setting_int,
     get_setting,
     get_similar_reviews_count,
@@ -180,6 +183,18 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
             similar_reviews_count = get_similar_reviews_count(cursor)
             google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
             claude_request_count = get_setting_int(cursor, "reply_claude_request_count", default=0)
+            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            claude_token_usage = get_setting_int(cursor, "reply_claude_token_usage", default=0)
+            use_embedding_rules = get_setting_bool(
+                cursor,
+                "reply_use_embedding_rules",
+                default=DEFAULT_REPLY_USE_EMBEDDING_RULES,
+            )
+            use_similar_reviews = get_setting_bool(
+                cursor,
+                "reply_use_similar_reviews",
+                default=DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
+            )
 
             return ReplyGenerationSettingsResponse(
                 googleApiKey=google_api_key,
@@ -188,6 +203,10 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
                 similarReviewsCount=similar_reviews_count,
                 googleRequestCount=google_request_count,
                 claudeRequestCount=claude_request_count,
+                googleTokenUsage=google_token_usage,
+                claudeTokenUsage=claude_token_usage,
+                useEmbeddingRules=use_embedding_rules,
+                useSimilarReviews=use_similar_reviews,
             )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to load reply generation settings: {exc}") from exc
@@ -199,6 +218,8 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
     claude_api_key = payload.claudeApiKey.strip()
     selected_model = payload.selectedModel.strip()
     similar_reviews_count = payload.similarReviewsCount
+    use_embedding_rules = payload.useEmbeddingRules
+    use_similar_reviews = payload.useSimilarReviews
 
     if not selected_model:
         raise HTTPException(status_code=400, detail="A model selection is required.")
@@ -221,8 +242,12 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
             set_setting(cursor, "reply_claude_api_key", claude_api_key)
             set_setting(cursor, "reply_selected_model", selected_model)
             set_setting(cursor, "reply_similar_reviews_count", str(similar_reviews_count))
+            set_setting(cursor, "reply_use_embedding_rules", "true" if use_embedding_rules else "false")
+            set_setting(cursor, "reply_use_similar_reviews", "true" if use_similar_reviews else "false")
             google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
             claude_request_count = get_setting_int(cursor, "reply_claude_request_count", default=0)
+            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            claude_token_usage = get_setting_int(cursor, "reply_claude_token_usage", default=0)
             connection.commit()
 
             return ReplyGenerationSettingsResponse(
@@ -232,6 +257,10 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
                 similarReviewsCount=similar_reviews_count,
                 googleRequestCount=google_request_count,
                 claudeRequestCount=claude_request_count,
+                googleTokenUsage=google_token_usage,
+                claudeTokenUsage=claude_token_usage,
+                useEmbeddingRules=use_embedding_rules,
+                useSimilarReviews=use_similar_reviews,
             )
     except HTTPException:
         raise

@@ -39,6 +39,10 @@ export interface ReplyGenerationSettings {
     similarReviewsCount: number;
     googleRequestCount: number;
     claudeRequestCount: number;
+    googleTokenUsage: number;
+    claudeTokenUsage: number;
+    useEmbeddingRules: boolean;
+    useSimilarReviews: boolean;
 }
 
 export interface ReplyGenerationApiTestPayload {
@@ -93,6 +97,8 @@ export const settingsService = {
             claudeApiKey: payload.claudeApiKey,
             selectedModel: payload.selectedModel,
             similarReviewsCount: payload.similarReviewsCount,
+            useEmbeddingRules: payload.useEmbeddingRules,
+            useSimilarReviews: payload.useSimilarReviews,
         };
 
         return requestJson<ReplyGenerationSettings>('/api/settings/reply-generation', {

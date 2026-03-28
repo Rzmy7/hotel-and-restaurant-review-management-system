@@ -14,6 +14,8 @@ DEFAULT_SIMILAR_REVIEWS_COUNT = 3
 DEFAULT_REPLY_GOOGLE_MODEL = "gemini-2.5-flash-lite"
 DEFAULT_REPLY_CLAUDE_MODEL = "claude-sonnet-4-6"
 DEFAULT_REPLY_SELECTED_MODEL = DEFAULT_REPLY_GOOGLE_MODEL
+DEFAULT_REPLY_USE_EMBEDDING_RULES = True
+DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
 
 
 def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
@@ -121,6 +123,19 @@ def get_setting_int(cursor: pyodbc.Cursor, key: str, default: int = 0) -> int:
     if parsed < 0:
         return 0
     return parsed
+
+
+def get_setting_bool(cursor: pyodbc.Cursor, key: str, default: bool = False) -> bool:
+    raw_value = (get_setting(cursor, key) or "").strip().lower()
+    if not raw_value:
+        return default
+
+    if raw_value in {"1", "true", "yes", "on", "enabled"}:
+        return True
+    if raw_value in {"0", "false", "no", "off", "disabled"}:
+        return False
+
+    return default
 
 
 def increment_setting_counter(cursor: pyodbc.Cursor, key: str, delta: int = 1) -> int:

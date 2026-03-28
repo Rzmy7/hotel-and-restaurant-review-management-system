@@ -18,8 +18,11 @@ from app.modules.admin_backend.services.system_settings_service import (
     DEFAULT_REPLY_CLAUDE_MODEL,
     DEFAULT_REPLY_GOOGLE_MODEL,
     DEFAULT_REPLY_SELECTED_MODEL,
+    DEFAULT_REPLY_USE_EMBEDDING_RULES,
+    DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
     ensure_system_settings_table,
     increment_setting_counter,
+    get_setting_bool,
     get_setting,
     get_similar_reviews_count,
 )
@@ -52,6 +55,16 @@ def _load_reply_generation_settings() -> dict[str, Any]:
         claude_api_key = (get_setting(cursor, "reply_claude_api_key") or "").strip()
         selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
         similar_reviews_count = get_similar_reviews_count(cursor)
+        use_embedding_rules = get_setting_bool(
+            cursor,
+            "reply_use_embedding_rules",
+            default=DEFAULT_REPLY_USE_EMBEDDING_RULES,
+        )
+        use_similar_reviews = get_setting_bool(
+            cursor,
+            "reply_use_similar_reviews",
+            default=DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
+        )
 
     provider = _infer_provider_from_model(selected_model)
     google_model = selected_model if provider == "google" else DEFAULT_REPLY_GOOGLE_MODEL
@@ -65,7 +78,49 @@ def _load_reply_generation_settings() -> dict[str, Any]:
         "google_model": google_model,
         "claude_model": claude_model,
         "similar_reviews_count": similar_reviews_count,
+        "use_embedding_rules": use_embedding_rules,
+        "use_similar_reviews": use_similar_reviews,
     }
+
+
+def _to_int(value: Any, default: int = 0) -> int:
+    try:
+        parsed = int(value)
+        if parsed < 0:
+            return 0
+        return parsed
+    except Exception:
+        return default
+
+
+def _extract_token_usage(value: Any) -> int:
+    if value is None:
+        return 0
+
+    if isinstance(value, dict):
+        total = value.get("total_token_count") or value.get("total_tokens")
+        if total is not None:
+            return _to_int(total, default=0)
+
+        prompt = value.get("prompt_token_count") or value.get("input_tokens") or 0
+        completion = value.get("candidates_token_count") or value.get("output_tokens") or 0
+        return _to_int(prompt, default=0) + _to_int(completion, default=0)
+
+    total_attr = getattr(value, "total_token_count", None)
+    if total_attr is not None:
+        return _to_int(total_attr, default=0)
+
+    prompt_attr = getattr(value, "prompt_token_count", None)
+    completion_attr = getattr(value, "candidates_token_count", None)
+    if prompt_attr is not None or completion_attr is not None:
+        return _to_int(prompt_attr, default=0) + _to_int(completion_attr, default=0)
+
+    input_attr = getattr(value, "input_tokens", None)
+    output_attr = getattr(value, "output_tokens", None)
+    if input_attr is not None or output_attr is not None:
+        return _to_int(input_attr, default=0) + _to_int(output_attr, default=0)
+
+    return 0
 
 
 def _fetch_embedding_context(review_text: str, hotel_id: int, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -156,14 +211,15 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
     )
 
 
-def _generate_with_google(api_key: str, model: str, prompt: str) -> str:
+def _generate_with_google(api_key: str, model: str, prompt: str) -> tuple[str, int]:
     client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
     response = client.models.generate_content(model=model, contents=prompt)
     text = getattr(response, "text", None)
-    return (text or "").strip()
+    usage = _extract_token_usage(getattr(response, "usage_metadata", None))
+    return (text or "").strip(), usage
 
 
-def _generate_with_claude(api_key: str, model: str, prompt: str) -> str:
+def _generate_with_claude(api_key: str, model: str, prompt: str) -> tuple[str, int]:
     def _get_available_models() -> set[str]:
         try:
             response = requests.get(
@@ -202,9 +258,9 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> str:
             timeout=20,
         )
 
-    def _call_sdk(selected_model: str, prompt_text: str) -> str:
+    def _call_sdk(selected_model: str, prompt_text: str) -> tuple[str, int]:
         if Anthropic is None:
-            return ""
+            return "", 0
 
         client = Anthropic(api_key=api_key)
         response = client.messages.create(
@@ -215,7 +271,7 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> str:
 
         blocks = getattr(response, "content", None)
         if not isinstance(blocks, list):
-            return ""
+            return "", 0
 
         text_parts = []
         for block in blocks:
@@ -223,7 +279,8 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> str:
             if isinstance(text_value, str) and text_value.strip():
                 text_parts.append(text_value.strip())
 
-        return "\n".join(text_parts).strip()
+        usage = _extract_token_usage(getattr(response, "usage", None))
+        return "\n".join(text_parts).strip(), usage
 
     candidates = [
         model,
@@ -252,11 +309,12 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> str:
     for candidate_model in unique_candidates:
         # Prefer SDK to avoid header/auth mismatches; fallback to HTTP when SDK isn't available.
         reply_text = ""
+        reply_tokens = 0
         if Anthropic is not None:
             try:
-                reply_text = _call_sdk(candidate_model, prompt)
+                reply_text, reply_tokens = _call_sdk(candidate_model, prompt)
                 if not reply_text:
-                    reply_text = _call_sdk(candidate_model, compact_prompt)
+                    reply_text, reply_tokens = _call_sdk(candidate_model, compact_prompt)
             except Exception as sdk_exc:
                 last_error = str(sdk_exc)
 
@@ -272,25 +330,30 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> str:
                 if isinstance(content, list):
                     text_parts = [str(chunk.get("text", "")).strip() for chunk in content if isinstance(chunk, dict)]
                     reply_text = "\n".join(part for part in text_parts if part).strip()
+                    reply_tokens = _extract_token_usage(payload.get("usage") if isinstance(payload, dict) else None)
                 else:
                     last_error = "invalid content payload"
             else:
                 last_error = f"{response.status_code}: {response.text}"
 
         if reply_text:
-            return reply_text
+            return reply_text, reply_tokens
         if not last_error:
             last_error = "empty text response"
 
     raise ValueError(f"Claude generation failed for all model candidates. Last error: {last_error}")
 
 
-def _increment_provider_request_count(provider: str) -> None:
-    setting_key = "reply_google_request_count" if provider == "google" else "reply_claude_request_count"
+def _increment_provider_usage(provider: str, tokens_used: int = 0) -> None:
+    request_key = "reply_google_request_count" if provider == "google" else "reply_claude_request_count"
+    token_key = "reply_google_token_usage" if provider == "google" else "reply_claude_token_usage"
     with pyodbc.connect(get_connection_string()) as connection:
         cursor = connection.cursor()
         ensure_system_settings_table(cursor)
-        increment_setting_counter(cursor, setting_key, delta=1)
+        increment_setting_counter(cursor, request_key, delta=1)
+        safe_tokens_used = max(0, _to_int(tokens_used, default=0))
+        if safe_tokens_used > 0:
+            increment_setting_counter(cursor, token_key, delta=safe_tokens_used)
         connection.commit()
 
 
@@ -326,16 +389,28 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
 
         provider = str(settings["provider"])
         similar_reviews_count = int(settings["similar_reviews_count"])
+        use_embedding_rules = bool(settings["use_embedding_rules"])
+        use_similar_reviews = bool(settings["use_similar_reviews"])
         hotel_id = payload.hotelId or 1
 
-        similar_reviews, rules = _fetch_embedding_context(
-            payload.reviewText,
-            hotel_id,
-            similar_reviews_count,
-        )
+        similar_reviews: list[dict[str, Any]] = []
+        rules: list[dict[str, Any]] = []
+        if use_embedding_rules or use_similar_reviews:
+            similar_reviews, rules = _fetch_embedding_context(
+                payload.reviewText,
+                hotel_id,
+                similar_reviews_count,
+            )
+
+        if not use_similar_reviews:
+            similar_reviews = []
+        if not use_embedding_rules:
+            rules = []
+
         prompt = _build_prompt(payload, similar_reviews, rules)
 
         reply = ""
+        tokens_used = 0
         provider_output = provider
         try:
             if provider == "google":
@@ -343,15 +418,15 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
                 model = str(settings["google_model"])
                 if not api_key:
                     raise ValueError("Google API key is not configured in reply generation settings.")
-                reply = _generate_with_google(api_key, model, prompt)
-                _increment_provider_request_count("google")
+                reply, tokens_used = _generate_with_google(api_key, model, prompt)
+                _increment_provider_usage("google", tokens_used=tokens_used)
             elif provider == "claude":
                 api_key = str(settings["claude_api_key"])
                 model = str(settings["claude_model"])
                 if not api_key:
                     raise ValueError("Claude API key is not configured in reply generation settings.")
-                reply = _generate_with_claude(api_key, model, prompt)
-                _increment_provider_request_count("claude")
+                reply, tokens_used = _generate_with_claude(api_key, model, prompt)
+                _increment_provider_usage("claude", tokens_used=tokens_used)
         except Exception:
             # Avoid surfacing provider/transient failures as HTTP 500 to the UI.
             reply = _fallback_reply(payload)

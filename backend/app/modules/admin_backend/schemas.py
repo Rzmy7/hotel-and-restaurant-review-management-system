@@ -256,6 +256,10 @@ class ReplyGenerationSettingsResponse(BaseModel):
     similarReviewsCount: int
     googleRequestCount: int
     claudeRequestCount: int
+    googleTokenUsage: int
+    claudeTokenUsage: int
+    useEmbeddingRules: bool
+    useSimilarReviews: bool
 
 
 class ReplyGenerationSettingsPayload(BaseModel):
@@ -263,6 +267,8 @@ class ReplyGenerationSettingsPayload(BaseModel):
     claudeApiKey: str = Field(default="", max_length=512)
     selectedModel: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=128)
     similarReviewsCount: int = Field(default=3, ge=1, le=20)
+    useEmbeddingRules: bool = True
+    useSimilarReviews: bool = True
 
 
 class ReplyGenerationApiTestPayload(BaseModel):
