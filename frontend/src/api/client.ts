@@ -5,11 +5,20 @@
  * In a real application, this would wrap fetch() or axios().
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL =
+    import.meta.env.VITE_MAIN_BACKEND_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://localhost:8000';
+
+const getApiBaseUrl = (): string => {
+    const stored = localStorage.getItem('mainBackendUrl');
+    return (stored || API_BASE_URL).replace(/\/$/, '');
+};
 
 const getFullUrl = (url: string) => {
     if (url.startsWith('http')) return url;
-    return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
+    const baseUrl = getApiBaseUrl();
+    return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
 async function handleResponse(response: Response) {

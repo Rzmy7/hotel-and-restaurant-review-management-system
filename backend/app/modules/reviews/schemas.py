@@ -55,3 +55,4 @@ class ReplyGenerationResponse(BaseModel):
     provider: str
     similarReviewsUsed: int
     rulesUsed: int
+    providerError: Optional[str] = None

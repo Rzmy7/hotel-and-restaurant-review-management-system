@@ -31924,45 +31924,37 @@ class ReviewsService {
      * Endpoint: POST /api/reviews/generate
      */
     async generateReply(review: Review, tone: 'professional' | 'casual' | 'standard' = 'standard', length: 'short' | 'standard' = 'standard'): Promise<string> {
+        const reviewText = (review.reviewText || review.summary || '').trim();
+        if (!reviewText) {
+            throw new Error('Reply generation requires review text.');
+        }
+
         try {
-            const result = await apiClient.post<{ reply: string }>('/api/reviews/generate', {
+            const result = await apiClient.post<{ reply?: string; provider?: string; providerError?: string }>('/api/reviews/generate', {
                 reviewId: review.id,
                 tone,
                 length,
-                reviewText: review.reviewText,
+                reviewText,
                 userName: review.userName,
                 sentiment: review.sentiment,
                 source: review.source,
+                language: review.language,
             });
+
+            if (result?.provider && result.provider.includes('fallback')) {
+                const detail = result.providerError || 'Provider call failed and fallback response was returned.';
+                throw new Error(detail);
+            }
 
             if (result?.reply && typeof result.reply === 'string') {
                 return result.reply;
             }
+            throw new Error('Reply generation returned an empty response.');
         } catch (e) {
-            console.warn('Backend reply generation failed, falling back to local template.', e);
+            const message = e instanceof Error ? e.message : 'Unknown reply generation error.';
+            console.error('Backend reply generation failed.', e);
+            throw new Error(message);
         }
-
-        let fallback = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
-
-        if (review.sentiment === 'Positive') {
-            fallback += "We're thrilled to hear that you had a wonderful experience. ";
-        } else if (review.sentiment === 'Negative') {
-            fallback += "We sincerely apologize that your experience did not meet expectations. We take this seriously and will improve. ";
-        } else {
-            fallback += "We appreciate your balanced feedback and will use it to enhance our services. ";
-        }
-
-        if (tone === 'professional') {
-            fallback = `Dear ${review.userName}, \n\nWe acknowledge your review and appreciate the time you took to provide feedback. Our team is committed to excellence. `;
-        }
-
-        if (length === 'short') {
-            fallback = `Hi ${review.userName}, thanks for the review! We appreciate your insights.`;
-        } else {
-            fallback += `\n\nWe hope to welcome you back soon!`;
-        }
-
-        return fallback;
     }
 
     /**

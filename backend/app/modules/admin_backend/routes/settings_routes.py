@@ -4,6 +4,10 @@ import pyodbc
 import requests
 from fastapi import APIRouter, HTTPException
 from google import genai
+try:
+    from anthropic import Anthropic
+except Exception:
+    Anthropic = None
 
 from app.modules.admin_backend.db_utils import get_connection_string
 from app.modules.admin_backend.schemas import GeneralSettingsPayload, GeneralSettingsResponse
@@ -284,39 +288,56 @@ def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> Rep
 
     try:
         if provider == "google":
-            client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
-            response = client.models.generate_content(model=model, contents="Reply with exactly: ok")
-            if not (getattr(response, "text", "") or "").strip():
-                raise ValueError("Google API returned an empty response.")
+            resolved_google_version = "v1"
+            last_google_error: Exception | None = None
+
+            for api_version in ("v1", "v1beta"):
+                try:
+                    client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
+                    response = client.models.generate_content(model=model, contents="Reply with exactly: ok")
+                    if not (getattr(response, "text", "") or "").strip():
+                        raise ValueError("Google API returned an empty response.")
+                    resolved_google_version = api_version
+                    last_google_error = None
+                    break
+                except Exception as exc:
+                    last_google_error = exc
+
+            if last_google_error is not None:
+                raise last_google_error
         else:
-            response = requests.get(
-                "https://api.anthropic.com/v1/models",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                timeout=15,
-            )
-            response.raise_for_status()
-            payload_json = response.json() if response.content else {}
-            items = payload_json.get("data") if isinstance(payload_json, dict) else []
-            available_models = {
-                str(item.get("id"))
-                for item in items
-                if isinstance(item, dict) and item.get("id")
-            }
-            resolved_model = model
-            if available_models and model not in available_models:
-                alias_target = CLAUDE_MODEL_ALIASES.get(model)
-                if alias_target and alias_target in available_models:
-                    resolved_model = alias_target
-                else:
-                    sample_models = ", ".join(sorted(available_models)[:8])
-                    raise ValueError(
-                        f"Model '{model}' is not available for this Claude API key. "
-                        f"Available models: {sample_models}"
-                    )
+            resolved_model = CLAUDE_MODEL_ALIASES.get(model, model)
+
+            if Anthropic is not None:
+                client = Anthropic(api_key=api_key)
+                response = client.messages.create(
+                    model=resolved_model,
+                    max_tokens=32,
+                    messages=[{"role": "user", "content": "Hello, Claude"}],
+                )
+                content_blocks = getattr(response, "content", None)
+                if not isinstance(content_blocks, list) or not content_blocks:
+                    raise ValueError("Claude API returned an empty response.")
+            else:
+                response = requests.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": resolved_model,
+                        "max_tokens": 32,
+                        "messages": [{"role": "user", "content": "Hello, Claude"}],
+                    },
+                    timeout=15,
+                )
+                response.raise_for_status()
+                payload_json = response.json() if response.content else {}
+                content = payload_json.get("content") if isinstance(payload_json, dict) else None
+                if not isinstance(content, list) or not content:
+                    raise ValueError("Claude API returned an empty response.")
 
         return ReplyGenerationApiTestResponse(
             provider=provider,
@@ -324,7 +345,7 @@ def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> Rep
             message=(
                 f"API key is valid and model '{resolved_model}' is reachable."
                 if provider == "claude"
-                else f"API key is valid and model '{model}' is reachable."
+                else f"API key is valid and model '{model}' is reachable (Google API {resolved_google_version})."
             ),
         )
     except Exception as exc:

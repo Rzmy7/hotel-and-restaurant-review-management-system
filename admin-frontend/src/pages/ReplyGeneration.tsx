@@ -169,7 +169,7 @@ export const ReplyGeneration: React.FC = () => {
     return (
         <div className="pt-4 max-w-6xl space-y-5">
             <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-white to-emerald-50 pointer-events-none" />
+                <div className="absolute inset-0 bg-slate-50/70 pointer-events-none" />
                 <div className="relative p-5 md:p-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
@@ -325,19 +325,19 @@ export const ReplyGeneration: React.FC = () => {
                         </div>
 
                         <div className="space-y-3">
-                            <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-sky-50 to-white px-4 py-3">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider">Google Requests</div>
                                 <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.googleRequestCount}</div>
                             </div>
-                            <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-cyan-50 to-white px-4 py-3">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider">Google Token Usage</div>
                                 <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.googleTokenUsage}</div>
                             </div>
-                            <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-orange-50 to-white px-4 py-3">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider">Claude Requests</div>
                                 <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.claudeRequestCount}</div>
                             </div>
-                            <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-amber-50 to-white px-4 py-3">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider">Claude Token Usage</div>
                                 <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.claudeTokenUsage}</div>
                             </div>

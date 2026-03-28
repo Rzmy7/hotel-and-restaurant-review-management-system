@@ -212,36 +212,25 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
 
 
 def _generate_with_google(api_key: str, model: str, prompt: str) -> tuple[str, int]:
-    client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
-    response = client.models.generate_content(model=model, contents=prompt)
-    text = getattr(response, "text", None)
-    usage = _extract_token_usage(getattr(response, "usage_metadata", None))
-    return (text or "").strip(), usage
+    last_error: Exception | None = None
+
+    # Some Gemini aliases are only reachable on v1beta; try both.
+    for api_version in ("v1", "v1beta"):
+        try:
+            client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
+            response = client.models.generate_content(model=model, contents=prompt)
+            text = getattr(response, "text", None)
+            usage = _extract_token_usage(getattr(response, "usage_metadata", None))
+            return (text or "").strip(), usage
+        except Exception as exc:
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
+    raise ValueError("Google generation failed for an unknown reason.")
 
 
 def _generate_with_claude(api_key: str, model: str, prompt: str) -> tuple[str, int]:
-    def _get_available_models() -> set[str]:
-        try:
-            response = requests.get(
-                "https://api.anthropic.com/v1/models",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                timeout=12,
-            )
-            response.raise_for_status()
-            payload = response.json() if response.content else {}
-            items = payload.get("data") if isinstance(payload, dict) else []
-            return {
-                str(item.get("id"))
-                for item in items
-                if isinstance(item, dict) and item.get("id")
-            }
-        except Exception:
-            return set()
-
     def _call_http(selected_model: str, prompt_text: str) -> requests.Response:
         return requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -278,6 +267,12 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> tuple[str, i
             text_value = getattr(block, "text", None)
             if isinstance(text_value, str) and text_value.strip():
                 text_parts.append(text_value.strip())
+                continue
+
+            if isinstance(block, dict):
+                dict_text_value = block.get("text")
+                if isinstance(dict_text_value, str) and dict_text_value.strip():
+                    text_parts.append(dict_text_value.strip())
 
         usage = _extract_token_usage(getattr(response, "usage", None))
         return "\n".join(text_parts).strip(), usage
@@ -298,16 +293,10 @@ def _generate_with_claude(api_key: str, model: str, prompt: str) -> tuple[str, i
         if candidate and candidate not in unique_candidates:
             unique_candidates.append(candidate)
 
-    available_models = _get_available_models()
-    if available_models:
-        available_candidates = [candidate for candidate in unique_candidates if candidate in available_models]
-        if available_candidates:
-            unique_candidates = available_candidates
-
     compact_prompt = prompt[:12000] if len(prompt) > 12000 else prompt
     last_error = "unknown error"
     for candidate_model in unique_candidates:
-        # Prefer SDK to avoid header/auth mismatches; fallback to HTTP when SDK isn't available.
+        # Prefer SDK call style used in Anthropic docs; fallback to direct HTTP only if needed.
         reply_text = ""
         reply_tokens = 0
         if Anthropic is not None:
@@ -412,6 +401,7 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
         reply = ""
         tokens_used = 0
         provider_output = provider
+        provider_error: str | None = None
         try:
             if provider == "google":
                 api_key = str(settings["google_api_key"])
@@ -427,10 +417,11 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
                     raise ValueError("Claude API key is not configured in reply generation settings.")
                 reply, tokens_used = _generate_with_claude(api_key, model, prompt)
                 _increment_provider_usage("claude", tokens_used=tokens_used)
-        except Exception:
+        except Exception as provider_exc:
             # Avoid surfacing provider/transient failures as HTTP 500 to the UI.
             reply = _fallback_reply(payload)
             provider_output = f"{provider}-fallback"
+            provider_error = str(provider_exc)
 
         if not reply:
             reply = _fallback_reply(payload)
@@ -440,6 +431,7 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
             "provider": provider_output,
             "similarReviewsUsed": len(similar_reviews),
             "rulesUsed": len(rules),
+            "providerError": provider_error,
         }
     except Exception:
         return {
