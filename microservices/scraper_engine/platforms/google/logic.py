@@ -13,6 +13,7 @@ from core.job_manager import job_manager, JobStatus
 from platforms.google.config import google_selectors
 from core.audit import audit_logger
 from core.utils import notify_backend_sync_status
+from platforms.google.auth import GoogleAuthManager
 
 load_dotenv()
 logger = setup_logger("google_logic")
@@ -46,94 +47,6 @@ def extract_total_reviews(page) -> int:
     return 0
 
 
-def is_signed_in(page) -> bool:
-    """Checks whether the current Google Maps page is signed in."""
-    try:
-        sign_in_btn = page.locator("a[aria-label='Sign in'], a:has-text('Sign in')").first
-        if sign_in_btn.count() > 0 and sign_in_btn.is_visible():
-            return False
-    except Exception:
-        pass
-    return True
-
-
-def sign_in_google(page) -> bool:
-    """
-    Signs in to Google using credentials from .env.
-    Returns True if sign-in appears successful, False otherwise.
-    """
-    email = os.getenv("GOOGLE_EMAIL")
-    password = os.getenv("GOOGLE_PASSWORD")
-
-    if not email or not password:
-        logger.warning("GOOGLE_EMAIL / GOOGLE_PASSWORD not set in .env — cannot auto sign-in.")
-        return False
-
-    logger.info("Attempting automatic Google sign-in...")
-    current_url = page.url  # Remember where we were
-
-    try:
-        page.goto("https://accounts.google.com/signin", wait_until="domcontentloaded")
-        time.sleep(3)
-
-        # Enter email
-        email_input = page.locator('input[type="email"]')
-        email_input.wait_for(state="visible", timeout=10000)
-        email_input.fill(email)
-        time.sleep(1)
-        page.locator("#identifierNext").click()
-        time.sleep(4)
-
-        # Enter password
-        pw_input = page.locator('input[type="password"]')
-        pw_input.wait_for(state="visible", timeout=10000)
-        pw_input.fill(password)
-        time.sleep(1)
-        page.locator("#passwordNext").click()
-        time.sleep(6)
-
-        # Check for "Sign in faster" (passkey enrollment) speedbump
-        if "passkeyenrollment" in page.url or "speedbump/passkey" in page.url:
-            logger.info("Detected 'Sign in faster' speedbump. Clicking 'Not now'...")
-            try:
-                # Try multiple locators for "Not now"
-                not_now_btn = page.locator('button:has-text("Not now"), [aria-label="Not now"]').first
-                if not_now_btn.count() > 0:
-                    not_now_btn.click()
-                    time.sleep(5)
-            except Exception as e:
-                logger.warning(f"Could not click 'Not now' on speedbump: {e}")
-
-        # Check for other common speedbumps (e.g., recovery email)
-        if "recovery" in page.url or "confirm" in page.url:
-             try:
-                confirm_btn = page.locator('button:has-text("Confirm"), button:has-text("Next")').first
-                if confirm_btn.count() > 0:
-                    logger.info("Detected recovery/confirm speedbump. Clicking confirm...")
-                    confirm_btn.click()
-                    time.sleep(5)
-             except Exception:
-                 pass
-
-        # Check result
-        result_url = page.url
-        if "challenge" in result_url or "signin" in result_url:
-            logger.warning(f"Sign-in may require 2FA or additional verification. URL: {result_url}")
-            return False
-
-        logger.info("Google sign-in successful. Navigating back to Maps URL...")
-        page.goto(current_url, wait_until="domcontentloaded")
-        time.sleep(8)
-        return True
-
-    except Exception as e:
-        logger.error(f"Auto sign-in failed: {e}")
-        try:
-            page.goto(current_url, wait_until="domcontentloaded")
-            time.sleep(5)
-        except Exception:
-            pass
-        return False
 
 
 def handle_google_speedbumps(page):
@@ -254,21 +167,13 @@ def click_reviews_tab(page):
         logger.info(f"Strategy 3 succeeded. {card_count} review cards found.")
         return
 
-    # Strategy 4: Auto sign-in — if not signed in, log in and retry
-    if not is_signed_in(page):
-        logger.info("Strategy 4: Not signed in. Attempting automatic Google sign-in...")
-        if sign_in_google(page):
-            logger.info("Sign-in complete. Retrying Reviews tab click strategies...")
-            # Recursively call click_reviews_tab ONCE after sign-in
-            # (using a simple flag to avoid infinite recursion would be better, but for now we just try direct)
-            try:
-                page.evaluate("document.querySelectorAll('button').forEach(b => { if(b.innerText.includes('Reviews')) b.click() })")
-                time.sleep(5)
-                if page.locator(google_selectors.review_card).count() > 0:
-                    return
-            except Exception: pass
-    else:
-        logger.info("User IS signed in, but reviews still not loading.")
+    # Final check: give Google Maps extra time to render
+    try:
+        page.wait_for_selector(google_selectors.review_card, timeout=10000)
+        logger.info("Review cards found after wait.")
+        return
+    except Exception:
+        pass
 
     # Strategy 5: "Force" Reviews via URL modification if possible
     # Google Maps URL pattern for reviews list usually includes !9m1!1b1
@@ -368,8 +273,10 @@ def scroll_reviews(page, target_count: int, max_scrolls: int = 500, job_id: str 
 
         if current_count == prev_count:
             stale_count += 1
-            if stale_count >= 8:
-                logger.info(f"No new reviews after 8 scroll attempts. Total loaded: {current_count}")
+            # When looking for all reviews (*), be more persistent
+            limit = 15 if target_count > 500 else 8
+            if stale_count >= limit:
+                logger.info(f"No new reviews after {limit} scroll attempts. Total loaded: {current_count}")
                 break
         else:
             stale_count = 0
@@ -434,6 +341,15 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
     # Initialize database tables
     init_db()
 
+    # Ensure active Google session before starting scraping
+    auth = GoogleAuthManager()
+    if not auth.check_login_status(headless=headless):
+        logger.info("Browser not signed in. Initializing automatic login...")
+        if not auth.login():
+            logger.warning("Automatic login failed or requires manual intervention. Scraper will proceed with existing profile.")
+    else:
+        logger.info("Confirmed active Google session.")
+
     browser_controller = GooglePlaywrightBrowser()
     page = browser_controller.start(job_id=job_id)
 
@@ -460,11 +376,26 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
         # Dismiss consent dialog if present
         dismiss_consent(page)
 
+        # 1. VERIFY SIGN-IN (Already done at start, but checking page state here)
+        print("STEP 1: Verifying active Google session...")
+        # Since we use persistent context, we just ensure we are not on a sign-in wall
+        if "signin" in page.url:
+            logger.warning("Still seeing sign-in page after auth attempt.")
+            print("WARNING: Sign-in redirect detected. Attempting to bypass...")
+            handle_google_speedbumps(page)
 
+        # 2. NAVIGATE TO TARGET URL
+        print(f"STEP 2: Navigating to target URL: {url}...")
+        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        time.sleep(5)
 
-        # Click the Reviews tab
+        # 3. CLICK REVIEWS TAB
+        print("STEP 3: Locating and clicking the 'Reviews' tab...")
         click_reviews_tab(page)
-        time.sleep(2)
+        time.sleep(3)
+
+        # 4. SCROLL AND LOAD REVIEWS
+        print("STEP 4: Loading reviews via infinite scroll...")
 
         # Detect total review count
         total_reviews_count = extract_total_reviews(page)
@@ -489,6 +420,10 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
 
         # Scroll to load reviews
         loaded_count = scroll_reviews(page, target_count, job_id=job_id, total_reviews_count=total_reviews_count)
+        print(f"Finished scrolling. {loaded_count} reviews loaded in view.")
+
+        # 5. EXPAND AND EXTRACT
+        print("STEP 5: Expanding truncated text and extracting media...")
 
         # Expand truncated texts
         if job_id:

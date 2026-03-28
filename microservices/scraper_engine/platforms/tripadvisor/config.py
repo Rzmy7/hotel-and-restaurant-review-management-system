@@ -4,38 +4,29 @@ Update this file when TripAdvisor changes its DOM structure.
 """
 
 class TripAdvisorSelectors:
+    # ── Page-level ──
+    ALL_REVIEWS_BTN    = 'button:has-text("All reviews"), button.biGQs._P.ezezH'
+    TOTAL_REVIEW_COUNT = 'span.khYLe, span.qS986, a[href*="#REVIEWS"] span, div.cPgBc span'
+    NEXT_PAGE_BTN      = 'a[aria-label="Next page"]'
+    
     # ── Review list container ──
-    REVIEW_CARD = 'div[data-automation="reviewCard"], div[data-test-target="HR_CC_CARD"]'
+    REVIEW_CARD        = 'div[data-automation="reviewCard"]'
 
     # ── Within each review card ──
-    REVIEWER_NAME    = 'a[href*="/Profile/"] span, span.biGQs, a.BMQDV._F.Gv.wSSLS.SwZTJ.FGwzt.ukgoS'
-    REVIEWER_ORIGIN  = 'span.wiI7l, span.qVkLn > span.biGQs'       # e.g.  "Dubai, UAE"
-    RATING_SVG       = 'svg[aria-label*="of 5 bubbles"], svg[data-automation="bubbleRatingImage"]'
-    REVIEW_DATE      = 'div.RpeCd, div.ZRBpD'        # e.g.  "Reviewed Oct 2025"
-    REVIEW_TITLE     = 'span[data-test-target="review-title"], a[href*="ShowUserReviews"] span, span.biGQs._P.SewaP.OgHoE, div[data-test-target="review-title"] span'
-    REVIEW_TEXT_FULL = 'div.biGQs._P.pZUbB.KxBGd span.JguWG, div.v_S, div.biGQs._P.pZUbB.KxBGd span, div.fIrGe span.JguWG span'  # expanded text
-    REVIEW_TEXT_SPAN = 'span.yCeTE, span.yNoPc'       # truncated text fallback
-    READ_MORE_BTN    = 'button.UikNM, span.Vm7mi.DkWqh'        # "Read more" trigger
-    TRIP_TYPE        = 'div.TDKzw span, div:has(> div > span:has-text("Trip type:")) > span'   # "Type of trip: ..."
-    TRIP_DATE        = 'div.TDKzw, div:has(> div > span:has-text("Date of stay:")) > span'        # block containing Date of stay
+    AUTHOR_NAME        = '[data-test-target="cyclops-user-profile-link"], a.BMQDV'
+    REVIEW_HEADING     = '[data-automation="reviewTitle"]'
+    REVIEW_TEXT        = '[data-automation="reviewText"], span.yCeTE'
+    STAYED_DATE        = 'span.jXCrq, div.TDKzw, div:has(> div > span:has-text("Date of stay:")) > span'
+    REVIEW_DATE        = 'div.biGQs._P.VImYz, div.RpeCd, div.ZRBpD'
+    AUTHOR_NATIONALITY = 'div.biGQs._P.navcl, span.wiI7l'
+    LIKES              = 'button[aria-label*="helpful vote"] span, button span.biGQs._P.navcl'
+    RATING             = 'svg[data-automation="bubbleRatingImage"], svg[aria-label*="of 5 bubbles"]'
+    IMAGES             = 'picture img, img[src*="media-cdn.tripadvisor.com"]'
+    REPLY              = 'div:has-text("Response from")'
 
     # ── Sub-scores & Metadata ──
-    CONTRIBUTION_COUNT = 'span.ydwaE, div.MfnQg, span.qVkLn' # We will use text-based or generic span search
-    SUBSCORES        = 'div[data-test-target="review-rating"]'   # Sub-rating rows container (if exists)
-    SUBSCORES_ALT    = 'div.b.d.Pd, div.sziqa' # Fallbacks for sub-ratings container
-
-    # Owner / management reply
-    MGMT_REPLY       = 'div[data-test-target="management-response"]'
-    MGMT_REPLY_TEXT  = 'div[data-test-target="management-response"] div.biGQs'
-
-    # Photos on review cards
-    REVIEW_PHOTO     = 'div.listPhoto img[src*="media-cdn.tripadvisor.com"]'
-
-    # ── Page-level ──
-    TOTAL_REVIEW_COUNT = 'span.khYLe, a[href*="#REVIEWS"] span'
-
-    # ── Pagination ──
-    NEXT_PAGE_BTN    = 'a[aria-label="Next page"]'
-    CURRENT_PAGE_TXT = 'div.pageNum'      # fallback
+    CONTRIBUTION_COUNT = 'span.ydwaE, div.MfnQg, span.qVkLn' 
+    READ_MORE_BTN      = 'span:has-text("Read more"), button.UikNM, button[aria-expanded="false"]'
 
 tripadvisor_selectors = TripAdvisorSelectors()
+

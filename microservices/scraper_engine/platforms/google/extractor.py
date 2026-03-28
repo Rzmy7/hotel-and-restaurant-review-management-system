@@ -107,18 +107,28 @@ class GoogleExtractor:
             # --- Photos ---
             photo_urls = []
             try:
-                photo_btns = review.locator(config.review_photos)
-                if photo_btns.count() > 0:
-                    for p in range(photo_btns.count()):
-                        try:
-                            style = photo_btns.nth(p).get_attribute("style", timeout=500) or ""
-                            url_match = re.search(r'url\("([^"]+)"\)', style)
-                            if url_match:
-                                photo_urls.append(url_match.group(1))
-                        except Exception:
-                            continue
-            except Exception:
-                pass
+                # Target elements that likely contain photos (background-images or img tags)
+                photo_containers = review.locator(f"{config.review_photos}, button[aria-label*='Photo'], img[src*='googleusercontent']").all()
+                for container in photo_containers:
+                    try:
+                        # Strategy A: Check background-image style
+                        style = container.get_attribute("style", timeout=300) or ""
+                        url_match = re.search(r'url\("([^"]+)"\)', style)
+                        if url_match:
+                            img_url = url_match.group(1)
+                            if img_url not in photo_urls:
+                                photo_urls.append(img_url)
+                                continue
+                        
+                        # Strategy B: Check direct img src
+                        if container.evaluate("el => el.tagName === 'IMG'"):
+                            img_src = container.get_attribute("src", timeout=300)
+                            if img_src and "googleusercontent" in img_src and img_src not in photo_urls:
+                                photo_urls.append(img_src)
+                    except Exception:
+                        continue
+            except Exception as e:
+                logger.debug(f"Error extracting photos for review {review_id}: {e}")
 
             reviews.append(
                 GoogleReviewData(

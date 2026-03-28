@@ -168,6 +168,8 @@ class TripAdvisorReviewDetail(Base):
     reviewer_nationality = Column(Unicode(255), nullable=True)
     stay_date            = Column(Unicode(100), nullable=True)
     traveler_type        = Column(Unicode(255), nullable=True)
+    likes_count          = Column(Integer, nullable=True)
+    reply                = Column(UnicodeText, nullable=True)
 
     # Granular Sub-Ratings (out of 5)
     rating_value         = Column(Numeric(3, 1), nullable=True)
