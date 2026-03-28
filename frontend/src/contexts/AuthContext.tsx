@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string) => {
-        const res = await fetch(`${API_BASE}/login`, {
+        const res = await fetch(`${API_BASE}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password }),
@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // SIGNUP
     // ----------------------------------------------------
     const signup = async (name: string, email: string, password: string) => {
-        const res = await fetch(`${API_BASE}/signup`, {
+        const res = await fetch(`${API_BASE}/auth/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, password }),
@@ -228,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // FORGOT PASSWORD
     // ----------------------------------------------------
     const forgotPassword = async (email: string) => {
-        await fetch(`${API_BASE}/forgot-password`, {
+        await fetch(`${API_BASE}/auth/forgot-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // RESET PASSWORD
     // ----------------------------------------------------
     const resetPassword = async (token: string, newPassword: string) => {
-        await fetch(`${API_BASE}/reset-password/${token}`, {
+        await fetch(`${API_BASE}/auth/reset-password/${token}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ new_password: newPassword }),
