@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import FRONTEND_URL
-from app.core.database import get_db
+from app.database import get_db
 from app.core.security import create_access_token
 from app.modules.auth.repository import get_user_by_email, create_user, assign_role_to_user, get_user_role_names
 from app.modules.auth.services.oauth_service import oauth

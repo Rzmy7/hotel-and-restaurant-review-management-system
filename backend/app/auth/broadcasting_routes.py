@@ -5,7 +5,7 @@ Endpoints for sending system-wide broadcasts and retrieving broadcast history.
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from app.db import get_db
+from app.database import get_db
 from app.services.broadcasting_service import (
     BroadcastCreate,
     StatisticsResponse,

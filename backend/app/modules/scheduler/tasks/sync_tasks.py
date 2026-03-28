@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 
-from app.core.database import SessionLocal
+from app.database import SessionLocal
 from app.modules.source.models import SourceSource
 from app.modules.source.services.source_service import update_sync_status
 

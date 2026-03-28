@@ -5,7 +5,7 @@ Signup route — POST /signup
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.database import get_db
 from app.core.security import hash_password
 from app.modules.auth.schemas import SignupModel
 from app.modules.auth.repository import get_user_by_email, create_user, get_user_role_names

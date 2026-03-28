@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from jose import JWTError
 
-from app.core.database import get_db  # noqa: F401 — re-exported
+from app.database import get_db  # noqa: F401 — re-exported
 from app.core.security import decode_access_token
 
 security = HTTPBearer()

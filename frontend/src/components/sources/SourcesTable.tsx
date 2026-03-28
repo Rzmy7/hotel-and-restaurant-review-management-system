@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Play,
   Pause,
@@ -23,7 +23,7 @@ interface SourcesTableProps {
   onEdit: (source: Source, tab?: 'settings' | 'analytics') => void;
   onDelete: (id: string | number) => void;
   onToggleStatus: (source: Source) => void;
-  onSync: (id: string | number) => void;
+  onSync: (id: string | number) => Promise<void> | void;
   isLoading?: boolean;
 }
 
@@ -116,6 +116,27 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   isLoading
 }) => {
   const [page, setPage] = useState(0);
+  const [localSyncingIds, setLocalSyncingIds] = useState<Set<string | number>>(new Set());
+  const inFlightSyncsRef = useRef<Set<string | number>>(new Set());
+
+  const handleSyncClick = async (id: string | number) => {
+    // Synchronous guard for rapid-fire clicking
+    if (inFlightSyncsRef.current.has(id)) return;
+    
+    inFlightSyncsRef.current.add(id);
+    setLocalSyncingIds(prev => new Set(prev).add(id));
+    
+    try {
+      await onSync(id);
+    } finally {
+      inFlightSyncsRef.current.delete(id);
+      setLocalSyncingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(sources.length / PAGE_SIZE));
   const currentSources = sources.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -240,12 +261,12 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                   <td className="px-6 py-5 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => onSync(source.id)}
-                        disabled={source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing'}
+                        onClick={() => handleSyncClick(source.id)}
+                        disabled={source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id)}
                         className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                        title={source.status === 'In Queue' || source.status === 'Syncing' ? 'Sync in progress' : 'Sync Now'}
+                        title={source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
                       >
-                        <RefreshCw size={18} className={source.status === 'Syncing' ? 'animate-spin' : ''} />
+                        <RefreshCw size={18} className={source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'animate-spin' : ''} />
                       </button>
                       <button
                         onClick={() => onToggleStatus(source)}

@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.db import get_db
+from app.database import get_db
 from app.auth.auth_permissions import require_admin, require_admin_or_tenant
 from app.services.notifications_service import (
     NotificationCreate,

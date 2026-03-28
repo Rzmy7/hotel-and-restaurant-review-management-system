@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Request, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.core.database import get_db
+from app.database import get_db
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
