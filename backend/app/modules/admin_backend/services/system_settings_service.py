@@ -9,6 +9,13 @@ DEFAULT_TIMEZONE = "UTC"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_DATE_FORMAT = "MM/DD/YYYY"
 DEFAULT_CURRENCY = "USD ($)"
+DEFAULT_REPLY_PROVIDER = "google"
+DEFAULT_SIMILAR_REVIEWS_COUNT = 3
+DEFAULT_REPLY_GOOGLE_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_REPLY_CLAUDE_MODEL = "claude-sonnet-4-6"
+DEFAULT_REPLY_SELECTED_MODEL = DEFAULT_REPLY_GOOGLE_MODEL
+DEFAULT_REPLY_USE_EMBEDDING_RULES = True
+DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
 
 
 def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
@@ -77,3 +84,62 @@ def get_system_timezone(cursor: pyodbc.Cursor) -> str:
     if value and is_valid_timezone(value):
         return value
     return DEFAULT_TIMEZONE
+
+
+def get_reply_provider(cursor: pyodbc.Cursor) -> str:
+    value = (get_setting(cursor, "reply_provider") or "").strip().lower()
+    if value in {"google", "claude"}:
+        return value
+    return DEFAULT_REPLY_PROVIDER
+
+
+def get_similar_reviews_count(cursor: pyodbc.Cursor) -> int:
+    value = (get_setting(cursor, "reply_similar_reviews_count") or "").strip()
+    if not value:
+        return DEFAULT_SIMILAR_REVIEWS_COUNT
+
+    try:
+        parsed = int(value)
+    except ValueError:
+        return DEFAULT_SIMILAR_REVIEWS_COUNT
+
+    if parsed < 1:
+        return 1
+    if parsed > 20:
+        return 20
+    return parsed
+
+
+def get_setting_int(cursor: pyodbc.Cursor, key: str, default: int = 0) -> int:
+    raw_value = (get_setting(cursor, key) or "").strip()
+    if not raw_value:
+        return default
+
+    try:
+        parsed = int(raw_value)
+    except ValueError:
+        return default
+
+    if parsed < 0:
+        return 0
+    return parsed
+
+
+def get_setting_bool(cursor: pyodbc.Cursor, key: str, default: bool = False) -> bool:
+    raw_value = (get_setting(cursor, key) or "").strip().lower()
+    if not raw_value:
+        return default
+
+    if raw_value in {"1", "true", "yes", "on", "enabled"}:
+        return True
+    if raw_value in {"0", "false", "no", "off", "disabled"}:
+        return False
+
+    return default
+
+
+def increment_setting_counter(cursor: pyodbc.Cursor, key: str, delta: int = 1) -> int:
+    current = get_setting_int(cursor, key, default=0)
+    next_value = max(0, current + delta)
+    set_setting(cursor, key, str(next_value))
+    return next_value

@@ -1,4 +1,4 @@
-import { Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, PenTool, Scissors, Copy, CheckCircle2, Bot, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, Copy, CheckCircle2, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review } from '../../types/reviews';
 import { useReviewsStore } from '../../stores/useReviewsStore';
 import { useReviewFilters } from '../../hooks/useReviewFilters';
@@ -27,6 +27,8 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
   const [isResolving, setIsResolving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [tone, setTone] = useState<'professional' | 'casual' | 'standard'>('standard');
+  const [replyLength, setReplyLength] = useState<'short' | 'standard'>('standard');
 
   // Initialize draft when review changes
   useEffect(() => {
@@ -34,6 +36,8 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
       setDraftReply("");
       setIsCopied(false);
       setSelectedPhotoIndex(null);
+      setTone('standard');
+      setReplyLength('standard');
     }
   }, [review]);
 
@@ -289,26 +293,33 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 mt-4">
+                      <select
+                        value={tone}
+                        onChange={(e) => setTone(e.target.value as 'professional' | 'casual' | 'standard')}
+                        disabled={isGenerating || isSaving}
+                        className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-700 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300"
+                        title="Reply tone"
+                      >
+                        <option value="standard">Tone: Standard</option>
+                        <option value="professional">Tone: Professional</option>
+                        <option value="casual">Tone: Casual</option>
+                      </select>
+                      <select
+                        value={replyLength}
+                        onChange={(e) => setReplyLength(e.target.value as 'short' | 'standard')}
+                        disabled={isGenerating || isSaving}
+                        className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-700 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300"
+                        title="Reply length"
+                      >
+                        <option value="standard">Length: Standard</option>
+                        <option value="short">Length: Short</option>
+                      </select>
                       <button
-                        onClick={() => handleGenerate('standard')}
+                        onClick={() => handleGenerate(tone, replyLength)}
                         disabled={isGenerating || isSaving}
                         className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-800 dark:hover:bg-blue-900/40 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                       >
-                        <RefreshCw size={14} className={isGenerating ? "animate-spin" : ""} /> Regenerate
-                      </button>
-                      <button
-                        onClick={() => handleGenerate('professional')}
-                        disabled={isGenerating || isSaving}
-                        className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-800 dark:hover:bg-blue-900/40 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                      >
-                        <PenTool size={14} /> Professional Tone
-                      </button>
-                      <button
-                        onClick={() => handleGenerate('standard', 'short')}
-                        disabled={isGenerating || isSaving}
-                        className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:text-[#4e80ee] hover:border-blue-300 hover:bg-blue-50 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:border-blue-800 dark:hover:bg-blue-900/40 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                      >
-                        <Scissors size={14} /> Shorten
+                        <RefreshCw size={14} className={isGenerating ? "animate-spin" : ""} /> Generate
                       </button>
                       <div className="flex-1" />
                       <Button

@@ -12,7 +12,8 @@ import {
   Key,
   Activity,
   CreditCard,
-  Megaphone
+  Megaphone,
+  MessageSquareText,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -27,6 +28,7 @@ export const Sidebar: React.FC = () => {
     { to: '/monitoring', icon: Activity, label: 'Monitoring' },
     { to: '/subscription-plans', icon: CreditCard, label: 'Subscription Plans' },
     { to: '/broadcasting', icon: Megaphone, label: 'Broadcasting' },
+    { to: '/reply-generation', icon: MessageSquareText, label: 'Reply Generation' },
     { to: '/settings', icon: SettingsIcon, label: 'Admin Setting' },
   ];
 

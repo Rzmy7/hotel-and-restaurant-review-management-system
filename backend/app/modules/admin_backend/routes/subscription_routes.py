@@ -8,6 +8,7 @@ from app.modules.admin_backend.schemas import (
     DeleteSubscriptionPlanResponse,
     SubscriptionFeature,
     SubscriptionPlan,
+    SubscriptionUsageSummary,
     SubscriptionPlanUpsertPayload,
 )
 from app.modules.admin_backend.services.subscription_service import (
@@ -15,6 +16,7 @@ from app.modules.admin_backend.services.subscription_service import (
     delete_subscription_plan,
     get_subscription_features,
     get_subscription_plans,
+    get_user_subscription_usage,
     update_subscription_plan,
 )
 
@@ -39,6 +41,22 @@ def list_subscription_plans() -> list[SubscriptionPlan]:
             return get_subscription_plans(cursor)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}") from exc
+
+
+@router.get("/subscription-usage/{user_id}", response_model=SubscriptionUsageSummary)
+def get_subscription_usage(user_id: str) -> SubscriptionUsageSummary:
+    try:
+        normalized_user_id = user_id.strip()
+        if not normalized_user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_user_subscription_usage(cursor, normalized_user_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load subscription usage: {exc}") from exc
 
 
 @router.post("/subscription-plans", response_model=SubscriptionPlan)

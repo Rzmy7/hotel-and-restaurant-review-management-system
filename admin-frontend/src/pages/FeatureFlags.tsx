@@ -3,6 +3,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SearchBar } from '../components/SearchBar';
 import { ToggleSwitch } from '../components/ToggleSwitch';
 import { fetchFeatureFlags } from '../services/mockService';
+import { featureFlagsService } from '../services/featureFlagsService';
 import type { FeatureFlag } from '../types';
 
 export const FeatureFlags: React.FC = () => {
@@ -12,32 +13,75 @@ export const FeatureFlags: React.FC = () => {
 
     useEffect(() => {
         const loadData = async () => {
-            const data = await fetchFeatureFlags();
-            setFlags(data);
+            try {
+                const data = await featureFlagsService.getFeatureFlags();
+                setFlags(data);
+            } catch {
+                const fallback = await fetchFeatureFlags();
+                setFlags(fallback);
+            }
             setLoading(false);
         };
         loadData();
     }, []);
 
-    const toggleStatus = (id: string) => {
+    const toggleStatus = async (id: string) => {
+        const currentFlag = flags.find((flag) => flag.id === id);
+        if (!currentFlag) return;
+
+        const nextStatus = currentFlag.status === 'Enabled' ? 'Disabled' : 'Enabled';
         setFlags(prevFlags => prevFlags.map(flag =>
             flag.id === id
-                ? { ...flag, status: flag.status === 'Enabled' ? 'Disabled' : 'Enabled' }
+                ? { ...flag, status: nextStatus }
                 : flag
         ));
+
+        try {
+            const updated = await featureFlagsService.updateFeatureFlag(currentFlag.key, {
+                status: nextStatus,
+                ...(currentFlag.limit ? { limit: currentFlag.limit } : {}),
+            });
+
+            setFlags(prevFlags => prevFlags.map(flag => (flag.id === id ? updated : flag)));
+        } catch {
+            setFlags(prevFlags => prevFlags.map(flag =>
+                flag.id === id
+                    ? { ...flag, status: currentFlag.status }
+                    : flag
+            ));
+        }
     };
 
-    const updateLimit = (id: string, inputValue: string) => {
+    const updateLimit = async (id: string, inputValue: string) => {
+        const currentFlag = flags.find((flag) => flag.id === id);
+        if (!currentFlag) return;
+
         const parsedValue = Number.parseInt(inputValue, 10);
+        const nextLimit = Number.isNaN(parsedValue) ? undefined : Math.max(1, parsedValue);
 
         setFlags(prevFlags => prevFlags.map(flag =>
             flag.id === id
                 ? {
                     ...flag,
-                    limit: Number.isNaN(parsedValue) ? undefined : Math.max(1, parsedValue)
+                    limit: nextLimit
                 }
                 : flag
         ));
+
+        if (nextLimit === undefined) {
+            return;
+        }
+
+        try {
+            const updated = await featureFlagsService.updateFeatureFlag(currentFlag.key, {
+                status: currentFlag.status,
+                limit: nextLimit,
+            });
+
+            setFlags(prevFlags => prevFlags.map(flag => (flag.id === id ? updated : flag)));
+        } catch {
+            // Keep local value for now; next successful update syncs backend.
+        }
     };
 
     if (loading) {

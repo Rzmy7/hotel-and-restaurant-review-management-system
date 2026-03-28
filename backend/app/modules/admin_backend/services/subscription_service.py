@@ -7,8 +7,10 @@ from fastapi import HTTPException
 
 from app.modules.admin_backend.schemas import (
     SubscriptionFeature,
+    SubscriptionFeatureUsage,
     SubscriptionPlan,
     SubscriptionPlanFeatureState,
+    SubscriptionUsageSummary,
     SubscriptionPlanUpsertPayload,
 )
 
@@ -161,6 +163,27 @@ def ensure_subscription_tables(cursor: pyodbc.Cursor) -> None:
                     CONSTRAINT DF_user_subscription_updated_at DEFAULT SYSUTCDATETIME(),
                 CONSTRAINT FK_user_subscription_plan
                     FOREIGN KEY (plan_id) REFERENCES dbo.plans(plan_id) ON DELETE SET NULL
+            );
+        END;
+
+        IF OBJECT_ID('dbo.user_feature_usage', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.user_feature_usage (
+                user_feature_usage_id INT IDENTITY(1,1) NOT NULL
+                    CONSTRAINT PK_user_feature_usage PRIMARY KEY,
+                user_id NVARCHAR(64) NOT NULL,
+                feature_id INT NOT NULL,
+                used_quantity INT NOT NULL
+                    CONSTRAINT DF_user_feature_usage_used_quantity DEFAULT 0,
+                period_start DATE NULL,
+                period_end DATE NULL,
+                created_at DATETIME2(7) NOT NULL
+                    CONSTRAINT DF_user_feature_usage_created_at DEFAULT SYSUTCDATETIME(),
+                updated_at DATETIME2(7) NOT NULL
+                    CONSTRAINT DF_user_feature_usage_updated_at DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT FK_user_feature_usage_feature
+                    FOREIGN KEY (feature_id) REFERENCES dbo.features(feature_id) ON DELETE CASCADE,
+                CONSTRAINT UQ_user_feature_usage_user_feature UNIQUE (user_id, feature_id)
             );
         END;
         """
@@ -453,3 +476,77 @@ def delete_subscription_plan(cursor: pyodbc.Cursor, plan_id: int) -> None:
         raise HTTPException(status_code=404, detail="Subscription plan not found.")
 
     cursor.execute("DELETE FROM dbo.plans WHERE plan_id = ?", (plan_id,))
+
+
+def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> SubscriptionUsageSummary:
+    features = get_subscription_features(cursor)
+
+    plan_row = cursor.execute(
+        """
+        SELECT TOP 1 p.plan_id, p.name
+        FROM dbo.user_subscription us
+        INNER JOIN dbo.plans p ON p.plan_id = us.plan_id
+        WHERE us.user_id = ? AND us.plan_id IS NOT NULL
+        ORDER BY COALESCE(us.updated_at, us.created_at) DESC, us.user_subscription_id DESC
+        """,
+        (user_id,),
+    ).fetchone()
+
+    if not plan_row:
+        return SubscriptionUsageSummary(userId=user_id, features=[])
+
+    plan_id = int(plan_row[0])
+    plan_name = str(plan_row[1]) if plan_row[1] else None
+
+    rows = cursor.execute(
+        """
+        SELECT
+            f.feature_id,
+            f.feature_key,
+            f.display_name,
+            COALESCE(pf.is_enabled, 0) AS is_enabled,
+            pf.feature_limit,
+            COALESCE(ufu.used_quantity, 0) AS used_quantity
+        FROM dbo.features f
+        LEFT JOIN dbo.plan_feature pf
+            ON pf.feature_id = f.feature_id
+           AND pf.plan_id = ?
+        LEFT JOIN dbo.user_feature_usage ufu
+            ON ufu.feature_id = f.feature_id
+           AND ufu.user_id = ?
+        ORDER BY f.sort_order, f.feature_id
+        """,
+        (plan_id, user_id),
+    ).fetchall()
+
+    feature_usages: list[SubscriptionFeatureUsage] = []
+    for row in rows:
+        feature_id = str(row[0])
+        feature_key = str(row[1])
+        feature_name = str(row[2])
+        is_enabled = bool(row[3])
+        feature_limit = int(row[4]) if row[4] is not None else None
+        used_quantity = int(row[5]) if row[5] is not None else 0
+        balance = None if feature_limit is None else max(feature_limit - used_quantity, 0)
+
+        feature_usages.append(
+            SubscriptionFeatureUsage(
+                id=feature_id,
+                key=feature_key,
+                name=feature_name,
+                enabled=is_enabled,
+                used=used_quantity,
+                limit=feature_limit,
+                balance=balance,
+            )
+        )
+
+    # Keep only enabled features for customer-facing usage/balance display.
+    enabled_feature_usages = [feature for feature in feature_usages if feature.enabled]
+
+    return SubscriptionUsageSummary(
+        userId=user_id,
+        planId=str(plan_id),
+        planName=plan_name,
+        features=enabled_feature_usages,
+    )

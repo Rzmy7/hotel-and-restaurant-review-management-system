@@ -9,6 +9,7 @@ export function useReviewFilters() {
         const getParam = (key: string) => searchParams.getAll(key);
         return {
             search: searchParams.get('q') || '',
+            useEmbeddingSearch: searchParams.get('embedding_search') === 'true',
             rating: getParam('rating').map(Number),
             sentiment: getParam('sentiment'),
             source: getParam('source'),
@@ -31,6 +32,7 @@ export function useReviewFilters() {
     const updateUrlParams = (newFilters: FilterState & { page: number }) => {
         const params = new URLSearchParams();
         if (newFilters.search) params.set('q', newFilters.search);
+        if (newFilters.useEmbeddingSearch) params.set('embedding_search', 'true');
         newFilters.rating.forEach(v => params.append('rating', v.toString()));
         newFilters.sentiment.forEach(v => params.append('sentiment', v));
         newFilters.source.forEach(v => params.append('source', v));
@@ -50,7 +52,7 @@ export function useReviewFilters() {
         updateUrlParams(newFilters);
     };
 
-    const toggleFilter = (type: keyof Omit<FilterState, 'search' | 'hasAiReply'>, value: string | number) => {
+    const toggleFilter = (type: keyof Omit<FilterState, 'search' | 'hasAiReply' | 'useEmbeddingSearch' | 'dateFrom' | 'dateTo'>, value: string | number) => {
         const currentValues = filters[type] as (string | number)[];
         const exists = currentValues.includes(value);
         const newValues = exists
@@ -70,6 +72,17 @@ export function useReviewFilters() {
 
     const setPage = (pageIndex: number) => {
         const newFilters = { ...filters, page: pageIndex };
+        setFilters(newFilters);
+        updateUrlParams(newFilters);
+    };
+
+    const setEmbeddingSearch = (enabled: boolean, searchOverride?: string) => {
+        const newFilters = {
+            ...filters,
+            useEmbeddingSearch: enabled,
+            ...(searchOverride !== undefined ? { search: searchOverride } : {}),
+            page: 0
+        };
         setFilters(newFilters);
         updateUrlParams(newFilters);
     };
@@ -101,6 +114,7 @@ export function useReviewFilters() {
         setSearchQuery,
         toggleFilter,
         toggleAiReplyFilter,
+        setEmbeddingSearch,
         setPage,
         setDateRange
     };
