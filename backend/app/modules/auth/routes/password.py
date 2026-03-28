@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import PASSWORD_RESET_EXPIRE_MINUTES, FRONTEND_URL
-from app.core.database import get_db
+from app.database import get_db
 from app.core.security import hash_password
 from app.modules.auth.schemas import EmailModel, ResetModel
 from app.modules.auth.repository import get_user_by_email

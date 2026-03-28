@@ -1,7 +1,7 @@
 # app/scripts/seed_roles.py
 
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
+from app.database import SessionLocal
 from app.modules.auth.models import Role
 from app.constants.roles import SYSTEM_ADMIN, TENANT
 

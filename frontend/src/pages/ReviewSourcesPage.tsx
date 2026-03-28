@@ -150,7 +150,7 @@ const ReviewSourcesPage = () => {
   };
 
   const handleSyncNow = async (id: string | number) => {
-    triggerSyncMutation.mutate(id);
+    await triggerSyncMutation.mutateAsync(id);
   };
 
   return (

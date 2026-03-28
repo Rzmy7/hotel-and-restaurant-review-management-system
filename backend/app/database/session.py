@@ -1,8 +1,7 @@
 """
 SQLAlchemy engine, session factory, and declarative base.
 
-Used by the auth / users / groups / roles domain
-(anything using ORM models).
+Consolidated from app/db.py and app/core/database.py.
 """
 
 from sqlalchemy import create_engine
@@ -10,12 +9,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.core.config import DATABASE_URL
 
+# Standard declarative base for all models
 Base = declarative_base()
 
-# Engine and session factory are created only when DATABASE_URL is set.
-# This allows the app to import cleanly even in environments without a DB
-# (e.g. CI, static analysis). Requests that need the DB will fail at runtime
-# with a clear error message.
+# Engine and session factory initialized with settings from app.core.config
 if DATABASE_URL:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

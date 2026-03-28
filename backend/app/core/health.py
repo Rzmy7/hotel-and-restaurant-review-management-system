@@ -13,7 +13,7 @@ from typing import Literal
 
 import psutil
 
-from app.core.database import get_db
+from app.database import get_db
 
 router = APIRouter(tags=["Health"])
 

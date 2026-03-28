@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 import uuid
 
-from app.core.database import get_db
+from app.database import get_db
 from app.modules.source.services import source_service
 from app.modules.source.schemas import SourceRead, SyncStatusRequest
 

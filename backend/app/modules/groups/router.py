@@ -7,7 +7,7 @@ Moved from routers/groups.py.
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.database import get_db
 from app.modules.groups.repository import (
     create_group,
     add_member_to_group,

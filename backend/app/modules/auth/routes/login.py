@@ -5,7 +5,7 @@ Login route — POST /login
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.database import get_db
 from app.modules.auth.schemas import LoginModel
 from app.modules.auth.services.login_service import login_user
 
