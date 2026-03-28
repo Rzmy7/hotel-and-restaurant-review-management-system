@@ -5,12 +5,15 @@ import { useAuth } from "../contexts/AuthContext";
 export default function OAuthSuccessPage() {
 
     const navigate = useNavigate();
-    const { persist } = useAuth();
+    const { persist, checkUserOrganizations } = useAuth();
 
     useEffect(() => {
 
+        const handleOAuthSuccess = async () => {
+
         const params = new URLSearchParams(window.location.search);
-        const token = params.get("token");
+        const rawToken = params.get("token");
+        const token = rawToken?.replace(/^\"|\"$/g, "").trim();
 
         if (!token) {
             navigate("/login");
@@ -36,7 +39,10 @@ export default function OAuthSuccessPage() {
             // Save user + token using AuthContext
             persist(user, token);
 
-            // Redirect to dashboard
+            // Reuse the same org sync flow used by email/password login.
+            await checkUserOrganizations();
+
+            // Fallback in case org check returns without redirect.
             navigate("/dashboard");
 
         } catch (err) {
@@ -46,7 +52,11 @@ export default function OAuthSuccessPage() {
 
         }
 
-    }, [navigate, persist]);
+        };
+
+        handleOAuthSuccess();
+
+    }, [checkUserOrganizations, navigate, persist]);
 
     return (
         <div style={{ textAlign: "center", marginTop: "100px" }}>

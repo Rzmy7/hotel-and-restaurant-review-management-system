@@ -432,10 +432,7 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
     from app.auth.jwt_service import create_access_token
 
     access_token = create_access_token(
-        {
-            "user_id": str(user.user_id),
-            "email": user.email
-        },
+        user_id=str(user.user_id),
         role=roles[0] if roles else "TENANT"
     )
 

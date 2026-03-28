@@ -15,6 +15,7 @@ type AuthContextType = {
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     persist: (user: User | null, token?: string) => void;
+    checkUserOrganizations: () => Promise<void>;
 };
 
 const API_BASE =
@@ -255,6 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 forgotPassword,
                 resetPassword,
                 persist,
+                checkUserOrganizations,
             }}
         >
             {children}
