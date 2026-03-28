@@ -17,10 +17,10 @@ from app.modules.reviews.repository import (
 )
 
 
-def get_all_reviews_from_db() -> List[dict]:
+def get_all_reviews_from_db(organization_id: str) -> List[dict]:
     """Fetch all processed reviews and enrich with photos."""
     try:
-        rows, photo_map = fetch_all_reviews_raw()
+        rows, photo_map = fetch_all_reviews_raw(organization_id)
         results = []
         for row in rows:
             try:
@@ -34,23 +34,23 @@ def get_all_reviews_from_db() -> List[dict]:
                 phrase_list = []
 
             results.append({
-                "id": row.id,
-                "platformReviewId": row.platformReviewId,
+                "id": str(row.id),
+                "platformReviewId": None,
                 "rating": row.rating or 0,
-                "userName": row.userName or "Anonymous",
+                "userName": row.reviewerName or "Anonymous",
                 "reviewerName": row.reviewerName,
-                "text": row.reviewText,
+                "text": row.text,
                 "summary": row.summary,
-                "sentiment": row.sentiment,
+                "sentiment": row.sentiment or "Neutral",
                 "language": row.language,
                 "categories": cat_list,
                 "keyPhrases": phrase_list,
                 "date": row.reviewDate,
-                "status": row.status,
-                "replyStatus": row.replyStatus,
-                "hasReply": row.hasReply,
-                "source": row.source,
-                "photos": photo_map.get(row.id, []),
+                "status": row.status or "active",
+                "replyStatus": row.replyStatus or "Pending",
+                "hasReply": "Yes" if row.ai_reply else "No",
+                "source": row.source or "Unknown",
+                "photos": photo_map.get(str(row.id).upper(), []),
             })
         return results
     except Exception as e:

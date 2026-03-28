@@ -10,46 +10,44 @@ import pyodbc
 from app.core.pyodbc_connection import get_connection_string
 
 
-def fetch_all_reviews_raw() -> Tuple[list, Dict[str, list]]:
+def fetch_all_reviews_raw(organization_id: str) -> Tuple[list, Dict[str, list]]:
     """Fetch raw review rows and a photo map from the database."""
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
     sql_reviews = """
         SELECT
-            id, platformReviewId, rating, userName, reviewerName,
-            reviewText, summary, sentiment, language, categories,
-            keyPhrases, reviewDate, status, replyStatus, hasReply, source
-        FROM dbo.ProcessedReviews
+            r.id, r.rating, r.reviewerName,
+            r.text, r.summary, r.sentiment, r.language, r.categories,
+            r.keyPhrases, r.reviewDate, r.status, r.replyStatus, p.platform_name AS source,
+            r.ai_reply
+        FROM dbo.ProcessedReviews r
+        LEFT JOIN dbo.platforms_source p ON r.platform_id = p.platform_id
+        WHERE r.organization_id = ?
     """
-    rows = cursor.execute(sql_reviews).fetchall()
+    rows = cursor.execute(sql_reviews, (organization_id,)).fetchall()
 
-    # Build a map for photos using platformReviewId
-    original_ids = []
-    id_map = {}
-    for r in rows:
-        try:
-            if r.platformReviewId and "-" in r.platformReviewId:
-                orig_id = int(r.platformReviewId.split('-')[1])
-                original_ids.append(orig_id)
-                id_map[orig_id] = r.id
-        except (ValueError, IndexError):
-            continue
+    original_ids = [str(r.id) for r in rows]
 
     photo_map: Dict[str, list] = {}
     if original_ids:
-        placeholders = ','.join('?' * len(original_ids))
-        pics = cursor.execute(
-            f"SELECT review_id, src, alt FROM review_photos WHERE review_id IN ({placeholders})",
-            original_ids,
-        ).fetchall()
-        for pid, src, alt in pics:
-            sys_id = id_map.get(pid)
-            if sys_id:
-                photo_map.setdefault(sys_id, []).append({"src": src, "alt": alt})
+        # Fetch up to 2000 at a time to prevent SQL max parameters exception
+        for i in range(0, len(original_ids), 2000):
+            chunk = original_ids[i:i + 2000]
+            placeholders = ','.join('?' * len(chunk))
+            pics = cursor.execute(
+                f"SELECT review_id, src, alt FROM dbo.review_photos WHERE review_id IN ({placeholders})",
+                chunk,
+            ).fetchall()
+            for review_id, src, alt in pics:
+                pid = str(review_id).upper() if review_id else ""
+                photo_map.setdefault(pid, []).append({"src": src, "alt": alt})
 
+    # For mapping photos correctly if row.id casing differs, we'll ensure consistent casing
+    photo_map_normalized = {k.upper(): v for k, v in photo_map.items()}
+        
     conn.close()
-    return rows, photo_map
+    return rows, photo_map_normalized
 
 
 def delete_all_reviews_raw() -> None:

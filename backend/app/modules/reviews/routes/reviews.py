@@ -16,11 +16,11 @@ from app.modules.dashboard.services.stats_service import get_stats
 router = APIRouter()
 
 
-@router.get("/reviews", response_model=List[ReviewModel])
-def read_reviews():
+@router.get("/reviews/{organization_id}", response_model=List[ReviewModel])
+def read_reviews(organization_id: str):
     """Fetch all processed reviews from the database."""
     try:
-        return get_all_reviews_from_db()
+        return get_all_reviews_from_db(organization_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

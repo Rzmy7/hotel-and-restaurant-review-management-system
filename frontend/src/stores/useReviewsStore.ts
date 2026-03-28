@@ -19,9 +19,9 @@ interface ReviewsState {
     isModalOpen: boolean;
 
     // Actions
-    fetchReviews: (params: any, silent?: boolean) => Promise<void>;
-    refreshData: (params: any) => void;
-    
+    fetchReviews: (organizationId: string, params: any, silent?: boolean) => Promise<void>;
+    refreshData: (organizationId: string, params: any) => void;
+
     // Modal Actions
     openReview: (review: Review) => void;
     closeReview: () => void;
@@ -41,15 +41,15 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     selectedReview: null,
     isModalOpen: false,
 
-    fetchReviews: async (params, silent = false) => {
+    fetchReviews: async (organizationId, params, silent = false) => {
         if (!silent) set({ loading: true });
         set({ error: null });
 
         try {
             const [fetchedReviews, fetchedStats, fetchedOptions] = await Promise.all([
-                reviewsService.getReviews(params),
-                reviewsService.getStats(),
-                reviewsService.getOptions()
+                reviewsService.getReviews(organizationId, params),
+                reviewsService.getStats(organizationId),
+                reviewsService.getOptions(organizationId)
             ]);
 
             set({
@@ -96,7 +96,7 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
         } else if (direction === 'prev' && currentIndex > 0) {
             newIndex = currentIndex - 1;
         }
-        
+
         if (newIndex !== currentIndex) {
             set({ selectedReview: reviews[newIndex] });
         }

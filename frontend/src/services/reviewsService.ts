@@ -31664,7 +31664,7 @@ class ReviewsService {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-                const response = await fetch('http://127.0.0.1:8000/reviews', {
+                const response = await fetch('http://127.0.0.1:8000/api', {
                     signal: controller.signal
                 });
 
@@ -31718,11 +31718,11 @@ class ReviewsService {
      * Simulated Endpoint: GET /api/reviews
      * Handles server-side pagination, sorting, and filtering.
      */
-    async getReviews(params: FetchReviewsParams): Promise<PaginatedResponse<Review>> {
+    async getReviews(organizationId: string, params: FetchReviewsParams): Promise<PaginatedResponse<Review>> {
         // Simulate network call overhead from the mock layer architecture
         try {
-            await apiClient.get('/api/reviews', params as Record<string, unknown>);
-        } catch(e) { /* ignore to allow mock fallback */ }
+            await apiClient.get(`/reviews/${organizationId}`, params as Record<string, unknown>);
+        } catch (e) { /* ignore to allow mock fallback */ }
 
         const baseData = await this.getBaseData();
         let filteredData = [...baseData];
@@ -31801,10 +31801,10 @@ class ReviewsService {
     /**
      * Simulated Endpoint: GET /api/reviews/stats
      */
-    async getStats(): Promise<ReviewStats> {
+    async getStats(organizationId: string): Promise<ReviewStats> {
         try {
-            await apiClient.get('/api/reviews/stats');
-        } catch(e) { /* ignore */ }
+            await apiClient.get(`/api/reviews/stats/${organizationId}`);
+        } catch (e) { /* ignore */ }
 
         const reviews = await this.getBaseData();
         const totalReviews = reviews.length;
@@ -31834,7 +31834,7 @@ class ReviewsService {
         };
     }
 
-    async getOptions(): Promise<{ sources: string[], categories: string[] }> {
+    async getOptions(organizationId: string): Promise<{ sources: string[], categories: string[] }> {
         const reviews = await this.getBaseData();
         return {
             sources: Array.from(new Set(reviews.map(r => r.source))).sort(),
@@ -31848,7 +31848,7 @@ class ReviewsService {
     async generateReply(review: Review, tone: 'professional' | 'casual' | 'standard' = 'standard', length: 'short' | 'standard' = 'standard'): Promise<string> {
         try {
             await apiClient.post('/api/reviews/generate', { reviewId: review.id, tone, length });
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
 
         let base = `Dear ${review.userName}, \n\nThank you so much for your feedback! `;
 
@@ -31878,7 +31878,7 @@ class ReviewsService {
     async updateReviewStatus(reviewId: string | number, status: Review['status']): Promise<void> {
         try {
             await apiClient.put(`/api/reviews/${reviewId}/status`, { status });
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
         const reviews = await this.getBaseData();
         const review = reviews.find(r => r.id === reviewId);
         if (review) review.status = status;
@@ -31890,7 +31890,7 @@ class ReviewsService {
     async saveReply(reviewId: string | number, replyText: string): Promise<void> {
         try {
             await apiClient.post(`/api/reviews/${reviewId}/reply`, { replyText });
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
         const reviews = await this.getBaseData();
         const review = reviews.find(r => r.id === reviewId);
         if (review) {

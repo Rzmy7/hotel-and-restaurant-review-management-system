@@ -12,6 +12,9 @@ import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
 
 const ReviewsPageContent = () => {
+
+  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
+
   const stats = useReviewsStore(state => state.stats);
   const loading = useReviewsStore(state => state.loading);
   const pagination = useReviewsStore(state => state.pagination);
@@ -20,17 +23,17 @@ const ReviewsPageContent = () => {
   const closeReview = useReviewsStore(state => state.closeReview);
   const fetchReviews = useReviewsStore(state => state.fetchReviews);
   const refreshDataStore = useReviewsStore(state => state.refreshData);
-  
+
   const { filters, setDateRange, fetchParams, setPage } = useReviewFilters();
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
 
   useEffect(() => {
-    fetchReviews(fetchParams);
+    fetchReviews(organizationId, fetchParams);
   }, [fetchParams, fetchReviews]);
 
   const refreshData = () => {
     setPage(0);
-    refreshDataStore(fetchParams);
+    refreshDataStore(organizationId, fetchParams);
   };
 
   const handleDateRangeApply = (dateFrom: string, dateTo: string) => {
