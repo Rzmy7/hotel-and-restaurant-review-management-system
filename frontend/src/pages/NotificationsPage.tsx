@@ -54,7 +54,8 @@ const getTimeLabel = (value: string | null): string => {
 const NotificationsPage: React.FC = () => {
     const location = useLocation();
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [activeFilter, setActiveFilter] = useState<string>('all');
+    const [activePrimaryFilter, setActivePrimaryFilter] = useState<'all' | 'unread'>('all');
+    const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'system'>('all-types');
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -81,8 +82,17 @@ const NotificationsPage: React.FC = () => {
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
         const filterParam = params.get('filter');
-        if (filterParam) {
-            setActiveFilter(filterParam);
+        if (!filterParam) {
+            return;
+        }
+
+        if (filterParam === 'all' || filterParam === 'unread') {
+            setActivePrimaryFilter(filterParam);
+            return;
+        }
+
+        if (filterParam === 'announcement' || filterParam === 'alert' || filterParam === 'system') {
+            setActiveCategoryFilter(filterParam);
         }
     }, [location.search]);
 
@@ -107,10 +117,43 @@ const NotificationsPage: React.FC = () => {
      * Memoized filtered notifications based on the currently active filter.
      */
     const filteredNotifications = useMemo(() => {
-        if (activeFilter === 'all') return notifications;
-        if (activeFilter === 'unread') return notifications.filter(n => !n.read);
-        return notifications.filter(n => n.type === activeFilter);
-    }, [notifications, activeFilter]);
+        let scoped = notifications;
+
+        if (activePrimaryFilter === 'unread') {
+            scoped = scoped.filter((n) => !n.read);
+        }
+
+        if (activeCategoryFilter !== 'all-types') {
+            scoped = scoped.filter((n) => n.type === activeCategoryFilter);
+        }
+
+        return scoped;
+    }, [notifications, activePrimaryFilter, activeCategoryFilter]);
+
+    const isFiltered = activePrimaryFilter !== 'all' || activeCategoryFilter !== 'all-types';
+
+    const activeFilterLabel = useMemo(() => {
+        const primaryLabel = activePrimaryFilter === 'all' ? 'all' : 'unread';
+        const categoryLabel = activeCategoryFilter === 'all-types'
+            ? 'all types'
+            : activeCategoryFilter === 'announcement'
+                ? 'announcements'
+                : activeCategoryFilter;
+
+        if (!isFiltered) {
+            return 'all';
+        }
+
+        if (activePrimaryFilter === 'all' && activeCategoryFilter !== 'all-types') {
+            return categoryLabel;
+        }
+
+        if (activePrimaryFilter !== 'all' && activeCategoryFilter === 'all-types') {
+            return primaryLabel;
+        }
+
+        return `${primaryLabel} ${categoryLabel}`;
+    }, [activePrimaryFilter, activeCategoryFilter, isFiltered]);
 
     /**
      * Marks a specific notification as read.
@@ -158,15 +201,15 @@ const NotificationsPage: React.FC = () => {
         }
     }, []);
 
-    const handleFilterChange = (filter: string) => {
-        setActiveFilter(filter);
-    };
-
     return (
         <NotificationsTemplate
             notifications={filteredNotifications}
-            activeFilter={activeFilter}
-            onFilterChange={handleFilterChange}
+            activePrimaryFilter={activePrimaryFilter}
+            activeCategoryFilter={activeCategoryFilter}
+            onPrimaryFilterChange={setActivePrimaryFilter}
+            onCategoryFilterChange={setActiveCategoryFilter}
+            isFiltered={isFiltered}
+            activeFilterLabel={activeFilterLabel}
             counts={counts}
             unreadCount={counts.unread}
             onMarkAsRead={handleMarkAsRead}

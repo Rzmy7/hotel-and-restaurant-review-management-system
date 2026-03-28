@@ -84,8 +84,7 @@ export const navigationConfig: NavigationConfig = {
                     id: 'notifications',
                     label: 'Notifications',
                     icon: <Bell size={20} />,
-                    path: '/notifications',
-                    badge: '3'
+                    path: '/notifications'
                 },
                 {
                     id: 'profile',

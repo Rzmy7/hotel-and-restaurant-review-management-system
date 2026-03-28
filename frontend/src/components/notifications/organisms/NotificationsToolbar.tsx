@@ -4,8 +4,10 @@ import FilterTab from '../molecules/FilterTab';
 import BulkActions from '../molecules/BulkActions';
 
 interface NotificationsToolbarProps {
-    activeFilter: string;
-    onFilterChange: (filter: any) => void;
+    activePrimaryFilter: 'all' | 'unread';
+    activeCategoryFilter: 'all-types' | 'announcement' | 'alert' | 'system';
+    onPrimaryFilterChange: (filter: 'all' | 'unread') => void;
+    onCategoryFilterChange: (filter: 'all-types' | 'announcement' | 'alert' | 'system') => void;
     counts: Record<string, number>;
     unreadCount: number;
     totalCount: number;
@@ -13,17 +15,23 @@ interface NotificationsToolbarProps {
     onClearAll: () => void;
 }
 
-const filterTabs = [
+const primaryFilterTabs = [
     { key: 'all', label: 'All' },
     { key: 'unread', label: 'Unread' },
+];
+
+const categoryFilterTabs = [
+    { key: 'all-types', label: 'All Types' },
     { key: 'announcement', label: 'Announcements' },
     { key: 'alert', label: 'Alerts' },
     { key: 'system', label: 'System' },
 ];
 
 const NotificationsToolbar: React.FC<NotificationsToolbarProps> = ({
-    activeFilter,
-    onFilterChange,
+    activePrimaryFilter,
+    activeCategoryFilter,
+    onPrimaryFilterChange,
+    onCategoryFilterChange,
     counts,
     unreadCount,
     totalCount,
@@ -38,15 +46,31 @@ const NotificationsToolbar: React.FC<NotificationsToolbarProps> = ({
                     <div className="w-9 h-9 grid place-items-center bg-gray-50 dark:bg-slate-800 rounded-xl text-gray-400 mr-2 border border-gray-100 dark:border-slate-700">
                         <Filter size={16} />
                     </div>
-                    {filterTabs.map((tab) => (
-                        <FilterTab
-                            key={tab.key}
-                            label={tab.label}
-                            count={counts[tab.key] || 0}
-                            isActive={activeFilter === tab.key}
-                            onClick={() => onFilterChange(tab.key)}
-                        />
-                    ))}
+                    <div className="flex items-center gap-2">
+                        {primaryFilterTabs.map((tab) => (
+                            <FilterTab
+                                key={tab.key}
+                                label={tab.label}
+                                count={counts[tab.key] || 0}
+                                isActive={activePrimaryFilter === tab.key}
+                                onClick={() => onPrimaryFilterChange(tab.key as 'all' | 'unread')}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-1" aria-hidden="true" />
+
+                    <div className="flex items-center gap-2">
+                        {categoryFilterTabs.map((tab) => (
+                            <FilterTab
+                                key={tab.key}
+                                label={tab.label}
+                                count={tab.key === 'all-types' ? (counts.all || 0) : (counts[tab.key] || 0)}
+                                isActive={activeCategoryFilter === tab.key}
+                                onClick={() => onCategoryFilterChange(tab.key as 'all-types' | 'announcement' | 'alert' | 'system')}
+                            />
+                        ))}
+                    </div>
                 </div>
 
                 {/* Actions */}
@@ -56,19 +80,6 @@ const NotificationsToolbar: React.FC<NotificationsToolbarProps> = ({
                     onMarkAllRead={onMarkAllRead}
                     onClearAll={onClearAll}
                 />
-            </div>
-
-            {/* Dynamic Status Bar */}
-            <div className="px-6 py-2.5 bg-gray-50/50 dark:bg-slate-900/50 border-t border-gray-50 dark:border-slate-800/50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${unreadCount > 0 ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`} />
-                    <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-                        {unreadCount > 0 ? `${unreadCount} Pending Actions` : 'System Optimal'}
-                    </span>
-                </div>
-                <span className="text-[10px] font-black text-gray-300 dark:text-slate-600 uppercase tracking-widest">
-                    {totalCount} Notifications Logged
-                </span>
             </div>
         </div>
     );

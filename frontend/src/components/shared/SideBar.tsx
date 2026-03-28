@@ -6,6 +6,7 @@ import type { SidebarItemData, SidebarGroupData } from '../../types/navigation';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { useNavigationBlocker } from '../../contexts/NavigationBlockerContext';
 import { useAuth } from '../../context/AuthContext';
+import { notificationsService } from '../../services/notificationsService';
 import LogoutConfirmationModal from './LogoutConfirmationModal';
 
 /**
@@ -24,8 +25,46 @@ interface SidebarProps {
  */
 const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const { logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshUnreadCount = async () => {
+      try {
+        const result = await notificationsService.getUnreadCount();
+        if (isMounted) {
+          setUnreadNotificationsCount(Math.max(0, Number(result.count || 0)));
+        }
+      } catch (error) {
+        console.error('Failed to load unread notifications count:', error);
+      }
+    };
+
+    refreshUnreadCount();
+    const intervalId = window.setInterval(refreshUnreadCount, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const sectionsWithLiveBadges: SidebarGroupData[] = navigationConfig.sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      if (item.id !== 'notifications') {
+        return item;
+      }
+
+      return {
+        ...item,
+        badge: unreadNotificationsCount > 0 ? String(unreadNotificationsCount) : undefined,
+      };
+    }),
+  }));
 
   /**
    * Finalizes the logout process after user confirmation.
@@ -45,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
       <SidebarHeader isExpanded={isExpanded} onToggle={onToggle} />
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 no-scrollbar">
-        {navigationConfig.sections.map((section, idx) => (
+        {sectionsWithLiveBadges.map((section, idx) => (
           <SidebarSection
             key={section.id}
             section={section}

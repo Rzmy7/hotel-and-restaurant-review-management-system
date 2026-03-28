@@ -2,12 +2,12 @@ import React from 'react';
 import { Bell } from 'lucide-react';
 
 interface EmptyStateProps {
-    activeFilter: string;
+    isFiltered: boolean;
+    activeFilterLabel: string;
     onReset: () => void;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ activeFilter, onReset }) => {
-    const isFiltered = activeFilter !== 'all';
+const EmptyState: React.FC<EmptyStateProps> = ({ isFiltered, activeFilterLabel, onReset }) => {
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col items-center justify-center py-24 px-6 text-center animate-in fade-in zoom-in duration-500">
@@ -15,7 +15,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ activeFilter, onReset }) => {
                 <Bell size={32} className="text-gray-200 dark:text-slate-700" />
             </div>
             <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight m-0">
-                {isFiltered ? `No ${activeFilter} notifications` : "System Clear"}
+                {isFiltered ? `No ${activeFilterLabel} notifications` : "System Clear"}
             </h3>
             <p className="text-sm text-gray-400 dark:text-slate-400 font-medium m-0 mt-2 max-w-[320px] leading-relaxed">
                 {isFiltered

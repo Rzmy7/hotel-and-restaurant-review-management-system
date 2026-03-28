@@ -17,8 +17,12 @@ export interface Notification {
 
 interface NotificationsTemplateProps {
     notifications: Notification[];
-    activeFilter: string;
-    onFilterChange: (filter: string) => void;
+    activePrimaryFilter: 'all' | 'unread';
+    activeCategoryFilter: 'all-types' | 'announcement' | 'alert' | 'system';
+    onPrimaryFilterChange: (filter: 'all' | 'unread') => void;
+    onCategoryFilterChange: (filter: 'all-types' | 'announcement' | 'alert' | 'system') => void;
+    isFiltered: boolean;
+    activeFilterLabel: string;
     counts: Record<string, number>;
     unreadCount: number;
     onMarkAsRead: (id: string) => void;
@@ -29,8 +33,12 @@ interface NotificationsTemplateProps {
 
 const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
     notifications,
-    activeFilter,
-    onFilterChange,
+    activePrimaryFilter,
+    activeCategoryFilter,
+    onPrimaryFilterChange,
+    onCategoryFilterChange,
+    isFiltered,
+    activeFilterLabel,
     counts,
     unreadCount,
     onMarkAsRead,
@@ -53,8 +61,10 @@ const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
 
             <main className="flex-1 w-full max-w-[1200px] mx-auto px-8 py-8 space-y-8">
                 <NotificationsToolbar
-                    activeFilter={activeFilter}
-                    onFilterChange={onFilterChange}
+                    activePrimaryFilter={activePrimaryFilter}
+                    activeCategoryFilter={activeCategoryFilter}
+                    onPrimaryFilterChange={onPrimaryFilterChange}
+                    onCategoryFilterChange={onCategoryFilterChange}
                     counts={counts}
                     unreadCount={unreadCount}
                     totalCount={notifications.length}
@@ -64,8 +74,12 @@ const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
 
                 {notifications.length === 0 ? (
                     <EmptyState
-                        activeFilter={activeFilter}
-                        onReset={() => onFilterChange('all')}
+                        isFiltered={isFiltered}
+                        activeFilterLabel={activeFilterLabel}
+                        onReset={() => {
+                            onPrimaryFilterChange('all');
+                            onCategoryFilterChange('all-types');
+                        }}
                     />
                 ) : (
                     <div className="space-y-10">
