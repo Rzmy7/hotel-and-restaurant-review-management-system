@@ -1,134 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Plus,
-    Pencil,
-    Trash2,
     Check,
-    X,
-    Crown,
-    Zap,
-    Star,
-    Building2,
     ChevronDown,
-    AlertTriangle,
+    Crown,
     DollarSign,
+    Pencil,
+    Plus,
+    Star,
+    Trash2,
+    X,
+    Zap,
+    Building2,
     ToggleLeft,
     ToggleRight,
+    AlertTriangle,
 } from 'lucide-react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface PlanFeature {
-    id: string;
-    name: string;
-    included: boolean;
-    limit?: string;
-}
-
-interface SubscriptionPlan {
-    id: string;
-    name: string;
-    description: string;
-    monthlyPrice: number;
-    annualPrice: number;
-    currency: string;
-    isPopular: boolean;
-    isActive: boolean;
-    color: string;         // Tailwind gradient classes
-    iconName: 'zap' | 'star' | 'crown' | 'building';
-    features: PlanFeature[];
-}
+import { Alert } from '../components/Alert';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import {
+    createSubscriptionPlan,
+    deleteSubscriptionPlan,
+    fetchSubscriptionFeatures,
+    fetchSubscriptionPlans,
+    type PlanIconName,
+    type SubscriptionFeature,
+    type SubscriptionPlan,
+    type SubscriptionPlanFeature,
+    type SubscriptionPlanUpsertPayload,
+    updateSubscriptionPlan,
+} from '../services/subscriptionPlansService';
 
 type BillingCycle = 'monthly' | 'annual';
 
-// ─── Seed Data ────────────────────────────────────────────────────────────────
-
-const INITIAL_PLANS: SubscriptionPlan[] = [
-    {
-        id: 'free',
-        name: 'Free',
-        description: 'Perfect for individuals getting started',
-        monthlyPrice: 0,
-        annualPrice: 0,
-        currency: 'USD',
-        isPopular: false,
-        isActive: true,
-        color: 'from-slate-500 to-slate-600',
-        iconName: 'zap',
-        features: [
-            { id: 'f1', name: 'Up to 1 organization', included: true },
-            { id: 'f2', name: 'Up to 5 users', included: true },
-            { id: 'f3', name: 'Review scraping', included: true, limit: '100 / month' },
-            { id: 'f4', name: 'API access', included: false },
-            { id: 'f5', name: 'Embeddings', included: false },
-            { id: 'f6', name: 'Priority support', included: false },
-            { id: 'f7', name: 'Custom integrations', included: false },
-        ],
-    },
-    {
-        id: 'starter',
-        name: 'Starter',
-        description: 'Great for small teams and growing businesses',
-        monthlyPrice: 29,
-        annualPrice: 24,
-        currency: 'USD',
-        isPopular: false,
-        isActive: true,
-        color: 'from-blue-500 to-blue-600',
-        iconName: 'star',
-        features: [
-            { id: 's1', name: 'Up to 3 organizations', included: true },
-            { id: 's2', name: 'Up to 25 users', included: true },
-            { id: 's3', name: 'Review scraping', included: true, limit: '2,000 / month' },
-            { id: 's4', name: 'API access', included: true },
-            { id: 's5', name: 'Embeddings', included: true, limit: '500 / month' },
-            { id: 's6', name: 'Priority support', included: false },
-            { id: 's7', name: 'Custom integrations', included: false },
-        ],
-    },
-    {
-        id: 'professional',
-        name: 'Professional',
-        description: 'Ideal for mid-sized businesses with advanced needs',
-        monthlyPrice: 79,
-        annualPrice: 65,
-        currency: 'USD',
-        isPopular: true,
-        isActive: true,
-        color: 'from-violet-500 to-purple-600',
-        iconName: 'crown',
-        features: [
-            { id: 'p1', name: 'Up to 15 organizations', included: true },
-            { id: 'p2', name: 'Unlimited users', included: true },
-            { id: 'p3', name: 'Review scraping', included: true, limit: 'Unlimited' },
-            { id: 'p4', name: 'API access', included: true },
-            { id: 'p5', name: 'Embeddings', included: true, limit: 'Unlimited' },
-            { id: 'p6', name: 'Priority support', included: true },
-            { id: 'p7', name: 'Custom integrations', included: false },
-        ],
-    },
-    {
-        id: 'enterprise',
-        name: 'Enterprise',
-        description: 'Full-featured solution for large organizations',
-        monthlyPrice: 199,
-        annualPrice: 165,
-        currency: 'USD',
-        isPopular: false,
-        isActive: true,
-        color: 'from-amber-500 to-orange-600',
-        iconName: 'building',
-        features: [
-            { id: 'e1', name: 'Unlimited organizations', included: true },
-            { id: 'e2', name: 'Unlimited users', included: true },
-            { id: 'e3', name: 'Review scraping', included: true, limit: 'Unlimited' },
-            { id: 'e4', name: 'API access', included: true },
-            { id: 'e5', name: 'Embeddings', included: true, limit: 'Unlimited' },
-            { id: 'e6', name: 'Priority support', included: true },
-            { id: 'e7', name: 'Custom integrations', included: true },
-        ],
-    },
-];
+type PlanDraft = Omit<SubscriptionPlan, 'id'>;
 
 const PLAN_COLORS = [
     { label: 'Slate', value: 'from-slate-500 to-slate-600' },
@@ -141,9 +46,7 @@ const PLAN_COLORS = [
     { label: 'Indigo', value: 'from-indigo-500 to-indigo-600' },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const PlanIcon: React.FC<{ name: SubscriptionPlan['iconName']; className?: string }> = ({ name, className = '' }) => {
+const PlanIcon: React.FC<{ name: PlanIconName; className?: string }> = ({ name, className = '' }) => {
     const props = { size: 20, className };
     if (name === 'crown') return <Crown {...props} />;
     if (name === 'star') return <Star {...props} />;
@@ -151,12 +54,7 @@ const PlanIcon: React.FC<{ name: SubscriptionPlan['iconName']; className?: strin
     return <Zap {...props} />;
 };
 
-const generateId = () => `plan_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-const generateFeatureId = () => `feat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-
-// ─── Empty form defaults ───────────────────────────────────────────────────────
-
-const emptyPlan = (): Omit<SubscriptionPlan, 'id'> => ({
+const createDraftFromFeatures = (featuresCatalog: SubscriptionFeature[]): PlanDraft => ({
     name: '',
     description: '',
     monthlyPrice: 0,
@@ -166,27 +64,74 @@ const emptyPlan = (): Omit<SubscriptionPlan, 'id'> => ({
     isActive: true,
     color: 'from-blue-500 to-blue-600',
     iconName: 'star',
-    features: [
-        { id: generateFeatureId(), name: '', included: true, limit: '' },
-    ],
+    features: featuresCatalog.map((feature) => ({
+        ...feature,
+        enabled: false,
+        limit: null,
+    })),
 });
 
-// ─── Plan Card ────────────────────────────────────────────────────────────────
+const ensureAllFeatures = (
+    planFeatures: SubscriptionPlanFeature[],
+    featuresCatalog: SubscriptionFeature[],
+): SubscriptionPlanFeature[] => {
+    const planFeatureMap = new Map(planFeatures.map((feature) => [feature.id, feature]));
+    return featuresCatalog.map((feature) => {
+        const existing = planFeatureMap.get(feature.id);
+        if (existing) {
+            return {
+                ...feature,
+                enabled: existing.enabled,
+                limit: existing.limit,
+            };
+        }
+
+        return {
+            ...feature,
+            enabled: false,
+            limit: null,
+        };
+    });
+};
+
+const toPlanPayload = (data: PlanDraft): SubscriptionPlanUpsertPayload => ({
+    name: data.name.trim(),
+    description: data.description.trim(),
+    monthlyPrice: Number.isFinite(data.monthlyPrice) ? data.monthlyPrice : 0,
+    annualPrice: Number.isFinite(data.annualPrice) ? data.annualPrice : 0,
+    currency: data.currency.trim() || 'USD',
+    isPopular: data.isPopular,
+    isActive: data.isActive,
+    color: data.color,
+    iconName: data.iconName,
+    features: data.features.map((feature) => ({
+        featureId: feature.id,
+        enabled: feature.enabled,
+        limit: feature.enabled && feature.supportsLimit ? feature.limit : null,
+    })),
+});
 
 interface PlanCardProps {
     plan: SubscriptionPlan;
     billingCycle: BillingCycle;
     onEdit: (plan: SubscriptionPlan) => void;
     onDelete: (id: string) => void;
-    onToggleActive: (id: string) => void;
+    onToggleActive: (plan: SubscriptionPlan) => void;
+    isUpdating: boolean;
 }
 
-const PlanCard: React.FC<PlanCardProps> = ({ plan, billingCycle, onEdit, onDelete, onToggleActive }) => {
+const PlanCard: React.FC<PlanCardProps> = ({
+    plan,
+    billingCycle,
+    onEdit,
+    onDelete,
+    onToggleActive,
+    isUpdating,
+}) => {
     const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
 
     return (
         <div className={`relative bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col transition-all duration-200 hover:shadow-md ${!plan.isActive ? 'opacity-60' : ''}`}>
-            {/* Colored top strip */}
             <div className={`bg-gradient-to-r ${plan.color} p-5 text-white`}>
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -207,40 +152,43 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, billingCycle, onEdit, onDelet
                     )}
                 </div>
 
-                {/* Price */}
                 <div className="mt-4">
                     {price === 0 ? (
                         <span className="text-3xl font-extrabold">Free</span>
                     ) : (
                         <div className="flex items-baseline gap-1">
-                            <span className="text-sm font-medium opacity-90">{plan.currency === 'USD' ? '$' : plan.currency}</span>
+                            <span className="text-sm font-medium opacity-90">
+                                {plan.currency === 'USD' ? '$' : plan.currency}
+                            </span>
                             <span className="text-3xl font-extrabold">{price}</span>
                             <span className="text-sm opacity-80">/ mo</span>
                         </div>
                     )}
                     {price > 0 && billingCycle === 'annual' && (
-                        <p className="text-xs opacity-75 mt-0.5">Billed annually · Save ${(plan.monthlyPrice - plan.annualPrice) * 12}/yr</p>
+                        <p className="text-xs opacity-75 mt-0.5">
+                            Billed annually · Save ${(plan.monthlyPrice - plan.annualPrice) * 12}/yr
+                        </p>
                     )}
                 </div>
 
                 <p className="mt-2 text-sm opacity-80 leading-snug">{plan.description}</p>
             </div>
 
-            {/* Features */}
             <div className="flex-1 p-5">
                 <ul className="space-y-2.5">
-                    {plan.features.map((feat) => (
-                        <li key={feat.id} className="flex items-start gap-2.5">
-                            <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${feat.included ? 'bg-green-100' : 'bg-gray-100'}`}>
-                                {feat.included
-                                    ? <Check size={10} className="text-green-600" strokeWidth={3} />
-                                    : <X size={10} className="text-gray-400" strokeWidth={3} />
-                                }
+                    {plan.features.map((feature) => (
+                        <li key={`${plan.id}-${feature.id}`} className="flex items-start gap-2.5">
+                            <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${feature.enabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                {feature.enabled ? (
+                                    <Check size={10} className="text-green-600" strokeWidth={3} />
+                                ) : (
+                                    <X size={10} className="text-gray-400" strokeWidth={3} />
+                                )}
                             </div>
-                            <span className={`text-sm leading-snug ${feat.included ? 'text-gray-700' : 'text-gray-400 line-through'}`}>
-                                {feat.name}
-                                {feat.included && feat.limit && (
-                                    <span className="ml-1 text-xs text-gray-400 font-medium">({feat.limit})</span>
+                            <span className={`text-sm leading-snug ${feature.enabled ? 'text-gray-700' : 'text-gray-400 line-through'}`}>
+                                {feature.name}
+                                {feature.enabled && feature.supportsLimit && feature.limit !== null && (
+                                    <span className="ml-1 text-xs text-gray-400 font-medium">(Limit: {feature.limit})</span>
                                 )}
                             </span>
                         </li>
@@ -248,28 +196,31 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, billingCycle, onEdit, onDelet
                 </ul>
             </div>
 
-            {/* Actions */}
             <div className="px-5 pb-5 flex items-center gap-2 border-t border-gray-100 pt-4">
                 <button
                     onClick={() => onEdit(plan)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
+                    disabled={isUpdating}
                 >
                     <Pencil size={14} />
                     Edit
                 </button>
                 <button
-                    onClick={() => onToggleActive(plan.id)}
+                    onClick={() => onToggleActive(plan)}
                     title={plan.isActive ? 'Deactivate plan' : 'Activate plan'}
-                    className="px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                    className="px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60"
+                    disabled={isUpdating}
                 >
-                    {plan.isActive
-                        ? <ToggleRight size={18} className="text-green-500" />
-                        : <ToggleLeft size={18} className="text-gray-400" />
-                    }
+                    {plan.isActive ? (
+                        <ToggleRight size={18} className="text-green-500" />
+                    ) : (
+                        <ToggleLeft size={18} className="text-gray-400" />
+                    )}
                 </button>
                 <button
                     onClick={() => onDelete(plan.id)}
-                    className="px-3 py-2 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors"
+                    className="px-3 py-2 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60"
+                    disabled={isUpdating}
                 >
                     <Trash2 size={14} />
                 </button>
@@ -278,64 +229,71 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, billingCycle, onEdit, onDelet
     );
 };
 
-// ─── Plan Modal ───────────────────────────────────────────────────────────────
-
 interface PlanModalProps {
     mode: 'add' | 'edit';
-    initial: Omit<SubscriptionPlan, 'id'> & { id?: string };
+    initial: PlanDraft & { id?: string };
     onClose: () => void;
-    onSave: (plan: Omit<SubscriptionPlan, 'id'> & { id?: string }) => void;
+    onSave: (plan: PlanDraft & { id?: string }) => Promise<void>;
+    isSaving: boolean;
 }
 
-const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave }) => {
-    const [form, setForm] = useState({ ...initial, features: initial.features.map(f => ({ ...f })) });
+const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave, isSaving }) => {
+    const [form, setForm] = useState<PlanDraft & { id?: string }>({
+        ...initial,
+        features: initial.features.map((feature) => ({ ...feature })),
+    });
 
-    const updateField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
-        setForm(prev => ({ ...prev, [key]: value }));
+    const updateField = <K extends keyof (PlanDraft & { id?: string })>(
+        key: K,
+        value: (PlanDraft & { id?: string })[K],
+    ) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    };
 
-    const updateFeature = (id: string, key: keyof PlanFeature, value: string | boolean) =>
-        setForm(prev => ({
+    const updateFeature = (featureId: string, patch: Partial<SubscriptionPlanFeature>) => {
+        setForm((prev) => ({
             ...prev,
-            features: prev.features.map(f => f.id === id ? { ...f, [key]: value } : f),
+            features: prev.features.map((feature) => {
+                if (feature.id !== featureId) {
+                    return feature;
+                }
+                const updated = { ...feature, ...patch };
+                if (!updated.enabled || !updated.supportsLimit) {
+                    updated.limit = null;
+                }
+                return updated;
+            }),
         }));
+    };
 
-    const addFeature = () =>
-        setForm(prev => ({
-            ...prev,
-            features: [...prev.features, { id: generateFeatureId(), name: '', included: true, limit: '' }],
-        }));
-
-    const removeFeature = (id: string) =>
-        setForm(prev => ({ ...prev, features: prev.features.filter(f => f.id !== id) }));
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(form);
+        await onSave(form);
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={isSaving ? undefined : onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
-                {/* Modal Header */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">
                             {mode === 'add' ? 'Add New Plan' : `Edit "${initial.name}"`}
                         </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            {mode === 'add' ? 'Configure plan details and features' : 'Update plan pricing and features'}
+                            Configure plan pricing and feature availability
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                        disabled={isSaving}
+                    >
                         <X size={20} className="text-gray-500" />
                     </button>
                 </div>
 
-                {/* Modal Body */}
                 <form id="plan-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-
-                    {/* Basic Info */}
                     <section>
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Plan Info</h3>
                         <div className="grid grid-cols-2 gap-4">
@@ -345,7 +303,7 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                     required
                                     type="text"
                                     value={form.name}
-                                    onChange={e => updateField('name', e.target.value)}
+                                    onChange={(e) => updateField('name', e.target.value)}
                                     placeholder="e.g. Professional"
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
@@ -355,19 +313,18 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                 <input
                                     type="text"
                                     value={form.description}
-                                    onChange={e => updateField('description', e.target.value)}
+                                    onChange={(e) => updateField('description', e.target.value)}
                                     placeholder="Short description of the plan"
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
 
-                            {/* Icon */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Icon</label>
                                 <div className="relative">
                                     <select
                                         value={form.iconName}
-                                        onChange={e => updateField('iconName', e.target.value as SubscriptionPlan['iconName'])}
+                                        onChange={(e) => updateField('iconName', e.target.value as PlanIconName)}
                                         className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                                     >
                                         <option value="zap">Zap</option>
@@ -379,17 +336,18 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                 </div>
                             </div>
 
-                            {/* Color */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Card Color</label>
                                 <div className="relative">
                                     <select
                                         value={form.color}
-                                        onChange={e => updateField('color', e.target.value)}
+                                        onChange={(e) => updateField('color', e.target.value)}
                                         className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                                     >
-                                        {PLAN_COLORS.map(c => (
-                                            <option key={c.value} value={c.value}>{c.label}</option>
+                                        {PLAN_COLORS.map((color) => (
+                                            <option key={color.value} value={color.value}>
+                                                {color.label}
+                                            </option>
                                         ))}
                                     </select>
                                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -397,13 +355,12 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                             </div>
                         </div>
 
-                        {/* Toggles */}
                         <div className="mt-4 flex items-center gap-6">
                             <label className="flex items-center gap-2.5 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
                                     checked={form.isPopular}
-                                    onChange={e => updateField('isPopular', e.target.checked)}
+                                    onChange={(e) => updateField('isPopular', e.target.checked)}
                                     className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
                                 />
                                 <span className="text-sm text-gray-700 font-medium">Mark as "Most Popular"</span>
@@ -412,7 +369,7 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                 <input
                                     type="checkbox"
                                     checked={form.isActive}
-                                    onChange={e => updateField('isActive', e.target.checked)}
+                                    onChange={(e) => updateField('isActive', e.target.checked)}
                                     className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500"
                                 />
                                 <span className="text-sm text-gray-700 font-medium">Plan is active</span>
@@ -420,7 +377,6 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                         </div>
                     </section>
 
-                    {/* Pricing */}
                     <section>
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Pricing</h3>
                         <div className="grid grid-cols-3 gap-4">
@@ -429,7 +385,7 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                 <div className="relative">
                                     <select
                                         value={form.currency}
-                                        onChange={e => updateField('currency', e.target.value)}
+                                        onChange={(e) => updateField('currency', e.target.value)}
                                         className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                                     >
                                         <option value="USD">USD ($)</option>
@@ -448,13 +404,15 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                         min={0}
                                         step={0.01}
                                         value={form.monthlyPrice}
-                                        onChange={e => updateField('monthlyPrice', parseFloat(e.target.value) || 0)}
+                                        onChange={(e) => updateField('monthlyPrice', parseFloat(e.target.value) || 0)}
                                         className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Annual Price <span className="text-xs text-gray-400 font-normal">(/ mo)</span></label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    Annual Price <span className="text-xs text-gray-400 font-normal">(/ mo)</span>
+                                </label>
                                 <div className="relative">
                                     <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input
@@ -462,7 +420,7 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                                         min={0}
                                         step={0.01}
                                         value={form.annualPrice}
-                                        onChange={e => updateField('annualPrice', parseFloat(e.target.value) || 0)}
+                                        onChange={(e) => updateField('annualPrice', parseFloat(e.target.value) || 0)}
                                         className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
@@ -473,82 +431,71 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
                         </p>
                     </section>
 
-                    {/* Features */}
                     <section>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Features</h3>
-                            <button
-                                type="button"
-                                onClick={addFeature}
-                                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-                            >
-                                <Plus size={13} />
-                                Add Feature
-                            </button>
-                        </div>
-
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Features</h3>
                         <div className="space-y-2">
-                            {form.features.map((feat, idx) => (
-                                <div key={feat.id} className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                                    {/* Included toggle */}
-                                    <button
-                                        type="button"
-                                        onClick={() => updateFeature(feat.id, 'included', !feat.included)}
-                                        className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${feat.included ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}
-                                        title="Toggle included"
-                                    >
-                                        {feat.included ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
-                                    </button>
+                            {form.features.map((feature) => (
+                                <div key={feature.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFeature(feature.id, { enabled: !feature.enabled })}
+                                            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${feature.enabled ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}
+                                            title="Toggle feature"
+                                        >
+                                            {feature.enabled ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
+                                        </button>
 
-                                    {/* Feature name */}
-                                    <input
-                                        type="text"
-                                        value={feat.name}
-                                        onChange={e => updateFeature(feat.id, 'name', e.target.value)}
-                                        placeholder={`Feature ${idx + 1}`}
-                                        className="flex-1 bg-transparent border-none text-sm text-gray-700 focus:outline-none placeholder-gray-400"
-                                    />
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-sm font-medium ${feature.enabled ? 'text-gray-700' : 'text-gray-400'}`}>
+                                                {feature.name}
+                                            </p>
+                                            {feature.description && (
+                                                <p className="text-xs text-gray-400 mt-0.5">{feature.description}</p>
+                                            )}
+                                        </div>
 
-                                    {/* Limit (only when included) */}
-                                    {feat.included && (
-                                        <input
-                                            type="text"
-                                            value={feat.limit ?? ''}
-                                            onChange={e => updateFeature(feat.id, 'limit', e.target.value)}
-                                            placeholder="Limit (optional)"
-                                            className="w-32 bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                        />
-                                    )}
-
-                                    {/* Remove */}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeFeature(feat.id)}
-                                        className="flex-shrink-0 p-1 text-gray-300 hover:text-red-400 transition-colors rounded"
-                                    >
-                                        <Trash2 size={13} />
-                                    </button>
+                                        {feature.supportsLimit && (
+                                            <div className="w-36">
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    value={feature.limit ?? ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value.trim();
+                                                        updateFeature(feature.id, {
+                                                            limit: value === '' ? null : Math.max(0, Number.parseInt(value, 10) || 0),
+                                                        });
+                                                    }}
+                                                    disabled={!feature.enabled}
+                                                    placeholder="Limit"
+                                                    className="w-full bg-white border border-gray-200 rounded-md px-2 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-100 disabled:text-gray-400"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </section>
                 </form>
 
-                {/* Modal Footer */}
                 <div className="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/70 rounded-b-2xl">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors"
+                        className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors disabled:opacity-60"
+                        disabled={isSaving}
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         form="plan-form"
-                        className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                        className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-60"
+                        disabled={isSaving}
                     >
-                        {mode === 'add' ? 'Create Plan' : 'Save Changes'}
+                        {isSaving ? 'Saving...' : mode === 'add' ? 'Create Plan' : 'Save Changes'}
                     </button>
                 </div>
             </div>
@@ -556,17 +503,16 @@ const PlanModal: React.FC<PlanModalProps> = ({ mode, initial, onClose, onSave })
     );
 };
 
-// ─── Delete Confirmation Dialog ───────────────────────────────────────────────
-
 interface DeleteDialogProps {
     planName: string;
-    onConfirm: () => void;
+    onConfirm: () => Promise<void>;
     onCancel: () => void;
+    isDeleting: boolean;
 }
 
-const DeleteDialog: React.FC<DeleteDialogProps> = ({ planName, onConfirm, onCancel }) => (
+const DeleteDialog: React.FC<DeleteDialogProps> = ({ planName, onConfirm, onCancel, isDeleting }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={isDeleting ? undefined : onCancel} />
         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
             <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
@@ -579,97 +525,190 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({ planName, onConfirm, onCanc
             </div>
             <p className="text-sm text-gray-600 mb-6">
                 Are you sure you want to delete the <span className="font-semibold text-gray-900">"{planName}"</span> plan?
-                Existing subscribers will not be affected immediately.
             </p>
             <div className="flex gap-3">
                 <button
                     onClick={onCancel}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-60"
+                    disabled={isDeleting}
                 >
                     Cancel
                 </button>
                 <button
-                    onClick={onConfirm}
-                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
+                    onClick={() => {
+                        void onConfirm();
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-60"
+                    disabled={isDeleting}
                 >
-                    Delete Plan
+                    {isDeleting ? 'Deleting...' : 'Delete Plan'}
                 </button>
             </div>
         </div>
     </div>
 );
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export const SubscriptionPlans: React.FC = () => {
-    const [plans, setPlans] = useState<SubscriptionPlan[]>(INITIAL_PLANS);
+    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+    const [featuresCatalog, setFeaturesCatalog] = useState<SubscriptionFeature[]>([]);
     const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+    const [isLoading, setIsLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    // Modal state
     const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
-    const [editingPlan, setEditingPlan] = useState<(Omit<SubscriptionPlan, 'id'> & { id?: string }) | null>(null);
+    const [editingPlan, setEditingPlan] = useState<(PlanDraft & { id?: string }) | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
-    // Delete confirmation
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const activePlans = plans.filter(p => p.isActive).length;
-    const avgPrice = plans.length
-        ? Math.round(plans.filter(p => p.monthlyPrice > 0).reduce((s, p) => s + p.monthlyPrice, 0) / Math.max(1, plans.filter(p => p.monthlyPrice > 0).length))
-        : 0;
+    const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
 
-    // ── Handlers ──────────────────────────────────────────────────────────────
+    const activePlans = useMemo(() => plans.filter((plan) => plan.isActive).length, [plans]);
+    const avgPrice = useMemo(() => {
+        const paidPlans = plans.filter((plan) => plan.monthlyPrice > 0);
+        if (paidPlans.length === 0) {
+            return 0;
+        }
+        const total = paidPlans.reduce((sum, plan) => sum + plan.monthlyPrice, 0);
+        return Math.round(total / paidPlans.length);
+    }, [plans]);
 
-    const openAdd = () => {
-        setEditingPlan(emptyPlan());
-        setModalMode('add');
+    const loadData = async () => {
+        setIsLoading(true);
+        setErrorMessage(null);
+        try {
+            const [features, loadedPlans] = await Promise.all([
+                fetchSubscriptionFeatures(),
+                fetchSubscriptionPlans(),
+            ]);
+
+            setFeaturesCatalog(features);
+            setPlans(
+                loadedPlans.map((plan) => ({
+                    ...plan,
+                    features: ensureAllFeatures(plan.features, features),
+                })),
+            );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to load subscription plans.';
+            setErrorMessage(message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const openEdit = (plan: SubscriptionPlan) => {
-        setEditingPlan({ ...plan, features: plan.features.map(f => ({ ...f })) });
-        setModalMode('edit');
-    };
+    useEffect(() => {
+        void loadData();
+    }, []);
 
     const closeModal = () => {
         setModalMode(null);
         setEditingPlan(null);
     };
 
-    const handleSave = (data: Omit<SubscriptionPlan, 'id'> & { id?: string }) => {
-        if (modalMode === 'add') {
-            setPlans(prev => [...prev, { ...data, id: generateId() } as SubscriptionPlan]);
-        } else if (modalMode === 'edit' && data.id) {
-            setPlans(prev => prev.map(p => p.id === data.id ? (data as SubscriptionPlan) : p));
-        }
-        closeModal();
+    const openAdd = () => {
+        setEditingPlan(createDraftFromFeatures(featuresCatalog));
+        setModalMode('add');
     };
 
-    const handleDelete = (id: string) => setDeletingId(id);
+    const openEdit = (plan: SubscriptionPlan) => {
+        setEditingPlan({
+            ...plan,
+            features: ensureAllFeatures(plan.features, featuresCatalog).map((feature) => ({ ...feature })),
+        });
+        setModalMode('edit');
+    };
 
-    const confirmDelete = () => {
-        if (deletingId) {
-            setPlans(prev => prev.filter(p => p.id !== deletingId));
+    const handleSave = async (data: PlanDraft & { id?: string }) => {
+        if (!data.name.trim()) {
+            setErrorMessage('Plan name is required.');
+            return;
+        }
+
+        setIsSaving(true);
+        setErrorMessage(null);
+        try {
+            const payload = toPlanPayload(data);
+            if (modalMode === 'add') {
+                const created = await createSubscriptionPlan(payload);
+                setPlans((prev) => [...prev, { ...created, features: ensureAllFeatures(created.features, featuresCatalog) }]);
+            } else if (modalMode === 'edit' && data.id) {
+                const updated = await updateSubscriptionPlan(data.id, payload);
+                setPlans((prev) =>
+                    prev.map((plan) =>
+                        plan.id === data.id
+                            ? { ...updated, features: ensureAllFeatures(updated.features, featuresCatalog) }
+                            : plan,
+                    ),
+                );
+            }
+            closeModal();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to save subscription plan.';
+            setErrorMessage(message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleToggleActive = async (plan: SubscriptionPlan) => {
+        setUpdatingPlanId(plan.id);
+        setErrorMessage(null);
+        try {
+            const payload = toPlanPayload({
+                ...plan,
+                isActive: !plan.isActive,
+            });
+            const updated = await updateSubscriptionPlan(plan.id, payload);
+            setPlans((prev) => prev.map((existing) => (existing.id === plan.id ? updated : existing)));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update plan status.';
+            setErrorMessage(message);
+        } finally {
+            setUpdatingPlanId(null);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingId) {
+            return;
+        }
+
+        setIsDeleting(true);
+        setErrorMessage(null);
+        try {
+            await deleteSubscriptionPlan(deletingId);
+            setPlans((prev) => prev.filter((plan) => plan.id !== deletingId));
             setDeletingId(null);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to delete plan.';
+            setErrorMessage(message);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
-    const handleToggleActive = (id: string) => {
-        setPlans(prev => prev.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p));
-    };
+    const deletingPlan = plans.find((plan) => plan.id === deletingId);
 
-    const deletingPlan = plans.find(p => p.id === deletingId);
-
-    // ── Render ────────────────────────────────────────────────────────────────
+    if (isLoading) {
+        return <LoadingSpinner />;
+    }
 
     return (
         <div className="pt-4 space-y-6 max-w-7xl">
+            {errorMessage && <Alert type="error" message={errorMessage} onClose={() => setErrorMessage(null)} />}
 
-            {/* Stats Strip */}
             <div className="grid grid-cols-3 gap-4">
                 {[
                     { label: 'Total Plans', value: plans.length, sub: `${plans.length - activePlans} inactive` },
                     { label: 'Active Plans', value: activePlans, sub: 'visible to customers' },
-                    { label: 'Avg. Monthly Price', value: avgPrice === 0 ? 'Free' : `$${avgPrice}`, sub: 'across paid plans' },
-                ].map(stat => (
+                    {
+                        label: 'Avg. Monthly Price',
+                        value: avgPrice === 0 ? 'Free' : `$${avgPrice}`,
+                        sub: 'across paid plans',
+                    },
+                ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4">
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</div>
                         <div className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</div>
@@ -678,7 +717,6 @@ export const SubscriptionPlans: React.FC = () => {
                 ))}
             </div>
 
-            {/* Billing Toggle & Add Plan Button */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 self-start bg-gray-100 p-1 rounded-xl w-fit">
                     <button
@@ -692,7 +730,9 @@ export const SubscriptionPlans: React.FC = () => {
                         className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'annual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Annual
-                        <span className="ml-1.5 text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">Save up to 20%</span>
+                        <span className="ml-1.5 text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+                            Save up to 20%
+                        </span>
                     </button>
                 </div>
                 <button
@@ -704,7 +744,6 @@ export const SubscriptionPlans: React.FC = () => {
                 </button>
             </div>
 
-            {/* Plans Grid */}
             {plans.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200">
                     <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
@@ -721,35 +760,36 @@ export const SubscriptionPlans: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {plans.map(plan => (
+                    {plans.map((plan) => (
                         <PlanCard
                             key={plan.id}
                             plan={plan}
                             billingCycle={billingCycle}
                             onEdit={openEdit}
-                            onDelete={handleDelete}
+                            onDelete={setDeletingId}
                             onToggleActive={handleToggleActive}
+                            isUpdating={updatingPlanId === plan.id}
                         />
                     ))}
                 </div>
             )}
 
-            {/* Add / Edit Modal */}
             {modalMode && editingPlan && (
                 <PlanModal
                     mode={modalMode}
                     initial={editingPlan}
                     onClose={closeModal}
                     onSave={handleSave}
+                    isSaving={isSaving}
                 />
             )}
 
-            {/* Delete Confirmation */}
             {deletingId && deletingPlan && (
                 <DeleteDialog
                     planName={deletingPlan.name}
                     onConfirm={confirmDelete}
                     onCancel={() => setDeletingId(null)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>

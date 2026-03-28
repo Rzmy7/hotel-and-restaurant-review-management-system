@@ -9,6 +9,7 @@ from app.modules.admin_backend.routes.maintenance_routes import router as mainte
 from app.modules.admin_backend.routes.monitoring_routes import router as monitoring_router
 from app.modules.admin_backend.routes.notifications_routes import router as notifications_router
 from app.modules.admin_backend.routes.settings_routes import router as settings_router
+from app.modules.admin_backend.routes.subscription_routes import router as subscription_router
 
 router = APIRouter()
 router.include_router(dashboard_router)
@@ -18,3 +19,4 @@ router.include_router(broadcasting_router)
 router.include_router(notifications_router)
 router.include_router(settings_router)
 router.include_router(maintenance_router)
+router.include_router(subscription_router)

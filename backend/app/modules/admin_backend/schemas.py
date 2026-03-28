@@ -135,6 +135,60 @@ class DeleteUserResponse(BaseModel):
     userId: str
 
 
+# ── Subscription plan schemas ─────────────────────────────────────
+
+
+class SubscriptionFeature(BaseModel):
+    id: str
+    key: str
+    name: str
+    description: str | None = None
+    supportsLimit: bool
+
+
+class SubscriptionPlanFeatureState(SubscriptionFeature):
+    enabled: bool
+    limit: int | None = None
+
+
+class SubscriptionPlan(BaseModel):
+    id: str
+    name: str
+    description: str
+    monthlyPrice: float
+    annualPrice: float
+    currency: str
+    isPopular: bool
+    isActive: bool
+    color: str
+    iconName: Literal["zap", "star", "crown", "building"]
+    features: list[SubscriptionPlanFeatureState] = Field(default_factory=list)
+
+
+class SubscriptionPlanFeatureUpsertPayload(BaseModel):
+    featureId: str
+    enabled: bool
+    limit: int | None = Field(default=None, ge=0)
+
+
+class SubscriptionPlanUpsertPayload(BaseModel):
+    name: str
+    description: str = ""
+    monthlyPrice: float = Field(default=0.0, ge=0)
+    annualPrice: float = Field(default=0.0, ge=0)
+    currency: str = Field(default="USD", min_length=1, max_length=16)
+    isPopular: bool = False
+    isActive: bool = True
+    color: str = Field(default="from-blue-500 to-blue-600", min_length=1, max_length=100)
+    iconName: Literal["zap", "star", "crown", "building"] = "star"
+    features: list[SubscriptionPlanFeatureUpsertPayload] = Field(default_factory=list)
+
+
+class DeleteSubscriptionPlanResponse(BaseModel):
+    status: str
+    planId: str
+
+
 # ── Monitoring / scraping schemas ───────────────────────────────────
 
 

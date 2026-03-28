@@ -17,7 +17,7 @@ export interface SecuritySettings {
 }
 
 export interface SubscriptionSettings {
-    plan: 'professional' | 'upgrade';
+    plan: string;
     billingEmail: string;
 }
 

@@ -1,0 +1,93 @@
+"""Subscription plans routes for admin panel."""
+
+import pyodbc
+from fastapi import APIRouter, HTTPException
+
+from app.modules.admin_backend.db_utils import get_connection_string
+from app.modules.admin_backend.schemas import (
+    DeleteSubscriptionPlanResponse,
+    SubscriptionFeature,
+    SubscriptionPlan,
+    SubscriptionPlanUpsertPayload,
+)
+from app.modules.admin_backend.services.subscription_service import (
+    create_subscription_plan,
+    delete_subscription_plan,
+    get_subscription_features,
+    get_subscription_plans,
+    update_subscription_plan,
+)
+
+router = APIRouter(prefix="/admin", tags=["Admin Subscription Plans"])
+
+
+@router.get("/subscription-features", response_model=list[SubscriptionFeature])
+def list_subscription_features() -> list[SubscriptionFeature]:
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_subscription_features(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load subscription features: {exc}") from exc
+
+
+@router.get("/subscription-plans", response_model=list[SubscriptionPlan])
+def list_subscription_plans() -> list[SubscriptionPlan]:
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_subscription_plans(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}") from exc
+
+
+@router.post("/subscription-plans", response_model=SubscriptionPlan)
+def create_plan(payload: SubscriptionPlanUpsertPayload) -> SubscriptionPlan:
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            plan = create_subscription_plan(cursor, payload)
+            conn.commit()
+            return plan
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to create subscription plan: {exc}") from exc
+
+
+@router.patch("/subscription-plans/{plan_id}", response_model=SubscriptionPlan)
+def update_plan(plan_id: str, payload: SubscriptionPlanUpsertPayload) -> SubscriptionPlan:
+    try:
+        plan_id_int = int(plan_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="plan_id must be numeric")
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            plan = update_subscription_plan(cursor, plan_id_int, payload)
+            conn.commit()
+            return plan
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update subscription plan: {exc}") from exc
+
+
+@router.delete("/subscription-plans/{plan_id}", response_model=DeleteSubscriptionPlanResponse)
+def delete_plan(plan_id: str) -> DeleteSubscriptionPlanResponse:
+    try:
+        plan_id_int = int(plan_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="plan_id must be numeric")
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            delete_subscription_plan(cursor, plan_id_int)
+            conn.commit()
+        return DeleteSubscriptionPlanResponse(status="deleted", planId=str(plan_id_int))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to delete subscription plan: {exc}") from exc

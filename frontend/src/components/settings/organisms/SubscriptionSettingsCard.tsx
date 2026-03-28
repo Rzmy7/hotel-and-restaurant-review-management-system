@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import type { SubscriptionSettings } from '../../../types/settings';
+import { fetchSubscriptionPlans, type SubscriptionPlan } from '../../../services/subscriptionPlansService';
 
 interface SubscriptionSettingsCardProps {
     data: SubscriptionSettings;
@@ -17,27 +18,75 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
     onPaymentEdit
 }) => {
     const navigate = useNavigate();
+    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadPlans = async () => {
+            setIsLoading(true);
+            setErrorMessage(null);
+            try {
+                const loadedPlans = await fetchSubscriptionPlans();
+                setPlans(loadedPlans);
+                if (loadedPlans.length > 0 && !loadedPlans.some((plan) => plan.id === data.plan)) {
+                    onChange({ plan: loadedPlans[0].id });
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Failed to load plans';
+                setErrorMessage(message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        void loadPlans();
+    }, [data.plan]);
+
+    const selectedPlan = useMemo(
+        () => plans.find((plan) => plan.id === data.plan) ?? null,
+        [plans, data.plan],
+    );
+
+    const selectedPlanSummary = useMemo(() => {
+        if (!selectedPlan) {
+            return 'Select a plan to view limits and included features';
+        }
+        const enabledFeatureCount = selectedPlan.features.filter((feature) => feature.enabled).length;
+        return `${selectedPlan.name} • ${enabledFeatureCount} enabled features`;
+    }, [selectedPlan]);
 
     return (
         <div className="flex flex-col">
             {/* Plan Selection */}
             <div className="flex gap-3 mb-4 py-2">
+                {isLoading ? (
+                    <div className="text-sm text-gray-400 font-semibold">Loading plans...</div>
+                ) : errorMessage ? (
+                    <div className="text-sm text-red-500 font-semibold">{errorMessage}</div>
+                ) : plans.length === 0 ? (
+                    <div className="text-sm text-gray-400 font-semibold">No active plans available.</div>
+                ) : (
+                    plans.map((plan) => (
+                        <Button
+                            key={plan.id}
+                            variant={data.plan === plan.id ? 'primary' : 'outline'}
+                            onClick={() => onChange({ plan: plan.id })}
+                        >
+                            {plan.name}
+                        </Button>
+                    ))
+                )}
                 <Button
-                    variant={data.plan === 'professional' ? 'primary' : 'outline'}
-                    onClick={() => onChange({ plan: 'professional' })}
-                >
-                    Professional Plan
-                </Button>
-                <Button
-                    variant={data.plan === 'upgrade' ? 'primary' : 'outline'}
+                    variant="outline"
                     onClick={() => navigate('/subscription')}
                 >
-                    Upgrade Plan
+                    Manage Plans
                 </Button>
             </div>
 
             <div className="text-gray-400 dark:text-gray-500 font-bold text-[13px] mb-6 pb-6 border-b border-gray-100 dark:border-slate-700/50 uppercase tracking-widest">
-                2,500 reviews/month • 5 properties • AI responses
+                {selectedPlanSummary}
             </div>
 
             <FormField label="Billing Email">

@@ -1,13 +1,79 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { PricingCard } from '../components/subscription/molecules/PricingCard';
+import { fetchSubscriptionPlans, type SubscriptionPlan } from '../services/subscriptionPlansService';
 
 type PlanTier = 'starter' | 'professional' | 'enterprise';
 
+const toPlanTier = (plan: SubscriptionPlan, index: number): PlanTier => {
+  if (plan.iconName === 'zap') {
+    return 'starter';
+  }
+  if (plan.iconName === 'crown' || plan.iconName === 'building') {
+    return 'enterprise';
+  }
+  if (plan.iconName === 'star') {
+    return 'professional';
+  }
+
+  return index % 3 === 0 ? 'starter' : index % 3 === 1 ? 'professional' : 'enterprise';
+};
+
+const formatFeatureText = (feature: SubscriptionPlan['features'][number]): string => {
+  if (!feature.enabled) {
+    return '';
+  }
+  if (feature.limit === null || feature.limit === undefined) {
+    return feature.name;
+  }
+  return `${feature.name}: ${feature.limit}`;
+};
+
 const ChoosePlanPage = () => {
   const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState<PlanTier>('professional');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const loadedPlans = await fetchSubscriptionPlans();
+        setPlans(loadedPlans);
+        if (loadedPlans.length > 0) {
+          setSelectedPlan((previous) => previous ?? loadedPlans[0].id);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load plans';
+        setErrorMessage(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadPlans();
+  }, []);
+
+  const cardPlans = useMemo(
+    () =>
+      plans.map((plan, index) => ({
+        id: plan.id,
+        tier: toPlanTier(plan, index),
+        title: plan.name,
+        price: String(plan.monthlyPrice),
+        period: 'mo',
+        description: plan.description,
+        isPopular: plan.isPopular,
+        features: plan.features
+          .map(formatFeatureText)
+          .filter((feature) => feature.length > 0),
+      })),
+    [plans],
+  );
 
   const handleContinue = () => {
     navigate('/setup/finish');
@@ -16,51 +82,6 @@ const ChoosePlanPage = () => {
   const handleBack = () => {
     navigate('/setup/schedule');
   };
-
-  const plans = [
-    {
-      tier: 'starter' as const,
-      title: 'Free',
-      price: '0',
-      period: 'mo',
-      description: 'Perfect for small businesses just getting started',
-      features: [
-        'Up to 2 sources',
-        'Weekly fetching',
-        'Basic sentiment analysis',
-        'Community support'
-      ]
-    },
-    {
-      tier: 'professional' as const,
-      title: 'Pro',
-      price: '49',
-      period: 'mo',
-      description: 'Ideal for growing businesses needing daily insights',
-      isPopular: true,
-      features: [
-        'Up to 10 sources',
-        'Daily fetching',
-        'Advanced sentiment analysis',
-        'Competitor tracking',
-        'Priority support'
-      ]
-    },
-    {
-      tier: 'enterprise' as const,
-      title: 'Enterprise',
-      price: '199',
-      period: 'mo',
-      description: 'For large organizations with complex needs',
-      features: [
-        'Unlimited sources',
-        'Hourly fetching',
-        'Custom integrations',
-        'API access',
-        '24/7 dedicated support'
-      ]
-    }
-  ];
 
   return (
     <SetupLayout
@@ -78,17 +99,31 @@ const ChoosePlanPage = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {plans.map((plan) => (
-          <PricingCard
-            key={plan.tier}
-            {...plan}
-            isSelected={selectedPlan === plan.tier}
-            onClick={() => setSelectedPlan(plan.tier)}
-            buttonText={selectedPlan === plan.tier ? 'Selected' : 'Select'}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="text-center text-slate-500 dark:text-slate-400 font-medium mb-8">Loading plans...</div>
+      ) : errorMessage ? (
+        <div className="text-center text-red-500 font-medium mb-8">{errorMessage}</div>
+      ) : cardPlans.length === 0 ? (
+        <div className="text-center text-slate-500 dark:text-slate-400 font-medium mb-8">No active plans available.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {cardPlans.map((plan) => (
+            <PricingCard
+              key={plan.id}
+              tier={plan.tier}
+              title={plan.title}
+              price={plan.price}
+              period={plan.period}
+              description={plan.description}
+              features={plan.features}
+              isPopular={plan.isPopular}
+              isSelected={selectedPlan === plan.id}
+              onClick={() => setSelectedPlan(plan.id)}
+              buttonText={selectedPlan === plan.id ? 'Selected' : 'Select'}
+            />
+          ))}
+        </div>
+      )}
       
       <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 text-center">
         <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
