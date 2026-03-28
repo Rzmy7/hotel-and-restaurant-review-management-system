@@ -10,6 +10,7 @@ from datetime import date, datetime
 
 import pyodbc
 from fastapi import HTTPException
+from app.core.security import hash_password
 
 from app.modules.admin_backend.db_utils import (
     execute_query,
@@ -88,8 +89,6 @@ def _plan_from_count(review_count: int) -> str:
         return "Enterprise"
     if review_count >= 30:
         return "Pro"
-    if review_count >= 10:
-        return "Basic"
     return "Free"
 
 
@@ -110,8 +109,6 @@ def _role_from_user_flags(is_super_admin: bool) -> str:
 def _plan_from_user_flags(is_email_verified: bool, is_phone_verified: bool) -> str:
     if is_email_verified and is_phone_verified:
         return "Pro"
-    if is_email_verified:
-        return "Basic"
     return "Free"
 
 
@@ -126,7 +123,8 @@ def _flags_for_role_plan(
     if plan == "Free":
         return False, False, False
     if plan == "Basic":
-        return False, True, False
+        # Backward compatibility for stale clients: map deprecated Basic to Free.
+        return False, False, False
     if plan in {"Pro", "Enterprise"}:
         return False, True, True
     return False, current_is_email_verified, current_is_phone_verified
@@ -196,12 +194,18 @@ def _load_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
         plan_name = str(row[1] or "").strip()
         if not user_id or not plan_name:
             continue
+        if plan_name.lower() == "basic":
+            plan_name = "Free"
         result[user_id] = plan_name
     return result
 
 
 def _set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: str) -> None:
-    if not plan_name.strip():
+    normalized_plan_name = plan_name.strip()
+    if normalized_plan_name.lower() == "basic":
+        normalized_plan_name = "Free"
+
+    if not normalized_plan_name:
         return
     if not table_exists(cursor, "user_subscription") or not table_exists(cursor, "plans"):
         return
@@ -209,7 +213,7 @@ def _set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: 
     plan_row = execute_query(
         cursor,
         "SELECT TOP 1 plan_id FROM dbo.plans WHERE name = ?",
-        (plan_name.strip(),),
+        (normalized_plan_name,),
     ).fetchone()
     if plan_row is None or plan_row[0] is None:
         return
@@ -562,6 +566,12 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
     if not table_exists(cursor, "users"):
         raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
 
+    if payload.role != "Admin":
+        raise HTTPException(status_code=400, detail="Only admin accounts can be created from this panel.")
+
+    if not payload.password or not payload.password.strip():
+        raise HTTPException(status_code=400, detail="Password is required.")
+
     columns = get_table_columns(cursor, "users")
 
     email = payload.email.strip().lower()
@@ -589,7 +599,9 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
 
     if "password_hash" in columns:
         insert_fields.append("password_hash")
-        insert_values.append(None)
+        insert_values.append(hash_password(payload.password))
+    else:
+        raise HTTPException(status_code=400, detail="Table dbo.users must include password_hash to create admin accounts.")
     if name_column:
         insert_fields.append(name_column)
         insert_values.append(name or None)

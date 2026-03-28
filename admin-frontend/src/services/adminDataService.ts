@@ -37,6 +37,7 @@ export interface UserUpsertPayload {
     email: string;
     role: User['role'];
     status: User['status'];
+    password?: string;
     plan?: User['plan'];
     organizations?: string[];
     groups?: string[];

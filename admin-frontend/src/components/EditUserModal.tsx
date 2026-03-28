@@ -33,19 +33,20 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 const activePlanNames = plans
                     .filter((plan) => plan.isActive)
                     .map((plan) => plan.name)
+                    .filter((name) => name.toLowerCase() !== 'basic')
                     .filter((name, index, all) => all.indexOf(name) === index);
 
-                if (formData.plan && !activePlanNames.includes(formData.plan)) {
+                if (formData.plan && formData.plan.toLowerCase() !== 'basic' && !activePlanNames.includes(formData.plan)) {
                     activePlanNames.unshift(formData.plan);
                 }
 
                 if (activePlanNames.length > 0) {
                     setAvailablePlans(activePlanNames);
                 } else {
-                    setAvailablePlans(['Free', 'Basic', 'Pro', 'Enterprise']);
+                    setAvailablePlans(['Free', 'Pro', 'Business', 'Enterprise']);
                 }
             } catch {
-                setAvailablePlans(['Free', 'Basic', 'Pro', 'Enterprise']);
+                setAvailablePlans(['Free', 'Pro', 'Business', 'Enterprise']);
             }
         };
 

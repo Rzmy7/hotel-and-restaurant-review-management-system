@@ -115,6 +115,7 @@ class AdminUserCreatePayload(BaseModel):
     email: str
     role: Literal["Admin", "User"] = "User"
     status: Literal["Active", "Suspended"] = "Active"
+    password: Optional[str] = Field(default=None, min_length=8, max_length=72)
     plan: Optional[str] = None
     organizations: list[str] = Field(default_factory=list)
     groups: list[str] = Field(default_factory=list)

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { UserStatsGrid } from '../components/UserStatsGrid';
 import { UserFilters } from '../components/UserFilters';
 import { UserTable } from '../components/UserTable';
 import { AddUserModal } from '../components/AddUserModal';
 import { createUser, deleteUser, fetchUserStats, fetchUsers, updateUser } from '../services/adminDataService';
+import { fetchSubscriptionPlans } from '../services/subscriptionPlansService';
 import type { User } from '../types';
 
 export const UsersPage: React.FC = () => {
@@ -21,6 +22,7 @@ export const UsersPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState('All Status');
     const [currentPage, setCurrentPage] = useState(1);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [availablePlans, setAvailablePlans] = useState<string[]>([]);
     const itemsPerPage = 8;
 
     useEffect(() => {
@@ -32,6 +34,18 @@ export const UsersPage: React.FC = () => {
                 ]);
                 setUsers(userData);
                 setStats(statsData);
+
+                try {
+                    const plans = await fetchSubscriptionPlans();
+                    const activePlanNames = plans
+                        .filter(plan => plan.isActive)
+                        .map(plan => plan.name)
+                        .filter(planName => planName.toLowerCase() !== 'basic')
+                        .filter((name, index, all) => all.indexOf(name) === index);
+                    setAvailablePlans(activePlanNames);
+                } catch (error) {
+                    console.error('Failed to load subscription plans for filter:', error);
+                }
             } catch (error) {
                 console.error('Failed to load users data:', error);
             } finally {
@@ -40,6 +54,14 @@ export const UsersPage: React.FC = () => {
         };
         loadData();
     }, []);
+
+    const planOptions = useMemo(() => {
+        const assignedPlans = users
+            .map(user => user.plan?.trim())
+            .filter((plan): plan is string => Boolean(plan) && plan.toLowerCase() !== 'basic');
+
+        return [...new Set([...availablePlans, ...assignedPlans])];
+    }, [availablePlans, users]);
 
     // Stats calculations
     const allActiveUsers = stats.allActiveUsers || users.filter(u => u.status === 'Active').length;
@@ -77,15 +99,14 @@ export const UsersPage: React.FC = () => {
         }
     };
 
-    const handleAddUser = async (newUser: Omit<User, 'id' | 'plan'>) => {
+    const handleAddUser = async (newAdmin: { name: string; email: string; password: string }) => {
         try {
             const createdUser = await createUser({
-                name: newUser.name,
-                email: newUser.email,
-                role: newUser.role,
-                status: newUser.status,
-                organizations: newUser.organizations,
-                groups: newUser.groups,
+                name: newAdmin.name,
+                email: newAdmin.email,
+                password: newAdmin.password,
+                role: 'Admin',
+                status: 'Active',
             });
 
             setUsers(prevUsers => [createdUser, ...prevUsers]);
@@ -146,6 +167,7 @@ export const UsersPage: React.FC = () => {
                 searchQuery={searchQuery}
                 roleFilter={roleFilter}
                 planFilter={planFilter}
+                planOptions={planOptions}
                 statusFilter={statusFilter}
                 onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }}
                 onRoleChange={(value) => { setRoleFilter(value); setCurrentPage(1); }}

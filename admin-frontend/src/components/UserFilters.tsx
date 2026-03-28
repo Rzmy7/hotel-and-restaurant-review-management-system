@@ -5,6 +5,7 @@ interface UserFiltersProps {
     searchQuery: string;
     roleFilter: string;
     planFilter: string;
+    planOptions: string[];
     statusFilter: string;
     onSearchChange: (value: string) => void;
     onRoleChange: (value: string) => void;
@@ -17,6 +18,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
     searchQuery,
     roleFilter,
     planFilter,
+    planOptions,
     statusFilter,
     onSearchChange,
     onRoleChange,
@@ -61,10 +63,9 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                         className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm text-gray-700 font-medium cursor-pointer hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     >
                         <option>All Plans</option>
-                        <option>Free</option>
-                        <option>Basic</option>
-                        <option>Pro</option>
-                        <option>Enterprise</option>
+                        {planOptions.map((planName) => (
+                            <option key={planName} value={planName}>{planName}</option>
+                        ))}
                     </select>
                     <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>

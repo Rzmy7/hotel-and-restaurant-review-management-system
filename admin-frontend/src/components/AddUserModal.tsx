@@ -1,33 +1,46 @@
 import React, { useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
-import type { User } from '../types';
+import { X } from 'lucide-react';
 
 interface AddUserModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (user: Omit<User, 'id' | 'plan'>) => Promise<void> | void;
+    onAdd: (admin: { name: string; email: string; password: string }) => Promise<void> | void;
 }
 
 export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAdd }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        role: 'User' as 'Admin' | 'User',
+        password: '',
+        confirmPassword: '',
     });
     const [submitting, setSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMessage(null);
+
+        if (formData.password.length < 8) {
+            setErrorMessage('Password must be at least 8 characters.');
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setErrorMessage('Password and confirm password do not match.');
+            return;
+        }
+
         try {
             setSubmitting(true);
             await Promise.resolve(
                 onAdd({
-                    ...formData,
-                    status: 'Active',
-                    avatarColor: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password,
                 })
             );
-            setFormData({ name: '', email: '', role: 'User' });
+            setFormData({ name: '', email: '', password: '', confirmPassword: '' });
             onClose();
         } finally {
             setSubmitting(false);
@@ -48,7 +61,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
             <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-900">Add New User</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Add New Admin</h2>
                     <button 
                         onClick={onClose}
                         className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
@@ -85,19 +98,42 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                        <div className="relative">
-                            <select
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'Admin' | 'User' })}
-                                className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                            >
-                                <option value="Admin">Admin</option>
-                                <option value="User">User</option>
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Create users with Admin or User role</p>
+                        <input
+                            type="text"
+                            value="Admin"
+                            disabled
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Only admin accounts can be created from this action</p>
                     </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                        <input
+                            type="password"
+                            required
+                            minLength={8}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder="Set admin password"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+                        <input
+                            type="password"
+                            required
+                            minLength={8}
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            placeholder="Re-enter password"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-4">
@@ -114,7 +150,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
                             disabled={submitting}
                             className="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
                         >
-                            {submitting ? 'Adding...' : 'Add User'}
+                            {submitting ? 'Adding...' : 'Add Admin'}
                         </button>
                     </div>
                 </form>
