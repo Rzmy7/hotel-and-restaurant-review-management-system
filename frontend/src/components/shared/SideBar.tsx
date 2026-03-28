@@ -5,7 +5,7 @@ import { navigationConfig } from '../../config/navigation';
 import type { SidebarItemData, SidebarGroupData } from '../../types/navigation';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { useNavigationBlocker } from '../../contexts/NavigationBlockerContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import LogoutConfirmationModal from './LogoutConfirmationModal';
 
 /**

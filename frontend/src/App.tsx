@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 // Providers and Contexts
 import { ToastProvider } from './contexts/ToastContext';
 
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
 
