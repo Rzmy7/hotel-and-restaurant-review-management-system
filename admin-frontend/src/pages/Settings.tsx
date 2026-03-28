@@ -2,9 +2,51 @@ import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
-import { fetchSettings } from '../services/mockService';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
+import { settingsService } from '../services/settingsService';
 import type { AdminSettings } from '../types';
+
+interface TimezoneOption {
+    value: string;
+    label: string;
+}
+
+const TIMEZONE_OPTIONS: TimezoneOption[] = [
+    { value: 'UTC', label: 'UTC +00:00' },
+    { value: 'Europe/London', label: 'United Kingdom +00:00/+01:00' },
+    { value: 'Europe/Berlin', label: 'Germany +01:00/+02:00' },
+    { value: 'Europe/Moscow', label: 'Russia (Moscow) +03:00' },
+    { value: 'Asia/Dubai', label: 'UAE +04:00' },
+    { value: 'Asia/Kolkata', label: 'India +05:30' },
+    { value: 'Asia/Colombo', label: 'Sri Lanka +5.30' },
+    { value: 'Asia/Dhaka', label: 'Bangladesh +06:00' },
+    { value: 'Asia/Bangkok', label: 'Thailand +07:00' },
+    { value: 'Asia/Singapore', label: 'Singapore +08:00' },
+    { value: 'Asia/Tokyo', label: 'Japan +09:00' },
+    { value: 'Australia/Sydney', label: 'Australia (Sydney) +10:00/+11:00' },
+    { value: 'Pacific/Auckland', label: 'New Zealand +12:00/+13:00' },
+    { value: 'America/New_York', label: 'USA (New York) -05:00/-04:00' },
+    { value: 'America/Chicago', label: 'USA (Chicago) -06:00/-05:00' },
+    { value: 'America/Denver', label: 'USA (Denver) -07:00/-06:00' },
+    { value: 'America/Los_Angeles', label: 'USA (Los Angeles) -08:00/-07:00' },
+    { value: 'America/Sao_Paulo', label: 'Brazil -03:00' },
+];
+
+const defaultSettings: AdminSettings = {
+    timezone: 'UTC',
+    language: 'en',
+    dateFormat: 'MM/DD/YYYY',
+    currency: 'USD ($)',
+    maintenanceMode: false,
+    twoFactorAuth: true,
+    passwordStrength: 'Strong (Alpha-numeric + Special Char)',
+    sessionTimeout: '30 Minutes',
+    allowNewSignups: false,
+    notifyApiLimitReaching: true,
+    notifyServerOverloading: true,
+    notifyServerConnectionFailed: true,
+    notifyScrapingFailures: true,
+};
 
 export const Settings: React.FC = () => {
     const [settings, setSettings] = useState<AdminSettings | null>(null);
@@ -13,18 +55,30 @@ export const Settings: React.FC = () => {
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const [isMaintenanceSaving, setIsMaintenanceSaving] = useState(false);
     const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
+    const [generalSaveState, setGeneralSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [generalSaveError, setGeneralSaveError] = useState<string | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
-            const data = await fetchSettings();
-            setSettings(data);
+            setLoading(true);
             try {
+                const data = await settingsService.getGeneralSettings();
+                setSettings({
+                    ...defaultSettings,
+                    timezone: data.timezone,
+                    language: data.language,
+                    dateFormat: data.dateFormat,
+                    currency: data.currency,
+                });
+
                 const status = await maintenanceService.getStatus();
                 setMaintenanceMode(!!status.maintenanceMode);
             } catch {
-                setMaintenanceMode(data.maintenanceMode);
+                setSettings(defaultSettings);
+                setMaintenanceMode(defaultSettings.maintenanceMode);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         loadData();
 
@@ -55,7 +109,59 @@ export const Settings: React.FC = () => {
         }
     };
 
+    const handleGeneralSettingChange = (key: keyof AdminSettings, value: string) => {
+        setSettings(prev => (prev ? { ...prev, [key]: value } : prev));
+        setGeneralSaveState('idle');
+        setGeneralSaveError(null);
+    };
+
+    const handleSaveGeneralSettings = async () => {
+        if (!settings || generalSaveState === 'saving') {
+            return;
+        }
+
+        setGeneralSaveState('saving');
+        setGeneralSaveError(null);
+
+        try {
+            const saved = await settingsService.updateGeneralSettings({
+                timezone: settings.timezone,
+                language: settings.language,
+                dateFormat: settings.dateFormat,
+                currency: settings.currency,
+            });
+
+            setSettings(prev => (
+                prev
+                    ? {
+                          ...prev,
+                          timezone: saved.timezone,
+                          language: saved.language,
+                          dateFormat: saved.dateFormat,
+                          currency: saved.currency,
+                      }
+                    : prev
+            ));
+
+            setGeneralSaveState('saved');
+            window.setTimeout(() => setGeneralSaveState('idle'), 2500);
+        } catch (error) {
+            console.error('Failed to save general settings:', error);
+            setGeneralSaveState('error');
+            setGeneralSaveError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to save general settings. Please try again.',
+            );
+        }
+    };
+
     if (loading || !settings) return <LoadingSpinner />;
+
+    const timezoneOptionExists = TIMEZONE_OPTIONS.some(option => option.value === settings.timezone);
+    const timezoneOptions = timezoneOptionExists
+        ? TIMEZONE_OPTIONS
+        : [{ value: settings.timezone, label: `Custom - ${settings.timezone}` }, ...TIMEZONE_OPTIONS];
 
     return (
         <div className="pt-4 max-w-5xl space-y-4">
@@ -82,38 +188,36 @@ export const Settings: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">System Timezone</label>
-                                <input
-                                    type="text"
-                                    defaultValue={settings.timezone}
+                                <select
+                                    value={settings.timezone}
+                                    onChange={(event) => handleGeneralSettingChange('timezone', event.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
+                                >
+                                    {timezoneOptions.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Default Language</label>
-                                <input
-                                    type="text"
-                                    defaultValue={settings.language}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Date Format</label>
-                                <input
-                                    type="text"
-                                    defaultValue={settings.dateFormat}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
                                 <input
                                     type="text"
-                                    defaultValue={settings.currency}
+                                    value={settings.currency}
+                                    onChange={(event) => handleGeneralSettingChange('currency', event.target.value)}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
                         </div>
                     </div>
+
+                    {generalSaveState === 'saved' && (
+                        <div className="text-sm text-green-600">General settings saved.</div>
+                    )}
+                    {(generalSaveState === 'error' && generalSaveError) && (
+                        <div className="text-sm text-red-600">{generalSaveError}</div>
+                    )}
 
                     {/* Maintenance Mode Card */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center justify-between">
@@ -142,11 +246,12 @@ export const Settings: React.FC = () => {
                     {/* Save Button */}
                     <div className="flex justify-end">
                         <button
-                            onClick={() => alert('Settings saved successfully!')}
+                            onClick={handleSaveGeneralSettings}
+                            disabled={generalSaveState === 'saving'}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                         >
                             <Save size={16} />
-                            Save Changes
+                            {generalSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>

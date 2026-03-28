@@ -3,6 +3,7 @@ import React from 'react';
 interface SchedulingOptionsProps {
     scheduleType: 'now' | 'scheduled';
     scheduledAt: string;
+    timezone: string;
     onScheduleTypeChange: (type: 'now' | 'scheduled') => void;
     onScheduledAtChange: (date: string) => void;
 }
@@ -10,6 +11,7 @@ interface SchedulingOptionsProps {
 export const SchedulingOptions: React.FC<SchedulingOptionsProps> = ({
     scheduleType,
     scheduledAt,
+    timezone,
     onScheduleTypeChange,
     onScheduledAtChange,
 }) => {
@@ -39,12 +41,15 @@ export const SchedulingOptions: React.FC<SchedulingOptionsProps> = ({
                     <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">Schedule for later</p>
                         {scheduleType === 'scheduled' && (
-                            <input
-                                type="datetime-local"
-                                value={scheduledAt}
-                                onChange={(e) => onScheduledAtChange(e.target.value)}
-                                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <>
+                                <input
+                                    type="datetime-local"
+                                    value={scheduledAt}
+                                    onChange={(e) => onScheduledAtChange(e.target.value)}
+                                    className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="mt-1 text-xs text-gray-500">Interpreted in system timezone: {timezone}</p>
+                            </>
                         )}
                     </div>
                 </label>

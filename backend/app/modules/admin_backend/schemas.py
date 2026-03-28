@@ -160,6 +160,23 @@ class ScrapingPlatformUpdatePayload(BaseModel):
     enabled: bool = True
 
 
+# ── Settings schemas ───────────────────────────────────────────────
+
+
+class GeneralSettingsResponse(BaseModel):
+    timezone: str
+    language: str
+    dateFormat: str
+    currency: str
+
+
+class GeneralSettingsPayload(BaseModel):
+    timezone: str = Field(..., min_length=1, max_length=100)
+    language: str = Field(..., min_length=1, max_length=32)
+    dateFormat: str = Field(..., min_length=1, max_length=64)
+    currency: str = Field(..., min_length=1, max_length=64)
+
+
 # ── Broadcasting schemas ────────────────────────────────────────────
 
 

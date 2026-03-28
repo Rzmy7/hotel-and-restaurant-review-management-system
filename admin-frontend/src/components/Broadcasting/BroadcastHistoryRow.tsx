@@ -4,17 +4,13 @@ import { Mail, Bell } from 'lucide-react';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { MESSAGE_TYPES } from './types';
 import type { BroadcastRecord, Channel, BroadcastStatus, MessageType } from './types';
+import { formatDateTime } from '../../utils/dateTime';
 
 interface HistoryRowProps {
     record: BroadcastRecord;
+    timezone: string;
     onViewDetail: (r: BroadcastRecord) => void;
 }
-
-const formatTimestamp = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-        ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-};
 
 const channelMeta = (ch: Channel) => {
     if (ch === 'email') return { label: 'Email', icon: <Mail size={12} />, color: 'text-blue-600 bg-blue-50 border-blue-200' };
@@ -30,7 +26,7 @@ const statusMeta = (s: BroadcastStatus) => {
 
 const msgTypeMeta = (t: MessageType) => MESSAGE_TYPES.find(m => m.value === t)!;
 
-export const BroadcastHistoryRow: React.FC<HistoryRowProps> = ({ record, onViewDetail }) => {
+export const BroadcastHistoryRow: React.FC<HistoryRowProps> = ({ record, timezone, onViewDetail }) => {
     const ch = channelMeta(record.channel);
     const st = statusMeta(record.status);
     const mt = msgTypeMeta(record.messageType);
@@ -46,7 +42,7 @@ export const BroadcastHistoryRow: React.FC<HistoryRowProps> = ({ record, onViewD
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{record.subject}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-400">{formatTimestamp(record.sentAt)}</span>
+                    <span className="text-xs text-gray-400">{formatDateTime(record.sentAt, timezone)}</span>
                     <span className="text-gray-200">·</span>
                     <span className="text-xs text-gray-500">{record.audienceLabel}</span>
                     <span className="text-gray-200">·</span>

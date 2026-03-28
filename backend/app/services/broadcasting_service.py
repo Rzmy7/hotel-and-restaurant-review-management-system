@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Literal, Optional
 import uuid
 import logging
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -110,6 +111,41 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(candidate.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _get_system_timezone(db: Session) -> str:
+    try:
+        row = db.execute(
+            text(
+                """
+                SELECT TOP 1 setting_value
+                FROM dbo.system_settings
+                WHERE setting_key = 'timezone'
+                """
+            )
+        ).fetchone()
+    except Exception:
+        return "UTC"
+    if not row or not row[0]:
+        return "UTC"
+
+    timezone_name = str(row[0]).strip()
+    try:
+        ZoneInfo(timezone_name)
+        return timezone_name
+    except Exception:
+        return "UTC"
+
+
+def _parse_iso_datetime_to_system_time(value: Optional[str], timezone_name: str) -> Optional[datetime]:
+    parsed = _parse_iso_datetime(value)
+    if not parsed:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed
+
+    return parsed.astimezone(ZoneInfo(timezone_name)).replace(tzinfo=None)
 
 
 def _to_iso(value: Optional[datetime]) -> str:
@@ -290,7 +326,10 @@ async def send_broadcast(
         )
 
         now_utc = datetime.utcnow()
-        scheduled_at = _parse_iso_datetime(broadcast_data.scheduledAt)
+        scheduled_at = _parse_iso_datetime_to_system_time(
+            broadcast_data.scheduledAt,
+            _get_system_timezone(db),
+        )
         status = "pending" if broadcast_data.scheduleType == "scheduled" else "sent"
         sent_at = scheduled_at if status == "pending" else now_utc
 

@@ -2,24 +2,20 @@ import React from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import { CHANNELS, MESSAGE_TYPES, AUDIENCE_OPTIONS } from './types';
 import type { ComposeForm, MessageType } from './types';
+import { formatDateTime } from '../../utils/dateTime';
 
 interface PreviewModalProps {
     form: ComposeForm;
     estimatedCount: number;
+    timezone: string;
     onClose: () => void;
     onSend: () => void;
     sending: boolean;
 }
 
-const formatTimestamp = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-        ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-};
-
 const msgTypeMeta = (t: MessageType) => MESSAGE_TYPES.find(m => m.value === t)!;
 
-export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estimatedCount, onClose, onSend, sending }) => {
+export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estimatedCount, timezone, onClose, onSend, sending }) => {
     const mt = msgTypeMeta(form.messageType);
     const audienceOpt = AUDIENCE_OPTIONS.find(a => a.value === form.audienceType)!;
     const subLabel = audienceOpt.subOptions?.find(s => s.value === form.audienceValue)?.label ?? '';
@@ -74,7 +70,7 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
                         <div>
                             <p className="text-xs text-gray-400 mb-0.5">Timing</p>
                             <p className="text-sm font-medium text-gray-800">
-                                {form.scheduleType === 'now' ? 'Send immediately' : formatTimestamp(form.scheduledAt)}
+                                {form.scheduleType === 'now' ? 'Send immediately' : formatDateTime(form.scheduledAt, timezone)}
                             </p>
                         </div>
                     </div>

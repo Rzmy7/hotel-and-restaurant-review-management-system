@@ -4,6 +4,8 @@ import { Bell, AlertCircle } from 'lucide-react';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { notificationsService } from '../services/notificationsService';
 import type { AdminNotification } from '../services/notificationsService';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
+import { formatDateTime } from '../utils/dateTime';
 
 export const Header: React.FC = () => {
     const location = useLocation();
@@ -15,6 +17,7 @@ export const Header: React.FC = () => {
     const [notifications, setNotifications] = useState<AdminNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const notificationsPanelRef = useRef<HTMLDivElement | null>(null);
+    const systemTimezone = useSystemTimezone();
 
     // Load maintenance status on mount
     useEffect(() => {
@@ -70,16 +73,7 @@ export const Header: React.FC = () => {
     }, [isNotificationsOpen]);
 
     const formatNotificationTime = (value: string | null): string => {
-        if (!value) {
-            return 'Unknown time';
-        }
-
-        const parsed = new Date(value);
-        if (Number.isNaN(parsed.getTime())) {
-            return value;
-        }
-
-        return parsed.toLocaleString();
+        return formatDateTime(value, systemTimezone);
     };
 
     const refreshNotifications = async () => {

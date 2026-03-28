@@ -2,6 +2,7 @@ import os
 import uuid
 from datetime import datetime
 from typing import Literal, Optional
+from zoneinfo import ZoneInfo
 
 import pyodbc
 from dotenv import load_dotenv
@@ -166,6 +167,61 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(candidate.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
+    cursor.execute(
+        """
+        IF OBJECT_ID('dbo.system_settings', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.system_settings (
+                setting_key NVARCHAR(100) NOT NULL
+                    CONSTRAINT PK_system_settings PRIMARY KEY,
+                setting_value NVARCHAR(255) NOT NULL,
+                updated_at DATETIME2(7) NOT NULL
+                    CONSTRAINT DF_system_settings_updated_at DEFAULT SYSUTCDATETIME()
+            );
+        END;
+        """
+    )
+
+
+def _is_valid_timezone(value: str) -> bool:
+    try:
+        ZoneInfo(value)
+        return True
+    except Exception:
+        return False
+
+
+def _get_system_timezone(cursor: pyodbc.Cursor) -> str:
+    _ensure_system_settings_table(cursor)
+    row = cursor.execute(
+        """
+        SELECT setting_value
+        FROM dbo.system_settings
+        WHERE setting_key = 'timezone'
+        """
+    ).fetchone()
+
+    if not row:
+        return "UTC"
+
+    timezone_name = str(row[0] or "").strip()
+    if timezone_name and _is_valid_timezone(timezone_name):
+        return timezone_name
+    return "UTC"
+
+
+def _parse_scheduled_at_to_system_time(value: Optional[str], timezone_name: str) -> Optional[datetime]:
+    parsed = _parse_iso_datetime(value)
+    if not parsed:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed
+
+    return parsed.astimezone(ZoneInfo(timezone_name)).replace(tzinfo=None)
 
 
 def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verified: bool) -> str:
@@ -336,7 +392,8 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
         audience_label = _get_audience_label(payload.audienceType, payload.audienceValue)
 
         now_utc = datetime.utcnow()
-        scheduled_at = _parse_iso_datetime(payload.scheduledAt)
+        timezone_name = _get_system_timezone(cursor)
+        scheduled_at = _parse_scheduled_at_to_system_time(payload.scheduledAt, timezone_name)
         status = "pending" if payload.scheduleType == "scheduled" else "sent"
         sent_at = scheduled_at if status == "pending" else now_utc
 

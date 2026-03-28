@@ -3,17 +3,13 @@ import { X, Mail, Bell } from 'lucide-react';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { MESSAGE_TYPES } from './types';
 import type { BroadcastRecord, Channel, BroadcastStatus, MessageType } from './types';
+import { formatDateTime } from '../../utils/dateTime';
 
 interface DetailOverlayProps {
     record: BroadcastRecord;
+    timezone: string;
     onClose: () => void;
 }
-
-const formatTimestamp = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-        ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-};
 
 const channelMeta = (ch: Channel) => {
     if (ch === 'email') return { label: 'Email', icon: <Mail size={12} />, color: 'text-blue-600 bg-blue-50 border-blue-200' };
@@ -29,7 +25,7 @@ const statusMeta = (s: BroadcastStatus) => {
 
 const msgTypeMeta = (t: MessageType) => MESSAGE_TYPES.find(m => m.value === t)!;
 
-export const BroadcastDetailOverlay: React.FC<DetailOverlayProps> = ({ record, onClose }) => {
+export const BroadcastDetailOverlay: React.FC<DetailOverlayProps> = ({ record, timezone, onClose }) => {
     const mt = msgTypeMeta(record.messageType);
     const ch = channelMeta(record.channel);
     const st = statusMeta(record.status);
@@ -86,7 +82,7 @@ export const BroadcastDetailOverlay: React.FC<DetailOverlayProps> = ({ record, o
                         </div>
                         <div className="col-span-2">
                             <p className="text-xs text-gray-400 mb-0.5">Sent at</p>
-                            <p className="text-sm text-gray-800">{formatTimestamp(record.sentAt)}</p>
+                            <p className="text-sm text-gray-800">{formatDateTime(record.sentAt, timezone)}</p>
                         </div>
                     </div>
                 </div>

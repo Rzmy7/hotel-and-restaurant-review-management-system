@@ -6,6 +6,7 @@ Migrated from admin-backend/app/broadcasting_router.py.
 
 import uuid
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pyodbc
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -24,8 +25,28 @@ from app.modules.admin_backend.services.broadcasting_service import (
     get_recipient_ids,
     to_record,
 )
+from app.modules.admin_backend.services.system_settings_service import get_system_timezone
 
 router = APIRouter(prefix="/api/broadcasting", tags=["Broadcasting"])
+
+
+def _parse_scheduled_at_to_system_time(value: str | None, timezone_name: str) -> datetime | None:
+    if not value:
+        return None
+
+    candidate = value.strip()
+    if not candidate:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed
+
+    return parsed.astimezone(ZoneInfo(timezone_name)).replace(tzinfo=None)
 
 
 @router.post("/send")
@@ -42,15 +63,9 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
         recipient_count = len(recipient_ids)
         audience_label = get_audience_label(payload.audienceType, payload.audienceValue)
 
+        timezone_name = get_system_timezone(cursor)
         now_utc = datetime.utcnow()
-        scheduled_at = None
-        if payload.scheduledAt:
-            candidate = payload.scheduledAt.strip()
-            if candidate:
-                try:
-                    scheduled_at = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
-                except ValueError:
-                    scheduled_at = None
+        scheduled_at = _parse_scheduled_at_to_system_time(payload.scheduledAt, timezone_name)
 
         status = "pending" if payload.scheduleType == "scheduled" else "sent"
         sent_at = scheduled_at if status == "pending" else now_utc

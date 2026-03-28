@@ -13,6 +13,7 @@ import {
 } from '../components/Broadcasting';
 import type { BroadcastRecord, ComposeForm } from '../components/Broadcasting';
 import { broadcastingService } from '../services/broadcastingService';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
 
 interface BroadcastStats {
     total: number;
@@ -47,6 +48,7 @@ export const Broadcasting: React.FC = () => {
 
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const systemTimezone = useSystemTimezone();
 
     const isFormValid = useMemo(() => {
         const hasCoreFields =
@@ -198,6 +200,7 @@ export const Broadcasting: React.FC = () => {
                             <SchedulingOptions
                                 scheduleType={form.scheduleType}
                                 scheduledAt={form.scheduledAt}
+                                timezone={systemTimezone}
                                 onScheduleTypeChange={scheduleType => updateForm({ scheduleType })}
                                 onScheduledAtChange={scheduledAt => updateForm({ scheduledAt })}
                             />
@@ -273,6 +276,7 @@ export const Broadcasting: React.FC = () => {
                                 <BroadcastHistoryRow
                                     key={record.id}
                                     record={record}
+                                    timezone={systemTimezone}
                                     onViewDetail={setSelectedDetail}
                                 />
                             ))}
@@ -285,6 +289,7 @@ export const Broadcasting: React.FC = () => {
                 <BroadcastPreviewModal
                     form={form}
                     estimatedCount={estimatedCount}
+                    timezone={systemTimezone}
                     onClose={() => setShowPreview(false)}
                     onSend={handleSend}
                     sending={sending}
@@ -294,6 +299,7 @@ export const Broadcasting: React.FC = () => {
             {selectedDetail && (
                 <BroadcastDetailOverlay
                     record={selectedDetail}
+                    timezone={systemTimezone}
                     onClose={() => setSelectedDetail(null)}
                 />
             )}
