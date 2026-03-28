@@ -132,7 +132,7 @@ def _flags_for_role_plan(
     return False, current_is_email_verified, current_is_phone_verified
 
 
-def _frontend_user_from_db_row(row, fallback_index: int) -> AdminUser:
+def _frontend_user_from_db_row(row, fallback_index: int, plan_name: str | None = None) -> AdminUser:
     user_id = str(row[0]) if row[0] is not None else str(fallback_index)
     email = str(row[1] or "").strip()
     full_name = str(row[2]).strip() if row[2] else None
@@ -143,7 +143,8 @@ def _frontend_user_from_db_row(row, fallback_index: int) -> AdminUser:
     is_super_admin = bool(row[6]) if row[6] is not None else False
 
     role = _role_from_user_flags(is_super_admin)
-    plan = _plan_from_user_flags(is_email_verified, is_phone_verified) if role == "User" else None
+    inferred_plan = _plan_from_user_flags(is_email_verified, is_phone_verified) if role == "User" else None
+    plan = plan_name if (role == "User" and plan_name) else inferred_plan
 
     return AdminUser(
         id=user_id,
@@ -154,6 +155,115 @@ def _frontend_user_from_db_row(row, fallback_index: int) -> AdminUser:
         plan=plan,
         organizations=[],
         groups=[],
+    )
+
+
+def _load_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
+    if not table_exists(cursor, "user_subscription") or not table_exists(cursor, "plans"):
+        return {}
+
+    user_sub_columns = get_table_columns(cursor, "user_subscription")
+    if "user_id" not in user_sub_columns or "plan_id" not in user_sub_columns:
+        return {}
+
+    order_column = "updated_at" if "updated_at" in user_sub_columns else "created_at" if "created_at" in user_sub_columns else "user_subscription_id"
+
+    rows = execute_query(
+        cursor,
+        f"""
+        WITH ranked_subscriptions AS (
+            SELECT
+                CAST(us.user_id AS NVARCHAR(64)) AS user_id,
+                p.name AS plan_name,
+                ROW_NUMBER() OVER (
+                    PARTITION BY us.user_id
+                    ORDER BY us.[{order_column}] DESC, us.user_subscription_id DESC
+                ) AS row_number
+            FROM dbo.user_subscription us
+            INNER JOIN dbo.plans p
+                ON p.plan_id = us.plan_id
+            WHERE us.plan_id IS NOT NULL
+        )
+        SELECT user_id, plan_name
+        FROM ranked_subscriptions
+        WHERE row_number = 1
+        """,
+    ).fetchall()
+
+    result: dict[str, str] = {}
+    for row in rows:
+        user_id = str(row[0] or "").strip()
+        plan_name = str(row[1] or "").strip()
+        if not user_id or not plan_name:
+            continue
+        result[user_id] = plan_name
+    return result
+
+
+def _set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: str) -> None:
+    if not plan_name.strip():
+        return
+    if not table_exists(cursor, "user_subscription") or not table_exists(cursor, "plans"):
+        return
+
+    plan_row = execute_query(
+        cursor,
+        "SELECT TOP 1 plan_id FROM dbo.plans WHERE name = ?",
+        (plan_name.strip(),),
+    ).fetchone()
+    if plan_row is None or plan_row[0] is None:
+        return
+
+    plan_id = int(plan_row[0])
+    user_sub_columns = get_table_columns(cursor, "user_subscription")
+    has_status = "status" in user_sub_columns
+    has_starts_at = "starts_at" in user_sub_columns
+    has_ends_at = "ends_at" in user_sub_columns
+    has_created_at = "created_at" in user_sub_columns
+    has_updated_at = "updated_at" in user_sub_columns
+
+    existing_row = execute_query(
+        cursor,
+        "SELECT TOP 1 user_subscription_id FROM dbo.user_subscription WHERE user_id = ? ORDER BY COALESCE(updated_at, created_at) DESC, user_subscription_id DESC",
+        (user_id,),
+    ).fetchone()
+
+    if existing_row and existing_row[0] is not None:
+        set_clauses = ["plan_id = ?"]
+        params: list[object] = [plan_id]
+        if has_status:
+            set_clauses.append("status = 'active'")
+        if has_ends_at:
+            set_clauses.append("ends_at = NULL")
+        if has_updated_at:
+            set_clauses.append("updated_at = SYSUTCDATETIME()")
+        params.append(int(existing_row[0]))
+        execute_query(
+            cursor,
+            f"UPDATE dbo.user_subscription SET {', '.join(set_clauses)} WHERE user_subscription_id = ?",
+            tuple(params),
+        )
+        return
+
+    insert_fields = ["user_id", "plan_id"]
+    insert_values: list[object] = [user_id, plan_id]
+    if has_status:
+        insert_fields.append("status")
+        insert_values.append("active")
+    if has_starts_at:
+        insert_fields.append("starts_at")
+        insert_values.append(datetime.utcnow())
+    if has_created_at:
+        insert_fields.append("created_at")
+        insert_values.append(datetime.utcnow())
+    if has_updated_at:
+        insert_fields.append("updated_at")
+        insert_values.append(datetime.utcnow())
+
+    execute_query(
+        cursor,
+        f"INSERT INTO dbo.user_subscription ({', '.join(insert_fields)}) VALUES ({', '.join(['?'] * len(insert_fields))})",
+        tuple(insert_values),
     )
 
 
@@ -362,6 +472,7 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
 
 def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
     if table_exists(cursor, "users"):
+        user_plan_map = _load_user_plan_map(cursor)
         columns = get_table_columns(cursor, "users")
         if "updated_at" in columns and "created_at" in columns:
             order_clause = "ORDER BY COALESCE(updated_at, created_at) DESC"
@@ -373,7 +484,14 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
             order_clause = "ORDER BY user_id DESC"
 
         rows = execute_query(cursor, _build_users_select(columns, order_clause=order_clause)).fetchall()
-        return [_frontend_user_from_db_row(row, index) for index, row in enumerate(rows, start=1)]
+        return [
+            _frontend_user_from_db_row(
+                row,
+                index,
+                user_plan_map.get(str(row[0])) if row[0] is not None else None,
+            )
+            for index, row in enumerate(rows, start=1)
+        ]
 
     if not table_exists(cursor, "ProcessedReviews"):
         return []
@@ -517,7 +635,15 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
     if row is None:
         raise HTTPException(status_code=500, detail="User was created but could not be loaded.")
 
-    return _frontend_user_from_db_row(row, 1)
+    if payload.role == "User" and payload.plan:
+        _set_user_subscription_plan(cursor, user_id, payload.plan)
+        conn.commit()
+        row = _get_user_row_by_id(cursor, user_id, columns)
+
+    user_plan_map = _load_user_plan_map(cursor)
+    plan_name = user_plan_map.get(user_id)
+
+    return _frontend_user_from_db_row(row, 1, plan_name)
 
 
 # ── Update user ─────────────────────────────────────────────────────
@@ -605,13 +731,19 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
         f"UPDATE dbo.users SET {', '.join(set_clauses)} WHERE user_id = ?",
         tuple(params),
     )
+
+    if next_role == "User" and payload.plan:
+        _set_user_subscription_plan(cursor, user_id, payload.plan)
     conn.commit()
 
     updated_row = _get_user_row_by_id(cursor, user_id, columns)
     if updated_row is None:
         raise HTTPException(status_code=500, detail="User was updated but could not be loaded.")
 
-    return _frontend_user_from_db_row(updated_row, 1)
+    user_plan_map = _load_user_plan_map(cursor)
+    plan_name = user_plan_map.get(user_id)
+
+    return _frontend_user_from_db_row(updated_row, 1, plan_name)
 
 
 # ── Delete user ─────────────────────────────────────────────────────

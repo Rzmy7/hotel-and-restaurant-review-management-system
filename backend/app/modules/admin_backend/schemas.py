@@ -98,7 +98,7 @@ class AdminUser(BaseModel):
     email: str
     role: Literal["Admin", "User"]
     status: Literal["Active", "Suspended"]
-    plan: Optional[Literal["Free", "Basic", "Pro", "Enterprise"]] = None
+    plan: Optional[str] = None
     avatarColor: Optional[str] = None
     organizations: list[str] = Field(default_factory=list)
     groups: list[str] = Field(default_factory=list)
@@ -115,7 +115,7 @@ class AdminUserCreatePayload(BaseModel):
     email: str
     role: Literal["Admin", "User"] = "User"
     status: Literal["Active", "Suspended"] = "Active"
-    plan: Optional[Literal["Free", "Basic", "Pro", "Enterprise"]] = None
+    plan: Optional[str] = None
     organizations: list[str] = Field(default_factory=list)
     groups: list[str] = Field(default_factory=list)
 
@@ -125,7 +125,7 @@ class AdminUserUpdatePayload(BaseModel):
     email: Optional[str] = None
     role: Optional[Literal["Admin", "User"]] = None
     status: Optional[Literal["Active", "Suspended"]] = None
-    plan: Optional[Literal["Free", "Basic", "Pro", "Enterprise"]] = None
+    plan: Optional[str] = None
     organizations: Optional[list[str]] = None
     groups: Optional[list[str]] = None
 

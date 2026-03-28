@@ -42,7 +42,7 @@ export interface User {
     email: string;
     role: 'Admin' | 'User';
     status: 'Active' | 'Suspended';
-    plan?: 'Free' | 'Basic' | 'Pro' | 'Enterprise';
+    plan?: string;
     avatarColor?: string;
     organizations?: string[]; // List of organization names
     groups?: string[]; // List of group names

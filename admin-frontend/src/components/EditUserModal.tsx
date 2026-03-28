@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Building2, Users, ChevronDown } from 'lucide-react';
 import type { User } from '../types';
+import { fetchSubscriptionPlans } from '../services/subscriptionPlansService';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -19,6 +20,37 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
     });
     const [newOrg, setNewOrg] = useState('');
     const [saving, setSaving] = useState(false);
+    const [availablePlans, setAvailablePlans] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const loadPlans = async () => {
+            try {
+                const plans = await fetchSubscriptionPlans();
+                const activePlanNames = plans
+                    .filter((plan) => plan.isActive)
+                    .map((plan) => plan.name)
+                    .filter((name, index, all) => all.indexOf(name) === index);
+
+                if (formData.plan && !activePlanNames.includes(formData.plan)) {
+                    activePlanNames.unshift(formData.plan);
+                }
+
+                if (activePlanNames.length > 0) {
+                    setAvailablePlans(activePlanNames);
+                } else {
+                    setAvailablePlans(['Free', 'Basic', 'Pro', 'Enterprise']);
+                }
+            } catch {
+                setAvailablePlans(['Free', 'Basic', 'Pro', 'Enterprise']);
+            }
+        };
+
+        void loadPlans();
+    }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -116,13 +148,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                             <div className="relative">
                                 <select
                                     value={formData.plan}
-                                    onChange={(e) => setFormData({ ...formData, plan: e.target.value as 'Free' | 'Basic' | 'Pro' | 'Enterprise' })}
+                                    onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
                                     className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                                 >
-                                    <option value="Free">Free</option>
-                                    <option value="Basic">Basic</option>
-                                    <option value="Pro">Pro</option>
-                                    <option value="Enterprise">Enterprise</option>
+                                    {availablePlans.length > 0 ? (
+                                        availablePlans.map((planName) => (
+                                            <option key={planName} value={planName}>{planName}</option>
+                                        ))
+                                    ) : (
+                                        <option value={formData.plan}>{formData.plan}</option>
+                                    )}
                                 </select>
                                 <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                             </div>

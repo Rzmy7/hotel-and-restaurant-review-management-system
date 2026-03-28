@@ -89,7 +89,7 @@ export const UserRow: React.FC<UserRowProps> = ({ user, onUserUpdate, onUserDele
         await updateUser({
             ...user,
             role: 'User',
-            plan: user.plan || 'Basic',
+            plan: user.plan || 'Free',
         });
     };
 

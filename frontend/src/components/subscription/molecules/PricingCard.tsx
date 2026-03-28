@@ -52,7 +52,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
       )}
       {isPopular && <PricingBadge label="Most Popular" />}
       
-      <div className="flex flex-col gap-6 mb-8">
+      <div className="flex flex-col gap-2 mb-4">
         <PlanIcon tier={tier} />
         <div>
           <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase">{title}</h3>
@@ -65,8 +65,8 @@ export const PricingCard: React.FC<PricingCardProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 mb-10">
-        <p className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4">What's included</p>
+      <div className="flex-1 space-y-2 mb-5">
+        <p className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3">What's included</p>
         {features.map((feature, idx) => (
           <FeatureItem key={idx} label={feature} />
         ))}
@@ -75,7 +75,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
       {buttonText && (
         <Button 
           variant={isPrimaryButton ? 'primary' : 'outline'} 
-          className={`w-full py-6 text-sm uppercase tracking-widest shadow-lg ${isPrimaryButton ? 'shadow-blue-200 dark:shadow-none' : ''}`}
+          className={`w-full py-5 text-sm uppercase tracking-widest shadow-lg ${isPrimaryButton ? 'shadow-blue-200 dark:shadow-none' : ''}`}
         >
           {buttonText}
         </Button>
