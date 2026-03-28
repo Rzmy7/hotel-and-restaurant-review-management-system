@@ -19,7 +19,8 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
   const reviews = useReviewsStore(state => state.reviews);
   const refreshDataStore = useReviewsStore(state => state.refreshData);
   const { fetchParams } = useReviewFilters();
-  const refreshData = () => refreshDataStore(fetchParams);
+  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
+  const refreshData = () => refreshDataStore(organizationId, fetchParams);
 
   const [draftReply, setDraftReply] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -85,7 +86,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
   const handleMarkResolved = async () => {
     setIsResolving(true);
     try {
-      await reviewsService.updateReviewStatus(review.id, 'Replied');
+      await reviewsService.updateReviewStatus(organizationId, review.id, 'Replied');
       await refreshData();
       onClose();
     } finally {
@@ -97,7 +98,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
     if (!draftReply) return;
     setIsSaving(true);
     try {
-      await reviewsService.saveReply(review.id, draftReply);
+      await reviewsService.saveReply(organizationId, review.id, draftReply);
       await refreshData();
       onClose();
     } finally {

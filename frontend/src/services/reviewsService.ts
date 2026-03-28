@@ -31721,7 +31721,7 @@ class ReviewsService {
         return orderedMatches;
     }
 
-    private async getBaseData(): Promise<Review[]> {
+    private async getBaseData(organizationId: string): Promise<Review[]> {
         if (this.cachedReviews) return this.cachedReviews;
         if (this.fetchPromise) return this.fetchPromise;
 
@@ -31730,7 +31730,7 @@ class ReviewsService {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-                const response = await fetch('http://127.0.0.1:8000/api', {
+                const response = await fetch(`http://127.0.0.1:8000/api/reviews/${organizationId}`, {
                     signal: controller.signal
                 });
 
@@ -31790,7 +31790,7 @@ class ReviewsService {
             await apiClient.get(`/reviews/${organizationId}`, params as Record<string, unknown>);
         } catch (e) { /* ignore to allow mock fallback */ }
 
-        const baseData = await this.getBaseData();
+        const baseData = await this.getBaseData(organizationId);
         let filteredData = [...baseData];
 
         // Apply search mode based on UI toggle
@@ -31884,7 +31884,7 @@ class ReviewsService {
             await apiClient.get(`/api/reviews/stats/${organizationId}`);
         } catch (e) { /* ignore */ }
 
-        const reviews = await this.getBaseData();
+        const reviews = await this.getBaseData(organizationId);
         const totalReviews = reviews.length;
         let totalRating = 0;
         let pendingReplies = 0;
@@ -31913,7 +31913,7 @@ class ReviewsService {
     }
 
     async getOptions(organizationId: string): Promise<{ sources: string[], categories: string[] }> {
-        const reviews = await this.getBaseData();
+        const reviews = await this.getBaseData(organizationId);
         return {
             sources: Array.from(new Set(reviews.map(r => r.source))).sort(),
             categories: Array.from(new Set(reviews.flatMap(r => r.categories || []))).sort()
@@ -31960,11 +31960,11 @@ class ReviewsService {
     /**
      * Simulated Endpoint: PUT /api/reviews/:id/status
      */
-    async updateReviewStatus(reviewId: string | number, status: Review['status']): Promise<void> {
+    async updateReviewStatus(organizationId: string, reviewId: string | number, status: Review['status']): Promise<void> {
         try {
             await apiClient.put(`/api/reviews/${reviewId}/status`, { status });
         } catch (e) { /* ignore */ }
-        const reviews = await this.getBaseData();
+        const reviews = await this.getBaseData(organizationId);
         const review = reviews.find(r => r.id === reviewId);
         if (review) review.status = status;
     }
@@ -31972,11 +31972,11 @@ class ReviewsService {
     /**
      * Simulated Endpoint: POST /api/reviews/:id/reply
      */
-    async saveReply(reviewId: string | number, replyText: string): Promise<void> {
+    async saveReply(organizationId: string, reviewId: string | number, replyText: string): Promise<void> {
         try {
             await apiClient.post(`/api/reviews/${reviewId}/reply`, { replyText });
         } catch (e) { /* ignore */ }
-        const reviews = await this.getBaseData();
+        const reviews = await this.getBaseData(organizationId);
         const review = reviews.find(r => r.id === reviewId);
         if (review) {
             review.status = 'Replied';
