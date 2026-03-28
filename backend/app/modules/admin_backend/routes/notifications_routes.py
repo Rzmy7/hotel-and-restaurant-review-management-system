@@ -180,3 +180,88 @@ def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
         }
     finally:
         connection.close()
+
+
+@router.delete("/admin/read-all")
+def delete_all_read_notifications(userId: str | None = Query(None)) -> dict:
+    """Delete all read notifications for the user."""
+    connection = pyodbc.connect(get_connection_string())
+    try:
+        cursor = connection.cursor()
+        ensure_notifications_schema(cursor)
+
+        target_user_id = resolve_target_user_id(cursor, userId)
+
+        cursor.execute(
+            """
+            DELETE FROM dbo.user_notifications
+            WHERE user_id = ? AND COALESCE(is_read, 0) = 1
+            """,
+            target_user_id,
+        )
+
+        deleted_count = int(cursor.rowcount or 0)
+        connection.commit()
+
+        return {
+            "success": True,
+            "deleted": deleted_count,
+            "message": "Read notifications cleared",
+        }
+    except Exception as exc:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting notifications: {exc}")
+    finally:
+        connection.close()
+
+
+@router.delete("/{notification_id}")
+def delete_notification(notification_id: str, userId: str | None = Query(None)) -> dict:
+    """Delete a specific notification for the user."""
+    try:
+        parsed_notification_id = str(uuid.UUID(notification_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid notification id")
+
+    connection = pyodbc.connect(get_connection_string())
+    try:
+        cursor = connection.cursor()
+        ensure_notifications_schema(cursor)
+
+        target_user_id = resolve_target_user_id(cursor, userId)
+
+        row = cursor.execute(
+            """
+            SELECT 1
+            FROM dbo.user_notifications
+            WHERE notification_id = ? AND user_id = ?
+            """,
+            parsed_notification_id,
+            target_user_id,
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Notification not found")
+
+        cursor.execute(
+            """
+            DELETE FROM dbo.user_notifications
+            WHERE notification_id = ? AND user_id = ?
+            """,
+            parsed_notification_id,
+            target_user_id,
+        )
+        connection.commit()
+
+        return {
+            "success": True,
+            "message": "Notification deleted",
+        }
+    except HTTPException:
+        connection.rollback()
+        raise
+    except Exception as exc:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting notification: {exc}")
+    finally:
+        connection.close()

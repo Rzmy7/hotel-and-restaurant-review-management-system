@@ -1,7 +1,7 @@
 import React from 'react';
-import { Star, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Megaphone, AlertTriangle, CheckCircle2, Mail } from 'lucide-react';
 
-export type NotificationType = 'review' | 'alert' | 'success' | 'system';
+export type NotificationType = 'announcement' | 'alert' | 'success' | 'system';
 
 interface NotificationIconProps {
     type: NotificationType;
@@ -9,8 +9,8 @@ interface NotificationIconProps {
 }
 
 export const iconMap = {
-    review: {
-        icon: <Star size={18} />,
+    announcement: {
+        icon: <Megaphone size={18} />,
         bg: 'bg-amber-50 dark:bg-amber-900/20',
         color: 'text-amber-500 dark:text-amber-400',
         ring: 'ring-amber-100 dark:ring-amber-800/30',
@@ -28,7 +28,7 @@ export const iconMap = {
         ring: 'ring-emerald-100 dark:ring-emerald-800/30',
     },
     system: {
-        icon: <RefreshCw size={18} />,
+        icon: <Mail size={18} />,
         bg: 'bg-blue-50 dark:bg-blue-900/20',
         color: 'text-blue-500 dark:text-blue-400',
         ring: 'ring-blue-100 dark:ring-blue-800/30',

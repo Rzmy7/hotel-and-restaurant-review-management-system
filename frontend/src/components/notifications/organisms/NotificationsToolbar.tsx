@@ -16,7 +16,7 @@ interface NotificationsToolbarProps {
 const filterTabs = [
     { key: 'all', label: 'All' },
     { key: 'unread', label: 'Unread' },
-    { key: 'review', label: 'Reviews' },
+    { key: 'announcement', label: 'Announcements' },
     { key: 'alert', label: 'Alerts' },
     { key: 'system', label: 'System' },
 ];

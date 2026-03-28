@@ -13,7 +13,7 @@ const mapNotificationType = (type: string): Notification['type'] => {
             return 'alert';
         case 'maintenance':
         case 'announcement':
-            return 'review';
+            return 'announcement';
         case 'info':
         default:
             return 'system';
@@ -45,7 +45,7 @@ const getTimeLabel = (value: string | null): string => {
 /**
  * NotificationsPage Component.
  * 
- * This page serves as a centralized hub for all user notifications, including reviews,
+ * This page serves as a centralized hub for all user notifications, including announcements,
  * system alerts, and analytics updates. It is built using an atomic design structure
  * for maximum maintainability and visual consistency.
  * 
@@ -98,7 +98,7 @@ const NotificationsPage: React.FC = () => {
     const counts = useMemo(() => ({
         all: notifications.length,
         unread: notifications.filter(n => !n.read).length,
-        review: notifications.filter(n => n.type === 'review').length,
+        announcement: notifications.filter(n => n.type === 'announcement').length,
         alert: notifications.filter(n => n.type === 'alert').length,
         system: notifications.filter(n => n.type === 'system').length,
     }), [notifications]);
@@ -146,10 +146,16 @@ const NotificationsPage: React.FC = () => {
     }, []);
 
     /**
-     * Clears all notifications from the system.
+     * Clears all read notifications from the system via API.
      */
-    const handleClearAll = useCallback(() => {
-        setNotifications([]);
+    const handleClearAll = useCallback(async () => {
+        try {
+            await notificationsService.deleteAllReadNotifications();
+            // Remove all read notifications from the UI
+            setNotifications(prev => prev.filter(n => !n.read));
+        } catch (error) {
+            console.error('Failed to clear read notifications:', error);
+        }
     }, []);
 
     const handleFilterChange = (filter: string) => {

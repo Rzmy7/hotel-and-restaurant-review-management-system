@@ -216,4 +216,24 @@ export const notificationsService = {
             { method: 'POST' }
         );
     },
+
+    async deleteAllReadNotifications(): Promise<{ success: boolean; deleted: number; message: string }> {
+        const query = buildQuery();
+        return requestJsonWithFallback<{ success: boolean; deleted: number; message: string }>(
+            buildPaths('/api/notifications/admin/read-all', '/api/notifications/read-all', query),
+            { method: 'DELETE' }
+        );
+    },
+
+    async deleteNotification(notificationId: string): Promise<{ success: boolean; message: string }> {
+        const query = buildQuery();
+        return requestJsonWithFallback<{ success: boolean; message: string }>(
+            buildPaths(
+                `/api/notifications/admin/${encodeURIComponent(notificationId)}`,
+                `/api/notifications/${encodeURIComponent(notificationId)}`,
+                query
+            ),
+            { method: 'DELETE' }
+        );
+    },
 };

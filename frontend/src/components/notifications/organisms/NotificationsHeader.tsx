@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Redesigned NotificationsHeader.
- * Follows the premium design language of the ReviewsPage header.
+ * Follows the premium design language of the notifications pages.
  */
 const NotificationsHeader: React.FC = () => {
     return (
@@ -17,7 +17,7 @@ const NotificationsHeader: React.FC = () => {
                     </span>
                 </div>
                 <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
-                    Track critical alerts, review updates, and system insights
+                    Track critical alerts, announcement updates, and system insights
                 </p>
             </div>
 
