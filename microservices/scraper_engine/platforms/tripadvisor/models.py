@@ -50,6 +50,8 @@ def save_reviews_to_db(reviews: list, source_id: str):
                 reviewer_nationality=r.get("reviewer_origin"),
                 stay_date=r.get("trip_date"),
                 traveler_type=r.get("traveler_type"),
+                likes_count=r.get("likes_count"),
+                reply=r.get("reply_text"),
                 # Granular sub-ratings
                 rating_value=r.get("rating_value"),
                 rating_rooms=r.get("rating_rooms"),

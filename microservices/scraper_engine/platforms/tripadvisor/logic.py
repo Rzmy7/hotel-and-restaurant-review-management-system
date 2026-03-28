@@ -126,7 +126,28 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         dismiss_cookie_banner(page)
         human_delay(1, 2)
 
-
+        # Click the "All reviews()" button to initialize reviews view
+        try:
+            from platforms.tripadvisor.config import tripadvisor_selectors
+            logger.info("Attempting to click 'All reviews' button...")
+            btn = page.query_selector(tripadvisor_selectors.ALL_REVIEWS_BTN)
+            if btn:
+                btn.click()
+                logger.info("Clicked 'All reviews'. Waiting for DOM update...")
+                page.wait_for_timeout(3000)
+                page.screenshot(path="tripadvisor_test_headed_click.png")
+                logger.info("Took screenshot of the review modal.")
+            else:
+                # Playwright specific text locator fallback
+                fallback_btn = page.locator("button:has-text('All reviews')").first
+                if fallback_btn.is_visible():
+                    fallback_btn.click()
+                    logger.info("Clicked 'All reviews' via text locator.")
+                    page.wait_for_timeout(3000)
+                    page.screenshot(path="tripadvisor_test_headed_click.png")
+                    logger.info("Took screenshot of the review modal.")
+        except Exception as e:
+            logger.warning(f"Could not click 'All reviews' button: {e}")
 
         extractor = TripAdvisorExtractor(page)
 
@@ -211,10 +232,10 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             all_reviews.extend(new_reviews)
             logger.info(f"Page {page_num}: {len(new_reviews)} new reviews (total so far: {len(all_reviews)})")
 
-            # Save in batches of 50
-            if len(all_reviews) > 0 and len(all_reviews) % 50 == 0:
-                logger.info(f"Saving batch of {len(all_reviews)} reviews...")
-                save_reviews_to_db(all_reviews[-50:], source_id)
+            # Save batch immediately per extraction
+            if new_reviews:
+                logger.info(f"Saving batch of {len(new_reviews)} reviews to database...")
+                save_reviews_to_db(new_reviews, source_id)
 
             # Pagination check
             if effective_end and current_offset + REVIEWS_PER_PAGE >= effective_end:
@@ -234,10 +255,10 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             human_delay(3, 7)
             jittery_scroll(page)
 
-        # Final save
+        # Final completion
         if all_reviews:
-            logger.info(f"Saving {len(all_reviews)} total reviews to database.")
-            save_reviews_to_db(all_reviews, source_id)
+            logger.info(f"Scraping complete. {len(all_reviews)} total reviews extracted.")
+            # Note: Reviews were saved in batches during pagination.
             save_to_json(all_reviews, str(source_id))
 
             # Identify new reviews vs existing ones

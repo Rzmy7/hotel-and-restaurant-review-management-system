@@ -24,7 +24,8 @@ def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> boo
     payload = {
         "source_id": str(source_id),
         "source_url": url,
-        "headless": True
+        "headless": True,
+        "pages": "*"  # Request full sync for all platforms
     }
     
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
