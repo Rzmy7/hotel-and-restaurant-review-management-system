@@ -20,6 +20,15 @@ type AuthContextType = {
 const API_BASE =
     (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
 
+const clearSetupTemporaryKeys = () => {
+    localStorage.removeItem("setup_pending_organization_id");
+    localStorage.removeItem("setup_pending_organization_name");
+    localStorage.removeItem("setup_snapshot_current_organization");
+    // Backward compatibility cleanup for older setup snapshot keys.
+    localStorage.removeItem("setup_snapshot_organizations");
+    localStorage.removeItem("setup_snapshot_organization_ids");
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -112,6 +121,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                     orgList[0].organization_id
                 );
             }
+
+            clearSetupTemporaryKeys();
 
             // Redirect
             if (orgList.length === 0) {

@@ -3,6 +3,43 @@ import { useNavigate } from 'react-router-dom';
 import { House, Users } from 'lucide-react';
 import axios from "axios";
 
+const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
+const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
+const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
+const SETUP_SNAPSHOT_EMPTY_VALUE = '__none__';
+
+const parseJsonArray = (value: string | null): any[] => {
+    if (!value) return [];
+
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
+
+const clearSetupDraftState = () => {
+    localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
+    localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
+    localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
+    // Remove legacy keys from old implementation.
+    localStorage.removeItem('setup_snapshot_organizations');
+    localStorage.removeItem('setup_snapshot_organization_ids');
+};
+
+const restoreSnapshotOrganizations = () => {
+    const snapshotCurrentOrganization = localStorage.getItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
+
+    if (snapshotCurrentOrganization === SETUP_SNAPSHOT_EMPTY_VALUE) {
+        localStorage.removeItem('current_organization');
+    } else if (snapshotCurrentOrganization !== null) {
+        localStorage.setItem('current_organization', snapshotCurrentOrganization);
+    } else {
+        localStorage.removeItem('current_organization');
+    }
+};
+
 const SetupPage = () => {
     const navigate = useNavigate();
 
@@ -34,6 +71,16 @@ const SetupPage = () => {
             return;
         }
 
+        if (localStorage.getItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY) === null) {
+            const currentOrganization = localStorage.getItem('current_organization');
+
+            if (currentOrganization !== null) {
+                localStorage.setItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY, currentOrganization);
+            } else {
+                localStorage.setItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY, SETUP_SNAPSHOT_EMPTY_VALUE);
+            }
+        }
+
         try {
             const response = await axios.post(
                 "http://localhost:8000/api/organizations",
@@ -50,30 +97,9 @@ const SetupPage = () => {
 
             const organizationId = response?.data?.organization_id;
 
-            const storedOrganizations = localStorage.getItem("organizations");
-            const parsedOrganizations = storedOrganizations ? JSON.parse(storedOrganizations) : [];
-            const organizations = Array.isArray(parsedOrganizations) ? parsedOrganizations : [];
-
-            const organizationExists = organizations.some((org: any) =>
-                org?.organization_id === organizationId ||
-                org?.organization_name === organizationName
-            );
-
-            if (!organizationExists) {
-                organizations.push({
-                    organization_id: organizationId,
-                    organization_name: organizationName,
-                });
-            }
-
-            localStorage.setItem("organizations", JSON.stringify(organizations));
-
-            const organizationIds = organizations
-                .map((org: any) => org?.organization_id)
-                .filter(Boolean);
-            localStorage.setItem("organization_ids", JSON.stringify(organizationIds));
-
             if (organizationId) {
+                localStorage.setItem(SETUP_PENDING_ORG_ID_KEY, organizationId);
+                localStorage.setItem(SETUP_PENDING_ORG_NAME_KEY, organizationName.trim());
                 localStorage.setItem("current_organization", organizationId);
             }
 
@@ -112,9 +138,22 @@ const SetupPage = () => {
     const handleSkip = () => {
         console.log("⏭️ Skip clicked");
 
+        const hasPendingSetupOrganization = Boolean(localStorage.getItem(SETUP_PENDING_ORG_ID_KEY));
+        const hasSnapshot = localStorage.getItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY) !== null;
+
+        if (hasPendingSetupOrganization || hasSnapshot) {
+            restoreSnapshotOrganizations();
+            clearSetupDraftState();
+
+            const committedOrgIds = parseJsonArray(localStorage.getItem('organization_ids'));
+            const hasCommittedOrganizations = committedOrgIds.length > 0;
+
+            navigate(hasCommittedOrganizations ? '/dashboard' : '/no-organization');
+            return;
+        }
+
         const setupComplete = localStorage.getItem("setupComplete") === "true";
-        const existingOrgIdsRaw = localStorage.getItem("organization_ids");
-        const existingOrgIds = existingOrgIdsRaw ? JSON.parse(existingOrgIdsRaw) : [];
+        const existingOrgIds = parseJsonArray(localStorage.getItem("organization_ids"));
         const hasExistingOrganizations = Array.isArray(existingOrgIds) && existingOrgIds.length > 0;
 
         if (hasExistingOrganizations) {

@@ -2,10 +2,60 @@ import { CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 
+const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
+const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
+const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
+
+const parseJsonArray = (value: string | null): any[] => {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const clearSetupDraftState = () => {
+  localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
+  localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
+  localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
+  // Remove legacy keys from old implementation.
+  localStorage.removeItem('setup_snapshot_organizations');
+  localStorage.removeItem('setup_snapshot_organization_ids');
+};
+
 const FinishSetupPage = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
+    const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
+    const pendingOrganizationName = localStorage.getItem(SETUP_PENDING_ORG_NAME_KEY) || 'New Organization';
+
+    if (pendingOrganizationId) {
+      const organizations = parseJsonArray(localStorage.getItem('organizations'));
+      const alreadyExists = organizations.some((org: any) =>
+        org?.organization_id === pendingOrganizationId
+      );
+
+      if (!alreadyExists) {
+        organizations.push({
+          organization_id: pendingOrganizationId,
+          organization_name: pendingOrganizationName,
+        });
+      }
+
+      localStorage.setItem('organizations', JSON.stringify(organizations));
+
+      const organizationIds = organizations
+        .map((org: any) => org?.organization_id)
+        .filter(Boolean);
+      localStorage.setItem('organization_ids', JSON.stringify(organizationIds));
+      localStorage.setItem('current_organization', pendingOrganizationId);
+    }
+
+    clearSetupDraftState();
     localStorage.setItem('setupComplete', 'true');
     navigate('/dashboard');
   };
