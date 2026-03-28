@@ -4,7 +4,22 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { settingsService } from '../services/settingsService';
 import type { ReplyGenerationSettings } from '../services/settingsService';
 
-const GOOGLE_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+const GOOGLE_MODELS = [
+    'gemini-2.0-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-flash-latest',
+    'gemini-pro-latest',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash-lite-preview-09-2025',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
+    'gemini-3-pro-preview',
+    'gemini-3.1-pro-preview',
+    'gemini-3.1-pro-preview-customtools',
+    'gemma-3-4b-it',
+    'gemma-3-12b-it',
+    'gemma-3-27b-it',
+];
 const CLAUDE_MODELS = [
     'claude-sonnet-4-6',
     'claude-sonnet-4-5-20250929',

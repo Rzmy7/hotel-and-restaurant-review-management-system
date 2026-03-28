@@ -277,6 +277,20 @@ class ReplyGenerationApiTestResponse(BaseModel):
     message: str
 
 
+class FeatureFlagResponse(BaseModel):
+    id: str
+    key: str
+    name: str
+    description: str
+    status: Literal["Enabled", "Disabled"]
+    limit: int | None = None
+
+
+class FeatureFlagUpdatePayload(BaseModel):
+    status: Literal["Enabled", "Disabled"]
+    limit: int | None = Field(default=None, ge=1, le=100)
+
+
 # ── Broadcasting schemas ────────────────────────────────────────────
 
 

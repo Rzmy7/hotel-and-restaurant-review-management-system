@@ -1,16 +1,45 @@
 import { Search, Check, ChevronDown, X } from 'lucide-react';
 import { useReviewsStore } from '../../stores/useReviewsStore';
 import { useReviewFilters } from '../../hooks/useReviewFilters';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FilterState } from '../../types/reviews';
+import { featureFlagService } from '../../services/featureFlagService';
 const ReviewsToolbar = () => {
     const sourceOptions = useReviewsStore(state => state.sourceOptions);
     const categoryOptions = useReviewsStore(state => state.categoryOptions);
     const pagination = useReviewsStore(state => state.pagination);
-    const { filters, setSearchQuery, toggleFilter } = useReviewFilters();
+    const { filters, setSearchQuery, setEmbeddingSearch, toggleFilter } = useReviewFilters();
     
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
+    const [searchInput, setSearchInput] = useState(filters.search);
+    const [isContentSearchEnabled, setIsContentSearchEnabled] = useState(false);
+
+    useEffect(() => {
+        setSearchInput(filters.search);
+    }, [filters.search]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadFlag = async () => {
+            const enabled = await featureFlagService.isContentSearchEnabled();
+            if (!cancelled) {
+                setIsContentSearchEnabled(enabled);
+            }
+        };
+
+        loadFlag();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!isContentSearchEnabled && filters.useEmbeddingSearch) {
+            setEmbeddingSearch(false, searchInput);
+        }
+    }, [filters.useEmbeddingSearch, isContentSearchEnabled, searchInput, setEmbeddingSearch]);
 
     // Derived distinct options
     const options = {
@@ -41,7 +70,7 @@ const ReviewsToolbar = () => {
         if (activeMenu !== menu) return null;
 
         const menuOptions = options[menu as keyof typeof options];
-        let filterType: keyof Omit<FilterState, 'search' | 'hasAiReply' | 'dateFrom' | 'dateTo'> | '' = '';
+        let filterType: keyof Omit<FilterState, 'search' | 'hasAiReply' | 'useEmbeddingSearch' | 'dateFrom' | 'dateTo'> | '' = '';
 
         switch (menu) {
             case 'Rating': filterType = 'rating'; break;
@@ -74,7 +103,7 @@ const ReviewsToolbar = () => {
                                 {(filters[filterType] as (string | number)[]).map((val: string | number) => (
                                     <button
                                         key={val}
-                                        onClick={() => toggleFilter(filterType as keyof Omit<FilterState, 'search' | 'hasAiReply' | 'dateFrom' | 'dateTo'>, val)}
+                                        onClick={() => toggleFilter(filterType as keyof Omit<FilterState, 'search' | 'hasAiReply' | 'useEmbeddingSearch' | 'dateFrom' | 'dateTo'>, val)}
                                         className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400 pl-2 pr-1.5 py-1 rounded-md text-[10px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors"
                                         title={`Remove ${val}`}
                                     >
@@ -95,7 +124,7 @@ const ReviewsToolbar = () => {
                             return (
                                 <button
                                     key={opt}
-                                    onClick={() => toggleFilter(filterType as keyof Omit<FilterState, 'search' | 'hasAiReply' | 'dateFrom' | 'dateTo'>, opt)}
+                                    onClick={() => toggleFilter(filterType as keyof Omit<FilterState, 'search' | 'hasAiReply' | 'useEmbeddingSearch' | 'dateFrom' | 'dateTo'>, opt)}
                                     className={`flex items-center justify-between w-full px-3 py-2 text-[13px] font-bold text-left rounded-lg transition-all ${isSelected
                                         ? 'bg-blue-50 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400'
                                         : 'hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300'
@@ -111,18 +140,69 @@ const ReviewsToolbar = () => {
         );
     };
 
+    const triggerSearch = () => {
+        setSearchQuery(searchInput);
+    };
+
+    const handleToggleEmbeddingSearch = () => {
+        const nextValue = !filters.useEmbeddingSearch;
+        setEmbeddingSearch(nextValue, !nextValue ? searchInput : undefined);
+
+        // When toggling back to normal mode, immediately sync current input for instant search behavior.
+        // This is done in the same update to avoid mode-reset race conditions.
+    };
+
     return (
         <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
             {/* Search Bar */}
-            <div className="relative w-full md:w-96 group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-[#4e80ee] transition-colors" size={16} />
-                <input
-                    type="text"
-                    placeholder="Search reviews..."
-                    value={filters.search}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-700 rounded-xl text-[13px] font-bold text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] transition-all outline-none"
-                />
+            <div className="w-full md:w-auto flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="relative w-full md:w-96 group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-[#4e80ee] transition-colors" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search reviews..."
+                        value={searchInput}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            setSearchInput(value);
+
+                            if (!filters.useEmbeddingSearch) {
+                                setSearchQuery(value);
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (filters.useEmbeddingSearch && e.key === 'Enter') {
+                                triggerSearch();
+                            }
+                        }}
+                        className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-700 rounded-xl text-[13px] font-bold text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] transition-all outline-none"
+                    />
+                </div>
+
+                {isContentSearchEnabled && (
+                    <button
+                        type="button"
+                        onClick={handleToggleEmbeddingSearch}
+                        className={`inline-flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all ${filters.useEmbeddingSearch
+                            ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800 text-[#4e80ee] dark:text-blue-400'
+                            : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee]'
+                            }`}
+                        title="Content search"
+                    >
+                        Content Search
+                    </button>
+                )}
+
+                {isContentSearchEnabled && filters.useEmbeddingSearch && (
+                    <button
+                        type="button"
+                        onClick={triggerSearch}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-wider bg-[#4e80ee] text-white hover:bg-blue-600 transition-colors"
+                    >
+                        <Search size={14} />
+                        Search
+                    </button>
+                )}
             </div>
 
             {/* Filters */}
@@ -142,8 +222,6 @@ const ReviewsToolbar = () => {
                         {renderFilterMenu(menu)}
                     </div>
                 ))}
-
-                <div className="h-8 w-px bg-gray-200 dark:bg-slate-700 mx-2 hidden sm:block"></div>
 
                 <div className="text-[11px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">
                     Showing <span className="text-[#4e80ee] dark:text-blue-400 text-[13px]">{pagination.total}</span> results

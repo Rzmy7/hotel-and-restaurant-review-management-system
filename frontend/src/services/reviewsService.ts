@@ -1,6 +1,15 @@
 import type { Review, ReviewStats, FetchReviewsParams, PaginatedResponse } from '../types/reviews';
 import { apiClient } from '../api/client';
 
+interface EmbeddingSearchResult {
+    id: string;
+    text: string;
+}
+
+interface EmbeddingSearchResponse {
+    reviews?: EmbeddingSearchResult[];
+}
+
 // Mock Data
 const MOCK_REVIEWS: Review[] = [
     {
@@ -31655,6 +31664,63 @@ class ReviewsService {
     private cachedReviews: Review[] | null = null;
     private fetchPromise: Promise<Review[]> | null = null;
 
+    private getEmbeddingServiceUrl(): string {
+        const envUrl = import.meta.env.VITE_EMBEDDING_SERVICE_URL;
+        const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('embeddingServiceUrl') : null;
+        return storedUrl || envUrl || 'http://localhost:8001';
+    }
+
+    private async runEmbeddingSearch(baseData: Review[], params: FetchReviewsParams): Promise<Review[]> {
+        const query = params.search?.trim();
+        if (!query) {
+            return baseData;
+        }
+
+        const topK = Math.max((params.limit || 15) * 3, 15);
+        const response = await fetch(`${this.getEmbeddingServiceUrl()}/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query,
+                hotel_id: 1,
+                top_k: topK
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Embedding search failed with status ${response.status}`);
+        }
+
+        const payload = await response.json() as EmbeddingSearchResponse;
+        const embeddingMatches = Array.isArray(payload.reviews) ? payload.reviews : [];
+
+        if (embeddingMatches.length === 0) {
+            return [];
+        }
+
+        const byId = new Map(baseData.map((review) => [String(review.id), review]));
+        const byText = new Map(baseData.map((review) => [review.reviewText.trim().toLowerCase(), review]));
+        const orderedMatches: Review[] = [];
+        const seen = new Set<string>();
+
+        for (const match of embeddingMatches) {
+            const byIdMatch = byId.get(String(match.id));
+            const byTextMatch = byText.get((match.text || '').trim().toLowerCase());
+            const resolved = byIdMatch || byTextMatch;
+            if (!resolved) {
+                continue;
+            }
+
+            const key = String(resolved.id);
+            if (!seen.has(key)) {
+                orderedMatches.push(resolved);
+                seen.add(key);
+            }
+        }
+
+        return orderedMatches;
+    }
+
     private async getBaseData(): Promise<Review[]> {
         if (this.cachedReviews) return this.cachedReviews;
         if (this.fetchPromise) return this.fetchPromise;
@@ -31727,12 +31793,24 @@ class ReviewsService {
         const baseData = await this.getBaseData();
         let filteredData = [...baseData];
 
-        // Apply string search
+        // Apply search mode based on UI toggle
         if (params.search) {
-            const query = params.search.toLowerCase();
-            filteredData = filteredData.filter(
-                (r) => r.reviewText.toLowerCase().includes(query) || r.userName.toLowerCase().includes(query)
-            );
+            if (params.useEmbeddingSearch) {
+                try {
+                    filteredData = await this.runEmbeddingSearch(filteredData, params);
+                } catch (error) {
+                    console.warn('Embedding search failed, falling back to text search:', error);
+                    const query = params.search.toLowerCase();
+                    filteredData = filteredData.filter(
+                        (r) => r.reviewText.toLowerCase().includes(query) || r.userName.toLowerCase().includes(query)
+                    );
+                }
+            } else {
+                const query = params.search.toLowerCase();
+                filteredData = filteredData.filter(
+                    (r) => r.reviewText.toLowerCase().includes(query) || r.userName.toLowerCase().includes(query)
+                );
+            }
         }
 
         if (params.rating && params.rating.length > 0) {

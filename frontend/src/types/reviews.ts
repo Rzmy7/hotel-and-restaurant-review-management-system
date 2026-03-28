@@ -30,6 +30,7 @@ export interface ReviewStats {
 
 export interface FilterState {
     search: string;
+    useEmbeddingSearch: boolean;
     rating: number[];
     sentiment: string[];
     source: string[];

@@ -8,6 +8,8 @@ from google import genai
 from app.modules.admin_backend.db_utils import get_connection_string
 from app.modules.admin_backend.schemas import GeneralSettingsPayload, GeneralSettingsResponse
 from app.modules.admin_backend.schemas import (
+    FeatureFlagResponse,
+    FeatureFlagUpdatePayload,
     ReplyGenerationApiTestPayload,
     ReplyGenerationApiTestResponse,
     ReplyGenerationSettingsPayload,
@@ -38,6 +40,67 @@ CLAUDE_MODEL_ALIASES: dict[str, str] = {
     "claude-3-opus-latest": "claude-opus-4-6",
     "claude-3-opus-20240229": "claude-opus-4-6",
 }
+
+
+FEATURE_FLAG_DEFINITIONS = {
+    "content_search_embeddings": {
+        "id": "1",
+        "name": "Content Search by Embeddings",
+        "description": "Enable semantic search across reviews and content using vector embeddings",
+        "status_key": "feature_flag_content_search_embeddings",
+    },
+    "reply_regeneration_limit": {
+        "id": "2",
+        "name": "Reply Regeneration Limit",
+        "description": "Set maximum number of times a reply can be regenerated per review",
+        "status_key": "feature_flag_reply_regeneration_limit",
+        "limit_key": "feature_flag_reply_regeneration_limit_value",
+    },
+}
+
+
+def _normalize_flag_status(raw_value: str | None, default: str = "Enabled") -> str:
+    normalized = (raw_value or "").strip().lower()
+    if normalized in {"disabled", "false", "0"}:
+        return "Disabled"
+    if normalized in {"enabled", "true", "1"}:
+        return "Enabled"
+    return default
+
+
+def _load_feature_flags(cursor: pyodbc.Cursor) -> list[FeatureFlagResponse]:
+    flags: list[FeatureFlagResponse] = []
+
+    for key, definition in FEATURE_FLAG_DEFINITIONS.items():
+        status = _normalize_flag_status(get_setting(cursor, definition["status_key"]))
+        limit_value: int | None = None
+
+        limit_key = definition.get("limit_key")
+        if limit_key:
+            raw_limit = (get_setting(cursor, limit_key) or "").strip()
+            if raw_limit:
+                try:
+                    parsed_limit = int(raw_limit)
+                    if parsed_limit > 0:
+                        limit_value = parsed_limit
+                except ValueError:
+                    limit_value = None
+
+            if limit_value is None:
+                limit_value = 3
+
+        flags.append(
+            FeatureFlagResponse(
+                id=definition["id"],
+                key=key,
+                name=definition["name"],
+                description=definition["description"],
+                status=status,
+                limit=limit_value,
+            )
+        )
+
+    return flags
 
 
 def _infer_provider_from_model(model: str) -> str:
@@ -241,3 +304,47 @@ def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> Rep
             success=False,
             message=f"API key test failed: {exc}",
         )
+
+
+@router.get("/feature-flags", response_model=list[FeatureFlagResponse])
+def get_feature_flags() -> list[FeatureFlagResponse]:
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+            return _load_feature_flags(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}") from exc
+
+
+@router.patch("/feature-flags/{flag_key}", response_model=FeatureFlagResponse)
+def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> FeatureFlagResponse:
+    definition = FEATURE_FLAG_DEFINITIONS.get(flag_key)
+    if not definition:
+        raise HTTPException(status_code=404, detail="Feature flag not found")
+
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            set_setting(cursor, definition["status_key"], payload.status)
+
+            limit_key = definition.get("limit_key")
+            if limit_key:
+                next_limit = payload.limit if payload.limit is not None else 3
+                set_setting(cursor, limit_key, str(next_limit))
+
+            connection.commit()
+
+            updated_flags = _load_feature_flags(cursor)
+            for flag in updated_flags:
+                if flag.key == flag_key:
+                    return flag
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update feature flag: {exc}") from exc
+
+    raise HTTPException(status_code=500, detail="Feature flag update failed")
