@@ -71,3 +71,12 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
+    @property
+    def full_name(self) -> str:
+        parts = []
+        if self.first_name:
+            parts.append(self.first_name)
+        if self.last_name:
+            parts.append(self.last_name)
+        return " ".join(parts) if parts else ""

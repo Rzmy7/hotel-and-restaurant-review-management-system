@@ -131,6 +131,8 @@ app = FastAPI(
 
 # ── Middleware ──────────────────────────────────────────────────────
 
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS if isinstance(CORS_ORIGINS, list) else [
@@ -141,8 +143,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # ── Register routers ───────────────────────────────────────────────
 
