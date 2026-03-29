@@ -7,6 +7,7 @@ import { apiClient } from '../api/client';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
 const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
 const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
+const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
 const SETUP_SNAPSHOT_EMPTY_VALUE = '__none__';
 
 const parseJsonArray = (value: string | null): any[] => {
@@ -22,9 +23,25 @@ const parseJsonArray = (value: string | null): any[] => {
 const clearSetupDraftState = () => {
     localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
     localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
+    localStorage.removeItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY);
     localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
     localStorage.removeItem('setup_snapshot_organizations');
     localStorage.removeItem('setup_snapshot_organization_ids');
+};
+
+const discardPendingSetupOrganizationIfNeeded = async () => {
+    const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
+    const membershipCreated = localStorage.getItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY) === 'true';
+
+    if (!pendingOrganizationId || !membershipCreated) {
+        return;
+    }
+
+    try {
+        await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`);
+    } catch (error) {
+        console.warn('Failed to discard pending setup organization from backend:', error);
+    }
 };
 
 const restoreSnapshotOrganizations = () => {
@@ -99,10 +116,12 @@ const SetupPage = () => {
             });
 
             const organizationId = data?.organization_id;
+            const membershipCreated = Boolean(data?.membership_created);
 
             if (organizationId) {
                 localStorage.setItem(SETUP_PENDING_ORG_ID_KEY, organizationId);
                 localStorage.setItem(SETUP_PENDING_ORG_NAME_KEY, orgName.trim());
+                localStorage.setItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY, membershipCreated ? 'true' : 'false');
                 localStorage.setItem("current_organization", organizationId);
             }
 
@@ -130,11 +149,12 @@ const SetupPage = () => {
         }
     };
 
-    const handleSkip = () => {
+    const handleSkip = async () => {
         const hasPendingSetupOrganization = Boolean(localStorage.getItem(SETUP_PENDING_ORG_ID_KEY));
         const hasSnapshot = localStorage.getItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY) !== null;
 
         if (hasPendingSetupOrganization || hasSnapshot) {
+            await discardPendingSetupOrganizationIfNeeded();
             restoreSnapshotOrganizations();
             clearSetupDraftState();
 
