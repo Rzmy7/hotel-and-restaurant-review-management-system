@@ -6,6 +6,7 @@ import SetupLayout from '../components/shared/SetupLayout';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
 const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
 const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
+const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
 
 const parseJsonArray = (value: string | null): any[] => {
   if (!value) return [];
@@ -21,6 +22,7 @@ const parseJsonArray = (value: string | null): any[] => {
 const clearSetupDraftState = () => {
   localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
   localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
+  localStorage.removeItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY);
   localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
   // Remove legacy keys from old implementation.
   localStorage.removeItem('setup_snapshot_organizations');

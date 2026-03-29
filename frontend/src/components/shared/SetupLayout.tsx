@@ -3,6 +3,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { LogOut, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { apiClient } from '../../api/client';
 
 interface SetupLayoutProps {
   currentStep: number;
@@ -28,6 +29,24 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
   maxWidthClass = 'max-w-3xl',
 }) => {
   const navigate = useNavigate();
+    const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
+    const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
+
+    const discardPendingSetupOrganizationIfNeeded = async () => {
+        const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
+        const membershipCreated = localStorage.getItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY) === 'true';
+
+        if (!pendingOrganizationId || !membershipCreated) {
+            return;
+        }
+
+        try {
+            await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`);
+        } catch (error) {
+            console.warn('Failed to discard pending setup organization from backend:', error);
+        }
+    };
+
   const steps = [
     { number: 1, label: 'Organization' },
     { number: 2, label: 'Sources' },
@@ -36,8 +55,10 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
     { number: 5, label: 'Finish' },
   ];
 
-  const handleExit = () => {
+    const handleExit = async () => {
     if (confirm('Are you sure you want to exit setup? Your progress might not be saved.')) {
+            await discardPendingSetupOrganizationIfNeeded();
+
       // Restore previous organization focus if we were midway through setup
       const snapshotCurrentOrganization = localStorage.getItem('setup_snapshot_current_organization');
       if (snapshotCurrentOrganization === '__none__') {
@@ -49,6 +70,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
       // Clear temporary setup state
       localStorage.removeItem('setup_pending_organization_id');
       localStorage.removeItem('setup_pending_organization_name');
+            localStorage.removeItem('setup_pending_membership_created');
       localStorage.removeItem('setup_snapshot_current_organization');
       localStorage.removeItem('setup_snapshot_organizations');
       localStorage.removeItem('setup_snapshot_organization_ids');

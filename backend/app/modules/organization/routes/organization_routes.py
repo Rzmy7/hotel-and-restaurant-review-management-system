@@ -46,6 +46,7 @@ def create_organization(
 
     if existing_org:
         org_id = existing_org[0]
+        organization_created = False
     else:
         # insert organization
         result = db.execute(
@@ -62,6 +63,7 @@ def create_organization(
         )
 
         org_id = result.fetchone()[0]
+        organization_created = True
 
     # link user to organization
     existing_user_org = db.execute(
@@ -87,10 +89,111 @@ def create_organization(
                 "org_id": org_id
             }
         )
+        membership_created = True
+    else:
+        membership_created = False
 
     db.commit()
 
     return {
         "message": "Organization created successfully",
-        "organization_id": str(org_id)
+        "organization_id": str(org_id),
+        "organization_created": organization_created,
+        "membership_created": membership_created,
     }
+
+@router.delete("/organizations/{org_id}")
+def delete_organization(
+    org_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    # check if user is linked to org
+    existing_link = db.execute(
+        text("""
+            SELECT 1 FROM dbo.user_organizations
+            WHERE user_id = :user_id AND organization_id = :org_id
+        """),
+        {"user_id": user.user_id, "org_id": org_id}
+    ).fetchone()
+
+    if not existing_link:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this organization")
+
+    # delete link
+    db.execute(
+        text("""
+            DELETE FROM dbo.user_organizations
+            WHERE user_id = :user_id AND organization_id = :org_id
+        """),
+        {"user_id": user.user_id, "org_id": org_id}
+    )
+
+    # delete sources mapping if any
+    db.execute(
+        text("""
+            DELETE FROM dbo.sources_source
+            WHERE organization_id = :org_id
+        """),
+        {"org_id": org_id}
+    )
+
+    # delete org
+    db.execute(
+        text("""
+            DELETE FROM dbo.organizations_source
+            WHERE organization_id = :org_id
+        """),
+        {"org_id": org_id}
+    )
+
+    db.commit()
+
+    return {"message": "Organization deleted successfully"}
+
+
+@router.delete("/setup/organizations/{org_id}/discard")
+def discard_setup_organization(
+    org_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    try:
+        existing_link = db.execute(
+            text(
+                """
+                SELECT 1
+                FROM dbo.user_organizations
+                WHERE user_id = :user_id AND organization_id = :org_id
+                """
+            ),
+            {"user_id": user.user_id, "org_id": org_id}
+        ).fetchone()
+
+        if not existing_link:
+            return {
+                "message": "Organization membership already cleared",
+                "organization_id": org_id,
+                "discarded": False,
+            }
+
+        db.execute(
+            text(
+                """
+                DELETE FROM dbo.user_organizations
+                WHERE user_id = :user_id AND organization_id = :org_id
+                """
+            ),
+            {"user_id": user.user_id, "org_id": org_id}
+        )
+
+        db.commit()
+
+        return {
+            "message": "Setup organization discarded",
+            "organization_id": org_id,
+            "discarded": True,
+        }
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to discard setup organization")
