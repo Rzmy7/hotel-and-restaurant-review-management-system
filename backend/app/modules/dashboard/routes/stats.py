@@ -5,15 +5,15 @@ from app.modules.dashboard.services.stats_service import get_stats, get_distribu
 router = APIRouter()
 
 @router.get("/dashboard/stats")
-def stats():
+def stats(org_id: str):
     try:
-        return get_stats()
+        return get_stats(org_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard/distribution")
-def distribution():
+def distribution(org_id: str = None):
     try:
-        return get_distribution()
+        return get_distribution(org_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

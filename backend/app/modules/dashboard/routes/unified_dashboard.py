@@ -12,8 +12,8 @@ def get_unified_dashboard(org_id: str):
     Returns a unified dashboard response matching the frontend DashboardResponse interface.
     """
     try:
-        stats = get_stats()
-        dist = get_distribution()
+        stats = get_stats(org_id)
+        dist = get_distribution(org_id)
         alerts = get_alerts()
         recent_reviews = get_recent_reviews()
         
