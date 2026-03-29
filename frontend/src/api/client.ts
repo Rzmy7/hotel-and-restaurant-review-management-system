@@ -39,8 +39,20 @@ async function handleResponse(response: Response) {
     return {};
 }
 
+const getHeaders = (customHeaders?: Record<string, string>) => {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...customHeaders
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+};
+
 export const apiClient = {
-    async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+    async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         console.log(`[API GET] ${fullUrl}`, params);
         
@@ -55,47 +67,53 @@ export const apiClient = {
             queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
         }
 
-        const response = await fetch(`${fullUrl}${queryString}`);
+        const response = await fetch(`${fullUrl}${queryString}`, {
+            method: 'GET',
+            headers: getHeaders(customHeaders)
+        });
         return handleResponse(response);
     },
 
-    async post<T>(url: string, body?: Record<string, unknown>): Promise<T> {
+    async post<T>(url: string, body?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         console.log(`[API POST] ${fullUrl}`, body);
         const response = await fetch(fullUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getHeaders(customHeaders),
             body: body ? JSON.stringify(body) : undefined,
         });
         return handleResponse(response);
     },
 
-    async put<T>(url: string, body: any): Promise<T> {
+    async put<T>(url: string, body: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         console.log(`[API PUT] ${fullUrl}`, body);
         const response = await fetch(fullUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getHeaders(customHeaders),
             body: body ? JSON.stringify(body) : undefined,
         });
         return handleResponse(response);
     },
 
-    async patch<T>(url: string, body: any): Promise<T> {
+    async patch<T>(url: string, body: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         console.log(`[API PATCH] ${fullUrl}`, body);
         const response = await fetch(fullUrl, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getHeaders(customHeaders),
             body: body ? JSON.stringify(body) : undefined,
         });
         return handleResponse(response);
     },
 
-    async delete<T>(url: string): Promise<T> {
+    async delete<T>(url: string, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         console.log(`[API DELETE] ${fullUrl}`);
-        const response = await fetch(fullUrl, { method: 'DELETE' });
+        const response = await fetch(fullUrl, { 
+            method: 'DELETE',
+            headers: getHeaders(customHeaders)
+        });
         return handleResponse(response);
     }
 };
