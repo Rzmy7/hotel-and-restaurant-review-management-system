@@ -38,6 +38,21 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
 
   const handleExit = () => {
     if (confirm('Are you sure you want to exit setup? Your progress might not be saved.')) {
+      // Restore previous organization focus if we were midway through setup
+      const snapshotCurrentOrganization = localStorage.getItem('setup_snapshot_current_organization');
+      if (snapshotCurrentOrganization === '__none__') {
+          localStorage.removeItem('current_organization');
+      } else if (snapshotCurrentOrganization !== null) {
+          localStorage.setItem('current_organization', snapshotCurrentOrganization);
+      }
+      
+      // Clear temporary setup state
+      localStorage.removeItem('setup_pending_organization_id');
+      localStorage.removeItem('setup_pending_organization_name');
+      localStorage.removeItem('setup_snapshot_current_organization');
+      localStorage.removeItem('setup_snapshot_organizations');
+      localStorage.removeItem('setup_snapshot_organization_ids');
+
       navigate('/dashboard');
     }
   };
