@@ -62,7 +62,7 @@ const SignUpPage = () => {
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
     const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
-    window.location.href = `${apiBase}/api/login/google`;
+    window.location.href = `${apiBase}/login/google`;
   };
 
   return (
