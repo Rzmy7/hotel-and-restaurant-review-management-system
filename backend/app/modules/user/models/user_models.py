@@ -8,6 +8,7 @@ from app.core.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
 
@@ -61,6 +62,12 @@ class User(Base):
 
     password_reset_tokens = relationship(
         "PasswordResetToken",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    notifications = relationship(
+        "UserNotification",
         back_populates="user",
         cascade="all, delete-orphan"
     )

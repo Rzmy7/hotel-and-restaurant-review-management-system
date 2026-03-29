@@ -7,16 +7,10 @@ from datetime import datetime
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-<<<<<<<< HEAD:backend/app/modules/auth/services/login_service.py
-from app.core.security import verify_password, create_access_token
-from app.modules.auth.repository import get_user_by_email
-from app.modules.auth.repository import get_user_primary_role
-========
-from app.models import User
+from app.modules.user.repositories.users_repo import get_user_by_email
 from app.modules.auth.repositories.roles_repo import get_user_primary_role
 from app.modules.auth.utils.password_utils import verify_password
 from app.modules.auth.services.jwt_service import create_access_token
->>>>>>>> hansi-UserManagement:backend/app/modules/auth/services/auth_service.py
 
 
 def login_user(db: Session, email: str, password: str) -> dict:
@@ -67,15 +61,7 @@ def login_user(db: Session, email: str, password: str) -> dict:
         "user": {
             "user_id": str(user.user_id),
             "email": user.email,
-<<<<<<<< HEAD:backend/app/modules/auth/services/login_service.py
             "full_name": user.full_name,
             "role": role,
         },
     }
-========
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "role": role
-        }
-    }
->>>>>>>> hansi-UserManagement:backend/app/modules/auth/services/auth_service.py

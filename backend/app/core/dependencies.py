@@ -8,13 +8,8 @@ get_current_user extracts the authenticated user from a Bearer JWT.
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from jose import JWTError
-<<<<<<<< HEAD:backend/app/core/dependencies.py
-
-from app.database import get_db  # noqa: F401 — re-exported
-from app.core.security import decode_access_token
-========
+from app.database import get_db  # noqa: F401
 from app.modules.auth.services.jwt_service import decode_access_token
->>>>>>>> hansi-UserManagement:backend/app/modules/auth/dependencies/auth_dependencies.py
 
 security = HTTPBearer()
 

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models import Role, UserRole
+from app.modules.auth.models import Role, UserRole
 
 
 # --------------------------------------------------

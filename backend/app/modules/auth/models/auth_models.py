@@ -8,6 +8,7 @@ from app.core.database import Base
 
 class Role(Base):
     __tablename__ = "roles"
+    __table_args__ = {'extend_existing': True}
 
     role_id = Column(Integer, primary_key=True, autoincrement=True)
     role_name = Column(String(100), unique=True, nullable=False)
@@ -23,6 +24,7 @@ class Role(Base):
 
 class UserRole(Base):
     __tablename__ = "user_roles"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(
         UNIQUEIDENTIFIER,
@@ -46,6 +48,7 @@ class UserRole(Base):
 
 class Session(Base):
     __tablename__ = "sessions"
+    __table_args__ = {'extend_existing': True}
 
     session_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(
@@ -72,6 +75,7 @@ class Session(Base):
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
+    __table_args__ = {'extend_existing': True}
 
     token_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(

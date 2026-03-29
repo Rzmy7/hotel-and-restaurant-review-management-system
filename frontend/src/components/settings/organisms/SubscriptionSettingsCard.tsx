@@ -4,7 +4,7 @@ import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import type { SubscriptionSettings } from '../../../types/settings';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
     fetchSubscriptionPlans,
     fetchSubscriptionUsage,

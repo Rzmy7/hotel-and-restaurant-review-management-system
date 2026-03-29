@@ -224,6 +224,7 @@ const ProfilePage: React.FC = () => {
             onCancel={handleCancel}
             onPhotoChange={handlePhotoChange}
             isSaving={isSaving}
+            isUploading={isUploading}
         />
     );
 };

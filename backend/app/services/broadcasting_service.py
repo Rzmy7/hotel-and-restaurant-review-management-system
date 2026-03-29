@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.constants.roles import SYSTEM_ADMIN
-from app.models import BroadcastEvent, Notification, Role, User, UserNotification, UserRole
+from app.modules.auth.constants.roles import SYSTEM_ADMIN
+from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification, UserRole
 
 logger = logging.getLogger(__name__)
 

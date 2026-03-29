@@ -16,3 +16,6 @@ itsdangerous
 bcrypt
 PyJWT
 supabase
+authlib
+passlib
+protobuf

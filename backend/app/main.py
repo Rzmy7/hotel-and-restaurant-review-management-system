@@ -94,6 +94,12 @@ try:
 except ImportError:
     admin_backend_router = None
 
+# ── Pre-load ORM models so SQLAlchemy can resolve cross-module relationships ──
+import app.modules.user.models.user_models          # noqa: F401  (User)
+import app.modules.auth.models.auth_models          # noqa: F401  (Role, UserRole, Session, PasswordResetToken)
+import app.modules.auth.models                      # noqa: F401  (Notification, UserNotification, BroadcastEvent)
+import app.modules.groups.models                    # noqa: F401  (Group, GroupMember)
+
 # Hansi UserManagement routers
 from app.modules.user.routes.profile_routes import router as profile_router
 from app.modules.organization.routes.organization_routes import router as org_router
@@ -153,7 +159,7 @@ if admin_router:
 if groups_router:
     app.include_router(groups_router, prefix="/api")
 if legacy_source_router:
-    app.include_router(legacy_source_router, prefix="/api/legacy-sources")
+    app.include_router(legacy_source_router, prefix="/api")
 if admin_backend_router:
     app.include_router(admin_backend_router)
 

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { reviewsService } from '../services/reviewsService';
 import type { Review, ReviewStats, FetchReviewsParams, PaginatedResponse } from '../types/reviews';
 
-export function useReviewsData(params: FetchReviewsParams) {
+export function useReviewsData(organizationId: string, params: FetchReviewsParams) {
     const [paginatedData, setPaginatedData] = useState<PaginatedResponse<Review>>({
         data: [],
         total: 0,
@@ -23,9 +23,9 @@ export function useReviewsData(params: FetchReviewsParams) {
 
         try {
             const [fetchedReviews, fetchedStats, fetchedOptions] = await Promise.all([
-                reviewsService.getReviews(params),
-                reviewsService.getStats(),
-                reviewsService.getOptions()
+                reviewsService.getReviews(organizationId, params),
+                reviewsService.getStats(organizationId),
+                reviewsService.getOptions(organizationId)
             ]);
 
             setPaginatedData(fetchedReviews);
@@ -37,7 +37,7 @@ export function useReviewsData(params: FetchReviewsParams) {
         } finally {
             setIsLoading(false);
         }
-    }, [JSON.stringify(params)]);
+    }, [organizationId, JSON.stringify(params)]);
 
     useEffect(() => {
         fetchReviews();

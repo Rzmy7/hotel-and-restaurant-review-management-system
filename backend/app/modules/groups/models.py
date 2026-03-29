@@ -13,12 +13,13 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
 
-from app.database import Base
-from app.constants.roles import GROUP_MANAGER, GROUP_MEMBER
+from app.core.database import Base
+from app.modules.auth.constants.roles import GROUP_MANAGER, GROUP_MEMBER
 
 
 class Group(Base):
     __tablename__ = "groups"
+    __table_args__ = {'extend_existing': True}
 
     group_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     group_name = Column(String(255), nullable=False)
@@ -33,7 +34,7 @@ class Group(Base):
         nullable=False,
     )
 
-    creator = relationship("app.modules.auth.models.User", backref="created_groups")
+    creator = relationship("User", backref="created_groups")
     members = relationship(
         "GroupMember", back_populates="group", cascade="all, delete-orphan"
     )
@@ -49,6 +50,7 @@ class GroupMember(Base):
             "role IN ('GROUP_MANAGER', 'GROUP_MEMBER')",
             name="ck_group_members_role_valid",
         ),
+        {'extend_existing': True}
     )
 
     membership_id = Column(
@@ -72,4 +74,4 @@ class GroupMember(Base):
     )
 
     group = relationship("Group", back_populates="members")
-    user = relationship("app.modules.auth.models.User", backref="group_memberships")
+    user = relationship("User", backref="group_memberships")

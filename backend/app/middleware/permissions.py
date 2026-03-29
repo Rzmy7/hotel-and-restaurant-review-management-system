@@ -6,7 +6,7 @@ Cross-cutting concern: used by multiple domain modules.
 
 from fastapi import Depends, HTTPException, status
 
-from app.constants.roles import SYSTEM_ADMIN, TENANT
+from app.modules.auth.constants.roles import SYSTEM_ADMIN, TENANT
 from app.core.dependencies import get_current_user
 from app.modules.groups.repository import get_user_group_role
 

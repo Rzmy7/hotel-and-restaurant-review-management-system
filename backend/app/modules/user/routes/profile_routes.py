@@ -9,7 +9,7 @@ from app.modules.user.services.profile_service import (
     upload_profile_image,   
 )
 from app.modules.auth.utils.auth_utils import get_current_user
-from app.models import User
+from app.modules.auth.models import User
 
 # Create router with base path /users
 router = APIRouter(prefix="/users", tags=["Profile"])

@@ -7,7 +7,7 @@ Merged from users_repo.py and roles_repo.py.
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.modules.auth.models import User, UserRole, Role
-from app.constants.roles import TENANT, SYSTEM_ADMIN
+from app.modules.auth.constants.roles import TENANT, SYSTEM_ADMIN
 
 
 # ── Users ───────────────────────────────────────────────────────────

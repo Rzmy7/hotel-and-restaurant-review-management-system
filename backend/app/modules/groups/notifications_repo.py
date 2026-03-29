@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models import Notification, UserNotification
+from app.modules.auth.models import Notification, UserNotification
 
 
 def create_notification(

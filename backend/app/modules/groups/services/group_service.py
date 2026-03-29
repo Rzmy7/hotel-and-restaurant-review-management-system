@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.modules.groups.models import Group, GroupMember
-from app.constants.roles import GROUP_MANAGER, GROUP_MEMBER
+from app.modules.auth.constants.roles import GROUP_MANAGER, GROUP_MEMBER
 from app.modules.groups.repository import create_group, add_member_to_group
 from app.middleware.permissions import require_group_manager
 

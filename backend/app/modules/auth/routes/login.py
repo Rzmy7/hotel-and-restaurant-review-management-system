@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.modules.auth.schemas import LoginModel
-from app.modules.auth.services.login_service import login_user
+from app.modules.auth.services.auth_service import login_user
 
 router = APIRouter()
 

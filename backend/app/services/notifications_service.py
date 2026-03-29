@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.models import UserNotification
+from app.modules.auth.models import UserNotification
 from app.repositories.notifications_repo import (
     create_notification,
     list_notifications_for_user,

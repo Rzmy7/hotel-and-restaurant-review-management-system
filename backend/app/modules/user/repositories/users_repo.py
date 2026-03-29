@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models import User, UserRole, Role
+from app.modules.auth.models import User, UserRole, Role
 from app.modules.auth.constants.roles import TENANT
 
 
