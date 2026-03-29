@@ -69,14 +69,13 @@ def get_organizations_by_tenant(db: Session, tenant_id: uuid.UUID) -> List[Organ
     return db.query(OrganizationSource).filter(OrganizationSource.tenant_id == tenant_id).all()
 
 def get_organization_sources_with_stats(
-    db: Session, tenant_id: uuid.UUID, organization_id: uuid.UUID
+    db: Session, organization_id: uuid.UUID
 ) -> OrganizationSourceDetails:
     # Fetch organization and its sources in a single query with joinedload
     org = db.query(OrganizationSource).options(
         joinedload(OrganizationSource.sources).joinedload(SourceSource.platform)
     ).filter(
-        OrganizationSource.organization_id == organization_id,
-        OrganizationSource.tenant_id == tenant_id
+        OrganizationSource.organization_id == organization_id
     ).first()
     
     if not org:
@@ -94,7 +93,6 @@ def get_organization_sources_with_stats(
     for source in org.sources:
         sources_read.append(SourceRead(
             source_id=source.source_id,
-            tenant_id=source.tenant_id,
             organization_id=source.organization_id,
             platform_id=source.platform_id,
             platform_name=source.platform.platform_name,
@@ -139,9 +137,8 @@ def get_organization_sources_with_stats(
     )
 
 def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
-    # Check if a source already exists for this tenant, org, and platform
+    # Check if a source already exists for this org, and platform
     existing = db.query(SourceSource).filter(
-        SourceSource.tenant_id == source_data.tenant_id,
         SourceSource.organization_id == source_data.organization_id,
         SourceSource.platform_id == source_data.platform_id
     ).first()
@@ -154,7 +151,6 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
 
     now = datetime.now(timezone.utc)
     new_source = SourceSource(
-        tenant_id=source_data.tenant_id,
         organization_id=source_data.organization_id,
         platform_id=source_data.platform_id,
         source_url=source_data.source_url,
@@ -174,7 +170,6 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
 
     return SourceRead(
         source_id=source.source_id,
-        tenant_id=source.tenant_id,
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
@@ -219,7 +214,6 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
     
     return SourceRead(
         source_id=source.source_id,
-        tenant_id=source.tenant_id,
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
@@ -251,15 +245,16 @@ def delete_source(db: Session, source_id: uuid.UUID):
     return {"message": "Source deleted successfully"}
 
 def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
-    sources = db.query(SourceSource).options(
+    sources = db.query(SourceSource).join(
+        OrganizationSource, SourceSource.organization_id == OrganizationSource.organization_id
+    ).options(
         joinedload(SourceSource.platform)
     ).filter(
-        SourceSource.tenant_id == tenant_id
+        OrganizationSource.tenant_id == tenant_id
     ).all()
     return [
         SourceRead(
             source_id=s.source_id,
-            tenant_id=s.tenant_id,
             organization_id=s.organization_id,
             platform_id=s.platform_id,
             platform_name=s.platform.platform_name,
@@ -274,15 +269,14 @@ def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
     ]
 
 def get_sync_logs(
-    db: Session, tenant_id: uuid.UUID, organization_id: uuid.UUID, skip: int = 0, limit: int = 10
+    db: Session, organization_id: uuid.UUID, skip: int = 0, limit: int = 10
 ) -> List[SyncLogRead]:
-    # Fetch logs for sources belonging to this organization/tenant
+    # Fetch logs for sources belonging to this organization
     logs = db.query(SyncLogSource).join(
         SourceSource, SyncLogSource.source_id == SourceSource.source_id
     ).options(
         joinedload(SyncLogSource.source).joinedload(SourceSource.platform)
     ).filter(
-        SourceSource.tenant_id == tenant_id,
         SourceSource.organization_id == organization_id
     ).order_by(
         SyncLogSource.timestamp.desc()
@@ -360,7 +354,6 @@ def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusReq
     
     return SourceRead(
         source_id=source.source_id,
-        tenant_id=source.tenant_id,
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
@@ -392,7 +385,6 @@ def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
     
     return SourceRead(
         source_id=source.source_id,
-        tenant_id=source.tenant_id,
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,

@@ -30,9 +30,6 @@ class TenantSource(Base):
     organizations = relationship(
         "OrganizationSource", back_populates="tenant", cascade="all, delete-orphan"
     )
-    sources = relationship(
-        "SourceSource", back_populates="tenant", cascade="all, delete-orphan"
-    )
 
 
 class OrganizationSource(Base):
@@ -96,8 +93,8 @@ class SourceSource(Base):
     __tablename__ = "sources_source"
     __table_args__ = (
         UniqueConstraint(
-            "tenant_id", "organization_id", "platform_id",
-            name="uq_sources_source_tenant_org_platform"
+            "organization_id", "platform_id",
+            name="uq_sources_source_org_platform"
         ),
         CheckConstraint(
             "source_status IN ('active', 'paused', 'error', 'queued', 'running')",
@@ -110,11 +107,7 @@ class SourceSource(Base):
     )
 
     source_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(
-        UNIQUEIDENTIFIER,
-        ForeignKey("tenants_source.tenant_id", ondelete="NO ACTION"),
-        nullable=False,
-    )
+
     organization_id = Column(
         UNIQUEIDENTIFIER,
         ForeignKey("organizations_source.organization_id", ondelete="CASCADE"),
@@ -139,7 +132,7 @@ class SourceSource(Base):
         nullable=False,
     )
 
-    tenant = relationship("TenantSource", back_populates="sources")
+
     organization = relationship("OrganizationSource", back_populates="sources")
     platform = relationship("PlatformSource", back_populates="sources")
     sync_logs = relationship(

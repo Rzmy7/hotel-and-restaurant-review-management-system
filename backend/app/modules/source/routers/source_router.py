@@ -19,18 +19,17 @@ from app.modules.scheduler.tasks.sync_tasks import trigger_platform_scrape
 router = APIRouter()
 
 @router.get(
-    "/tenants/{tenant_id}/organizations/{organization_id}/sync-logs", 
+    "/organizations/{organization_id}/sync-logs", 
     response_model=List[SyncLogRead]
 )
 def get_sync_logs(
-    tenant_id: uuid.UUID, 
     organization_id: uuid.UUID, 
     skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
     """Fetch recent synchronization logs for an organization with pagination."""
-    return source_service.get_sync_logs(db, tenant_id, organization_id, skip, limit)
+    return source_service.get_sync_logs(db, organization_id, skip, limit)
 
 @router.get("/platforms", response_model=List[PlatformRead])
 def get_platforms(db: Session = Depends(get_db)):
@@ -48,16 +47,15 @@ def get_tenant_sources(tenant_id: uuid.UUID, db: Session = Depends(get_db)):
     return source_service.get_tenant_sources(db, tenant_id)
 
 @router.get(
-    "/tenants/{tenant_id}/organizations/{organization_id}/sources", 
+    "/organizations/{organization_id}/sources", 
     response_model=OrganizationSourceDetails
 )
 def get_organization_sources(
-    tenant_id: uuid.UUID, 
     organization_id: uuid.UUID, 
     db: Session = Depends(get_db)
 ):
-    """Fetch source details and stats for a specific organization of a tenant."""
-    return source_service.get_organization_sources_with_stats(db, tenant_id, organization_id)
+    """Fetch source details and stats for a specific organization."""
+    return source_service.get_organization_sources_with_stats(db, organization_id)
 
 @router.post("/", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
 def create_source(source_data: SourceCreate, db: Session = Depends(get_db)):

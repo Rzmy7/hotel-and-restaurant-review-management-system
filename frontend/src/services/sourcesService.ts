@@ -156,9 +156,9 @@ class SourcesService {
         };
     }
 
-    async getSources(tenantId: string, organizationId: string): Promise<Source[]> {
+    async getSources(organizationId: string): Promise<Source[]> {
         try {
-            const data = await apiClient.get<{ sources: any[] }>(`/api/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            const data = await apiClient.get<{ sources: any[] }>(`/api/source/organizations/${organizationId}/sources`);
             return data.sources.map((s: any) => this.mapBackendSourceToFrontend(s));
         } catch (error) {
             console.warn('Backend fetch failed, falling back to mock data:', error);
@@ -168,9 +168,9 @@ class SourcesService {
         }
     }
 
-    async getStats(tenantId: string, organizationId: string): Promise<SourceStats> {
+    async getStats(organizationId: string): Promise<SourceStats> {
         try {
-            const data = await apiClient.get<any>(`/api/source/tenants/${tenantId}/organizations/${organizationId}/sources`);
+            const data = await apiClient.get<any>(`/api/source/organizations/${organizationId}/sources`);
             return {
                 totalSources: data.stats.total_sources,
                 activeSources: data.stats.active_sources,
@@ -190,10 +190,10 @@ class SourcesService {
         }
     }
 
-    async getSyncLogs(tenantId: string, organizationId: string, page: number = 0, limit: number = 10): Promise<SyncLog[]> {
+    async getSyncLogs(organizationId: string, page: number = 0, limit: number = 10): Promise<SyncLog[]> {
         const skip = page * limit;
         try {
-            return await apiClient.get<SyncLog[]>(`/api/source/tenants/${tenantId}/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
+            return await apiClient.get<SyncLog[]>(`/api/source/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
         } catch (error) {
             console.warn('Backend fetch for sync logs failed, falling back to mock data:', error);
             return new Promise((resolve) => {
@@ -205,10 +205,9 @@ class SourcesService {
         }
     }
 
-    async addSource(tenantId: string, organizationId: string, sourceData: any): Promise<Source> {
+    async addSource(organizationId: string, sourceData: any): Promise<Source> {
         try {
             const newSource = await apiClient.post<any>('/api/source/', {
-                tenant_id: tenantId,
                 organization_id: organizationId,
                 platform_id: sourceData.platformId,
                 source_url: sourceData.propertyUrl,

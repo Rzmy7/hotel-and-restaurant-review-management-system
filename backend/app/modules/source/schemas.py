@@ -42,7 +42,7 @@ class PlatformRead(BaseModel):
 
 # --- Source Schemas ---
 class SourceCreate(BaseModel):
-    tenant_id: uuid.UUID
+
     organization_id: uuid.UUID
     platform_id: int
     source_url: str
@@ -56,7 +56,7 @@ class SourceUpdate(BaseModel):
 
 class SourceRead(BaseModel):
     source_id: uuid.UUID
-    tenant_id: uuid.UUID
+
     organization_id: uuid.UUID
     platform_id: int
     platform_name: str

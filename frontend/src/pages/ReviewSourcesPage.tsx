@@ -19,13 +19,12 @@ const ReviewSourcesPage = () => {
   const [lastSyncTriggeredAt, setLastSyncTriggeredAt] = useState<number | null>(null);
 
   // Temporary hardcoded IDs until context is integrated
-  const tenantId = 'D7A3E7C9-8F2B-4B1A-9C1A-1A2B3C4D5E6F';
   const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
 
   // React Query: Sources
   const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({
-    queryKey: ['sources', tenantId, organizationId],
-    queryFn: () => sourcesService.getSources(tenantId, organizationId),
+    queryKey: ['sources', organizationId],
+    queryFn: () => sourcesService.getSources(organizationId),
     refetchInterval: (query) => {
       const sources = query.state.data as Source[] | undefined;
       const hasActiveSync = sources?.some(s => s.status === 'In Queue' || s.status === 'Syncing');
@@ -39,8 +38,8 @@ const ReviewSourcesPage = () => {
 
   // React Query: Stats
   const { data: stats = null, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['sourceStats', tenantId, organizationId],
-    queryFn: () => sourcesService.getStats(tenantId, organizationId),
+    queryKey: ['sourceStats', organizationId],
+    queryFn: () => sourcesService.getStats(organizationId),
   });
 
   // React Query: Sync Logs (Paginated)
@@ -51,8 +50,8 @@ const ReviewSourcesPage = () => {
     isFetchingNextPage,
     isLoading: isLoadingLogs
   } = useInfiniteQuery({
-    queryKey: ['syncLogs', tenantId, organizationId],
-    queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(tenantId, organizationId, pageParam as number, 10),
+    queryKey: ['syncLogs', organizationId],
+    queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(organizationId, pageParam as number, 10),
     getNextPageParam: (lastPage: SyncLog[], allPages: SyncLog[][]) => lastPage.length === 10 ? allPages.length : undefined,
     initialPageParam: 0,
   });
@@ -61,7 +60,7 @@ const ReviewSourcesPage = () => {
 
   // Mutations
   const addSourceMutation = useMutation({
-    mutationFn: (newSourceData: Partial<Source>) => sourcesService.addSource(tenantId, organizationId, newSourceData as any),
+    mutationFn: (newSourceData: Partial<Source>) => sourcesService.addSource(organizationId, newSourceData as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
