@@ -12,6 +12,7 @@ apscheduler
 httpx
 requests
 anthropic
-sqlalchemy
 itsdangerous
 bcrypt
+PyJWT
+supabase

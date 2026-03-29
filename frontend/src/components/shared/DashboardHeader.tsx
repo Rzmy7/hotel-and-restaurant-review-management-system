@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CalendarDays } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import NotificationPanel from '../shared/NotificationPanel';
@@ -8,10 +9,10 @@ import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { notificationsService } from '../../services/notificationsService';
 
 const DashboardHeader: React.FC = () => {
+  const navigate = useNavigate();
   const organizations = useOrganizationStore(state => state.organizations);
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const switchOrganization = useOrganizationStore(state => state.switchOrganization);
-  const addOrganization = useOrganizationStore(state => state.addOrganization);
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -68,7 +69,7 @@ const DashboardHeader: React.FC = () => {
             currentOrg={currentOrg}
             organizations={organizations}
             onSwitch={switchOrganization}
-            onAdd={addOrganization}
+            onAdd={() => navigate('/setup')}
           />
         )}
       </div>

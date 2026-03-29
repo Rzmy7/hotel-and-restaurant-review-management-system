@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';

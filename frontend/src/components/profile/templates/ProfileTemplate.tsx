@@ -6,15 +6,20 @@ import type { UserProfile } from '../../../pages/ProfilePage';
 
 interface ProfileTemplateProps {
     profile: UserProfile;
+    memberSince: string;
     onUpdate: (updated: UserProfile) => void;
     onSave: () => void;
     onCancel: () => void;
     onPhotoChange: (file: File) => void;
     isSaving: boolean;
+
+    isUploading: boolean;
+    uploadError?: string | null;
 }
 
 const ProfileTemplate: React.FC<ProfileTemplateProps> = ({
     profile,
+    memberSince,
     onUpdate,
     onSave,
     onCancel,
@@ -23,7 +28,7 @@ const ProfileTemplate: React.FC<ProfileTemplateProps> = ({
 }) => {
     return (
         <div className="min-h-screen bg-[#fcfcfd] dark:bg-slate-900 flex flex-col">
-            <ProfileHeader />
+            <ProfileHeader memberSince={memberSince} />
 
             <main className="flex-1 w-full max-w-[1200px] mx-auto px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
@@ -42,6 +47,7 @@ const ProfileTemplate: React.FC<ProfileTemplateProps> = ({
                     <div className="w-full order-1 lg:order-2">
                         <ProfileSidebar
                             profile={profile}
+                            memberSince={memberSince}
                             onPhotoChange={onPhotoChange}
                         />
                     </div>
