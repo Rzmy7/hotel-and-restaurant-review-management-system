@@ -53,3 +53,7 @@ backend/app/test/services/promptForFrontender.txt
 
 .vscode/
 *.vscode/
+
+tmp/*
+
+kimi_mcp.py
