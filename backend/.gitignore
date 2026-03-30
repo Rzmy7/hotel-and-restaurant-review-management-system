@@ -24,3 +24,4 @@ BookingOutput/*
 /app/screenshots
 /app/analyzed_data_frontend.json
 
+tmp/* 
