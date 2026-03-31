@@ -1,8 +1,8 @@
 # app/constants/roles.py
 
 # System roles
-SYSTEM_ADMIN = "SYSTEM_ADMIN"
-TENANT = "TENANT"
+SYSTEM_ADMIN = "admin"
+TENANT = "tenant"
 
 # Group roles
 GROUP_OWNER = "GROUP_OWNER"

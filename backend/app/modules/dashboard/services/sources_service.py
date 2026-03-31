@@ -36,8 +36,8 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
             SUM(CASE WHEN r.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neu_count,
             SUM(CASE WHEN r.sentiment = 'Negative' THEN 1 ELSE 0 END) as neg_count,
             s.source_id
-        FROM dbo.ProcessedReviews r
-        JOIN dbo.sources s ON r.platform_id = s.source_id
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.platform_id = s.source_id
         WHERE r.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
         GROUP BY s.source_id, s.platform_name
     """, org_id, curr_start)
@@ -49,8 +49,8 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
         SELECT 
             s.source_id,
             AVG(CAST(r.sentiment_score AS FLOAT)) as prev_avg_rating
-        FROM dbo.ProcessedReviews r
-        JOIN dbo.sources s ON r.platform_id = s.source_id
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.platform_id = s.source_id
         WHERE r.organization_id = ? AND r.reviewDate >= CAST(? AS DATE) AND r.reviewDate < CAST(? AS DATE)
         GROUP BY s.source_id
     """, org_id, prev_start, curr_start)

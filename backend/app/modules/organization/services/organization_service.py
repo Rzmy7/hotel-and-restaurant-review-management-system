@@ -6,7 +6,7 @@ def create_organization(db, user_id, data):
 
         # 1️⃣ Insert organization
         result = db.execute(text("""
-            INSERT INTO dbo.organizations_source (organization_name, tenant_id, created_at, updated_at)
+            INSERT INTO dbo.organization (organization_name, tenant_id, created_at, updated_at)
             OUTPUT INSERTED.organization_id
             VALUES (:name, NEWID(), GETDATE(), GETDATE())
         """), {"name": name})

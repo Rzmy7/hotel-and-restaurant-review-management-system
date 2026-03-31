@@ -24,7 +24,7 @@ def resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
     admin_row = cursor.execute(
         """
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
-        FROM dbo.users
+        FROM dbo.[user]
         WHERE COALESCE(is_super_admin, 0) = 1 AND COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
         """
@@ -36,7 +36,7 @@ def resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
     fallback_row = cursor.execute(
         """
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
-        FROM dbo.users
+        FROM dbo.[user]
         WHERE COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
         """

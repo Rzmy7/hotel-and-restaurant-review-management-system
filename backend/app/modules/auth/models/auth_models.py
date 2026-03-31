@@ -4,10 +4,10 @@ from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
-from app.core.database import Base
+from app.database.session import Base
 
 class Role(Base):
-    __tablename__ = "roles"
+    __tablename__ = "role"
     __table_args__ = {'extend_existing': True}
 
     role_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -19,41 +19,17 @@ class Role(Base):
         nullable=False,
     )
 
-    users = relationship("UserRole", back_populates="role")
-
-
-class UserRole(Base):
-    __tablename__ = "user_roles"
-    __table_args__ = {'extend_existing': True}
-
-    user_id = Column(
-        UNIQUEIDENTIFIER,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    role_id = Column(
-        Integer,
-        ForeignKey("roles.role_id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    assigned_at = Column(
-        DateTime(timezone=True),
-        server_default=func.sysutcdatetime(),
-        nullable=False,
-    )
-
-    user = relationship("User", back_populates="roles")
-    role = relationship("Role", back_populates="users")
+    users = relationship("User", back_populates="role")
 
 
 class Session(Base):
-    __tablename__ = "sessions"
+    __tablename__ = "session"
     __table_args__ = {'extend_existing': True}
 
     session_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(
         UNIQUEIDENTIFIER,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey("user.user_id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -74,13 +50,13 @@ class Session(Base):
 
 
 class PasswordResetToken(Base):
-    __tablename__ = "password_reset_tokens"
+    __tablename__ = "password_reset_token"
     __table_args__ = {'extend_existing': True}
 
     token_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(
         UNIQUEIDENTIFIER,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey("user.user_id", ondelete="CASCADE"),
         nullable=False,
     )
     token_hash = Column(String(255), nullable=False)

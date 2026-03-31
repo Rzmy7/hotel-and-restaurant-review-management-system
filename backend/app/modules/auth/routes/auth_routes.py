@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 import secrets
 import os
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
 from app.modules.auth.services.auth_service import login_user
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, EmailModel, ResetModel
+from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
 
@@ -43,12 +44,16 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         is_email_verified=False,
     )
 
-    assigned = assign_role_to_user(db, user.user_id, "TENANT")
-    if not assigned:
-        raise HTTPException(
-            status_code=500,
-            detail="User created, but TENANT role not found in roles table"
-        )
+        
+    # Create the top-level tenant workspace for this user
+    new_tenant = Tenant(
+        tenant_name=f"{first_name}'s Tenant",
+        tenant_owner_id=user.user_id
+    )
+    db.add(new_tenant)
+    db.commit()
+    db.refresh(new_tenant)
+
     roles = get_user_role_names(db, user.user_id)
     return {
         "message": "User registered successfully in database",
@@ -58,6 +63,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             "last_name": user.last_name,
             "email": user.email,
             "roles": roles,
+            "tenant_id": str(new_tenant.tenant_id),
         },
     }
 
@@ -146,7 +152,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 
         db.execute(
             text("""
-                UPDATE dbo.users
+                UPDATE dbo.[user]
                 SET password_hash = :password_hash,
                     updated_at = GETUTCDATE()
                 WHERE user_id = :user_id

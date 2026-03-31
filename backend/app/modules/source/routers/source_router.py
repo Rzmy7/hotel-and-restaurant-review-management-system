@@ -12,7 +12,7 @@ from app.modules.source.schemas import (
     PlatformRead, OrganizationRead, OrganizationSourceDetails,
     SyncLogRead, SourceStatus
 )
-from app.modules.source.models import SourceSource
+from app.modules.source.models import Source as SourceSource  # alias for backward compat
 from app.modules.scheduler.tasks.sync_tasks import trigger_platform_scrape
 
 

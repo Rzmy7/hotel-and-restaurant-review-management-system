@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.organization.schemas.organization_schema import OrganizationCreate
 
@@ -38,7 +38,7 @@ def create_organization(
     existing_org = db.execute(
         text("""
             SELECT organization_id
-            FROM dbo.organizations_source
+            FROM dbo.organization
             WHERE organization_name = :name
         """),
         {"name": organization_name}
@@ -51,7 +51,7 @@ def create_organization(
         # insert organization
         result = db.execute(
             text("""
-                INSERT INTO dbo.organizations_source 
+                INSERT INTO dbo.organization 
                 (organization_id, organization_name, tenant_id, created_at, updated_at)
                 OUTPUT INSERTED.organization_id
                 VALUES (NEWID(), :name, :tenant_id, GETDATE(), GETDATE())
@@ -132,7 +132,7 @@ def delete_organization(
     # delete sources mapping if any
     db.execute(
         text("""
-            DELETE FROM dbo.sources_source
+            DELETE FROM dbo.source
             WHERE organization_id = :org_id
         """),
         {"org_id": org_id}
@@ -141,7 +141,7 @@ def delete_organization(
     # delete org
     db.execute(
         text("""
-            DELETE FROM dbo.organizations_source
+            DELETE FROM dbo.organization
             WHERE organization_id = :org_id
         """),
         {"org_id": org_id}

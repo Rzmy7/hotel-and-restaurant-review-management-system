@@ -10,7 +10,7 @@ def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str) -> Dict[str, 
     """Retrieves all-time sentiment distribution counts and percentages."""
     cursor.execute("""
         SELECT sentiment, COUNT(*) as cnt 
-        FROM dbo.ProcessedReviews 
+        FROM dbo.processed_review 
         WHERE organization_id = ? 
         GROUP BY sentiment
     """, org_id)
@@ -52,7 +52,7 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
                 COUNT(*) as volume,
                 AVG(CAST(sentiment_score * 20 AS FLOAT)) as sentiment_avg,
                 reviewDate
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE organization_id = ? AND reviewDate >= CAST(? AS DATE)
             GROUP BY reviewDate
             ORDER BY reviewDate ASC
@@ -67,7 +67,7 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
                     reviewDate,
                     sentiment_score,
                     DATEDIFF(day, CAST(? AS DATE), reviewDate) / {bucket_size} as bucket
-                FROM dbo.ProcessedReviews
+                FROM dbo.processed_review
                 WHERE organization_id = ? AND reviewDate >= CAST(? AS DATE)
             )
             SELECT 
@@ -99,7 +99,7 @@ def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: in
             SELECT 
                 sentiment_score,
                 DATEDIFF(day, CAST(? AS DATE), reviewDate) / 7 as week_index
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE organization_id = ? AND reviewDate >= CAST(? AS DATE)
         )
         SELECT 

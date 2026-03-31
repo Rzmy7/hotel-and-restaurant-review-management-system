@@ -21,8 +21,8 @@ def fetch_all_reviews_raw(organization_id: str) -> Tuple[list, Dict[str, list]]:
             r.text, r.summary, r.sentiment, r.language, r.categories,
             r.keyPhrases, r.reviewDate, r.status, r.replyStatus, p.platform_name AS source,
             r.ai_reply
-        FROM dbo.ProcessedReviews r
-        LEFT JOIN dbo.platforms_source p ON r.platform_id = p.platform_id
+        FROM dbo.processed_review r
+        LEFT JOIN dbo.platform p ON r.platform_id = p.platform_id
         WHERE r.organization_id = ?
     """
     rows = cursor.execute(sql_reviews, (organization_id,)).fetchall()
@@ -36,7 +36,7 @@ def fetch_all_reviews_raw(organization_id: str) -> Tuple[list, Dict[str, list]]:
             chunk = original_ids[i:i + 2000]
             placeholders = ','.join('?' * len(chunk))
             pics = cursor.execute(
-                f"SELECT review_id, src, alt FROM dbo.review_photos WHERE review_id IN ({placeholders})",
+                f"SELECT review_id, src, alt FROM dbo.review_media WHERE review_id IN ({placeholders})",
                 chunk,
             ).fetchall()
             for review_id, src, alt in pics:
@@ -56,9 +56,9 @@ def delete_all_reviews_raw() -> None:
     cursor = conn.cursor()
     cursor.execute("DELETE FROM dbo.reviews")
     conn.commit()
-    cursor.execute("DELETE FROM dbo.review_photos")
+    cursor.execute("DELETE FROM dbo.review_media")
     conn.commit()
-    cursor.execute("DELETE FROM dbo.ProcessedReviews")
+    cursor.execute("DELETE FROM dbo.processed_review")
     conn.commit()
     conn.close()
 
@@ -67,7 +67,7 @@ def count_reviews_raw() -> int:
     """Return the total count of processed reviews."""
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews")
+    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
     count = cursor.fetchone()[0]
     conn.close()
     return count

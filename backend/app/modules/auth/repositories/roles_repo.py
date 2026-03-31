@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from app.modules.auth.models import Role, UserRole
+from app.modules.auth.models import Role
+from app.modules.user.models.user_models import User
 
 
 # --------------------------------------------------
@@ -19,29 +20,15 @@ def assign_role_to_user(db: Session, user_id, role_name: str):
     if not role:
         return None
 
-    # check if role already assigned
-    existing = (
-        db.query(UserRole)
-        .filter(
-            UserRole.user_id == user_id,
-            UserRole.role_id == role.role_id
-        )
-        .first()
-    )
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        return None
 
-    if existing:
-        return existing
-
-    user_role = UserRole(
-        user_id=user_id,
-        role_id=role.role_id
-    )
-
-    db.add(user_role)
+    user.role_id = role.role_id
     db.commit()
-    db.refresh(user_role)
+    db.refresh(user)
 
-    return user_role
+    return user
 
 
 # --------------------------------------------------
@@ -49,14 +36,11 @@ def assign_role_to_user(db: Session, user_id, role_name: str):
 # --------------------------------------------------
 def get_user_role_names(db: Session, user_id):
 
-    rows = (
-        db.query(Role.role_name)
-        .join(UserRole, UserRole.role_id == Role.role_id)
-        .filter(UserRole.user_id == user_id)
-        .all()
-    )
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user or not user.role:
+        return []
 
-    return [row[0] for row in rows]
+    return [user.role.role_name]
 
 
 # --------------------------------------------------
@@ -64,17 +48,11 @@ def get_user_role_names(db: Session, user_id):
 # --------------------------------------------------
 def get_user_primary_role(db: Session, user_id):
 
-    role = (
-        db.query(Role.role_name)
-        .join(UserRole, UserRole.role_id == Role.role_id)
-        .filter(UserRole.user_id == user_id)
-        .first()
-    )
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user or not user.role:
+        return None
 
-    if role:
-        return role[0]
-
-    return None
+    return user.role.role_name
 
 
 # --------------------------------------------------
@@ -82,14 +60,14 @@ def get_user_primary_role(db: Session, user_id):
 # --------------------------------------------------
 def user_has_role(db: Session, user_id, role_name: str):
 
-    role = (
-        db.query(UserRole)
-        .join(Role, Role.role_id == UserRole.role_id)
+    user = (
+        db.query(User)
+        .join(Role, Role.role_id == User.role_id)
         .filter(
-            UserRole.user_id == user_id,
+            User.user_id == user_id,
             Role.role_name == role_name
         )
         .first()
     )
 
-    return role is not None
+    return user is not None

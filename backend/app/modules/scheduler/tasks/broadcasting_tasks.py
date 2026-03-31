@@ -81,7 +81,7 @@ def process_pending_broadcasts():
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
                 schedule_type, scheduled_at, sent_at, sent_by, created_at
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             WHERE status = 'pending'
             AND scheduled_at IS NOT NULL
             AND scheduled_at <= ?
@@ -126,7 +126,7 @@ def process_pending_broadcasts():
                 # Update broadcast status to 'sent'
                 cursor.execute(
                     """
-                    UPDATE dbo.broadcast_events
+                    UPDATE dbo.broadcast_event
                     SET status = 'sent', sent_at = ?
                     WHERE broadcast_id = ?
                     """,
@@ -144,7 +144,7 @@ def process_pending_broadcasts():
                     # Update status to 'failed' on error
                     cursor.execute(
                         """
-                        UPDATE dbo.broadcast_events
+                        UPDATE dbo.broadcast_event
                         SET status = 'failed', sent_at = ?
                         WHERE broadcast_id = ?
                         """,

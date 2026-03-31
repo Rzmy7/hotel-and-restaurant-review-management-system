@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import os
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
 
@@ -63,7 +63,6 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
             google_id=google_id,
             is_email_verified=True,
         )
-        assign_role_to_user(db, user.user_id, "TENANT")
     else:
         if not user.google_id:
             user.google_id = google_id

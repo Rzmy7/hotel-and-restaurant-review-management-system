@@ -4,10 +4,10 @@ from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
-from app.core.database import Base
+from app.database.session import Base
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "user"
     __table_args__ = {'extend_existing': True}
 
     user_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
@@ -47,12 +47,10 @@ class User(Base):
         nullable=False,
     )
 
+    role_id = Column(Integer, ForeignKey("role.role_id"), nullable=False)
+
     # Relationships
-    roles = relationship(
-        "UserRole",
-        back_populates="user",
-        cascade="all, delete-orphan"
-    )
+    role = relationship("Role", back_populates="users")
 
     sessions = relationship(
         "Session",

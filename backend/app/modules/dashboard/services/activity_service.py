@@ -12,9 +12,9 @@ def get_alerts(org_id: str = None) -> dict:
     alerts = []
 
     if org_id:
-        cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE [status] = 'Pending' AND organization_id = ?", org_id)
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending' AND organization_id = ?", org_id)
     else:
-        cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE [status] = 'Pending'")
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'")
     
     pending = cursor.fetchone()[0]
     if pending > 0:
@@ -23,9 +23,9 @@ def get_alerts(org_id: str = None) -> dict:
     seven_days_ago = (datetime.now() - timedelta(days=7)).date()
     
     if org_id:
-        cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE sentiment = 'Negative' AND reviewDate >= ? AND organization_id = ?", seven_days_ago, org_id)
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= ? AND organization_id = ?", seven_days_ago, org_id)
     else:
-        cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE sentiment = 'Negative' AND reviewDate >= ?", seven_days_ago)
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= ?", seven_days_ago)
         
     neg_count = cursor.fetchone()[0]
     if neg_count > 0:
@@ -41,14 +41,14 @@ def get_activities(org_id: str = None) -> dict:
     if org_id:
         cursor.execute("""
             SELECT TOP 15 id, reviewerName as userName, sentiment, rating, reviewDate, [status], platform_id
-            FROM dbo.ProcessedReviews 
+            FROM dbo.processed_review 
             WHERE organization_id = ?
             ORDER BY reviewDate DESC
         """, org_id)
     else:
         cursor.execute("""
             SELECT TOP 15 id, reviewerName as userName, sentiment, rating, reviewDate, [status], platform_id
-            FROM dbo.ProcessedReviews ORDER BY reviewDate DESC
+            FROM dbo.processed_review ORDER BY reviewDate DESC
         """)
     rows = cursor.fetchall()
     conn.close()
@@ -72,7 +72,7 @@ def get_negative_reviews_for_org(org_id: str) -> dict:
 
     # Get count
     cursor.execute(
-        "SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE organization_id = ? AND sentiment = 'Negative'", 
+        "SELECT COUNT(*) FROM dbo.processed_review WHERE organization_id = ? AND sentiment = 'Negative'", 
         org_id
     )
     count = cursor.fetchone()[0]
@@ -80,7 +80,7 @@ def get_negative_reviews_for_org(org_id: str) -> dict:
     # Get detailed reviews
     cursor.execute("""
         SELECT id, reviewerName, rating, text as reviewText, reviewDate, platform_id, sentiment
-        FROM dbo.ProcessedReviews 
+        FROM dbo.processed_review 
         WHERE organization_id = ? AND sentiment = 'Negative'
         ORDER BY reviewDate DESC
     """, org_id)
@@ -112,7 +112,7 @@ def get_sentiment_counts(org_id: str) -> dict:
 
     cursor.execute("""
         SELECT sentiment, COUNT(*) as cnt 
-        FROM dbo.ProcessedReviews 
+        FROM dbo.processed_review 
         WHERE organization_id = ?
         GROUP BY sentiment
     """, org_id)

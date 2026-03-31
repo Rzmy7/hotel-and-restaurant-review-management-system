@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["user-organizations"])
@@ -22,7 +22,7 @@ def get_user_organizations(
                 o.organization_name,
                 uo.role
             FROM dbo.user_organizations uo
-            JOIN dbo.organizations_source o
+            JOIN dbo.organization o
                 ON uo.organization_id = o.organization_id
             WHERE uo.user_id = :user_id
         """),

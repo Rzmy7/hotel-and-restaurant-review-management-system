@@ -383,13 +383,13 @@ def find_platform_row(cursor: pyodbc.Cursor, platform_id: str, select_cols_sql: 
         source_id = int(platform_id)
         return execute_query(
             cursor,
-            f"SELECT TOP 1 {select_cols_sql} FROM dbo.sources WHERE source_id = ?",
+            f"SELECT TOP 1 {select_cols_sql} FROM dbo.scraping_platform WHERE source_id = ?",
             (source_id,),
         ).fetchone()
     except ValueError:
         return execute_query(
             cursor,
-            f"SELECT TOP 1 {select_cols_sql} FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+            f"SELECT TOP 1 {select_cols_sql} FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?)",
             (platform_id,),
         ).fetchone()
 
@@ -402,8 +402,8 @@ def fetch_platforms_from_db() -> list[dict[str, object]]:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
 
-            if table_exists(cursor, "sources"):
-                columns = get_table_columns(cursor, "sources")
+            if table_exists(cursor, "scraping_platform"):
+                columns = get_table_columns(cursor, "scraping_platform")
                 is_active_col = (
                     "is_enabled" if "is_enabled" in columns
                     else "is_active" if "is_active" in columns
@@ -418,7 +418,7 @@ def fetch_platforms_from_db() -> list[dict[str, object]]:
                 if table_name_col:
                     select_cols += f", {table_name_col}"
 
-                rows = execute_query(cursor, f"SELECT {select_cols} FROM dbo.sources ORDER BY source_id").fetchall()
+                rows = execute_query(cursor, f"SELECT {select_cols} FROM dbo.scraping_platform ORDER BY source_id").fetchall()
 
                 last_synced: dict[int, datetime | date | None] = {}
                 if table_exists(cursor, "organization_sources"):
@@ -461,7 +461,7 @@ def fetch_platforms_from_db() -> list[dict[str, object]]:
                     if is_active_col:
                         active_value = execute_query(
                             cursor,
-                            f"SELECT TOP 1 {is_active_col} FROM dbo.sources WHERE source_id = ?",
+                            f"SELECT TOP 1 {is_active_col} FROM dbo.scraping_platform WHERE source_id = ?",
                             (source_id,),
                         ).fetchone()
                         if active_value is not None:
@@ -481,7 +481,7 @@ def fetch_platforms_from_db() -> list[dict[str, object]]:
                     })
                 return platforms
 
-            if table_exists(cursor, "ProcessedReviews"):
+            if table_exists(cursor, "processed_review"):
                 rows = execute_query(
                     cursor,
                     """
@@ -492,7 +492,7 @@ def fetch_platforms_from_db() -> list[dict[str, object]]:
                             CAST(scrapedAt AS datetime),
                             CAST(reviewDate AS datetime)
                         )) AS last_run
-                    FROM dbo.ProcessedReviews
+                    FROM dbo.processed_review
                     WHERE NULLIF(LTRIM(RTRIM(source)), '') IS NOT NULL
                     GROUP BY NULLIF(LTRIM(RTRIM(source)), '')
                     ORDER BY platform_name
@@ -529,10 +529,10 @@ def get_platform_details_from_db(platform_id: str) -> dict[str, object]:
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "sources")
+            columns = get_table_columns(cursor, "scraping_platform")
             table_name_col = resolve_sources_review_table_column(columns)
             if not table_name_col:
                 raise HTTPException(status_code=400, detail="sources table has no review_table or table_name column")
@@ -601,16 +601,16 @@ def create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, s
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "sources")
+            columns = get_table_columns(cursor, "scraping_platform")
             if "platform_name" not in columns:
                 raise HTTPException(status_code=500, detail="sources table is missing required platform_name column")
 
             existing = execute_query(
                 cursor,
-                "SELECT TOP 1 source_id FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+                "SELECT TOP 1 source_id FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?)",
                 (name,),
             ).fetchone()
             if existing is not None:
@@ -643,14 +643,14 @@ def create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, s
             columns_sql = ", ".join(insert_columns)
             execute_query(
                 cursor,
-                f"INSERT INTO dbo.sources ({columns_sql}) VALUES ({placeholders})",
+                f"INSERT INTO dbo.scraping_platform ({columns_sql}) VALUES ({placeholders})",
                 tuple(insert_values),
             )
             connection.commit()
 
             created = execute_query(
                 cursor,
-                "SELECT TOP 1 source_id FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?) ORDER BY source_id DESC",
+                "SELECT TOP 1 source_id FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?) ORDER BY source_id DESC",
                 (name,),
             ).fetchone()
             created_id = str(created[0]) if created is not None else name.lower().replace(" ", "-")
@@ -688,10 +688,10 @@ def update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePaylo
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "sources")
+            columns = get_table_columns(cursor, "scraping_platform")
             if "platform_name" not in columns:
                 raise HTTPException(status_code=500, detail="sources table is missing required platform_name column")
 
@@ -730,7 +730,7 @@ def update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePaylo
 
             duplicate = execute_query(
                 cursor,
-                "SELECT TOP 1 source_id FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?) AND source_id <> ?",
+                "SELECT TOP 1 source_id FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?) AND source_id <> ?",
                 (name, found_id),
             ).fetchone()
             if duplicate is not None:
@@ -757,7 +757,7 @@ def update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePaylo
             update_values.append(found_id)
             execute_query(
                 cursor,
-                f"UPDATE dbo.sources SET {', '.join(update_columns)} WHERE source_id = ?",
+                f"UPDATE dbo.scraping_platform SET {', '.join(update_columns)} WHERE source_id = ?",
                 tuple(update_values),
             )
             connection.commit()

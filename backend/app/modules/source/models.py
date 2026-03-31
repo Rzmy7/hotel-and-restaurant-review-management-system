@@ -13,14 +13,15 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
 
-from app.core.database import Base
+from app.database.session import Base
 
 
-class TenantSource(Base):
-    __tablename__ = "tenants_source"
+class Tenant(Base):
+    __tablename__ = "tenant"
 
     tenant_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     tenant_name = Column(String(255), nullable=False)
+    tenant_owner_id = Column(UNIQUEIDENTIFIER, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),
@@ -28,17 +29,17 @@ class TenantSource(Base):
     )
 
     organizations = relationship(
-        "OrganizationSource", back_populates="tenant", cascade="all, delete-orphan"
+        "Organization", back_populates="tenant", cascade="all, delete-orphan"
     )
 
 
-class OrganizationSource(Base):
-    __tablename__ = "organizations_source"
+class Organization(Base):
+    __tablename__ = "organization"
 
     organization_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     tenant_id = Column(
         UNIQUEIDENTIFIER,
-        ForeignKey("tenants_source.tenant_id", ondelete="CASCADE"),
+        ForeignKey("tenant.tenant_id", ondelete="CASCADE"),
         nullable=False,
     )
     organization_name = Column(String(255), nullable=False)
@@ -48,22 +49,22 @@ class OrganizationSource(Base):
         nullable=False,
     )
 
-    tenant = relationship("TenantSource", back_populates="organizations")
+    tenant = relationship("Tenant", back_populates="organizations")
     sources = relationship(
-        "SourceSource", back_populates="organization", cascade="all, delete-orphan"
+        "Source", back_populates="organization", cascade="all, delete-orphan"
     )
 
 
-class PlatformSource(Base):
-    __tablename__ = "platforms_source"
+class Platform(Base):
+    __tablename__ = "platform"
     __table_args__ = (
         CheckConstraint(
             "fetching_type IN ('API', 'SCRAPING', 'BOTH')",
-            name="ck_platforms_source_fetching_type",
+            name="ck_platform_fetching_type",
         ),
         CheckConstraint(
             "platform_status IN ('active', 'inactive')",
-            name="ck_platforms_source_platform_status",
+            name="ck_platform_platform_status",
         )
     )
 
@@ -86,23 +87,23 @@ class PlatformSource(Base):
         nullable=True,
     )
 
-    sources = relationship("SourceSource", back_populates="platform")
+    sources = relationship("Source", back_populates="platform")
 
 
-class SourceSource(Base):
-    __tablename__ = "sources_source"
+class Source(Base):
+    __tablename__ = "source"
     __table_args__ = (
         UniqueConstraint(
             "organization_id", "platform_id",
-            name="uq_sources_source_org_platform"
+            name="uq_source_org_platform"
         ),
         CheckConstraint(
             "source_status IN ('active', 'paused', 'error', 'queued', 'running')",
-            name="ck_sources_source_source_status",
+            name="ck_source_source_status",
         ),
         CheckConstraint(
             "fetching_frequency IN ('hourly', 'daily', 'weekly')",
-            name="ck_sources_source_fetching_frequency",
+            name="ck_source_fetching_frequency",
         )
     )
 
@@ -110,12 +111,12 @@ class SourceSource(Base):
 
     organization_id = Column(
         UNIQUEIDENTIFIER,
-        ForeignKey("organizations_source.organization_id", ondelete="CASCADE"),
+        ForeignKey("organization.organization_id", ondelete="CASCADE"),
         nullable=False,
     )
     platform_id = Column(
         Integer,
-        ForeignKey("platforms_source.platform_id", ondelete="CASCADE"),
+        ForeignKey("platform.platform_id", ondelete="CASCADE"),
         nullable=False,
     )
     source_url = Column(String(1000), nullable=False)
@@ -133,26 +134,26 @@ class SourceSource(Base):
     )
 
 
-    organization = relationship("OrganizationSource", back_populates="sources")
-    platform = relationship("PlatformSource", back_populates="sources")
+    organization = relationship("Organization", back_populates="sources")
+    platform = relationship("Platform", back_populates="sources")
     sync_logs = relationship(
-        "SyncLogSource", back_populates="source", cascade="all, delete-orphan"
+        "SyncLog", back_populates="source", cascade="all, delete-orphan"
     )
 
 
-class SyncLogSource(Base):
-    __tablename__ = "sync_log_source"
+class SyncLog(Base):
+    __tablename__ = "sync_log"
     __table_args__ = (
         CheckConstraint(
             "status IN ('Success', 'Failed', 'In Progress')",
-            name="ck_sync_log_source_status",
+            name="ck_sync_log_status",
         ),
     )
 
     log_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     source_id = Column(
         UNIQUEIDENTIFIER,
-        ForeignKey("sources_source.source_id", ondelete="CASCADE"),
+        ForeignKey("source.source_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -167,4 +168,4 @@ class SyncLogSource(Base):
     reviews_fetched = Column(Integer, nullable=False, default=0)
     error_message = Column(String(1000), nullable=True)
 
-    source = relationship("SourceSource", back_populates="sync_logs")
+    source = relationship("Source", back_populates="sync_logs")

@@ -13,9 +13,9 @@ def get_admin_users():
         cursor.execute("""
             SELECT u.user_id, u.full_name, u.email, u.is_active, u.last_login_at, u.created_at,
                    STRING_AGG(r.role_name, ', ') as roles
-            FROM dbo.users u
-            LEFT JOIN dbo.user_roles ur ON u.user_id = ur.user_id
-            LEFT JOIN dbo.roles r ON ur.role_id = r.role_id
+            FROM dbo.[user] u
+            LEFT JOIN dbo.user_role ur ON u.user_id = ur.user_id
+            LEFT JOIN dbo.[role] r ON ur.role_id = r.role_id
             GROUP BY u.user_id, u.full_name, u.email, u.is_active, u.last_login_at, u.created_at
             ORDER BY u.created_at DESC
         """)
@@ -30,11 +30,11 @@ def create_admin_user(payload: AdminUserCreatePayload):
     try:
         conn = pyodbc.connect(get_connection_string())
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM dbo.users WHERE email = ?", payload.email)
+        cursor.execute("SELECT COUNT(*) FROM dbo.[user] WHERE email = ?", payload.email)
         if cursor.fetchone()[0] > 0:
             conn.close()
             raise HTTPException(status_code=400, detail="Email already exists")
-        cursor.execute("INSERT INTO dbo.users (email, full_name, is_active, created_at, updated_at) OUTPUT INSERTED.user_id VALUES (?, ?, 1, GETUTCDATE(), GETUTCDATE())", payload.email, payload.name)
+        cursor.execute("INSERT INTO dbo.[user] (email, full_name, is_active, created_at, updated_at) OUTPUT INSERTED.user_id VALUES (?, ?, 1, GETUTCDATE(), GETUTCDATE())", payload.email, payload.name)
         new_id = cursor.fetchone()[0]
         conn.commit()
         conn.close()
@@ -64,7 +64,7 @@ def update_admin_user(user_id: str, payload: AdminUserUpdatePayload):
             return {"message": "No changes"}
         sets.append("updated_at = GETUTCDATE()")
         params.append(user_id)
-        cursor.execute(f"UPDATE dbo.users SET {', '.join(sets)} WHERE user_id = ?", *params)
+        cursor.execute(f"UPDATE dbo.[user] SET {', '.join(sets)} WHERE user_id = ?", *params)
         conn.commit()
         conn.close()
         return {"message": "User updated"}
@@ -76,7 +76,7 @@ def delete_admin_user(user_id: str):
     try:
         conn = pyodbc.connect(get_connection_string())
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM dbo.users WHERE user_id = ?", user_id)
+        cursor.execute("DELETE FROM dbo.[user] WHERE user_id = ?", user_id)
         conn.commit()
         conn.close()
         return {"message": "User deleted"}

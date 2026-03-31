@@ -19,13 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# We need both temp core configs and hansi database getter.
-# Assuming get_db is exposed from app.core.database or app.database 
-# (temp branch often had app.database, hansi moved it to app.core.database). 
-try:
-    from app.core.database import get_db
-except ImportError:
-    from app.database import get_db
+# Canonical database imports — single source of truth
+from app.database.session import Base, engine, get_db
 
 try:
     from app.core.config import SECRET_KEY, CORS_ORIGINS
@@ -45,6 +40,9 @@ except ImportError:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Auto-create any missing tables from ORM models
+    if engine:
+        Base.metadata.create_all(bind=engine)
     # Startup actions
     setup_scheduler()
     start_scheduler()
@@ -98,7 +96,9 @@ except ImportError:
 import app.modules.user.models.user_models          # noqa: F401  (User)
 import app.modules.auth.models.auth_models          # noqa: F401  (Role, UserRole, Session, PasswordResetToken)
 import app.modules.auth.models                      # noqa: F401  (Notification, UserNotification, BroadcastEvent)
-import app.modules.groups.models                    # noqa: F401  (Group, GroupMember)
+import app.modules.groups.models                    # noqa: F401  (Group, GroupMember, GroupMemberRole)
+import app.modules.source.models                    # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
+import app.modules.reviews.models                   # noqa: F401  (ProcessedReview, ReviewMedia)
 
 # Hansi UserManagement routers
 from app.modules.user.routes.profile_routes import router as profile_router

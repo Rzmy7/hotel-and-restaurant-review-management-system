@@ -41,8 +41,8 @@ def get_admin_notifications(
                 CAST(COALESCE(un.is_read, 0) AS BIT) AS is_read,
                 n.created_at,
                 un.read_at
-            FROM dbo.user_notifications AS un
-            INNER JOIN dbo.notifications AS n
+            FROM dbo.user_notification AS un
+            INNER JOIN dbo.notification AS n
                 ON n.notification_id = un.notification_id
             WHERE un.user_id = ?
             ORDER BY n.created_at DESC
@@ -84,7 +84,7 @@ def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
         row = cursor.execute(
             """
             SELECT COUNT(*)
-            FROM dbo.user_notifications
+            FROM dbo.user_notification
             WHERE user_id = ? AND COALESCE(is_read, 0) = 0
             """,
             target_user_id,
@@ -115,7 +115,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
         row = cursor.execute(
             """
             SELECT 1
-            FROM dbo.user_notifications
+            FROM dbo.user_notification
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,
@@ -127,7 +127,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
 
         cursor.execute(
             """
-            UPDATE dbo.user_notifications
+            UPDATE dbo.user_notification
             SET is_read = 1,
                 read_at = ?
             WHERE notification_id = ? AND user_id = ?
@@ -161,7 +161,7 @@ def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
 
         cursor.execute(
             """
-            UPDATE dbo.user_notifications
+            UPDATE dbo.user_notification
             SET is_read = 1,
                 read_at = ?
             WHERE user_id = ? AND COALESCE(is_read, 0) = 0
@@ -194,7 +194,7 @@ def delete_all_read_notifications(userId: str | None = Query(None)) -> dict:
 
         cursor.execute(
             """
-            DELETE FROM dbo.user_notifications
+            DELETE FROM dbo.user_notification
             WHERE user_id = ? AND COALESCE(is_read, 0) = 1
             """,
             target_user_id,
@@ -233,7 +233,7 @@ def delete_notification(notification_id: str, userId: str | None = Query(None)) 
         row = cursor.execute(
             """
             SELECT 1
-            FROM dbo.user_notifications
+            FROM dbo.user_notification
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,
@@ -245,7 +245,7 @@ def delete_notification(notification_id: str, userId: str | None = Query(None)) 
 
         cursor.execute(
             """
-            DELETE FROM dbo.user_notifications
+            DELETE FROM dbo.user_notification
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,

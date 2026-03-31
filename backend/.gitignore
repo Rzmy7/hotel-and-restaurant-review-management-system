@@ -1,27 +1,64 @@
-\venv
-\.venv
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+ENV/
+
+# Environment Variables
+.env
+.env.test
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Databases (if local)
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
 /app/test/scraping/screenshots
 /app/screenshots
-/app/BookingOutput
-/app/test/scraping/BookingOutput
-/app/test/screenshots
-/app/test/BookingOutput
-*__pycache__/
-__pycache__/
-/app/__pycache__/
-/app/test/__pycache__/
-*.pyc
-instance/
-.env
+/app/BookingOutput/
+/app/test/scraping/BookingOutput/
 /app/test/services/analyzed_data_frontend.json
 /app/test/services/promptForFrontender.txt
 /app/test/services/promt.txt 
 /app/test/services/raw_reviews.txt 
-
+/app/analyzed_data_frontend.json
+/tmp/
+tmp/*
 *screenshots/
 BookingOutput/*
-/app/test/analyzed_data_frontend.json
-/app/screenshots
-/app/analyzed_data_frontend.json
-
-tmp/* 
+debug_trace*.txt
+verify_results.txt
+_debug_*.txt
+_debug_*.py

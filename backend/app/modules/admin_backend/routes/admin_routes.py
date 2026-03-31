@@ -71,11 +71,11 @@ def get_all_sources() -> list[dict]:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 return []
             rows = execute_query(
                 cursor,
-                "SELECT source_id, platform_name FROM dbo.sources ORDER BY platform_name",
+                "SELECT source_id, platform_name FROM dbo.scraping_platform ORDER BY platform_name",
             ).fetchall()
             return [
                 {"source_id": int(row[0]), "platform_name": str(row[1] or "").strip()}
@@ -99,14 +99,14 @@ def get_org_sources(org_id: str) -> list[dict]:
             if not table_exists(cursor, "organization_sources"):
                 return []
 
-            if table_exists(cursor, "sources"):
+            if table_exists(cursor, "scraping_platform"):
                 rows = execute_query(
                     cursor,
                     """
                     SELECT os.organization_source_id, os.source_id, s.platform_name,
                            os.external_url, os.last_synced_at
                     FROM dbo.organization_sources os
-                    JOIN dbo.sources s ON s.source_id = os.source_id
+                    JOIN dbo.scraping_platform s ON s.source_id = os.source_id
                     WHERE os.organization_id = ?
                     ORDER BY s.platform_name
                     """,
@@ -160,7 +160,7 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
 
             row = execute_query(
                 cursor,
-                "SELECT TOP 1 organization_id FROM dbo.organizations WHERE organization_id = ?",
+                "SELECT TOP 1 organization_id FROM dbo.organization WHERE organization_id = ?",
                 (org_id_int,),
             ).fetchone()
             if row is None:
@@ -170,13 +170,13 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
             if "updated_at" in org_cols:
                 execute_query(
                     cursor,
-                    "UPDATE dbo.organizations SET organization_name = ?, updated_at = ? WHERE organization_id = ?",
+                    "UPDATE dbo.organization SET organization_name = ?, updated_at = ? WHERE organization_id = ?",
                     (name, datetime.utcnow(), org_id_int),
                 )
             else:
                 execute_query(
                     cursor,
-                    "UPDATE dbo.organizations SET organization_name = ? WHERE organization_id = ?",
+                    "UPDATE dbo.organization SET organization_name = ? WHERE organization_id = ?",
                     (name, org_id_int),
                 )
             conn.commit()
@@ -236,14 +236,14 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
 
             conn.commit()
 
-            if table_exists(cursor, "sources"):
+            if table_exists(cursor, "scraping_platform"):
                 rows = execute_query(
                     cursor,
                     """
                     SELECT os.organization_source_id, os.source_id, s.platform_name,
                            os.external_url, os.last_synced_at
                     FROM dbo.organization_sources os
-                    JOIN dbo.sources s ON s.source_id = os.source_id
+                    JOIN dbo.scraping_platform s ON s.source_id = os.source_id
                     WHERE os.organization_id = ?
                     ORDER BY s.platform_name
                     """,
@@ -284,7 +284,7 @@ def delete_organization(org_id: str) -> dict:
 
             row = execute_query(
                 cursor,
-                "SELECT TOP 1 organization_id, organization_name FROM dbo.organizations WHERE organization_id = ?",
+                "SELECT TOP 1 organization_id, organization_name FROM dbo.organization WHERE organization_id = ?",
                 (org_id_int,),
             ).fetchone()
             if row is None:
@@ -301,7 +301,7 @@ def delete_organization(org_id: str) -> dict:
 
             execute_query(
                 cursor,
-                "DELETE FROM dbo.organizations WHERE organization_id = ?",
+                "DELETE FROM dbo.organization WHERE organization_id = ?",
                 (org_id_int,),
             )
             conn.commit()

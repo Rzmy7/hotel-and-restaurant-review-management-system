@@ -138,9 +138,10 @@ def _frontend_user_from_db_row(row, fallback_index: int, plan_name: str | None =
     is_active = bool(row[3]) if row[3] is not None else False
     is_email_verified = bool(row[4]) if row[4] is not None else False
     is_phone_verified = bool(row[5]) if row[5] is not None else False
-    is_super_admin = bool(row[6]) if row[6] is not None else False
+    
+    db_role_name = str(row[7] or "tenant").lower()
+    role: Literal["Admin", "User"] = "Admin" if db_role_name == "admin" else "User"
 
-    role = _role_from_user_flags(is_super_admin)
     inferred_plan = _plan_from_user_flags(is_email_verified, is_phone_verified) if role == "User" else None
     plan = plan_name if (role == "User" and plan_name) else inferred_plan
 
@@ -273,29 +274,31 @@ def _set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: 
 
 def _build_users_select(columns: set[str], where_clause: str = "", order_clause: str = "") -> str:
     name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
-    name_expr = f"[{name_column}]" if name_column else "NULL"
-    is_active_expr = "is_active" if "is_active" in columns else "CAST(0 AS bit)"
-    is_email_verified_expr = "is_email_verified" if "is_email_verified" in columns else "CAST(0 AS bit)"
-    is_phone_verified_expr = "is_phone_verified" if "is_phone_verified" in columns else "CAST(0 AS bit)"
-    is_super_admin_expr = "is_super_admin" if "is_super_admin" in columns else "CAST(0 AS bit)"
+    name_expr = f"u.[{name_column}]" if name_column else "NULL"
+    is_active_expr = "u.is_active" if "is_active" in columns else "CAST(0 AS bit)"
+    is_email_verified_expr = "u.is_email_verified" if "is_email_verified" in columns else "CAST(0 AS bit)"
+    is_phone_verified_expr = "u.is_phone_verified" if "is_phone_verified" in columns else "CAST(0 AS bit)"
+    is_super_admin_expr = "u.is_super_admin" if "is_super_admin" in columns else "CAST(0 AS bit)"
 
     return (
         "SELECT "
-        "user_id, "
-        "email, "
+        "u.user_id, "
+        "u.email, "
         f"{name_expr} AS full_name, "
         f"{is_active_expr} AS is_active, "
         f"{is_email_verified_expr} AS is_email_verified, "
         f"{is_phone_verified_expr} AS is_phone_verified, "
-        f"{is_super_admin_expr} AS is_super_admin "
-        "FROM dbo.users "
+        f"{is_super_admin_expr} AS is_super_admin, "
+        "r.role_name "
+        "FROM dbo.[user] u "
+        "LEFT JOIN dbo.[role] r ON r.role_id = u.role_id "
         f"{where_clause} "
         f"{order_clause}"
     )
 
 
 def _get_user_row_by_id(cursor: pyodbc.Cursor, user_id: str, columns: set[str]):
-    query = _build_users_select(columns, where_clause="WHERE user_id = ?")
+    query = _build_users_select(columns, where_clause="WHERE u.user_id = ?")
     return execute_query(cursor, query, (user_id,)).fetchone()
 
 
@@ -357,8 +360,8 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
 
 
 def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
-    if table_exists(cursor, "organizations"):
-        org_cols = get_table_columns(cursor, "organizations")
+    if table_exists(cursor, "organization"):
+        org_cols = get_table_columns(cursor, "organization")
         has_is_active = "is_active" in org_cols
         owner_emails = _load_organization_owner_emails(cursor)
 
@@ -367,7 +370,7 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
             SELECT
                 organization_id, organization_name, country, city, organization_type,
                 created_at, updated_at, deleted_at, is_active
-            FROM dbo.organizations
+            FROM dbo.organization
             ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
             """
         else:
@@ -375,7 +378,7 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
             SELECT
                 organization_id, organization_name, country, city, organization_type,
                 created_at, updated_at, deleted_at
-            FROM dbo.organizations
+            FROM dbo.organization
             ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
             """
 
@@ -439,7 +442,7 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
 
         return organizations
 
-    if table_exists(cursor, "ProcessedReviews"):
+    if table_exists(cursor, "processed_review"):
         rows = execute_query(
             cursor,
             f"""
@@ -447,7 +450,7 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                 COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS orgName,
                 COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), '')) AS usersCount,
                 MAX({PROCESSED_ACTIVITY_EXPR}) AS lastSeen
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
             ORDER BY COUNT(*) DESC
             """,
@@ -475,9 +478,9 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
 
 
 def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
-    if table_exists(cursor, "users"):
+    if table_exists(cursor, "[user]"):
         user_plan_map = _load_user_plan_map(cursor)
-        columns = get_table_columns(cursor, "users")
+        columns = get_table_columns(cursor, "[user]")
         if "updated_at" in columns and "created_at" in columns:
             order_clause = "ORDER BY COALESCE(updated_at, created_at) DESC"
         elif "updated_at" in columns:
@@ -497,7 +500,7 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
             for index, row in enumerate(rows, start=1)
         ]
 
-    if not table_exists(cursor, "ProcessedReviews"):
+    if not table_exists(cursor, "processed_review"):
         return []
 
     rows = execute_query(
@@ -507,7 +510,7 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
             NULLIF(LTRIM(RTRIM(userName)), '') AS userName,
             COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS source,
             {PROCESSED_ACTIVITY_EXPR} AS activityDate
-        FROM dbo.ProcessedReviews
+        FROM dbo.processed_review
         WHERE NULLIF(LTRIM(RTRIM(userName)), '') IS NOT NULL
         """,
     ).fetchall()
@@ -563,8 +566,8 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
 
 
 def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: AdminUserCreatePayload) -> AdminUser:
-    if not table_exists(cursor, "users"):
-        raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
+    if not table_exists(cursor, "[user]"):
+        raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
     if payload.role != "Admin":
         raise HTTPException(status_code=400, detail="Only admin accounts can be created from this panel.")
@@ -572,7 +575,7 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
     if not payload.password or not payload.password.strip():
         raise HTTPException(status_code=400, detail="Password is required.")
 
-    columns = get_table_columns(cursor, "users")
+    columns = get_table_columns(cursor, "[user]")
 
     email = payload.email.strip().lower()
     name = payload.name.strip() if payload.name else ""
@@ -580,7 +583,7 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
         raise HTTPException(status_code=400, detail="Email is required.")
 
     if "user_id" not in columns or "email" not in columns:
-        raise HTTPException(status_code=400, detail="Table dbo.users must include user_id and email columns.")
+        raise HTTPException(status_code=400, detail="Table dbo.[user] must include user_id and email columns.")
 
     is_super_admin, is_email_verified, is_phone_verified = _flags_for_role_plan(
         payload.role,
@@ -597,11 +600,21 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
     insert_fields = ["user_id", "email"]
     insert_values: list[object] = [user_id, email]
 
+    db_role_name = "admin" if payload.role == "Admin" else "tenant"
+    role_row = execute_query(cursor, "SELECT role_id FROM dbo.[role] WHERE role_name = ?", (db_role_name,)).fetchone()
+    if not role_row:
+        raise HTTPException(status_code=500, detail=f"Role '{db_role_name}' not found locally.")
+    role_id = int(role_row[0])
+
     if "password_hash" in columns:
         insert_fields.append("password_hash")
         insert_values.append(hash_password(payload.password))
     else:
-        raise HTTPException(status_code=400, detail="Table dbo.users must include password_hash to create admin accounts.")
+        raise HTTPException(status_code=400, detail="Table dbo.[user] must include password_hash to create admin accounts.")
+
+    if "role_id" in columns:
+        insert_fields.append("role_id")
+        insert_values.append(role_id)
     if name_column:
         insert_fields.append(name_column)
         insert_values.append(name or None)
@@ -638,7 +651,7 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
 
     execute_query(
         cursor,
-        f"INSERT INTO dbo.users ({field_sql}) VALUES ({placeholders})",
+        f"INSERT INTO dbo.[user] ({field_sql}) VALUES ({placeholders})",
         tuple(insert_values),
     )
     conn.commit()
@@ -662,10 +675,10 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
 
 
 def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: str, payload: AdminUserUpdatePayload) -> AdminUser:
-    if not table_exists(cursor, "users"):
-        raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
+    if not table_exists(cursor, "[user]"):
+        raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
-    columns = get_table_columns(cursor, "users")
+    columns = get_table_columns(cursor, "[user]")
 
     existing_row = _get_user_row_by_id(cursor, user_id, columns)
     if existing_row is None:
@@ -695,6 +708,13 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
     next_role = payload.role or current_role
     next_status = payload.status or current_status
+
+    db_role_name = "admin" if next_role == "Admin" else "tenant"
+    role_row = execute_query(cursor, "SELECT role_id FROM dbo.[role] WHERE role_name = ?", (db_role_name,)).fetchone()
+    if not role_row:
+        raise HTTPException(status_code=500, detail=f"Role '{db_role_name}' not found locally.")
+    next_role_id = int(role_row[0])
+
     next_is_super_admin, next_is_email_verified, next_is_phone_verified = _flags_for_role_plan(
         next_role,
         payload.plan,
@@ -730,17 +750,21 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
         set_clauses.append("is_super_admin = ?")
         params.append(1 if next_is_super_admin else 0)
 
+    if "role_id" in columns:
+        set_clauses.append("role_id = ?")
+        params.append(next_role_id)
+
     if "updated_at" in columns:
         set_clauses.append("updated_at = SYSUTCDATETIME()")
 
     if not set_clauses:
-        raise HTTPException(status_code=400, detail="Table dbo.users has no updatable admin columns.")
+        raise HTTPException(status_code=400, detail="Table dbo.[user] has no updatable admin columns.")
 
     params.append(user_id)
 
     execute_query(
         cursor,
-        f"UPDATE dbo.users SET {', '.join(set_clauses)} WHERE user_id = ?",
+        f"UPDATE dbo.[user] SET {', '.join(set_clauses)} WHERE user_id = ?",
         tuple(params),
     )
 
@@ -762,16 +786,16 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
 
 def delete_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: str) -> DeleteUserResponse:
-    if not table_exists(cursor, "users"):
-        raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
+    if not table_exists(cursor, "[user]"):
+        raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
-    columns = get_table_columns(cursor, "users")
+    columns = get_table_columns(cursor, "[user]")
 
     existing_row = _get_user_row_by_id(cursor, user_id, columns)
     if existing_row is None:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    execute_query(cursor, "DELETE FROM dbo.users WHERE user_id = ?", (user_id,))
+    execute_query(cursor, "DELETE FROM dbo.[user] WHERE user_id = ?", (user_id,))
     conn.commit()
 
     return DeleteUserResponse(status="success", userId=user_id)
@@ -781,7 +805,7 @@ def delete_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
 
 def get_user_stats(cursor: pyodbc.Cursor) -> UserStatsData:
-    if table_exists(cursor, "users"):
+    if table_exists(cursor, "[user]"):
         row = execute_query(
             cursor,
             """
@@ -789,7 +813,7 @@ def get_user_stats(cursor: pyodbc.Cursor) -> UserStatsData:
                 SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS allActiveUsers,
                 SUM(CASE WHEN is_active = 1 AND CAST(last_login_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayActiveUsers,
                 SUM(CASE WHEN CAST(created_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayRegistered
-            FROM dbo.users
+            FROM dbo.[user]
             """,
         ).fetchone()
 
@@ -799,7 +823,7 @@ def get_user_stats(cursor: pyodbc.Cursor) -> UserStatsData:
             todayRegistered=int(row[2]) if row and row[2] is not None else 0,
         )
 
-    if not table_exists(cursor, "ProcessedReviews"):
+    if not table_exists(cursor, "processed_review"):
         return UserStatsData(allActiveUsers=0, todayActiveUsers=0, todayRegistered=0)
 
     row = execute_query(
@@ -810,7 +834,7 @@ def get_user_stats(cursor: pyodbc.Cursor) -> UserStatsData:
                 NULLIF(LTRIM(RTRIM(userName)), '') AS userName,
                 MAX({PROCESSED_ACTIVITY_EXPR}) AS lastActivity,
                 MIN({PROCESSED_ACTIVITY_EXPR}) AS firstActivity
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE NULLIF(LTRIM(RTRIM(userName)), '') IS NOT NULL
             GROUP BY NULLIF(LTRIM(RTRIM(userName)), '')
         )

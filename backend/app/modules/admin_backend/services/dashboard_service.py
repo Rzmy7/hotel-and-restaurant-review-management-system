@@ -177,7 +177,7 @@ def _get_review_table_metrics(
 
 
 def _get_review_metrics_from_sources(cursor: pyodbc.Cursor) -> dict[str, Any]:
-    if not table_exists(cursor, "sources"):
+    if not table_exists(cursor, "scraping_platform"):
         return {
             "configured": False,
             "totalReviews": 0,
@@ -261,13 +261,13 @@ def get_review_metrics(cursor: pyodbc.Cursor) -> dict[str, Any]:
     reviews_growth_value = 0.0
     by_platform: list[ChartDataPoint] = []
 
-    if table_exists(cursor, "ProcessedReviews"):
-        total_reviews = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.ProcessedReviews")
+    if table_exists(cursor, "processed_review"):
+        total_reviews = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.processed_review")
         reviews_collected_today = count_scalar(
             cursor,
             f"""
             SELECT COUNT(*)
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE {PROCESSED_DATE_EXPR} = CAST(GETDATE() AS date)
             """,
         )
@@ -280,7 +280,7 @@ def get_review_metrics(cursor: pyodbc.Cursor) -> dict[str, Any]:
             cursor,
             f"""
             SELECT COUNT(*)
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
             """,
             (current_month, next_month),
@@ -289,7 +289,7 @@ def get_review_metrics(cursor: pyodbc.Cursor) -> dict[str, Any]:
             cursor,
             f"""
             SELECT COUNT(*)
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
             """,
             (previous_month_, current_month),
@@ -302,7 +302,7 @@ def get_review_metrics(cursor: pyodbc.Cursor) -> dict[str, Any]:
             SELECT TOP 8
                 COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS sourceLabel,
                 COUNT(*) AS total
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
             ORDER BY COUNT(*) DESC
             """,
@@ -334,13 +334,13 @@ def get_review_metrics(cursor: pyodbc.Cursor) -> dict[str, Any]:
 
 
 def get_usage_rows(cursor: pyodbc.Cursor) -> list[dict[str, int]]:
-    if table_exists(cursor, "ProcessedReviews"):
+    if table_exists(cursor, "processed_review"):
         rows = cursor.execute(
             f"""
             SELECT YEAR(metricDate) AS [year], MONTH(metricDate) AS [month], COUNT(*) AS total
             FROM (
                 SELECT {PROCESSED_DATE_EXPR} AS metricDate
-                FROM dbo.ProcessedReviews
+                FROM dbo.processed_review
             ) AS dated
             WHERE metricDate IS NOT NULL
             GROUP BY YEAR(metricDate), MONTH(metricDate)
@@ -366,8 +366,8 @@ def get_usage_rows(cursor: pyodbc.Cursor) -> list[dict[str, int]]:
 
 
 def get_organization_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
-    if table_exists(cursor, "organizations"):
-        total_organizations = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.organizations")
+    if table_exists(cursor, "organization"):
+        total_organizations = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.organization")
 
         current_month = month_start(date.today())
         previous_month_ = shift_month(current_month, -1)
@@ -377,7 +377,7 @@ def get_organization_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
             cursor,
             """
             SELECT COUNT(*)
-            FROM dbo.organizations
+            FROM dbo.organization
             WHERE created_at >= ? AND created_at < ?
             """,
             (current_month, next_month),
@@ -386,7 +386,7 @@ def get_organization_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
             cursor,
             """
             SELECT COUNT(*)
-            FROM dbo.organizations
+            FROM dbo.organization
             WHERE created_at >= ? AND created_at < ?
             """,
             (previous_month_, current_month),
@@ -398,12 +398,12 @@ def get_organization_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
         if table_exists(cursor, alt_table):
             return count_scalar(cursor, f"SELECT COUNT(*) FROM dbo.[{alt_table}]"), 0.0
 
-    if table_exists(cursor, "ProcessedReviews"):
+    if table_exists(cursor, "processed_review"):
         return count_scalar(
             cursor,
             """
             SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(source)), ''))
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             """,
         ), 0.0
 
@@ -455,14 +455,14 @@ def get_hotel_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
 
 
 def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
-    if table_exists(cursor, "users"):
-        total_users = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.users")
+    if table_exists(cursor, "[user]"):
+        total_users = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.[user]")
 
         active_users_today = count_scalar(
             cursor,
             """
             SELECT COUNT(*)
-            FROM dbo.users
+            FROM dbo.[user]
             WHERE is_active = 1
               AND CAST(last_login_at AS date) = CAST(GETDATE() AS date)
             """,
@@ -476,7 +476,7 @@ def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
             cursor,
             """
             SELECT COUNT(*)
-            FROM dbo.users
+            FROM dbo.[user]
             WHERE created_at >= ? AND created_at < ?
             """,
             (current_month, next_month),
@@ -485,7 +485,7 @@ def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
             cursor,
             """
             SELECT COUNT(*)
-            FROM dbo.users
+            FROM dbo.[user]
             WHERE created_at >= ? AND created_at < ?
             """,
             (previous_month_, current_month),
@@ -493,12 +493,12 @@ def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
 
         return total_users, growth(current_user_count, previous_user_count), active_users_today
 
-    if table_exists(cursor, "ProcessedReviews"):
+    if table_exists(cursor, "processed_review"):
         total_users = count_scalar(
             cursor,
             """
             SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             """,
         )
 
@@ -506,7 +506,7 @@ def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
             cursor,
             f"""
             SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE {PROCESSED_DATE_EXPR} = CAST(GETDATE() AS date)
             """,
         )
@@ -519,7 +519,7 @@ def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
             cursor,
             f"""
             SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
             """,
             (current_month, next_month),
@@ -528,7 +528,7 @@ def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
             cursor,
             f"""
             SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), ''))
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
             WHERE {PROCESSED_DATE_EXPR} >= ? AND {PROCESSED_DATE_EXPR} < ?
             """,
             (previous_month_, current_month),

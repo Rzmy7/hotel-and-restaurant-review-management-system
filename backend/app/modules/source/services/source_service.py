@@ -5,7 +5,14 @@ import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status
 
-from app.modules.source.models import TenantSource, OrganizationSource, PlatformSource, SourceSource, SyncLogSource
+from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog
+
+# Backward-compatible aliases for any remaining references
+TenantSource = Tenant
+OrganizationSource = Organization
+PlatformSource = Platform
+SourceSource = Source
+SyncLogSource = SyncLog
 from app.modules.source.schemas import (
     SourceCreate, SourceUpdate, SourceRead, FetchingFrequency, SourceStatus,
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,

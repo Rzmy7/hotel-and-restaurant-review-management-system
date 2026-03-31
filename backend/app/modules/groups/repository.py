@@ -1,7 +1,7 @@
 """
 Group repository — data access for groups and members.
 
-Moved from repositories/groups_repo.py.
+Updated for composite PK (group_id, user_id) on group_member.
 """
 
 from sqlalchemy.orm import Session
@@ -24,7 +24,6 @@ def create_group(db: Session, group_name: str, created_by):
 
 def add_member_to_group(db: Session, group_id, user_id, role="GROUP_MEMBER"):
     member = GroupMember(
-        membership_id=uuid.uuid4(),
         group_id=group_id,
         user_id=user_id,
         role=role

@@ -107,7 +107,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 
         db.execute(
             text("""
-                UPDATE dbo.users
+                UPDATE dbo.[user]
                 SET password_hash = :password_hash,
                     updated_at = GETUTCDATE()
                 WHERE user_id = :user_id
