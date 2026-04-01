@@ -1,7 +1,8 @@
-# 🏥 Hotel and Restaurant Review Management & Analysis System
+# 🏨 Hotel and Restaurant Review Management & Analysis System
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![MSSQL](https://img.shields.io/badge/Database-MS%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
 
@@ -9,28 +10,114 @@
 
 The **Hotel and Restaurant Review Management & Analysis System** is a sophisticated, full-stack enterprise solution designed to revolutionize how hospitality businesses handle customer feedback. By integrating advanced web scraping, AI-powered sentiment analysis, and interactive data visualization, the system provides actionable insights to improve service quality and reputation.
 
-The platform aggregates data from major travel platforms like **Booking.com**, processes it using state-of-the-art LLMs (**Google Gemini**), and presents it through intuitive dashboards for both end-users and administrators.
+The platform aggregates data from major travel platforms like **Booking.com**, **Agoda**, **Google Maps**, and **TripAdvisor**, processes it using state-of-the-art LLMs (**Google Gemini**), and presents it through intuitive dashboards for both end-users and administrators.
 
 ---
 
 ## 🏗️ System Architecture
 
-The system is built on a modern, decoupled architecture ensuring scalability and maintainability:
+The system is built on a **Domain-Driven Modular Monolith** architecture with microservices for specialized tasks:
 
-1.  **[Backend API](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/README.md)**: A robust FastAPI ecosystem handling scraping, auth, and AI orchestration.
-2.  **[User Frontend](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/frontend/README.md)**: A high-performance React dashboard for data visualization and insight exploration.
-3.  **[Admin Frontend](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/admin-frontend/README.md)**: A management portal for system monitoring, configuration, and data control.
-4.  **[Embedding Service](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/embedding-service/readme.md)**: A dedicated microservice for semantic search and vector-based analysis.
+| Component | Technology | Port | Description |
+|-----------|------------|------|-------------|
+| **Backend API** | FastAPI + SQLAlchemy | 8000 | Core API, auth, scraping orchestration, AI integration |
+| **User Frontend** | React 19 + Vite + TypeScript | 5173 | Customer-facing dashboard for review analytics |
+| **Admin Frontend** | React 19 + Vite + TypeScript | 5174 | System management, scraper control, monitoring |
+| **Embedding Service** | FastAPI + ChromaDB | 8001 | Semantic search & vector embeddings (Dockerized) |
+| **Scraper Engine** | FastAPI + Playwright | 8001 | Multi-platform review scraping microservice |
+
+```
+hotel-and-restaurant-review-management-system/
+├── backend/                        # FastAPI backend (Domain-Driven Design)
+│   ├── app/
+│   │   ├── main.py                 # API entry point & router registration
+│   │   ├── core/                   # Config, database, security, dependencies
+│   │   ├── middleware/             # Auth guards, permission checks
+│   │   ├── modules/                # Business domains (admin, auth, reviews, etc.)
+│   │   ├── repositories/           # Data access layer
+│   │   ├── schemas/                # Pydantic models
+│   │   └── services/               # Business logic services
+│   ├── tests/                      # Integration & connectivity tests
+│   ├── requirements.txt            # Python dependencies
+│   └── .env.example                # Environment template
+│
+├── frontend/                       # User Insight Dashboard
+│   ├── src/
+│   │   ├── api/                    # API wrappers (Axios)
+│   │   ├── components/             # Reusable UI components
+│   │   ├── contexts/               # React Context providers
+│   │   ├── pages/                  # Route components
+│   │   ├── services/               # Business logic layer
+│   │   ├── stores/                 # Zustand state management
+│   │   └── types/                  # TypeScript definitions
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── admin-frontend/                 # System Administration Panel
+│   ├── src/
+│   │   ├── components/             # Admin UI components
+│   │   ├── layouts/                # Dashboard layouts
+│   │   ├── pages/                  # Management views
+│   │   ├── services/               # API service layer
+│   │   └── types.ts                # Type definitions
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── microservices/
+│   ├── embedding-service/          # Vector search & semantic embeddings
+│   │   ├── app/
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── scraper_engine/             # Multi-platform scraping microservice
+│       ├── api/                    # FastAPI endpoints
+│       ├── platforms/              # Platform-specific scrapers
+│       │   ├── agoda/
+│       │   ├── booking/
+│       │   ├── google/
+│       │   └── tripadvisor/
+│       ├── core/                   # Config, database, utils
+│       └── requirements.txt
+│
+└── docs/                           # Architecture diagrams, ER diagrams, UML
+```
 
 ---
 
-## 🚀 Key Features
+## ✨ Key Features
 
-*   **🔍 Advanced Scraping**: Deep-scraping of Booking.com using **Playwright**, capturing comments, scores, stay attributes, and photos.
-*   **🧠 AI Sentiment Analysis**: Leveraging **Google GenAI** to extract granular sentiment, key themes, and executive summaries from thousands of reviews.
-*   **📊 Insight Dashboards**: Interactive charts (Recharts) and data tables for tracking performance trends over time.
-*   **📡 Real-time Monitoring**: System health and scraping status tracking via the Admin Panel.
-*   **🔗 Semantic Search**: Vector-based search for finding specific review contexts and patterns.
+### Backend
+- **🌐 Domain-Driven Design**: Modular architecture with clear business boundaries
+- **🕷️ Web Scraping**: Playwright-based scraping engine for multiple platforms
+- **🤖 AI Integration**: Google Gemini for sentiment analysis and summarization
+- **🔐 Authentication**: JWT-based auth with OAuth (Google) support
+- **👥 RBAC**: Role-based access control (System & Group levels)
+- **⏰ Scheduler**: APScheduler for background tasks
+- **🏥 Health Monitoring**: Real-time system diagnostics
+
+### Frontend (User Dashboard)
+- **📊 Performance Overview**: Sentiment trends and KPI charts (Recharts)
+- **📑 Review Management**: Filterable review lists with sentiment highlighting
+- **🧠 AI Summaries**: Quick-read summaries of review clusters
+- **🎨 Type-Safe**: Comprehensive TypeScript definitions
+- **🔄 State Management**: Zustand for global state
+
+### Admin Panel
+- **🎛️ Scraper Orchestration**: Trigger and monitor scraping jobs
+- **📈 System Health**: CPU, RAM, and database status visualization
+- **⚙️ Configuration Management**: API keys and system settings
+- **🔍 Review Oversight**: Quality control for processed reviews
+
+### Embedding Service
+- **🔍 Semantic Search**: Vector-based review search with filtering
+- **🔄 Model Switching**: Toggle between Gemini (cloud) and MiniLM (local)
+- **📦 Batch Processing**: High-performance embedding generation
+- **🐳 Dockerized**: Ready for containerized deployment
+
+### Scraper Engine
+- **🌍 Multi-Platform**: Agoda, Booking.com, Google Maps, TripAdvisor
+- **🔗 Unified API**: Consistent data format across all sources
+- **📝 Audit Logging**: System-wide API call tracking
+- **📣 Callback Mechanism**: Automatic backend notification on completion
 
 ---
 
@@ -38,53 +125,303 @@ The system is built on a modern, decoupled architecture ensuring scalability and
 
 | Layer | Technology |
 | :--- | :--- |
-| **Backend** | Python 3.x, FastAPI, Playwright, PyODBC, Google GenAI, Authlib |
-| **Frontend** | React 19, Vite, TypeScript, TailwindCSS, Lucide React, Recharts |
-| **Services** | ChromaDB (Vector Store), Docker |
-| **Database** | Microsoft SQL Server |
+| **Backend Framework** | FastAPI, SQLAlchemy 2.0, Playwright |
+| **AI/ML** | Google GenAI (Gemini), ChromaDB, SentenceTransformers |
+| **Frontend** | React 19, TypeScript 5.9, Vite 7 |
+| **Styling** | TailwindCSS, Lucide React, Recharts |
+| **State Management** | Zustand, React Query, Context API |
+| **Database** | Microsoft SQL Server (ODBC Driver 18) |
+| **Vector Store** | ChromaDB |
+| **Security** | JWT, Bcrypt, Authlib, Python-JOSE |
+| **Containerization** | Docker |
 
 ---
 
-## 📂 Project Structure
+## 📋 Prerequisites
 
-```text
-.
-├── backend/                # Python FastAPI Backend & Scraping Logic
-│   ├── app/                # Core API Implementation
-│   ├── scraping/           # Playwright Scraper Engine
-│   └── embedding-service/  # Vector Search Microservice
-├── frontend/               # User Dashboard (React + Vite)
-├── admin-frontend/         # System Admin Portal (React + Vite)
-└── docs/                   # System Documentation & Diagrams
+Before setting up the project, ensure you have the following installed:
+
+- **Python 3.10+**
+- **Node.js 18+** & **npm**
+- **Microsoft SQL Server** with ODBC Driver 18
+- **Docker** (for Embedding Service)
+- **Git**
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd hotel-and-restaurant-review-management-system
 ```
 
----
+### 2. Backend Setup
 
-## 📋 Quick Start
+```bash
+cd backend
 
-### Prerequisites
-*   **Python 3.10+**
-*   **Node.js 18+** & **npm**
-*   **Microsoft SQL Server**
-*   **Docker** (for Embedding Service)
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
 
-### Setup Guide
-For detailed setup instructions, please refer to the individual component READMEs:
+# Install dependencies
+pip install -r requirements.txt
+playwright install chromium
 
-1.  **[Database Setup](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/README.md#database-setup)**
-2.  **[Backend Configuration](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/backend/README.md#installation--setup)**
-3.  **[Frontend Installation](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/frontend/README.md#getting-started)**
-4.  **[Admin Setup](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/admin-frontend/README.md#getting-started)**
+# Configure environment
+cp .env.example .env
+# Edit .env with your database credentials and API keys
+
+# Run connectivity tests
+$env:PYTHONPATH = ".;$env:PYTHONPATH"; python tests/test_db_connectivity.py
+
+# Start server
+uvicorn app.main:app --reload
+```
+
+**API Docs**: http://localhost:8000/docs
+
+### 3. Frontend Setup (User Dashboard)
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+**Access**: http://localhost:5173
+
+### 4. Admin Frontend Setup
+
+```bash
+cd admin-frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+**Access**: http://localhost:5174
+
+### 5. Embedding Service (Docker)
+
+```bash
+cd microservices/embedding-service
+
+# Build and run
+docker build -t embedding-service .
+docker run -d -p 8001:8000 -v chroma_data:/data/chroma --name embedding_service embedding-service
+```
+
+### 6. Scraper Engine Microservice
+
+```bash
+cd microservices/scraper_engine
+
+# Install dependencies
+pip install -r requirements.txt
+playwright install chromium
+
+# Configure .env with database and backend URL
+
+# Start service
+python api/main.py
+```
+
+**API Docs**: http://localhost:8001/docs
 
 ---
 
 ## 📄 Documentation
 
-Comprehensive system documentation, including architecture diagrams and database schemas, can be found in the **[docs](file:///e:/L2%20Project/hotel-and-restaurant-review-management-system/docs/README.md)** folder.
+Comprehensive system documentation is available in the **[docs](docs/README.md)** folder:
+
+- **[Architecture Diagrams](docs/Architecture%20diagrams/)** - Component interaction and data flow
+- **[ER Diagrams](docs/ER%20diagrams/)** - Database schema design
+- **[UML Diagrams](docs/UML%20diagrams/)** - System logic and class structures
 
 ---
 
+## 🔌 API Endpoints Summary
+
+### Backend (Port 8000)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Health check |
+| `/health` | GET | System health (CPU, Memory, Uptime) |
+| `/db-test` | GET | Database connectivity test |
+| `/api/reviews` | GET | Fetch reviews |
+| `/api/dashboard` | GET | Dashboard KPIs |
+| `/api/competitors` | GET/POST | Competitor analysis |
+| `/api/admin` | Various | Admin operations |
+| `/api/groups` | Various | Group management |
+| `/auth/*` | Various | Authentication endpoints |
+| `/oauth/*` | Various | OAuth endpoints |
+
+### Scraper Engine (Port 8001)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/agoda/scrape` | POST | Trigger Agoda scrape |
+| `/api/booking/scrape` | POST | Trigger Booking scrape |
+| `/api/google/scrape` | POST | Trigger Google scrape |
+| `/api/tripadvisor/scrape` | POST | Trigger TripAdvisor scrape |
+| `/api/reviews` | GET | Query reviews |
+| `/api/system/health` | GET | Health check |
+| `/api/db/stats` | GET | Database statistics |
+
+### Embedding Service (Port 8001)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/embed/batch` | POST | Batch embedding generation |
+| `/search` | POST | Semantic search |
+| `/model` | PUT | Switch embedding model |
+| `/api-settings` | PUT | Update API configuration |
+
 ---
 
-**License**: Private / Proprietary
+## ⚙️ Environment Configuration
+
+### Backend `.env` Variables
+
+```env
+# General
+SECRET_KEY=dev-secret-key-change-me
+FRONTEND_URL=http://localhost:5173
+
+# Database (SQLAlchemy)
+DATABASE_URL=mssql+pyodbc://<user>:<pass>@<server>/<db>?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+
+# PyODBC (Reviews/Dashboard)
+DB_DRIVER=ODBC Driver 18 for SQL Server
+DB_SERVER=your-server
+DB_NAME=your-database
+DB_UID=your-username
+DB_PWD=your-password
+
+# Google Generative AI
+GENAI_KEY=your-gemini-api-key
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# JWT
+JWT_SECRET_KEY=generate-random-string
+
+# SMTP (Password resets)
+SMTP_EMAIL=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+
+# Supabase (Optional storage)
+SUPABASE_URL=your-supabase-url
+SUPABASE_KEY=your-supabase-anon-key
+```
+
+### Scraper Engine `.env` Variables
+
+```env
+# Database
+DB_DRIVER=ODBC Driver 18 for SQL Server
+DB_SERVER=your_server
+DB_NAME=ScraperEngine
+DB_UID=sa
+DB_PWD=your_password
+
+# Backend notification
+BACKEND_API_URL=http://127.0.0.1:8000
+```
+
+---
+
+## 🧪 Development Commands
+
+| Component | Command | Description |
+|-----------|---------|-------------|
+| **Backend** | `uvicorn app.main:app --reload` | Start dev server |
+| **Frontend** | `npm run dev` | Start Vite dev server |
+| **Frontend** | `npm run build` | Production build |
+| **Frontend** | `npm run lint` | ESLint check |
+| **Admin** | `npm run dev` | Start Vite dev server |
+| **Admin** | `npm run build` | Production build |
+| **Embedding** | `docker run -d -p 8001:8000 ...` | Run Docker container |
+| **Scraper** | `python api/main.py` | Start scraper service |
+
+---
+
+## 🐛 Troubleshooting
+
+### Database Connection Issues
+- Ensure ODBC Driver 18 is installed
+- Add `TrustServerCertificate=yes` to connection string for local/dev servers
+- Run `python tests/test_db_connectivity.py` to diagnose
+
+### Scraper Issues
+- Run `playwright install chromium` to install browser
+- Check Playwright browser dependencies on your OS
+
+### Embedding Service
+- First startup downloads MiniLM model (~30-90 seconds)
+- Clear `chroma_data` volume when switching models
+- Use Gemini API mode for VPS with <2GB RAM
+
+### Frontend Build Errors
+- Clear `node_modules` and reinstall: `rm -rf node_modules && npm install`
+- Check TypeScript config: `tsconfig.json`
+
+---
+
+## 📝 Development Conventions
+
+### Code Style
+- **Python**: Follows PEP 8, uses type hints
+- **TypeScript**: Strict mode enabled, React 19 patterns
+- **Linting**: ESLint (frontend/admin), Flake8 (backend `.flake8` config)
+
+### Testing Practices
+- Backend includes connectivity tests in `tests/`
+- Scraper engine has integration tests in `tests/`
+- Run `python tests/test_db_connectivity.py` to verify setup
+
+### Architecture Patterns
+- **Backend**: Domain-Driven Design with modular monolith structure
+- **Frontend**: Component-based architecture with Context + Zustand
+- **API**: RESTful design with OpenAPI/Swagger documentation
+
+### Git Workflow
+- Feature branches for new development
+- Documentation updates required for architectural changes
+- ER diagrams and UML stored in `docs/`
+
+---
+
+## 📄 License
+
+**Private / Proprietary**  
 © 2026 Hotel & Restaurant Review Management System
+
+---
+
+## 📞 Support
+
+For questions or issues, please refer to the individual component READMEs:
+
+- **[Backend Documentation](backend/README.md)**
+- **[Frontend Documentation](frontend/README.md)**
+- **[Admin Panel Documentation](admin-frontend/README.md)**
+- **[Embedding Service Documentation](microservices/embedding-service/readme.md)**
+- **[Scraper Engine Documentation](microservices/scraper_engine/README.md)**
