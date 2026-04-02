@@ -9,6 +9,7 @@ const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
 const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
 const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
 const SETUP_SNAPSHOT_EMPTY_VALUE = '__none__';
+const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 
 const parseJsonArray = (value: string | null): any[] => {
     if (!value) return [];
@@ -79,62 +80,30 @@ const SetupPage = () => {
     const handleContinue = async () => {
         const token = localStorage.getItem("token");
 
-        // Use a generic name if none provided for now, but in future, could prompt for it.
-        const orgName = organizationName || `My ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}`;
+        // Use a generic name if none provided for now
+        const orgName = (organizationName || `My ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}`).trim();
 
         if (!token) {
             alert("User not authenticated");
             return;
         }
 
-        if (localStorage.getItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY) === null) {
-            const currentOrganization = localStorage.getItem('current_organization');
-            if (currentOrganization !== null) {
-                localStorage.setItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY, currentOrganization);
-            } else {
-                localStorage.setItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY, SETUP_SNAPSHOT_EMPTY_VALUE);
+        // Buffer the data in localStorage
+        const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+        const draft = draftStr ? JSON.parse(draftStr) : {};
+        
+        localStorage.setItem(SETUP_DRAFT_CONFIG_KEY, JSON.stringify({
+            ...draft,
+            organization: {
+                name: orgName,
+                type: selectedType
             }
-        }
+        }));
 
-        setIsLoading(true);
-        try {
-            const data = await apiClient.post<any>('/api/organizations', {
-                organization_name: orgName,
-                organization_type: selectedType,
-            });
+        // We still store a "pending name" for UI purposes across steps if needed
+        localStorage.setItem(SETUP_PENDING_ORG_NAME_KEY, orgName);
 
-            const organizationId = data?.organization_id;
-            const membershipCreated = Boolean(data?.membership_created);
-
-            if (organizationId) {
-                localStorage.setItem(SETUP_PENDING_ORG_ID_KEY, organizationId);
-                localStorage.setItem(SETUP_PENDING_ORG_NAME_KEY, orgName.trim());
-                localStorage.setItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY, membershipCreated ? 'true' : 'false');
-                localStorage.setItem("current_organization", organizationId);
-            }
-
-            navigate("/setup/sources");
-        } catch (error: any) {
-            console.error(error);
-            const detail = String(error.detail || "").toLowerCase();
-            const message = String(error.message || "").toLowerCase();
-
-            const isDuplicateJoin =
-                detail.includes("already") ||
-                detail.includes("duplicate") ||
-                detail.includes("unique") ||
-                message.includes("already") ||
-                message.includes("duplicate") ||
-                message.includes("unique");
-
-            if (isDuplicateJoin) {
-                alert("You have already joined this organization");
-            } else {
-                alert("Server error creating organization");
-            }
-        } finally {
-            setIsLoading(false);
-        }
+        navigate("/setup/sources");
     };
 
     const handleSkip = async () => {

@@ -1,6 +1,6 @@
 import enum
 from typing import List, Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, field_validator
 from datetime import datetime
 import uuid
 
@@ -44,9 +44,15 @@ class PlatformRead(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('platform_status', mode='before')
+    @classmethod
+    def lowercase_status(cls, v):
+        if isinstance(v, str):
+            return v.lower()
+        return v
+
 # --- Source Schemas ---
 class SourceCreate(BaseModel):
-
     organization_id: uuid.UUID
     platform_id: int
     source_url: str
@@ -60,7 +66,6 @@ class SourceUpdate(BaseModel):
 
 class SourceRead(BaseModel):
     source_id: uuid.UUID
-
     organization_id: uuid.UUID
     platform_id: int
     platform_name: str
@@ -78,6 +83,13 @@ class SourceRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator('source_status', mode='before')
+    @classmethod
+    def lowercase_status(cls, v):
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 # --- Stats and Bulk Responses ---
 class SourceStats(BaseModel):

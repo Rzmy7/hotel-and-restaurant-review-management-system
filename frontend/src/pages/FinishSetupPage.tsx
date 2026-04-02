@@ -1,12 +1,12 @@
-import { CheckCircle2, Rocket, Search, BarChart3, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Rocket, Search, BarChart3, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
+import { apiClient } from '../api/client';
 
+const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
-const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
 const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
-const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
 
 const parseJsonArray = (value: string | null): any[] => {
   if (!value) return [];
@@ -20,60 +20,108 @@ const parseJsonArray = (value: string | null): any[] => {
 };
 
 const clearSetupDraftState = () => {
-  localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
+  localStorage.removeItem(SETUP_DRAFT_CONFIG_KEY);
   localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
-  localStorage.removeItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY);
   localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
-  // Remove legacy keys from old implementation.
-  localStorage.removeItem('setup_snapshot_organizations');
-  localStorage.removeItem('setup_snapshot_organization_ids');
+  localStorage.removeItem('setup_pending_organization_id');
+  localStorage.removeItem('setup_pending_membership_created');
 };
 
 const FinishSetupPage = () => {
   const navigate = useNavigate();
   const [isFinishing, setIsFinishing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIsFinishing(true);
-    
-    // Process local storage updates immediately
-    const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
-    const pendingOrganizationName = localStorage.getItem(SETUP_PENDING_ORG_NAME_KEY) || 'New Organization';
+    setError(null);
 
-    if (pendingOrganizationId) {
-      const organizations = parseJsonArray(localStorage.getItem('organizations'));
-      const alreadyExists = organizations.some((org: any) =>
-        org?.organization_id === pendingOrganizationId
-      );
-
-      if (!alreadyExists) {
-        organizations.push({
-          organization_id: pendingOrganizationId,
-          organization_name: pendingOrganizationName,
-        });
+    try {
+      const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+      if (!draftStr) {
+        throw new Error("Setup data not found. Please restart the setup process.");
       }
 
-      localStorage.setItem('organizations', JSON.stringify(organizations));
+      const draft = JSON.parse(draftStr);
+      
+      // Get User ID for Tenant ID
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const tenantId = user?.id || user?.user_id;
 
-      const organizationIds = organizations
-        .map((org: any) => org?.organization_id)
-        .filter(Boolean);
-      localStorage.setItem('organization_ids', JSON.stringify(organizationIds));
-      localStorage.setItem('current_organization', pendingOrganizationId);
+      if (!tenantId) {
+        throw new Error("User session not found. Please log in again.");
+      }
+
+      // Map Organization Type to ID
+      const typeMap: Record<string, number> = {
+        'hotel': 1,
+        'restaurant': 2
+      };
+
+      // Map Schedule to Backend frequency_id
+      const freqMap: Record<string, number> = {
+        'hourly': 1,
+        'daily': 1,
+        'weekly': 3
+      };
+
+      const payload = {
+        organization_name: draft.organization.name,
+        organization_type_id: typeMap[draft.organization.type] || 1,
+        sources: (draft.sources || []).map((s: any) => ({
+          platform_id: s.platform_id,
+          source_url: s.source_url,
+          fetching_frequency: freqMap[draft.schedule] || 1
+        }))
+      };
+
+      const response = await apiClient.post<any>(`/api/organizations/${tenantId}`, payload);
+      
+      const organizationId = response?.organization_id;
+      if (organizationId) {
+        // Update local organizations list
+        const organizations = parseJsonArray(localStorage.getItem('organizations'));
+        const alreadyExists = organizations.some((org: any) => org?.organization_id === organizationId);
+
+        if (!alreadyExists) {
+          organizations.push({
+            organization_id: organizationId,
+            organization_name: draft.organization.name,
+          });
+        }
+
+        localStorage.setItem('organizations', JSON.stringify(organizations));
+        
+        const organizationIds = organizations
+          .map((org: any) => org?.organization_id)
+          .filter(Boolean);
+          
+        localStorage.setItem('organization_ids', JSON.stringify(organizationIds));
+        localStorage.setItem('current_organization', organizationId);
+        localStorage.setItem('setupComplete', 'true');
+        
+        clearSetupDraftState();
+        
+        // Wait briefly for the "success" feel
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      } else {
+        throw new Error("Failed to retrieve organization ID from server.");
+      }
+
+    } catch (err: any) {
+      console.error('Final setup error:', err);
+      setError(err.message || "An unexpected error occurred during finalization.");
+      setIsFinishing(false);
     }
-
-    clearSetupDraftState();
-    localStorage.setItem('setupComplete', 'true');
-    
-    setTimeout(() => {
-        navigate('/dashboard');
-    }, 1500);
   };
 
   const nextSteps = [
     {
       title: 'Initial Review Fetching',
-      description: 'We are currently connecting to your sources and retrieving the last 12 months of reviews.',
+      description: 'We are currently connecting to your sources and retrieving your latest reviews.',
       icon: Search,
     },
     {
@@ -94,18 +142,27 @@ const FinishSetupPage = () => {
       onContinue={handleFinish}
       onBack={() => navigate('/setup/plan')}
       isContinueLoading={isFinishing}
+      isContinueDisabled={isFinishing}
     >
       <div className="flex flex-col items-center text-center">
         <div className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-blue-500/40 animate-bounce-subtle">
-          <CheckCircle2 size={48} strokeWidth={2.5} />
+          {isFinishing ? <Loader2 size={48} className="animate-spin" /> : <CheckCircle2 size={48} strokeWidth={2.5} />}
         </div>
 
         <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">
-            You're All Set!
+            {isFinishing ? 'Finalizing Setup...' : "You're All Set!"}
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md mb-12">
-            Your organization has been successfully configured. We're now preparing your workspace.
+        <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md mb-8">
+            {isFinishing 
+              ? "We're saving your organization and connecting your sources. Please don't close this window."
+              : "Your organization is ready to be created. We'll start aggregating your reviews immediately."}
         </p>
+
+        {error && (
+            <div className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl p-4 mb-8 text-red-600 dark:text-red-400 text-sm font-bold">
+                Error: {error}
+            </div>
+        )}
 
         <div className="w-full text-left space-y-6 mb-10">
             <h3 className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6">
@@ -135,7 +192,7 @@ const FinishSetupPage = () => {
         <div className="w-full bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 text-left">
             <div className="flex items-center gap-3 text-blue-600 mb-2">
                 <CheckCircle2 size={16} />
-                <span className="text-[11px] font-black uppercase tracking-widest">Setup Verified</span>
+                <span className="text-[11px] font-black uppercase tracking-widest">Ready to Launch</span>
             </div>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                 Click the button below to finalize and head to your dashboard. Welcome to the L2 Project family.

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { Clock, Calendar, Zap, Sparkles } from 'lucide-react';
+
+const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 
 type ScheduleType = 'hourly' | 'daily' | 'weekly';
 
@@ -9,7 +11,25 @@ const ChooseSchedulePage = () => {
   const navigate = useNavigate();
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleType>('daily');
 
+  useEffect(() => {
+    const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+    if (draftStr) {
+      const draft = JSON.parse(draftStr);
+      if (draft.schedule) {
+        setSelectedSchedule(draft.schedule);
+      }
+    }
+  }, []);
+
   const handleContinue = () => {
+    const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+    const draft = draftStr ? JSON.parse(draftStr) : {};
+    
+    localStorage.setItem(SETUP_DRAFT_CONFIG_KEY, JSON.stringify({
+      ...draft,
+      schedule: selectedSchedule
+    }));
+
     navigate('/setup/plan');
   };
 

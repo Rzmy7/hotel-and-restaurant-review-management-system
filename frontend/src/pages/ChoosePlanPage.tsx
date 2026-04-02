@@ -4,6 +4,8 @@ import SetupLayout from '../components/shared/SetupLayout';
 import { PricingCard } from '../components/subscription/molecules/PricingCard';
 import { fetchSubscriptionPlans, type SubscriptionPlan } from '../services/subscriptionPlansService';
 
+const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
+
 type PlanTier = 'starter' | 'professional' | 'enterprise';
 
 const toPlanTier = (plan: SubscriptionPlan, index: number): PlanTier => {
@@ -44,8 +46,21 @@ const ChoosePlanPage = () => {
       try {
         const loadedPlans = await fetchSubscriptionPlans();
         setPlans(loadedPlans);
-        if (loadedPlans.length > 0) {
-          setSelectedPlan((previous) => previous ?? loadedPlans[0].id);
+        
+        // Check draft first
+        const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+        let draftPlanId = null;
+        if (draftStr) {
+            const draft = JSON.parse(draftStr);
+            if (draft.plan) {
+                draftPlanId = draft.plan;
+            }
+        }
+
+        if (draftPlanId) {
+            setSelectedPlan(draftPlanId);
+        } else if (loadedPlans.length > 0) {
+            setSelectedPlan(loadedPlans[0].id);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load plans';
@@ -76,6 +91,15 @@ const ChoosePlanPage = () => {
   );
 
   const handleContinue = () => {
+    if (selectedPlan) {
+        const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+        const draft = draftStr ? JSON.parse(draftStr) : {};
+        
+        localStorage.setItem(SETUP_DRAFT_CONFIG_KEY, JSON.stringify({
+            ...draft,
+            plan: selectedPlan
+        }));
+    }
     navigate('/setup/finish');
   };
 
