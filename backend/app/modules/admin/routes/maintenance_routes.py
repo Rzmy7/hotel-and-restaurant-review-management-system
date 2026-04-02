@@ -4,8 +4,8 @@ import pyodbc
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.services.system_settings_service import (
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.services.system_settings_service import (
     ensure_system_settings_table,
     get_setting,
     set_setting,

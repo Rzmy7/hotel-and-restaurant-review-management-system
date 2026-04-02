@@ -1,11 +1,12 @@
 """Subscription plan data service for admin management APIs."""
 
+from datetime import datetime
 from decimal import Decimal
 
 import pyodbc
 from fastapi import HTTPException
 
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     SubscriptionFeature,
     SubscriptionFeatureUsage,
     SubscriptionPlan,
@@ -71,6 +72,114 @@ def _to_float(value: Decimal | float | int | None) -> float:
     if value is None:
         return 0.0
     return float(value)
+
+
+def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
+    """Returns a mapping of tenant_id to plan_name from the tenant table."""
+    from app.modules.admin.db_utils import execute_query, table_exists
+    
+    if not table_exists(cursor, "tenant") or not table_exists(cursor, "plans"):
+        return {}
+
+    rows = execute_query(
+        cursor,
+        """
+        SELECT
+            CAST(t.tenant_id AS NVARCHAR(64)) AS tenant_id,
+            p.name AS plan_name
+        FROM dbo.tenant t
+        INNER JOIN dbo.plans p ON p.plan_id = t.[plan]
+        WHERE t.[plan] IS NOT NULL
+        """,
+    ).fetchall()
+
+    result: dict[str, str] = {}
+    for row in rows:
+        tenant_id = str(row[0] or "").strip()
+        plan_name = str(row[1] or "").strip()
+        if not tenant_id or not plan_name:
+            continue
+        result[tenant_id] = plan_name
+    return result
+
+
+def set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: str) -> None:
+    """Sets a user's subscription plan on the tenant table."""
+    from app.modules.admin.db_utils import execute_query, table_exists
+    
+    normalized_plan_name = plan_name.strip()
+    if normalized_plan_name.lower() == "basic":
+        normalized_plan_name = "Free"
+
+    if not normalized_plan_name:
+        return
+    if not table_exists(cursor, "tenant") or not table_exists(cursor, "plans"):
+        return
+
+    plan_row = execute_query(
+        cursor,
+        "SELECT TOP 1 plan_id FROM dbo.plans WHERE name = ?",
+        (normalized_plan_name,),
+    ).fetchone()
+    if plan_row is None or plan_row[0] is None:
+        return
+
+    plan_id = int(plan_row[0])
+    
+    # Update the tenant table directly
+    execute_query(
+        cursor,
+        "UPDATE dbo.tenant SET [plan] = ? WHERE tenant_id = ?",
+        (plan_id, user_id),
+    )
+
+    # Initialize usage rows for all features if they don't exist
+    initialize_user_usage(cursor, user_id)
+
+
+def initialize_user_usage(cursor: pyodbc.Cursor, user_id: str) -> None:
+    """Ensures usage rows exist in user_feature_usage for all defined features."""
+    features = get_subscription_features(cursor)
+    for feature in features:
+        cursor.execute(
+            """
+            IF NOT EXISTS (SELECT 1 FROM dbo.user_feature_usage WHERE user_id = ? AND feature_id = ?)
+            BEGIN
+                INSERT INTO dbo.user_feature_usage (user_id, feature_id, used_quantity, updated_at)
+                VALUES (?, ?, 0, SYSUTCDATETIME())
+            END
+            """,
+            (user_id, int(feature.id), user_id, int(feature.id)),
+        )
+
+
+def increment_feature_usage(cursor: pyodbc.Cursor, user_id: str, feature_key: str, amount: int = 1) -> None:
+    """Increments the used count for a specific feature for a user."""
+    # Try updating existing row
+    cursor.execute(
+        """
+        UPDATE ufu
+        SET ufu.used_quantity = ufu.used_quantity + ?,
+            ufu.updated_at = SYSUTCDATETIME()
+        FROM dbo.user_feature_usage ufu
+        INNER JOIN dbo.features f ON f.feature_id = ufu.feature_id
+        WHERE ufu.user_id = ? AND f.feature_key = ?
+        """,
+        (amount, user_id, feature_key),
+    )
+    
+    # If no rows updated, it might be the first usage or the row was missing
+    if cursor.rowcount == 0:
+        # Get feature ID
+        feat_row = cursor.execute("SELECT feature_id FROM dbo.features WHERE feature_key = ?", (feature_key,)).fetchone()
+        if feat_row:
+            cursor.execute(
+                """
+                INSERT INTO dbo.user_feature_usage (user_id, feature_id, used_quantity, updated_at)
+                VALUES (?, ?, ?, SYSUTCDATETIME())
+                """,
+                (user_id, int(feat_row[0]), amount),
+            )
 
 
 def ensure_subscription_tables(cursor: pyodbc.Cursor) -> None:
@@ -479,15 +588,15 @@ def delete_subscription_plan(cursor: pyodbc.Cursor, plan_id: int) -> None:
 
 
 def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> SubscriptionUsageSummary:
+    """Returns the usage summary for a user based on the tenant table's plan."""
     features = get_subscription_features(cursor)
 
     plan_row = cursor.execute(
         """
         SELECT TOP 1 p.plan_id, p.name
-        FROM dbo.user_subscription us
-        INNER JOIN dbo.plans p ON p.plan_id = us.plan_id
-        WHERE us.user_id = ? AND us.plan_id IS NOT NULL
-        ORDER BY COALESCE(us.updated_at, us.created_at) DESC, us.user_subscription_id DESC
+        FROM dbo.tenant t
+        INNER JOIN dbo.plans p ON p.plan_id = t.[plan]
+        WHERE t.tenant_id = ? AND t.[plan] IS NOT NULL
         """,
         (user_id,),
     ).fetchone()

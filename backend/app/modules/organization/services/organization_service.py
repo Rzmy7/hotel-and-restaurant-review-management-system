@@ -1,4 +1,8 @@
 from sqlalchemy import text
+from app.modules.admin.services.subscription_service import increment_feature_usage
+from app.modules.admin.db_utils import get_connection_string
+import pyodbc
+
 
 def create_organization(db, user_id, data):
     try:
@@ -23,6 +27,15 @@ def create_organization(db, user_id, data):
         })
 
         db.commit()
+
+        # 3️⃣ Increment usage
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                increment_feature_usage(cursor, str(user_id), "organizations")
+                conn.commit()
+        except Exception as e:
+            print(f"FAILED TO INCREMENT ORG USAGE: {e}")
 
         return {
             "organization_id": str(organization_id),

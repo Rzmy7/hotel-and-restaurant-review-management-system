@@ -10,17 +10,17 @@ from datetime import date, datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,
     table_exists,
 )
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     ScrapingPlatformCreatePayload,
     ScrapingPlatformUpdatePayload,
 )
-from app.modules.admin_backend.services.monitoring_service import (
+from app.modules.admin.services.monitoring_service import (
     create_platform_in_db,
     drop_dynamic_platform_table,
     fetch_platforms_from_db,

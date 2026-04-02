@@ -9,7 +9,7 @@ from datetime import date
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     count_scalar,
     execute_query,
     get_connection_string,
@@ -18,13 +18,13 @@ from app.modules.admin_backend.db_utils import (
     table_exists,
     to_relative_timestamp,
 )
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     ChartDataPoint,
     DashboardStats,
     RecentActivity,
     SystemAlert,
 )
-from app.modules.admin_backend.services.dashboard_service import (
+from app.modules.admin.services.dashboard_service import (
     PROCESSED_ACTIVITY_EXPR,
     PROCESSED_DATE_EXPR,
     get_hotel_metrics,

@@ -10,9 +10,9 @@ from datetime import datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException, Query
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.services.broadcasting_service import ensure_notifications_schema
-from app.modules.admin_backend.services.notifications_service import resolve_target_user_id
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
+from app.modules.admin.services.notifications_service import resolve_target_user_id
 
 router = APIRouter(prefix="/api/notifications", tags=["Admin Notifications"])
 

@@ -9,13 +9,13 @@ from datetime import datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,
     table_exists,
 )
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     AdminUser,
     AdminUserCreatePayload,
     AdminUserUpdatePayload,
@@ -26,7 +26,7 @@ from app.modules.admin_backend.schemas import (
     OrganizationUpdatePayload,
     UserStatsData,
 )
-from app.modules.admin_backend.services.admin_service import (
+from app.modules.admin.services.admin_service import (
     create_user_in_db,
     delete_user_in_db,
     get_user_stats,

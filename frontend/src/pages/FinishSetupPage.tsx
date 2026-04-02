@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
@@ -29,6 +30,7 @@ const clearSetupDraftState = () => {
 
 const FinishSetupPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isFinishing, setIsFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,9 +47,9 @@ const FinishSetupPage = () => {
       const draft = JSON.parse(draftStr);
       
       // Get User ID for Tenant ID
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
-      const tenantId = user?.id || user?.user_id;
+      const tenantId = user?.user_id;
+      
+      console.log('Setup finish user:', user);
 
       if (!tenantId) {
         throw new Error("User session not found. Please log in again.");

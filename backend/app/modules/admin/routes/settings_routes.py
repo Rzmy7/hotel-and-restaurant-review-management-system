@@ -9,9 +9,9 @@ try:
 except Exception:
     Anthropic = None
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.schemas import GeneralSettingsPayload, GeneralSettingsResponse
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.schemas import GeneralSettingsPayload, GeneralSettingsResponse
+from app.modules.admin.schemas import (
     FeatureFlagResponse,
     FeatureFlagUpdatePayload,
     ReplyGenerationApiTestPayload,
@@ -19,7 +19,7 @@ from app.modules.admin_backend.schemas import (
     ReplyGenerationSettingsPayload,
     ReplyGenerationSettingsResponse,
 )
-from app.modules.admin_backend.services.system_settings_service import (
+from app.modules.admin.services.system_settings_service import (
     DEFAULT_CURRENCY,
     DEFAULT_DATE_FORMAT,
     DEFAULT_LANGUAGE,

@@ -11,17 +11,17 @@ def get_admin_users():
         conn = pyodbc.connect(get_connection_string())
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT u.user_id, u.full_name, u.email, u.is_active, u.last_login_at, u.created_at,
-                   STRING_AGG(r.role_name, ', ') as roles
+            SELECT u.user_id, 
+                   LTRIM(RTRIM(COALESCE(u.first_name, '') + ' ' + COALESCE(u.last_name, ''))) as full_name, 
+                   u.email, u.is_active, u.last_login_at, u.created_at,
+                   r.role_name as role
             FROM dbo.[user] u
-            LEFT JOIN dbo.user_role ur ON u.user_id = ur.user_id
-            LEFT JOIN dbo.[role] r ON ur.role_id = r.role_id
-            GROUP BY u.user_id, u.full_name, u.email, u.is_active, u.last_login_at, u.created_at
+            LEFT JOIN dbo.[role] r ON u.role_id = r.role_id
             ORDER BY u.created_at DESC
         """)
         rows = cursor.fetchall()
         conn.close()
-        return [{"id": str(r.user_id), "name": r.full_name or "Unknown", "email": r.email, "role": r.roles or "No Role", "status": "Active" if r.is_active else "Inactive", "lastActive": r.last_login_at.isoformat() if r.last_login_at else None, "joinedAt": r.created_at.isoformat() if r.created_at else None} for r in rows]
+        return [{"id": str(r.user_id), "name": r.full_name or "Unknown", "email": r.email, "role": r.role or "No Role", "status": "Active" if r.is_active else "Inactive", "lastActive": r.last_login_at.isoformat() if r.last_login_at else None, "joinedAt": r.created_at.isoformat() if r.created_at else None} for r in rows]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -34,7 +34,7 @@ def create_admin_user(payload: AdminUserCreatePayload):
         if cursor.fetchone()[0] > 0:
             conn.close()
             raise HTTPException(status_code=400, detail="Email already exists")
-        cursor.execute("INSERT INTO dbo.[user] (email, full_name, is_active, created_at, updated_at) OUTPUT INSERTED.user_id VALUES (?, ?, 1, GETUTCDATE(), GETUTCDATE())", payload.email, payload.name)
+        cursor.execute("INSERT INTO dbo.[user] (email, first_name, last_name, is_active, created_at, updated_at) OUTPUT INSERTED.user_id VALUES (?, ?, '', 1, GETUTCDATE(), GETUTCDATE())", payload.email, payload.name)
         new_id = cursor.fetchone()[0]
         conn.commit()
         conn.close()
@@ -51,7 +51,7 @@ def update_admin_user(user_id: str, payload: AdminUserUpdatePayload):
         cursor = conn.cursor()
         sets, params = [], []
         if payload.name is not None:
-            sets.append("full_name = ?")
+            sets.append("first_name = ?")
             params.append(payload.name)
         if payload.email is not None:
             sets.append("email = ?")

@@ -11,13 +11,13 @@ from zoneinfo import ZoneInfo
 import pyodbc
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.schemas import (
     BroadcastCreate,
     EstimatedRecipientsResponse,
     StatisticsResponse,
 )
-from app.modules.admin_backend.services.broadcasting_service import (
+from app.modules.admin.services.broadcasting_service import (
     create_notifications,
     ensure_broadcast_events_table,
     ensure_notifications_schema,
@@ -25,7 +25,7 @@ from app.modules.admin_backend.services.broadcasting_service import (
     get_recipient_ids,
     to_record,
 )
-from app.modules.admin_backend.services.system_settings_service import get_system_timezone
+from app.modules.admin.services.system_settings_service import get_system_timezone
 
 router = APIRouter(prefix="/api/broadcasting", tags=["Broadcasting"])
 

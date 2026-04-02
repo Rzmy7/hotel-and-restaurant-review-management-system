@@ -11,6 +11,9 @@ from app.modules.user.repositories.users_repo import get_user_by_email
 from app.modules.auth.repositories.roles_repo import get_user_primary_role
 from app.modules.auth.utils.password_utils import verify_password
 from app.modules.auth.services.jwt_service import create_access_token
+from app.modules.admin.services.subscription_service import set_user_subscription_plan
+from app.modules.admin.db_utils import get_connection_string
+import pyodbc
 
 
 def login_user(db: Session, email: str, password: str) -> dict:
@@ -49,6 +52,19 @@ def login_user(db: Session, email: str, password: str) -> dict:
 
     user.last_login_at = datetime.utcnow()
     db.commit()
+
+    # ----------------------------------------------------
+    # Initialize "Free" subscription if they are a Tenant
+    # ----------------------------------------------------
+    if role == "Tenant":
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                set_user_subscription_plan(cursor, str(user.user_id), "Free")
+                conn.commit()
+        except Exception as e:
+            # Don't block login if subscription init fails, but log it
+            print(f"FAILED TO INIT SUBSCRIPTION FOR {user.user_id}: {e}")
 
     access_token = create_access_token(
         user_id=str(user.user_id),

@@ -11,7 +11,7 @@ from typing import Any
 
 import pyodbc
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     count_scalar,
     execute_query,
     get_connection_string,
@@ -22,7 +22,7 @@ from app.modules.admin_backend.db_utils import (
     table_exists,
     to_relative_timestamp,
 )
-from app.modules.admin_backend.schemas import ChartDataPoint
+from app.modules.admin.schemas import ChartDataPoint
 
 # ── Constants ───────────────────────────────────────────────────────
 
@@ -455,7 +455,7 @@ def get_hotel_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
 
 
 def get_user_metrics(cursor: pyodbc.Cursor) -> tuple[int, float, int]:
-    if table_exists(cursor, "[user]"):
+    if table_exists(cursor, "user"):
         total_users = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.[user]")
 
         active_users_today = count_scalar(

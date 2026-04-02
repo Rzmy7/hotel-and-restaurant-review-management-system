@@ -15,14 +15,14 @@ import requests
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,
     is_valid_sql_identifier,
     table_exists,
 )
-from app.modules.admin_backend.schemas import ScrapingPlatformCreatePayload, ScrapingPlatformUpdatePayload, ScrapingTableAttributePayload
+from app.modules.admin.schemas import ScrapingPlatformCreatePayload, ScrapingPlatformUpdatePayload, ScrapingTableAttributePayload
 
 load_dotenv()
 

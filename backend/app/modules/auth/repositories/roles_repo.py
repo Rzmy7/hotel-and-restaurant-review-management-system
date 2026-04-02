@@ -70,4 +70,4 @@ def user_has_role(db: Session, user_id, role_name: str):
         .first()
     )
 
-    return user is not None
+    return user is not None

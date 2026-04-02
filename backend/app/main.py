@@ -87,10 +87,7 @@ try:
 except ImportError:
     legacy_source_router = None
 
-try:
-    from app.modules.admin_backend import router as admin_backend_router
-except ImportError:
-    admin_backend_router = None
+# admin_backend_router removed and consolidated into admin_router
 
 # ── Pre-load ORM models so SQLAlchemy can resolve cross-module relationships ──
 import app.modules.user.models.user_models          # noqa: F401  (User)
@@ -182,8 +179,7 @@ if groups_router:
     app.include_router(groups_router, prefix="/api")
 if legacy_source_router:
     app.include_router(legacy_source_router, prefix="/api")
-if admin_backend_router:
-    app.include_router(admin_backend_router)
+# app.include_router(admin_backend_router) removed
 
 # Hansi routers
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])

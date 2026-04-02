@@ -11,6 +11,8 @@ from app.modules.competitors.services.competitor_service import (
     track_competitor, untrack_competitor, delete_competitor,
     get_competitor_reviews,
 )
+from app.modules.auth.utils.jwt_utils import get_current_user
+from fastapi import Depends
 
 router = APIRouter()
 
@@ -33,9 +35,10 @@ def create_competitor(payload: AddCompetitorRequest):
 
 
 @router.post("/track")
-def track_a_competitor(payload: TrackCompetitorRequest):
+def track_a_competitor(payload: TrackCompetitorRequest, current_user = Depends(get_current_user)):
     try:
-        result = track_competitor(payload.competitorId)
+        user_id = str(current_user.user_id) if hasattr(current_user, "user_id") else str(current_user.id)
+        result = track_competitor(payload.competitorId, user_id=user_id)
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor now tracked", "competitor": result}

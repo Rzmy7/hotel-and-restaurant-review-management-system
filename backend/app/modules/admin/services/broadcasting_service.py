@@ -11,7 +11,8 @@ from typing import Optional
 import pyodbc
 from fastapi import HTTPException
 
-from app.modules.admin_backend.db_utils import get_connection_string, table_exists
+from app.modules.admin.db_utils import get_connection_string, table_exists
+from app.modules.auth.constants.roles import ADMIN_ROLE_ID, TENANT_ROLE_ID
 
 
 # ── Schema helpers ──────────────────────────────────────────────────
@@ -123,8 +124,8 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verified: bool) -> str:
-    if is_admin:
+def _derive_plan_bucket(role_id: int, is_email_verified: bool, is_phone_verified: bool) -> str:
+    if role_id == ADMIN_ROLE_ID:
         return "enterprise"
     if is_email_verified and is_phone_verified:
         return "professional"
@@ -133,8 +134,8 @@ def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verifi
     return "free"
 
 
-def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, bool]]:
-    if not table_exists(cursor, "[user]"):
+def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, int]]:
+    if not table_exists(cursor, "user"):
         return []
 
     rows = cursor.execute(
@@ -144,13 +145,14 @@ def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool
             CAST(COALESCE(is_active, 0) AS BIT) AS is_active,
             CAST(COALESCE(is_email_verified, 0) AS BIT) AS is_email_verified,
             CAST(COALESCE(is_phone_verified, 0) AS BIT) AS is_phone_verified,
-            CAST(COALESCE(is_super_admin, 0) AS BIT) AS is_super_admin
+            COALESCE(role_id, ?) AS role_id
         FROM dbo.[user]
-        """
+        """,
+        (TENANT_ROLE_ID,)
     ).fetchall()
 
     return [
-        (str(row[0]), bool(row[1]), bool(row[2]), bool(row[3]), bool(row[4]))
+        (str(row[0]), bool(row[1]), bool(row[2]), bool(row[3]), int(row[4]))
         for row in rows
     ]
 
@@ -169,9 +171,9 @@ def get_recipient_ids(
     if audience_type == "role":
         role_value = (audience_value or "").lower()
         if role_value == "admin":
-            return [user_id for user_id, _, _, _, is_super_admin in active_users if is_super_admin]
+            return [user_id for user_id, _, _, _, role_id in active_users if role_id == ADMIN_ROLE_ID]
         if role_value == "user":
-            return [user_id for user_id, _, _, _, is_super_admin in active_users if not is_super_admin]
+            return [user_id for user_id, _, _, _, role_id in active_users if role_id != ADMIN_ROLE_ID]
         return []
 
     if audience_type == "plan":
@@ -179,9 +181,9 @@ def get_recipient_ids(
         if requested_plan not in {"free", "starter", "professional", "enterprise"}:
             return []
         matched: list[str] = []
-        for user_id, _, is_email_verified, is_phone_verified, is_super_admin in active_users:
+        for user_id, _, is_email_verified, is_phone_verified, role_id in active_users:
             plan_bucket = _derive_plan_bucket(
-                is_admin=is_super_admin,
+                role_id=role_id,
                 is_email_verified=is_email_verified,
                 is_phone_verified=is_phone_verified,
             )
