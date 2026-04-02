@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hotel, Utensils, Layers, CircleDot } from 'lucide-react';
+import { Hotel, Utensils } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
 
@@ -64,27 +64,15 @@ const SetupPage = () => {
     const organizationTypes = [
         {
             id: 'hotel',
-            title: 'Hotel / Resort',
+            title: 'Hotel/resort',
             description: 'Traditional hotel, boutique hotel, or resort property',
             icon: Hotel,
         },
         {
             id: 'restaurant',
-            title: 'Restaurant / Cafe',
+            title: 'Restaurant/cafe',
             description: 'Restaurant, cafe, bar, or food service establishment',
             icon: Utensils,
-        },
-        {
-            id: 'property',
-            title: 'Property Group',
-            description: 'Management company overseeing multiple properties',
-            icon: Layers,
-        },
-        {
-            id: 'other',
-            title: 'Other',
-            description: 'Other type of hospitality business',
-            icon: CircleDot,
         },
     ];
 
