@@ -412,4 +412,8 @@ def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
         ),
         created_at=source.created_at
     )
+
+def get_sync_frequencies(db: Session) -> List[SyncFrequency]:
+    """Fetch all synchronization frequency options."""
+    return db.query(SyncFrequency).all()
     

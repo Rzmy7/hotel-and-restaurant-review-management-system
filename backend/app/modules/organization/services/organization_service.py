@@ -33,3 +33,8 @@ def create_organization(db, user_id, data):
         db.rollback()
         print("ERROR:", str(e))
         raise
+
+def get_organization_types(db):
+    """Fetch all organization types from the database."""
+    result = db.execute(text("SELECT type_code, type_name, description FROM dbo.organization_type"))
+    return [{"type_code": row[0], "type_name": row[1], "description": row[2]} for row in result.fetchall()]

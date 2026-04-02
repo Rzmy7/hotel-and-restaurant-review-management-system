@@ -24,7 +24,8 @@ class PlatformStatus(str, enum.Enum):
 class SyncFrequencyRead(BaseModel):
     frq_id: int
     name: str
-    description: Optional[str]
+    info: Optional[str] = None
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True

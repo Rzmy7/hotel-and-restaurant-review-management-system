@@ -15,6 +15,7 @@ from app.modules.source.schemas import (
     OrganizationSourceDetails,
     SyncLogRead,
     SourceStatus,
+    SyncFrequencyRead,
 )
 from app.modules.source.models import (
     Source as SourceSource,
@@ -42,6 +43,12 @@ def get_sync_logs(
 def get_platforms(db: Session = Depends(get_db)):
     """Fetch all available review platforms."""
     return source_service.get_platforms(db)
+
+
+@router.get("/sync-frequencies", response_model=List[SyncFrequencyRead])
+def get_sync_frequencies(db: Session = Depends(get_db)):
+    """Fetch all synchronization frequency options."""
+    return source_service.get_sync_frequencies(db)
 
 
 @router.get("/tenants/{tenant_id}/organizations", response_model=List[OrganizationRead])

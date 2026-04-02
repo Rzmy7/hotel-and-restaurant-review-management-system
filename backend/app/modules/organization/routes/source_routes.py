@@ -13,7 +13,7 @@ from app.modules.organization.schemas.source_schema import (
 router = APIRouter(prefix="/api", tags=["sources"])
 
 DEFAULT_SETUP_SOURCES = [
-    {"name": "Google Reviews", "icon": "G"},
+    {"name": "Agoda", "icon": "A"},
     {"name": "Booking.com", "icon": "B"},
     {"name": "Trip Advisor", "icon": "T"},
 ]
@@ -54,7 +54,9 @@ def _resolve_org_id(db: Session, user_id, organization_id: str | None):
         ).fetchone()
 
         if not membership:
-            raise HTTPException(status_code=403, detail="You are not a member of this organization")
+            raise HTTPException(
+                status_code=403, detail="You are not a member of this organization"
+            )
 
         return organization_id
 
@@ -70,7 +72,9 @@ def _resolve_org_id(db: Session, user_id, organization_id: str | None):
     ).fetchone()
 
     if not fallback_org:
-        raise HTTPException(status_code=400, detail="No organization found for this user")
+        raise HTTPException(
+            status_code=400, detail="No organization found for this user"
+        )
 
     return str(fallback_org[0])
 

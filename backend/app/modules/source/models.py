@@ -43,6 +43,7 @@ class OrganizationType(Base):
 
     type_code = Column(Integer, primary_key=True)
     type_name = Column(String(50), nullable=False)
+    description = Column(String(255), nullable=True)
 
     organizations = relationship("Organization", back_populates="org_type")
 
@@ -120,6 +121,7 @@ class SyncFrequency(Base):
 
     frq_id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
+    info = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
 
     sources = relationship("Source", back_populates="sync_freq")

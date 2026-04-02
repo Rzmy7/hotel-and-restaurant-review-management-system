@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
 
 from app.database.session import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
-from app.modules.organization.schemas.organization_schema import OrganizationCreate, OrganizationUpdate
+from app.modules.organization.schemas.organization_schema import OrganizationCreate, OrganizationUpdate, OrganizationTypeRead
+from app.modules.organization.services import organization_service
 from app.modules.source.services.source_service import calculate_next_sync_time
 
 router = APIRouter(prefix="/api", tags=["organization"])
@@ -240,3 +241,8 @@ def discard_setup_organization(
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to discard setup organization")
+
+@router.get("/organization-types", response_model=List[OrganizationTypeRead])
+def get_organization_types(db: Session = Depends(get_db)):
+    """Fetch all organization types (e.g., Hotel, Restaurant) from the database."""
+    return organization_service.get_organization_types(db)

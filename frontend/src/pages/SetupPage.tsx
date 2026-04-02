@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hotel, Utensils } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
+import { Loader2 } from 'lucide-react';
 
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
 const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
@@ -58,30 +59,47 @@ const restoreSnapshotOrganizations = () => {
 
 const SetupPage = () => {
     const navigate = useNavigate();
-    const [selectedType, setSelectedType] = useState<string>('');
+    const [selectedType, setSelectedType] = useState<number | null>(null);
     const [organizationName, setOrganizationName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [organizationTypes, setOrganizationTypes] = useState<any[]>([]);
 
-    const organizationTypes = [
-        {
-            id: 'hotel',
-            title: 'Hotel/resort',
-            description: 'Traditional hotel, boutique hotel, or resort property',
-            icon: Hotel,
-        },
-        {
-            id: 'restaurant',
-            title: 'Restaurant/cafe',
-            description: 'Restaurant, cafe, bar, or food service establishment',
-            icon: Utensils,
-        },
-    ];
+    useEffect(() => {
+        const fetchTypes = async () => {
+            try {
+                const data = await apiClient.get<any[]>('/api/organization-types');
+                
+                // Map icons based on type_code
+                const mappedTypes = data.map(type => ({
+                    ...type,
+                    icon: type.type_code === 1 ? Hotel : Utensils
+                }));
+                
+                setOrganizationTypes(mappedTypes);
+
+                // Load from draft if exists
+                const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+                if (draftStr) {
+                    const draft = JSON.parse(draftStr);
+                    if (draft.organization && draft.organization.type) {
+                        setSelectedType(draft.organization.type);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch organization types:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchTypes();
+    }, []);
 
     const handleContinue = async () => {
         const token = localStorage.getItem("token");
 
         // Use a generic name if none provided for now
-        const orgName = (organizationName || `My ${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}`).trim();
+        const orgName = (organizationName || `My New Business`).trim();
 
         if (!token) {
             alert("User not authenticated");
@@ -91,7 +109,7 @@ const SetupPage = () => {
         // Buffer the data in localStorage
         const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
         const draft = draftStr ? JSON.parse(draftStr) : {};
-        
+
         localStorage.setItem(SETUP_DRAFT_CONFIG_KEY, JSON.stringify({
             ...draft,
             organization: {
@@ -141,9 +159,9 @@ const SetupPage = () => {
     };
 
     return (
-        <SetupLayout 
-            currentStep={1} 
-            onContinue={handleContinue} 
+        <SetupLayout
+            currentStep={1}
+            onContinue={handleContinue}
             showBack={false}
             isContinueDisabled={!selectedType || isLoading}
             isContinueLoading={isLoading}
@@ -178,53 +196,60 @@ const SetupPage = () => {
                 />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {organizationTypes.map((type) => {
-                    const Icon = type.icon;
-                    const isSelected = selectedType === type.id;
-                    
-                    return (
-                        <div
-                            key={type.id}
-                            onClick={() => setSelectedType(type.id)}
-                            className={`
-                                group relative border-2 rounded-2xl p-6 cursor-pointer transition-all duration-300
-                                ${isSelected 
-                                    ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10 shadow-lg shadow-blue-500/10' 
-                                    : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none'}
-                            `}
-                        >
-                            <div className="flex items-start gap-4">
-                                <div className={`
-                                    w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300
-                                    ${isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600'}
-                                `}>
-                                    <Icon size={24} />
-                                </div>
-                                <div>
-                                    <div className={`text-[15px] font-black uppercase tracking-tight mb-1 transition-colors ${isSelected ? 'text-blue-600' : 'text-slate-900 dark:text-white'}`}>
-                                        {type.title}
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Fetching business types...</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {organizationTypes.map((type) => {
+                        const Icon = type.icon;
+                        const isSelected = selectedType === type.type_code;
+
+                        return (
+                            <div
+                                key={type.type_code}
+                                onClick={() => setSelectedType(type.type_code)}
+                                className={`
+                                    group relative border-2 rounded-2xl p-6 cursor-pointer transition-all duration-300
+                                    ${isSelected
+                                        ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10 shadow-lg shadow-blue-500/10'
+                                        : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none'}
+                                `}
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div className={`
+                                        w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300
+                                        ${isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600'}
+                                    `}>
+                                        <Icon size={24} />
                                     </div>
-                                    <div className="text-[13px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                                        {type.description}
+                                    <div>
+                                        <div className={`text-[15px] font-black uppercase tracking-tight mb-1 transition-colors ${isSelected ? 'text-blue-600' : 'text-slate-900 dark:text-white'}`}>
+                                            {type.type_name}
+                                        </div>
+                                        <div className="text-[13px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                            {type.description}
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Active Indicator */}
+                                {isSelected && (
+                                    <div className="absolute top-4 right-4 animate-in zoom-in duration-300">
+                                        <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            
-                            {/* Active Indicator */}
-                            {isSelected && (
-                                <div className="absolute top-4 right-4 animate-in zoom-in duration-300">
-                                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </SetupLayout>
     );
 };

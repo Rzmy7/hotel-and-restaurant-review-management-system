@@ -53,26 +53,13 @@ const FinishSetupPage = () => {
         throw new Error("User session not found. Please log in again.");
       }
 
-      // Map Organization Type to ID
-      const typeMap: Record<string, number> = {
-        'hotel': 1,
-        'restaurant': 2
-      };
-
-      // Map Schedule to Backend frequency_id
-      const freqMap: Record<string, number> = {
-        'hourly': 1,
-        'daily': 1,
-        'weekly': 3
-      };
-
       const payload = {
         organization_name: draft.organization.name,
-        organization_type_id: typeMap[draft.organization.type] || 1,
+        organization_type_id: draft.organization.type || 1,
         sources: (draft.sources || []).map((s: any) => ({
           platform_id: s.platform_id,
           source_url: s.source_url,
-          fetching_frequency: freqMap[draft.schedule] || 1
+          fetching_frequency: draft.schedule || 1
         }))
       };
 
