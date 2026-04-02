@@ -20,10 +20,14 @@ class PlatformStatus(str, enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
 
-class FetchingFrequency(str, enum.Enum):
-    DAILY = "daily"         # 1 day
-    THREE_DAYS = "three_days" # 3 days
-    WEEKLY = "weekly"       # 7 days
+# --- Sync Frequency Schemas ---
+class SyncFrequencyRead(BaseModel):
+    frq_id: int
+    name: str
+    description: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 # --- Platform Schemas ---
 class PlatformRead(BaseModel):
@@ -47,12 +51,12 @@ class SourceCreate(BaseModel):
     platform_id: int
     source_url: str
     source_status: SourceStatus = SourceStatus.ACTIVE
-    fetching_frequency: FetchingFrequency = FetchingFrequency.DAILY
+    fetching_frequency: int = 1
 
 class SourceUpdate(BaseModel):
     source_url: Optional[str] = None
     source_status: Optional[SourceStatus] = None
-    fetching_frequency: Optional[FetchingFrequency] = None
+    fetching_frequency: Optional[int] = None
 
 class SourceRead(BaseModel):
     source_id: uuid.UUID
@@ -62,7 +66,7 @@ class SourceRead(BaseModel):
     platform_name: str
     source_url: str
     source_status: SourceStatus
-    fetching_frequency: FetchingFrequency
+    fetching_frequency: int
     last_synced_at: Optional[datetime]
     next_synced_at: Optional[datetime]
     num_of_syncs: int

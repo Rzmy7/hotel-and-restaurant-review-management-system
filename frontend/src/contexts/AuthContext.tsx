@@ -17,6 +17,7 @@ type AuthContextType = {
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     persist: (user: User | null, token?: string) => void;
     checkUserOrganizations: () => Promise<void>;
+    isLoading: boolean;
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
@@ -37,19 +38,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // ----------------------------------------------------
     // Restore session from localStorage
     // ----------------------------------------------------
     useEffect(() => {
         const storedUser = localStorage.getItem("authUser");
-        if (storedUser) {
+        const token = localStorage.getItem("token");
+        
+        if (storedUser && token) {
             try {
                 setUser(JSON.parse(storedUser));
             } catch {
-                localStorage.removeItem("authUser");
+                persist(null);
             }
+        } else {
+            // Ensure state is null if no login details found
+            setUser(null);
         }
+        setIsLoading(false);
     }, []);
 
     // ----------------------------------------------------
@@ -62,12 +70,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.setItem("authUser", JSON.stringify(u));
         } else {
             localStorage.removeItem("authUser");
+            localStorage.removeItem("token");
+            localStorage.removeItem("organizations");
+            localStorage.removeItem("organization_ids");
+            localStorage.removeItem("current_organization");
         }
 
         if (token) {
             localStorage.setItem("token", token);
-        } else if (u === null) {
-            localStorage.removeItem("token");
         }
     };
 
@@ -155,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const normalizedUser: User = {
             user_id: backendUser.user_id,
             email: backendUser.email,
-            full_name: backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
             role: normalizeRole(backendUser.role || backendUser.roles),
         };
 
@@ -186,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const normalizedUser: User = {
             user_id: backendUser.id || backendUser.user_id,
             email: backendUser.email,
-            full_name: backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
             role: normalizeRole(backendUser.role || backendUser.roles),
         };
 
@@ -242,6 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 resetPassword,
                 persist,
                 checkUserOrganizations,
+                isLoading,
             }}
         >
             {children}

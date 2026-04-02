@@ -5,7 +5,7 @@ import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status
 
-from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog
+from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog, SyncFrequency
 
 # Backward-compatible aliases for any remaining references
 TenantSource = Tenant
@@ -14,18 +14,18 @@ PlatformSource = Platform
 SourceSource = Source
 SyncLogSource = SyncLog
 from app.modules.source.schemas import (
-    SourceCreate, SourceUpdate, SourceRead, FetchingFrequency, SourceStatus,
+    SourceCreate, SourceUpdate, SourceRead, SourceStatus,
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
     SyncLogRead, SyncStatus, SyncStatusRequest
 )
 
-def calculate_next_sync_time(base_time: datetime, frequency: FetchingFrequency) -> datetime:
-    """Calculate the next sync time based on base_time and frequency."""
-    if frequency == FetchingFrequency.DAILY:
+def calculate_next_sync_time(base_time: datetime, frequency_id: int) -> datetime:
+    """Calculate the next sync time based on base_time and frequency ID."""
+    if frequency_id == 1: # daily
         delta = timedelta(days=1)
-    elif frequency == FetchingFrequency.THREE_DAYS:
+    elif frequency_id == 2: # three_days
         delta = timedelta(days=3)
-    elif frequency == FetchingFrequency.WEEKLY:
+    elif frequency_id == 3: # weekly
         delta = timedelta(days=7)
     else:
         delta = timedelta(days=1)  # Default to daily

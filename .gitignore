@@ -57,3 +57,7 @@ backend/app/test/services/promptForFrontender.txt
 tmp/*
 
 kimi_mcp.py
+
+GEMINI.md 
+QWEN.md 
+.qwen/

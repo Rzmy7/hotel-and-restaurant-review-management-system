@@ -22,6 +22,17 @@ const getFullUrl = (url: string) => {
 };
 
 async function handleResponse(response: Response) {
+    if (response.status === 401) {
+        console.warn("Unauthorized! Clearing session and redirecting to login...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("authUser");
+        // Clear other session-related keys if needed
+        if (window.location.pathname !== "/login") {
+            window.location.href = "/login?expired=true";
+        }
+        throw new Error("Session expired. Please log in again.");
+    }
+
     if (!response.ok) {
         let errorMessage = `API Request failed: ${response.status}`;
         try {

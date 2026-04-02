@@ -6,10 +6,10 @@ def create_organization(db, user_id, data):
 
         # 1️⃣ Insert organization
         result = db.execute(text("""
-            INSERT INTO dbo.organization (organization_name, tenant_id, created_at, updated_at)
+            INSERT INTO dbo.organization (organization_name, tenant_id, created_at)
             OUTPUT INSERTED.organization_id
-            VALUES (:name, NEWID(), GETDATE(), GETDATE())
-        """), {"name": name})
+            VALUES (:name, :tenant_id, GETDATE())
+        """), {"name": name, "tenant_id": str(user_id)})
 
         organization_id = result.fetchone()[0]
 

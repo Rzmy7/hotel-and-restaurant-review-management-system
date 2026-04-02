@@ -131,8 +131,6 @@ app = FastAPI(
 
 # ── Middleware ──────────────────────────────────────────────────────
 
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS if isinstance(CORS_ORIGINS, list) else [
@@ -143,6 +141,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# Global Exception Handler to capture 500 errors and include CORS headers
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"CRITICAL ERROR: {error_details}")
+    
+    # Write error to a temporary log file for AI to read
+    with open("backend_error.log", "a", encoding="utf-8") as f:
+        f.write(f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n")
+        f.write(error_details)
+        f.write("\n" + "="*50 + "\n")
+
+    return Response(
+        content=json.dumps({"detail": "Internal Server Error", "traceback": str(exc)}),
+        status_code=500,
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # ── Register routers ───────────────────────────────────────────────
 

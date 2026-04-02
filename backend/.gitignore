@@ -62,3 +62,15 @@ debug_trace*.txt
 verify_results.txt
 _debug_*.txt
 _debug_*.py
+
+
+app/test/analyzed_data_frontend.json
+
+logs/*
+*.log
+.aider*
+*.bak
+dump.rdb
+.pytest_cache/
+.coverage
+htmlcov/

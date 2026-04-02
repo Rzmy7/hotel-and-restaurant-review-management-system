@@ -35,6 +35,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
 
+    # Create the user with the default role (TENANT is assigned in create_user repo)
     user = create_user(
         db=db,
         email=payload.email.lower(),
@@ -44,11 +45,10 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         is_email_verified=False,
     )
 
-        
-    # Create the top-level tenant workspace for this user
+    # Create the tenant workspace with the user's ID and default plan (null)
     new_tenant = Tenant(
-        tenant_name=f"{first_name}'s Tenant",
-        tenant_owner_id=user.user_id
+        tenant_id=user.user_id,
+        plan=None
     )
     db.add(new_tenant)
     db.commit()
