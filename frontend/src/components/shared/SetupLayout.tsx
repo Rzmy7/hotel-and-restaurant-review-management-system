@@ -31,6 +31,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
   const navigate = useNavigate();
     const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
     const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
+        const SETUP_PENDING_PLAN_ID_KEY = 'setup_pending_plan_id';
 
     const discardPendingSetupOrganizationIfNeeded = async () => {
         const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
@@ -71,6 +72,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
       localStorage.removeItem('setup_pending_organization_id');
       localStorage.removeItem('setup_pending_organization_name');
             localStorage.removeItem('setup_pending_membership_created');
+    localStorage.removeItem(SETUP_PENDING_PLAN_ID_KEY);
       localStorage.removeItem('setup_snapshot_current_organization');
       localStorage.removeItem('setup_snapshot_organizations');
       localStorage.removeItem('setup_snapshot_organization_ids');

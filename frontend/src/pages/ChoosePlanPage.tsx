@@ -6,6 +6,8 @@ import { fetchSubscriptionPlans, type SubscriptionPlan } from '../services/subsc
 
 type PlanTier = 'starter' | 'professional' | 'enterprise';
 
+const SETUP_PENDING_PLAN_ID_KEY = 'setup_pending_plan_id';
+
 const toPlanTier = (plan: SubscriptionPlan, index: number): PlanTier => {
   if (plan.iconName === 'zap') {
     return 'starter';
@@ -44,7 +46,10 @@ const ChoosePlanPage = () => {
       try {
         const loadedPlans = await fetchSubscriptionPlans();
         setPlans(loadedPlans);
-        if (loadedPlans.length > 0) {
+        const storedPlanId = localStorage.getItem(SETUP_PENDING_PLAN_ID_KEY);
+        if (storedPlanId) {
+          setSelectedPlan(storedPlanId);
+        } else if (loadedPlans.length > 0) {
           setSelectedPlan((previous) => previous ?? loadedPlans[0].id);
         }
       } catch (error) {
@@ -76,6 +81,11 @@ const ChoosePlanPage = () => {
   );
 
   const handleContinue = () => {
+    if (selectedPlan) {
+      localStorage.setItem(SETUP_PENDING_PLAN_ID_KEY, selectedPlan);
+    } else {
+      localStorage.removeItem(SETUP_PENDING_PLAN_ID_KEY);
+    }
     navigate('/setup/finish');
   };
 

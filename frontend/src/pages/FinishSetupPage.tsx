@@ -2,11 +2,13 @@ import { CheckCircle2, Rocket, Search, BarChart3, ChevronRight } from 'lucide-re
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
+import { apiClient } from '../api/client';
 
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
 const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
 const SETUP_PENDING_ORG_NAME_KEY = 'setup_pending_organization_name';
 const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
+const SETUP_PENDING_PLAN_ID_KEY = 'setup_pending_plan_id';
 
 const parseJsonArray = (value: string | null): any[] => {
   if (!value) return [];
@@ -23,6 +25,7 @@ const clearSetupDraftState = () => {
   localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
   localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
   localStorage.removeItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY);
+  localStorage.removeItem(SETUP_PENDING_PLAN_ID_KEY);
   localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
   // Remove legacy keys from old implementation.
   localStorage.removeItem('setup_snapshot_organizations');
@@ -33,12 +36,26 @@ const FinishSetupPage = () => {
   const navigate = useNavigate();
   const [isFinishing, setIsFinishing] = useState(false);
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIsFinishing(true);
     
-    // Process local storage updates immediately
     const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
     const pendingOrganizationName = localStorage.getItem(SETUP_PENDING_ORG_NAME_KEY) || 'New Organization';
+    const pendingPlanId = localStorage.getItem(SETUP_PENDING_PLAN_ID_KEY);
+
+    if (pendingOrganizationId) {
+      try {
+        await apiClient.post('/api/setup/subscription/finalize', {
+          organization_id: pendingOrganizationId,
+          plan_id: pendingPlanId || undefined,
+        });
+      } catch (error) {
+        console.error('Failed to finalize setup subscription:', error);
+        alert('Could not save your subscription plan. Please try again.');
+        setIsFinishing(false);
+        return;
+      }
+    }
 
     if (pendingOrganizationId) {
       const organizations = parseJsonArray(localStorage.getItem('organizations'));
@@ -138,7 +155,7 @@ const FinishSetupPage = () => {
                 <span className="text-[11px] font-black uppercase tracking-widest">Setup Verified</span>
             </div>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                Click the button below to finalize and head to your dashboard. Welcome to the L2 Project family.
+                  Click the button below to finalize your subscription and head to your dashboard. Welcome to the L2 Project family.
             </p>
         </div>
       </div>

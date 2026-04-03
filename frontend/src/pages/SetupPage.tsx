@@ -24,6 +24,7 @@ const clearSetupDraftState = () => {
     localStorage.removeItem(SETUP_PENDING_ORG_ID_KEY);
     localStorage.removeItem(SETUP_PENDING_ORG_NAME_KEY);
     localStorage.removeItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY);
+    localStorage.removeItem('setup_pending_plan_id');
     localStorage.removeItem(SETUP_SNAPSHOT_CURRENT_ORG_KEY);
     localStorage.removeItem('setup_snapshot_organizations');
     localStorage.removeItem('setup_snapshot_organization_ids');
