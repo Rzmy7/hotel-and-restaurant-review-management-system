@@ -4,7 +4,6 @@ Monitoring routes — scraping platforms, jobs, and server status.
 Migrated from admin-backend/app/monitoring_router.py.
 """
 
-import uuid
 from datetime import date, datetime
 
 import pyodbc
@@ -13,7 +12,6 @@ from fastapi import APIRouter, HTTPException
 from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
-    get_table_columns,
     table_exists,
 )
 from app.modules.admin.schemas import (
@@ -22,7 +20,6 @@ from app.modules.admin.schemas import (
 )
 from app.modules.admin.services.monitoring_service import (
     create_platform_in_db,
-    drop_dynamic_platform_table,
     fetch_platforms_from_db,
     find_platform_row,
     format_duration_from_created_at,
@@ -31,7 +28,6 @@ from app.modules.admin.services.monitoring_service import (
     job_status_to_ui,
     organization_from_url,
     platform_visuals,
-    resolve_sources_review_table_column,
     scraping_backend_get,
     server_usage,
     update_platform_in_db,
@@ -92,29 +88,20 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
 
-            if not table_exists(cursor, "scraping_platform"):
-                raise HTTPException(status_code=400, detail="sources table does not exist")
-
-            columns = get_table_columns(cursor, "scraping_platform")
-            enabled_col = (
-                "is_enabled" if "is_enabled" in columns
-                else "is_active" if "is_active" in columns
-                else None
-            )
-            if not enabled_col:
-                raise HTTPException(status_code=400, detail="sources table has no is_enabled or is_active column")
+            if not table_exists(cursor, "platform"):
+                raise HTTPException(status_code=400, detail="platform table does not exist")
 
             try:
-                source_id = int(platform_id)
+                pid = int(platform_id)
                 row = execute_query(
                     cursor,
-                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.scraping_platform WHERE source_id = ?",
-                    (source_id,),
+                    "SELECT TOP 1 platform_id, platform_name, platform_status FROM dbo.platform WHERE platform_id = ?",
+                    (pid,),
                 ).fetchone()
             except ValueError:
                 row = execute_query(
                     cursor,
-                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?)",
+                    "SELECT TOP 1 platform_id, platform_name, platform_status FROM dbo.platform WHERE LOWER(platform_name) = LOWER(?)",
                     (platform_id,),
                 ).fetchone()
 
@@ -123,13 +110,15 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
 
             found_id = int(row[0])
             found_name = str(row[1])
-            current_enabled = bool(row[2]) if row[2] is not None else True
+            current_status = str(row[2] or "active").strip().lower()
+            current_enabled = current_status == "active"
             new_enabled = not current_enabled
+            new_status = "active" if new_enabled else "inactive"
 
             execute_query(
                 cursor,
-                f"UPDATE dbo.scraping_platform SET {enabled_col} = ? WHERE source_id = ?",
-                (new_enabled, found_id),
+                "UPDATE dbo.platform SET platform_status = ?, updated_at = SYSUTCDATETIME() WHERE platform_id = ?",
+                (new_status, found_id),
             )
             connection.commit()
 
@@ -148,19 +137,15 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
 
 @router.delete("/scraping/platforms/{platform_id}")
 def delete_scraping_platform(platform_id: str) -> dict[str, str]:
-    """Deletes a scraping platform from the SQL database sources table."""
+    """Deletes a scraping platform from the platform table."""
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
 
-            if not table_exists(cursor, "scraping_platform"):
-                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+            if not table_exists(cursor, "platform"):
+                raise HTTPException(status_code=400, detail="platform table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "scraping_platform")
-            table_name_col = resolve_sources_review_table_column(columns)
-            select_cols = "source_id, platform_name"
-            if table_name_col:
-                select_cols += f", {table_name_col}"
+            select_cols = "platform_id, platform_name"
 
             row = find_platform_row(cursor, platform_id, select_cols)
             if row is None:
@@ -168,22 +153,12 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
 
             found_id = int(row[0])
             found_name = str(row[1])
-            review_table = str(row[2]).strip() if table_name_col and row[2] is not None else None
-
-            if table_exists(cursor, "organization_sources"):
-                execute_query(
-                    cursor,
-                    "DELETE FROM dbo.organization_sources WHERE source_id = ?",
-                    (found_id,),
-                )
 
             execute_query(
                 cursor,
-                "DELETE FROM dbo.scraping_platform WHERE source_id = ?",
+                "DELETE FROM dbo.platform WHERE platform_id = ?",
                 (found_id,),
             )
-
-            drop_dynamic_platform_table(cursor, review_table)
             connection.commit()
 
     except HTTPException:

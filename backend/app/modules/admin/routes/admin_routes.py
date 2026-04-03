@@ -12,7 +12,6 @@ from fastapi import APIRouter, HTTPException
 from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
-    get_table_columns,
     table_exists,
 )
 from app.modules.admin.schemas import (
@@ -67,69 +66,53 @@ def get_organization_stats() -> OrganizationStats:
 
 @router.get("/sources")
 def get_all_sources() -> list[dict]:
-    """Returns all available scraping sources/platforms."""
+    """Returns all available platforms."""
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "scraping_platform"):
+            if not table_exists(cursor, "platform"):
                 return []
             rows = execute_query(
                 cursor,
-                "SELECT source_id, platform_name FROM dbo.scraping_platform ORDER BY platform_name",
+                "SELECT platform_id, platform_name FROM dbo.platform ORDER BY platform_name",
             ).fetchall()
             return [
-                {"source_id": int(row[0]), "platform_name": str(row[1] or "").strip()}
+                {"platform_id": int(row[0]), "platform_name": str(row[1] or "").strip()}
                 for row in rows
             ]
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch sources: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Failed to fetch platforms: {exc}") from exc
 
 
 @router.get("/organizations/{org_id}/sources")
 def get_org_sources(org_id: str) -> list[dict]:
-    """Returns sources linked to an organization via organization_sources."""
-    try:
-        org_id_int = int(org_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="org_id must be numeric")
-
+    """Returns sources linked to an organization."""
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "organization_sources"):
+
+            if not table_exists(cursor, "source"):
                 return []
 
-            if table_exists(cursor, "scraping_platform"):
-                rows = execute_query(
-                    cursor,
-                    """
-                    SELECT os.organization_source_id, os.source_id, s.platform_name,
-                           os.external_url, CAST(os.last_synced_at AS NVARCHAR(50))
-                    FROM dbo.organization_sources os
-                    JOIN dbo.scraping_platform s ON s.source_id = os.source_id
-                    WHERE os.organization_id = ?
-                    ORDER BY s.platform_name
-                    """,
-                    (org_id_int,),
-                ).fetchall()
-            else:
-                rows = execute_query(
-                    cursor,
-                    """
-                    SELECT organization_source_id, source_id, NULL,
-                           external_url, CAST(last_synced_at AS NVARCHAR(50))
-                    FROM dbo.organization_sources
-                    WHERE organization_id = ?
-                    """,
-                    (org_id_int,),
-                ).fetchall()
+            rows = execute_query(
+                cursor,
+                """
+                SELECT s.source_id, s.platform_id, p.platform_name,
+                       s.source_url, CAST(s.last_synced_at AS NVARCHAR(50))
+                FROM dbo.source s
+                JOIN dbo.platform p ON p.platform_id = s.platform_id
+                WHERE s.organization_id = ?
+                ORDER BY p.platform_name
+                """,
+                (org_id,),
+            ).fetchall()
 
             return [
                 {
-                    "organization_source_id": int(row[0]),
-                    "source_id": int(row[1]),
+                    "source_id": str(row[0]),
+                    "platform_id": int(row[1]),
                     "platform_name": str(row[2] or "Unknown").strip(),
-                    "external_url": str(row[3]).strip() if row[3] else None,
+                    "source_url": str(row[3]).strip() if row[3] else None,
                     "last_synced_at": str(row[4]) if row[4] else None,
                 }
                 for row in rows
@@ -192,72 +175,53 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
 def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[dict]:
     """Replaces all source links for an organization."""
     try:
-        org_id_int = int(org_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="org_id must be numeric")
-
-    try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "organization_sources"):
-                raise HTTPException(status_code=400, detail="organization_sources table not found")
 
+            if not table_exists(cursor, "source"):
+                raise HTTPException(status_code=400, detail="source table not found")
+
+            # Delete existing sources for the organization
             execute_query(
                 cursor,
-                "DELETE FROM dbo.organization_sources WHERE organization_id = ?",
-                (org_id_int,),
+                "DELETE FROM dbo.source WHERE organization_id = ?",
+                (org_id,),
             )
 
             now = datetime.utcnow()
-            org_src_cols = get_table_columns(cursor, "organization_sources")
-            has_created_at = "created_at" in org_src_cols
 
             for item in payload.sources:
-                if has_created_at:
-                    execute_query(
-                        cursor,
-                        """
-                        INSERT INTO dbo.organization_sources
-                            (organization_id, source_id, external_url, created_at)
-                        VALUES (?, ?, ?, ?)
-                        """,
-                        (org_id_int, item.source_id, item.external_url, now),
-                    )
-                else:
-                    execute_query(
-                        cursor,
-                        """
-                        INSERT INTO dbo.organization_sources
-                            (organization_id, source_id, external_url)
-                        VALUES (?, ?, ?)
-                        """,
-                        (org_id_int, item.source_id, item.external_url),
-                    )
+                execute_query(
+                    cursor,
+                    """
+                    INSERT INTO dbo.source
+                        (organization_id, platform_id, source_url, created_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (org_id, item.source_id, item.external_url, now),
+                )
 
             conn.commit()
 
-            if table_exists(cursor, "scraping_platform"):
-                rows = execute_query(
-                    cursor,
-                    """
-                    SELECT os.organization_source_id, os.source_id, s.platform_name,
-                           os.external_url, CAST(os.last_synced_at AS DATETIME2)
-                    FROM dbo.organization_sources os
-                    JOIN dbo.scraping_platform s ON s.source_id = os.source_id
-                    WHERE os.organization_id = ?
-                    ORDER BY s.platform_name
-                    """,
-                    (org_id_int,),
-                ).fetchall()
-            else:
-                rows = []
+            rows = execute_query(
+                cursor,
+                """
+                SELECT s.source_id, s.platform_id, p.platform_name,
+                       s.source_url, CAST(s.last_synced_at AS DATETIME2)
+                FROM dbo.source s
+                JOIN dbo.platform p ON p.platform_id = s.platform_id
+                WHERE s.organization_id = ?
+                ORDER BY p.platform_name
+                """,
+                (org_id,),
+            ).fetchall()
 
             return [
                 {
-                    "organization_source_id": int(row[0]),
-                    "source_id": int(row[1]),
+                    "source_id": str(row[0]),
+                    "platform_id": int(row[1]),
                     "platform_name": str(row[2] or "Unknown").strip(),
-                    "external_url": str(row[3]).strip() if row[3] else None,
+                    "source_url": str(row[3]).strip() if row[3] else None,
                     "last_synced_at": str(row[4]) if row[4] else None,
                 }
                 for row in rows
@@ -292,10 +256,10 @@ def delete_organization(org_id: str) -> dict:
 
             found_name = str(row[1] or "").strip()
 
-            if table_exists(cursor, "organization_sources"):
+            if table_exists(cursor, "source"):
                 execute_query(
                     cursor,
-                    "DELETE FROM dbo.organization_sources WHERE organization_id = ?",
+                    "DELETE FROM dbo.source WHERE organization_id = ?",
                     (org_id_int,),
                 )
 

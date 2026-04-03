@@ -177,7 +177,7 @@ def _get_review_table_metrics(
 
 
 def _get_review_metrics_from_sources(cursor: pyodbc.Cursor) -> dict[str, Any]:
-    if not table_exists(cursor, "scraping_platform"):
+    if not table_exists(cursor, "platform"):
         return {
             "configured": False,
             "totalReviews": 0,
@@ -186,67 +186,14 @@ def _get_review_metrics_from_sources(cursor: pyodbc.Cursor) -> dict[str, Any]:
             "byPlatform": [],
         }
 
-    source_columns = get_table_column_map(cursor, "sources")
-    review_tables_col = _resolve_sources_review_tables_column(set(source_columns))
-    platform_name_col = source_columns.get("platform_name")
-
-    if not review_tables_col or not platform_name_col:
-        return {
-            "configured": False,
-            "totalReviews": 0,
-            "reviewsCollectedToday": 0,
-            "reviewsGrowth": 0.0,
-            "byPlatform": [],
-        }
-
-    rows = execute_query(
-        cursor,
-        f"SELECT [{platform_name_col}], [{source_columns[review_tables_col]}] FROM dbo.sources ORDER BY [{platform_name_col}]",
-    ).fetchall()
-
-    current_month = month_start(date.today())
-    previous_month_ = shift_month(current_month, -1)
-    next_month = shift_month(current_month, 1)
-
-    total_reviews = 0
-    reviews_collected_today = 0
-    current_month_reviews = 0
-    previous_month_reviews = 0
-    configured = False
-    seen_tables: set[str] = set()
-    platform_totals: dict[str, int] = {}
-
-    for row in rows:
-        platform_name = str(row[0] or "Unknown").strip() or "Unknown"
-        table_names = _parse_review_table_names(row[1])
-        if table_names:
-            configured = True
-
-        for tn in table_names:
-            lowered = tn.lower()
-            if lowered in seen_tables:
-                continue
-            seen_tables.add(lowered)
-
-            table_metrics = _get_review_table_metrics(cursor, tn, current_month, next_month, previous_month_)
-            total_reviews += table_metrics["total"]
-            reviews_collected_today += table_metrics["today"]
-            current_month_reviews += table_metrics["currentMonth"]
-            previous_month_reviews += table_metrics["previousMonth"]
-            platform_totals[platform_name] = platform_totals.get(platform_name, 0) + table_metrics["total"]
-
-    by_platform = [
-        ChartDataPoint(label=pn, value=rt)
-        for pn, rt in sorted(platform_totals.items(), key=lambda item: item[1], reverse=True)
-        if rt > 0
-    ]
-
+    # The new platform table no longer contains review_table columns.
+    # Review metrics should be derived from processed_review or reviews tables instead.
     return {
-        "configured": configured,
-        "totalReviews": total_reviews,
-        "reviewsCollectedToday": reviews_collected_today,
-        "reviewsGrowth": growth(current_month_reviews, previous_month_reviews),
-        "byPlatform": by_platform[:8],
+        "configured": False,
+        "totalReviews": 0,
+        "reviewsCollectedToday": 0,
+        "reviewsGrowth": 0.0,
+        "byPlatform": [],
     }
 
 

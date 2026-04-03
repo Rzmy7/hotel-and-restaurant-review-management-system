@@ -20,6 +20,7 @@ from api.endpoints.reviews import router as reviews_router
 from api.endpoints.system import router as system_router
 from api.endpoints.audit import router as audit_router
 from api.endpoints.db_admin import router as db_admin_router
+from api.endpoints.tables import router as tables_router
 from api.middleware.audit_middleware import AuditMiddleware
 from core.config import setup_logger
 from core.database import init_db
@@ -61,6 +62,7 @@ app.include_router(reviews_router, prefix="/api")
 app.include_router(system_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(db_admin_router, prefix="/api")
+app.include_router(tables_router, prefix="/api")
 
 
 @app.get("/")

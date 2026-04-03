@@ -29,7 +29,7 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
     # Query current period stats per platform
     cursor.execute("""
         SELECT 
-            s.platform_name,
+            p.platform_name,
             COUNT(r.id) as review_count,
             AVG(CAST(r.sentiment_score AS FLOAT)) as avg_rating,
             SUM(CASE WHEN r.sentiment = 'Positive' THEN 1 ELSE 0 END) as pos_count,
@@ -38,8 +38,9 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
             s.source_id
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.platform_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
         WHERE r.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
-        GROUP BY s.source_id, s.platform_name
+        GROUP BY s.source_id, p.platform_name
     """, org_id, curr_start)
     
     curr_rows = cursor.fetchall()
@@ -99,7 +100,7 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
             "bgColor": ui["bgColor"],
             "borderColor": ui["borderColor"],
             "sentiment": {"pos": pos_pct, "neu": neu_pct, "neg": neg_pct},
-            "lastSync": "Just now" # Dynamic sync times can be pulled from organization_sources later
+            "lastSync": "Just now"
         })
 
     # Sort by review volume descending

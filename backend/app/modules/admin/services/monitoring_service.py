@@ -375,21 +375,68 @@ def sync_dynamic_platform_table(
     return target_table_name
 
 
+# ── Scraper backend table creation ──────────────────────────────────
+
+
+def _create_table_in_scraper_backend(
+    table_name: str,
+    attributes: list[ScrapingTableAttributePayload],
+) -> None:
+    """Send a request to the scraper engine to create a review table in its database."""
+    if not table_name or not attributes:
+        return
+
+    columns = []
+    for attr in attributes:
+        col_name = (attr.name or "").strip()
+        col_type = (attr.type or "").strip()
+        if col_name and col_type:
+            columns.append({
+                "name": col_name,
+                "type": col_type,
+                "nullable": bool(attr.nullable),
+            })
+
+    if not columns:
+        return
+
+    payload = {
+        "table_name": table_name,
+        "columns": columns,
+    }
+
+    try:
+        response = requests.post(
+            f"{DEFAULT_SCRAPING_BACKEND_URL}/api/tables/create",
+            json=payload,
+            timeout=10,
+        )
+        if response.status_code == 409:
+            # Table already exists — not an error for us
+            return
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to create review table '{table_name}' in scraper backend: {exc}",
+        ) from exc
+
+
 # ── Platform lookup ─────────────────────────────────────────────────
 
 
 def find_platform_row(cursor: pyodbc.Cursor, platform_id: str, select_cols_sql: str) -> pyodbc.Row | None:
     try:
-        source_id = int(platform_id)
+        pid = int(platform_id)
         return execute_query(
             cursor,
-            f"SELECT TOP 1 {select_cols_sql} FROM dbo.scraping_platform WHERE source_id = ?",
-            (source_id,),
+            f"SELECT TOP 1 {select_cols_sql} FROM dbo.platform WHERE platform_id = ?",
+            (pid,),
         ).fetchone()
     except ValueError:
         return execute_query(
             cursor,
-            f"SELECT TOP 1 {select_cols_sql} FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?)",
+            f"SELECT TOP 1 {select_cols_sql} FROM dbo.platform WHERE LOWER(platform_name) = LOWER(?)",
             (platform_id,),
         ).fetchone()
 
@@ -402,82 +449,51 @@ def fetch_platforms_from_db() -> list[dict[str, object]]:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
 
-            if table_exists(cursor, "scraping_platform"):
-                columns = get_table_columns(cursor, "scraping_platform")
-                is_active_col = (
-                    "is_enabled" if "is_enabled" in columns
-                    else "is_active" if "is_active" in columns
-                    else None
-                )
-
-                select_cols = "source_id, platform_name"
-                has_base_url = "base_url" in columns
-                if has_base_url:
-                    select_cols += ", base_url"
-                table_name_col = resolve_sources_review_table_column(columns)
-                if table_name_col:
-                    select_cols += f", {table_name_col}"
-
-                rows = execute_query(cursor, f"SELECT {select_cols} FROM dbo.scraping_platform ORDER BY source_id").fetchall()
-
-                last_synced: dict[int, datetime | date | None] = {}
-                if table_exists(cursor, "organization_sources"):
-                    org_cols = get_table_columns(cursor, "organization_sources")
-                    sync_ts_col = next(
-                        (c for c in ("last_synced_at", "synced_at", "updated_at", "last_run_at") if c in org_cols),
-                        None,
-                    )
-                    if sync_ts_col:
-                        sync_rows = execute_query(
-                            cursor,
-                            f"""
-                            SELECT source_id, MAX({sync_ts_col}) AS last_synced_at
-                            FROM dbo.organization_sources
-                            GROUP BY source_id
-                            """,
-                        ).fetchall()
-                        last_synced = {int(row[0]): row[1] for row in sync_rows if row[0] is not None}
+            if table_exists(cursor, "platform"):
+                rows = execute_query(
+                    cursor,
+                    """
+                    SELECT platform_id, platform_name, base_url,
+                           fetching_type, platform_status,
+                           num_of_syncs, success_sync_count, success_rate,
+                           CAST(created_at AS DATETIME2) AS created_at,
+                           CAST(updated_at AS DATETIME2) AS updated_at,
+                           review_table
+                    FROM dbo.platform
+                    ORDER BY platform_id
+                    """,
+                ).fetchall()
 
                 platforms: list[dict[str, object]] = []
                 for row in rows:
-                    source_id = int(row[0])
+                    pid = int(row[0])
                     pname = str(row[1] or "Platform").strip()
                     icon, color = platform_visuals(pname)
+                    base_url = str(row[2]).strip() if row[2] is not None else ""
+                    fetching_type = str(row[3] or "").strip()
+                    status_value = str(row[4] or "active").strip().lower()
+                    enabled = status_value == "active"
+                    num_syncs = int(row[5] or 0)
+                    success_syncs = int(row[6] or 0)
+                    s_rate = float(row[7] or 0.0)
 
-                    row_index = 2
-                    base_url = ""
-                    if has_base_url:
-                        base_url = str(row[row_index]).strip() if row[row_index] is not None else ""
-                        row_index += 1
-
-                    t_name = ""
-                    if table_name_col:
-                        t_name = str(row[row_index]).strip() if row[row_index] is not None else ""
-                        row_index += 1
-
-                    table_attributes = fetch_table_attributes(cursor, t_name)
-
-                    enabled = True
-                    if is_active_col:
-                        active_value = execute_query(
-                            cursor,
-                            f"SELECT TOP 1 {is_active_col} FROM dbo.scraping_platform WHERE source_id = ?",
-                            (source_id,),
-                        ).fetchone()
-                        if active_value is not None:
-                            enabled = bool(active_value[0])
+                    review_table_name = str(row[10]).strip() if row[10] is not None else ""
 
                     platforms.append({
-                        "id": str(source_id),
+                        "id": str(pid),
                         "name": pname,
                         "icon": icon,
                         "color": color,
                         "enabled": enabled,
-                        "lastRun": to_relative_timestamp_short(last_synced.get(source_id)),
+                        "lastRun": to_relative_timestamp_short(row[9]),
                         "status": "active" if enabled else "maintenance",
                         "baseUrl": base_url,
-                        "tableName": t_name,
-                        "attributes": table_attributes,
+                        "fetchingType": fetching_type,
+                        "numOfSyncs": num_syncs,
+                        "successSyncCount": success_syncs,
+                        "successRate": s_rate,
+                        "tableName": review_table_name,
+                        "attributes": [],
                     })
                 return platforms
 
@@ -529,27 +545,13 @@ def get_platform_details_from_db(platform_id: str) -> dict[str, object]:
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            if not table_exists(cursor, "scraping_platform"):
-                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+            if not table_exists(cursor, "platform"):
+                raise HTTPException(status_code=400, detail="platform table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "scraping_platform")
-            table_name_col = resolve_sources_review_table_column(columns)
-            if not table_name_col:
-                raise HTTPException(status_code=400, detail="sources table has no review_table or table_name column")
-
-            enabled_col = (
-                "is_enabled" if "is_enabled" in columns
-                else "is_active" if "is_active" in columns
-                else None
+            select_cols = (
+                "platform_id, platform_name, base_url, fetching_type, platform_status, "
+                "num_of_syncs, success_sync_count, success_rate, review_table"
             )
-            has_base_url = "base_url" in columns
-
-            select_cols = "source_id, platform_name"
-            if has_base_url:
-                select_cols += ", base_url"
-            select_cols += f", {table_name_col}"
-            if enabled_col:
-                select_cols += f", {enabled_col}"
 
             row = find_platform_row(cursor, platform_id, select_cols)
             if row is None:
@@ -557,26 +559,22 @@ def get_platform_details_from_db(platform_id: str) -> dict[str, object]:
 
             found_id = int(row[0])
             found_name = str(row[1] or "").strip()
-
-            index = 2
-            base_url = str(row[index]).strip() if has_base_url and row[index] is not None else ""
-            if has_base_url:
-                index += 1
-
-            t_name = str(row[index]).strip() if row[index] is not None else ""
-            index += 1
-
-            enabled = True
-            if enabled_col:
-                enabled = bool(row[index]) if row[index] is not None else True
+            base_url = str(row[2]).strip() if row[2] is not None else ""
+            fetching_type = str(row[3] or "").strip()
+            status_value = str(row[4] or "active").strip().lower()
+            enabled = status_value == "active"
 
             return {
                 "id": str(found_id),
                 "name": found_name,
                 "baseUrl": base_url,
-                "tableName": t_name,
-                "attributes": fetch_table_attributes(cursor, t_name),
+                "fetchingType": fetching_type,
                 "enabled": enabled,
+                "numOfSyncs": int(row[5] or 0),
+                "successSyncCount": int(row[6] or 0),
+                "successRate": float(row[7] or 0.0),
+                "tableName": str(row[8]).strip() if row[8] is not None else "",
+                "attributes": [],
             }
 
     except HTTPException:
@@ -590,67 +588,44 @@ def create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, s
     if not name:
         raise HTTPException(status_code=400, detail="Platform name is required")
 
-    t_name = (payload.tableName or "").strip()
-    if not t_name:
-        raise HTTPException(status_code=400, detail="Table name is required")
-    if not payload.attributes:
-        raise HTTPException(status_code=400, detail="At least one table attribute is required")
-
     base_url = payload.baseUrl.strip() if payload.baseUrl else None
+    fetching_type = (payload.fetchingType or "SCRAPING").strip().upper() if hasattr(payload, "fetchingType") and payload.fetchingType else "SCRAPING"
+    t_name = (payload.tableName or "").strip()
+    attributes = payload.attributes or []
 
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            if not table_exists(cursor, "scraping_platform"):
-                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
-
-            columns = get_table_columns(cursor, "scraping_platform")
-            if "platform_name" not in columns:
-                raise HTTPException(status_code=500, detail="sources table is missing required platform_name column")
+            if not table_exists(cursor, "platform"):
+                raise HTTPException(status_code=400, detail="platform table does not exist in the configured database")
 
             existing = execute_query(
                 cursor,
-                "SELECT TOP 1 source_id FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?)",
+                "SELECT TOP 1 platform_id FROM dbo.platform WHERE LOWER(platform_name) = LOWER(?)",
                 (name,),
             ).fetchone()
             if existing is not None:
                 raise HTTPException(status_code=409, detail=f"Platform '{name}' already exists")
 
-            create_dynamic_platform_table(cursor, t_name, payload.attributes)
+            platform_status = "active" if payload.enabled else "inactive"
 
-            insert_columns = ["platform_name"]
-            insert_values: list[str | bool | None] = [name]
+            # If a table name and attributes are provided, create the table in the scraper backend
+            if t_name and attributes:
+                _create_table_in_scraper_backend(t_name, attributes)
 
-            if "base_url" in columns:
-                insert_columns.append("base_url")
-                insert_values.append(base_url)
-
-            table_name_col = resolve_sources_review_table_column(columns)
-            if table_name_col:
-                insert_columns.append(table_name_col)
-                insert_values.append(t_name)
-
-            enabled_col = (
-                "is_enabled" if "is_enabled" in columns
-                else "is_active" if "is_active" in columns
-                else None
-            )
-            if enabled_col:
-                insert_columns.append(enabled_col)
-                insert_values.append(payload.enabled)
-
-            placeholders = ", ".join("?" for _ in insert_columns)
-            columns_sql = ", ".join(insert_columns)
             execute_query(
                 cursor,
-                f"INSERT INTO dbo.scraping_platform ({columns_sql}) VALUES ({placeholders})",
-                tuple(insert_values),
+                """
+                INSERT INTO dbo.platform (platform_name, base_url, fetching_type, platform_status, review_table)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (name, base_url, fetching_type, platform_status, t_name or None),
             )
             connection.commit()
 
             created = execute_query(
                 cursor,
-                "SELECT TOP 1 source_id FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?) ORDER BY source_id DESC",
+                "SELECT TOP 1 platform_id FROM dbo.platform WHERE LOWER(platform_name) = LOWER(?) ORDER BY platform_id DESC",
                 (name,),
             ).fetchone()
             created_id = str(created[0]) if created is not None else name.lower().replace(" ", "-")
@@ -669,6 +644,7 @@ def create_platform_in_db(payload: ScrapingPlatformCreatePayload) -> dict[str, s
         "enabled": payload.enabled,
         "lastRun": "never",
         "status": "active" if payload.enabled else "maintenance",
+        "tableName": t_name,
     }
 
 
@@ -677,87 +653,57 @@ def update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePaylo
     if not name:
         raise HTTPException(status_code=400, detail="Platform name is required")
 
-    t_name = (payload.tableName or "").strip()
-    if not t_name:
-        raise HTTPException(status_code=400, detail="Table name is required")
-    if not payload.attributes:
-        raise HTTPException(status_code=400, detail="At least one table attribute is required")
-
     base_url = payload.baseUrl.strip() if payload.baseUrl else None
+    fetching_type = (payload.fetchingType or "").strip().upper() if hasattr(payload, "fetchingType") and payload.fetchingType else None
+    t_name = (payload.tableName or "").strip()
 
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            if not table_exists(cursor, "scraping_platform"):
-                raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
+            if not table_exists(cursor, "platform"):
+                raise HTTPException(status_code=400, detail="platform table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "scraping_platform")
-            if "platform_name" not in columns:
-                raise HTTPException(status_code=500, detail="sources table is missing required platform_name column")
-
-            table_name_col = resolve_sources_review_table_column(columns)
-            if not table_name_col:
-                raise HTTPException(status_code=400, detail="sources table has no review_table or table_name column")
-
-            enabled_col = (
-                "is_enabled" if "is_enabled" in columns
-                else "is_active" if "is_active" in columns
-                else None
-            )
-            has_base_url = "base_url" in columns
-
-            select_cols = "source_id, platform_name"
-            if has_base_url:
-                select_cols += ", base_url"
-            select_cols += f", {table_name_col}"
-            if enabled_col:
-                select_cols += f", {enabled_col}"
-
+            select_cols = "platform_id, platform_name, base_url, platform_status, fetching_type, review_table"
             row = find_platform_row(cursor, platform_id, select_cols)
             if row is None:
                 raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
 
             found_id = int(row[0])
-            index = 2
-            if has_base_url:
-                index += 1
-            current_table_name = str(row[index]).strip() if row[index] is not None else ""
-            index += 1
-
-            current_enabled = True
-            if enabled_col:
-                current_enabled = bool(row[index]) if row[index] is not None else True
+            current_table = str(row[5]).strip() if row[5] is not None else ""
 
             duplicate = execute_query(
                 cursor,
-                "SELECT TOP 1 source_id FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?) AND source_id <> ?",
+                "SELECT TOP 1 platform_id FROM dbo.platform WHERE LOWER(platform_name) = LOWER(?) AND platform_id <> ?",
                 (name, found_id),
             ).fetchone()
             if duplicate is not None:
                 raise HTTPException(status_code=409, detail=f"Platform '{name}' already exists")
 
-            resolved_table_name = sync_dynamic_platform_table(cursor, current_table_name, t_name, payload.attributes)
+            # If a new table name is provided and different from current, create it in scraper backend
+            if t_name and t_name.lower() != current_table.lower() and payload.attributes:
+                _create_table_in_scraper_backend(t_name, payload.attributes)
 
-            update_columns = ["platform_name = ?"]
-            update_values: list[str | bool | None] = [name]
+            platform_status = "active" if payload.enabled else "inactive"
 
-            if has_base_url:
+            update_columns = ["platform_name = ?", "platform_status = ?", "updated_at = SYSUTCDATETIME()"]
+            update_values: list[str | bool | None] = [name, platform_status]
+
+            if base_url is not None:
                 update_columns.append("base_url = ?")
                 update_values.append(base_url)
 
-            update_columns.append(f"{table_name_col} = ?")
-            update_values.append(resolved_table_name)
+            if fetching_type:
+                update_columns.append("fetching_type = ?")
+                update_values.append(fetching_type)
 
-            effective_enabled = current_enabled
-            if enabled_col:
-                effective_enabled = payload.enabled
-                update_columns.append(f"{enabled_col} = ?")
-                update_values.append(payload.enabled)
+            if t_name:
+                update_columns.append("review_table = ?")
+                update_values.append(t_name)
 
             update_values.append(found_id)
             execute_query(
                 cursor,
-                f"UPDATE dbo.scraping_platform SET {', '.join(update_columns)} WHERE source_id = ?",
+                f"UPDATE dbo.platform SET {', '.join(update_columns)} WHERE platform_id = ?",
                 tuple(update_values),
             )
             connection.commit()
@@ -768,6 +714,7 @@ def update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePaylo
         raise HTTPException(status_code=500, detail=f"Failed to update platform: {exc}") from exc
 
     icon, color = platform_visuals(name)
+    effective_enabled = payload.enabled
     return {
         "id": str(found_id),
         "name": name,
@@ -777,8 +724,7 @@ def update_platform_in_db(platform_id: str, payload: ScrapingPlatformUpdatePaylo
         "lastRun": "never",
         "status": "active" if effective_enabled else "maintenance",
         "baseUrl": base_url or "",
-        "tableName": resolved_table_name,
-        "attributes": normalize_table_attributes(payload.attributes),
+        "tableName": t_name or current_table,
     }
 
 

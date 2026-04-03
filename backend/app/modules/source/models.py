@@ -102,6 +102,7 @@ class Platform(Base):
     num_of_syncs = Column(Integer, nullable=False, default=0)
     success_sync_count = Column(Integer, nullable=False, default=0)
     success_rate = Column(Float, nullable=False, default=0.0)
+    review_table = Column(String(255), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),

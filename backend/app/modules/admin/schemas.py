@@ -217,18 +217,20 @@ class ScrapingTableAttributePayload(BaseModel):
 
 class ScrapingPlatformCreatePayload(BaseModel):
     name: str
-    tableName: str
-    attributes: list[ScrapingTableAttributePayload]
     baseUrl: str | None = None
+    fetchingType: str | None = "SCRAPING"
     enabled: bool = True
+    tableName: str | None = None  # Stored in review_table column; table created in scraper backend
+    attributes: list[ScrapingTableAttributePayload] = Field(default_factory=list)
 
 
 class ScrapingPlatformUpdatePayload(BaseModel):
     name: str
-    tableName: str
-    attributes: list[ScrapingTableAttributePayload]
     baseUrl: str | None = None
+    fetchingType: str | None = None
     enabled: bool = True
+    tableName: str | None = None  # Updated in review_table column; new table created in scraper backend if changed
+    attributes: list[ScrapingTableAttributePayload] = Field(default_factory=list)
 
 
 # ── Settings schemas ───────────────────────────────────────────────
