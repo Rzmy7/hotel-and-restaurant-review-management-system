@@ -1,18 +1,14 @@
 import React from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 interface OrganizationFiltersProps {
     searchQuery: string;
-    statusFilter: string;
     onSearchChange: (value: string) => void;
-    onStatusChange: (value: string) => void;
 }
 
 export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
     searchQuery,
-    statusFilter,
     onSearchChange,
-    onStatusChange,
 }) => {
     return (
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center justify-between gap-4 hover:shadow-lg transition-shadow duration-300">
@@ -27,19 +23,6 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400 w-full font-medium"
                     />
-                </div>
-                
-                {/* Status Filter */}
-                <div className="relative">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => onStatusChange(e.target.value)}
-                        className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm text-gray-700 font-medium cursor-pointer hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    >
-                        <option>All Status</option>
-                        <option>Active</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
             </div>
         </div>

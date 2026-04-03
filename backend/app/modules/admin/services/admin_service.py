@@ -201,43 +201,39 @@ def _get_user_row_by_id(cursor: pyodbc.Cursor, user_id: str, columns: set[str]):
 
 
 def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
-    if not table_exists(cursor, "user_organizations"):
+    """Return a map of organization_id -> owner email.
+
+    The lookup chain is:
+        organization.tenant_id  →  tenant.tenant_id (== user.user_id)  →  user.email
+    """
+    if not (table_exists(cursor, "organization") and table_exists(cursor, "user")):
         return {}
 
-    user_org_columns = get_table_columns(cursor, "user_organizations")
-    org_id_column = pick_existing_column(user_org_columns, ["organization_id"])
-    email_column = pick_existing_column(user_org_columns, ["email"])
-    created_column = pick_existing_column(user_org_columns, ["created_at", "updated_at"])
+    # Check whether the 'tenant' table exists for the three-table join
+    if table_exists(cursor, "tenant"):
+        query = """
+        SELECT
+            o.organization_id,
+            u.email
+        FROM dbo.organization o
+        JOIN dbo.tenant t  ON t.tenant_id  = o.tenant_id
+        JOIN dbo.[user]  u ON u.user_id    = t.tenant_id
+        WHERE u.email IS NOT NULL
+          AND LTRIM(RTRIM(u.email)) <> ''
+        """
+    else:
+        # Fallback: direct join if tenant_id on organization already equals user_id
+        query = """
+        SELECT
+            o.organization_id,
+            u.email
+        FROM dbo.organization o
+        JOIN dbo.[user] u ON u.user_id = o.tenant_id
+        WHERE u.email IS NOT NULL
+          AND LTRIM(RTRIM(u.email)) <> ''
+        """
 
-    if org_id_column is None or email_column is None:
-        return {}
-
-    order_by_parts = []
-    if created_column:
-        order_by_parts.append(f"uo.[{created_column}] DESC")
-    order_by_parts.append(f"uo.[{org_id_column}]")
-    order_by_sql = ", ".join(order_by_parts)
-
-    rows = execute_query(
-        cursor,
-        f"""
-        WITH ranked_owners AS (
-            SELECT
-                uo.[{org_id_column}] AS organization_id,
-                uo.[{email_column}] AS email,
-                ROW_NUMBER() OVER (
-                    PARTITION BY uo.[{org_id_column}]
-                    ORDER BY {order_by_sql}
-                ) AS row_number
-            FROM dbo.user_organizations uo
-            WHERE uo.[{email_column}] IS NOT NULL
-              AND LTRIM(RTRIM(uo.[{email_column}])) <> ''
-        )
-        SELECT organization_id, email
-        FROM ranked_owners
-        WHERE row_number = 1
-        """,
-    ).fetchall()
+    rows = execute_query(cursor, query).fetchall()
 
     owner_emails: dict[str, str] = {}
     for row in rows:
@@ -284,7 +280,6 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                     name=organization_name,
                     owner=owner_emails.get(organization_id, ""),
                     usersCount=0, # This can be populated via a separate count if needed
-                    status=status,
                 )
             )
 
@@ -314,7 +309,6 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                     name=name,
                     owner="",
                     usersCount=int(row[1]) if row[1] is not None else 0,
-                    status=_org_status_from_date(row[2]),
                 )
             )
 
@@ -343,7 +337,6 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                     name=name,
                     owner="",
                     usersCount=int(row[1]) if row[1] is not None else 0,
-                    status=_org_status_from_date(row[2]),
                 )
             )
 
@@ -708,3 +701,35 @@ def get_user_stats(cursor: pyodbc.Cursor) -> UserStatsData:
         todayActiveUsers=int(row[1]) if row and row[1] is not None else 0,
         todayRegistered=int(row[2]) if row and row[2] is not None else 0,
     )
+
+
+# ── Organization stats ──────────────────────────────────────────────
+
+
+def get_organization_stats_data(cursor: pyodbc.Cursor) -> OrganizationStats:
+    """Return total count and count added today for organizations."""
+    total_count = 0
+    added_today = 0
+
+    if table_exists(cursor, "organization"):
+        row = execute_query(
+            cursor,
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN CAST(created_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS addedToday
+            FROM dbo.organization
+            """,
+        ).fetchone()
+        if row:
+            total_count = int(row[0] or 0)
+            added_today = int(row[1] or 0)
+    elif table_exists(cursor, "processed_review"):
+        total_count = count_scalar(
+            cursor,
+            "SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(source)), '')) FROM dbo.processed_review",
+        )
+        # Fallback doesn't track registration dates well
+        added_today = 0
+
+    return OrganizationStats(total=total_count, addedToday=added_today)

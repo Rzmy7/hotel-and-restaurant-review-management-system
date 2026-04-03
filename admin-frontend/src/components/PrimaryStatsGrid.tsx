@@ -23,9 +23,9 @@ export const PrimaryStatsGrid: React.FC<PrimaryStatsGridProps> = ({ stats }) => 
                 icon={Users}
             />
             <StatCard
-                label="Active Organizations"
-                value={stats.activeHotels.toLocaleString()}
-                trend={`+${stats.hotelsGrowth}%`}
+                label="Organizations Added Today"
+                value={stats.organizationsAddedToday.toLocaleString()}
+                trend={`+${stats.addedTodayGrowth}%`}
                 icon={Building}
             />
             <StatCard

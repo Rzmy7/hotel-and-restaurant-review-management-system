@@ -20,7 +20,6 @@ export const Organizations: React.FC = () => {
     const [stats, setStats] = useState<OrganizationStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All Status');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 8;
 
@@ -168,9 +167,7 @@ export const Organizations: React.FC = () => {
     );
 
     const filteredOrgs = orgs.filter((org) => {
-        const matchesSearch = org.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'All Status' || org.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        return org.name.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
     const totalPages = Math.ceil(filteredOrgs.length / itemsPerPage);
@@ -193,9 +190,7 @@ export const Organizations: React.FC = () => {
 
             <OrganizationFilters
                 searchQuery={searchQuery}
-                statusFilter={statusFilter}
                 onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }}
-                onStatusChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}
             />
 
             <OrganizationTable

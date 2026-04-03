@@ -27,7 +27,7 @@ from app.modules.admin.schemas import (
 from app.modules.admin.services.dashboard_service import (
     PROCESSED_ACTIVITY_EXPR,
     PROCESSED_DATE_EXPR,
-    get_hotel_metrics,
+    get_organizations_added_today_metrics,
     get_organization_metrics,
     get_review_metrics,
     get_usage_rows,
@@ -54,15 +54,15 @@ def get_dashboard_stats() -> DashboardStats:
             ai_jobs_growth = reviews_growth
 
             total_organizations, organizations_growth = get_organization_metrics(cursor)
-            active_hotels, hotels_growth = get_hotel_metrics(cursor)
+            added_today, added_today_growth = get_organizations_added_today_metrics(cursor)
 
             return DashboardStats(
                 totalOrganizations=total_organizations,
+                organizationsAddedToday=added_today,
                 organizationsGrowth=organizations_growth,
+                addedTodayGrowth=added_today_growth,
                 totalUsers=total_users,
                 usersGrowth=users_growth,
-                activeHotels=active_hotels,
-                hotelsGrowth=hotels_growth,
                 totalReviews=total_reviews,
                 reviewsCollectedToday=reviews_collected_today,
                 reviewsGrowth=reviews_growth,

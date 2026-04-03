@@ -1,10 +1,10 @@
 export interface DashboardStats {
     totalOrganizations: number;
-    totalUsers: number;
-    activeHotels: number;
+    organizationsAddedToday: number;
     organizationsGrowth: number;
+    addedTodayGrowth: number;
+    totalUsers: number;
     usersGrowth: number;
-    hotelsGrowth: number;
     totalReviews: number;
     reviewsGrowth: number;
     activeUsersToday: number;
@@ -60,13 +60,26 @@ export interface Organization {
     name: string;
     owner: string;
     usersCount: number;
-    status: 'Active';
     iconUrl?: string;
+}
+
+export interface OrgSource {
+    organization_source_id: number;
+    source_id: number;
+    platform_name: string;
+    external_url: string | null;
+    last_synced_at: string | null;
+}
+
+export interface AvailableSource {
+    source_id: number;
+    platform_name: string;
+    base_url: string;
 }
 
 export interface OrganizationStats {
     total: number;
-    active: number;
+    addedToday: number;
 }
 
 export interface FeatureFlag {

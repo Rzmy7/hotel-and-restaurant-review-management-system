@@ -14,11 +14,11 @@ from pydantic import BaseModel, Field
 
 class DashboardStats(BaseModel):
     totalOrganizations: int
-    totalUsers: int
-    activeHotels: int
+    organizationsAddedToday: int
     organizationsGrowth: float
+    addedTodayGrowth: float
+    totalUsers: int
     usersGrowth: float
-    hotelsGrowth: float
     totalReviews: int
     reviewsCollectedToday: int
     reviewsGrowth: float
@@ -66,13 +66,12 @@ class OrganizationSummary(BaseModel):
     name: str
     owner: str
     usersCount: int
-    status: Literal["Active", "Inactive"]
     iconUrl: Optional[str] = None
 
 
 class OrganizationStats(BaseModel):
     total: int
-    active: int
+    addedToday: int
 
 
 class OrganizationUpdatePayload(BaseModel):

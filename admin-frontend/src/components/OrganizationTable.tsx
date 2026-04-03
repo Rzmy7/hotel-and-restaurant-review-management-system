@@ -26,21 +26,15 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
     onEdit,
     onDelete,
 }) => {
-    const getStatusBadgeClass = (status: string) => {
-        switch (status) {
-            case 'Active': return 'bg-green-100 text-green-600';
-            default: return 'bg-gray-100 text-gray-600';
-        }
-    };
+
 
     return (
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
             <table className="w-full">
                 <thead>
                     <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100/30">
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '35%' }}>Organization Name</th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '30%' }}>Owner</th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '20%' }}>Status</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '45%' }}>Organization Name</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '40%' }}>Owner</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style={{ width: '15%' }}>Actions</th>
                     </tr>
                 </thead>
@@ -56,11 +50,7 @@ export const OrganizationTable: React.FC<OrganizationTableProps> = ({
                                 </div>
                             </td>
                             <td className="px-6 py-4 text-gray-600 font-medium">{org.owner || '—'}</td>
-                            <td className="px-6 py-4">
-                                <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${getStatusBadgeClass(org.status)}`}>
-                                    {org.status}
-                                </span>
-                            </td>
+
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-1">
                                     <button

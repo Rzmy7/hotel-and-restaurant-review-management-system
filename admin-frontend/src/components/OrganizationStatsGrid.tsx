@@ -10,35 +10,41 @@ export const OrganizationStatsGrid: React.FC<OrganizationStatsGridProps> = ({ st
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Total Organizations */}
-            <div className="group relative bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl p-6 border border-blue-200/50 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-blue-600 mb-1">Total Organizations</p>
-                        <h3 className="text-3xl font-bold text-blue-900">{stats.total}</h3>
-                        <div className="flex items-center gap-1 mt-2 text-xs text-blue-600">
-                            <TrendingUp size={14} />
-                            <span>All time</span>
-                        </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform duration-300">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                         <Building2 size={24} />
+                    </div>
+                    <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold">
+                        All time
+                    </div>
+                </div>
+                <div>
+                    <div className="text-gray-500 text-sm mb-2">Total Organizations</div>
+                    <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+                    <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                        <TrendingUp size={13} />
+                        <span>All registered organizations</span>
                     </div>
                 </div>
             </div>
 
-            {/* Active Organizations */}
-            <div className="group relative bg-gradient-to-br from-green-50 to-green-100/50 rounded-2xl p-6 border border-green-200/50 hover:shadow-lg hover:shadow-green-100/50 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <p className="text-sm font-medium text-green-600 mb-1">Active Organizations</p>
-                        <h3 className="text-3xl font-bold text-green-900">{stats.active}</h3>
-                        <div className="flex items-center gap-1 mt-2 text-xs text-green-600">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            <span>Live now</span>
-                        </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center text-white shadow-lg shadow-green-200 group-hover:scale-110 transition-transform duration-300">
+            {/* Organizations Added Today */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                         <CheckCircle2 size={24} />
+                    </div>
+                    <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold">
+                        Today
+                    </div>
+                </div>
+                <div>
+                    <div className="text-gray-500 text-sm mb-2">Added Today</div>
+                    <div className="text-3xl font-bold text-gray-900">{stats.addedToday}</div>
+                    <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                        <span>Newly registered</span>
                     </div>
                 </div>
             </div>

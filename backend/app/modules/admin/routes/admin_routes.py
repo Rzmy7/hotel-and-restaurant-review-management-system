@@ -29,6 +29,7 @@ from app.modules.admin.services.admin_service import (
     create_user_in_db,
     delete_user_in_db,
     get_user_stats,
+    get_organization_stats_data,
     load_organizations,
     load_users,
     update_user_in_db,
@@ -55,11 +56,7 @@ def get_organization_stats() -> OrganizationStats:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            organizations = load_organizations(cursor)
-            total_count = len(organizations)
-            # All are ACTIVE now as per user instruction
-            active_count = total_count
-            return OrganizationStats(total=total_count, active=active_count)
+            return get_organization_stats_data(cursor)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch organization stats: {error}")
 

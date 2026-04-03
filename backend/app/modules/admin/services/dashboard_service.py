@@ -6,7 +6,7 @@ Migrated from admin-backend/app/dashboard_router.py.
 
 import json
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import pyodbc
@@ -360,42 +360,25 @@ def get_organization_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
 # ── Hotel metrics ───────────────────────────────────────────────────
 
 
-def get_hotel_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
-    if not table_exists(cursor, "reviews"):
+def get_organizations_added_today_metrics(cursor: pyodbc.Cursor) -> tuple[int, float]:
+    if not table_exists(cursor, "organization"):
         return 0, 0.0
 
-    total_hotels = count_scalar(
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    added_today = count_scalar(
         cursor,
-        """
-        SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(room_name)), ''))
-        FROM dbo.reviews
-        """,
+        "SELECT COUNT(*) FROM dbo.organization WHERE CAST(created_at AS date) = ?",
+        (today,),
+    )
+    added_yesterday = count_scalar(
+        cursor,
+        "SELECT COUNT(*) FROM dbo.organization WHERE CAST(created_at AS date) = ?",
+        (yesterday,),
     )
 
-    current_month = month_start(date.today())
-    previous_month_ = shift_month(current_month, -1)
-    next_month = shift_month(current_month, 1)
-
-    current_count = count_scalar(
-        cursor,
-        """
-        SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(room_name)), ''))
-        FROM dbo.reviews
-        WHERE posted_date >= ? AND posted_date < ?
-        """,
-        (current_month, next_month),
-    )
-    previous_count = count_scalar(
-        cursor,
-        """
-        SELECT COUNT(DISTINCT NULLIF(LTRIM(RTRIM(room_name)), ''))
-        FROM dbo.reviews
-        WHERE posted_date >= ? AND posted_date < ?
-        """,
-        (previous_month_, current_month),
-    )
-
-    return total_hotels, growth(current_count, previous_count)
+    return added_today, growth(added_today, added_yesterday)
 
 
 # ── User metrics ────────────────────────────────────────────────────
