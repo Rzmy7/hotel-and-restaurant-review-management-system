@@ -60,9 +60,9 @@ def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
                 created_at DATETIME2(7) NOT NULL
                     CONSTRAINT DF_notifications_created_at DEFAULT SYSUTCDATETIME(),
                 read_at DATETIME2(7) NULL,
-                CONSTRAINT FK_notifications_users
+                CONSTRAINT FK_notifications_user
                     FOREIGN KEY (user_id)
-                    REFERENCES dbo.users(user_id)
+                    REFERENCES dbo.[user](user_id)
                     ON DELETE CASCADE,
                 CONSTRAINT CK_notifications_type_valid
                     CHECK (notification_type IN ('info', 'success', 'warning', 'error', 'maintenance', 'announcement'))
@@ -85,8 +85,8 @@ def _resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
     admin_row = cursor.execute(
         """
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
-        FROM dbo.users
-        WHERE COALESCE(is_super_admin, 0) = 1 AND COALESCE(is_active, 0) = 1
+        FROM dbo.[user]
+        WHERE COALESCE(role_id, 0) = 1 AND COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
         """
     ).fetchone()
@@ -97,7 +97,7 @@ def _resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
     fallback_row = cursor.execute(
         """
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
-        FROM dbo.users
+        FROM dbo.[user]
         WHERE COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
         """

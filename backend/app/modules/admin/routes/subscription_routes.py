@@ -3,15 +3,15 @@
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.schemas import (
     DeleteSubscriptionPlanResponse,
     SubscriptionFeature,
     SubscriptionPlan,
     SubscriptionUsageSummary,
     SubscriptionPlanUpsertPayload,
 )
-from app.modules.admin_backend.services.subscription_service import (
+from app.modules.admin.services.subscription_service import (
     create_subscription_plan,
     delete_subscription_plan,
     get_subscription_features,
@@ -20,7 +20,7 @@ from app.modules.admin_backend.services.subscription_service import (
     update_subscription_plan,
 )
 
-router = APIRouter(prefix="/admin", tags=["Admin Subscription Plans"])
+router = APIRouter(tags=["Admin Subscription Plans"])
 
 
 @router.get("/subscription-features", response_model=list[SubscriptionFeature])

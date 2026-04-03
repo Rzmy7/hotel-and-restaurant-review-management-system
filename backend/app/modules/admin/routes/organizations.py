@@ -4,6 +4,6 @@ from app.modules.admin.services.organization_service import get_organizations
 
 router = APIRouter()
 
-@router.get("/admin/organizations")
+@router.get("/organizations")
 def list_organizations():
     return get_organizations()

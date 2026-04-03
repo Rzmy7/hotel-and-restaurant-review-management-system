@@ -10,6 +10,7 @@ from app.modules.dashboard.services.charts_service import (
 )
 from app.core.pyodbc_connection import get_connection_string
 import pyodbc
+import uuid
 
 router = APIRouter()
 
@@ -18,6 +19,12 @@ def get_unified_dashboard(org_id: str, period: int = 30):
     """
     Returns a unified dashboard response matching the frontend DashboardResponse interface.
     """
+    # Validate UUID format to prevent SQL conversion errors (e.g. from HOTEL-002)
+    try:
+        uuid.UUID(org_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"Organization ID '{org_id}' is not a valid UUID format.")
+
     try:
         conn = pyodbc.connect(get_connection_string())
         cursor = conn.cursor()

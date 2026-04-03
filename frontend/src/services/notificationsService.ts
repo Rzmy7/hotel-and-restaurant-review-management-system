@@ -182,7 +182,7 @@ export const notificationsService = {
     async getNotifications(limit = 50): Promise<NotificationsResponse> {
         const query = buildQuery({ limit: String(limit) });
         return requestJsonWithFallback<NotificationsResponse>(
-            buildPaths('/api/notifications/admin', '/api/notifications', query),
+            buildPaths('/api/admin/notifications/admin', '/api/notifications', query),
             { method: 'GET' }
         );
     },
@@ -190,7 +190,7 @@ export const notificationsService = {
     async getUnreadCount(): Promise<UnreadCountResponse> {
         const query = buildQuery();
         return requestJsonWithFallback<UnreadCountResponse>(
-            buildPaths('/api/notifications/admin/unread-count', '/api/notifications/unread-count', query),
+            buildPaths('/api/admin/notifications/unread-count', '/api/notifications/unread-count', query),
             {
             method: 'GET',
             }
@@ -201,7 +201,7 @@ export const notificationsService = {
         const query = buildQuery();
         return requestJsonWithFallback<{ success: boolean; message: string }>(
             buildPaths(
-                `/api/notifications/admin/${encodeURIComponent(notificationId)}/read`,
+                `/api/admin/notifications/${encodeURIComponent(notificationId)}/read`,
                 `/api/notifications/${encodeURIComponent(notificationId)}/read`,
                 query
             ),
@@ -212,7 +212,7 @@ export const notificationsService = {
     async markAllAsRead(): Promise<{ success: boolean; updated: number; message: string }> {
         const query = buildQuery();
         return requestJsonWithFallback<{ success: boolean; updated: number; message: string }>(
-            buildPaths('/api/notifications/admin/read-all', '/api/notifications/read-all', query),
+            buildPaths('/api/admin/notifications/read-all', '/api/notifications/read-all', query),
             { method: 'POST' }
         );
     },
@@ -220,7 +220,7 @@ export const notificationsService = {
     async deleteAllReadNotifications(): Promise<{ success: boolean; deleted: number; message: string }> {
         const query = buildQuery();
         return requestJsonWithFallback<{ success: boolean; deleted: number; message: string }>(
-            buildPaths('/api/notifications/admin/read-all', '/api/notifications/read-all', query),
+            buildPaths('/api/admin/notifications/read-all', '/api/notifications/read-all', query),
             { method: 'DELETE' }
         );
     },
@@ -229,7 +229,7 @@ export const notificationsService = {
         const query = buildQuery();
         return requestJsonWithFallback<{ success: boolean; message: string }>(
             buildPaths(
-                `/api/notifications/admin/${encodeURIComponent(notificationId)}`,
+                `/api/admin/notifications/${encodeURIComponent(notificationId)}`,
                 `/api/notifications/${encodeURIComponent(notificationId)}`,
                 query
             ),

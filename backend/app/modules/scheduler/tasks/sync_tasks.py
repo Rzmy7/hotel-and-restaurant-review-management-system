@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
-from app.modules.source.models import SourceSource
+from app.modules.source.models import Source as SourceSource  # alias for backward compat
 from app.modules.source.services.source_service import update_sync_status
 
 logger = logging.getLogger(__name__)

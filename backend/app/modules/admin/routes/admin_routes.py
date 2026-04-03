@@ -9,13 +9,13 @@ from datetime import datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,
     table_exists,
 )
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     AdminUser,
     AdminUserCreatePayload,
     AdminUserUpdatePayload,
@@ -26,7 +26,7 @@ from app.modules.admin_backend.schemas import (
     OrganizationUpdatePayload,
     UserStatsData,
 )
-from app.modules.admin_backend.services.admin_service import (
+from app.modules.admin.services.admin_service import (
     create_user_in_db,
     delete_user_in_db,
     get_user_stats,
@@ -35,7 +35,7 @@ from app.modules.admin_backend.services.admin_service import (
     update_user_in_db,
 )
 
-router = APIRouter(prefix="/admin", tags=["Admin Data"])
+router = APIRouter(tags=["Admin Data"])
 
 
 # ── Organization endpoints ──────────────────────────────────────────
@@ -58,9 +58,9 @@ def get_organization_stats() -> OrganizationStats:
             cursor = conn.cursor()
             organizations = load_organizations(cursor)
             total_count = len(organizations)
-            active_count = sum(1 for org in organizations if org.status == "Active")
-            pending_count = sum(1 for org in organizations if org.status == "Pending")
-            return OrganizationStats(total=total_count, active=active_count, pending=pending_count)
+            # All are ACTIVE now as per user instruction
+            active_count = total_count
+            return OrganizationStats(total=total_count, active=active_count)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch organization stats: {error}")
 
@@ -71,11 +71,11 @@ def get_all_sources() -> list[dict]:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 return []
             rows = execute_query(
                 cursor,
-                "SELECT source_id, platform_name FROM dbo.sources ORDER BY platform_name",
+                "SELECT source_id, platform_name FROM dbo.scraping_platform ORDER BY platform_name",
             ).fetchall()
             return [
                 {"source_id": int(row[0]), "platform_name": str(row[1] or "").strip()}
@@ -99,14 +99,14 @@ def get_org_sources(org_id: str) -> list[dict]:
             if not table_exists(cursor, "organization_sources"):
                 return []
 
-            if table_exists(cursor, "sources"):
+            if table_exists(cursor, "scraping_platform"):
                 rows = execute_query(
                     cursor,
                     """
                     SELECT os.organization_source_id, os.source_id, s.platform_name,
-                           os.external_url, os.last_synced_at
+                           os.external_url, CAST(os.last_synced_at AS NVARCHAR(50))
                     FROM dbo.organization_sources os
-                    JOIN dbo.sources s ON s.source_id = os.source_id
+                    JOIN dbo.scraping_platform s ON s.source_id = os.source_id
                     WHERE os.organization_id = ?
                     ORDER BY s.platform_name
                     """,
@@ -117,7 +117,7 @@ def get_org_sources(org_id: str) -> list[dict]:
                     cursor,
                     """
                     SELECT organization_source_id, source_id, NULL,
-                           external_url, last_synced_at
+                           external_url, CAST(last_synced_at AS NVARCHAR(50))
                     FROM dbo.organization_sources
                     WHERE organization_id = ?
                     """,
@@ -155,28 +155,28 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "organizations"):
-                raise HTTPException(status_code=400, detail="organizations table not found")
+            if not table_exists(cursor, "organization"):
+                raise HTTPException(status_code=400, detail="organization table not found")
 
             row = execute_query(
                 cursor,
-                "SELECT TOP 1 organization_id FROM dbo.organizations WHERE organization_id = ?",
+                "SELECT TOP 1 organization_id FROM dbo.organization WHERE organization_id = ?",
                 (org_id_int,),
             ).fetchone()
             if row is None:
                 raise HTTPException(status_code=404, detail="Organization not found")
 
-            org_cols = get_table_columns(cursor, "organizations")
+            org_cols = get_table_columns(cursor, "organization")
             if "updated_at" in org_cols:
                 execute_query(
                     cursor,
-                    "UPDATE dbo.organizations SET organization_name = ?, updated_at = ? WHERE organization_id = ?",
+                    "UPDATE dbo.organization SET organization_name = ?, updated_at = ? WHERE organization_id = ?",
                     (name, datetime.utcnow(), org_id_int),
                 )
             else:
                 execute_query(
                     cursor,
-                    "UPDATE dbo.organizations SET organization_name = ? WHERE organization_id = ?",
+                    "UPDATE dbo.organization SET organization_name = ? WHERE organization_id = ?",
                     (name, org_id_int),
                 )
             conn.commit()
@@ -236,14 +236,14 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
 
             conn.commit()
 
-            if table_exists(cursor, "sources"):
+            if table_exists(cursor, "scraping_platform"):
                 rows = execute_query(
                     cursor,
                     """
                     SELECT os.organization_source_id, os.source_id, s.platform_name,
-                           os.external_url, os.last_synced_at
+                           os.external_url, CAST(os.last_synced_at AS DATETIME2)
                     FROM dbo.organization_sources os
-                    JOIN dbo.sources s ON s.source_id = os.source_id
+                    JOIN dbo.scraping_platform s ON s.source_id = os.source_id
                     WHERE os.organization_id = ?
                     ORDER BY s.platform_name
                     """,
@@ -279,12 +279,12 @@ def delete_organization(org_id: str) -> dict:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "organizations"):
-                raise HTTPException(status_code=400, detail="organizations table not found")
+            if not table_exists(cursor, "organization"):
+                raise HTTPException(status_code=400, detail="organization table not found")
 
             row = execute_query(
                 cursor,
-                "SELECT TOP 1 organization_id, organization_name FROM dbo.organizations WHERE organization_id = ?",
+                "SELECT TOP 1 organization_id, organization_name FROM dbo.organization WHERE organization_id = ?",
                 (org_id_int,),
             ).fetchone()
             if row is None:
@@ -301,7 +301,7 @@ def delete_organization(org_id: str) -> dict:
 
             execute_query(
                 cursor,
-                "DELETE FROM dbo.organizations WHERE organization_id = ?",
+                "DELETE FROM dbo.organization WHERE organization_id = ?",
                 (org_id_int,),
             )
             conn.commit()

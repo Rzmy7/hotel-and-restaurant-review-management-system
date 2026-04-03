@@ -10,8 +10,9 @@ from datetime import datetime
 import pyodbc
 from fastapi import HTTPException
 
-from app.modules.admin_backend.db_utils import get_connection_string, table_exists
-from app.modules.admin_backend.services.broadcasting_service import ensure_notifications_schema
+from app.modules.admin.db_utils import get_connection_string, table_exists
+from app.modules.auth.constants.roles import ADMIN_ROLE_ID
+from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
 
 
 def resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
@@ -22,10 +23,10 @@ def resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
             raise HTTPException(status_code=400, detail="Invalid userId")
 
     admin_row = cursor.execute(
-        """
+        f"""
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
-        FROM dbo.users
-        WHERE COALESCE(is_super_admin, 0) = 1 AND COALESCE(is_active, 0) = 1
+        FROM dbo.[user]
+        WHERE COALESCE(role_id, 0) = {ADMIN_ROLE_ID} AND COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
         """
     ).fetchone()
@@ -36,7 +37,7 @@ def resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
     fallback_row = cursor.execute(
         """
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
-        FROM dbo.users
+        FROM dbo.[user]
         WHERE COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
         """

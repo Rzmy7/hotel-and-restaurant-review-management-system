@@ -12,7 +12,7 @@ from app.core.pyodbc_connection import get_connection_string
 
 def get_avg_rating(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> float:
     """Calculates the average rating for an organization within an optional date range."""
-    sql = "SELECT AVG(CAST(rating AS FLOAT)) FROM dbo.ProcessedReviews WHERE organization_id = ?"
+    sql = "SELECT AVG(CAST(rating AS FLOAT)) FROM dbo.processed_review WHERE organization_id = ?"
     params = [org_id]
     
     if start_date:
@@ -28,7 +28,7 @@ def get_avg_rating(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[date
 
 def get_review_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> int:
     """Calculates the total review count for an organization within an optional date range."""
-    sql = "SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE organization_id = ?"
+    sql = "SELECT COUNT(*) FROM dbo.processed_review WHERE organization_id = ?"
     params = [org_id]
     
     if start_date:
@@ -43,7 +43,7 @@ def get_review_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[da
 
 def get_negative_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> int:
     """Calculates the negative review count for an organization within an optional date range."""
-    sql = "SELECT COUNT(*) FROM dbo.ProcessedReviews WHERE organization_id = ? AND sentiment = 'Negative'"
+    sql = "SELECT COUNT(*) FROM dbo.processed_review WHERE organization_id = ? AND sentiment = 'Negative'"
     params = [org_id]
     
     if start_date:
@@ -58,7 +58,7 @@ def get_negative_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[
 
 def get_active_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Optional[datetime] = None) -> int:
     """Calculates the count of active sources for an organization as of a specific date."""
-    sql = "SELECT COUNT(*) FROM dbo.sources_source WHERE organization_id = ? AND source_status = 'active'"
+    sql = "SELECT COUNT(*) FROM dbo.source WHERE organization_id = ? AND source_status = 'active'"
     params = [org_id]
     
     if as_of_date:
@@ -72,7 +72,7 @@ def get_rating_distribution(cursor: pyodbc.Cursor, org_id: str) -> List[Dict[str
     """Calculates the all-time rating distribution (1-5 stars) with counts and percentages."""
     cursor.execute("""
         SELECT rating, COUNT(*) as cnt 
-        FROM dbo.ProcessedReviews 
+        FROM dbo.processed_review 
         WHERE organization_id = ? 
         GROUP BY rating ORDER BY rating DESC
     """, org_id)

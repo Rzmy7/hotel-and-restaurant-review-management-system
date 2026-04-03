@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import ProfileTemplate from "../components/profile/templates/ProfileTemplate";
+import { apiClient } from "../api/client";
 
 export interface UserProfile {
     firstName: string;
@@ -45,13 +46,7 @@ const ProfilePage: React.FC = () => {
     useEffect(() => {
         const loadProfile = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/users/me", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                const data = await res.json();
+                const data = await apiClient.get<any>("/users/me");
 
                 setProfile({
                     firstName: data.firstName || "",
@@ -94,23 +89,14 @@ const ProfilePage: React.FC = () => {
         setIsSaving(true);
 
         try {
-            const res = await fetch("http://127.0.0.1:8000/users/me", {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    firstName: profile.firstName,
-                    lastName: profile.lastName,
-                    phone: profile.phone,
-                    jobTitle: profile.jobTitle,
-                    bio: profile.bio,
-                    location: profile.location,
-                }),
+            await apiClient.put<any>("/users/me", {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                phone: profile.phone,
+                jobTitle: profile.jobTitle,
+                bio: profile.bio,
+                location: profile.location,
             });
-
-            if (!res.ok) throw new Error();
 
             showToast("Profile saved successfully ✅", "success");
 
@@ -153,17 +139,7 @@ const ProfilePage: React.FC = () => {
                 formData.append("file", file);
 
                 // STEP 3: Call backend
-                const res = await fetch("http://127.0.0.1:8000/users/me/upload-image", {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: formData,
-                });
-
-                if (!res.ok) throw new Error("Upload failed");
-
-                const data = await res.json();
+                const data = await apiClient.post<any>("/users/me/upload-image", formData as any);
 
                 console.log("UPLOAD RESPONSE:", data);
 

@@ -17,6 +17,7 @@ type AuthContextType = {
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     persist: (user: User | null, token?: string) => void;
     checkUserOrganizations: () => Promise<void>;
+    isLoading: boolean;
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
@@ -37,19 +38,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // ----------------------------------------------------
     // Restore session from localStorage
     // ----------------------------------------------------
     useEffect(() => {
         const storedUser = localStorage.getItem("authUser");
-        if (storedUser) {
+        const token = localStorage.getItem("token");
+        
+        if (storedUser && token) {
             try {
                 setUser(JSON.parse(storedUser));
             } catch {
-                localStorage.removeItem("authUser");
+                persist(null);
             }
+        } else {
+            // Ensure state is null if no login details found
+            setUser(null);
         }
+        setIsLoading(false);
     }, []);
 
     // ----------------------------------------------------
@@ -62,12 +70,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.setItem("authUser", JSON.stringify(u));
         } else {
             localStorage.removeItem("authUser");
+            localStorage.removeItem("token");
+            localStorage.removeItem("organizations");
+            localStorage.removeItem("organization_ids");
+            localStorage.removeItem("current_organization");
         }
 
         if (token) {
             localStorage.setItem("token", token);
-        } else if (u === null) {
-            localStorage.removeItem("token");
         }
     };
 
@@ -77,29 +87,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const checkUserOrganizations = async () => {
         try {
             console.log("Fetching organizations...");
-
-            const token = localStorage.getItem("token");
-
-            if (!token) {
-                console.warn("No token found");
-                window.location.href = "/login";
-                return;
-            }
-
-            const res = await fetch(`${API_BASE}/api/user/organizations`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            console.log("Response status:", res.status);
-
-            if (!res.ok) {
-                console.error("Failed to fetch organizations:", res.status);
-                return;
-            }
-
-            const data = await res.json();
+            
+            // apiClient automatically handles the base URL, /api prefix, and Authorization headers
+            const data = await apiClient.get<any>('/user/organizations');
 
             console.log("Organizations API response:", data);
 
@@ -142,20 +132,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string) => {
-        let data;
-        try {
-            data = await apiClient.post<any>('/api/login', { email, password });
-        } catch (error: any) {
-            // fallback to hansi endpoint if api/login is deprecated in modular structure
-            data = await apiClient.post<any>('/auth/login', { email, password });
-        }
+        const data = await apiClient.post<any>('/auth/login', { email, password });
         console.log("Login response:", data);
         const backendUser = data.user;
 
         const normalizedUser: User = {
             user_id: backendUser.user_id,
             email: backendUser.email,
-            full_name: backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
             role: normalizeRole(backendUser.role || backendUser.roles),
         };
 
@@ -173,12 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // SIGNUP
     // ----------------------------------------------------
     const signup = async (name: string, email: string, password: string) => {
-        let payload;
-        try {
-            payload = await apiClient.post<any>('/api/signup', { name, email, password });
-        } catch (error: any) {
-            payload = await apiClient.post<any>('/auth/signup', { name, email, password });
-        }
+        const payload = await apiClient.post<any>('/auth/signup', { name, email, password });
         
         console.log("Signup response:", payload);
 
@@ -186,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const normalizedUser: User = {
             user_id: backendUser.id || backendUser.user_id,
             email: backendUser.email,
-            full_name: backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
             role: normalizeRole(backendUser.role || backendUser.roles),
         };
 
@@ -213,22 +192,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // FORGOT PASSWORD
     // ----------------------------------------------------
     const forgotPassword = async (email: string) => {
-        try {
-            await apiClient.post<any>('/api/forgot-password', { email });
-        } catch (error) {
-            await apiClient.post<any>('/auth/forgot-password', { email });
-        }
+        await apiClient.post<any>('/auth/forgot-password', { email });
     };
 
     // ----------------------------------------------------
     // RESET PASSWORD
     // ----------------------------------------------------
     const resetPassword = async (token: string, newPassword: string) => {
-        try {
-            await apiClient.post<any>(`/api/reset-password/${token}`, { new_password: newPassword });
-        } catch (error) {
-            await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
-        }
+        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
     };
 
     return (
@@ -242,6 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 resetPassword,
                 persist,
                 checkUserOrganizations,
+                isLoading,
             }}
         >
             {children}

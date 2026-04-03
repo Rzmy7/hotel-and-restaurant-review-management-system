@@ -15,14 +15,14 @@ def get_usage(org_id: str = None, period: int = 30) -> dict:
     if org_id:
         cursor.execute("""
             SELECT CAST(reviewDate AS DATE) as review_day, COUNT(*) as review_count
-            FROM dbo.ProcessedReviews 
+            FROM dbo.processed_review 
             WHERE reviewDate >= ? AND organization_id = ?
             GROUP BY CAST(reviewDate AS DATE) ORDER BY review_day
         """, period_start, org_id)
     else:
         cursor.execute("""
             SELECT CAST(reviewDate AS DATE) as review_day, COUNT(*) as review_count
-            FROM dbo.ProcessedReviews WHERE reviewDate >= ?
+            FROM dbo.processed_review WHERE reviewDate >= ?
             GROUP BY CAST(reviewDate AS DATE) ORDER BY review_day
         """, period_start)
         
@@ -38,14 +38,14 @@ def get_recent_reviews(org_id: str = None) -> dict:
     if org_id:
         cursor.execute("""
             SELECT TOP 10 id, rating, reviewerName as userName, text as reviewText, sentiment, categories, reviewDate, [status], platform_id as source
-            FROM dbo.ProcessedReviews 
+            FROM dbo.processed_review 
             WHERE organization_id = ?
             ORDER BY reviewDate DESC
         """, org_id)
     else:
         cursor.execute("""
             SELECT TOP 10 id, rating, reviewerName as userName, text as reviewText, sentiment, categories, reviewDate, [status], platform_id as source
-            FROM dbo.ProcessedReviews ORDER BY reviewDate DESC
+            FROM dbo.processed_review ORDER BY reviewDate DESC
         """)
         
     rows = cursor.fetchall()

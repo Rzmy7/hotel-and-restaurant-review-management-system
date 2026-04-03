@@ -54,7 +54,10 @@ backend/app/test/services/promptForFrontender.txt
 .vscode/
 *.vscode/
 
+# temp and status files
+tmp/
 tmp/*
+git_status.txt
 
 kimi_mcp.py
 
@@ -62,3 +65,10 @@ kimi_mcp.py
 QWEN.md
 .qwen
 GEMINI.md
+
+.qwen/
+
+# logs
+*.log
+backend/backend_error.log
+logs/

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends , UploadFile, File
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.user.schemas.profile_schema import ProfileUpdate
 from app.modules.user.services.profile_service import (
     get_profile,

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.modules.auth.models import User, UserRole, Role
+from app.modules.auth.models import User, Role
 from app.modules.auth.constants.roles import TENANT
 
 
@@ -27,10 +27,16 @@ def create_user(
     is_email_verified: bool = False,
 ):
     
-    # Create a new user and assign default role (TENANT)
+    # ------------------------------------------------
+    # Get default role (TENANT)
+    # ------------------------------------------------
+    role = db.query(Role).filter(Role.role_name == TENANT).first()
+    if not role:
+        # Fallback case — if roles table isn't seeded correctly
+        raise ValueError(f"CRITICAL: Default role '{TENANT}' not found in Roles table. Please seed the database.")
 
     # ------------------------------------------------
-    # Create user
+    # Create user with mandatory role_id
     # ------------------------------------------------
     user = User(
         email=email,
@@ -44,26 +50,13 @@ def create_user(
         profile_image_url=profile_image_url,
         google_id=google_id,
         is_email_verified=is_email_verified,
+        role_id=role.role_id  # Assigned here before commit
     )
 
     # Save user to DB
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    # ------------------------------------------------
-    # Assign TENANT role
-    # ------------------------------------------------
-    role = db.query(Role).filter(Role.role_name == TENANT).first()
-
-    if role:
-        user_role = UserRole(
-            user_id=user.user_id,
-            role_id=role.role_id
-        )
-
-        db.add(user_role)
-        db.commit()
 
     return user
 

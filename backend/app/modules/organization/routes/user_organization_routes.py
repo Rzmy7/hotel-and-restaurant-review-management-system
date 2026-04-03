@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["user-organizations"])
@@ -13,20 +13,22 @@ def get_user_organizations(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    user_id = user.user_id
+    # In the new schema, user_id == tenant_id
+    tenant_id = user.user_id
 
     result = db.execute(
         text("""
             SELECT 
                 o.organization_id,
                 o.organization_name,
-                uo.role
-            FROM dbo.user_organizations uo
-            JOIN dbo.organizations_source o
-                ON uo.organization_id = o.organization_id
-            WHERE uo.user_id = :user_id
+                ot.type_name as organization_type,
+                o.organization_type_id
+            FROM dbo.organization o
+            LEFT JOIN dbo.organization_type ot
+                ON o.organization_type_id = ot.type_code
+            WHERE o.tenant_id = :tenant_id
         """),
-        {"user_id": user_id}
+        {"tenant_id": tenant_id}
     )
 
     rows = result.fetchall()
@@ -35,7 +37,9 @@ def get_user_organizations(
         {
             "organization_id": str(row[0]),  
             "organization_name": row[1],      
-            "role": row[2]                  
+            "organization_type": row[2],
+            "organization_type_id": row[3],
+            "role": "owner" # In this unified model, the tenant owner is the owner of all its orgs
         }
         for row in rows
     ]

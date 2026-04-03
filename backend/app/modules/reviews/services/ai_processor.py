@@ -122,7 +122,7 @@ def fetch_reviews() -> List[Review]:
 def insert_processed_reviews(conn: pyodbc.Connection, rows: list[dict]) -> None:
     """Insert processed reviews into the ProcessedReviews SQL table."""
     sql = """
-        INSERT INTO dbo.ProcessedReviews (
+        INSERT INTO dbo.processed_review (
             id, platformReviewId, source, rating, userName, reviewerName,
             reviewText, [text], summary, sentiment, language, categories,
             keyPhrases, reviewDate, firstSeen, lastUpdated, scrapedAt,

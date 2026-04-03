@@ -46,7 +46,7 @@ def get_my_hotel_stats() -> Dict:
                 SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) as positive,
                 SUM(CASE WHEN sentiment = 'Negative' THEN 1 ELSE 0 END) as negative,
                 SUM(CASE WHEN sentiment = 'Neutral' THEN 1 ELSE 0 END) as neutral
-            FROM dbo.ProcessedReviews
+            FROM dbo.processed_review
         """).fetchone()
         cnt = row.cnt or 0
         return {
@@ -133,7 +133,7 @@ def get_comparison_data(competitor_id: int) -> Optional[Dict]:
 
     my_stats = get_my_hotel_stats()
     comp_stats = get_competitor_stats(competitor_id)
-    my_categories = get_category_scores("dbo.ProcessedReviews")
+    my_categories = get_category_scores("dbo.processed_review")
     comp_categories = get_category_scores("dbo.CompetitorReviews", "competitorId = ?", [competitor_id])
 
     all_cats = sorted(set(list(my_categories.keys()) + list(comp_categories.keys())))
@@ -142,7 +142,7 @@ def get_comparison_data(competitor_id: int) -> Optional[Dict]:
         for cat in all_cats
     ]
 
-    my_trend = get_monthly_ratings("dbo.ProcessedReviews", "reviewDate")
+    my_trend = get_monthly_ratings("dbo.processed_review", "reviewDate")
     comp_trend = get_monthly_ratings("dbo.CompetitorReviews", "reviewDate", "competitorId = ?", [competitor_id])
 
     trend_months = sorted(set([t["month"] for t in my_trend] + [t["month"] for t in comp_trend]))
@@ -198,7 +198,7 @@ def get_ai_comparison_insights(competitor_id: int) -> Dict:
 
     my_stats = get_my_hotel_stats()
     comp_stats = get_competitor_stats(competitor_id)
-    my_cats = get_category_scores("dbo.ProcessedReviews")
+    my_cats = get_category_scores("dbo.processed_review")
     comp_cats = get_category_scores("dbo.CompetitorReviews", "competitorId = ?", [competitor_id])
 
     prompt = COMPARISON_INSIGHT_PROMPT.format(

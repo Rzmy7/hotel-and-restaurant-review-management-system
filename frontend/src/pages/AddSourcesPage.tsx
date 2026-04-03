@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -6,33 +6,84 @@ import {
   Globe, 
   Search, 
   ExternalLink,
-  MessageSquare,
-  Star
+  Loader2
 } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { apiClient } from '../api/client';
 
-interface ReviewSource {
-  id: string;
-  name: string;
-  type: string;
-  connected: boolean;
+const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
+
+interface Platform {
+  platform_id: number;
+  platform_name: string;
+  base_url: string;
+  fetching_type: string;
+  platform_status: string;
+}
+
+interface SelectedSource {
+  platform_id: number;
+  source_url: string;
+  platform_name: string;
 }
 
 const AddSourcesPage = () => {
   const navigate = useNavigate();
-  const [customSourceUrl, setCustomSourceUrl] = useState('');
-  const [sources, setSources] = useState<ReviewSource[]>([
-    { id: '1', name: 'Google Reviews', type: 'google', connected: true },
-    { id: '2', name: 'Booking.com', type: 'booking', connected: false },
-    { id: '3', name: 'TripAdvisor', type: 'tripadvisor', connected: false },
-    { id: '4', name: 'Facebook business', type: 'facebook', connected: false },
-    { id: '5', name: 'Yelp', type: 'yelp', connected: false },
-    { id: '6', name: 'Trustpilot', type: 'trustpilot', connected: false },
-  ]);
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [selectedSources, setSelectedSources] = useState<Record<number, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchPlatforms = async () => {
+      try {
+        const data = await apiClient.get<Platform[]>('/api/source/platforms');
+        setPlatforms(data || []);
+        
+        // Populate from draft if exists
+        const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+          if (draft.sources) {
+            const initialSelected: Record<number, string> = {};
+            draft.sources.forEach((s: any) => {
+              initialSelected[s.platform_id] = s.source_url;
+            });
+            setSelectedSources(initialSelected);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch platforms:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlatforms();
+  }, []);
 
   const handleContinue = () => {
+    setIsSaving(true);
+    
+    // Convert selectedSources to the list format expected by backend
+    const sourcesToSave = Object.entries(selectedSources)
+      .filter(([_, url]) => url.trim().length > 0)
+      .map(([id, url]) => ({
+        platform_id: parseInt(id),
+        source_url: url.trim(),
+        fetching_frequency: 1 // Default to 1 (Daily) for now
+      }));
+
+    const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+    const draft = draftStr ? JSON.parse(draftStr) : {};
+    
+    localStorage.setItem(SETUP_DRAFT_CONFIG_KEY, JSON.stringify({
+      ...draft,
+      sources: sourcesToSave
+    }));
+
     navigate('/setup/schedule');
   };
 
@@ -40,16 +91,11 @@ const AddSourcesPage = () => {
     navigate('/setup');
   };
 
-  const handleConnect = (sourceId: string) => {
-    setSources(sources.map(source =>
-      source.id === sourceId ? { ...source, connected: !source.connected } : source
-    ));
-  };
-
-  const handleConnectCustomSource = () => {
-    if (customSourceUrl.trim()) {
-      alert('Custom source connection feature coming soon!');
-    }
+  const updateSourceUrl = (platformId: number, url: string) => {
+    setSelectedSources(prev => ({
+      ...prev,
+      [platformId]: url
+    }));
   };
 
   return (
@@ -57,6 +103,7 @@ const AddSourcesPage = () => {
       currentStep={2}
       onContinue={handleContinue}
       onBack={handleBack}
+      isContinueDisabled={isLoading || isSaving}
     >
       <div className="text-center mb-10">
         <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">
@@ -67,79 +114,84 @@ const AddSourcesPage = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-        {sources.map((source) => (
-          <div
-            key={source.id}
-            className={`
-              relative p-4 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between
-              ${source.connected 
-                ? 'border-blue-600 bg-blue-50/30 dark:bg-blue-900/10' 
-                : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-200 dark:hover:border-slate-700'}
-            `}
-          >
-            <div className="flex items-center gap-4">
-              <div className={`
-                w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-colors
-                ${source.connected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}
-              `}>
-                {source.name.charAt(0)}
-              </div>
-              <div>
-                <div className="text-[14px] font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                    {source.name}
-                </div>
-                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
-                    {source.connected ? 'Verified' : 'Available'}
-                </div>
-              </div>
-            </div>
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Fetching available platforms...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 mb-12">
+          {platforms.map((platform) => {
+            const url = selectedSources[platform.platform_id] || '';
+            const isConnected = url.trim().length > 0;
+            
+            return (
+              <div
+                key={platform.platform_id}
+                className={`
+                  relative p-6 rounded-2xl border-2 transition-all duration-300
+                  ${isConnected 
+                    ? 'border-blue-600 bg-blue-50/30 dark:bg-blue-900/10 shadow-lg shadow-blue-500/5' 
+                    : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900'}
+                `}
+              >
+                <div className="flex flex-col md:flex-row md:items-center gap-6">
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className={`
+                      w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg transition-colors
+                      ${isConnected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}
+                    `}>
+                      {platform.platform_name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="text-[16px] font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                          {platform.platform_name}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
+                          {isConnected ? 'URL Provided' : 'Action Required'}
+                      </div>
+                    </div>
+                  </div>
 
-            <Button
-              size="sm"
-              variant={source.connected ? 'primary' : 'outline'}
-              onClick={() => handleConnect(source.id)}
-              className={`h-9 px-4 text-[11px] font-black uppercase tracking-widest rounded-lg ${source.connected ? 'shadow-lg shadow-blue-500/20' : ''}`}
-              leftIcon={source.connected ? <CheckCircle2 size={14} /> : <Plus size={14} />}
-            >
-              {source.connected ? 'Added' : 'Add'}
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 md:p-8 border border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-blue-600 shadow-sm border border-slate-100 dark:border-slate-800 text-lg">
-                <Globe size={18} />
+                  <div className="flex-1 relative group">
+                    <Globe className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${isConnected ? 'text-blue-500' : 'text-slate-400'}`} />
+                    <Input
+                      type="text"
+                      placeholder={`Enter your ${platform.platform_name} property URL...`}
+                      value={url}
+                      onChange={(e) => updateSourceUrl(platform.platform_id, e.target.value)}
+                      className="pl-11 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                  
+                  {isConnected && (
+                    <div className="hidden md:flex items-center text-blue-600 animate-in zoom-in duration-300">
+                      <CheckCircle2 size={24} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          
+          {platforms.length === 0 && (
+            <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+               <p className="text-slate-500 font-medium italic">No review platforms enabled in the system yet.</p>
             </div>
-            <h3 className="text-[15px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                Add Custom Source
+          )}
+        </div>
+      )}
+
+      {/* Manual Entry remains as a fallback/info box */}
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-[14px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                Not seeing your platform?
             </h3>
         </div>
-        <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium mb-6">
-            Can't find your platform? Provide the direct link to your property's review page.
+        <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium">
+            We are constantly adding new platforms. If you have a specific requirement, contact our support team.
         </p>
-        
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-blue-500" />
-            <Input
-              type="text"
-              placeholder="https://www.booking.com/hotel/..."
-              value={customSourceUrl}
-              onChange={(e) => setCustomSourceUrl(e.target.value)}
-              className="pl-11 h-12 bg-white dark:bg-slate-900"
-            />
-          </div>
-          <Button
-            onClick={handleConnectCustomSource}
-            className="h-12 px-8 font-black uppercase text-[12px] tracking-widest"
-            leftIcon={<ExternalLink size={16} />}
-          >
-            Connect
-          </Button>
-        </div>
       </div>
     </SetupLayout>
   );

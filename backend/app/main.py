@@ -19,13 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# We need both temp core configs and hansi database getter.
-# Assuming get_db is exposed from app.core.database or app.database 
-# (temp branch often had app.database, hansi moved it to app.core.database). 
-try:
-    from app.core.database import get_db
-except ImportError:
-    from app.database import get_db
+# Canonical database imports — single source of truth
+from app.database.session import Base, engine, get_db
 
 try:
     from app.core.config import SECRET_KEY, CORS_ORIGINS
@@ -45,7 +40,12 @@ except ImportError:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Auto-create any missing tables from ORM models
+    if engine:
+        Base.metadata.create_all(bind=engine)
     # Startup actions
+    from app.modules.admin.services.subscription_service import seed_subscription_data
+    seed_subscription_data()
     setup_scheduler()
     start_scheduler()
     yield
@@ -89,16 +89,15 @@ try:
 except ImportError:
     legacy_source_router = None
 
-try:
-    from app.modules.admin_backend import router as admin_backend_router
-except ImportError:
-    admin_backend_router = None
+# admin_backend_router removed and consolidated into admin_router
 
 # ── Pre-load ORM models so SQLAlchemy can resolve cross-module relationships ──
 import app.modules.user.models.user_models          # noqa: F401  (User)
 import app.modules.auth.models.auth_models          # noqa: F401  (Role, UserRole, Session, PasswordResetToken)
 import app.modules.auth.models                      # noqa: F401  (Notification, UserNotification, BroadcastEvent)
-import app.modules.groups.models                    # noqa: F401  (Group, GroupMember)
+import app.modules.groups.models                    # noqa: F401  (Group, GroupMember, GroupMemberRole)
+import app.modules.source.models                    # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
+import app.modules.reviews.models                   # noqa: F401  (ProcessedReview, ReviewMedia)
 
 # Hansi UserManagement routers
 from app.modules.user.routes.profile_routes import router as profile_router
@@ -131,8 +130,6 @@ app = FastAPI(
 
 # ── Middleware ──────────────────────────────────────────────────────
 
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS if isinstance(CORS_ORIGINS, list) else [
@@ -143,6 +140,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# Global Exception Handler to capture 500 errors and include CORS headers
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"CRITICAL ERROR: {error_details}")
+    
+    # Write error to a temporary log file for AI to read
+    with open("backend_error.log", "a", encoding="utf-8") as f:
+        f.write(f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n")
+        f.write(error_details)
+        f.write("\n" + "="*50 + "\n")
+
+    return Response(
+        content=json.dumps({"detail": "Internal Server Error", "traceback": str(exc)}),
+        status_code=500,
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # ── Register routers ───────────────────────────────────────────────
 
@@ -160,18 +181,17 @@ if groups_router:
     app.include_router(groups_router, prefix="/api")
 if legacy_source_router:
     app.include_router(legacy_source_router, prefix="/api")
-if admin_backend_router:
-    app.include_router(admin_backend_router)
+# app.include_router(admin_backend_router) removed
 
-# Hansi routers
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(oauth_router, tags=["OAuth"])
-app.include_router(profile_router)
-app.include_router(org_router)
+# Hansi routers (now standardized under /api)
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
+app.include_router(profile_router, prefix="/api")
+app.include_router(org_router, prefix="/api")
 app.include_router(onboarding_router, prefix="/api")
-app.include_router(user_router)
-app.include_router(user_org_router)
-app.include_router(org_source_router)
+app.include_router(user_router, prefix="/api")
+app.include_router(user_org_router, prefix="/api")
+app.include_router(org_source_router, prefix="/api")
 
 # ----------------------
 # Debug / Root Endpoints

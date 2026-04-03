@@ -87,7 +87,7 @@ def insert_review(cursor, review: Review) -> None:
     for pic in review.photo:
         cursor.execute(
             """
-            INSERT INTO review_photos (review_id, src, alt)
+            INSERT INTO review_media (review_id, src, alt)
             VALUES (?, ?, ?)
             """,
             review.review_id,
@@ -115,10 +115,10 @@ def remove_all_reviews_from_db() -> bool:
         cursor.execute("DELETE FROM dbo.reviews")
         conn.commit()
 
-        cursor.execute("DELETE FROM dbo.review_photos")
+        cursor.execute("DELETE FROM dbo.review_media")
         conn.commit()
 
-        cursor.execute("DELETE FROM dbo.ProcessedReviews")
+        cursor.execute("DELETE FROM dbo.processed_review")
         conn.commit()
 
         conn.close()

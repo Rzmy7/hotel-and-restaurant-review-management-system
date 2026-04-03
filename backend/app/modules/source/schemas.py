@@ -1,6 +1,6 @@
 import enum
 from typing import List, Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, field_validator
 from datetime import datetime
 import uuid
 
@@ -20,10 +20,15 @@ class PlatformStatus(str, enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
 
-class FetchingFrequency(str, enum.Enum):
-    DAILY = "daily"         # 1 day
-    THREE_DAYS = "three_days" # 3 days
-    WEEKLY = "weekly"       # 7 days
+# --- Sync Frequency Schemas ---
+class SyncFrequencyRead(BaseModel):
+    frq_id: int
+    name: str
+    info: Optional[str] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 # --- Platform Schemas ---
 class PlatformRead(BaseModel):
@@ -40,29 +45,34 @@ class PlatformRead(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator('platform_status', mode='before')
+    @classmethod
+    def lowercase_status(cls, v):
+        if isinstance(v, str):
+            return v.lower()
+        return v
+
 # --- Source Schemas ---
 class SourceCreate(BaseModel):
-
     organization_id: uuid.UUID
     platform_id: int
     source_url: str
     source_status: SourceStatus = SourceStatus.ACTIVE
-    fetching_frequency: FetchingFrequency = FetchingFrequency.DAILY
+    fetching_frequency: int = 1
 
 class SourceUpdate(BaseModel):
     source_url: Optional[str] = None
     source_status: Optional[SourceStatus] = None
-    fetching_frequency: Optional[FetchingFrequency] = None
+    fetching_frequency: Optional[int] = None
 
 class SourceRead(BaseModel):
     source_id: uuid.UUID
-
     organization_id: uuid.UUID
     platform_id: int
     platform_name: str
     source_url: str
     source_status: SourceStatus
-    fetching_frequency: FetchingFrequency
+    fetching_frequency: int
     last_synced_at: Optional[datetime]
     next_synced_at: Optional[datetime]
     num_of_syncs: int
@@ -74,6 +84,13 @@ class SourceRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator('source_status', mode='before')
+    @classmethod
+    def lowercase_status(cls, v):
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 # --- Stats and Bulk Responses ---
 class SourceStats(BaseModel):

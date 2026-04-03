@@ -1,5 +1,5 @@
 # app/modules/organization/models/org_models.py
-# Re-export from canonical location to avoid duplicate model definitions.
-from app.modules.groups.models import Group, GroupMember
+# Re-export from canonical locations to avoid duplicate model definitions.
+from app.modules.groups.models import Group, GroupMember, GroupMemberRole
 
-__all__ = ["Group", "GroupMember"]
+__all__ = ["Group", "GroupMember", "GroupMemberRole"]

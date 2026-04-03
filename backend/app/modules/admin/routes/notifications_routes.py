@@ -10,14 +10,14 @@ from datetime import datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException, Query
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.services.broadcasting_service import ensure_notifications_schema
-from app.modules.admin_backend.services.notifications_service import resolve_target_user_id
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
+from app.modules.admin.services.notifications_service import resolve_target_user_id
 
-router = APIRouter(prefix="/api/notifications", tags=["Admin Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Admin Notifications"])
 
 
-@router.get("/admin")
+@router.get("/")
 def get_admin_notifications(
     userId: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
@@ -41,8 +41,8 @@ def get_admin_notifications(
                 CAST(COALESCE(un.is_read, 0) AS BIT) AS is_read,
                 n.created_at,
                 un.read_at
-            FROM dbo.user_notifications AS un
-            INNER JOIN dbo.notifications AS n
+            FROM dbo.user_notification AS un
+            INNER JOIN dbo.notification AS n
                 ON n.notification_id = un.notification_id
             WHERE un.user_id = ?
             ORDER BY n.created_at DESC
@@ -72,7 +72,7 @@ def get_admin_notifications(
         connection.close()
 
 
-@router.get("/admin/unread-count")
+@router.get("/unread-count")
 def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
     connection = pyodbc.connect(get_connection_string())
     try:
@@ -84,7 +84,7 @@ def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
         row = cursor.execute(
             """
             SELECT COUNT(*)
-            FROM dbo.user_notifications
+            FROM dbo.user_notification
             WHERE user_id = ? AND COALESCE(is_read, 0) = 0
             """,
             target_user_id,
@@ -115,7 +115,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
         row = cursor.execute(
             """
             SELECT 1
-            FROM dbo.user_notifications
+            FROM dbo.user_notification
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,
@@ -127,7 +127,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
 
         cursor.execute(
             """
-            UPDATE dbo.user_notifications
+            UPDATE dbo.user_notification
             SET is_read = 1,
                 read_at = ?
             WHERE notification_id = ? AND user_id = ?
@@ -149,7 +149,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
         connection.close()
 
 
-@router.post("/admin/read-all")
+@router.post("/read-all")
 def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
     connection = pyodbc.connect(get_connection_string())
     try:
@@ -161,7 +161,7 @@ def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
 
         cursor.execute(
             """
-            UPDATE dbo.user_notifications
+            UPDATE dbo.user_notification
             SET is_read = 1,
                 read_at = ?
             WHERE user_id = ? AND COALESCE(is_read, 0) = 0
@@ -182,7 +182,7 @@ def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
         connection.close()
 
 
-@router.delete("/admin/read-all")
+@router.delete("/read-all")
 def delete_all_read_notifications(userId: str | None = Query(None)) -> dict:
     """Delete all read notifications for the user."""
     connection = pyodbc.connect(get_connection_string())
@@ -194,7 +194,7 @@ def delete_all_read_notifications(userId: str | None = Query(None)) -> dict:
 
         cursor.execute(
             """
-            DELETE FROM dbo.user_notifications
+            DELETE FROM dbo.user_notification
             WHERE user_id = ? AND COALESCE(is_read, 0) = 1
             """,
             target_user_id,
@@ -233,7 +233,7 @@ def delete_notification(notification_id: str, userId: str | None = Query(None)) 
         row = cursor.execute(
             """
             SELECT 1
-            FROM dbo.user_notifications
+            FROM dbo.user_notification
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,
@@ -245,7 +245,7 @@ def delete_notification(notification_id: str, userId: str | None = Query(None)) 
 
         cursor.execute(
             """
-            DELETE FROM dbo.user_notifications
+            DELETE FROM dbo.user_notification
             WHERE notification_id = ? AND user_id = ?
             """,
             parsed_notification_id,

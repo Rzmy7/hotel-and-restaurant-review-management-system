@@ -4,16 +4,13 @@ Extracted from modules/competitors/service.py (DB operations section).
 AI client singleton, prompts, and scraping pipeline are in their own files.
 """
 
-from __future__ import annotations
-import json
-import re
-from dataclasses import asdict
 from datetime import datetime
 from typing import List, Optional, Dict
 
 import pyodbc
 
 from app.core.pyodbc_connection import get_connection_string
+from app.modules.admin.services.subscription_service import increment_feature_usage
 
 
 def get_all_competitors() -> List[Dict]:
@@ -93,10 +90,17 @@ def add_competitor(name: str, location: str, booking_url: str) -> Dict:
     return get_competitor_by_id(new_id)
 
 
-def track_competitor(competitor_id: int) -> Optional[Dict]:
+def track_competitor(competitor_id: int, user_id: str | None = None) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ?", competitor_id)
+        
+        if user_id:
+            try:
+                increment_feature_usage(cursor, user_id, "competitors")
+            except Exception as e:
+                print(f"FAILED TO INCREMENT COMPETITOR USAGE: {e}")
+        
         conn.commit()
     return get_competitor_by_id(competitor_id)
 

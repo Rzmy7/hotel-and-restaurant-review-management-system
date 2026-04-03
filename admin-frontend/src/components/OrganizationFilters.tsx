@@ -38,8 +38,6 @@ export const OrganizationFilters: React.FC<OrganizationFiltersProps> = ({
                     >
                         <option>All Status</option>
                         <option>Active</option>
-                        <option>Pending</option>
-                        <option>Inactive</option>
                     </select>
                     <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>

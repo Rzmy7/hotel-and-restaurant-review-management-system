@@ -11,7 +11,8 @@ from typing import Optional
 import pyodbc
 from fastapi import HTTPException
 
-from app.modules.admin_backend.db_utils import get_connection_string, table_exists
+from app.modules.admin.db_utils import get_connection_string, table_exists
+from app.modules.auth.constants.roles import ADMIN_ROLE_ID, TENANT_ROLE_ID
 
 
 # ── Schema helpers ──────────────────────────────────────────────────
@@ -20,9 +21,9 @@ from app.modules.admin_backend.db_utils import get_connection_string, table_exis
 def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
     cursor.execute(
         """
-        IF OBJECT_ID('dbo.broadcast_events', 'U') IS NULL
+        IF OBJECT_ID('dbo.broadcast_event', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.broadcast_events (
+            CREATE TABLE dbo.broadcast_event (
                 broadcast_id UNIQUEIDENTIFIER NOT NULL
                     CONSTRAINT PK_broadcast_events PRIMARY KEY
                     CONSTRAINT DF_broadcast_events_id DEFAULT NEWID(),
@@ -53,7 +54,7 @@ def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
                     CHECK (status IN ('sent', 'failed', 'pending'))
             );
             CREATE INDEX IX_broadcast_events_created_at
-                ON dbo.broadcast_events (created_at DESC);
+                ON dbo.broadcast_event (created_at DESC);
         END;
         """
     )
@@ -62,9 +63,9 @@ def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
 def _ensure_notifications_schema(cursor: pyodbc.Cursor) -> None:
     cursor.execute(
         """
-        IF OBJECT_ID('dbo.notifications', 'U') IS NULL
+        IF OBJECT_ID('dbo.notification', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.notifications (
+            CREATE TABLE dbo.notification (
                 notification_id UNIQUEIDENTIFIER NOT NULL
                     CONSTRAINT PK_notifications PRIMARY KEY
                     CONSTRAINT DF_notifications_notification_id DEFAULT NEWID(),
@@ -78,12 +79,12 @@ def _ensure_notifications_schema(cursor: pyodbc.Cursor) -> None:
                     CHECK (notification_type IN ('info', 'success', 'warning', 'error', 'maintenance', 'announcement'))
             );
             CREATE INDEX IX_notifications_created_at
-                ON dbo.notifications (created_at DESC);
+                ON dbo.notification (created_at DESC);
         END;
 
-        IF OBJECT_ID('dbo.user_notifications', 'U') IS NULL
+        IF OBJECT_ID('dbo.user_notification', 'U') IS NULL
         BEGIN
-            CREATE TABLE dbo.user_notifications (
+            CREATE TABLE dbo.user_notification (
                 notification_id UNIQUEIDENTIFIER NOT NULL,
                 user_id UNIQUEIDENTIFIER NOT NULL,
                 is_read BIT NOT NULL
@@ -94,15 +95,15 @@ def _ensure_notifications_schema(cursor: pyodbc.Cursor) -> None:
                 CONSTRAINT PK_user_notifications PRIMARY KEY (notification_id, user_id),
                 CONSTRAINT FK_user_notifications_notification
                     FOREIGN KEY (notification_id)
-                    REFERENCES dbo.notifications(notification_id)
+                    REFERENCES dbo.notification(notification_id)
                     ON DELETE CASCADE,
                 CONSTRAINT FK_user_notifications_user
                     FOREIGN KEY (user_id)
-                    REFERENCES dbo.users(user_id)
+                    REFERENCES dbo.[user](user_id)
                     ON DELETE CASCADE
             );
             CREATE INDEX IX_user_notifications_user_read_notification
-                ON dbo.user_notifications (user_id, is_read, notification_id);
+                ON dbo.user_notification (user_id, is_read, notification_id);
         END;
         """
     )
@@ -123,8 +124,8 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verified: bool) -> str:
-    if is_admin:
+def _derive_plan_bucket(role_id: int, is_email_verified: bool, is_phone_verified: bool) -> str:
+    if role_id == ADMIN_ROLE_ID:
         return "enterprise"
     if is_email_verified and is_phone_verified:
         return "professional"
@@ -133,8 +134,8 @@ def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verifi
     return "free"
 
 
-def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, bool]]:
-    if not table_exists(cursor, "users"):
+def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, int]]:
+    if not table_exists(cursor, "user"):
         return []
 
     rows = cursor.execute(
@@ -144,13 +145,14 @@ def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool
             CAST(COALESCE(is_active, 0) AS BIT) AS is_active,
             CAST(COALESCE(is_email_verified, 0) AS BIT) AS is_email_verified,
             CAST(COALESCE(is_phone_verified, 0) AS BIT) AS is_phone_verified,
-            CAST(COALESCE(is_super_admin, 0) AS BIT) AS is_super_admin
-        FROM dbo.users
-        """
+            COALESCE(role_id, ?) AS role_id
+        FROM dbo.[user]
+        """,
+        (TENANT_ROLE_ID,)
     ).fetchall()
 
     return [
-        (str(row[0]), bool(row[1]), bool(row[2]), bool(row[3]), bool(row[4]))
+        (str(row[0]), bool(row[1]), bool(row[2]), bool(row[3]), int(row[4]))
         for row in rows
     ]
 
@@ -169,9 +171,9 @@ def get_recipient_ids(
     if audience_type == "role":
         role_value = (audience_value or "").lower()
         if role_value == "admin":
-            return [user_id for user_id, _, _, _, is_super_admin in active_users if is_super_admin]
+            return [user_id for user_id, _, _, _, role_id in active_users if role_id == ADMIN_ROLE_ID]
         if role_value == "user":
-            return [user_id for user_id, _, _, _, is_super_admin in active_users if not is_super_admin]
+            return [user_id for user_id, _, _, _, role_id in active_users if role_id != ADMIN_ROLE_ID]
         return []
 
     if audience_type == "plan":
@@ -179,9 +181,9 @@ def get_recipient_ids(
         if requested_plan not in {"free", "starter", "professional", "enterprise"}:
             return []
         matched: list[str] = []
-        for user_id, _, is_email_verified, is_phone_verified, is_super_admin in active_users:
+        for user_id, _, is_email_verified, is_phone_verified, role_id in active_users:
             plan_bucket = _derive_plan_bucket(
-                is_admin=is_super_admin,
+                role_id=role_id,
                 is_email_verified=is_email_verified,
                 is_phone_verified=is_phone_verified,
             )
@@ -241,7 +243,7 @@ def create_notifications(
 
     cursor.execute(
         """
-        INSERT INTO dbo.notifications (
+        INSERT INTO dbo.notification (
             notification_id, title, message, notification_type, created_at
         )
         VALUES (?, ?, ?, ?, ?)
@@ -256,7 +258,7 @@ def create_notifications(
 
     cursor.executemany(
         """
-        INSERT INTO dbo.user_notifications (
+        INSERT INTO dbo.user_notification (
             notification_id, user_id, is_read, read_at
         )
         VALUES (?, ?, ?, ?)

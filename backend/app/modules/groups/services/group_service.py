@@ -8,6 +8,9 @@ from app.modules.groups.models import Group, GroupMember
 from app.modules.auth.constants.roles import GROUP_MANAGER, GROUP_MEMBER
 from app.modules.groups.repository import create_group, add_member_to_group
 from app.middleware.permissions import require_group_manager
+from app.modules.admin.services.subscription_service import increment_feature_usage
+from app.modules.admin.db_utils import get_connection_string
+import pyodbc
 
 
 def _get_group_or_404(db: Session, group_id: uuid.UUID) -> Group:
@@ -22,6 +25,18 @@ def create_group_service(db: Session, group_name: str, current_user):
     add_member_to_group(db, group.group_id, current_user.user_id, GROUP_MANAGER)
     db.commit()
     db.refresh(group)
+
+    # ----------------------------------------------------
+    # Increment usage for the user
+    # ----------------------------------------------------
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            increment_feature_usage(cursor, str(current_user.user_id), "groups")
+            conn.commit()
+    except Exception as e:
+        print(f"FAILED TO INCREMENT GROUP USAGE: {e}")
+
     return group
 
 

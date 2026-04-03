@@ -4,21 +4,31 @@ from sqlalchemy import func
 import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status
+import pyodbc
 
-from app.modules.source.models import TenantSource, OrganizationSource, PlatformSource, SourceSource, SyncLogSource
+from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog, SyncFrequency
+from app.modules.admin.services.subscription_service import increment_feature_usage
+from app.modules.admin.db_utils import get_connection_string
+
+# Backward-compatible aliases for any remaining references
+TenantSource = Tenant
+OrganizationSource = Organization
+PlatformSource = Platform
+SourceSource = Source
+SyncLogSource = SyncLog
 from app.modules.source.schemas import (
-    SourceCreate, SourceUpdate, SourceRead, FetchingFrequency, SourceStatus,
+    SourceCreate, SourceUpdate, SourceRead, SourceStatus,
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
     SyncLogRead, SyncStatus, SyncStatusRequest
 )
 
-def calculate_next_sync_time(base_time: datetime, frequency: FetchingFrequency) -> datetime:
-    """Calculate the next sync time based on base_time and frequency."""
-    if frequency == FetchingFrequency.DAILY:
+def calculate_next_sync_time(base_time: datetime, frequency_id: int) -> datetime:
+    """Calculate the next sync time based on base_time and frequency ID."""
+    if frequency_id == 1: # daily
         delta = timedelta(days=1)
-    elif frequency == FetchingFrequency.THREE_DAYS:
+    elif frequency_id == 2: # three_days
         delta = timedelta(days=3)
-    elif frequency == FetchingFrequency.WEEKLY:
+    elif frequency_id == 3: # weekly
         delta = timedelta(days=7)
     else:
         delta = timedelta(days=1)  # Default to daily
@@ -162,6 +172,24 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     db.add(new_source)
     db.commit()
     db.refresh(new_source)
+
+    # ----------------------------------------------------
+    # Increment usage for the user (Tenant)
+    # ----------------------------------------------------
+    try:
+        # Find the tenant (user) ID who owns the organization
+        org = db.query(OrganizationSource).filter(
+            OrganizationSource.organization_id == source_data.organization_id
+        ).first()
+
+        if org and org.tenant_id:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                # Using 'review_count' as the feature representing source slots
+                increment_feature_usage(cursor, str(org.tenant_id), "review_count")
+                conn.commit()
+    except Exception as e:
+        print(f"FAILED TO INCREMENT SOURCE USAGE: {e}")
     
     # Load platform for the response
     source = db.query(SourceSource).options(
@@ -405,4 +433,8 @@ def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
         ),
         created_at=source.created_at
     )
+
+def get_sync_frequencies(db: Session) -> List[SyncFrequency]:
+    """Fetch all synchronization frequency options."""
+    return db.query(SyncFrequency).all()
     

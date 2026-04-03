@@ -9,7 +9,7 @@ from datetime import date
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     count_scalar,
     execute_query,
     get_connection_string,
@@ -18,13 +18,13 @@ from app.modules.admin_backend.db_utils import (
     table_exists,
     to_relative_timestamp,
 )
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     ChartDataPoint,
     DashboardStats,
     RecentActivity,
     SystemAlert,
 )
-from app.modules.admin_backend.services.dashboard_service import (
+from app.modules.admin.services.dashboard_service import (
     PROCESSED_ACTIVITY_EXPR,
     PROCESSED_DATE_EXPR,
     get_hotel_metrics,
@@ -121,24 +121,24 @@ def get_system_alerts() -> list[SystemAlert]:
             cursor = conn.cursor()
             alerts: list[SystemAlert] = []
 
-            if not table_exists(cursor, "ProcessedReviews"):
+            if not table_exists(cursor, "processed_review"):
                 return [
                     SystemAlert(
                         id="db-missing-processed",
                         type="warning",
                         title="Processed Reviews Table Missing",
-                        message="Table dbo.ProcessedReviews was not found, so dashboard metrics are limited.",
+                        message="Table dbo.processed_review was not found, so dashboard metrics are limited.",
                         timestamp="just now",
                         isRead=False,
                     )
                 ]
 
-            total_reviews = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.ProcessedReviews")
+            total_reviews = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.processed_review")
             pending_reviews = count_scalar(
                 cursor,
                 """
                 SELECT COUNT(*)
-                FROM dbo.ProcessedReviews
+                FROM dbo.processed_review
                 WHERE LOWER(COALESCE(status, '')) = 'pending'
                 """,
             )
@@ -146,7 +146,7 @@ def get_system_alerts() -> list[SystemAlert]:
                 cursor,
                 f"""
                 SELECT COUNT(*)
-                FROM dbo.ProcessedReviews
+                FROM dbo.processed_review
                 WHERE LOWER(COALESCE(sentiment, '')) = 'negative'
                   AND {PROCESSED_DATE_EXPR} = CAST(GETDATE() AS date)
                 """,
@@ -211,7 +211,7 @@ def get_recent_activity() -> list[RecentActivity]:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
 
-            if not table_exists(cursor, "ProcessedReviews"):
+            if not table_exists(cursor, "processed_review"):
                 return []
 
             rows = execute_query(
@@ -225,7 +225,7 @@ def get_recent_activity() -> list[RecentActivity]:
                     sentiment,
                     status,
                     {PROCESSED_ACTIVITY_EXPR} AS activityDate
-                FROM dbo.ProcessedReviews
+                FROM dbo.processed_review
                 ORDER BY {PROCESSED_ACTIVITY_EXPR} DESC
                 """,
             ).fetchall()

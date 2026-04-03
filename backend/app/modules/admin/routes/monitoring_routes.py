@@ -10,17 +10,17 @@ from datetime import date, datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin_backend.db_utils import (
+from app.modules.admin.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,
     table_exists,
 )
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.schemas import (
     ScrapingPlatformCreatePayload,
     ScrapingPlatformUpdatePayload,
 )
-from app.modules.admin_backend.services.monitoring_service import (
+from app.modules.admin.services.monitoring_service import (
     create_platform_in_db,
     drop_dynamic_platform_table,
     fetch_platforms_from_db,
@@ -92,10 +92,10 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
 
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 raise HTTPException(status_code=400, detail="sources table does not exist")
 
-            columns = get_table_columns(cursor, "sources")
+            columns = get_table_columns(cursor, "scraping_platform")
             enabled_col = (
                 "is_enabled" if "is_enabled" in columns
                 else "is_active" if "is_active" in columns
@@ -108,13 +108,13 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
                 source_id = int(platform_id)
                 row = execute_query(
                     cursor,
-                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.sources WHERE source_id = ?",
+                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.scraping_platform WHERE source_id = ?",
                     (source_id,),
                 ).fetchone()
             except ValueError:
                 row = execute_query(
                     cursor,
-                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.sources WHERE LOWER(platform_name) = LOWER(?)",
+                    f"SELECT TOP 1 source_id, platform_name, {enabled_col} FROM dbo.scraping_platform WHERE LOWER(platform_name) = LOWER(?)",
                     (platform_id,),
                 ).fetchone()
 
@@ -128,7 +128,7 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
 
             execute_query(
                 cursor,
-                f"UPDATE dbo.sources SET {enabled_col} = ? WHERE source_id = ?",
+                f"UPDATE dbo.scraping_platform SET {enabled_col} = ? WHERE source_id = ?",
                 (new_enabled, found_id),
             )
             connection.commit()
@@ -153,10 +153,10 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
 
-            if not table_exists(cursor, "sources"):
+            if not table_exists(cursor, "scraping_platform"):
                 raise HTTPException(status_code=400, detail="sources table does not exist in the configured database")
 
-            columns = get_table_columns(cursor, "sources")
+            columns = get_table_columns(cursor, "scraping_platform")
             table_name_col = resolve_sources_review_table_column(columns)
             select_cols = "source_id, platform_name"
             if table_name_col:
@@ -179,7 +179,7 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
 
             execute_query(
                 cursor,
-                "DELETE FROM dbo.sources WHERE source_id = ?",
+                "DELETE FROM dbo.scraping_platform WHERE source_id = ?",
                 (found_id,),
             )
 

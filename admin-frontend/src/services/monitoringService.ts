@@ -4,6 +4,7 @@
 
 import { Server, Database, Search, Globe } from 'lucide-react';
 import type { ServerStatus } from '../types';
+import { apiClient } from '../api/client';
 
 const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
 const DEFAULT_SCRAPING_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002';
@@ -95,7 +96,7 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
         icon: any;
     }> = [
         // Main Backend card reads admin-backend server stats endpoint (same server context).
-        { id: '1', name: 'Main Backend', url: urls.mainBackend, healthPath: '/monitoring/main-backend-status', icon: Server },
+        { id: '1', name: 'Main Backend', url: urls.mainBackend, healthPath: '/admin/monitoring/main-backend-status', icon: Server },
         { id: '2', name: 'Scraping Service', url: urls.scraping, healthPath: '/health', icon: Search },
         { id: '3', name: 'Embedding Service', url: urls.embedding, healthPath: '/health', icon: Database },
         { id: '4', name: 'Frontend Server', url: urls.frontend, healthPath: '/health', icon: Globe }
@@ -105,7 +106,26 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
     const results = await Promise.allSettled(
         servers.map(async (server) => {
             try {
-                const health = await fetchServerHealth(server.url, server.healthPath);
+                let health;
+                if (server.id === '1') {
+                    // Use apiClient for main backend to handle /api prefix and auth
+                    const data = await apiClient.get<any>(server.healthPath);
+                    const rawStatus = String(data.status || 'online').toLowerCase();
+                    const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
+                        rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
+                            ? 'Online'
+                            : rawStatus === 'warning' || rawStatus === 'degraded'
+                                ? 'Warning'
+                                : 'Offline';
+                    health = {
+                        status: normalizedStatus,
+                        cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
+                        ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
+                        uptime: data.uptime || '0d 0h 0m'
+                    };
+                } else {
+                    health = await fetchServerHealth(server.url, server.healthPath);
+                }
                 return {
                     id: server.id,
                     name: server.name,
@@ -155,7 +175,7 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
 export const fetchSingleServerStatus = async (serverName: 'mainBackend' | 'scraping' | 'embedding' | 'frontend'): Promise<ServerStatus | null> => {
     const urls = getServerUrls();
     const urlMap = {
-        mainBackend: { url: urls.mainBackend, healthPath: '/monitoring/main-backend-status', name: 'Main Backend', icon: Server, id: '1' },
+        mainBackend: { url: urls.mainBackend, healthPath: '/admin/monitoring/main-backend-status', name: 'Main Backend', icon: Server, id: '1' },
         scraping: { url: urls.scraping, healthPath: '/health', name: 'Scraping Service', icon: Search, id: '2' },
         embedding: { url: urls.embedding, healthPath: '/health', name: 'Embedding Service', icon: Database, id: '3' },
         frontend: { url: urls.frontend, healthPath: '/health', name: 'Frontend Server', icon: Globe, id: '4' }
@@ -164,7 +184,25 @@ export const fetchSingleServerStatus = async (serverName: 'mainBackend' | 'scrap
     const server = urlMap[serverName];
     
     try {
-        const health = await fetchServerHealth(server.url, server.healthPath);
+        let health;
+        if (server.id === '1') {
+            const data = await apiClient.get<any>(server.healthPath);
+            const rawStatus = String(data.status || 'online').toLowerCase();
+            const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
+                rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
+                    ? 'Online'
+                    : rawStatus === 'warning' || rawStatus === 'degraded'
+                        ? 'Warning'
+                        : 'Offline';
+            health = {
+                status: normalizedStatus,
+                cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
+                ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
+                uptime: data.uptime || '0d 0h 0m'
+            };
+        } else {
+            health = await fetchServerHealth(server.url, server.healthPath);
+        }
         return {
             id: server.id,
             name: server.name,

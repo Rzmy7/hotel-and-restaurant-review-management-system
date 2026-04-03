@@ -11,13 +11,13 @@ from zoneinfo import ZoneInfo
 import pyodbc
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.schemas import (
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.schemas import (
     BroadcastCreate,
     EstimatedRecipientsResponse,
     StatisticsResponse,
 )
-from app.modules.admin_backend.services.broadcasting_service import (
+from app.modules.admin.services.broadcasting_service import (
     create_notifications,
     ensure_broadcast_events_table,
     ensure_notifications_schema,
@@ -25,9 +25,9 @@ from app.modules.admin_backend.services.broadcasting_service import (
     get_recipient_ids,
     to_record,
 )
-from app.modules.admin_backend.services.system_settings_service import get_system_timezone
+from app.modules.admin.services.system_settings_service import get_system_timezone
 
-router = APIRouter(prefix="/api/broadcasting", tags=["Broadcasting"])
+router = APIRouter(prefix="/broadcasting", tags=["Admin Broadcasting"])
 
 
 def _parse_scheduled_at_to_system_time(value: str | None, timezone_name: str) -> datetime | None:
@@ -73,7 +73,7 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
         broadcast_id = str(uuid.uuid4())
         cursor.execute(
             """
-            INSERT INTO dbo.broadcast_events (
+            INSERT INTO dbo.broadcast_event (
                 broadcast_id, subject, body, channel,
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
@@ -148,7 +148,7 @@ def get_statistics() -> StatisticsResponse:
                 SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS scheduled,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             """
         ).fetchone()
 
@@ -175,7 +175,7 @@ def get_history() -> list[dict]:
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
                 schedule_type, scheduled_at, sent_at, sent_by, created_at
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             ORDER BY created_at DESC
             """
         ).fetchall()
@@ -203,7 +203,7 @@ def get_broadcast_detail(broadcast_id: str) -> dict:
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
                 schedule_type, scheduled_at, sent_at, sent_by, created_at
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             WHERE broadcast_id = ?
             """,
             parsed_id,
@@ -232,7 +232,7 @@ def resend_broadcast(broadcast_id: str) -> dict:
         event = cursor.execute(
             """
             SELECT subject, body, channel, audience_type, audience_value, message_type
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             WHERE broadcast_id = ?
             """,
             parsed_id,
@@ -255,7 +255,7 @@ def resend_broadcast(broadcast_id: str) -> dict:
 
         cursor.execute(
             """
-            UPDATE dbo.broadcast_events
+            UPDATE dbo.broadcast_event
             SET status = 'sent',
                 sent_at = ?,
                 recipient_count = ?,
@@ -297,7 +297,7 @@ def cancel_broadcast(broadcast_id: str) -> dict:
         row = cursor.execute(
             """
             SELECT status
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             WHERE broadcast_id = ?
             """,
             parsed_id,
@@ -314,7 +314,7 @@ def cancel_broadcast(broadcast_id: str) -> dict:
 
         cursor.execute(
             """
-            UPDATE dbo.broadcast_events
+            UPDATE dbo.broadcast_event
             SET status = 'failed'
             WHERE broadcast_id = ?
             """,

@@ -5,14 +5,14 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import pyodbc
 
-from app.modules.admin_backend.db_utils import get_connection_string
-from app.modules.admin_backend.services.broadcasting_service import (
+from app.modules.admin.db_utils import get_connection_string
+from app.modules.admin.services.broadcasting_service import (
     create_notifications,
     ensure_broadcast_events_table,
     ensure_notifications_schema,
     get_recipient_ids,
 )
-from app.modules.admin_backend.services.system_settings_service import get_system_timezone
+from app.modules.admin.services.system_settings_service import get_system_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def process_pending_broadcasts():
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
                 schedule_type, scheduled_at, sent_at, sent_by, created_at
-            FROM dbo.broadcast_events
+            FROM dbo.broadcast_event
             WHERE status = 'pending'
             AND scheduled_at IS NOT NULL
             AND scheduled_at <= ?
@@ -126,7 +126,7 @@ def process_pending_broadcasts():
                 # Update broadcast status to 'sent'
                 cursor.execute(
                     """
-                    UPDATE dbo.broadcast_events
+                    UPDATE dbo.broadcast_event
                     SET status = 'sent', sent_at = ?
                     WHERE broadcast_id = ?
                     """,
@@ -144,7 +144,7 @@ def process_pending_broadcasts():
                     # Update status to 'failed' on error
                     cursor.execute(
                         """
-                        UPDATE dbo.broadcast_events
+                        UPDATE dbo.broadcast_event
                         SET status = 'failed', sent_at = ?
                         WHERE broadcast_id = ?
                         """,

@@ -62,12 +62,12 @@ export interface SubscriptionUsageSummary {
 }
 
 export const fetchSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
-    const plans = await requestJson<SubscriptionPlan[]>('/admin/subscription-plans', { method: 'GET' });
+    const plans = await requestJson<SubscriptionPlan[]>('/api/admin/subscription-plans', { method: 'GET' });
     return plans.filter((plan) => plan.isActive);
 };
 
 export const fetchSubscriptionUsage = (userId: string): Promise<SubscriptionUsageSummary> => {
-    return requestJson<SubscriptionUsageSummary>(`/admin/subscription-usage/${encodeURIComponent(userId)}`, {
+    return requestJson<SubscriptionUsageSummary>(`/api/admin/subscription-usage/${encodeURIComponent(userId)}`, {
         method: 'GET',
     });
 };

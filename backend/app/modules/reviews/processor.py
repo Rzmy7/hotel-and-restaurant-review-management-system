@@ -89,7 +89,7 @@ def fetch_reviews() -> List[Review]:
             "room_name, raw_review FROM reviews"
         ).fetchall()
 
-        pics = cur.execute("SELECT review_id, src, alt FROM review_photos").fetchall()
+        pics = cur.execute("SELECT review_id, src, alt FROM review_media").fetchall()
 
         photo_map: dict[int, List[Picture]] = {}
         for rev_id, src, alt in pics:
@@ -122,7 +122,7 @@ def fetch_reviews() -> List[Review]:
 def insert_processed_reviews(conn: pyodbc.Connection, rows: list[dict]) -> None:
     """Insert processed reviews into the ProcessedReviews SQL table."""
     sql = """
-        INSERT INTO dbo.ProcessedReviews (
+        INSERT INTO dbo.processed_review (
             id, platformReviewId, source, rating, userName, reviewerName,
             reviewText, [text], summary, sentiment, language, categories,
             keyPhrases, reviewDate, firstSeen, lastUpdated, scrapedAt,

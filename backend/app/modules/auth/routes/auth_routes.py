@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 import secrets
 import os
 
-from app.core.database import get_db
+from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
 from app.modules.auth.services.auth_service import login_user
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, EmailModel, ResetModel
+from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
 
@@ -34,6 +35,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
 
+    # Create the user with the default role (TENANT is assigned in create_user repo)
     user = create_user(
         db=db,
         email=payload.email.lower(),
@@ -43,12 +45,30 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         is_email_verified=False,
     )
 
-    assigned = assign_role_to_user(db, user.user_id, "TENANT")
-    if not assigned:
-        raise HTTPException(
-            status_code=500,
-            detail="User created, but TENANT role not found in roles table"
-        )
+    # Create the tenant workspace with the user's ID and default plan (Free=1)
+    new_tenant = Tenant(
+        tenant_id=user.user_id,
+        plan="1"
+    )
+    db.add(new_tenant)
+
+    # Initialize feature usage rows for the new user
+    db.execute(
+        text("""
+            INSERT INTO dbo.user_feature_usage (user_id, feature_id, used_quantity, updated_at)
+            SELECT :user_id, f.feature_id, 0, GETUTCDATE()
+            FROM dbo.features f
+            WHERE NOT EXISTS (
+                SELECT 1 FROM dbo.user_feature_usage 
+                WHERE user_id = :user_id AND feature_id = f.feature_id
+            )
+        """),
+        {"user_id": str(user.user_id)}
+    )
+
+    db.commit()
+    db.refresh(new_tenant)
+
     roles = get_user_role_names(db, user.user_id)
     return {
         "message": "User registered successfully in database",
@@ -58,6 +78,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             "last_name": user.last_name,
             "email": user.email,
             "roles": roles,
+            "tenant_id": str(new_tenant.tenant_id),
         },
     }
 
@@ -146,7 +167,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 
         db.execute(
             text("""
-                UPDATE dbo.users
+                UPDATE dbo.[user]
                 SET password_hash = :password_hash,
                     updated_at = GETUTCDATE()
                 WHERE user_id = :user_id

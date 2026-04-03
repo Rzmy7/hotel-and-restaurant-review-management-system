@@ -27,11 +27,11 @@ def get_dashboard_stats():
     try:
         conn = pyodbc.connect(get_connection_string())
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM dbo.users")
+        cursor.execute("SELECT COUNT(*) FROM dbo.[user]")
         total_users = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM dbo.users WHERE is_active = 1")
+        cursor.execute("SELECT COUNT(*) FROM dbo.[user] WHERE is_active = 1")
         active_users = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews")
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
         total_reviews = cursor.fetchone()[0]
         competitor_count = 0
         if _table_exists(cursor, "Competitors"):
@@ -52,13 +52,13 @@ def generate_ai_insights():
     try:
         conn = pyodbc.connect(get_connection_string())
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM dbo.ProcessedReviews")
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
         total_reviews = cursor.fetchone()[0]
-        cursor.execute("SELECT AVG(CAST(rating AS FLOAT)) FROM dbo.ProcessedReviews")
+        cursor.execute("SELECT AVG(CAST(rating AS FLOAT)) FROM dbo.processed_review")
         avg_rating = cursor.fetchone()[0] or 0
-        cursor.execute("SELECT sentiment, COUNT(*) as cnt FROM dbo.ProcessedReviews GROUP BY sentiment")
+        cursor.execute("SELECT sentiment, COUNT(*) as cnt FROM dbo.processed_review GROUP BY sentiment")
         sentiment_dist = {r.sentiment: r.cnt for r in cursor.fetchall()}
-        cursor.execute("SELECT TOP 5 categories, COUNT(*) as cnt FROM dbo.ProcessedReviews WHERE categories IS NOT NULL GROUP BY categories ORDER BY cnt DESC")
+        cursor.execute("SELECT TOP 5 categories, COUNT(*) as cnt FROM dbo.processed_review WHERE categories IS NOT NULL GROUP BY categories ORDER BY cnt DESC")
         top_cats = [(r.categories, r.cnt) for r in cursor.fetchall()]
         conn.close()
 

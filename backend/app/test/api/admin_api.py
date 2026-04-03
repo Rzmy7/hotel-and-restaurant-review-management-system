@@ -219,7 +219,7 @@ def _frontend_user_from_db_row(row, fallback_index: int) -> dict:
     is_active = bool(row[3]) if row[3] is not None else False
     is_email_verified = bool(row[4]) if row[4] is not None else False
     is_phone_verified = bool(row[5]) if row[5] is not None else False
-    is_super_admin = bool(row[6]) if row[6] is not None else False
+    is_super_admin = (int(row[6]) == 1) if row[6] is not None else False
 
     role = _role_from_user_flags(is_super_admin, is_email_verified, is_phone_verified)
     user_data = {
@@ -244,12 +244,12 @@ def _get_user_row_by_id(cursor: pyodbc.Cursor, user_id: str):
         SELECT
             user_id,
             email,
-            full_name,
+            LTRIM(RTRIM(COALESCE(first_name, '') + ' ' + COALESCE(last_name, ''))) as full_name,
             is_active,
             is_email_verified,
             is_phone_verified,
-            is_super_admin
-        FROM dbo.users
+            role_id
+        FROM dbo.[user]
         WHERE user_id = ?
         """,
         user_id,
@@ -440,18 +440,18 @@ def get_users():
         with pyodbc.connect(_connection_string()) as conn:
             cursor = conn.cursor()
 
-            if _table_exists(cursor, "users"):
+            if _table_exists(cursor, "user"):
                 rows = cursor.execute(
                     """
                     SELECT
                         user_id,
                         email,
-                        full_name,
+                        LTRIM(RTRIM(COALESCE(first_name, '') + ' ' + COALESCE(last_name, ''))) as full_name,
                         is_active,
                         is_email_verified,
                         is_phone_verified,
-                        is_super_admin
-                    FROM dbo.users
+                        role_id
+                    FROM dbo.[user]
                     ORDER BY COALESCE(updated_at, created_at) DESC
                     """
                 ).fetchall()
@@ -529,18 +529,18 @@ def create_user(payload: AdminUserCreatePayload):
         with pyodbc.connect(_connection_string()) as conn:
             cursor = conn.cursor()
 
-            if not _table_exists(cursor, "users"):
-                raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
+            if not _table_exists(cursor, "user"):
+                raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
             email = payload.email.strip().lower()
             name = payload.name.strip() if payload.name else ""
             if not email:
                 raise HTTPException(status_code=400, detail="Email is required.")
 
-            role = _normalize_role(payload.role, "User")
+            role_str = _normalize_role(payload.role, "User")
             status = _normalize_status(payload.status, "Active")
             is_super_admin, is_email_verified, is_phone_verified = _flags_for_role_plan(
-                role,
+                role_str,
                 payload.plan,
                 current_is_email_verified=False,
                 current_is_phone_verified=False,
@@ -551,33 +551,35 @@ def create_user(payload: AdminUserCreatePayload):
 
             cursor.execute(
                 """
-                INSERT INTO dbo.users (
+                INSERT INTO dbo.[user] (
                     user_id,
                     email,
                     password_hash,
-                    full_name,
+                    first_name,
+                    last_name,
                     phone,
                     profile_image_url,
                     is_active,
                     is_email_verified,
                     is_phone_verified,
-                    is_super_admin,
+                    role_id,
                     last_login_at,
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 user_id,
                 email,
                 None,
                 name or None,
+                '',
                 None,
                 None,
                 1 if status == "Active" else 0,
                 1 if is_email_verified else 0,
                 1 if is_phone_verified else 0,
-                1 if is_super_admin else 0,
+                1 if is_super_admin else 2,
                 None,
                 now,
                 now,
@@ -646,14 +648,14 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
 
             cursor.execute(
                 """
-                UPDATE dbo.users
+                UPDATE dbo.[user]
                 SET
                     email = ?,
-                    full_name = ?,
+                    first_name = ?,
                     is_active = ?,
                     is_email_verified = ?,
                     is_phone_verified = ?,
-                    is_super_admin = ?,
+                    role_id = ?,
                     updated_at = SYSUTCDATETIME()
                 WHERE user_id = ?
                 """,
@@ -662,7 +664,7 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
                 1 if next_status == "Active" else 0,
                 1 if next_is_email_verified else 0,
                 1 if next_is_phone_verified else 0,
-                1 if next_is_super_admin else 0,
+                1 if next_is_super_admin else 2,
                 user_id,
             )
             conn.commit()
@@ -685,14 +687,14 @@ def delete_user(user_id: str):
         with pyodbc.connect(_connection_string()) as conn:
             cursor = conn.cursor()
 
-            if not _table_exists(cursor, "users"):
-                raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
+            if not _table_exists(cursor, "user"):
+                raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
             existing_row = _get_user_row_by_id(cursor, user_id)
             if existing_row is None:
                 raise HTTPException(status_code=404, detail="User not found.")
 
-            cursor.execute("DELETE FROM dbo.users WHERE user_id = ?", user_id)
+            cursor.execute("DELETE FROM dbo.[user] WHERE user_id = ?", user_id)
             conn.commit()
 
             return {
@@ -712,14 +714,14 @@ def get_user_stats():
         with pyodbc.connect(_connection_string()) as conn:
             cursor = conn.cursor()
 
-            if _table_exists(cursor, "users"):
+            if _table_exists(cursor, "user"):
                 row = cursor.execute(
                     """
                     SELECT
                         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS allActiveUsers,
                         SUM(CASE WHEN is_active = 1 AND CAST(last_login_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayActiveUsers,
                         SUM(CASE WHEN CAST(created_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayRegistered
-                    FROM dbo.users
+                    FROM dbo.[user]
                     """
                 ).fetchone()
 
