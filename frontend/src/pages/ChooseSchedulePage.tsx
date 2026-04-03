@@ -2,15 +2,41 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { Clock, Calendar, Zap, Sparkles } from 'lucide-react';
+import { apiClient } from '../api/client';
 
 type ScheduleType = 'hourly' | 'daily' | 'weekly';
+const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
+const SETUP_PENDING_SCHEDULE_KEY = 'setup_pending_schedule';
 
 const ChooseSchedulePage = () => {
   const navigate = useNavigate();
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleType>('daily');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleContinue = () => {
-    navigate('/setup/plan');
+  const handleContinue = async () => {
+    const organizationId =
+      localStorage.getItem(SETUP_PENDING_ORG_ID_KEY) || localStorage.getItem('current_organization');
+
+    if (!organizationId) {
+      alert('No organization found for setup. Please restart setup.');
+      navigate('/setup');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await apiClient.post('/api/setup/schedule/finalize', {
+        organization_id: organizationId,
+        selected_schedule: selectedSchedule,
+      });
+      localStorage.setItem(SETUP_PENDING_SCHEDULE_KEY, selectedSchedule);
+      navigate('/setup/plan');
+    } catch (error) {
+      console.error('Failed to finalize setup schedule:', error);
+      alert('Could not save schedule. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleBack = () => {
@@ -47,6 +73,8 @@ const ChooseSchedulePage = () => {
       currentStep={3}
       onContinue={handleContinue}
       onBack={handleBack}
+      isContinueLoading={isSaving}
+      isContinueDisabled={isSaving}
     >
       <div className="text-center mb-10">
         <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">

@@ -26,6 +26,7 @@ const clearSetupTemporaryKeys = () => {
     localStorage.removeItem("setup_pending_organization_name");
     localStorage.removeItem("setup_pending_membership_created");
     localStorage.removeItem("setup_pending_plan_id");
+    localStorage.removeItem("setup_pending_schedule");
     localStorage.removeItem("setup_snapshot_current_organization");
     // Backward compatibility cleanup for older setup snapshot keys.
     localStorage.removeItem("setup_snapshot_organizations");

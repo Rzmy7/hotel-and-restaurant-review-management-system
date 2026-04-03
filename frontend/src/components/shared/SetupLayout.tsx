@@ -73,6 +73,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
       localStorage.removeItem('setup_pending_organization_name');
             localStorage.removeItem('setup_pending_membership_created');
     localStorage.removeItem(SETUP_PENDING_PLAN_ID_KEY);
+    localStorage.removeItem('setup_pending_schedule');
       localStorage.removeItem('setup_snapshot_current_organization');
       localStorage.removeItem('setup_snapshot_organizations');
       localStorage.removeItem('setup_snapshot_organization_ids');
