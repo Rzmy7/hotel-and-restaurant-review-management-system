@@ -22,13 +22,8 @@ const getFullUrl = (url: string) => {
     // Normalize path by removing leading slash
     let cleanPath = url.startsWith('/') ? url.slice(1) : url;
     
-    // Auto-prepend /api if it's missing and it's not an auth/public route
-    const isSpecialRoute = cleanPath.startsWith('api') || 
-                          cleanPath.startsWith('auth') || 
-                          cleanPath.startsWith('public') || 
-                          cleanPath.startsWith('oauth');
-                          
-    if (!isSpecialRoute) {
+    // Auto-prepend /api if it's missing (mandatory for production backend stability)
+    if (!cleanPath.startsWith('api')) {
         cleanPath = `api/${cleanPath}`;
     }
     
@@ -64,12 +59,16 @@ async function handleResponse(response: Response) {
     return {};
 }
 
-const getHeaders = (customHeaders?: Record<string, string>) => {
+const getHeaders = (customHeaders?: Record<string, string>, isFormData: boolean = false) => {
     const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
         ...customHeaders
     };
+    
+    if (!isFormData) {
+        headers['Content-Type'] = 'application/json';
+    }
+    
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
@@ -99,35 +98,41 @@ export const apiClient = {
         return handleResponse(response);
     },
 
-    async post<T>(url: string, body?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
+    async post<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
-        console.log(`[API POST] ${fullUrl}`, body);
+        const isFormData = body instanceof FormData;
+        console.log(`[API POST] ${fullUrl}`, isFormData ? '[FormData]' : body);
+        
         const response = await fetch(fullUrl, {
             method: 'POST',
-            headers: getHeaders(customHeaders),
-            body: body ? JSON.stringify(body) : undefined,
+            headers: getHeaders(customHeaders, isFormData),
+            body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
         });
         return handleResponse(response);
     },
 
-    async put<T>(url: string, body: any, customHeaders?: Record<string, string>): Promise<T> {
+    async put<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
-        console.log(`[API PUT] ${fullUrl}`, body);
+        const isFormData = body instanceof FormData;
+        console.log(`[API PUT] ${fullUrl}`, isFormData ? '[FormData]' : body);
+        
         const response = await fetch(fullUrl, {
             method: 'PUT',
-            headers: getHeaders(customHeaders),
-            body: body ? JSON.stringify(body) : undefined,
+            headers: getHeaders(customHeaders, isFormData),
+            body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
         });
         return handleResponse(response);
     },
 
-    async patch<T>(url: string, body: any, customHeaders?: Record<string, string>): Promise<T> {
+    async patch<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
-        console.log(`[API PATCH] ${fullUrl}`, body);
+        const isFormData = body instanceof FormData;
+        console.log(`[API PATCH] ${fullUrl}`, isFormData ? '[FormData]' : body);
+        
         const response = await fetch(fullUrl, {
             method: 'PATCH',
-            headers: getHeaders(customHeaders),
-            body: body ? JSON.stringify(body) : undefined,
+            headers: getHeaders(customHeaders, isFormData),
+            body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
         });
         return handleResponse(response);
     },
