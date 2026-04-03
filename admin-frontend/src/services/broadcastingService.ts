@@ -1,43 +1,17 @@
+import { apiClient } from '../api/client';
 import type { BroadcastRecord, ComposeForm } from '../components/Broadcasting/types';
-
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
-};
-
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(`${getBaseUrl()}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        ...init,
-    });
-
-    if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-    }
-
-    return response.json() as Promise<T>;
-};
 
 export const broadcastingService = {
     async getHistory(): Promise<BroadcastRecord[]> {
-        return requestJson<BroadcastRecord[]>('/api/broadcasting/history', { method: 'GET' });
+        return apiClient.get<BroadcastRecord[]>('/admin/broadcasting/history');
     },
 
     async sendBroadcast(form: ComposeForm): Promise<{ success: boolean; broadcastId: string; message: string }> {
-        return requestJson('/api/broadcasting/send', {
-            method: 'POST',
-            body: JSON.stringify(form),
-        });
+        return apiClient.post<{ success: boolean; broadcastId: string; message: string }>('/admin/broadcasting/send', form);
     },
 
     async getBroadcastDetail(broadcastId: string): Promise<BroadcastRecord> {
-        return requestJson<BroadcastRecord>(`/api/broadcasting/${encodeURIComponent(broadcastId)}`, {
-            method: 'GET',
-        });
+        return apiClient.get<BroadcastRecord>(`/admin/broadcasting/${encodeURIComponent(broadcastId)}`);
     },
 
     async getEstimatedRecipients(audienceType: string, audienceValue?: string): Promise<number> {
@@ -45,25 +19,19 @@ export const broadcastingService = {
         params.append('audienceType', audienceType);
         if (audienceValue) params.append('audienceValue', audienceValue);
 
-        const result = await requestJson<{ count: number }>(`/api/broadcasting/estimate-recipients?${params}`, {
-            method: 'GET',
-        });
+        const result = await apiClient.get<{ count: number }>(`/admin/broadcasting/estimate-recipients?${params}`);
         return result.count;
     },
 
     async getStatistics(): Promise<{ total: number; sent: number; scheduled: number; failed: number }> {
-        return requestJson('/api/broadcasting/statistics', { method: 'GET' });
+        return apiClient.get<{ total: number; sent: number; scheduled: number; failed: number }>('/admin/broadcasting/statistics');
     },
 
     async resendBroadcast(broadcastId: string): Promise<{ success: boolean; message: string }> {
-        return requestJson(`/api/broadcasting/${encodeURIComponent(broadcastId)}/resend`, {
-            method: 'POST',
-        });
+        return apiClient.post<{ success: boolean; message: string }>(`/admin/broadcasting/${encodeURIComponent(broadcastId)}/resend`, {});
     },
 
     async cancelBroadcast(broadcastId: string): Promise<{ success: boolean; message: string }> {
-        return requestJson(`/api/broadcasting/${encodeURIComponent(broadcastId)}/cancel`, {
-            method: 'POST',
-        });
+        return apiClient.post<{ success: boolean; message: string }>(`/admin/broadcasting/${encodeURIComponent(broadcastId)}/cancel`, {});
     },
 };

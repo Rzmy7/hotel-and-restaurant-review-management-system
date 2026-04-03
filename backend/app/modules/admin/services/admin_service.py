@@ -54,7 +54,7 @@ def _org_status_from_date(value) -> str:
     if age_in_days <= 7:
         return "Active"
     if age_in_days <= 30:
-        return "Pending"
+        return "Active"
     return "Inactive"
 
 
@@ -81,7 +81,7 @@ def _org_status_from_organization_row(created_at_value, deleted_at_value) -> str
         return "Active"
     age_in_days = (date.today() - created_at.date()).days
     if age_in_days <= 14:
-        return "Pending"
+        return "Active"
     return "Active"
 
 
@@ -255,27 +255,18 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
 
 
 def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
-    if table_exists(cursor, "organizations"):
-        org_cols = get_table_columns(cursor, "organizations")
-        has_is_active = "is_active" in org_cols
+    if table_exists(cursor, "organization"):
         owner_emails = _load_organization_owner_emails(cursor)
 
-        if has_is_active:
-            select_sql = """
-            SELECT
-                organization_id, organization_name, country, city, organization_type,
-                created_at, updated_at, deleted_at, is_active
-            FROM dbo.organizations
-            ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
-            """
-        else:
-            select_sql = """
-            SELECT
-                organization_id, organization_name, country, city, organization_type,
-                created_at, updated_at, deleted_at
-            FROM dbo.organizations
-            ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
-            """
+        # Joining with organization_type to get the type name (hotel, restaurant, etc.)
+        select_sql = """
+        SELECT
+            o.organization_id, o.organization_name, ot.type_name,
+            CAST(o.created_at AS DATETIME2), CAST(o.updated_at AS DATETIME2)
+        FROM dbo.organization o
+        LEFT JOIN dbo.organization_type ot ON o.organization_type_id = ot.type_code
+        ORDER BY COALESCE(CAST(o.updated_at AS DATETIME2), CAST(o.created_at AS DATETIME2)) DESC, o.organization_id DESC
+        """
 
         rows = execute_query(cursor, select_sql).fetchall()
 
@@ -284,23 +275,15 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
             organization_id = str(row[0]) if row[0] is not None else str(index)
             organization_name = str(row[1]).strip() if row[1] else f"Organization {organization_id}"
 
-            if has_is_active:
-                is_active_val = row[8]
-                if is_active_val is None:
-                    status = "Pending"
-                elif bool(is_active_val):
-                    status = "Active"
-                else:
-                    status = "Inactive"
-            else:
-                status = _org_status_from_organization_row(row[5], row[7])
+            # All organizations are active now
+            status = "Active"
 
             organizations.append(
                 OrganizationSummary(
                     id=organization_id,
                     name=organization_name,
                     owner=owner_emails.get(organization_id, ""),
-                    usersCount=0,
+                    usersCount=0, # This can be populated via a separate count if needed
                     status=status,
                 )
             )

@@ -14,10 +14,10 @@ from app.modules.admin.db_utils import get_connection_string
 from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
 from app.modules.admin.services.notifications_service import resolve_target_user_id
 
-router = APIRouter(prefix="/api/notifications", tags=["Admin Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Admin Notifications"])
 
 
-@router.get("/admin")
+@router.get("/")
 def get_admin_notifications(
     userId: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
@@ -72,7 +72,7 @@ def get_admin_notifications(
         connection.close()
 
 
-@router.get("/admin/unread-count")
+@router.get("/unread-count")
 def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
     connection = pyodbc.connect(get_connection_string())
     try:
@@ -149,7 +149,7 @@ def mark_notification_read(notification_id: str, userId: str | None = Query(None
         connection.close()
 
 
-@router.post("/admin/read-all")
+@router.post("/read-all")
 def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
     connection = pyodbc.connect(get_connection_string())
     try:
@@ -182,7 +182,7 @@ def mark_all_admin_notifications_read(userId: str | None = Query(None)) -> dict:
         connection.close()
 
 
-@router.delete("/admin/read-all")
+@router.delete("/read-all")
 def delete_all_read_notifications(userId: str | None = Query(None)) -> dict:
     """Delete all read notifications for the user."""
     connection = pyodbc.connect(get_connection_string())

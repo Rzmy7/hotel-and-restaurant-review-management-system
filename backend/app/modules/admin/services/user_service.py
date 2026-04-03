@@ -13,7 +13,9 @@ def get_admin_users():
         cursor.execute("""
             SELECT u.user_id, 
                    LTRIM(RTRIM(COALESCE(u.first_name, '') + ' ' + COALESCE(u.last_name, ''))) as full_name, 
-                   u.email, u.is_active, u.last_login_at, u.created_at,
+                   u.email, u.is_active, 
+                   CAST(u.last_login_at AS NVARCHAR(50)) as last_login_at, 
+                   CAST(u.created_at AS NVARCHAR(50)) as created_at,
                    r.role_name as role
             FROM dbo.[user] u
             LEFT JOIN dbo.[role] r ON u.role_id = r.role_id
@@ -21,7 +23,18 @@ def get_admin_users():
         """)
         rows = cursor.fetchall()
         conn.close()
-        return [{"id": str(r.user_id), "name": r.full_name or "Unknown", "email": r.email, "role": r.role or "No Role", "status": "Active" if r.is_active else "Inactive", "lastActive": r.last_login_at.isoformat() if r.last_login_at else None, "joinedAt": r.created_at.isoformat() if r.created_at else None} for r in rows]
+        return [
+            {
+                "id": str(r.user_id), 
+                "name": r.full_name or "Unknown", 
+                "email": r.email, 
+                "role": r.role or "No Role", 
+                "status": "Active" if r.is_active else "Inactive", 
+                "lastActive": r.last_login_at, 
+                "joinedAt": r.created_at
+            } 
+            for r in rows
+        ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

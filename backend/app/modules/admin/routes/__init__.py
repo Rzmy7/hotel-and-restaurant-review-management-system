@@ -1,7 +1,5 @@
 """Admin routes aggregator."""
 from fastapi import APIRouter
-from app.modules.admin.routes.users import router as users_router
-from app.modules.admin.routes.organizations import router as organizations_router
 from app.modules.admin.routes.insights import router as insights_router
 from app.modules.admin.routes.dashboard_routes import router as dashboard_router
 from app.modules.admin.routes.admin_routes import router as admin_ops_router
@@ -12,9 +10,7 @@ from app.modules.admin.routes.maintenance_routes import router as maintenance_ro
 from app.modules.admin.routes.monitoring_routes import router as monitoring_router
 from app.modules.admin.routes.subscription_routes import router as subscription_router
 
-router = APIRouter(tags=["Admin"])
-router.include_router(users_router)
-router.include_router(organizations_router)
+router = APIRouter(prefix="/admin", tags=["Admin"])
 router.include_router(insights_router)
 router.include_router(dashboard_router)
 router.include_router(admin_ops_router)

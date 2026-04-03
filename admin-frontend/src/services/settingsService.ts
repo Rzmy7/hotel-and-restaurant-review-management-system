@@ -1,29 +1,7 @@
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
+import { apiClient } from '../api/client';
 
 export const SYSTEM_TIMEZONE_STORAGE_KEY = 'systemTimezone';
 export const SYSTEM_TIMEZONE_UPDATED_EVENT = 'system-timezone-updated';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
-};
-
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(`${getBaseUrl()}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(init?.headers || {}),
-        },
-        ...init,
-    });
-
-    if (!response.ok) {
-        const details = await response.text().catch(() => '');
-        throw new Error(details || `Request failed: ${response.status}`);
-    }
-
-    return response.json() as Promise<T>;
-};
 
 export interface GeneralSettings {
     timezone: string;
@@ -73,22 +51,19 @@ export const applySystemTimezone = (timezone: string): void => {
 
 export const settingsService = {
     async getGeneralSettings(): Promise<GeneralSettings> {
-        const settings = await requestJson<GeneralSettings>('/api/settings/general', { method: 'GET' });
+        const settings = await apiClient.get<GeneralSettings>('/admin/settings/general');
         applySystemTimezone(settings.timezone);
         return settings;
     },
 
     async updateGeneralSettings(payload: GeneralSettings): Promise<GeneralSettings> {
-        const settings = await requestJson<GeneralSettings>('/api/settings/general', {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-        });
+        const settings = await apiClient.patch<GeneralSettings>('/admin/settings/general', payload);
         applySystemTimezone(settings.timezone);
         return settings;
     },
 
     async getReplyGenerationSettings(): Promise<ReplyGenerationSettings> {
-        return requestJson<ReplyGenerationSettings>('/api/settings/reply-generation', { method: 'GET' });
+        return apiClient.get<ReplyGenerationSettings>('/admin/settings/reply-generation');
     },
 
     async updateReplyGenerationSettings(payload: ReplyGenerationSettings): Promise<ReplyGenerationSettings> {
@@ -101,16 +76,10 @@ export const settingsService = {
             useSimilarReviews: payload.useSimilarReviews,
         };
 
-        return requestJson<ReplyGenerationSettings>('/api/settings/reply-generation', {
-            method: 'PATCH',
-            body: JSON.stringify(requestPayload),
-        });
+        return apiClient.patch<ReplyGenerationSettings>('/admin/settings/reply-generation', requestPayload);
     },
 
     async testReplyGenerationApiKey(payload: ReplyGenerationApiTestPayload): Promise<ReplyGenerationApiTestResponse> {
-        return requestJson<ReplyGenerationApiTestResponse>('/api/settings/reply-generation/test', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-        });
+        return apiClient.post<ReplyGenerationApiTestResponse>('/admin/settings/reply-generation/test', payload);
     },
 };

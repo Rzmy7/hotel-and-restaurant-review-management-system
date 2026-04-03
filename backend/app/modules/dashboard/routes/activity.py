@@ -19,14 +19,14 @@ def activities(org_id: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard/sentiment-counts")
-def sentiment_counts(org_id: str):
+def sentiment_counts(org_id: str | None = None):
     try:
         return get_sentiment_counts(org_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard/negative-reviews")
-def negative_reviews(org_id: str):
+def negative_reviews(org_id: str | None = None):
     try:
         return get_negative_reviews_for_org(org_id)
     except Exception as e:

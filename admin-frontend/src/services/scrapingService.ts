@@ -1,11 +1,5 @@
+import { apiClient } from '../api/client';
 import type { ScrapingJob, ScrapingPlatform, ScrapingStats } from '../types';
-
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
-};
 
 interface CreateScrapingPlatformPayload {
     name: string;
@@ -80,52 +74,24 @@ const normalizeTableAttributes = (attributes: RawScrapingPlatformDetailsResponse
         .filter((attr) => attr.name || attr.type);
 };
 
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(`${getBaseUrl()}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        method: 'GET',
-        ...init,
-    });
-
-    if (!response.ok) {
-        let detail = `Request failed: ${response.status}`;
-        try {
-            const body = await response.json() as { detail?: string };
-            if (body?.detail) {
-                detail = body.detail;
-            }
-        } catch {
-            // Keep default message if response is not JSON.
-        }
-        throw new Error(detail);
-    }
-
-    return response.json() as Promise<T>;
-};
-
 export const fetchScrapingStats = (): Promise<ScrapingStats> => {
-    return requestJson<ScrapingStats>('/monitoring/scraping/stats');
+    return apiClient.get<ScrapingStats>('/admin/monitoring/scraping/stats');
 };
 
 export const fetchScrapingPlatforms = (): Promise<ScrapingPlatform[]> => {
-    return requestJson<ScrapingPlatform[]>('/monitoring/scraping/platforms');
+    return apiClient.get<ScrapingPlatform[]>('/admin/monitoring/scraping/platforms');
 };
 
 export const fetchScrapingJobs = (): Promise<ScrapingJob[]> => {
-    return requestJson<ScrapingJob[]>('/monitoring/scraping/jobs');
+    return apiClient.get<ScrapingJob[]>('/admin/monitoring/scraping/jobs');
 };
 
 export const createScrapingPlatform = (payload: CreateScrapingPlatformPayload): Promise<ScrapingPlatform> => {
-    return requestJson<ScrapingPlatform>('/monitoring/scraping/platforms', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    });
+    return apiClient.post<ScrapingPlatform>('/admin/monitoring/scraping/platforms', payload);
 };
 
 export const fetchScrapingPlatformDetails = async (platformId: string): Promise<ScrapingPlatformDetailsResponse> => {
-    const raw = await requestJson<RawScrapingPlatformDetailsResponse>(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`);
+    const raw = await apiClient.get<RawScrapingPlatformDetailsResponse>(`/admin/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`);
     return {
         id: String(raw.id ?? platformId),
         name: String(raw.name ?? ''),
@@ -137,22 +103,15 @@ export const fetchScrapingPlatformDetails = async (platformId: string): Promise<
 };
 
 export const updateScrapingPlatform = (platformId: string, payload: UpdateScrapingPlatformPayload): Promise<ScrapingPlatform> => {
-    return requestJson<ScrapingPlatform>(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-    });
+    return apiClient.put<ScrapingPlatform>(`/admin/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`, payload);
 };
 
 export const deleteScrapingPlatform = (platformId: string): Promise<{ status: string; id: string; name: string }> => {
-    return requestJson(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`, {
-        method: 'DELETE',
-    });
+    return apiClient.delete<{ status: string; id: string; name: string }>(`/admin/monitoring/scraping/platforms/${encodeURIComponent(platformId)}`);
 };
 
 export const toggleScrapingPlatform = (platformId: string): Promise<{ id: string; name: string; enabled: boolean; status: 'active' | 'maintenance' }> => {
-    return requestJson(`/monitoring/scraping/platforms/${encodeURIComponent(platformId)}/toggle`, {
-        method: 'PATCH',
-    });
+    return apiClient.patch<{ id: string; name: string; enabled: boolean; status: 'active' | 'maintenance' }>(`/admin/monitoring/scraping/platforms/${encodeURIComponent(platformId)}/toggle`, {});
 };
 
 // ── File upload goes directly to the scraping backend (not admin-backend) ──

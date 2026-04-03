@@ -1,4 +1,4 @@
-from passlib.context import CryptContext  # type: ignore
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -8,16 +8,21 @@ from app.database.session import get_db
 from app.modules.auth.models import User
 from app.modules.auth.services.jwt_service import SECRET_KEY, ALGORITHM
 
-
 # --------------------------------------------------
 # Password Hashing
 # --------------------------------------------------
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    """
+    Hash a plain-text password using bcrypt.
+    """
+    # bcrypt requires bytes
+    password_bytes = password.encode("utf-8")
+    # Generate salt and hash
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password_bytes, salt)
+    # Return as string for DB storage
+    return hashed_password.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -25,8 +30,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Verify a plain password against a stored hash.
     """
     try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except ValueError:
+        # bcrypt requires bytes for both plain and hash
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), 
+            hashed_password.encode("utf-8")
+        )
+    except (ValueError, TypeError, AttributeError):
+        # Handle cases where the stored hash might be invalid/incomplete
         return False
 
 

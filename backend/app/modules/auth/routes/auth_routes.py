@@ -45,12 +45,27 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         is_email_verified=False,
     )
 
-    # Create the tenant workspace with the user's ID and default plan (null)
+    # Create the tenant workspace with the user's ID and default plan (Free=1)
     new_tenant = Tenant(
         tenant_id=user.user_id,
-        plan=None
+        plan="1"
     )
     db.add(new_tenant)
+
+    # Initialize feature usage rows for the new user
+    db.execute(
+        text("""
+            INSERT INTO dbo.user_feature_usage (user_id, feature_id, used_quantity, updated_at)
+            SELECT :user_id, f.feature_id, 0, GETUTCDATE()
+            FROM dbo.features f
+            WHERE NOT EXISTS (
+                SELECT 1 FROM dbo.user_feature_usage 
+                WHERE user_id = :user_id AND feature_id = f.feature_id
+            )
+        """),
+        {"user_id": str(user.user_id)}
+    )
+
     db.commit()
     db.refresh(new_tenant)
 

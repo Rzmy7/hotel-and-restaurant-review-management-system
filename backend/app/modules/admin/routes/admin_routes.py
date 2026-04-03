@@ -35,7 +35,7 @@ from app.modules.admin.services.admin_service import (
     update_user_in_db,
 )
 
-router = APIRouter(prefix="/admin", tags=["Admin Data"])
+router = APIRouter(tags=["Admin Data"])
 
 
 # ── Organization endpoints ──────────────────────────────────────────
@@ -58,9 +58,9 @@ def get_organization_stats() -> OrganizationStats:
             cursor = conn.cursor()
             organizations = load_organizations(cursor)
             total_count = len(organizations)
-            active_count = sum(1 for org in organizations if org.status == "Active")
-            pending_count = sum(1 for org in organizations if org.status == "Pending")
-            return OrganizationStats(total=total_count, active=active_count, pending=pending_count)
+            # All are ACTIVE now as per user instruction
+            active_count = total_count
+            return OrganizationStats(total=total_count, active=active_count)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch organization stats: {error}")
 
@@ -104,7 +104,7 @@ def get_org_sources(org_id: str) -> list[dict]:
                     cursor,
                     """
                     SELECT os.organization_source_id, os.source_id, s.platform_name,
-                           os.external_url, os.last_synced_at
+                           os.external_url, CAST(os.last_synced_at AS NVARCHAR(50))
                     FROM dbo.organization_sources os
                     JOIN dbo.scraping_platform s ON s.source_id = os.source_id
                     WHERE os.organization_id = ?
@@ -117,7 +117,7 @@ def get_org_sources(org_id: str) -> list[dict]:
                     cursor,
                     """
                     SELECT organization_source_id, source_id, NULL,
-                           external_url, last_synced_at
+                           external_url, CAST(last_synced_at AS NVARCHAR(50))
                     FROM dbo.organization_sources
                     WHERE organization_id = ?
                     """,
@@ -155,8 +155,8 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "organizations"):
-                raise HTTPException(status_code=400, detail="organizations table not found")
+            if not table_exists(cursor, "organization"):
+                raise HTTPException(status_code=400, detail="organization table not found")
 
             row = execute_query(
                 cursor,
@@ -166,7 +166,7 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
             if row is None:
                 raise HTTPException(status_code=404, detail="Organization not found")
 
-            org_cols = get_table_columns(cursor, "organizations")
+            org_cols = get_table_columns(cursor, "organization")
             if "updated_at" in org_cols:
                 execute_query(
                     cursor,
@@ -241,7 +241,7 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
                     cursor,
                     """
                     SELECT os.organization_source_id, os.source_id, s.platform_name,
-                           os.external_url, os.last_synced_at
+                           os.external_url, CAST(os.last_synced_at AS DATETIME2)
                     FROM dbo.organization_sources os
                     JOIN dbo.scraping_platform s ON s.source_id = os.source_id
                     WHERE os.organization_id = ?
@@ -279,8 +279,8 @@ def delete_organization(org_id: str) -> dict:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            if not table_exists(cursor, "organizations"):
-                raise HTTPException(status_code=400, detail="organizations table not found")
+            if not table_exists(cursor, "organization"):
+                raise HTTPException(status_code=400, detail="organization table not found")
 
             row = execute_query(
                 cursor,

@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface StatusBadgeProps {
-    status: 'Online' | 'Offline' | 'Warning' | 'Running' | 'Completed' | 'Failed' | 'Active' | 'Pending' | 'Inactive' | 'Enabled' | 'Disabled';
+    status: 'Online' | 'Offline' | 'Warning' | 'Running' | 'Completed' | 'Failed' | 'Active' | 'Enabled' | 'Disabled';
     showDot?: boolean;
     className?: string;
 }
@@ -21,7 +21,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, showDot = fals
                 };
             case 'Offline':
             case 'Failed':
-            case 'Inactive':
             case 'Disabled':
                 return {
                     bg: 'bg-red-100',
@@ -30,7 +29,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, showDot = fals
                     dot: 'bg-red-500'
                 };
             case 'Warning':
-            case 'Pending':
                 return {
                     bg: 'bg-yellow-100',
                     text: 'text-yellow-700',

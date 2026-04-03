@@ -37,7 +37,7 @@ from app.modules.admin.services.system_settings_service import (
     set_setting,
 )
 
-router = APIRouter(prefix="/api/settings", tags=["Settings"])
+router = APIRouter(prefix="/settings", tags=["Admin Settings"])
 
 CLAUDE_MODEL_ALIASES: dict[str, str] = {
     "claude-3-5-sonnet-latest": "claude-sonnet-4-6",

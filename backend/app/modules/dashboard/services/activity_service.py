@@ -18,7 +18,14 @@ def get_alerts(org_id: str = None) -> dict:
     
     pending = cursor.fetchone()[0]
     if pending > 0:
-        alerts.append({"type": "warning", "title": f"{pending} Pending Reviews", "message": "You have reviews that need attention."})
+        alerts.append({
+            "id": str(uuid.uuid4()),
+            "type": "warning",
+            "title": f"{pending} Pending Reviews",
+            "message": "You have reviews that need attention.",
+            "timestamp": datetime.now().isoformat(),
+            "isRead": False
+        })
 
     seven_days_ago = (datetime.now() - timedelta(days=7)).date()
     
@@ -29,7 +36,14 @@ def get_alerts(org_id: str = None) -> dict:
         
     neg_count = cursor.fetchone()[0]
     if neg_count > 0:
-        alerts.append({"type": "error", "title": f"{neg_count} Negative Reviews This Week", "message": "New negative reviews require attention."})
+        alerts.append({
+            "id": str(uuid.uuid4()),
+            "type": "error",
+            "title": f"{neg_count} Negative Reviews This Week",
+            "message": "New negative reviews require attention.",
+            "timestamp": datetime.now().isoformat(),
+            "isRead": False
+        })
 
     conn.close()
     return {"alerts": alerts}
@@ -56,12 +70,12 @@ def get_activities(org_id: str = None) -> dict:
     activities = []
     for row in rows:
         activities.append({
-            "id": row.id,
-            "action": "Replied to review" if row.status == "Replied" else "New review",
-            "userName": row.userName, "sentiment": row.sentiment,
-            "rating": row.rating,
-            "date": row.reviewDate.isoformat() if row.reviewDate else None,
-            "source": row.platform_id, # Changed from source to platform_id
+            "id": str(row.id),
+            "type": "scrape_completed" if row.status == "Replied" else "user_joined", # Mocking types to match RecentActivity
+            "title": "Reply sent" if row.status == "Replied" else "New Review",
+            "description": f"By {row.userName} on {row.platform_id}",
+            "timestamp": row.reviewDate.isoformat() if row.reviewDate else datetime.now().isoformat(),
+            "user": row.userName
         })
     return {"activities": activities}
 

@@ -1,30 +1,4 @@
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
-};
-
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(`${getBaseUrl()}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(init?.headers || {}),
-        },
-        ...init,
-    });
-
-    if (!response.ok) {
-        const details = await response.text().catch(() => '');
-        throw new Error(details || `Request failed: ${response.status}`);
-    }
-
-    if (response.status === 204) {
-        return undefined as T;
-    }
-
-    return response.json() as Promise<T>;
-};
+import { apiClient } from '../api/client';
 
 export type PlanIconName = 'zap' | 'star' | 'crown' | 'building';
 
@@ -75,32 +49,24 @@ export interface SubscriptionPlanUpsertPayload {
 }
 
 export const fetchSubscriptionFeatures = (): Promise<SubscriptionFeature[]> => {
-    return requestJson<SubscriptionFeature[]>('/admin/subscription-features', { method: 'GET' });
+    return apiClient.get<SubscriptionFeature[]>('/admin/subscription-features');
 };
 
 export const fetchSubscriptionPlans = (): Promise<SubscriptionPlan[]> => {
-    return requestJson<SubscriptionPlan[]>('/admin/subscription-plans', { method: 'GET' });
+    return apiClient.get<SubscriptionPlan[]>('/admin/subscription-plans');
 };
 
 export const createSubscriptionPlan = (payload: SubscriptionPlanUpsertPayload): Promise<SubscriptionPlan> => {
-    return requestJson<SubscriptionPlan>('/admin/subscription-plans', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    });
+    return apiClient.post<SubscriptionPlan>('/admin/subscription-plans', payload);
 };
 
 export const updateSubscriptionPlan = (
     planId: string,
     payload: SubscriptionPlanUpsertPayload,
 ): Promise<SubscriptionPlan> => {
-    return requestJson<SubscriptionPlan>(`/admin/subscription-plans/${encodeURIComponent(planId)}`, {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-    });
+    return apiClient.patch<SubscriptionPlan>(`/admin/subscription-plans/${encodeURIComponent(planId)}`, payload);
 };
 
 export const deleteSubscriptionPlan = (planId: string): Promise<{ status: string; planId: string }> => {
-    return requestJson<{ status: string; planId: string }>(`/admin/subscription-plans/${encodeURIComponent(planId)}`, {
-        method: 'DELETE',
-    });
+    return apiClient.delete<{ status: string; planId: string }>(`/admin/subscription-plans/${encodeURIComponent(planId)}`);
 };

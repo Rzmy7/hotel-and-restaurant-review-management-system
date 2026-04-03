@@ -66,6 +66,29 @@ DEFAULT_FEATURES: list[dict[str, object]] = [
         "sortOrder": 7,
     },
 ]
+ 
+DEFAULT_PLANS: list[dict[str, object]] = [
+    {
+        "id": 1,
+        "name": "Free",
+        "description": "Free plan for new users to explore the platform with basic features.",
+        "monthlyPrice": 0.0,
+        "annualPrice": 0.0,
+        "currency": "USD",
+        "isPopular": False,
+        "isActive": True,
+        "color": "from-blue-500 to-blue-600",
+        "iconName": "star",
+        "limits": {
+            "organizations": 2,
+            "groups": 1,
+            "scraping_frequency": 0,
+            "reply_generations": 10,
+            "review_count": 100,
+            "competitors": 2,
+        }
+    }
+]
 
 
 def _to_float(value: Decimal | float | int | None) -> float:
@@ -104,7 +127,7 @@ def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
 
 
 def set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: str) -> None:
-    """Sets a user's subscription plan on the tenant table."""
+    """Sets or updates a user's subscription plan by name."""
     from app.modules.admin.db_utils import execute_query, table_exists
     
     normalized_plan_name = plan_name.strip()
@@ -333,10 +356,68 @@ def seed_default_features(cursor: pyodbc.Cursor) -> None:
                 int(feature["sortOrder"]),
             ),
         )
+ 
+ 
+def seed_default_plans(cursor: pyodbc.Cursor) -> None:
+    """Ensures at least the default 'Free' plan exists in the plans table."""
+    seed_default_features(cursor)
+    
+    for plan in DEFAULT_PLANS:
+        plan_id = int(plan["id"])
+        
+        # Check if plan exists
+        row = cursor.execute("SELECT 1 FROM dbo.plans WHERE plan_id = ?", (plan_id,)).fetchone()
+        if not row:
+            # We use SET IDENTITY_INSERT if we want exactly ID 1
+            cursor.execute("SET IDENTITY_INSERT dbo.plans ON")
+            cursor.execute(
+                """
+                INSERT INTO dbo.plans (plan_id, name, description, monthly_price, annual_price, currency, is_popular, is_active, color, icon_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    plan_id,
+                    plan["name"],
+                    plan["description"],
+                    plan["monthlyPrice"],
+                    plan["annualPrice"],
+                    plan["currency"],
+                    1 if plan["isPopular"] else 0,
+                    1 if plan["isActive"] else 0,
+                    plan["color"],
+                    plan["iconName"],
+                )
+            )
+            cursor.execute("SET IDENTITY_INSERT dbo.plans OFF")
+            
+            # Link default features
+            for feat_key, limit in plan["limits"].items():
+                cursor.execute(
+                    """
+                    INSERT INTO dbo.plan_feature (plan_id, feature_id, is_enabled, feature_limit)
+                    SELECT ?, feature_id, 1, ?
+                    FROM dbo.features
+                    WHERE feature_key = ?
+                    """,
+                    (plan_id, limit, feat_key)
+                )
+ 
+ 
+def seed_subscription_data() -> None:
+    """Convenience function to seed plans and features on startup."""
+    from app.modules.admin.db_utils import get_connection_string
+    import pyodbc
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            seed_default_plans(cursor)
+            conn.commit()
+            print("Subscription data seeding complete.")
+    except Exception as e:
+        print(f"FAILED TO SEED SUBSCRIPTION DATA: {e}")
 
 
 def get_subscription_features(cursor: pyodbc.Cursor) -> list[SubscriptionFeature]:
-    seed_default_features(cursor)
     rows = cursor.execute(
         """
         SELECT feature_id, feature_key, display_name, description, supports_limit
@@ -595,10 +676,10 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
         """
         SELECT TOP 1 p.plan_id, p.name
         FROM dbo.tenant t
-        INNER JOIN dbo.plans p ON p.plan_id = t.[plan]
-        WHERE t.tenant_id = ? AND t.[plan] IS NOT NULL
+        INNER JOIN dbo.plans p ON p.plan_id = TRY_CAST(t.[plan] AS INT)
+        WHERE (t.tenant_id = ? OR CAST(t.tenant_id AS NVARCHAR(36)) = ?) AND t.[plan] IS NOT NULL
         """,
-        (user_id,),
+        (user_id, user_id),
     ).fetchone()
 
     if not plan_row:

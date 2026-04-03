@@ -27,7 +27,7 @@ from app.modules.admin.services.broadcasting_service import (
 )
 from app.modules.admin.services.system_settings_service import get_system_timezone
 
-router = APIRouter(prefix="/api/broadcasting", tags=["Broadcasting"])
+router = APIRouter(prefix="/broadcasting", tags=["Admin Broadcasting"])
 
 
 def _parse_scheduled_at_to_system_time(value: str | None, timezone_name: str) -> datetime | None:

@@ -44,6 +44,8 @@ async def lifespan(app: FastAPI):
     if engine:
         Base.metadata.create_all(bind=engine)
     # Startup actions
+    from app.modules.admin.services.subscription_service import seed_subscription_data
+    seed_subscription_data()
     setup_scheduler()
     start_scheduler()
     yield
@@ -181,15 +183,15 @@ if legacy_source_router:
     app.include_router(legacy_source_router, prefix="/api")
 # app.include_router(admin_backend_router) removed
 
-# Hansi routers
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(oauth_router, tags=["OAuth"])
-app.include_router(profile_router)
-app.include_router(org_router)
+# Hansi routers (now standardized under /api)
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
+app.include_router(profile_router, prefix="/api")
+app.include_router(org_router, prefix="/api")
 app.include_router(onboarding_router, prefix="/api")
-app.include_router(user_router)
-app.include_router(user_org_router)
-app.include_router(org_source_router)
+app.include_router(user_router, prefix="/api")
+app.include_router(user_org_router, prefix="/api")
+app.include_router(org_source_router, prefix="/api")
 
 # ----------------------
 # Debug / Root Endpoints

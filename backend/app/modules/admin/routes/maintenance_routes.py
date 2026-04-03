@@ -11,7 +11,7 @@ from app.modules.admin.services.system_settings_service import (
     set_setting,
 )
 
-router = APIRouter(prefix="/api/maintenance", tags=["Maintenance"])
+router = APIRouter(prefix="/maintenance", tags=["Admin Maintenance"])
 
 
 class MaintenanceStatusPayload(BaseModel):

@@ -1,37 +1,12 @@
+import { apiClient } from '../api/client';
 import type { AvailableSource, Organization, OrganizationStats, OrgSource, User } from '../types';
-
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
-};
-
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(`${getBaseUrl()}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        ...init,
-    });
-
-    if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-    }
-
-    if (response.status === 204) {
-        return undefined as T;
-    }
-
-    return response.json() as Promise<T>;
-};
-
+ 
 export interface UserStatsData {
     allActiveUsers: number;
     todayActiveUsers: number;
     todayRegistered: number;
 }
-
+ 
 export interface UserUpsertPayload {
     name: string;
     email: string;
@@ -42,7 +17,7 @@ export interface UserUpsertPayload {
     organizations?: string[];
     groups?: string[];
 }
-
+ 
 export interface UserUpdatePayload {
     name?: string;
     email?: string;
@@ -52,68 +27,54 @@ export interface UserUpdatePayload {
     organizations?: string[];
     groups?: string[];
 }
-
+ 
 export const fetchOrganizations = (): Promise<Organization[]> => {
-    return requestJson<Organization[]>('/admin/organizations', { method: 'GET' });
+    return apiClient.get<Organization[]>('/admin/organizations');
 };
-
+ 
 export const fetchOrgStats = (): Promise<OrganizationStats> => {
-    return requestJson<OrganizationStats>('/admin/organizations/stats', { method: 'GET' });
+    return apiClient.get<OrganizationStats>('/admin/organizations/stats');
 };
-
+ 
 export const fetchOrgSources = (orgId: string): Promise<OrgSource[]> => {
-    return requestJson<OrgSource[]>(`/admin/organizations/${encodeURIComponent(orgId)}/sources`);
+    return apiClient.get<OrgSource[]>(`/admin/organizations/${encodeURIComponent(orgId)}/sources`);
 };
-
+ 
 export const fetchAllSources = (): Promise<AvailableSource[]> => {
-    return requestJson<AvailableSource[]>('/admin/sources');
+    return apiClient.get<AvailableSource[]>('/admin/sources');
 };
-
+ 
 export const updateOrganization = (orgId: string, name: string): Promise<{ id: string; name: string }> => {
-    return requestJson(`/admin/organizations/${encodeURIComponent(orgId)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name }),
-    });
+    return apiClient.patch<{ id: string; name: string }>(`/admin/organizations/${encodeURIComponent(orgId)}`, { name });
 };
-
+ 
 export const updateOrgSources = (
     orgId: string,
     sources: { source_id: number; external_url: string | null }[],
 ): Promise<OrgSource[]> => {
-    return requestJson(`/admin/organizations/${encodeURIComponent(orgId)}/sources`, {
-        method: 'PUT',
-        body: JSON.stringify({ sources }),
-    });
+    return apiClient.put<OrgSource[]>(`/admin/organizations/${encodeURIComponent(orgId)}/sources`, { sources });
 };
-
+ 
 export const deleteOrganization = (orgId: string): Promise<{ status: string }> => {
-    return requestJson(`/admin/organizations/${encodeURIComponent(orgId)}`, { method: 'DELETE' });
+    return apiClient.delete<{ status: string }>(`/admin/organizations/${encodeURIComponent(orgId)}`);
 };
-
+ 
 export const fetchUsers = (): Promise<User[]> => {
-    return requestJson<User[]>('/admin/users', { method: 'GET' });
+    return apiClient.get<User[]>('/admin/users');
 };
-
+ 
 export const fetchUserStats = (): Promise<UserStatsData> => {
-    return requestJson<UserStatsData>('/admin/users/stats', { method: 'GET' });
+    return apiClient.get<UserStatsData>('/admin/users/stats');
 };
-
+ 
 export const createUser = (payload: UserUpsertPayload): Promise<User> => {
-    return requestJson<User>('/admin/users', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    });
+    return apiClient.post<User>('/admin/users', payload);
 };
-
+ 
 export const updateUser = (userId: string, payload: UserUpdatePayload): Promise<User> => {
-    return requestJson<User>(`/admin/users/${encodeURIComponent(userId)}`, {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-    });
+    return apiClient.patch<User>(`/admin/users/${encodeURIComponent(userId)}`, payload);
 };
-
+ 
 export const deleteUser = async (userId: string): Promise<void> => {
-    await requestJson<{ status: string; userId: string }>(`/admin/users/${encodeURIComponent(userId)}`, {
-        method: 'DELETE',
-    });
+    await apiClient.delete<any>(`/admin/users/${encodeURIComponent(userId)}`);
 };

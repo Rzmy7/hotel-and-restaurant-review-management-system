@@ -8,6 +8,7 @@ export interface DashboardStats {
     totalReviews: number;
     reviewsGrowth: number;
     activeUsersToday: number;
+    reviewsCollectedToday: number;
     systemUptime: number;
     aiJobsProcessed: number;
     aiJobsGrowth: number;
@@ -57,16 +58,15 @@ export interface NavItem {
 export interface Organization {
     id: string;
     name: string;
-    domain: string;
+    owner: string;
     usersCount: number;
-    status: 'Active' | 'Pending' | 'Inactive';
+    status: 'Active';
     iconUrl?: string;
 }
 
 export interface OrganizationStats {
     total: number;
     active: number;
-    pending: number;
 }
 
 export interface FeatureFlag {

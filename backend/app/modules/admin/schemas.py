@@ -66,14 +66,13 @@ class OrganizationSummary(BaseModel):
     name: str
     owner: str
     usersCount: int
-    status: Literal["Active", "Pending", "Inactive"]
+    status: Literal["Active", "Inactive"]
     iconUrl: Optional[str] = None
 
 
 class OrganizationStats(BaseModel):
     total: int
     active: int
-    pending: int
 
 
 class OrganizationUpdatePayload(BaseModel):
