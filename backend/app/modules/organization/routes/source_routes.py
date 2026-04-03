@@ -41,6 +41,7 @@ def _ensure_sources_table(db: Session):
                 CREATE TABLE IF NOT EXISTS organization_review_sources (
                     source_id TEXT NOT NULL PRIMARY KEY,
                     organization_id TEXT NOT NULL,
+                    user_id TEXT NULL,
                     source_name TEXT NOT NULL,
                     source_url TEXT NULL,
                     is_active INTEGER NOT NULL DEFAULT 1,
@@ -63,6 +64,15 @@ def _ensure_sources_table(db: Session):
                     """
                 )
             )
+        if "user_id" not in existing_columns:
+            db.execute(
+                text(
+                    """
+                    ALTER TABLE organization_review_sources
+                    ADD COLUMN user_id TEXT NULL
+                    """
+                )
+            )
         return
 
     db.execute(
@@ -73,6 +83,7 @@ def _ensure_sources_table(db: Session):
                 CREATE TABLE dbo.organization_review_sources (
                     source_id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
                     organization_id UNIQUEIDENTIFIER NOT NULL,
+                    user_id UNIQUEIDENTIFIER NULL,
                     source_name NVARCHAR(100) NOT NULL,
                     source_url NVARCHAR(1000) NULL,
                     is_active BIT NOT NULL DEFAULT 1,
@@ -93,6 +104,54 @@ def _ensure_sources_table(db: Session):
                 ALTER TABLE dbo.organization_review_sources
                 ADD fetching_frequency NVARCHAR(20) NOT NULL
                     CONSTRAINT DF_org_review_sources_fetching_frequency DEFAULT 'daily'
+            END
+            """
+        )
+    )
+
+    db.execute(
+        text(
+            """
+            IF COL_LENGTH('dbo.organization_review_sources', 'user_id') IS NULL
+            BEGIN
+                ALTER TABLE dbo.organization_review_sources
+                ADD user_id UNIQUEIDENTIFIER NULL
+            END
+            """
+        )
+    )
+
+    db.execute(
+        text(
+            """
+            IF NOT EXISTS (
+                SELECT 1
+                FROM sys.foreign_keys
+                WHERE name = 'FK_org_review_sources_user'
+                  AND parent_object_id = OBJECT_ID('dbo.organization_review_sources')
+            )
+            BEGIN
+                ALTER TABLE dbo.organization_review_sources
+                ADD CONSTRAINT FK_org_review_sources_user
+                    FOREIGN KEY (user_id) REFERENCES dbo.users(user_id)
+                    ON DELETE CASCADE
+            END
+            """
+        )
+    )
+
+    db.execute(
+        text(
+            """
+            IF NOT EXISTS (
+                SELECT 1
+                FROM sys.indexes
+                WHERE name = 'IX_org_review_sources_user_org'
+                  AND object_id = OBJECT_ID('dbo.organization_review_sources')
+            )
+            BEGIN
+                CREATE INDEX IX_org_review_sources_user_org
+                ON dbo.organization_review_sources(user_id, organization_id)
             END
             """
         )
@@ -185,10 +244,10 @@ def get_setup_sources(
             f"""
             SELECT source_id, source_name, source_url, is_active, fetching_frequency
             FROM {sources_table}
-            WHERE organization_id = :organization_id
+            WHERE organization_id = :organization_id AND user_id = :user_id
             """
         ),
-        {"organization_id": resolved_org_id},
+        {"organization_id": resolved_org_id, "user_id": user_id},
     ).fetchall()
 
     active_by_name = {str(row[1]).lower(): bool(row[3]) for row in rows if row[3]}
@@ -238,6 +297,7 @@ def connect_setup_source(
         SELECT source_id, is_active
         FROM {sources_table}
         WHERE organization_id = :organization_id
+          AND user_id = :user_id
           AND LOWER(source_name) = LOWER(:source_name)
           AND LOWER(COALESCE(source_url, '')) = LOWER(COALESCE(:source_url, ''))
         LIMIT 1
@@ -247,6 +307,7 @@ def connect_setup_source(
         SELECT TOP 1 source_id, is_active
         FROM {sources_table}
         WHERE organization_id = :organization_id
+          AND user_id = :user_id
           AND LOWER(source_name) = LOWER(:source_name)
           AND LOWER(COALESCE(source_url, '')) = LOWER(COALESCE(:source_url, ''))
         """
@@ -256,6 +317,7 @@ def connect_setup_source(
         text(existing_query),
         {
             "organization_id": resolved_org_id,
+            "user_id": user_id,
             "source_name": payload.source_name.strip(),
             "source_url": payload.source_url,
         },
@@ -302,6 +364,7 @@ def connect_setup_source(
                 INSERT INTO organization_review_sources (
                     source_id,
                     organization_id,
+                    user_id,
                     source_name,
                     source_url,
                     is_active,
@@ -312,6 +375,7 @@ def connect_setup_source(
                 VALUES (
                     :source_id,
                     :organization_id,
+                    :user_id,
                     :source_name,
                     :source_url,
                     1,
@@ -324,6 +388,7 @@ def connect_setup_source(
             {
                 "source_id": inserted_source_id,
                 "organization_id": resolved_org_id,
+                "user_id": user_id,
                 "source_name": payload.source_name.strip(),
                 "source_url": payload.source_url,
                 "fetching_frequency": payload.fetching_frequency.value,
@@ -336,6 +401,7 @@ def connect_setup_source(
                 INSERT INTO {sources_table} (
                     source_id,
                     organization_id,
+                    user_id,
                     source_name,
                     source_url,
                     is_active,
@@ -347,6 +413,7 @@ def connect_setup_source(
                 VALUES (
                     NEWID(),
                     :organization_id,
+                    :user_id,
                     :source_name,
                     :source_url,
                     1,
@@ -358,6 +425,7 @@ def connect_setup_source(
             ),
             {
                 "organization_id": resolved_org_id,
+                "user_id": user_id,
                 "source_name": payload.source_name.strip(),
                 "source_url": payload.source_url,
                 "fetching_frequency": payload.fetching_frequency.value,
@@ -409,10 +477,10 @@ def finalize_setup_schedule(
             f"""
             SELECT COUNT(1)
             FROM {sources_table}
-            WHERE organization_id = :organization_id AND is_active = 1
+            WHERE organization_id = :organization_id AND user_id = :user_id AND is_active = 1
             """
         ),
-        {"organization_id": resolved_org_id},
+        {"organization_id": resolved_org_id, "user_id": user_id},
     ).scalar() or 0
 
     if active_count > 0:
@@ -424,11 +492,13 @@ def finalize_setup_schedule(
                 SET fetching_frequency = :fetching_frequency,
                     updated_at = {now_sql}
                 WHERE organization_id = :organization_id
+                  AND user_id = :user_id
                   AND is_active = 1
                 """
             ),
             {
                 "organization_id": resolved_org_id,
+                "user_id": user_id,
                 "fetching_frequency": payload.selected_schedule.value,
             },
         )
@@ -460,6 +530,7 @@ def disconnect_setup_source(
         SELECT source_id, is_active
         FROM {sources_table}
         WHERE organization_id = :organization_id
+          AND user_id = :user_id
           AND LOWER(source_name) = LOWER(:source_name)
           AND LOWER(COALESCE(source_url, '')) = LOWER(COALESCE(:source_url, ''))
         LIMIT 1
@@ -469,6 +540,7 @@ def disconnect_setup_source(
         SELECT TOP 1 source_id, is_active
         FROM {sources_table}
         WHERE organization_id = :organization_id
+          AND user_id = :user_id
           AND LOWER(source_name) = LOWER(:source_name)
           AND LOWER(COALESCE(source_url, '')) = LOWER(COALESCE(:source_url, ''))
         """
@@ -478,6 +550,7 @@ def disconnect_setup_source(
         text(existing_query),
         {
             "organization_id": resolved_org_id,
+            "user_id": user_id,
             "source_name": payload.source_name.strip(),
             "source_url": payload.source_url,
         },
