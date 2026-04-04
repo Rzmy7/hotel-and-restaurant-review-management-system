@@ -66,9 +66,10 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (serverData) {
       setLocalData(serverData);
+      setTheme(serverData.general.themePreference as any);
       setHasUnsavedChanges(false);
     }
-  }, [serverData]);
+  }, [serverData, setTheme]);
 
   if (loading || !localData) {
     return <DashboardSkeleton />;
