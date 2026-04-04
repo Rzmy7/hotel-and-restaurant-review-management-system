@@ -130,6 +130,7 @@ const SettingsPage: React.FC = () => {
     if (!localData) return;
     const success = await updateSettings(localData);
     if (success) {
+      setTheme(localData.general.themePreference as any);
       setHasUnsavedChanges(false);
       setIsDirty(false);
     }

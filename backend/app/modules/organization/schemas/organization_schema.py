@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -18,3 +18,15 @@ class SetupSubscriptionFinalizeResponse(BaseModel):
 class OrganizationCreate(BaseModel):
     organization_name: str
     organization_type: str  # hotel / restaurant / other
+
+
+class OrganizationGeneralSettingsResponse(BaseModel):
+    propertyName: str
+    timeZone: str
+    themePreference: str
+
+
+class OrganizationGeneralSettingsPayload(BaseModel):
+    propertyName: str = Field(..., min_length=1, max_length=255)
+    timeZone: str = Field(..., min_length=1, max_length=100)
+    themePreference: Optional[str] = Field(default=None, max_length=16)

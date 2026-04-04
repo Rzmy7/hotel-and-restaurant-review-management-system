@@ -1,16 +1,30 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from zoneinfo import ZoneInfo
 
 from app.core.database import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.organization.schemas.organization_schema import (
     OrganizationCreate,
+    OrganizationGeneralSettingsPayload,
+    OrganizationGeneralSettingsResponse,
     SetupSubscriptionFinalizeRequest,
     SetupSubscriptionFinalizeResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["organization"])
+
+
+UI_TO_IANA_TIMEZONE: dict[str, str] = {
+    "EST (UTC-5)": "America/New_York",
+    "CST (UTC-6)": "America/Chicago",
+    "MST (UTC-7)": "America/Denver",
+    "PST (UTC-8)": "America/Los_Angeles",
+    "GMT (UTC+0)": "UTC",
+}
+
+ALLOWED_THEME_PREFERENCES = {"light", "dark", "system"}
 
 
 def _is_sqlite(db: Session) -> bool:
@@ -23,6 +37,162 @@ def _now_sql(db: Session) -> str:
 
 def _tbl(db: Session, table_name: str) -> str:
     return table_name if _is_sqlite(db) else f"dbo.{table_name}"
+
+
+def _normalize_timezone(value: str) -> str | None:
+    normalized = value.strip()
+    if not normalized:
+        return None
+
+    mapped = UI_TO_IANA_TIMEZONE.get(normalized)
+    if mapped:
+        return mapped
+
+    if normalized.upper() in {"UTC", "GMT"}:
+        return "UTC"
+
+    if normalized in set(UI_TO_IANA_TIMEZONE.values()):
+        return normalized
+
+    try:
+        ZoneInfo(normalized)
+        return normalized
+    except Exception:
+        return None
+
+
+def _ensure_org_general_settings_table(db: Session) -> None:
+    settings_table = _tbl(db, "user_organization_general_settings")
+    user_table = _tbl(db, "users")
+    org_table = _tbl(db, "organizations_source")
+
+    if _is_sqlite(db):
+        db.execute(
+            text(
+                f"""
+                CREATE TABLE IF NOT EXISTS {settings_table} (
+                    user_id TEXT NOT NULL,
+                    organization_id TEXT NOT NULL,
+                    timezone TEXT NOT NULL,
+                    theme_preference TEXT NOT NULL DEFAULT 'system',
+                    language TEXT NOT NULL DEFAULT 'en',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, organization_id),
+                    FOREIGN KEY (user_id) REFERENCES {user_table}(user_id) ON DELETE CASCADE,
+                    FOREIGN KEY (organization_id) REFERENCES {org_table}(organization_id) ON DELETE CASCADE
+                )
+                """
+            )
+        )
+        pragma_rows = db.execute(text(f"PRAGMA table_info({settings_table})")).fetchall()
+        existing_columns = {str(row[1]).lower() for row in pragma_rows}
+        if "theme_preference" not in existing_columns:
+            db.execute(text(f"ALTER TABLE {settings_table} ADD COLUMN theme_preference TEXT NOT NULL DEFAULT 'system'"))
+        return
+
+    db.execute(
+        text(
+            """
+            IF OBJECT_ID('dbo.user_organization_general_settings', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.user_organization_general_settings (
+                    user_id UNIQUEIDENTIFIER NOT NULL,
+                    organization_id UNIQUEIDENTIFIER NOT NULL,
+                    timezone NVARCHAR(100) NOT NULL,
+                    theme_preference NVARCHAR(16) NOT NULL
+                        CONSTRAINT DF_user_org_general_settings_theme DEFAULT 'system',
+                    language NVARCHAR(32) NOT NULL
+                        CONSTRAINT DF_user_org_general_settings_language DEFAULT 'en',
+                    created_at DATETIME2(7) NOT NULL
+                        CONSTRAINT DF_user_org_general_settings_created_at DEFAULT SYSUTCDATETIME(),
+                    updated_at DATETIME2(7) NOT NULL
+                        CONSTRAINT DF_user_org_general_settings_updated_at DEFAULT SYSUTCDATETIME(),
+                    CONSTRAINT PK_user_org_general_settings
+                        PRIMARY KEY (user_id, organization_id),
+                    CONSTRAINT FK_user_org_general_settings_user
+                        FOREIGN KEY (user_id)
+                        REFERENCES dbo.users(user_id)
+                        ON DELETE CASCADE,
+                    CONSTRAINT FK_user_org_general_settings_org
+                        FOREIGN KEY (organization_id)
+                        REFERENCES dbo.organizations_source(organization_id)
+                        ON DELETE CASCADE
+                );
+            END
+
+            IF COL_LENGTH('dbo.user_organization_general_settings', 'theme_preference') IS NULL
+            BEGIN
+                ALTER TABLE dbo.user_organization_general_settings
+                ADD theme_preference NVARCHAR(16) NOT NULL
+                    CONSTRAINT DF_user_org_general_settings_theme DEFAULT 'system';
+            END
+            """
+        )
+    )
+
+
+def _upsert_org_general_settings(
+    db: Session,
+    user_id: str,
+    organization_id: str,
+    timezone_value: str,
+    theme_preference: str,
+    language: str,
+) -> None:
+    settings_table = _tbl(db, "user_organization_general_settings")
+    now_sql = _now_sql(db)
+
+    if _is_sqlite(db):
+        db.execute(
+            text(
+                f"""
+                INSERT INTO {settings_table} (user_id, organization_id, timezone, theme_preference, language, created_at, updated_at)
+                VALUES (:user_id, :organization_id, :timezone, :theme_preference, :language, {now_sql}, {now_sql})
+                ON CONFLICT(user_id, organization_id) DO UPDATE SET
+                    timezone = excluded.timezone,
+                    theme_preference = excluded.theme_preference,
+                    language = excluded.language,
+                    updated_at = {now_sql}
+                """
+            ),
+            {
+                "user_id": user_id,
+                "organization_id": organization_id,
+                "timezone": timezone_value,
+                "theme_preference": theme_preference,
+                "language": language,
+            },
+        )
+        return
+
+    db.execute(
+        text(
+            f"""
+            IF EXISTS (SELECT 1 FROM {settings_table} WHERE user_id = :user_id AND organization_id = :organization_id)
+            BEGIN
+                UPDATE {settings_table}
+                SET timezone = :timezone,
+                    theme_preference = :theme_preference,
+                    language = :language,
+                    updated_at = {now_sql}
+                WHERE user_id = :user_id AND organization_id = :organization_id
+            END
+            ELSE
+            BEGIN
+                INSERT INTO {settings_table} (user_id, organization_id, timezone, theme_preference, language, created_at, updated_at)
+                VALUES (:user_id, :organization_id, :timezone, :theme_preference, :language, {now_sql}, {now_sql})
+            END
+            """
+        ),
+        {
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "timezone": timezone_value,
+            "theme_preference": theme_preference,
+            "language": language,
+        },
+    )
 
 
 def _ensure_user_org_subscription_columns(db: Session) -> None:
@@ -426,3 +596,117 @@ def discard_setup_organization(
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to discard setup organization")
+
+
+@router.get("/organizations/{org_id}/settings/general", response_model=OrganizationGeneralSettingsResponse)
+def get_organization_general_settings(
+    org_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    _resolve_org_membership(db, str(user.user_id), org_id)
+    _ensure_org_general_settings_table(db)
+
+    org_table = _tbl(db, "organizations_source")
+    settings_table = _tbl(db, "user_organization_general_settings")
+
+    row = db.execute(
+        text(
+            f"""
+            SELECT o.organization_name,
+                   s.timezone,
+                     s.theme_preference,
+                   s.language
+            FROM {org_table} o
+            LEFT JOIN {settings_table} s
+                ON s.organization_id = o.organization_id AND s.user_id = :user_id
+            WHERE o.organization_id = :organization_id
+            """
+        ),
+        {"organization_id": org_id, "user_id": str(user.user_id)},
+    ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    property_name = str(row[0] or "").strip() or "Unnamed Organization"
+    timezone_value = str(row[1] or "UTC").strip() or "UTC"
+    theme_preference = str(row[2] or "system").strip().lower() or "system"
+
+    normalized_timezone = _normalize_timezone(timezone_value)
+    if not normalized_timezone:
+        normalized_timezone = "UTC"
+
+    if theme_preference not in ALLOWED_THEME_PREFERENCES:
+        theme_preference = "system"
+
+    return OrganizationGeneralSettingsResponse(
+        propertyName=property_name,
+        timeZone=normalized_timezone,
+        themePreference=theme_preference,
+    )
+
+
+@router.patch("/organizations/{org_id}/settings/general", response_model=OrganizationGeneralSettingsResponse)
+def update_organization_general_settings(
+    org_id: str,
+    payload: OrganizationGeneralSettingsPayload,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    _resolve_org_membership(db, str(user.user_id), org_id)
+    _ensure_org_general_settings_table(db)
+
+    property_name = payload.propertyName.strip()
+    normalized_timezone = _normalize_timezone(payload.timeZone)
+    theme_preference = (payload.themePreference or "system").strip().lower() or "system"
+    language = "en"
+
+    if not normalized_timezone:
+        raise HTTPException(status_code=400, detail="Invalid timezone. Use a valid IANA timezone (e.g. Asia/Colombo).")
+
+    if theme_preference not in ALLOWED_THEME_PREFERENCES:
+        raise HTTPException(status_code=400, detail="Invalid themePreference. Use one of: light, dark, system.")
+
+    org_table = _tbl(db, "organizations_source")
+
+    try:
+        update_result = db.execute(
+            text(
+                f"""
+                UPDATE {org_table}
+                SET organization_name = :property_name
+                WHERE organization_id = :organization_id
+                """
+            ),
+            {
+                "property_name": property_name,
+                "organization_id": org_id,
+            },
+        )
+
+        if update_result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Organization not found")
+
+        _upsert_org_general_settings(
+            db=db,
+            user_id=str(user.user_id),
+            organization_id=org_id,
+            timezone_value=normalized_timezone,
+            theme_preference=theme_preference,
+            language=language,
+        )
+
+        db.commit()
+
+        return OrganizationGeneralSettingsResponse(
+            propertyName=property_name,
+            timeZone=normalized_timezone,
+            themePreference=theme_preference,
+        )
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update organization general settings: {exc}") from exc

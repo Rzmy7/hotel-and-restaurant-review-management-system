@@ -4,7 +4,6 @@ import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { FormField } from '../molecules/FormField';
 import type { GeneralSettings } from '../../../types/settings';
-import { useTheme } from '../../../contexts/ThemeContext';
 
 interface GeneralSettingsCardProps {
     data: GeneralSettings;
@@ -12,10 +11,7 @@ interface GeneralSettingsCardProps {
 }
 
 export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, onChange }) => {
-    const { setTheme } = useTheme();
-
     const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-        setTheme(newTheme);
         onChange({ themePreference: newTheme });
     };
 
@@ -40,7 +36,8 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
                     ]}
                 />
             </FormField>
-            <FormField label="Language" orientation="horizontal">
+            
+            {/*<FormField label="Language" orientation="horizontal">
                 <Select
                     value={data.language}
                     onChange={(e) => onChange({ language: e.target.value })}
@@ -51,7 +48,8 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
                         { label: 'German', value: 'German' }
                     ]}
                 />
-            </FormField>
+            </FormField>    */}
+
             <FormField label="Application Theme" orientation="horizontal" description="Select your preferred UI appearance">
                 <div className="flex bg-gray-100/80 dark:bg-slate-700/50 p-1 rounded-xl w-full max-w-[280px]">
                     {[
