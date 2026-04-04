@@ -18,6 +18,23 @@ import ScrapeLauncher from './components/shared/ScrapeLauncher';
 // Stores
 import { useOrganizationStore } from './stores/useOrganizationStore';
 
+/**
+ * Higher-order component for routes that need an active organization.
+ * Redirects to /no-organization if the store has loaded but has no org.
+ */
+const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const hasOrganization = useOrganizationStore(state => state.hasOrganization);
+  const loading = useOrganizationStore(state => state.loading);
+
+  if (loading) return null; // wait for store hydration
+
+  if (!hasOrganization) {
+    return <Navigate to="/no-organization" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 // Pages - Auth & Setup
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
@@ -200,7 +217,8 @@ const AppContent: React.FC = () => {
       <Route path="/setup/schedule" element={<RequireAuth><ChooseSchedulePage /></RequireAuth>} />
       <Route path="/setup/plan" element={<RequireAuth><ChoosePlanPage /></RequireAuth>} />
       <Route path="/setup/finish" element={<RequireAuth><FinishSetupPage /></RequireAuth>} />
-      
+
+
       {/* Utility/Admin Routes */}
       <Route path="/scrape" element={<RequireAuth><ScrapeLauncher /></RequireAuth>} />
       <Route path="/admin-dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
@@ -222,32 +240,26 @@ const AppContent: React.FC = () => {
                 {/* Default root handling */}
                 <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
                 
-                {/* Application Feature Pages - All protected by the main shell's RequireAuth if we wrap it */}
-                <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-                <Route path="/reviews" element={<RequireAuth><ReviewsPage /></RequireAuth>} />
-                <Route path="/sources" element={<RequireAuth><ReviewSourcesPage /></RequireAuth>} />
+                {/* Org-dependent feature pages — all require both auth AND an active organization */}
+                <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
+                <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
+                <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
+                <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
+                <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
+                <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
+                <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
+
+                {/* Pages that don't require an org */}
                 <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
                 <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
-                <Route path="/insights" element={<RequireAuth><InsightsPage /></RequireAuth>} />
-                
-                {/* Competitor Analysis Suite */}
-                <Route path="/competitors" element={<RequireAuth><CompetitorsPage /></RequireAuth>} />
-                <Route path="/competitors/rankings" element={<RequireAuth><CompetitorRankingsPage /></RequireAuth>} />
-                <Route path="/competitors/compare" element={<RequireAuth><CompetitorComparison /></RequireAuth>} />
-                
-                {/* Help & Support */}
                 <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
                 <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />
                 <Route path="/subscription" element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
-                
-                {/* User Profile */}
                 <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-                
+                <Route path="/no-organization" element={<RequireAuth><NoOrganizationPage /></RequireAuth>} />
+
                 {/* Fallback for undefined routes within the main shell */}
                 <Route path="*" element={<NotFound />} />
-
-                {/* User directed to here when not select organization */}
-                <Route path="/no-organization" element={<NoOrganizationPage />} />
 
               </Routes>
             </main>

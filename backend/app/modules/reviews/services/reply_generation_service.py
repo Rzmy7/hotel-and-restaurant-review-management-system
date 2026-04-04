@@ -13,7 +13,7 @@ try:
 except Exception:
     Anthropic = None
 
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 from app.modules.admin.services.system_settings_service import (
     DEFAULT_REPLY_CLAUDE_MODEL,
     DEFAULT_REPLY_GOOGLE_MODEL,

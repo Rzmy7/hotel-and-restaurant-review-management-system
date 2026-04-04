@@ -10,7 +10,7 @@ from datetime import datetime
 import pyodbc
 from fastapi import HTTPException
 
-from app.modules.admin.db_utils import get_connection_string, table_exists
+from app.core.db_utils import get_connection_string, table_exists
 from app.modules.auth.constants.roles import ADMIN_ROLE_ID
 from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
 

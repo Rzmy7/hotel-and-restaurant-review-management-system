@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import pyodbc
 
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 from app.modules.admin.services.broadcasting_service import (
     create_notifications,
     ensure_broadcast_events_table,

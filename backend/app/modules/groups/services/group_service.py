@@ -9,7 +9,7 @@ from app.modules.auth.constants.roles import GROUP_MANAGER, GROUP_MEMBER
 from app.modules.groups.repository import create_group, add_member_to_group
 from app.middleware.permissions import require_group_manager
 from app.modules.admin.services.subscription_service import increment_feature_usage
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 import pyodbc
 
 

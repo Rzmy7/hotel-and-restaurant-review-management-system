@@ -55,7 +55,7 @@ export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data }) =>
                 {/* Reviews and Category Row */}
                 <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
                     <LatestReviews reviews={data.latestReviews} />
-                    <CategoryPerformance />
+                    <CategoryPerformance categories={data.categoryPerformance ?? []} />
                 </div>
 
                 {/* AI Insights and Alerts Row */}

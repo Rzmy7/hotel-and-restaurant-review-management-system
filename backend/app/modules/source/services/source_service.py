@@ -8,7 +8,7 @@ import pyodbc
 
 from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog, SyncFrequency
 from app.modules.admin.services.subscription_service import increment_feature_usage
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 
 # Backward-compatible aliases for any remaining references
 TenantSource = Tenant

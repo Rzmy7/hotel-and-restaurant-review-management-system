@@ -9,7 +9,7 @@ from datetime import date, datetime
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin.db_utils import (
+from app.core.db_utils import (
     execute_query,
     get_connection_string,
     table_exists,

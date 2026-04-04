@@ -4,6 +4,7 @@ import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { sourcesService } from '../services/sourcesService';
 import type { Source, SyncLog, SourceStats as SourceStatsType } from '../types/sources';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 // New Components
 import SourcesTable from '../components/sources/SourcesTable';
@@ -18,8 +19,9 @@ const ReviewSourcesPage = () => {
   const queryClient = useQueryClient();
   const [lastSyncTriggeredAt, setLastSyncTriggeredAt] = useState<number | null>(null);
 
-  // Temporary hardcoded IDs until context is integrated
-  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
+  // Read org ID from the organization store
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const organizationId = currentOrg?.id ?? '';
 
   // React Query: Sources
   const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({

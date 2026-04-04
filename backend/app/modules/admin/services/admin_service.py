@@ -14,7 +14,7 @@ import pyodbc
 from fastapi import HTTPException
 
 from app.core.security import hash_password
-from app.modules.admin.db_utils import (
+from app.core.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,

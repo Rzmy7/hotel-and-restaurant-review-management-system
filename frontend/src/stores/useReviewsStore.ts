@@ -71,9 +71,9 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
         }
     },
 
-    refreshData: (params) => {
+    refreshData: (organizationId: string, params: any) => {
         reviewsService.clearCache();
-        get().fetchReviews(params, false);
+        get().fetchReviews(organizationId, params, false);
     },
 
     openReview: (review) => {

@@ -9,7 +9,7 @@ try:
 except Exception:
     Anthropic = None
 
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 from app.modules.admin.schemas import GeneralSettingsPayload, GeneralSettingsResponse
 from app.modules.admin.schemas import (
     FeatureFlagResponse,

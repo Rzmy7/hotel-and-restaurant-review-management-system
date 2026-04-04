@@ -3,7 +3,7 @@
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 from app.modules.admin.schemas import (
     DeleteSubscriptionPlanResponse,
     SubscriptionFeature,

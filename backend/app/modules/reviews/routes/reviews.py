@@ -16,7 +16,7 @@ from app.modules.reviews.services.reply_generation_service import generate_revie
 from app.modules.dashboard.services.stats_service import get_stats
 from app.modules.auth.utils.jwt_utils import get_current_user
 from app.modules.admin.services.subscription_service import increment_feature_usage
-from app.modules.admin.db_utils import get_connection_string
+from app.core.db_utils import get_connection_string
 from fastapi import APIRouter, HTTPException, Depends
 import pyodbc
 

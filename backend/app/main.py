@@ -187,11 +187,11 @@ if legacy_source_router:
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
 app.include_router(profile_router, prefix="/api")
-app.include_router(org_router, prefix="/api")
+app.include_router(org_router)            # already declares prefix="/api" internally
 app.include_router(onboarding_router, prefix="/api")
-app.include_router(user_router, prefix="/api")
-app.include_router(user_org_router, prefix="/api")
-app.include_router(org_source_router, prefix="/api")
+app.include_router(user_router)           # already declares prefix="/api" internally
+app.include_router(user_org_router)       # already declares prefix="/api" internally
+app.include_router(org_source_router)     # already declares prefix="/api" internally
 
 # ----------------------
 # Debug / Root Endpoints

@@ -99,7 +99,7 @@ def _to_float(value: Decimal | float | int | None) -> float:
 
 def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
     """Returns a mapping of tenant_id to plan_name from the tenant table."""
-    from app.modules.admin.db_utils import execute_query, table_exists
+    from app.core.db_utils import execute_query, table_exists
     
     if not table_exists(cursor, "tenant") or not table_exists(cursor, "plans"):
         return {}
@@ -128,7 +128,7 @@ def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
 
 def set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: str) -> None:
     """Sets or updates a user's subscription plan by name."""
-    from app.modules.admin.db_utils import execute_query, table_exists
+    from app.core.db_utils import execute_query, table_exists
     
     normalized_plan_name = plan_name.strip()
     if normalized_plan_name.lower() == "basic":
@@ -405,7 +405,7 @@ def seed_default_plans(cursor: pyodbc.Cursor) -> None:
  
 def seed_subscription_data() -> None:
     """Convenience function to seed plans and features on startup."""
-    from app.modules.admin.db_utils import get_connection_string
+    from app.core.db_utils import get_connection_string
     import pyodbc
     try:
         with pyodbc.connect(get_connection_string()) as conn:

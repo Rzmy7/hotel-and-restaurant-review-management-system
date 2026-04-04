@@ -15,7 +15,7 @@ import requests
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-from app.modules.admin.db_utils import (
+from app.core.db_utils import (
     execute_query,
     get_connection_string,
     get_table_columns,

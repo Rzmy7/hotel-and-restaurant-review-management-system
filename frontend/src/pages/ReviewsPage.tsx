@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useReviewsStore } from '../stores/useReviewsStore';
 import { useReviewFilters } from '../hooks/useReviewFilters';
 import { useEffect } from 'react';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 // New Components
 import ReviewStats from '../components/reviews/ReviewStats';
@@ -13,7 +14,8 @@ import DateRangeModal from '../components/shared/DateRangeModal';
 
 const ReviewsPageContent = () => {
 
-  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const organizationId = currentOrg?.id ?? '';
 
   const stats = useReviewsStore(state => state.stats);
   const loading = useReviewsStore(state => state.loading);

@@ -87,6 +87,15 @@ export interface Organization {
     status: string;
 }
 
+export interface CategoryPerformanceItem {
+    name: string;
+    score: number;
+    count: number;
+    icon: string;
+    trend: string;
+    trendType: 'up' | 'down' | 'neutral';
+}
+
 export interface DashboardResponse {
     hotel: Organization;
     organizations: Organization[];
@@ -101,10 +110,11 @@ export interface DashboardResponse {
     charts: {
         sentiment: SentimentDistribution;
         reviewsOverTime: ChartDataPoint[];
-        sentimentTrends: ChartDataPoint[]; // Could be more complex if needed
+        sentimentTrends: ChartDataPoint[];
     };
     latestReviews: Review[];
     aiInsights: AIInsightsData;
     alerts: Alert[];
     sourceComparison: SourceData[];
+    categoryPerformance: CategoryPerformanceItem[];
 }
