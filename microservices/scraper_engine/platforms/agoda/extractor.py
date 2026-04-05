@@ -1,9 +1,9 @@
 import hashlib
+import re
 from typing import List, Optional
 from pydantic import BaseModel
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page
 from core.config import setup_logger
-from platforms.agoda.config import agoda_selectors as config
 
 logger = setup_logger("agoda_extractor")
 
@@ -25,90 +25,106 @@ class AgodaExtractor:
     def __init__(self, page: Page):
         self.page = page
 
-    def _extract_text(self, element: Locator, selector: str) -> Optional[str]:
-        target = element.locator(selector).first
-        if target.count() > 0:
-            return target.inner_text().strip()
-        return None
-
-    def _extract_images(self, element: Locator) -> List[str]:
-        images = []
-        locators = element.locator(config.review_images_selector)
-        for i in range(locators.count()):
-            src = locators.nth(i).get_attribute("src")
-            if src:
-                if src.startswith("//"):
-                    src = "https:" + src
-                images.append(src)
-        return images
-
     def extract_reviews(self) -> List[Review]:
-        logger.info("Extracting reviews from the current page views.")
+        logger.info("Extracting reviews using Hybrid DOM + Regex from native #reviewSection inline DOM.")
         reviews = []
         
-        # Ensure we wait briefly for reviews to appear
         try:
-            self.page.wait_for_selector(config.review_container_selector, timeout=5000)
+            self.page.wait_for_selector('#reviewSection', timeout=8000)
         except Exception:
-            logger.warning("No reviews found or timeout waiting for review container.")
+            logger.warning("No #reviewSection found or timeout.")
             return reviews
 
-        containers = self.page.locator(config.review_container_selector)
+        root = self.page.locator('#reviewSection')
+        containers = root.locator('.Review-comment')
+        
         count = containers.count()
-        logger.info(f"Found {count} review containers on current page.")
+        logger.info(f"Found {count} review containers natively inline.")
 
         for i in range(count):
             container = containers.nth(i)
-            
-            author_text = self._extract_text(container, config.reviewer_name_selector)
-            if not author_text:
-                logger.debug("Skipping container with no author (likely a host reply block).")
+            try:
+                html = container.evaluate("el => el.innerHTML")
+            except Exception as e:
+                logger.warning(f"Could not read innerHTML of review: {e}")
                 continue
                 
-            rating_text = self._extract_text(container, config.review_rating_selector)
+            # 1. Author Name
+            author_match = re.search(r'data-info-type="reviewer-name"[^>]*>.*?<strong>([^<]+)</strong>', html)
+            if not author_match:
+                continue
+            author_text = author_match.group(1).strip()
             
+            # 2. Nationality 
+            nat_match = re.search(r'data-info-type="reviewer-name"[^>]*>.*?<span>([^<]+)</span></div>', html)
+            reviewer_nationality = nat_match.group(1).strip() if nat_match else None
+            
+            # 3. Rating Score (Agoda uses Review-comment-leftScore or data-selenium="review-score")
+            rating_match = re.search(r'Review-comment-leftScore[^>]*>([\d.]+)<', html)
+            if not rating_match:
+                rating_match = re.search(r'data-selenium="review-score"[^>]*>([\d.]+)<', html)
+                
             rating = 0.0
-            if rating_text:
+            if rating_match:
                 try:
-                    rating = float(rating_text)
+                    rating = float(rating_match.group(1))
                 except ValueError:
                     pass
-                    
-            text = self._extract_text(container, config.review_text_selector) or ""
             
-            heading = self._extract_text(container, config.review_heading_selector)
-            room_type = self._extract_text(container, config.review_room_type_selector)
-            traveler_type = self._extract_text(container, config.review_traveler_type_selector)
-            stayed_dates = self._extract_text(container, config.review_stay_detail_selector)
-            reviewer_nationality = self._extract_text(container, config.review_nationality_selector)
+            # 4. Heading
+            heading_match = re.search(r'data-testid="review-title"[^>]*>([^<]+)<', html)
+            heading = heading_match.group(1).strip() if heading_match else None
             
-            # Date xpath is specific, fallback to finding 'Reviewed' if possible
-            date_locator = container.locator(config.review_date_xpath).first
-            date_text = date_locator.inner_text().strip() if date_locator.count() > 0 else ""
-            
-            images = self._extract_images(container)
-            
-            # Reply
-            reply_container = container.locator(config.review_reply_selector).first
-            reply_text = None
-            if reply_container.count() > 0:
-                reply_text = self._extract_text(reply_container, config.review_reply_text_selector)
+            # 5. Review Text 
+            text_match = re.search(r'data-selenium="comment"[^>]*>([^<]+)<', html)
+            if not text_match:
+                text_match = re.search(r'data-selenium="review-body"[^>]*>([^<]+)<', html)
+            if not text_match:
+                text_match = re.search(r'class="[^"]*Review-comment-bodyText[^"]*"[^>]*>([^<]+)<', html)
                 
+            text = text_match.group(1).strip() if text_match else ""
+            
+            # 6. Date
+            date_match = re.search(r'data-selenium="review-date"[^>]*>([^<]+)<', html)
+            if not date_match:
+                date_match = re.search(r'Reviewed ([^<]+)</span>', html)
+            date_text = date_match.group(1).strip() if date_match else ""
+            
+            # 7. Metadata 
+            room_match = re.search(r'data-info-type="room-type"[^>]*><i[^>]*></i><span>([^<]+)</span>', html)
+            room_type = room_match.group(1).strip() if room_match else None
+            
+            travel_match = re.search(r'data-info-type="group-name"[^>]*><i[^>]*></i><span>([^<]+)</span>', html)
+            traveler_type = travel_match.group(1).strip() if travel_match else None
+            
+            stay_match = re.search(r'data-info-type="stay-detail"[^>]*><i[^>]*></i><span>([^<]+)</span>', html)
+            stayed_dates = stay_match.group(1).strip() if stay_match else None
+            
+            # 8. Images attached
+            images = []
+            img_matches = re.finditer(r'<img[^>]*src="([^"]+)"[^>]*data-element-name="review-comment-ugc-thumbnail"', html)
+            for m in img_matches:
+                images.append(m.group(1) if not m.group(1).startswith('//') else 'https:' + m.group(1))
+            
+            # 9. Host Reply
+            reply_match = re.search(r'class="[^"]*Review-response-text[^"]*"[^>]*>([^<]+)<', html)
+            reply_text = reply_match.group(1).strip() if reply_match else None
+            
             review_id = hashlib.md5(f"{author_text}_{date_text}_{rating}".encode()).hexdigest()
 
             review = Review(
                 id=review_id,
                 author=author_text,
-                reviewer_nationality=reviewer_nationality if reviewer_nationality else None,
+                reviewer_nationality=reviewer_nationality,
                 rating=rating,
-                heading=heading if heading else None,
+                heading=heading,
                 text=text,
                 date=date_text,
-                stayed_dates=stayed_dates if stayed_dates else None,
-                traveler_type=traveler_type if traveler_type else None,
-                room_type=room_type if room_type else None,
+                stayed_dates=stayed_dates,
+                traveler_type=traveler_type,
+                room_type=room_type,
                 images=images,
-                reply=reply_text if reply_text else None
+                reply=reply_text
             )
             reviews.append(review)
 

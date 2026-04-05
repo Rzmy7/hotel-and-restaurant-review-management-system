@@ -30,9 +30,24 @@ def save_reviews_to_db(reviews, source_id: str):
             logger.error(f"Source {source_id} not found — cannot save reviews.")
             return
 
-        logger.info(f"Writing {len(reviews)} Agoda reviews for source_id={source_id}")
+        # Fetch existing platform_review_id's for this source_id
+        incoming_ids = [getattr(r, 'id', None) for r in reviews if getattr(r, 'id', None) is not None]
+        existing_rows = session.query(Review.platform_review_id).filter(
+            Review.source_id == source_id,
+            Review.platform_review_id.in_(incoming_ids)
+        ).all()
+        existing_ids = {row[0] for row in existing_rows if row[0]}
+        
+        # Filter down the payload to strictly unique reviews
+        unique_reviews = [r for r in reviews if getattr(r, 'id', None) not in existing_ids]
 
-        for r in reviews:
+        if not unique_reviews:
+            logger.info("All reviews in batch already exist in database. Skipping DB writes.")
+            return
+
+        logger.info(f"Writing {len(unique_reviews)} new Agoda reviews for source_id={source_id} (Discarded {len(reviews) - len(unique_reviews)} duplicates)")
+
+        for r in unique_reviews:
             # Create a new review entry in the central reviews table
             platform_id = getattr(r, 'id', None)
             review_entry = Review(source_id=source_id, platform_review_id=platform_id)

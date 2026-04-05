@@ -1,6 +1,5 @@
 import time
 import math
-import re
 from platforms.agoda.browser import PlaywrightBrowser
 from platforms.agoda.extractor import AgodaExtractor
 from platforms.agoda.storage import save_to_json
@@ -16,59 +15,19 @@ logger = setup_logger("agoda_logic")
 
 def dismiss_popups(page):
     try:
-        # First, press escape to reliably clear transparent overlay date pickers
-        logger.info("Sending Escape sequence to clear passive overlays.")
+        logger.info("Sending Escape sequence and ambient click to softly clear passive overlays.")
         page.keyboard.press("Escape")
         time.sleep(1)
         
-        # Attempt to dismiss date picker if it explicitly shows up
-        if page.locator(agoda_selectors.dismiss_datepicker_selector).count() > 0:
-            logger.info("Dismissing datepicker popup button.")
-            page.locator(agoda_selectors.dismiss_datepicker_selector).first.click(timeout=3000, force=True)
-            time.sleep(1)
+        # Click a safe ambient top-left pixel to dismiss modals without triggering navigation
+        page.mouse.click(1, 1)
+        time.sleep(1)
             
-        # Try finding a sticky footer banner dismiss 
         footers = page.locator("button:has-text('Dismiss')")
         if footers.count() > 0:
             footers.first.click(timeout=3000, force=True)
     except Exception:
         pass
-
-def open_reviews(page):
-    try:
-        # Sometimes reviews are hidden behind a button. Check both selectors.
-        btn = page.locator(agoda_selectors.open_reviews_selector).first
-        btn_alt = page.locator(agoda_selectors.open_reviews_selector_alt).first
-        
-        target_btn = None
-        if btn.count() > 0 and btn.is_visible():
-            target_btn = btn
-        elif btn_alt.count() > 0 and btn_alt.is_visible():
-            target_btn = btn_alt
-            
-        if target_btn:
-            logger.info("Clicking 'Read all reviews' button.")
-            target_btn.evaluate("element => element.scrollIntoView({block: 'center'})")
-            time.sleep(1)
-            target_btn.click(timeout=3000, force=True)
-            time.sleep(2)
-    except Exception:
-        pass
-
-def select_agoda_reviews(page):
-    try:
-        # Sometimes there's a tab specifically for "AGODA REVIEWS" vs "BOOKING.COM REVIEWS"
-        tabs = page.locator("text=/AGODA REVIEWS/i")
-        if tabs.count() > 0:
-            logger.info("Found 'AGODA REVIEWS' tab selector. Clicking it securely.")
-            tabs.first.evaluate("element => element.scrollIntoView({block: 'center'})")
-            time.sleep(1)
-            tabs.first.evaluate("el => { let btn = el.closest('button') || el; btn.click(); }")
-            time.sleep(2)
-        else:
-            logger.info("No explicit 'AGODA REVIEWS' tab found, might be the default or a different layout.")
-    except Exception as e:
-        logger.warning(f"Could not select Agoda reviews tab: {e}")
 
 def parse_pages(pages_str: str):
     if pages_str == "*":
@@ -84,6 +43,21 @@ def parse_pages(pages_str: str):
     except ValueError:
         return 1, 1
 
+def force_hydrate_review_section(page):
+    """Aggressively scroll to force the inline #reviewSection to load."""
+    logger.info("Scrolling down to force #reviewSection hydration...")
+    try:
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight/2)")
+        time.sleep(2)
+        root = page.locator('#reviewSection')
+        if root.count() > 0:
+            logger.info("Aligning #reviewSection to view.")
+            root.first.evaluate("element => element.scrollIntoView({behavior: 'smooth', block: 'start'})")
+            time.sleep(3)
+    except Exception as e:
+        logger.warning(f"Could not strictly scroll to #reviewSection: {e}")
+
+
 def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str = None, source_id: str = None):
     config.headless = headless
         
@@ -92,7 +66,6 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
     if job_id:
         job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
 
-    # Initialize database tables
     init_db()
 
     browser_controller = PlaywrightBrowser()
@@ -114,18 +87,45 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
         page.wait_for_load_state("networkidle", timeout=config.timeout_ms)
         
         dismiss_popups(page)
-        open_reviews(page)
-        select_agoda_reviews(page)
+        
+        # Hydrate explicit inline section natively (zero modals)
+        force_hydrate_review_section(page)
         
         extractor = AgodaExtractor(page)
         
-        # --- Detect total review count from the DOM ---
+        # --- Detect total review and page counts ---
         total_reviews_count = 0
         total_pages_count = 0
+        
+        # 1. Detect total actual pages natively via pagination lists (User Discovery)
+        try:
+            pages_val = page.evaluate("""
+                (() => {
+                    const paginator = document.querySelector('ul[aria-label="Reviews pagination"]');
+                    if (paginator) {
+                        const items = paginator.querySelectorAll('li');
+                        if (items.length >= 3) {
+                            // First is Previous, Last is Next, so -2 is the highest visible number
+                            const lastNum = items[items.length - 2].innerText.trim();
+                            return parseInt(lastNum);
+                        }
+                    }
+                    return null;
+                })()
+            """)
+            if pages_val and not math.isnan(pages_val):
+                total_pages_count = int(pages_val)
+                logger.info(f"Dynamically detected {total_pages_count} maximum pages from internal ul tag.")
+        except Exception as e:
+            logger.warning(f"Failed to infer page count from exact UI markers: {e}")
+
+        # 2. Detect global count for dashboard metrics
         try:
             count_text = page.evaluate("""
                 (() => {
-                    const els = document.querySelectorAll('[data-testid], h3, .Review-comment-count, .ficon');
+                    const block = document.getElementById('reviewSection');
+                    if (!block) return '';
+                    const els = block.querySelectorAll('[data-selenium="reviews-language-filter"], h3, .Review-comment-count, .ficon');
                     for (const el of els) {
                         const t = el.innerText || '';
                         const m = t.match(/(\\d[\\d,]*)\\s*(?:verified|reviews?)/i);
@@ -136,106 +136,157 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
             """)
             if count_text:
                 total_reviews_count = int(count_text.replace(',', ''))
-                total_pages_count = math.ceil(total_reviews_count / 20)  # Agoda shows ~20 reviews per page
-                logger.info(f"Detected {total_reviews_count} total reviews across ~{total_pages_count} pages.")
+                if total_pages_count == 0:
+                    total_pages_count = math.ceil(total_reviews_count / 20)
+                logger.info(f"Detected {total_reviews_count} reviews total.")
         except Exception as e:
-            logger.warning(f"Could not detect total review count: {e}")
+            logger.warning(f"Could not detect total review count matching regex: {e}")
         
         start_page, end_page = parse_pages(str(pages))
         current_page = 1
-        seen_ids = set()
         
-        # Skip to the starting page if required
-        while current_page < start_page:
-            logger.info(f"Skipping page {current_page} to reach start page {start_page}...")
-            time.sleep(2)
-            next_btn = page.locator(agoda_selectors.next_page_button_selector).first
-            if next_btn.count() > 0 and next_btn.is_enabled():
-                logger.info("Evaluating native Javascript click on Next Page to skip.")
-                next_btn.evaluate("element => { element.scrollIntoView({block: 'center'}); setTimeout(() => element.click(), 500); }")
-                time.sleep(3)
-                current_page += 1
-            else:
-                logger.warning(f"Could not reach start page {start_page}. Pagination ended at {current_page}.")
-                break
-                
-        # Adjust total_pages_count based on requested page range
+        # Populate seen_ids with historically stored DB reviews to instantly intercept duplicates 
+        seen_ids = set()
+        if source_id:
+            try:
+                from core.database import get_session
+                from core.models import Review
+                db_sess = get_session()
+                rows = db_sess.query(Review.platform_review_id).filter(Review.source_id == str(source_id)).all()
+                for row_data in rows:
+                    if row_data[0]:
+                        seen_ids.add(row_data[0])
+                db_sess.close()
+                logger.info(f"Pre-loaded {len(seen_ids)} existing review IDs into memory cache for deduplication.")
+            except Exception as e:
+                logger.warning(f"Could not load historical review IDs: {e}")
+        
         effective_total_pages = total_pages_count
-        if end_page != float('inf') and total_pages_count > 0:
+        
+        # Cap end_page using detected total pages so we never loop forever
+        if total_pages_count > 0 and end_page == float('inf'):
+            end_page = total_pages_count
+            logger.info(f"Capped end_page to {end_page} based on detected pagination.")
+        elif end_page != float('inf') and total_pages_count > 0:
             effective_total_pages = min(int(end_page) - start_page + 1, total_pages_count)
         elif end_page != float('inf'):
             effective_total_pages = int(end_page) - start_page + 1
 
-        # Scrape target pages
+        consecutive_skips = 0  # Track pages with all-duplicate reviews to detect stuck pagination
+        last_review_ids = set()  # Track the exact review IDs from the previous page
+
+        # Execution loop matching native Page tabs
         while current_page <= end_page:
+            
+            # --- Skip to correct pagination tab if jumping ahead ---
+            if current_page < start_page:
+                logger.info(f"Skipping page {current_page} to reach start page {start_page}...")
+                current_page += 1
+                
+                # Hit Next arrow to traverse forward
+                next_btn = page.locator('#reviewSection [data-element-name="review-paginator-next"], #reviewSection [aria-label="Next reviews page"]').first
+                if next_btn.count() > 0:
+                    next_btn.evaluate("element => { element.scrollIntoView({block: 'center'}); setTimeout(() => element.click(), 500); }")
+                    time.sleep(3)
+                else:
+                    logger.warning(f"Could not reach pagination tab {current_page}.")
+                    break
+                continue
+                
+            
+            # --- Active Traversal ---
             logger.info(f"--- Scraping Page {current_page} ---")
             if job_id:
                 pages_done = current_page - start_page
                 job_manager.update_job(
                     job_id,
-                    progress=f"Extracting reviews on page {current_page}...",
+                    progress=f"Extracting inline reviews from page tab {current_page}...",
                     reviews=len(cumulative_reviews),
                     current_page=pages_done,
                     total_pages=effective_total_pages,
                     total_reviews=total_reviews_count
                 )
             
-            # Wait for reviews to load
             time.sleep(2)
-            
-            # Extract
             page_reviews = extractor.extract_reviews()
-            if not page_reviews:
-                logger.info("No more reviews found on this page. Stopping.")
-                break
-                
-            # Loop Prevention Mechanism
-            new_reviews = [r for r in page_reviews if r.id not in seen_ids]
-            if not new_reviews:
-                logger.warning(f"All reviews on page {current_page} were already seen! Retrying extraction in 4 seconds to wait for React un-mount...")
-                time.sleep(4)
-                page_reviews = extractor.extract_reviews()
-                new_reviews = [r for r in page_reviews if r.id not in seen_ids]
-                if not new_reviews:
-                    logger.warning(f"Still duplicating after wait. The scraper is blocked at page {current_page}. Stopping pagination safely.")
-                    break
             
-            for r in new_reviews:
-                seen_ids.add(r.id)
-                
-            all_reviews.extend(new_reviews)
-            cumulative_reviews.extend(new_reviews)
-            logger.info(f"Extracted {len(new_reviews)} unique reviews from page {current_page}.")
+            if not page_reviews:
+                logger.info("No reviews extracted on this sequence check.")
+                time.sleep(3)
+                page_reviews = extractor.extract_reviews()
+                if not page_reviews:
+                    logger.warning("Empty DOM. Breaking sequence.")
+                    break
+                    
+            new_reviews = [r for r in page_reviews if r.id not in seen_ids]
+            current_page_ids = {r.id for r in page_reviews}
+            
+            if not new_reviews:
+                # Check if pagination is stuck (same reviews as previous page)
+                if current_page_ids == last_review_ids:
+                    consecutive_skips += 1
+                else:
+                    consecutive_skips = 0
+                    
+                if consecutive_skips >= 2:
+                    logger.info(f"Pagination stuck: same reviews appearing for {consecutive_skips + 1} consecutive pages. Reached true end of reviews.")
+                    break
+                    
+                logger.info(f"All {len(page_reviews)} reviews on page {current_page} are already in the database. Skipping to next page...")
+                last_review_ids = current_page_ids
+            else:
+                for r in new_reviews:
+                    seen_ids.add(r.id)
+                    
+                all_reviews.extend(new_reviews)
+                cumulative_reviews.extend(new_reviews)
+                logger.info(f"Extracted {len(new_reviews)} unique reviews from page tab {current_page}.")
 
-            # Batch storage: every 20 reviews
-            if len(all_reviews) >= 20:
-                # Calculate how many full batches of 20 we have
-                batch_count = len(all_reviews) // 20
-                to_save = all_reviews[:batch_count * 20]
-                all_reviews = all_reviews[batch_count * 20:]
-                
-                logger.info(f"Batch threshold reached. Saving {len(to_save)} reviews to database.")
-                save_reviews_to_db(to_save, source_id)
+                if len(all_reviews) >= 20:
+                    batch_count = len(all_reviews) // 20
+                    to_save = all_reviews[:batch_count * 20]
+                    all_reviews = all_reviews[batch_count * 20:]
+                    logger.info(f"Batch threshold reached. Saving {len(to_save)} reviews to database.")
+                    save_reviews_to_db(to_save, source_id)
             
             if current_page < end_page:
-                # Try to click next
-                next_btn = page.locator(agoda_selectors.next_page_button_selector).first
-                if next_btn.count() > 0 and next_btn.is_enabled():
-                    logger.info("Force clicking Next Page button for extraction iteration.")
-                    logger.info("Evaluating native Javascript click on Next Page button.")
+                target_page = current_page + 1
+                logger.info(f"Routing to page {target_page} using Next arrow...")
+                
+                next_btn = page.locator('#reviewSection [data-element-name="review-paginator-next"], #reviewSection [aria-label="Next reviews page"]').first
+                
+                if next_btn.count() > 0:
+                    logger.info(f"Force clicking Page {target_page} button for extraction iteration.")
                     next_btn.evaluate("element => { element.scrollIntoView({block: 'center'}); setTimeout(() => element.click(), 500); }")
                     
-                    logger.info("Waiting for Javascript API to fetch and render reviews...")
-                    time.sleep(5) # Increase sleep to allow React state flush
-                    current_page += 1
+                    logger.info("Waiting for Javascript API to fetch and render reviews inline natively...")
+                    time.sleep(5)
+                    
+                    # Verify actual page by reading active pagination tab
+                    try:
+                        actual_page = page.evaluate("""
+                            (() => {
+                                const active = document.querySelector('#reviewSection [data-element-name="review-paginator-step"][aria-current="true"], #reviewSection [data-element-name="review-paginator-step"].active');
+                                if (active) return parseInt(active.getAttribute('data-element-page-number'));
+                                return null;
+                            })()
+                        """)
+                        if actual_page and actual_page == current_page:
+                            logger.info(f"Page verification: pagination did NOT advance (still on page {actual_page}). Reached true end of reviews.")
+                            break
+                        elif actual_page:
+                            logger.info(f"Page verification: confirmed on page {actual_page}.")
+                            current_page = actual_page
+                        else:
+                            current_page += 1
+                    except Exception:
+                        current_page += 1
                 else:
-                    logger.info("Next page button not found or disabled. Reached end of reviews.")
+                    logger.info(f"Page tab {target_page} not found natively. We might have exhausted review pages.")
                     break
             else:
-                # Reached end page limit
                 break
             
-        # Final Storage logic
         if all_reviews:
             logger.info(f"Saving final batch of {len(all_reviews)} reviews to database.")
             save_reviews_to_db(all_reviews, source_id)
@@ -244,7 +295,6 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
             logger.info(f"Total reviews extracted: {len(cumulative_reviews)}. Saving full backup to JSON.")
             save_to_json(cumulative_reviews, str(source_id))
             
-            # Identify new reviews vs existing ones
             from core.database import get_session
             from core.utils import identify_new_reviews
             from core.deduplication.agoda_deduplicator import clean_agoda_duplicates
@@ -281,7 +331,6 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
                 details={"reviews_saved": len(cumulative_reviews), "job_id": job_id}
             )
 
-            # Notify backend of completion
             notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
 
             return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "source_id": source_id}
@@ -290,7 +339,6 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
             if job_id:
                 job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="Scrape concluded without detecting new reviews.", reviews=0)
             
-            # Notify backend even if no new reviews were found
             notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=0)
             
             return {"status": "warning", "message": "No new reviews found.", "count": 0, "data": []}
@@ -308,7 +356,6 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
             details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
-        # Notify backend of failure
         notify_backend_sync_status(str(source_id), "FAILED")
         
         return {"status": "error", "message": str(e), "count": 0, "data": []}

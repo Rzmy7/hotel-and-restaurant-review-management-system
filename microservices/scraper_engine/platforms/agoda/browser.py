@@ -18,6 +18,7 @@ class PlaywrightBrowser:
         self.context = self.browser.new_context(viewport=config.viewport)
         self.page = self.context.new_page()
         self.page.set_default_timeout(config.timeout_ms)
+        self.page.add_init_script("window.open = function(){};")
         return self.page
 
     def stop(self):
