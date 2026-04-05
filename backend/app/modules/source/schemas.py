@@ -15,6 +15,7 @@ class SourceStatus(str, enum.Enum):
     ERROR = "error"
     QUEUED = "queued"
     RUNNING = "running"
+    VERIFY_DUPLICATION = "verify duplication"
 
 class PlatformStatus(str, enum.Enum):
     ACTIVE = "active"
@@ -135,6 +136,7 @@ class SyncLogBulk(BaseModel):
 class SyncStatus(str, enum.Enum):
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
+    VERIFY_DUPLICATION = "VERIFY_DUPLICATION"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 

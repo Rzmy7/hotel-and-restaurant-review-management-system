@@ -376,6 +376,9 @@ def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusReq
         
     elif request.status == SyncStatus.QUEUED:
         source.source_status = SourceStatus.QUEUED.value
+        
+    elif request.status == SyncStatus.VERIFY_DUPLICATION:
+        source.source_status = SourceStatus.VERIFY_DUPLICATION.value
 
     db.commit()
     db.refresh(source)

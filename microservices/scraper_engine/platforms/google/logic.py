@@ -448,10 +448,16 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
         # Identify new reviews vs existing ones
         from core.database import get_session
         from core.utils import identify_new_reviews
+        from core.deduplication.google_deduplicator import clean_google_duplicates
+        
+        notify_backend_sync_status(str(source_id), "VERIFY_DUPLICATION")
         
         session = get_session()
         new_count = 0
         try:
+            removed_count = clean_google_duplicates(session, str(source_id))
+            logger.info(f"Deduplication phase completed. Removed {removed_count} duplicates.")
+            
             new_count, new_ids = identify_new_reviews(session, source_id, all_reviews)
             logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
         except Exception as e:

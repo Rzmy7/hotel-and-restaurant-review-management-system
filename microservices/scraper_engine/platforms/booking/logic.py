@@ -243,10 +243,17 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             # Identify new reviews vs existing ones
             from core.database import get_session
             from core.utils import identify_new_reviews
+            from core.deduplication.booking_deduplicator import clean_booking_duplicates
+            
+            # Notify backend that we are verifying duplication
+            notify_backend_sync_status(str(source_id), "VERIFY_DUPLICATION")
             
             session = get_session()
             new_count = 0
             try:
+                removed_count = clean_booking_duplicates(session, str(source_id))
+                logger.info(f"Deduplication phase completed. Removed {removed_count} duplicates.")
+                
                 new_count, _ = identify_new_reviews(session, source_id, cumulative_reviews)
                 logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
             except Exception as e:
