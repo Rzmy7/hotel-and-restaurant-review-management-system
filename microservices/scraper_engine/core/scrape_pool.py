@@ -88,12 +88,17 @@ class ScrapePool:
 
         def _wrapped():
             import asyncio
+            import sys
+            
+            if sys.platform == 'win32':
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     asyncio.set_event_loop(asyncio.new_event_loop())
             except RuntimeError:
-                pass
+                asyncio.set_event_loop(asyncio.new_event_loop())
 
             try:
                 job_manager.update_job(_pool_job_id, status=JobStatus.RUNNING, progress="Scraper starting...")

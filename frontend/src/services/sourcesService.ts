@@ -22,7 +22,13 @@ class SourcesService {
                 return (lower.charAt(0).toUpperCase() + lower.slice(1)) as SourceStatus;
             })(),
             lastSyncedAt: s.last_synced_at,
-            syncSchedule: (s.fetching_frequency.charAt(0).toUpperCase() + s.fetching_frequency.slice(1)) as SyncSchedule,
+            syncSchedule: (() => {
+                const map: Record<number, string> = { 1: 'Daily', 2: 'Three_days', 3: 'Weekly' };
+                const freq = typeof s.fetching_frequency === 'number' 
+                    ? (map[s.fetching_frequency] || 'Daily') 
+                    : String(s.fetching_frequency);
+                return (freq.charAt(0).toUpperCase() + freq.slice(1)) as SyncSchedule;
+            })(),
             propertyUrl:  s.source_url,
             successRate:  s.success_rate,
             num_of_syncs:                s.num_of_syncs,
@@ -57,12 +63,15 @@ class SourcesService {
     }
 
     async addSource(organizationId: string, sourceData: any): Promise<Source> {
+        const scheduleMapReverse: Record<string, number> = { 'daily': 1, 'three_days': 2, 'weekly': 3 };
+        const scheduleStr = (sourceData.syncSchedule || 'daily').toLowerCase();
+        
         const newSource = await apiClient.post<any>('/api/source/', {
             organization_id:   organizationId,
             platform_id:       sourceData.platformId,
             source_url:        sourceData.propertyUrl,
             source_status:     sourceData.status.toLowerCase(),
-            fetching_frequency: sourceData.syncSchedule.toLowerCase(),
+            fetching_frequency: scheduleMapReverse[scheduleStr] || 1,
         });
         return this.mapBackendSourceToFrontend(newSource);
     }
@@ -71,7 +80,11 @@ class SourcesService {
         const payload: any = {};
         if (updates.propertyUrl)  payload.source_url        = updates.propertyUrl;
         if (updates.status)       payload.source_status      = updates.status.toLowerCase();
-        if (updates.syncSchedule) payload.fetching_frequency = updates.syncSchedule.toLowerCase();
+        if (updates.syncSchedule) {
+            const scheduleMapReverse: Record<string, number> = { 'daily': 1, 'three_days': 2, 'weekly': 3 };
+            const scheduleStr = updates.syncSchedule.toLowerCase();
+            payload.fetching_frequency = scheduleMapReverse[scheduleStr] || 1;
+        }
         const data = await apiClient.patch<any>(`/api/source/${id}`, payload);
         return this.mapBackendSourceToFrontend(data);
     }

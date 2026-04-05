@@ -291,7 +291,16 @@ def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
             fetching_frequency=s.fetching_frequency,
             last_synced_at=s.last_synced_at,
             next_synced_at=s.next_synced_at,
-            success_rate=s.success_rate,
+            num_of_syncs=s.num_of_syncs,
+            success_sync_count=s.success_sync_count,
+            platform_num_of_syncs=s.platform.num_of_syncs,
+            platform_success_sync_count=s.platform.success_sync_count,
+            success_rate=calculate_success_rate(
+                s.success_sync_count,
+                s.num_of_syncs,
+                s.platform.success_sync_count,
+                s.platform.num_of_syncs
+            ),
             created_at=s.created_at
         ) for s in sources
     ]
