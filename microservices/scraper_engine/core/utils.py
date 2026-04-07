@@ -1,4 +1,5 @@
 import httpx
+from urllib.parse import urlparse, urlunparse
 from core.config import config, setup_logger
 
 from core.models import Review
@@ -63,3 +64,26 @@ def notify_backend_sync_status(source_id: str, status: str, new_review_count: in
         logger.error(f"HTTP error notifying backend: {e}")
     except Exception as e:
         logger.error(f"Unexpected error notifying backend: {e}")
+
+def normalize_url(url: str) -> str:
+    """
+    Normalizes a URL by stripping query parameters and fragments.
+    Example: https://example.com/page.html?aid=1&sid=2#sec -> https://example.com/page.html
+    """
+    if not url:
+        return ""
+    
+    parsed = urlparse(url)
+    # Reconstruct without query and fragment
+    normalized = urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        '',  # params (rarely used in modern URLs, separate from query)
+        '',  # query
+        ''   # fragment
+    ))
+    
+    # Ensure trailing slash consistency (optional, but good for deduplication)
+    # For now, we'll keep it exactly as path provides.
+    return normalized

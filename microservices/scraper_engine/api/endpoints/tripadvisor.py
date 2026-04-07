@@ -12,6 +12,7 @@ from core.models import Source
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
 from core.config import setup_logger
+from core.utils import normalize_url
 from platforms.tripadvisor.logic import scrape_tripadvisor
 
 logger = setup_logger("tripadvisor_api")
@@ -34,6 +35,10 @@ def trigger_tripadvisor_scrape(body: TripAdvisorScrapeRequest):
     thread pool. Returns the job_id for real-time monitoring.
     """
     logger.info(f"Scrape request: source_id={body.source_id}, url={body.source_url}")
+    
+    # Normalize URL to base URL
+    normalized_url = normalize_url(body.source_url)
+    logger.info(f"Normalized URL: {normalized_url}")
 
     # Upsert the source record
     session = get_session()
@@ -42,12 +47,12 @@ def trigger_tripadvisor_scrape(body: TripAdvisorScrapeRequest):
         if not source:
             source = Source(
                 source_id=body.source_id,
-                source_url=body.source_url,
+                source_url=normalized_url,
                 platform_name="tripadvisor"
             )
             session.add(source)
         else:
-            source.source_url = body.source_url
+            source.source_url = normalized_url
         session.commit()
     except Exception as e:
         session.rollback()
@@ -58,21 +63,21 @@ def trigger_tripadvisor_scrape(body: TripAdvisorScrapeRequest):
 
     # Submit the scrape job
     try:
-        active_job = job_manager.get_active_job_by_url(body.source_url)
+        active_job = job_manager.get_active_job_by_url(normalized_url)
         if active_job:
-            logger.info(f"Existing job {active_job['id']} found for {body.source_url}. Attaching source {body.source_id}.")
+            logger.info(f"Existing job {active_job['id']} found for {normalized_url}. Attaching source {body.source_id}.")
             return {
                 "status": "attached",
                 "job_id": active_job["id"],
                 "source_id": body.source_id,
                 "pool": scrape_pool.get_pool_status(),
-                "message": "Attached to existing active scrape job for identical URL."
+                "message": "Attached to existing active scrape job for identical URL (normalized)."
             }
 
-        job_id = job_manager.create_job(platform="tripadvisor", url=body.source_url)
+        job_id = job_manager.create_job(platform="tripadvisor", url=normalized_url)
         scrape_pool.submit(
             job_id, scrape_tripadvisor,
-            url=body.source_url, headless=body.headless, pages=body.pages, 
+            url=normalized_url, headless=body.headless, pages=body.pages, 
             job_id=job_id, source_id=body.source_id, platform="tripadvisor"
         )
         pool = scrape_pool.get_pool_status()
@@ -81,7 +86,7 @@ def trigger_tripadvisor_scrape(body: TripAdvisorScrapeRequest):
             "job_id": job_id,
             "source_id": body.source_id,
             "pool": pool,
-            "message": "TripAdvisor scrape job submitted to pool."
+            "message": "TripAdvisor scrape job submitted to pool (normalized)."
         }
     except Exception as e:
         logger.error(f"Job submission failed: {e}", exc_info=True)

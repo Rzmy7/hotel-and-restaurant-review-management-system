@@ -206,7 +206,8 @@ To guarantee system stability, a two-way **Bidirectional Safe Reset Policy** is 
 To optimize resources and avoid being flagged by platforms for parallel scraping of the same content, the engine implements a **Deduplicated Shared Scraping** model.
 
 ### Working Principle
-1. **Request Reception**: When a scrape request arrives, the `JobManager` checks if any **active** job (`pending`, `queued`, or `running`) is already targeting that exact `source_url`.
+0. **URL Normalization**: As the first step, every incoming URL is normalized by stripping all query parameters (`?`) and fragments (`#`). This extracts the **Base URL**, ensuring that tracking IDs, session parameters, and referral codes do not lead to duplicate scraping jobs.
+1. **Request Reception**: When a scrape request arrives, the `JobManager` checks if any **active** job (`pending`, `queued`, or `running`) is already targeting that exact normalized **Base URL**.
 2. **Attaching**: If a match is found, the engine **does not** spawn a new Playwright instance. It returns `status: "attached"` and the existing `job_id`.
 3. **Data Mirroring (The Replication Loop)**: When the scraper completes its task, it queries the `sources` table for *all* `source_id`s that map to the scraped URL.
 4. **Broadcast**: It iterates through the list, saving the batch of reviews for each discrete `source_id` and firing a `COMPLETED` webhook for each.
