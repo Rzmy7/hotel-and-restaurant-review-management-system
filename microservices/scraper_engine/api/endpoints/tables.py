@@ -231,6 +231,75 @@ def list_tables():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.get("/row-counts")
+def get_row_counts(table_names: str | None = None):
+    """
+    Returns row counts for one or more tables in the ScraperEngine database.
+
+    Query parameter:
+      table_names — optional, comma-separated list of table names.
+                    If omitted, counts are returned for ALL user-created tables.
+
+    Response: { "counts": { "<table_name>": <int>, ... } }
+    """
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            if table_names:
+                # Filter to explicitly requested names only (validate each one)
+                requested = [t.strip() for t in table_names.split(",") if t.strip()]
+                invalid = [t for t in requested if not _is_valid_identifier(t)]
+                if invalid:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid table name(s): {', '.join(invalid)}",
+                    )
+                names_to_count = requested
+            else:
+                # Fall back to all non-system tables
+                system_tables = {
+                    "sources", "reviews", "review_media", "audit_log",
+                    "agoda_reviews", "booking_reviews", "google_reviews", "tripadvisor_reviews",
+                }
+                rows = conn.execute(
+                    text(
+                        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES "
+                        "WHERE TABLE_SCHEMA = 'dbo' AND TABLE_TYPE = 'BASE TABLE' "
+                        "ORDER BY TABLE_NAME"
+                    )
+                ).fetchall()
+                names_to_count = [
+                    str(row[0]) for row in rows
+                    if str(row[0]).lower() not in system_tables
+                ]
+
+            counts: dict[str, int] = {}
+            for name in names_to_count:
+                # Table exists check before counting
+                exists = conn.execute(
+                    text(
+                        "SELECT 1 FROM INFORMATION_SCHEMA.TABLES "
+                        "WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = :tbl"
+                    ),
+                    {"tbl": name},
+                ).fetchone()
+                if exists:
+                    count = conn.execute(
+                        text(f"SELECT COUNT(*) FROM dbo.[{name}]")
+                    ).scalar()
+                    counts[name] = int(count or 0)
+                else:
+                    counts[name] = 0
+
+            return {"counts": counts}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Failed to get row counts: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.delete("/{table_name}")
 def drop_table(table_name: str):
     """Drops a user-created review table from the database."""

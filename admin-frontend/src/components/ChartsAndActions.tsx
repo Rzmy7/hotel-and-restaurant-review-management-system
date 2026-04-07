@@ -17,7 +17,7 @@ export const ChartsAndActions: React.FC<ChartsAndActionsProps> = ({ usageData, r
                 <UsageChart data={usageData} />
                 <ReviewsChart data={reviewData} />
             </div>
-            
+
             {/* Quick Actions */}
             <QuickActions />
         </div>
