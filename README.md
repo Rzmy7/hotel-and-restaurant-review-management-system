@@ -240,6 +240,22 @@ python api/main.py
 
 **API Docs**: http://localhost:8001/docs
 
+### 7. 🚀 Unified System Launcher (Orchestrator)
+
+We have a dedicated python tool to launch all 5 services concurrently saving you the hassle of juggling terminals. It automatically fetches missing dependencies, orchestrates start orders, and separates logs using colored prefixes!
+
+You can run it natively using Python:
+```bash
+python launcher.py
+```
+
+Or you can use the precompiled standalone executable, located in the dist directory:
+```bash
+.\dist\System-Launcher.exe
+```
+
+> **Note**: To prevent port collisions when run simultaneously, the launcher automatically starts the **Embedding Service** on **Port 8002** and the **Admin UI** on **Port 5174**.
+
 ---
 
 ## 📄 Documentation
