@@ -63,10 +63,22 @@ def stream_output(process, prefix, color):
     for line in iter(process.stdout.readline, ''):
         print_prefixed(prefix, color, line)
     
+def get_base_dir():
+    """Get the correct root directory regardless of whether this is a script or a PyInstaller executable."""
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller executable
+        exe_dir = os.path.dirname(sys.executable)
+        # If the exe is still in the default 'dist' folder, return the parent directory
+        if os.path.basename(exe_dir).lower() == 'dist':
+            return os.path.dirname(exe_dir)
+        return exe_dir
+    # Running as a normal python script
+    return os.path.dirname(os.path.abspath(__file__))
+
 def check_and_install_dependencies():
     """Verify missing dependencies and install them automatically."""
     print(f"\033[1m=== Checking Dependencies ==={RESET_COLOR}")
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = get_base_dir()
     
     for comp in COMPONENTS:
         target_path = os.path.join(base_dir, comp["dir"], comp["check_path"])
@@ -100,7 +112,7 @@ def check_and_install_dependencies():
 def start_services():
     """Start all services in parallel threads."""
     print(f"\n\033[1m=== Starting Services ==={RESET_COLOR}")
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = get_base_dir()
     
     for comp in COMPONENTS:
         cwd = os.path.join(base_dir, comp["dir"])
@@ -137,6 +149,10 @@ def main():
             subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print("All processes terminated. Goodbye!")
         sys.exit(0)
+    except Exception as e:
+        print(f"\n\033[91m[FATAL LAUNCHER ERROR]\033[0m {e}")
+        input("\nPress Enter to exit...")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
