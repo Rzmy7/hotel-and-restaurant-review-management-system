@@ -48,6 +48,15 @@ async def lifespan(app: FastAPI):
     seed_subscription_data()
     setup_scheduler()
     start_scheduler()
+    
+    # Run initial reconciliation in a background thread to avoid blocking startup
+    import threading
+    try:
+        from app.modules.scheduler.tasks.reconciliation_tasks import reconcile_scraper_jobs
+        threading.Thread(target=reconcile_scraper_jobs, daemon=True).start()
+    except Exception as e:
+        print(f"Failed to start reconciliation thread: {e}")
+
     yield
     # Shutdown actions
     stop_scheduler()

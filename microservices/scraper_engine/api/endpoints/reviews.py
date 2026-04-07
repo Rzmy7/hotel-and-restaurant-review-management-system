@@ -165,3 +165,26 @@ def get_reviews_by_source(source_id: str, limit: int = 100, skip: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+@router.delete("/{review_id}", status_code=204)
+def delete_review(review_id: int):
+    """
+    Deletes a specific review by its review_id.
+    Cascades automatically to delete platform-specific detail rows and media.
+    """
+    session = get_session()
+    try:
+        review = session.query(Review).filter(Review.review_id == review_id).first()
+        if not review:
+            raise HTTPException(status_code=404, detail="Review not found")
+            
+        session.delete(review)
+        session.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to delete review {review_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()

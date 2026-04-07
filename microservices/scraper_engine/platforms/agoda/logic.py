@@ -10,6 +10,7 @@ from core.job_manager import job_manager, JobStatus
 from platforms.agoda.config import agoda_selectors
 from core.audit import audit_logger
 from core.utils import notify_backend_sync_status
+from core.models import Source
 
 logger = setup_logger("agoda_logic")
 
@@ -333,6 +334,34 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
 
             notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
 
+            session = get_session()
+            try:
+                companions = [s[0] for s in session.query(Source.source_id).filter(Source.source_url == url, Source.source_id != source_id).all()]
+            except Exception as e:
+                logger.error(f"Failed to fetch companions: {e}")
+                companions = []
+            finally:
+                session.close()
+
+            for cid in companions:
+                logger.info(f"Replicating {len(cumulative_reviews)} reviews to companion source {cid}")
+                try:
+                    save_reviews_to_db(cumulative_reviews, str(cid))
+                    save_to_json(cumulative_reviews, str(cid))
+                    notify_backend_sync_status(str(cid), "VERIFY_DUPLICATION")
+                    
+                    sub_session = get_session()
+                    try:
+                        clean_agoda_duplicates(sub_session, str(cid))
+                        cid_new_count, _ = identify_new_reviews(sub_session, str(cid), cumulative_reviews)
+                    finally:
+                        sub_session.close()
+                        
+                    notify_backend_sync_status(str(cid), "COMPLETED", new_review_count=cid_new_count)
+                except Exception as e:
+                    logger.error(f"Replication failed for companion {cid}: {e}")
+                    notify_backend_sync_status(str(cid), "FAILED")
+
             return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "source_id": source_id}
         else:
             logger.warning("No new reviews were extracted.")
@@ -357,6 +386,16 @@ def scrape_agoda(url: str, headless: bool = True, pages: str = "1", job_id: str 
             error=e
         )
         notify_backend_sync_status(str(source_id), "FAILED")
+        
+        session = get_session()
+        try:
+            companions = [s[0] for s in session.query(Source.source_id).filter(Source.source_url == url, Source.source_id != source_id).all()]
+            for cid in companions:
+                notify_backend_sync_status(str(cid), "FAILED")
+        except:
+            pass
+        finally:
+            session.close()
         
         return {"status": "error", "message": str(e), "count": 0, "data": []}
     finally:

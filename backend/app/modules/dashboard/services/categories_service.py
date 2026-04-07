@@ -51,8 +51,8 @@ def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
         SELECT categories, sentiment
         FROM   dbo.processed_review
         WHERE  organization_id = ?
-          AND  review_date >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
-          AND  review_date <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+          AND  reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+          AND  reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
         """,
         org_id, days_from, days_to,
     )

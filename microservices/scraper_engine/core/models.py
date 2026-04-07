@@ -28,7 +28,7 @@ class Source(Base):
     __tablename__ = 'sources'
 
     source_id   = Column(String(36), primary_key=True)
-    source_url  = Column(Unicode(1000), nullable=False, unique=True)
+    source_url  = Column(Unicode(1000), nullable=False, unique=False)
     platform_name = Column(Unicode(100), nullable=False)  # agoda | booking | google | tripadvisor
 
     created_at = Column(DateTime, server_default=func.now())

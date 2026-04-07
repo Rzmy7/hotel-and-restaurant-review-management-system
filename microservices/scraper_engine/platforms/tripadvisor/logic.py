@@ -16,6 +16,7 @@ from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from core.audit import audit_logger
 from core.utils import notify_backend_sync_status
+from core.models import Source
 
 logger = setup_logger("tripadvisor_logic")
 
@@ -299,8 +300,37 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
                 details={"reviews_saved": len(all_reviews), "job_id": job_id}
             )
             
-            # Notify backend of completion
+            # Notify backend of completion for the primary source
             notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
+
+            # Replicate to companion sources
+            session = get_session()
+            try:
+                companions = [s[0] for s in session.query(Source.source_id).filter(Source.source_url == url, Source.source_id != source_id).all()]
+            except Exception as e:
+                logger.error(f"Failed to fetch companions: {e}")
+                companions = []
+            finally:
+                session.close()
+
+            for cid in companions:
+                logger.info(f"Replicating {len(all_reviews)} reviews to companion source {cid}")
+                try:
+                    save_reviews_to_db(all_reviews, str(cid))
+                    save_to_json(all_reviews, str(cid))
+                    notify_backend_sync_status(str(cid), "VERIFY_DUPLICATION")
+                    
+                    sub_session = get_session()
+                    try:
+                        clean_tripadvisor_duplicates(sub_session, str(cid))
+                        cid_new_count, _ = identify_new_reviews(sub_session, str(cid), all_reviews)
+                    finally:
+                        sub_session.close()
+                        
+                    notify_backend_sync_status(str(cid), "COMPLETED", new_review_count=cid_new_count)
+                except Exception as e:
+                    logger.error(f"Replication failed for companion {cid}: {e}")
+                    notify_backend_sync_status(str(cid), "FAILED")
 
             return {"status": "success", "count": len(all_reviews), "source_id": source_id}
         else:
@@ -327,6 +357,17 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         )
         # Notify backend of failure
         notify_backend_sync_status(str(source_id), "FAILED")
+        
+        # Notify companions of failure as well
+        session = get_session()
+        try:
+            companions = [s[0] for s in session.query(Source.source_id).filter(Source.source_url == url, Source.source_id != source_id).all()]
+            for cid in companions:
+                notify_backend_sync_status(str(cid), "FAILED")
+        except:
+            pass
+        finally:
+            session.close()
         
         return {"status": "error", "message": str(e), "count": 0}
     finally:
