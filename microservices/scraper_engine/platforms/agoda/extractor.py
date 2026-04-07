@@ -18,6 +18,7 @@ class Review(BaseModel):
     stayed_dates: Optional[str] = None
     traveler_type: Optional[str] = None
     room_type: Optional[str] = None
+    num_of_nights: Optional[int] = None
     images: List[str] = []
     reply: Optional[str] = None
 
@@ -100,6 +101,13 @@ class AgodaExtractor:
             stay_match = re.search(r'data-info-type="stay-detail"[^>]*><i[^>]*></i><span>([^<]+)</span>', html)
             stayed_dates = stay_match.group(1).strip() if stay_match else None
             
+            # 7b. Number of nights (parsed from stay-detail text like "Stayed 2 nights")
+            num_of_nights = None
+            if stayed_dates:
+                nights_match = re.search(r'(\d+)\s*night', stayed_dates, re.IGNORECASE)
+                if nights_match:
+                    num_of_nights = int(nights_match.group(1))
+            
             # 8. Images attached
             images = []
             img_matches = re.finditer(r'<img[^>]*src="([^"]+)"[^>]*data-element-name="review-comment-ugc-thumbnail"', html)
@@ -121,6 +129,7 @@ class AgodaExtractor:
                 text=text,
                 date=date_text,
                 stayed_dates=stayed_dates,
+                num_of_nights=num_of_nights,
                 traveler_type=traveler_type,
                 room_type=room_type,
                 images=images,
