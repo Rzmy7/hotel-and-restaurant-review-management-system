@@ -35,7 +35,7 @@ async def startup_event():
     """Preload the embedding model to avoid first-request delay"""
     print("Preloading embedding model...")
     from app.embedding import model
-    print(f"✓ MiniLM model preloaded successfully")
+    print(f"[OK] MiniLM model preloaded successfully")
 
 def wait_if_paused():
     """Wait while service is paused, checking every 0.5 seconds"""

@@ -3,6 +3,7 @@ import subprocess
 import threading
 import sys
 import time
+import webbrowser
 
 # Define the components and their configurations
 # Note: Changing embedding-service to port 8002 to avoid collision with scraper_engine (8001)
@@ -19,7 +20,7 @@ COMPONENTS = [
         "name": "FRONTEND",
         "dir": "frontend",
         "install_cmd": "npm install",
-        "check_path": "node_modules",
+        "check_path": "node_modules/vite",
         "run_cmd": "npm run dev -- --port 5173",
         "color": "\033[92m" # Green
     },
@@ -27,7 +28,7 @@ COMPONENTS = [
         "name": "ADMIN-UI",
         "dir": "admin-frontend",
         "install_cmd": "npm install",
-        "check_path": "node_modules",
+        "check_path": "node_modules/vite",
         "run_cmd": "npm run dev -- --port 5174",
         "color": "\033[93m" # Yellow
     },
@@ -81,7 +82,25 @@ def check_and_install_dependencies():
     base_dir = get_base_dir()
     
     for comp in COMPONENTS:
-        target_path = os.path.join(base_dir, comp["dir"], comp["check_path"])
+        cwd = os.path.join(base_dir, comp["dir"])
+        
+        # Calculate target check path dynamically for cross-platform support
+        path_str = comp["check_path"]
+        if comp["check_path"] == "venv":
+            # For Python projects, we verify the presence of key binaries, not just the venv folder
+            if "uvicorn" in comp["run_cmd"]:
+                db_path = "Scripts/uvicorn.exe" if os.name == 'nt' else "bin/uvicorn"
+            elif comp["name"] == "SCRAPER":
+                db_path = "Scripts/playwright.exe" if os.name == 'nt' else "bin/playwright"
+            else:
+                 db_path = "Scripts/python.exe" if os.name == 'nt' else "bin/python"
+            target_path = os.path.join(cwd, "venv", db_path)
+            
+            # Additional safety: If venv exists but is broken/empty, target_path won't exist.
+        else:
+            # Handle node_modules/vite or similar unix paths safely on Windows
+            target_path = os.path.join(cwd, os.path.normpath(path_str))
+            
         if not os.path.exists(target_path):
             print_prefixed("SYSTEM", "\033[91m", f"Dependencies missing for {comp['name']}. Running installation...")
             try:
@@ -133,10 +152,30 @@ def start_services():
         # Start a thread to read the output
         threading.Thread(target=stream_output, args=(process, comp['name'], comp['color']), daemon=True).start()
 
+def open_browsers():
+    """Wait for servers to start, then open the URLs in default browser."""
+    print(f"\n\033[96m[SYSTEM]\033[0m Waiting 6 seconds for servers to boot before opening browser tabs...")
+    time.sleep(6)
+    urls = [
+        "http://localhost:5173",         # User Frontend
+        "http://localhost:5174",         # Admin Panel
+        "http://127.0.0.1:8000/docs",    # Backend swagger
+        "http://127.0.0.1:8001/docs",    # Scraper swagger
+        "http://127.0.0.1:8002/docs"     # Embedding swagger
+    ]
+    for url in urls:
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            print(f"\033[91m[SYSTEM]\033[0m Failed to open {url}: {e}")
+
 def main():
     try:
         check_and_install_dependencies()
         start_services()
+        
+        # Start a thread to open the browsers automatically
+        threading.Thread(target=open_browsers, daemon=True).start()
         
         # Keep the main thread alive
         while True:
