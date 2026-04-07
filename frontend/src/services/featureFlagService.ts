@@ -13,7 +13,7 @@ const getBaseUrl = (): string => {
 export const featureFlagService = {
     async isContentSearchEnabled(): Promise<boolean> {
         try {
-            const response = await fetch(`${getBaseUrl()}/api/settings/feature-flags`);
+            const response = await fetch(`${getBaseUrl()}/api/admin/settings/feature-flags`);
             if (!response.ok) {
                 return false;
             }
