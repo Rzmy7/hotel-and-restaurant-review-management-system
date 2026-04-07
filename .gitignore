@@ -72,3 +72,9 @@ GEMINI.md
 *.log
 backend/backend_error.log
 logs/
+
+# PyInstaller Outputs
+dist/
+build/
+*.spec
+System-Launcher.exe

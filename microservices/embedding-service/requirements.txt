@@ -4,3 +4,5 @@ chromadb
 python-dotenv
 sentence-transformers
 psutil
+google-genai
+google-api-core
