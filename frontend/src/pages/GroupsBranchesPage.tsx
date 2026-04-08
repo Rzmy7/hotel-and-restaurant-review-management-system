@@ -18,7 +18,7 @@ interface Group {
   createdAt: string;
 }
 
-const API = 'http://localhost:8001';
+const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 /** Fetch wrapper that automatically attaches the JWT token from localStorage */
 const authFetch = (url: string, options: RequestInit = {}): Promise<Response> => {
@@ -61,7 +61,7 @@ const GroupsBranchesPage = () => {
       const data = await res.json();
       setGroups(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      setError('Could not load groups. Is the backend running?');
+      setError(`Failed to load groups: ${e.message}. You may need to login again.`);
       console.error(e);
     } finally {
       setLoading(false);
