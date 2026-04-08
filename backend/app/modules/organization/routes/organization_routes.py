@@ -45,6 +45,44 @@ def upsert_organization(
         {"tenant_id": tenant_id, "name": organization_name}
     ).fetchone()
 
+    if not existing_org:
+        organizations_limit_row = db.execute(
+            text(
+                """
+                SELECT TOP 1 pf.feature_limit
+                FROM dbo.tenant t
+                INNER JOIN dbo.plan_feature pf
+                    ON pf.plan_id = TRY_CAST(t.[plan] AS INT)
+                INNER JOIN dbo.features f
+                    ON f.feature_id = pf.feature_id
+                WHERE t.tenant_id = :tenant_id
+                  AND f.feature_key = 'organizations'
+                  AND pf.is_enabled = 1
+                """
+            ),
+            {"tenant_id": tenant_id},
+        ).fetchone()
+
+        if organizations_limit_row and organizations_limit_row[0] is not None:
+            organizations_limit = int(organizations_limit_row[0])
+            current_organization_count_row = db.execute(
+                text(
+                    """
+                    SELECT COUNT(1)
+                    FROM dbo.organization
+                    WHERE tenant_id = :tenant_id
+                    """
+                ),
+                {"tenant_id": tenant_id},
+            ).fetchone()
+
+            current_organization_count = int(current_organization_count_row[0]) if current_organization_count_row else 0
+            if current_organization_count >= organizations_limit:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Organization limit reached for your current plan. Upgrade your plan to add more organizations",
+                )
+
     if existing_org:
         org_id = existing_org[0]
         # Update existing organization (e.g. type_id)

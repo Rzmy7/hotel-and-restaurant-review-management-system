@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/Button';
 
 const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
@@ -33,6 +34,9 @@ const FinishSetupPage = () => {
   const { user } = useAuth();
   const [isFinishing, setIsFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showUpgradePlanAction =
+    !!error &&
+    error.toLowerCase().includes('organization limit reached');
 
   const handleFinish = async () => {
     setIsFinishing(true);
@@ -148,8 +152,20 @@ const FinishSetupPage = () => {
         </p>
 
         {error && (
-            <div className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl p-4 mb-8 text-red-600 dark:text-red-400 text-sm font-bold">
-                Error: {error}
+          <div className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl p-4 mb-8 text-red-600 dark:text-red-400 text-sm font-bold">
+            <p>Error: {error}</p>
+            {showUpgradePlanAction && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/subscription')}
+                >
+                  Upgrade Plan
+                </Button>
+              </div>
+            )}
             </div>
         )}
 

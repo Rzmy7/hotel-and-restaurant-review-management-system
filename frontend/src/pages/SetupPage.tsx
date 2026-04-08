@@ -4,6 +4,9 @@ import { Hotel, Utensils } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchSubscriptionUsage, fetchUserOrganizations } from '../services/subscriptionPlansService';
+import { Button } from '../components/ui/Button';
 
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
 const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
@@ -59,10 +62,56 @@ const restoreSnapshotOrganizations = () => {
 
 const SetupPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [selectedType, setSelectedType] = useState<number | null>(null);
     const [organizationName, setOrganizationName] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isCheckingLimit, setIsCheckingLimit] = useState(false);
     const [organizationTypes, setOrganizationTypes] = useState<any[]>([]);
+    const [limitError, setLimitError] = useState<string | null>(null);
+
+    const checkOrganizationLimit = async (): Promise<boolean> => {
+        const storedAuthUserRaw = localStorage.getItem('authUser');
+        let storedUserId = '';
+        if (storedAuthUserRaw) {
+            try {
+                const parsed = JSON.parse(storedAuthUserRaw);
+                storedUserId = typeof parsed?.user_id === 'string' ? parsed.user_id.trim() : '';
+            } catch {
+                storedUserId = '';
+            }
+        }
+
+        const userId = user?.user_id?.trim() || storedUserId;
+        if (!userId) {
+            setLimitError(null);
+            return false;
+        }
+
+        setIsCheckingLimit(true);
+        try {
+            const [usage, organizations] = await Promise.all([
+                fetchSubscriptionUsage(userId),
+                fetchUserOrganizations(),
+            ]);
+
+            const orgFeature = usage.features.find((feature) => feature.key === 'organizations');
+            const organizationsCount = organizations.length;
+
+            if (orgFeature?.limit !== null && orgFeature?.limit !== undefined && organizationsCount >= orgFeature.limit) {
+                setLimitError('Organization limit reached for your current plan. Upgrade your plan to add more organizations.');
+                return true;
+            }
+
+            setLimitError(null);
+            return false;
+        } catch (error) {
+            console.warn('Failed to validate organization quota:', error);
+            return false;
+        } finally {
+            setIsCheckingLimit(false);
+        }
+    };
 
     useEffect(() => {
         const fetchTypes = async () => {
@@ -95,6 +144,10 @@ const SetupPage = () => {
         fetchTypes();
     }, []);
 
+    useEffect(() => {
+        void checkOrganizationLimit();
+    }, [user?.user_id]);
+
     const handleContinue = async () => {
         const token = localStorage.getItem("token");
 
@@ -103,6 +156,11 @@ const SetupPage = () => {
 
         if (!token) {
             alert("User not authenticated");
+            return;
+        }
+
+        const limitReached = await checkOrganizationLimit();
+        if (limitReached) {
             return;
         }
 
@@ -163,8 +221,8 @@ const SetupPage = () => {
             currentStep={1}
             onContinue={handleContinue}
             showBack={false}
-            isContinueDisabled={!selectedType || isLoading}
-            isContinueLoading={isLoading}
+            isContinueDisabled={!selectedType || isLoading || isCheckingLimit || !!limitError}
+            isContinueLoading={isLoading || isCheckingLimit}
         >
             <div className="text-center mb-10">
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">
@@ -181,6 +239,22 @@ const SetupPage = () => {
                     Skip Setup
                 </button>
             </div>
+
+            {limitError && (
+                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 dark:border-amber-900/40 dark:bg-amber-900/10">
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400 text-center">{limitError}</p>
+                    <div className="mt-3 flex justify-center">
+                        <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={() => navigate('/subscription')}
+                        >
+                            Upgrade Plan
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Optional Name Input */}
             <div className="mb-6">
