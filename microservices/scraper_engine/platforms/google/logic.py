@@ -1,20 +1,17 @@
-import os
 import re
 import time
-import math
 from dotenv import load_dotenv
 from platforms.google.browser import GooglePlaywrightBrowser
 from platforms.google.extractor import GoogleExtractor
-from platforms.google.storage import save_to_json
 from core.database import init_db
 from platforms.google.models import save_reviews_to_db
 from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from platforms.google.config import google_selectors
 from core.audit import audit_logger
-from core.utils import notify_backend_sync_status
 from platforms.google.auth import GoogleAuthManager
-from core.models import Source
+from services.source_service import SourceService
+from core.deduplication.google_deduplicator import clean_google_duplicates
 
 load_dotenv()
 logger = setup_logger("google_logic")
@@ -339,6 +336,9 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
     if job_id:
         job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
 
+    # Broadcast RUNNING status for all sources sharing this URL
+    SourceService.broadcast_running(url)
+
     # Initialize database tables
     init_db()
 
@@ -446,109 +446,25 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
 
         logger.info(f"Extracted {len(all_reviews)} unique reviews from DOM.")
 
-        # Identify new reviews vs existing ones
-        from core.database import get_session
-        from core.utils import identify_new_reviews
-        from core.deduplication.google_deduplicator import clean_google_duplicates
-        
-        notify_backend_sync_status(str(source_id), "VERIFY_DUPLICATION")
-        
-        session = get_session()
-        new_count = 0
-        try:
-            removed_count = clean_google_duplicates(session, str(source_id))
-            logger.info(f"Deduplication phase completed. Removed {removed_count} duplicates.")
-            
-            new_count, new_ids = identify_new_reviews(session, source_id, all_reviews)
-            logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
-        except Exception as e:
-            logger.warning(f"Could not identify new reviews: {e}")
-        finally:
-            session.close()
+        # Centralized Finalization & Replication (handles storage, deduplication, and completion callbacks)
+        SourceService.finalize_and_replicate(
+            url=url,
+            primary_source_id=str(source_id),
+            reviews=all_reviews,
+            save_db_func=save_reviews_to_db,
+            deduplicator_func=clean_google_duplicates
+        )
 
-        # Save to database in batches
-        if all_reviews:
-            batch_size = 50
-            for i in range(0, len(all_reviews), batch_size):
-                batch = all_reviews[i:i + batch_size]
-                logger.info(f"Saving batch {i // batch_size + 1} ({len(batch)} reviews) to database.")
-                save_reviews_to_db(batch, source_id)
-                
-                if job_id:
-                    job_manager.update_job(
-                        job_id,
-                        progress=f"Saved {min(i + batch_size, len(all_reviews))}/{len(all_reviews)} reviews to DB...",
-                        reviews=min(i + batch_size, len(all_reviews)),
-                        current_page=min(i + batch_size, len(all_reviews)),
-                        total_pages=len(all_reviews)
-                    )
-
-            # Save JSON backup
-            save_to_json(all_reviews, str(source_id))
-
-            if job_id:
-                job_manager.update_job(
-                    job_id, status=JobStatus.COMPLETED,
-                    progress="Finished scraping, JSON generated.",
-                    reviews=len(all_reviews),
-                    current_page=len(all_reviews),
-                    total_pages=len(all_reviews)
-                )
-
-            audit_logger.info(
-                category=u'SCRAPE',
-                action=u'SCRAPE_COMPLETE',
-                target_type=u'SOURCE',
-                target_id=str(source_id),
-                details={"reviews_saved": len(all_reviews), "job_id": job_id}
+        if job_id:
+            job_manager.update_job(
+                job_id, status=JobStatus.COMPLETED,
+                progress="Sync completed for all associated sources.",
+                reviews=len(all_reviews),
+                current_page=len(all_reviews),
+                total_pages=len(all_reviews)
             )
 
-            # Notify backend of completion
-            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
-
-            session = get_session()
-            try:
-                companions = [s[0] for s in session.query(Source.source_id).filter(Source.source_url == url, Source.source_id != source_id).all()]
-            except Exception as e:
-                logger.error(f"Failed to fetch companions: {e}")
-                companions = []
-            finally:
-                session.close()
-
-            for cid in companions:
-                logger.info(f"Replicating {len(all_reviews)} reviews to companion source {cid}")
-                try:
-                    # Save to database in batches
-                    batch_size = 50
-                    for i in range(0, len(all_reviews), batch_size):
-                        batch = all_reviews[i:i + batch_size]
-                        save_reviews_to_db(batch, str(cid))
-                    
-                    save_to_json(all_reviews, str(cid))
-                    notify_backend_sync_status(str(cid), "VERIFY_DUPLICATION")
-                    
-                    sub_session = get_session()
-                    try:
-                        clean_google_duplicates(sub_session, str(cid))
-                        cid_new_count, _ = identify_new_reviews(sub_session, str(cid), all_reviews)
-                    finally:
-                        sub_session.close()
-                        
-                    notify_backend_sync_status(str(cid), "COMPLETED", new_review_count=cid_new_count)
-                except Exception as e:
-                    logger.error(f"Replication failed for companion {cid}: {e}")
-                    notify_backend_sync_status(str(cid), "FAILED")
-
-            return {"status": "success", "count": f"Stored {len(all_reviews)} reviews in DB & JSON", "source_id": source_id}
-        else:
-            logger.warning("No reviews were extracted.")
-            if job_id:
-                job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="No reviews found.", reviews=0)
-            
-            # Notify backend even if no reviews were found
-            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=0)
-            
-            return {"status": "warning", "message": "No reviews found.", "count": 0}
+        return {"status": "success", "count": f"Processed {len(all_reviews)} reviews", "source_id": source_id}
 
     except Exception as e:
         logger.error(f"Error during Google scraping: {e}", exc_info=True)
@@ -563,19 +479,8 @@ def scrape_google(url: str, headless: bool = True, pages: str = "*", job_id: str
             details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
-        # Notify backend of failure
-        notify_backend_sync_status(str(source_id), "FAILED")
-        
-        # Notify companions of failure as well
-        session = get_session()
-        try:
-            companions = [s[0] for s in session.query(Source.source_id).filter(Source.source_url == url, Source.source_id != source_id).all()]
-            for cid in companions:
-                notify_backend_sync_status(str(cid), "FAILED")
-        except:
-            pass
-        finally:
-            session.close()
+        # Notify primary and all companions of failure
+        SourceService.broadcast_failed(url, error_message=str(e))
         
         return {"status": "error", "message": str(e), "count": 0}
     finally:

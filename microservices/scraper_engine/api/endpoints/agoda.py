@@ -13,6 +13,7 @@ from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
 from core.config import setup_logger
 from core.utils import normalize_url
+from services.source_service import SourceService
 from platforms.agoda.logic import scrape_agoda
 
 logger = setup_logger("agoda_api")
@@ -66,6 +67,10 @@ def trigger_agoda_scrape(body: AgodaScrapeRequest):
         active_job = job_manager.get_active_job_by_url(normalized_url)
         if active_job:
             logger.info(f"Existing job {active_job['id']} found for {normalized_url}. Attaching source {body.source_id}.")
+            
+            # Immediately notify backend that this source is now matching the active job's status
+            SourceService.notify_single(body.source_id, "RUNNING")
+            
             return {
                 "status": "attached",
                 "job_id": active_job["id"],

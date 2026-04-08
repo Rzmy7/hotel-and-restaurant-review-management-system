@@ -78,13 +78,13 @@ sequenceDiagram
         PL->>DB: UPSERT Reviews
     end
     
-    PL->>PL: Finalize & format Callback
-    PL->>DB: Query for "Companion" sources sharing the same URL
-    loop For each Source ID (Primary + Companions)
-        PL->>DB: UPSERT Reviews for Source ID
-        PL->>B: POST /source/tasks/{id}/sync-status (COMPLETED)
-    end
     PL->>JM: status = COMPLETED
+    PL->>SS: finalize_and_replicate(reviews, primary_id, companions)
+    loop For each Source ID (Primary + Companions)
+        SS->>DB: Save reviews & deduplicate
+        SS->>B: POST /sync-status (COMPLETED)
+    end
+    PL->>JM: update_job(status=COMPLETED)
 ```
 
 ### In-Memory State
@@ -208,10 +208,12 @@ To optimize resources and avoid being flagged by platforms for parallel scraping
 ### Working Principle
 0. **URL Normalization**: As the first step, every incoming URL is normalized by stripping all query parameters (`?`) and fragments (`#`). This extracts the **Base URL**, ensuring that tracking IDs, session parameters, and referral codes do not lead to duplicate scraping jobs.
 1. **Request Reception**: When a scrape request arrives, the `JobManager` checks if any **active** job (`pending`, `queued`, or `running`) is already targeting that exact normalized **Base URL**.
-2. **Attaching**: If a match is found, the engine **does not** spawn a new Playwright instance. It returns `status: "attached"` and the existing `job_id`.
-3. **Data Mirroring (The Replication Loop)**: When the scraper completes its task, it queries the `sources` table for *all* `source_id`s that map to the scraped URL.
-4. **Broadcast**: It iterates through the list, saving the batch of reviews for each discrete `source_id` and firing a `COMPLETED` webhook for each.
-5. **Error Propagation**: If a job fails (e.g., Timeout, Proxy Ban), all "attached" sources are notified with a `FAILED` status simultaneously.
+2. **Attaching (Synchronization)**: If a match is found, the engine **does not** spawn a new Playwright instance. It returns `status: "attached"` and the existing `job_id`. Additionally, it fires an immediate `RUNNING` status update to the backend for the new source via `SourceService.notify_single`.
+3. **Centralized Status Service (`services/source_service.py`)**: To eliminate code repetition, a singleton-style service handles the synchronization lifecycle:
+    - **`broadcast_running(url)`**: Notifies the backend that the primary source and all companion sources sharing that URL are now `RUNNING`.
+    - **`finalize_and_replicate(...)`**: Orchestrates data saving, deduplication, and `COMPLETED` notifications for the entire source group in one atomic-like flow.
+    - **`broadcast_failed(url, error)`**: Propagates a `FAILED` status to all associated sources if the scrape job crashes.
+4. **Error Propagation**: If a job fails (e.g., Timeout, Proxy Ban), all "attached" sources are notified with a `FAILED` status simultaneously.
 
 ### Database Constraint
 The `UNIQUE` constraint on `sources.source_url` has been removed to support this. If you encounter a `Violation of UNIQUE KEY constraint` error, ensure the `UQ__sources__...` constraint has been manually dropped from the SQL Server schema.
