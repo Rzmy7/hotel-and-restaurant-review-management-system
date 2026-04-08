@@ -33,7 +33,7 @@ const toButtonText = (plan: SubscriptionPlan, currentPlanId: string | null): str
     return 'Current Plan';
   }
   if (plan.monthlyPrice <= 0) {
-    return 'Get Started';
+    return 'Select Free Plan';
   }
   if (plan.isPopular) {
     return 'Upgrade Now';

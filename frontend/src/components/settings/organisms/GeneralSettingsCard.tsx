@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { FormField } from '../molecules/FormField';
+import { Button } from '../../ui/Button';
 import type { GeneralSettings } from '../../../types/settings';
 import { useTheme } from '../../../contexts/ThemeContext';
+import {
+    deleteUserOrganization,
+    fetchUserOrganizations,
+    type UserOrganizationSummary,
+} from '../../../services/userOrganizationsService';
+import { useToast } from '../../../contexts/ToastContext';
 
 interface GeneralSettingsCardProps {
     data: GeneralSettings;
@@ -13,19 +19,116 @@ interface GeneralSettingsCardProps {
 
 export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, onChange }) => {
     const { setTheme } = useTheme();
+    const { showToast } = useToast();
+    const [organizations, setOrganizations] = useState<UserOrganizationSummary[]>([]);
+    const [isLoadingOrganizations, setIsLoadingOrganizations] = useState(true);
+    const [organizationsError, setOrganizationsError] = useState<string | null>(null);
+    const [organizationPendingDelete, setOrganizationPendingDelete] = useState<UserOrganizationSummary | null>(null);
+    const [isDeletingOrganization, setIsDeletingOrganization] = useState(false);
 
     const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
         setTheme(newTheme);
         onChange({ themePreference: newTheme });
     };
 
+    const syncOrganizationCache = (items: UserOrganizationSummary[]) => {
+        localStorage.setItem('organizations', JSON.stringify(items));
+        localStorage.setItem('organization_ids', JSON.stringify(items.map((item) => item.organization_id)));
+
+        const currentOrganization = localStorage.getItem('current_organization');
+        const hasCurrent = !!currentOrganization && items.some((item) => item.organization_id === currentOrganization);
+
+        if (!items.length) {
+            localStorage.removeItem('current_organization');
+            return;
+        }
+
+        if (!hasCurrent) {
+            localStorage.setItem('current_organization', items[0].organization_id);
+        }
+    };
+
+    const loadOrganizations = async () => {
+        setIsLoadingOrganizations(true);
+        setOrganizationsError(null);
+        try {
+            const ownedOrganizations = await fetchUserOrganizations();
+            setOrganizations(ownedOrganizations);
+            syncOrganizationCache(ownedOrganizations);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to load owned organizations';
+            setOrganizationsError(message);
+        } finally {
+            setIsLoadingOrganizations(false);
+        }
+    };
+
+    useEffect(() => {
+        void loadOrganizations();
+    }, []);
+
+    const deleteDescription = useMemo(() => {
+        if (!organizationPendingDelete) {
+            return '';
+        }
+
+        return `Are you sure you want to remove ${organizationPendingDelete.organization_name}? This action cannot be undone.`;
+    }, [organizationPendingDelete]);
+
+    const handleConfirmDeleteOrganization = async () => {
+        if (!organizationPendingDelete) {
+            return;
+        }
+
+        setIsDeletingOrganization(true);
+        setOrganizationsError(null);
+        try {
+            await deleteUserOrganization(organizationPendingDelete.organization_id);
+            showToast('Organization deleted successfully', 'success');
+            setOrganizationPendingDelete(null);
+            await loadOrganizations();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to delete organization';
+            setOrganizationsError(message);
+            showToast(message, 'error');
+        } finally {
+            setIsDeletingOrganization(false);
+        }
+    };
+
     return (
         <div className="flex flex-col">
-            <FormField label="Property Name" orientation="horizontal">
-                <Input
-                    value={data.propertyName}
-                    onChange={(e) => onChange({ propertyName: e.target.value })}
-                />
+            <FormField label="Owned Organizations" orientation="horizontal" description="Manage organizations you own">
+                <div className="w-full max-w-[640px] border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                    {isLoadingOrganizations ? (
+                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">Loading organizations...</div>
+                    ) : organizationsError ? (
+                        <div className="px-4 py-3 text-sm text-red-500">{organizationsError}</div>
+                    ) : organizations.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">No owned organizations found.</div>
+                    ) : (
+                        organizations.map((organization) => (
+                            <div
+                                key={organization.organization_id}
+                                className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-slate-700/50 last:border-b-0"
+                            >
+                                <div className="flex flex-col">
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                        {organization.organization_name}
+                                    </p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => setOrganizationPendingDelete(organization)}
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        ))
+                    )}
+                </div>
             </FormField>
             <FormField label="Time Zone" orientation="horizontal">
                 <Select
@@ -78,6 +181,33 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
                     })}
                 </div>
             </FormField>
+
+            {organizationPendingDelete && (
+                <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-xl p-6">
+                        <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">Confirm Organization Removal</h3>
+                        <p className="text-sm text-gray-600 dark:text-slate-300 mt-3">{deleteDescription}</p>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setOrganizationPendingDelete(null)}
+                                disabled={isDeletingOrganization}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="danger"
+                                onClick={handleConfirmDeleteOrganization}
+                                isLoading={isDeletingOrganization}
+                            >
+                                Confirm Remove
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

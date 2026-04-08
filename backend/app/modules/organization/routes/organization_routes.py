@@ -172,13 +172,8 @@ def delete_organization(
 ):
     # check if organization belongs to the user's tenant
     existing_org = db.execute(
-        text("SELECT 1 FROM dbo.organization WHERE user_id = :user_id AND organization_id = :org_id"),
-        {"user_id": user.user_id, "org_id": org_id}
-    ).fetchone()
-    # Wait, the user_id is tenant_id. The column in organization is tenant_id.
-    existing_org = db.execute(
         text("SELECT 1 FROM dbo.organization WHERE tenant_id = :tenant_id AND organization_id = :org_id"),
-        {"tenant_id": user.user_id, "org_id": org_id}
+        {"tenant_id": str(user.user_id), "org_id": org_id}
     ).fetchone()
 
     if not existing_org:
@@ -193,7 +188,7 @@ def delete_organization(
     # delete org
     db.execute(
         text("DELETE FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
-        {"org_id": org_id, "tenant_id": user.user_id}
+        {"org_id": org_id, "tenant_id": str(user.user_id)}
     )
 
     db.commit()

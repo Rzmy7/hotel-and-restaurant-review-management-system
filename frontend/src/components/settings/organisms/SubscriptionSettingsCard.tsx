@@ -8,6 +8,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import {
     fetchSubscriptionPlans,
     fetchSubscriptionUsage,
+    fetchUserOrganizations,
     type SubscriptionFeatureUsage,
     type SubscriptionPlan,
 } from '../../../services/subscriptionPlansService';
@@ -78,8 +79,26 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
             setUsageLoading(true);
             setUsageError(null);
             try {
-                const usage = await fetchSubscriptionUsage(userId);
-                setFeatureUsage(usage.features || []);
+                const [usage, organizations] = await Promise.all([
+                    fetchSubscriptionUsage(userId),
+                    fetchUserOrganizations(),
+                ]);
+
+                const organizationsCount = organizations.length;
+                const nextFeatureUsage = (usage.features || []).map((feature) => {
+                    if (feature.key !== 'organizations') {
+                        return feature;
+                    }
+
+                    const balance = feature.limit === null ? null : Math.max(feature.limit - organizationsCount, 0);
+                    return {
+                        ...feature,
+                        used: organizationsCount,
+                        balance,
+                    };
+                });
+
+                setFeatureUsage(nextFeatureUsage);
                 setUsagePlanId(usage.planId || null);
                 setUsagePlanName(usage.planName || null);
             } catch (error) {

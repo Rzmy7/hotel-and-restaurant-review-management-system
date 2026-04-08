@@ -14,9 +14,9 @@ class UpdatePlanRequest(BaseModel):
 @router.put("/tenant/plan")
 def update_tenant_plan(payload: UpdatePlanRequest, user=Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text("""
-        UPDATE dbo.tenant
-        SET plan = :plan_id
-        WHERE tenant_id = :user_id
+        UPDATE dbo.[tenant]
+        SET [plan] = :plan_id
+        WHERE [tenant_id] = :user_id
     """), {
         "plan_id": payload.plan_id,
         "user_id": str(user.user_id)

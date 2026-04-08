@@ -92,7 +92,7 @@ const SettingsPage: React.FC = () => {
     };
 
     compareSection('General Properties', serverData.general, localData.general, {
-      propertyName: 'Property Name', timeZone: 'Time Zone', language: 'Language', themePreference: 'Application Theme'
+      propertyName: 'Owned Organizations', timeZone: 'Time Zone', language: 'Language', themePreference: 'Application Theme'
     });
     compareSection('Security', serverData.security, localData.security, {
       twoFactorAuth: 'Two-Factor Authentication', sessionTimeout: 'Session Timeout'
