@@ -10,19 +10,21 @@ export const OrganizationStatsGrid: React.FC<OrganizationStatsGridProps> = ({ st
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Total Organizations */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                        <Building2 size={24} />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 h-full">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+                            <Building2 size={22} />
+                        </div>
+                        <div className="text-gray-500 text-sm truncate">Total Organizations</div>
                     </div>
-                    <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold">
+                    <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold shrink-0">
                         All time
                     </div>
                 </div>
-                <div>
-                    <div className="text-gray-500 text-sm mb-2">Total Organizations</div>
-                    <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
-                    <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                <div className="flex items-end justify-between gap-3 mt-4">
+                    <div className="text-3xl font-bold text-gray-900 leading-none">{stats.total}</div>
+                    <div className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
                         <TrendingUp size={13} />
                         <span>All registered organizations</span>
                     </div>
@@ -30,19 +32,21 @@ export const OrganizationStatsGrid: React.FC<OrganizationStatsGridProps> = ({ st
             </div>
 
             {/* Organizations Added Today */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                        <CheckCircle2 size={24} />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 h-full">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+                            <CheckCircle2 size={22} />
+                        </div>
+                        <div className="text-gray-500 text-sm truncate">Added Today</div>
                     </div>
-                    <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold">
+                    <div className="px-2 py-1 bg-blue-50 rounded-full text-blue-500 text-xs font-semibold shrink-0">
                         Today
                     </div>
                 </div>
-                <div>
-                    <div className="text-gray-500 text-sm mb-2">Added Today</div>
-                    <div className="text-3xl font-bold text-gray-900">{stats.addedToday}</div>
-                    <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                <div className="flex items-end justify-between gap-3 mt-4">
+                    <div className="text-3xl font-bold text-gray-900 leading-none">{stats.addedToday}</div>
+                    <div className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
                         <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
                         <span>Newly registered</span>
                     </div>

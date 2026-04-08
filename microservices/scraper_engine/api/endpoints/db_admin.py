@@ -84,3 +84,45 @@ def purge_reviews_by_platform(platform: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+
+@router.post("/migrate/add-is-embedded")
+def migrate_add_is_embedded():
+    """
+    Schema migration: adds the `is_embedded` BIT column to the `reviews` table
+    if it does not already exist. Safe to call multiple times (idempotent).
+
+    Run this once after deploying the new code so existing review rows
+    get the column defaulting to 0 (not embedded).
+    """
+    session = get_session()
+    try:
+        from sqlalchemy import text
+
+        # Check whether the column already exists
+        check_sql = text("""
+            SELECT COUNT(*) AS cnt
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'reviews'
+              AND COLUMN_NAME = 'is_embedded'
+        """)
+        row = session.execute(check_sql).fetchone()
+        if row and row[0] > 0:
+            return {"status": "skipped", "message": "Column 'is_embedded' already exists on 'reviews'."}
+
+        # Add the column with a default of 0
+        alter_sql = text("""
+            ALTER TABLE reviews
+            ADD is_embedded BIT NOT NULL DEFAULT 0
+        """)
+        session.execute(alter_sql)
+        session.commit()
+
+        logger.info("Migration successful: added 'is_embedded' column to 'reviews' table.")
+        return {"status": "success", "message": "Added 'is_embedded' column to 'reviews' table with default 0."}
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Migration failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()

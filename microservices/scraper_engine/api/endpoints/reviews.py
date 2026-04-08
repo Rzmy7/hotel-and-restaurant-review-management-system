@@ -5,6 +5,8 @@ GET /api/reviews/{source_id} — returns all reviews for a source,
 including full platform-specific detail columns and attached media.
 """
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List
 from core.database import get_session
 from core.models import (
     Source, Review,
@@ -162,6 +164,103 @@ def get_reviews_by_source(source_id: str, limit: int = 100, skip: int = 0):
         raise
     except Exception as e:
         logger.error(f"Failed to fetch reviews for source {source_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
+
+
+# ── Mark-Embedded Request Schema ──
+class MarkEmbeddedRequest(BaseModel):
+    """Payload to mark a list of review IDs as embedded."""
+    review_ids: List[int]
+
+
+@router.patch("/mark-embedded")
+def mark_reviews_as_embedded(body: MarkEmbeddedRequest):
+    """
+    Mark a batch of reviews as embedded (is_embedded = True).
+    Called by the main backend after the embedding service successfully
+    processes them.
+    """
+    if not body.review_ids:
+        return {"updated_count": 0, "message": "No review IDs provided."}
+
+    session = get_session()
+    try:
+        updated = (
+            session.query(Review)
+            .filter(Review.review_id.in_(body.review_ids))
+            .update({"is_embedded": True}, synchronize_session=False)
+        )
+        session.commit()
+        logger.info(f"Marked {updated} reviews as embedded: {body.review_ids[:10]}...")
+        return {
+            "updated_count": updated,
+            "message": f"Marked {updated} reviews as embedded."
+        }
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to mark reviews as embedded: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
+
+
+@router.get("/unembedded/{source_id}")
+def get_unembedded_reviews(source_id: str, limit: int = 500):
+    """
+    Returns reviews for a source that have NOT yet been embedded (is_embedded=False).
+    Used by the main backend to know which reviews to send to the embedding service.
+    """
+    session = get_session()
+    try:
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found")
+
+        platform = source.platform_name.lower()
+        detail_attr, serializer = _PLATFORM_SERIALIZERS.get(platform, (None, None))
+
+        query = (
+            session.query(Review)
+            .filter(Review.source_id == source_id)
+            .filter(Review.is_embedded == False)  # noqa: E712
+        )
+
+        if detail_attr:
+            query = query.options(joinedload(getattr(Review, detail_attr)))
+
+        reviews = query.order_by(Review.review_id.asc()).limit(limit).all()
+
+        results = []
+        for r in reviews:
+            detail_obj = getattr(r, detail_attr, None) if detail_attr else None
+            # Build the review_text field for embedding
+            review_text = None
+            if detail_obj:
+                if platform == "booking":
+                    pos = getattr(detail_obj, "positive_text", "") or ""
+                    neg = getattr(detail_obj, "negative_text", "") or ""
+                    review_text = f"{pos} {neg}".strip() or None
+                else:
+                    review_text = getattr(detail_obj, "review_text", None)
+
+            if review_text:  # Only include reviews that have text to embed
+                results.append({
+                    "review_id": r.review_id,
+                    "review_text": review_text,
+                })
+
+        return {
+            "source_id": source_id,
+            "platform": platform,
+            "unembedded_count": len(results),
+            "data": results
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch unembedded reviews for source {source_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
