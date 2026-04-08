@@ -20,4 +20,4 @@ authlib
 passlib
 protobuf
 python-multipart
-zoneinfo
+emailstr
