@@ -1,4 +1,6 @@
 """Unified dashboard route — aggregating stats, activities, and trends."""
+import uuid
+
 from fastapi import APIRouter, HTTPException
 from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_sentiment_counts
 from app.modules.dashboard.services.trends_service import get_usage, get_recent_reviews
@@ -13,6 +15,28 @@ import pyodbc
 
 router = APIRouter()
 
+
+def _resolve_organization_id(cursor: pyodbc.Cursor, org_id: str) -> str | None:
+    """Resolve an organization identifier to a UUID string expected by dashboard tables."""
+    try:
+        return str(uuid.UUID(org_id))
+    except ValueError:
+        pass
+
+    row = cursor.execute(
+        """
+        SELECT TOP 1 CAST(organization_id AS NVARCHAR(36)) AS organization_id
+        FROM dbo.organizations_source
+        WHERE organization_name = ?
+        """,
+        org_id,
+    ).fetchone()
+
+    if row and row.organization_id:
+        return str(row.organization_id)
+
+    return None
+
 @router.get("/organizations/{org_id}/dashboard")
 def get_unified_dashboard(org_id: str, period: int = 30):
     """
@@ -23,22 +47,32 @@ def get_unified_dashboard(org_id: str, period: int = 30):
         cursor = conn.cursor()
         
         try:
+            resolved_org_id = _resolve_organization_id(cursor, org_id)
+            if not resolved_org_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Invalid organization id. Expected UUID, or a valid organization name "
+                        "from organizations_source."
+                    ),
+                )
+
             # Aggregate all atomic data using the same cursor for performance
-            metrics = get_dashboard_metrics(org_id, period, cursor=cursor)
-            sentiment_charts = get_sentiment_distribution(cursor, org_id)
-            daily_trends = get_daily_review_trends(cursor, org_id, days=period)
-            weekly_trends = get_weekly_review_trends(cursor, org_id, period_days=period)
+            metrics = get_dashboard_metrics(resolved_org_id, period, cursor=cursor)
+            sentiment_charts = get_sentiment_distribution(cursor, resolved_org_id)
+            daily_trends = get_daily_review_trends(cursor, resolved_org_id, days=period)
+            weekly_trends = get_weekly_review_trends(cursor, resolved_org_id, period_days=period)
             
             # These still use internal connections (can be refactored later)
-            recent_reviews = get_recent_reviews(org_id)["reviews"]
-            alerts_data = get_alerts(org_id)["alerts"]
+            recent_reviews = get_recent_reviews(resolved_org_id)["reviews"]
+            alerts_data = get_alerts(resolved_org_id)["alerts"]
 
             return {
-                "hotel": {"id": org_id, "name": "Organization Dashboard", "status": "Active"},
+                "hotel": {"id": resolved_org_id, "name": "Organization Dashboard", "status": "Active"},
                 "organizations": [
-                    {"id": org_id, "name": "Current Organization", "status": "Active"}
+                    {"id": resolved_org_id, "name": "Current Organization", "status": "Active"}
                 ],
-                "currentOrganizationId": org_id,
+                "currentOrganizationId": resolved_org_id,
                 "metrics": metrics,
                 "charts": {
                     "sentiment": sentiment_charts,

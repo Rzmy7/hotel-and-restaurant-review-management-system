@@ -5,7 +5,7 @@ Merged from users_repo.py and roles_repo.py.
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from app.modules.auth.models import User, UserRole, Role
 from app.modules.auth.constants.roles import TENANT, SYSTEM_ADMIN
 
@@ -143,7 +143,8 @@ def _ensure_roles_schema_compatibility(db: Session) -> None:
 
 def get_user_by_email(db: Session, email: str):
     _ensure_users_schema_compatibility(db)
-    return db.query(User).filter(User.email == email).first()
+    normalized_email = email.strip().lower()
+    return db.query(User).filter(func.lower(User.email) == normalized_email).first()
 
 
 def create_user(

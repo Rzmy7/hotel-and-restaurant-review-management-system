@@ -98,6 +98,12 @@ def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
         connection.close()
 
 
+@router.get("/unread-count")
+def get_unread_count_compat(userId: str | None = Query(None)) -> dict:
+    """Backward-compatible alias for clients calling /api/notifications/unread-count."""
+    return get_admin_unread_count(userId=userId)
+
+
 @router.post("/{notification_id}/read")
 def mark_notification_read(notification_id: str, userId: str | None = Query(None)) -> dict:
     try:

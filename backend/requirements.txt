@@ -13,11 +13,11 @@ httpx
 requests
 anthropic
 itsdangerous
-bcrypt
+bcrypt==4.0.1
 PyJWT
 supabase
 authlib
-passlib
+passlib==1.7.4
 protobuf
 python-multipart
 emailstr

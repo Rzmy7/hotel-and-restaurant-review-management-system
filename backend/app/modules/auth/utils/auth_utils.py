@@ -1,4 +1,4 @@
-from passlib.context import CryptContext  # type: ignore
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -13,11 +13,9 @@ from app.modules.auth.services.jwt_service import SECRET_KEY, ALGORITHM
 # Password Hashing
 # --------------------------------------------------
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -25,8 +23,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Verify a plain password against a stored hash.
     """
     try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except ValueError:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except (ValueError, TypeError):
         return False
 
 

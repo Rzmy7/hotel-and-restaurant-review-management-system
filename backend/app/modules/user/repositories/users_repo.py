@@ -1,11 +1,13 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.modules.auth.models import User, UserRole, Role
 from app.modules.auth.constants.roles import TENANT
 
 
 def get_user_by_email(db: Session, email: str):
     # Find a user using email
-    return db.query(User).filter(User.email == email).first()
+    normalized_email = email.strip().lower()
+    return db.query(User).filter(func.lower(User.email) == normalized_email).first()
 
 
 def get_user_by_id(db: Session, user_id):

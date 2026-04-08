@@ -6,31 +6,31 @@ These are shared infrastructure, not domain-specific.
 """
 
 from datetime import datetime, timedelta
+import bcrypt
 
 from jose import jwt
-from passlib.context import CryptContext  # type: ignore
 
 from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 # ── Password hashing ───────────────────────────────────────────────
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
     """Hash a plain-text password using bcrypt."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a stored hash.
 
-    The bcrypt backend raises ValueError for passwords longer than 72 bytes —
-    catch that and return False so the API returns 401 instead of 500.
+    Returns False for invalid hashes or malformed inputs.
     """
     try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except ValueError:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except (ValueError, TypeError):
         return False
 
 

@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 # Scraper microservice URL, default to 8001 if backend is on 8000
 SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001")
+# Enable/disable scraper (for development, set to false if scraper microservice not running)
+ENABLE_SCRAPER = os.getenv("ENABLE_SCRAPER", "false").lower() == "true"
 
 def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """
@@ -48,6 +50,10 @@ def process_pending_syncs():
     Scheduled task to find pending sources and trigger their sync.
     Runs every minute.
     """
+    # Skip if scraper is disabled
+    if not ENABLE_SCRAPER:
+        return
+        
     logger.info("Running scheduled sync check...")
     
     try:
