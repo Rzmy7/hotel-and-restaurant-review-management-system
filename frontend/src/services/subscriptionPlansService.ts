@@ -71,3 +71,11 @@ export const fetchSubscriptionUsage = (userId: string): Promise<SubscriptionUsag
         method: 'GET',
     });
 };
+
+export const updateTenantPlan = (planId: string): Promise<{ message: string, plan_id: string }> => {
+    return requestJson<{ message: string, plan_id: string }>('/api/tenant/plan', {
+        method: 'PUT',
+        credentials: 'omit',
+        body: JSON.stringify({ plan_id: planId }),
+    });
+};
