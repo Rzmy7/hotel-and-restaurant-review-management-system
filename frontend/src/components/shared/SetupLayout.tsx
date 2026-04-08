@@ -50,9 +50,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
   const steps = [
     { number: 1, label: 'Organization' },
     { number: 2, label: 'Sources' },
-    { number: 3, label: 'Schedule' },
-    { number: 4, label: 'Plan' },
-    { number: 5, label: 'Finish' },
+        { number: 3, label: 'Finish' },
   ];
 
     const handleExit = async () => {
@@ -166,7 +164,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
                                     className="gap-2 px-10 font-black uppercase text-[12px] tracking-widest h-11 shadow-lg shadow-blue-500/20"
                                     rightIcon={<ChevronRight size={16} />}
                                 >
-                                    {currentStep === 5 ? 'Complete Setup' : 'Continue'}
+                                    {currentStep === steps.length ? 'Complete Setup' : 'Continue'}
                                 </Button>
                             )}
                         </div>

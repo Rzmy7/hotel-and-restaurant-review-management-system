@@ -84,7 +84,7 @@ const AddSourcesPage = () => {
       sources: sourcesToSave
     }));
 
-    navigate('/setup/schedule');
+    navigate('/setup/finish');
   };
 
   const handleBack = () => {

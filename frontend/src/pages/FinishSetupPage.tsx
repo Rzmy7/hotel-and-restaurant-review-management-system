@@ -127,9 +127,9 @@ const FinishSetupPage = () => {
 
   return (
     <SetupLayout
-      currentStep={5}
+      currentStep={3}
       onContinue={handleFinish}
-      onBack={() => navigate('/setup/plan')}
+      onBack={() => navigate('/setup/sources')}
       isContinueLoading={isFinishing}
       isContinueDisabled={isFinishing}
     >
