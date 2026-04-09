@@ -59,10 +59,6 @@ try:
 except ImportError:
     health = None
 
-try:
-    from app.modules.reviews.routes import router as reviews_router
-except ImportError:
-    reviews_router = None
 
 try:
     from app.modules.competitors.routes import router as competitors_router
@@ -169,8 +165,27 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 if health:
     app.include_router(health.router, prefix="/api")
+
+# Domain Module Registration
+if competitors_router:
+    app.include_router(competitors_router, prefix="/api")
+if dashboard_router:
+    app.include_router(dashboard_router, prefix="/api")
+if admin_router:
+    app.include_router(admin_router, prefix="/api")
+if groups_router:
+    app.include_router(groups_router, prefix="/api")
+if legacy_source_router:
+    app.include_router(legacy_source_router, prefix="/api")
+
+# Reviews module moved here to avoid circular imports during early initialization
+try:
+    from app.modules.reviews.routes import router as reviews_router
+except ImportError:
+    reviews_router = None
+
 if reviews_router:
-    app.include_router(reviews_router, prefix="/api")
+    app.include_router(reviews_router)
 if competitors_router:
     app.include_router(competitors_router, prefix="/api")
 if dashboard_router:
@@ -216,37 +231,6 @@ def db_test(db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB connection failed: {str(e)}")
-
-# ----------------------
-# Scraping endpoints remaining in main.py for now
-# ----------------------
-class BookingScrapeRequest(BaseModel):
-    url: AnyHttpUrl
-    headless: bool = True
-
-@app.post("/scrape/booking", tags=["Scraping"])
-async def start_booking_scrape(payload: BookingScrapeRequest, background_tasks: BackgroundTasks):
-    try:
-        background_tasks.add_task(scrape_booking, str(payload.url), payload.headless)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to start scrape: {exc}")
-    return {
-        "message": "Booking.com scrape started",
-        "url": str(payload.url),
-        "headless": payload.headless,
-    }
-
-@app.get("/reviews", tags=["Reviews"])
-async def get_reviews():
-    try:
-        data_file = Path(__file__).parent / "analyzed_data_frontend.json"
-        if not data_file.exists():
-            return {"reviews": [], "message": "No reviews found yet. Run a scrape first."}
-        with open(data_file, "r", encoding="utf-8") as f:
-            reviews = json.load(f)
-        return {"reviews": reviews, "total": len(reviews)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading reviews: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

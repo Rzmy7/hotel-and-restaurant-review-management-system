@@ -57,7 +57,12 @@ def print_prefixed(prefix, color, text):
     """Print text with a colored prefix."""
     for line in text.splitlines():
         if line.strip():
-            print(f"{color}[{prefix}]{RESET_COLOR} {line}")
+            try:
+                print(f"{color}[{prefix}]{RESET_COLOR} {line}")
+            except UnicodeEncodeError:
+                # Fallback for terminals that don't support certain characters (like arrow symbols)
+                clean_line = line.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding)
+                print(f"{color}[{prefix}]{RESET_COLOR} {clean_line}")
 
 def stream_output(process, prefix, color):
     """Read output from a process and print it with a prefix."""

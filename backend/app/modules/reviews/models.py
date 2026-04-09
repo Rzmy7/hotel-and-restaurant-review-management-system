@@ -30,13 +30,15 @@ class ProcessedReview(Base):
     platformReviewId = Column("platformReviewId", String(100), nullable=True)
     organization_id = Column(UNIQUEIDENTIFIER, nullable=True)
     platform_id = Column(Integer, nullable=True)
+    source_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("source.source_id", ondelete="CASCADE"),
+        nullable=True,
+    )
 
     # Review content
-    source = Column(String(100), nullable=True)
     rating = Column(Integer, nullable=True)
-    userName = Column("userName", String(255), nullable=True)
     reviewerName = Column("reviewerName", String(255), nullable=True)
-    reviewText = Column("reviewText", String, nullable=True)
     text = Column(String, nullable=True)
     summary = Column(String, nullable=True)
 
@@ -46,17 +48,20 @@ class ProcessedReview(Base):
     language = Column(String(50), nullable=True)
     categories = Column(String, nullable=True)    # JSON stored as NVARCHAR(MAX)
     keyPhrases = Column("keyPhrases", String, nullable=True)  # JSON stored as NVARCHAR(MAX)
+    
+    # AI assessment & Error tracking
+    positive_text = Column(String, nullable=True)
+    negative_text = Column(String, nullable=True)
+    error_message = Column(String, nullable=True)
+    retry_count = Column(Integer, default=0)
+    last_attempt = Column(DateTime, nullable=True)
 
     # Dates
-    reviewDate = Column("reviewDate", DateTime(timezone=True), nullable=True)
-    firstSeen = Column("firstSeen", DateTime(timezone=True), nullable=True)
-    lastUpdated = Column("lastUpdated", DateTime(timezone=True), nullable=True)
-    scrapedAt = Column("scrapedAt", DateTime(timezone=True), nullable=True)
+    reviewDate = Column("reviewDate", DateTime(timezone=False), nullable=True)
+    scrapedAt = Column("scrapedAt", DateTime(timezone=False), nullable=True)
 
     # Status
-    status = Column(String(20), nullable=True, default="Pending")
-    replyStatus = Column("replyStatus", String(20), nullable=True, default="Pending")
-    hasReply = Column("hasReply", String(10), nullable=True, default="No")
+    status = Column(String(20), nullable=True, default="pending")
     ai_reply = Column(String, nullable=True)
 
     # Relationships

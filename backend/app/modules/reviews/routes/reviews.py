@@ -1,40 +1,52 @@
 """
-Review list/delete/count routes — GET /reviews, GET /reviews_count, DELETE /delete_reviews
+Review Management Routes — API endpoints for listing, deleting, and AI reply generation.
 """
 
+import uuid
+import logging
 from typing import List
-from fastapi import APIRouter, HTTPException
 
-from app.modules.reviews.schemas import ReviewModel
-from app.modules.reviews.schemas import ReplyGenerationRequest, ReplyGenerationResponse
+import pyodbc
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.core.db_utils import get_connection_string
+from app.modules.auth.utils.auth_utils import get_current_user
+from app.modules.admin.services.subscription_service import increment_feature_usage
+from app.modules.reviews.schemas import ReviewModel, ReplyGenerationRequest, ReplyGenerationResponse
 from app.modules.reviews.services.review_service import (
     get_all_reviews_from_db,
-    remove_all_reviews_from_db,
     count_all_reviews,
+    start_ingestion_and_processing_flow
 )
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
-from app.modules.dashboard.services.stats_service import get_stats
-from app.modules.auth.utils.jwt_utils import get_current_user
-from app.modules.admin.services.subscription_service import increment_feature_usage
-from app.core.db_utils import get_connection_string
-from fastapi import APIRouter, HTTPException, Depends
-import pyodbc
 
-router = APIRouter()
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 
-@router.get("/reviews/{organization_id}", response_model=List[ReviewModel])
-def read_reviews(organization_id: str):
-    """Fetch all processed reviews from the database."""
+@router.get("/{organization_id}", response_model=List[ReviewModel])
+def read_reviews(organization_id: uuid.UUID):
+    """Fetch all processed reviews for a specific organization."""
     try:
-        return get_all_reviews_from_db(organization_id)
+        return get_all_reviews_from_db(str(organization_id))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Read reviews error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
-@router.get("/reviews_count")
-def count_reviews():
-    """Returns the total number of reviews in the database."""
+@router.post("/trigger/{source_id}")
+async def trigger_review_sync(source_id: uuid.UUID, background_tasks: BackgroundTasks):
+    """Manually trigger the ingestion and processing flow for a source."""
+    background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
+    return {"message": "Processing flow started in background."}
+
+
+@router.get("/meta/count")
+def get_total_review_count():
+    """Returns the total number of reviews across the entire platform."""
     try:
         count = count_all_reviews()
         return {"total_reviews": count}
@@ -42,41 +54,13 @@ def count_reviews():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/delete_reviews")
-def delete_all_reviews():
-    """Deletes all reviews from the database."""
-    try:
-        success = remove_all_reviews_from_db()
-        if success:
-            return {"status": "success", "message": "All reviews deleted."}
-        raise HTTPException(status_code=500, detail="Failed to delete reviews.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/reviews/stats")
-def reviews_stats():
-    """Retrieve summarized KPIs for the reviews page."""
-    try:
-        stats = get_stats()
-        # Ensure keys match frontend ReviewStats interface
-        return {
-            "totalReviews": stats["totalReviews"],
-            "averageRating": stats["averageRating"],
-            "pendingReplies": stats["pendingReviews"],
-            "sentimentScore": 75,  # Mocked sentiment for now as it's missing in service
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/reviews/generate", response_model=ReplyGenerationResponse)
+@router.post("/generate-reply", response_model=ReplyGenerationResponse)
 def generate_reply(payload: ReplyGenerationRequest, current_user = Depends(get_current_user)):
-    """Generate an AI reply using admin-selected provider + embedding context."""
+    """Generate an AI reply for a specific review."""
     try:
         result = generate_review_reply(payload)
         
-        # Increment usage
+        # Increment usage tracker
         try:
             user_id = str(current_user.user_id) if hasattr(current_user, "user_id") else str(current_user.id)
             with pyodbc.connect(get_connection_string()) as conn:
@@ -84,10 +68,11 @@ def generate_reply(payload: ReplyGenerationRequest, current_user = Depends(get_c
                 increment_feature_usage(cursor, user_id, "reply_generations")
                 conn.commit()
         except Exception as e:
-            print(f"FAILED TO INCREMENT REPLY_GENERATION USAGE: {e}")
+            logger.warning(f"Failed to increment usage: {e}")
             
         return ReplyGenerationResponse(**result)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Reply generation failed: {exc}") from exc
+        logger.error(f"Reply generation failed: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to generate AI reply.")

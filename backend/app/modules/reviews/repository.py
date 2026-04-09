@@ -1,66 +1,135 @@
 """
-Reviews repository — raw SQL queries for the reviews module.
-Extracted from modules/reviews/service.py.
+Reviews repository — standardized SQL operations for the review processing pipeline.
 """
 
-from typing import List, Tuple, Dict
+import uuid
+from typing import List, Optional, Dict
+from datetime import datetime
 
 import pyodbc
-
 from app.core.pyodbc_connection import get_connection_string
 
 
-def fetch_all_reviews_raw(organization_id: str) -> Tuple[list, Dict[str, list]]:
-    """Fetch raw review rows and a photo map from the database."""
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-
-    sql_reviews = """
-        SELECT
-            r.id, r.rating, r.reviewerName,
-            r.text, r.summary, r.sentiment, r.language, r.categories,
-            r.keyPhrases, r.reviewDate, r.status, r.replyStatus, p.platform_name AS source,
-            r.ai_reply
-        FROM dbo.processed_review r
-        LEFT JOIN dbo.platform p ON r.platform_id = p.platform_id
-        WHERE r.organization_id = ?
+def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID:
     """
-    rows = cursor.execute(sql_reviews, (organization_id,)).fetchall()
+    Insert or update a review record from the scraper.
+    Sets status to 'pending' to trigger the AI processing pipeline.
+    Returns the internal primary key (UUID).
+    """
+    # Check if review already exists by platformReviewId
+    cursor.execute(
+       "SELECT id FROM dbo.processed_review WHERE platformReviewId = ?",
+       review_data["platformReviewId"]
+    )
+    row = cursor.fetchone()
+    
+    if row:
+        review_id = row[0]
+        # Update existing record back to pending
+        sql = """
+            UPDATE dbo.processed_review
+            SET rating = ?, reviewerName = ?, text = ?, 
+                reviewDate = ?, scrapedAt = ?, status = 'pending',
+                source_id = ?, organization_id = ?
+            WHERE id = ?
+        """
+        cursor.execute(
+            sql,
+            review_data["rating"],
+            review_data["reviewerName"],
+            review_data["text"],
+            review_data["reviewDate"],
+            review_data["scrapedAt"],
+            review_data.get("source_id"),
+            review_data.get("organization_id"),
+            review_id
+        )
+        return review_id
+    else:
+        # Insert new record
+        new_id = uuid.uuid4()
+        sql = """
+            INSERT INTO dbo.processed_review (
+                id, platformReviewId, platform_id, rating, reviewerName,
+                text, reviewDate, scrapedAt, status, source_id, organization_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+        """
+        cursor.execute(
+            sql,
+            new_id,
+            review_data["platformReviewId"],
+            review_data.get("platform_id"),
+            review_data["rating"],
+            review_data["reviewerName"],
+            review_data["text"],
+            review_data["reviewDate"],
+            review_data["scrapedAt"],
+            review_data.get("source_id"),
+            review_data.get("organization_id")
+        )
+        return new_id
 
-    original_ids = [str(r.id) for r in rows]
 
-    photo_map: Dict[str, list] = {}
-    if original_ids:
-        # Fetch up to 2000 at a time to prevent SQL max parameters exception
-        for i in range(0, len(original_ids), 2000):
-            chunk = original_ids[i:i + 2000]
-            placeholders = ','.join('?' * len(chunk))
-            pics = cursor.execute(
-                f"SELECT review_id, src, alt FROM dbo.review_media WHERE review_id IN ({placeholders})",
-                chunk,
-            ).fetchall()
-            for review_id, src, alt in pics:
-                pid = str(review_id).upper() if review_id else ""
-                photo_map.setdefault(pid, []).append({"src": src, "alt": alt})
-
-    # For mapping photos correctly if row.id casing differs, we'll ensure consistent casing
-    photo_map_normalized = {k.upper(): v for k, v in photo_map.items()}
+def insert_review_media(cursor: pyodbc.Cursor, review_id: uuid.UUID, photos: List[dict]) -> None:
+    """Bulk insert photos for a processed review."""
+    if not photos:
+        return
         
-    conn.close()
-    return rows, photo_map_normalized
+    # We clear existing photos for this review to avoid duplicates on re-ingestion
+    cursor.execute("DELETE FROM dbo.review_media WHERE review_id = ?", review_id)
+    
+    sql = "INSERT INTO dbo.review_media (media_id, review_id, src, alt) VALUES (?, ?, ?, ?)"
+    for pic in photos:
+        cursor.execute(sql, uuid.uuid4(), review_id, pic.get("src"), pic.get("alt", ""))
 
 
-def delete_all_reviews_raw() -> None:
-    """Hard-delete all review data from all three tables."""
+def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
+    """Fetch a batch of reviews that need AI processing."""
+    sql = f"""
+        SELECT TOP {limit}
+            id, platformReviewId, rating, reviewerName, text, 
+            CAST(reviewDate AS VARCHAR) as reviewDate, 
+            CAST(scrapedAt AS VARCHAR) as scrapedAt, 
+            source_id
+        FROM dbo.processed_review
+        WHERE status = 'pending'
+        ORDER BY scrapedAt ASC
+    """
+    cursor.execute(sql)
+    columns = [column[0] for column in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
+    """Fetch processed reviews with their associated media."""
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM dbo.reviews")
-    conn.commit()
-    cursor.execute("DELETE FROM dbo.review_media")
-    conn.commit()
-    cursor.execute("DELETE FROM dbo.processed_review")
-    conn.commit()
+
+    sql = """
+        SELECT
+            r.id, r.platformReviewId, r.platform_id, r.rating, r.reviewerName,
+            r.text, r.summary, r.sentiment, r.language, r.categories,
+            r.keyPhrases, r.reviewDate, r.scrapedAt, r.status, r.ai_reply,
+            r.source_id, r.positive_text, r.negative_text
+        FROM dbo.processed_review r
+        WHERE r.organization_id = ?
+        ORDER BY r.reviewDate DESC
+    """
+    cursor.execute(sql, (organization_id,))
+    columns = [column[0] for column in cursor.description]
+    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    # Fetch photos for all results
+    results = []
+    for row in rows:
+        rev_id = row["id"]
+        cursor.execute("SELECT src, alt FROM dbo.review_media WHERE review_id = ?", rev_id)
+        row["photos"] = [{"src": p[0], "alt": p[1]} for p in cursor.fetchall()]
+        results.append(row)
+
     conn.close()
+    return results
 
 
 def count_reviews_raw() -> int:
