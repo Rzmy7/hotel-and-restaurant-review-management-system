@@ -35,13 +35,11 @@ from app.core.db_utils import (
 # The date expression used across all processed_review queries.
 # Picks the first non-null date column from the table.
 _DATE_EXPR = (
-    "CAST(COALESCE(reviewDate, CONVERT(date, scrapedAt), "
-    "CONVERT(date, firstSeen), CONVERT(date, lastUpdated)) AS date)"
+    "CAST(COALESCE(reviewDate, CONVERT(date, scrapedAt)) AS date)"
 )
 
 _ACTIVITY_EXPR = (
-    "COALESCE(CAST(lastUpdated AS datetime), CAST(firstSeen AS datetime), "
-    "CAST(scrapedAt AS datetime), CAST(reviewDate AS datetime))"
+    "COALESCE(CAST(scrapedAt AS datetime), CAST(reviewDate AS datetime))"
 )
 
 # Activity type mappings
@@ -106,19 +104,8 @@ def get_review_metrics(cursor: "pyodbc.Cursor") -> dict[str, Any]:
     reviews_growth = growth(current_month_count, previous_month_count)
 
     # Per-platform distribution (top 8 by volume)
-    rows = execute_query(
-        cursor,
-        """
-        SELECT TOP 8
-            COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS platform,
-            COUNT(*) AS total
-        FROM dbo.processed_review
-        GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
-        ORDER BY COUNT(*) DESC
-        """,
-    ).fetchall()
-
-    by_platform = [{"label": str(row[0]), "value": int(row[1])} for row in rows]
+    # We now strictly serve Booking.com reviews here
+    by_platform = [{"label": "Booking.com", "value": total}] if total > 0 else []
 
     return {
         "totalReviews": total,
@@ -274,8 +261,8 @@ def get_recent_activity(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         SELECT TOP 8
             id,
             platformReviewId,
-            userName,
-            source,
+            reviewerName AS userName,
+            'Booking.com' AS source,
             sentiment,
             status,
             {_ACTIVITY_EXPR} AS activityDate

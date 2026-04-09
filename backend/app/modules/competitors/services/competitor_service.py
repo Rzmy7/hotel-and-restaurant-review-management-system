@@ -1,44 +1,55 @@
 """
-Competitor service — CRUD business logic.
-Extracted from modules/competitors/service.py (DB operations section).
-AI client singleton, prompts, and scraping pipeline are in their own files.
+Competitor service — organization-based CRUD business logic.
+
+When a competitor is added:
+1. Look up dbo.source by source_url to find an existing organization.
+2. If found   → link the competitor to that organization_id directly.
+3. If not found → auto-create an ownerless organization + source row,
+                  then trigger scraping via the normal org pipeline.
 """
 
+from __future__ import annotations
+
+import uuid
 from datetime import datetime
 from typing import List, Optional, Dict
 
 import pyodbc
 
 from app.core.pyodbc_connection import get_connection_string
-from app.modules.admin.services.subscription_service import increment_feature_usage
 
+
+# ── Helpers ──────────────────────────────────────────────────────────
+
+def _row_to_competitor(r) -> Dict:
+    return {
+        "id": str(r.id),
+        "name": r.name,
+        "location": r.location or "",
+        "source_url": r.source_url or "",
+        "platform_id": r.platform_id,
+        "organization_id": str(r.organization_id) if r.organization_id else None,
+        "avgRating": round(r.avgRating or 0, 2),
+        "sentimentScore": round(r.sentimentScore or 0, 1),
+        "reviewCount": r.reviewCount or 0,
+        "isTracked": bool(r.isTracked),
+        "status": r.status or "Pending",
+        "createdAt": r.createdAt.isoformat() if r.createdAt else None,
+    }
+
+
+# ── Core read operations ─────────────────────────────────────────────
 
 def get_all_competitors() -> List[Dict]:
-    """Return all competitors (both tracked and available)."""
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         rows = cursor.execute("""
-            SELECT id, name, location, bookingUrl, avgRating, sentimentScore,
-                   reviewCount, isTracked, status, createdAt
+            SELECT id, name, location, source_url, platform_id, organization_id,
+                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt
             FROM dbo.Competitors
             ORDER BY isTracked DESC, name ASC
         """).fetchall()
-
-        return [
-            {
-                "id": r.id,
-                "name": r.name,
-                "location": r.location,
-                "bookingUrl": r.bookingUrl,
-                "avgRating": round(r.avgRating or 0, 2),
-                "sentimentScore": round(r.sentimentScore or 0, 1),
-                "reviewCount": r.reviewCount or 0,
-                "isTracked": bool(r.isTracked),
-                "status": r.status,
-                "createdAt": r.createdAt.isoformat() if r.createdAt else None,
-            }
-            for r in rows
-        ]
+    return [_row_to_competitor(r) for r in rows]
 
 
 def get_tracked_competitors() -> List[Dict]:
@@ -49,63 +60,185 @@ def get_available_competitors() -> List[Dict]:
     return [c for c in get_all_competitors() if not c["isTracked"]]
 
 
-def get_competitor_by_id(competitor_id: int) -> Optional[Dict]:
-    """Return a single competitor by ID."""
+def get_competitor_by_id(competitor_id: str) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         row = cursor.execute("""
-            SELECT id, name, location, bookingUrl, avgRating, sentimentScore,
-                   reviewCount, isTracked, status, createdAt
+            SELECT id, name, location, source_url, platform_id, organization_id,
+                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt
             FROM dbo.Competitors WHERE id = ?
         """, competitor_id).fetchone()
-
-        if not row:
-            return None
-
-        return {
-            "id": row.id,
-            "name": row.name,
-            "location": row.location,
-            "bookingUrl": row.bookingUrl,
-            "avgRating": round(row.avgRating or 0, 2),
-            "sentimentScore": round(row.sentimentScore or 0, 1),
-            "reviewCount": row.reviewCount or 0,
-            "isTracked": bool(row.isTracked),
-            "status": row.status,
-            "createdAt": row.createdAt.isoformat() if row.createdAt else None,
-        }
+    return _row_to_competitor(row) if row else None
 
 
-def add_competitor(name: str, location: str, booking_url: str) -> Dict:
-    """Add a new competitor to the available pool."""
+# ── Smart competitor registration ────────────────────────────────────
+
+def register_competitor(
+    name: str,
+    source_url: str,
+    platform_id: int = 2,
+    organization_type_id: int = 1,
+) -> Dict:
+    """
+    Smart registration:
+    - Checks if source_url already exists in dbo.source.
+    - If YES  → use that org_id, status = 'Active' (reviews already exist).
+    - If NO   → create ownerless org + source, status = 'Pending' (scrape needed).
+    Returns the new competitor entry.
+    """
+    source_url_clean = source_url.strip().rstrip("/")
+
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
+
+        # 1. Check if this URL already maps to an existing org
+        existing_source = cursor.execute("""
+            SELECT s.source_id, s.organization_id, o.organization_name
+            FROM dbo.source s
+            JOIN dbo.organization o ON o.organization_id = s.organization_id
+            WHERE LOWER(RTRIM(LTRIM(s.source_url))) = LOWER(?)
+              AND s.platform_id = ?
+        """, source_url_clean, platform_id).fetchone()
+
+        if existing_source:
+            org_id = existing_source.organization_id
+            status = "Active"
+            print(f"[Competitor] Found existing org {org_id} for URL {source_url_clean}")
+        else:
+            # 2. Create ownerless organization (tenant_id = NULL)
+            org_id = uuid.uuid4()
+            cursor.execute("""
+                INSERT INTO dbo.organization
+                    (organization_id, organization_name, tenant_id, organization_type_id, created_at, updated_at)
+                VALUES (?, ?, NULL, ?, GETDATE(), GETDATE())
+            """, org_id, name, organization_type_id)
+
+            # 3. Register source URL for new org
+            source_id = uuid.uuid4()
+            cursor.execute("""
+                INSERT INTO dbo.source
+                    (source_id, organization_id, platform_id, source_url,
+                     source_status, fetching_frequency, created_at, num_of_syncs,
+                     success_sync_count, success_rate)
+                VALUES (?, ?, ?, ?, 'queued', 1, GETDATE(), 0, 0, 0.0)
+            """, source_id, org_id, platform_id, source_url_clean)
+
+            status = "Pending"
+            print(f"[Competitor] Created new ownerless org {org_id} for URL {source_url_clean}")
+
+        # 4. Check this competitor isn't already in the list
+        existing_competitor = cursor.execute("""
+            SELECT id FROM dbo.Competitors WHERE organization_id = ?
+        """, org_id).fetchone()
+
+        if existing_competitor:
+            # Ensure it's tracked (it may have been added previously without tracking)
+            cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ?", existing_competitor.id)
+            conn.commit()
+            return get_competitor_by_id(str(existing_competitor.id))
+
+        # 5. Insert into dbo.Competitors
+        new_id = uuid.uuid4()
         cursor.execute("""
-            INSERT INTO dbo.Competitors (name, location, bookingUrl, isTracked, status)
-            OUTPUT INSERTED.id
-            VALUES (?, ?, ?, 0, 'Pending')
-        """, name, location, booking_url)
-        new_id = cursor.fetchone()[0]
+            INSERT INTO dbo.Competitors
+                (id, name, location, source_url, platform_id, organization_id,
+                 avgRating, sentimentScore, reviewCount, isTracked, status, createdAt)
+            VALUES (?, ?, '', ?, ?, ?, 0.0, 0.0, 0, 1, ?, GETDATE())
+        """, new_id, name, source_url_clean, platform_id, org_id, status)
         conn.commit()
-    return get_competitor_by_id(new_id)
+
+    # If new org, trigger background scrape via normal org pipeline
+    if status == "Pending":
+        _trigger_org_scrape(str(org_id), str(source_id), source_url_clean, platform_id)
+
+    return get_competitor_by_id(str(new_id))
 
 
-def track_competitor(competitor_id: int, user_id: str | None = None) -> Optional[Dict]:
+def _trigger_org_scrape(org_id: str, source_id: str, source_url: str, platform_id: int):
+    """Trigger the normal org review-scraping pipeline in the background."""
+    try:
+        from app.modules.reviews.scraper import scrape_booking_for_competitor
+        import threading
+
+        def _scrape():
+            try:
+                from app.modules.reviews.processor import insert_processed_reviews
+                import pyodbc as _pyodbc
+                raw = scrape_booking_for_competitor(source_url, headless=True)
+                if raw:
+                    with _pyodbc.connect(get_connection_string()) as conn:
+                        insert_processed_reviews(conn, _build_review_rows(raw, org_id))
+                # Mark source as active & update competitor stats
+                _finalize_org_competitor(org_id)
+            except Exception as e:
+                print(f"[Competitor Scrape] Error for org {org_id}: {e}")
+
+        threading.Thread(target=_scrape, daemon=True).start()
+        print(f"[Competitor Scrape] Started background scrape for org {org_id}")
+    except ImportError as e:
+        print(f"[Competitor Scrape] Scraper not available: {e}")
+
+
+def _build_review_rows(raw_reviews, org_id: str) -> list:
+    """Adapt raw scraped reviews for insert_processed_reviews with org_id context."""
+    import json
+    from google import genai
+    from app.core.config import GENAI_KEY
+    from app.modules.competitors.ai.prompts import COMPETITOR_PROMPT
+    import re
+
+    client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
+    from dataclasses import asdict
+    hotel_data = json.dumps([asdict(r) for r in raw_reviews], ensure_ascii=False)
+    prompt = COMPETITOR_PROMPT.format(hotel_data=hotel_data)
+    response = client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
+
+    def strip_fences(t):
+        m = re.search(r"^```(?:json)?\s*(.*?)\s*```$", t, re.DOTALL | re.MULTILINE)
+        return m.group(1) if m else t
+
+    rows = json.loads(strip_fences(response.text))
+    # Attach organization_id so insert_processed_reviews can store it
+    for r in rows:
+        r["organization_id"] = org_id
+    return rows
+
+
+def _finalize_org_competitor(org_id: str):
+    """After scraping, update competitor status and stats from processed_review."""
+    with pyodbc.connect(get_connection_string()) as conn:
+        cursor = conn.cursor()
+        row = cursor.execute("""
+            SELECT COUNT(*) as cnt,
+                   AVG(CAST(rating AS FLOAT)) as avgRating,
+                   SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) * 100.0
+                       / NULLIF(COUNT(*), 0) as sentimentScore
+            FROM dbo.processed_review
+            WHERE organization_id = ?
+        """, org_id).fetchone()
+
+        if row and (row.cnt or 0) > 0:
+            cursor.execute("""
+                UPDATE dbo.Competitors
+                SET avgRating = ?, sentimentScore = ?, reviewCount = ?, status = 'Active'
+                WHERE organization_id = ?
+            """, round(row.avgRating or 0, 2),
+                round(row.sentimentScore or 0, 1),
+                row.cnt, org_id)
+            conn.commit()
+
+
+# ── Update / Delete ──────────────────────────────────────────────────
+
+def track_competitor(competitor_id: str, user_id: str | None = None) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ?", competitor_id)
-        
-        if user_id:
-            try:
-                increment_feature_usage(cursor, user_id, "competitors")
-            except Exception as e:
-                print(f"FAILED TO INCREMENT COMPETITOR USAGE: {e}")
-        
         conn.commit()
     return get_competitor_by_id(competitor_id)
 
 
-def untrack_competitor(competitor_id: int) -> bool:
+def untrack_competitor(competitor_id: str) -> bool:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE dbo.Competitors SET isTracked = 0 WHERE id = ?", competitor_id)
@@ -113,7 +246,7 @@ def untrack_competitor(competitor_id: int) -> bool:
     return True
 
 
-def delete_competitor(competitor_id: int) -> bool:
+def delete_competitor(competitor_id: str) -> bool:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM dbo.Competitors WHERE id = ?", competitor_id)
@@ -121,43 +254,47 @@ def delete_competitor(competitor_id: int) -> bool:
     return True
 
 
-def get_competitor_reviews(competitor_id: int) -> List[Dict]:
-    """Get all processed reviews for a competitor."""
+def get_competitor_reviews(competitor_id: str) -> List[Dict]:
+    """Get processed reviews for a competitor via their organization_id."""
+    competitor = get_competitor_by_id(competitor_id)
+    if not competitor or not competitor.get("organization_id"):
+        return []
+
+    org_id = competitor["organization_id"]
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         rows = cursor.execute("""
-            SELECT id, competitorId, platformReviewId, rating, userName,
-                   reviewText, summary, sentiment, categories, keyPhrases,
-                   language, reviewDate, source
-            FROM dbo.CompetitorReviews
-            WHERE competitorId = ?
+            SELECT id, organization_id, rating, reviewerName, text,
+                   summary, sentiment, categories, keyPhrases, language, reviewDate
+            FROM dbo.processed_review
+            WHERE organization_id = ?
             ORDER BY reviewDate DESC
-        """, competitor_id).fetchall()
+        """, org_id).fetchall()
 
-        results = []
-        for r in rows:
-            try:
-                cat_list = json.loads(r.categories) if r.categories else []
-            except json.JSONDecodeError:
-                cat_list = []
-            try:
-                phrase_list = json.loads(r.keyPhrases) if r.keyPhrases else []
-            except json.JSONDecodeError:
-                phrase_list = []
+    import json as _json
+    results = []
+    for r in rows:
+        try:
+            cat_list = _json.loads(r.categories) if r.categories else []
+        except Exception:
+            cat_list = []
+        try:
+            phrase_list = _json.loads(r.keyPhrases) if r.keyPhrases else []
+        except Exception:
+            phrase_list = []
 
-            results.append({
-                "id": r.id,
-                "competitorId": r.competitorId,
-                "platformReviewId": r.platformReviewId,
-                "rating": r.rating or 0,
-                "userName": r.userName or "Anonymous",
-                "reviewText": r.reviewText,
-                "summary": r.summary,
-                "sentiment": r.sentiment,
-                "categories": cat_list,
-                "keyPhrases": phrase_list,
-                "language": r.language,
-                "reviewDate": r.reviewDate.isoformat() if r.reviewDate else None,
-                "source": r.source,
-            })
-        return results
+        results.append({
+            "id": str(r.id),
+            "competitorId": competitor_id,
+            "rating": r.rating or 0,
+            "userName": r.reviewerName or "Anonymous",
+            "reviewText": r.text or "",
+            "summary": r.summary or "",
+            "sentiment": r.sentiment or "Neutral",
+            "categories": cat_list,
+            "keyPhrases": phrase_list,
+            "language": r.language or "English",
+            "reviewDate": r.reviewDate.isoformat() if r.reviewDate else None,
+            "source": "Booking.com",
+        })
+    return results

@@ -146,6 +146,8 @@ def insert_processed_reviews(conn: pyodbc.Connection, rows: list[dict]) -> None:
             except (ValueError, TypeError):
                 return None
 
+        sql_cat = "INSERT INTO dbo.ReviewCategory (id, review_id, category_name) VALUES (?, ?, ?)"
+
         categories_json = json.dumps(r.get("categories", []), ensure_ascii=False)
         key_phrases_json = json.dumps(r.get("keyPhrases", []), ensure_ascii=False)
 
@@ -172,6 +174,14 @@ def insert_processed_reviews(conn: pyodbc.Connection, rows: list[dict]) -> None:
             r.get("replyStatus", "Pending"),
             r.get("hasReply", "No"),
         )
+        
+        # Insert categories relation if available
+        cats = r.get("categories", [])
+        if isinstance(cats, list):
+            import uuid
+            for c in cats:
+                cur.execute(sql_cat, str(uuid.uuid4()), r["id"], str(c))
+                
     conn.commit()
     print(f"✓ Saved {len(rows)} processed reviews to SQL table.")
 

@@ -1,0 +1,222 @@
+{
+  "orgs": [
+    {
+      "name": "Kunda Hotel",
+      "tenant_id": "ACF8D385-D07C-4EE5-AAE3-EC74267BBC70",
+      "is_comp": false,
+      "reviews": 271
+    },
+    {
+      "name": "Mount Lodge Boutique Hotel",
+      "tenant_id": "AE085EE0-16DD-485A-A43D-67705E0B9421",
+      "is_comp": false,
+      "reviews": 100
+    },
+    {
+      "name": "Sulakshi",
+      "tenant_id": "781C6C67-58DD-4746-BA72-903B93ABCC59",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Test2",
+      "tenant_id": "B1DEBFE8-F3EA-4AE4-8A14-B77FCCB645EA",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Test Org 2",
+      "tenant_id": "20A9743E-04C4-4986-A24F-6D75FBE9DDB5",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Test",
+      "tenant_id": "9B1E4B24-1511-4E57-A003-608A865A2CE2",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "kumma hotel",
+      "tenant_id": "EC9DBD0A-06E9-40D0-A4AB-B704E2EF7F52",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "kevinda hote;",
+      "tenant_id": "C3AB339E-32B1-44A9-A3CD-5C168BE4A594",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "kevinda hotel -2 ",
+      "tenant_id": "781C6C67-58DD-4746-BA72-903B93ABCC59",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Test3",
+      "tenant_id": "F9EE9940-DFD8-4C0C-805E-1C0CBF6B725C",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "My New Business",
+      "tenant_id": "0054F053-797A-4FC6-B398-CD8280AA2053",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Hotel Beta",
+      "tenant_id": "27F176D4-346F-4D05-80BA-0BEE29AB76E9",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Hotel Alpha",
+      "tenant_id": "27F176D4-346F-4D05-80BA-0BEE29AB76E9",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Cinnamon Life fake  - Residencies",
+      "tenant_id": "C3AB339E-32B1-44A9-A3CD-5C168BE4A594",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "Test Org",
+      "tenant_id": "8E8DEA20-99A2-4D56-8707-AF19572B5215",
+      "is_comp": false,
+      "reviews": 0
+    },
+    {
+      "name": "kumma hotel",
+      "tenant_id": "2CF5B1BA-6D0D-45CB-8368-D8D2DA2D8F14",
+      "is_comp": false,
+      "reviews": 0
+    }
+  ],
+  "users": [
+    {
+      "uid": "F9EE9940-DFD8-4C0C-805E-1C0CBF6B725C",
+      "name": "Hansi Ashara",
+      "email": "hansiwickramage18@gmail.com"
+    },
+    {
+      "uid": "442CF14E-9E46-46CE-8551-1EC450476D62",
+      "name": "anguli mala",
+      "email": "anguli@mala.com"
+    },
+    {
+      "uid": "2CF7B34B-6D87-4381-ABE6-2A75C8C8345B",
+      "name": "Final Test V3",
+      "email": "test_user_final_v3@example.com"
+    },
+    {
+      "uid": "61DAD97C-F7A3-4A67-AB6A-2DECDA333C04",
+      "name": "kakka kevinda",
+      "email": "kakkavinda@gmail.com"
+    },
+    {
+      "uid": "C97C3070-F91D-44A8-904F-338F41742B32",
+      "name": "Hasini hansi",
+      "email": "hasini@h.com"
+    },
+    {
+      "uid": "C3AB339E-32B1-44A9-A3CD-5C168BE4A594",
+      "name": "Kevinda Amarasinghe",
+      "email": "kevinda@k.com"
+    },
+    {
+      "uid": "EE633E63-E0CE-4D12-B864-603B0036A6C6",
+      "name": "Test User",
+      "email": "test@example.com"
+    },
+    {
+      "uid": "9B1E4B24-1511-4E57-A003-608A865A2CE2",
+      "name": "Hansi Ashara",
+      "email": "hansiashara2@gmail.com"
+    },
+    {
+      "uid": "AE085EE0-16DD-485A-A43D-67705E0B9421",
+      "name": "Krishantha Pradeep",
+      "email": "krishantha@kaggle.com"
+    },
+    {
+      "uid": "E7C875F3-163C-4B2D-90C3-7B59C2193E5E",
+      "name": "Test User",
+      "email": "test2@example.com"
+    },
+    {
+      "uid": "C3EB3445-2D3C-41B7-A55E-81386B3E0D15",
+      "name": "Keshaka Imal",
+      "email": "keshaka@gmail.com"
+    },
+    {
+      "uid": "781C6C67-58DD-4746-BA72-903B93ABCC59",
+      "name": "kakka kalani",
+      "email": "kalani@kakka.com"
+    },
+    {
+      "uid": "2133EFC3-9A5B-4F8B-82BE-A9D533E46B29",
+      "name": "alfkna asdfsd",
+      "email": "safasd@rgrg.grg"
+    },
+    {
+      "uid": "B4CC894E-7A9C-4D9B-9C11-AB67EDB95017",
+      "name": "Final Test User",
+      "email": "test_user_final_v1@example.com"
+    },
+    {
+      "uid": "0E678410-CDB9-4D36-BB37-AD4242E65888",
+      "name": "asdfav sdfvsd",
+      "email": "asdf@arf.vf"
+    },
+    {
+      "uid": "EC9DBD0A-06E9-40D0-A4AB-B704E2EF7F52",
+      "name": "Konga kumma 2",
+      "email": "kumma2@konga.com"
+    },
+    {
+      "uid": "B1DEBFE8-F3EA-4AE4-8A14-B77FCCB645EA",
+      "name": "wimal ",
+      "email": "wimal@gmail.com"
+    },
+    {
+      "uid": "B1D44606-63D9-40BE-8225-B8480E9DC59B",
+      "name": "Test User",
+      "email": "test_aad0d9@example.com"
+    },
+    {
+      "uid": "0054F053-797A-4FC6-B398-CD8280AA2053",
+      "name": "omal ",
+      "email": "omal@gmail.com"
+    },
+    {
+      "uid": "2CF5B1BA-6D0D-45CB-8368-D8D2DA2D8F14",
+      "name": "Konga kumma",
+      "email": "konga@kumma.com"
+    },
+    {
+      "uid": "F709FC58-4C83-460D-8B43-DE0785F608CC",
+      "name": "Admin main",
+      "email": "admin@admin.ad"
+    },
+    {
+      "uid": "FDDB7697-1EDE-43FB-BAFE-DED13F46D3AC",
+      "name": "Konga kumma 2",
+      "email": "kumma@konga.com"
+    },
+    {
+      "uid": "ACF8D385-D07C-4EE5-AAE3-EC74267BBC70",
+      "name": "Pasindu Dilshan",
+      "email": "pasindud265@gmail.com"
+    },
+    {
+      "uid": "EADCD6B4-7209-42A5-B814-F87AF90EBFC2",
+      "name": "Test User",
+      "email": "test_user_unique@example.com"
+    }
+  ]
+}
