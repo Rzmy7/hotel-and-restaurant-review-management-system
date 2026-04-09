@@ -21,6 +21,7 @@ from app.modules.source.schemas import (
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
     SyncLogRead, SyncStatus, SyncStatusRequest
 )
+from app.modules.source.services.embedding_client import trigger_embedding_for_source
 
 def calculate_next_sync_time(base_time: datetime, frequency_id: int) -> datetime:
     """Calculate the next sync time based on base_time and frequency ID."""
@@ -363,6 +364,9 @@ def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusReq
             reviews_fetched=request.new_review_count
         )
         db.add(sync_log)
+
+        # — Trigger embedding for newly scraped reviews (non-blocking background thread) —
+        trigger_embedding_for_source(str(source.source_id))
         
     elif request.status == SyncStatus.FAILED:
         source.source_status = SourceStatus.ERROR

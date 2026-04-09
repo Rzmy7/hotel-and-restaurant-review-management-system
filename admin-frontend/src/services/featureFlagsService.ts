@@ -26,14 +26,14 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
 export const featureFlagsService = {
     async getFeatureFlags(): Promise<FeatureFlag[]> {
-        return requestJson<FeatureFlag[]>('/api/settings/feature-flags', { method: 'GET' });
+        return requestJson<FeatureFlag[]>('/api/admin/settings/feature-flags', { method: 'GET' });
     },
 
     async updateFeatureFlag(
         key: string,
         payload: { status: 'Enabled' | 'Disabled'; limit?: number }
     ): Promise<FeatureFlag> {
-        return requestJson<FeatureFlag>(`/api/settings/feature-flags/${encodeURIComponent(key)}`, {
+        return requestJson<FeatureFlag>(`/api/admin/settings/feature-flags/${encodeURIComponent(key)}`, {
             method: 'PATCH',
             body: JSON.stringify(payload),
         });

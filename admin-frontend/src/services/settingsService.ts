@@ -35,6 +35,19 @@ export interface ReplyGenerationApiTestResponse {
     message: string;
 }
 
+export interface AdminProfile {
+    name: string;
+}
+
+export interface AdminPasswordChangePayload {
+    currentPassword: string;
+    newPassword: string;
+}
+
+export interface AdminPasswordChangeResponse {
+    message: string;
+}
+
 export const getStoredSystemTimezone = (): string => {
     return localStorage.getItem(SYSTEM_TIMEZONE_STORAGE_KEY) || 'UTC';
 };
@@ -81,5 +94,17 @@ export const settingsService = {
 
     async testReplyGenerationApiKey(payload: ReplyGenerationApiTestPayload): Promise<ReplyGenerationApiTestResponse> {
         return apiClient.post<ReplyGenerationApiTestResponse>('/admin/settings/reply-generation/test', payload);
+    },
+
+    async getAdminProfile(): Promise<AdminProfile> {
+        return apiClient.get<AdminProfile>('/admin/settings/admin-profile');
+    },
+
+    async updateAdminProfile(payload: AdminProfile): Promise<AdminProfile> {
+        return apiClient.patch<AdminProfile>('/admin/settings/admin-profile', payload);
+    },
+
+    async changeAdminPassword(payload: AdminPasswordChangePayload): Promise<AdminPasswordChangeResponse> {
+        return apiClient.patch<AdminPasswordChangeResponse>('/admin/settings/admin-profile/password', payload);
     },
 };

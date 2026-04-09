@@ -57,12 +57,21 @@ export const Settings: React.FC = () => {
     const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
     const [generalSaveState, setGeneralSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [generalSaveError, setGeneralSaveError] = useState<string | null>(null);
+    const [adminProfileName, setAdminProfileName] = useState('System Admin');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [adminProfileSaveState, setAdminProfileSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [adminProfileError, setAdminProfileError] = useState<string | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             try {
-                const data = await settingsService.getGeneralSettings();
+                const [data, profile] = await Promise.all([
+                    settingsService.getGeneralSettings(),
+                    settingsService.getAdminProfile(),
+                ]);
                 setSettings({
                     ...defaultSettings,
                     timezone: data.timezone,
@@ -70,6 +79,7 @@ export const Settings: React.FC = () => {
                     dateFormat: data.dateFormat,
                     currency: data.currency,
                 });
+                setAdminProfileName(profile.name || 'System Admin');
 
                 const status = await maintenanceService.getStatus();
                 setMaintenanceMode(!!status.maintenanceMode);
@@ -156,6 +166,69 @@ export const Settings: React.FC = () => {
         }
     };
 
+    const handleSaveAdminProfile = async () => {
+        if (adminProfileSaveState === 'saving') {
+            return;
+        }
+
+        setAdminProfileError(null);
+
+        if (!adminProfileName.trim()) {
+            setAdminProfileSaveState('error');
+            setAdminProfileError('Admin name cannot be empty.');
+            return;
+        }
+
+        if (newPassword || confirmNewPassword || currentPassword) {
+            if (!currentPassword) {
+                setAdminProfileSaveState('error');
+                setAdminProfileError('Current password is required to change password.');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                setAdminProfileSaveState('error');
+                setAdminProfileError('New password must be at least 8 characters.');
+                return;
+            }
+
+            if (newPassword !== confirmNewPassword) {
+                setAdminProfileSaveState('error');
+                setAdminProfileError('New password and confirm password do not match.');
+                return;
+            }
+        }
+
+        setAdminProfileSaveState('saving');
+
+        try {
+            const updated = await settingsService.updateAdminProfile({
+                name: adminProfileName.trim(),
+            });
+
+            if (newPassword) {
+                await settingsService.changeAdminPassword({
+                    currentPassword,
+                    newPassword,
+                });
+            }
+
+            setAdminProfileName(updated.name);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+            setAdminProfileSaveState('saved');
+            window.setTimeout(() => setAdminProfileSaveState('idle'), 2500);
+        } catch (error) {
+            setAdminProfileSaveState('error');
+            setAdminProfileError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to save admin profile. Please try again.',
+            );
+        }
+    };
+
     if (loading || !settings) return <LoadingSpinner />;
 
     const timezoneOptionExists = TIMEZONE_OPTIONS.some(option => option.value === settings.timezone);
@@ -170,7 +243,8 @@ export const Settings: React.FC = () => {
                 tabs={[
                     { id: 'general', label: 'General' },
                     { id: 'security', label: 'Security' },
-                    { id: 'notifications', label: 'Notifications' }
+                    { id: 'notifications', label: 'Notifications' },
+                    { id: 'admin-profile', label: 'Admin Profile' }
                 ]}
                 activeTab={activeTab}
                 onChange={setActiveTab}
@@ -281,18 +355,6 @@ export const Settings: React.FC = () => {
                                         <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                                     </div>
                                 </label>
-                            </div>
-
-                            <div className="border-t border-gray-100"></div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-1">Password Strength Requirement</label>
-                                <p className="text-sm text-gray-500 mb-2">Set minimum password strength requirements for user accounts</p>
-                                <input
-                                    type="text"
-                                    defaultValue={settings.passwordStrength}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
                             </div>
 
                             <div className="border-t border-gray-100"></div>
@@ -417,6 +479,98 @@ export const Settings: React.FC = () => {
                         >
                             <Save size={16} />
                             Save Changes
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'admin-profile' && (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                        <div className="mb-4">
+                            <h2 className="text-base font-semibold text-gray-900">Admin Profile</h2>
+                            <p className="text-sm text-gray-500">Update administrator identity and password</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Admin Name</label>
+                                <input
+                                    type="text"
+                                    value={adminProfileName}
+                                    onChange={(event) => {
+                                        setAdminProfileName(event.target.value);
+                                        setAdminProfileError(null);
+                                        setAdminProfileSaveState('idle');
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            <div className="border-t border-gray-100"></div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
+                                    <input
+                                        type="password"
+                                        value={currentPassword}
+                                        onChange={(event) => {
+                                            setCurrentPassword(event.target.value);
+                                            setAdminProfileError(null);
+                                            setAdminProfileSaveState('idle');
+                                        }}
+                                        placeholder="Enter current password"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
+                                    <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(event) => {
+                                            setNewPassword(event.target.value);
+                                            setAdminProfileError(null);
+                                            setAdminProfileSaveState('idle');
+                                        }}
+                                        placeholder="At least 8 characters"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
+                                    <input
+                                        type="password"
+                                        value={confirmNewPassword}
+                                        onChange={(event) => {
+                                            setConfirmNewPassword(event.target.value);
+                                            setAdminProfileError(null);
+                                            setAdminProfileSaveState('idle');
+                                        }}
+                                        placeholder="Re-enter new password"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {adminProfileSaveState === 'saved' && (
+                        <div className="text-sm text-green-600">Admin profile saved.</div>
+                    )}
+                    {(adminProfileSaveState === 'error' && adminProfileError) && (
+                        <div className="text-sm text-red-600">{adminProfileError}</div>
+                    )}
+
+                    <div className="flex justify-end">
+                        <button
+                            onClick={handleSaveAdminProfile}
+                            disabled={adminProfileSaveState === 'saving'}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        >
+                            <Save size={16} />
+                            {adminProfileSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>

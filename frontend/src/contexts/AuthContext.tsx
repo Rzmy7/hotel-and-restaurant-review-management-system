@@ -172,8 +172,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (payload.access_token) {
             persist(normalizedUser, payload.access_token);
         } else {
-            // auto login if token not provided
-            await login(email, password);
+            // login and persist without organization-based redirect
+            const loginPayload = await apiClient.post<any>('/auth/login', { email, password });
+            const loginUser = loginPayload.user;
+            const normalizedLoginUser: User = {
+                user_id: loginUser.user_id,
+                email: loginUser.email,
+                full_name: loginUser.full_name || loginUser.name || `${loginUser.first_name || ""} ${loginUser.last_name || ""}`.trim() || "User",
+                role: normalizeRole(loginUser.role || loginUser.roles),
+            };
+            persist(normalizedLoginUser, loginPayload.access_token);
+            return normalizedLoginUser;
         }
 
         return normalizedUser;

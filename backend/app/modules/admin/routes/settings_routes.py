@@ -10,8 +10,15 @@ except Exception:
     Anthropic = None
 
 from app.core.db_utils import get_connection_string
+from app.core.db_utils import execute_query, get_table_columns
+from app.core.security import hash_password, verify_password
+from app.modules.auth.constants.roles import ADMIN_ROLE_ID
 from app.modules.admin.schemas import GeneralSettingsPayload, GeneralSettingsResponse
 from app.modules.admin.schemas import (
+    AdminPasswordChangePayload,
+    AdminPasswordChangeResponse,
+    AdminProfileResponse,
+    AdminProfileUpdatePayload,
     FeatureFlagResponse,
     FeatureFlagUpdatePayload,
     ReplyGenerationApiTestPayload,
@@ -117,6 +124,68 @@ def _infer_provider_from_model(model: str) -> str:
     return "google"
 
 
+def _split_name(value: str) -> tuple[str, str]:
+    cleaned = " ".join((value or "").strip().split())
+    if not cleaned:
+        return "", ""
+    parts = cleaned.split(" ", 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else ""
+    return first_name, last_name
+
+
+def _fallback_name_from_email(email: str) -> str:
+    local = (email or "").split("@")[0].strip()
+    if not local:
+        return "System Admin"
+    tokens = [token for token in local.replace("_", " ").replace(".", " ").replace("-", " ").split(" ") if token]
+    return " ".join(token.capitalize() for token in tokens) if tokens else "System Admin"
+
+
+def _load_primary_admin_row(cursor: pyodbc.Cursor) -> tuple:
+    columns = get_table_columns(cursor, "user")
+    if not columns:
+        raise HTTPException(status_code=400, detail="Table dbo.[user] not found")
+
+    if "role_id" not in columns:
+        raise HTTPException(status_code=400, detail="Table dbo.[user] must include role_id for admin profile operations")
+
+    if "is_active" in columns:
+        query = (
+            "SELECT TOP 1 user_id, email, first_name, last_name, full_name, [name], username, display_name, password_hash "
+            "FROM dbo.[user] "
+            "WHERE role_id = ? AND COALESCE(is_active, 0) = 1 "
+            "ORDER BY created_at ASC"
+        )
+    else:
+        query = (
+            "SELECT TOP 1 user_id, email, first_name, last_name, full_name, [name], username, display_name, password_hash "
+            "FROM dbo.[user] "
+            "WHERE role_id = ? "
+            "ORDER BY created_at ASC"
+        )
+
+    row = execute_query(cursor, query, (ADMIN_ROLE_ID,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="No admin user found")
+    return row
+
+
+def _resolve_admin_name(row: tuple) -> str:
+    first_name = str(row[2]).strip() if row[2] else ""
+    last_name = str(row[3]).strip() if row[3] else ""
+    if first_name or last_name:
+        return f"{first_name} {last_name}".strip()
+
+    for idx in (4, 5, 6, 7):
+        value = str(row[idx]).strip() if row[idx] else ""
+        if value:
+            return value
+
+    email = str(row[1] or "").strip()
+    return _fallback_name_from_email(email)
+
+
 @router.get("/general", response_model=GeneralSettingsResponse)
 def get_general_settings() -> GeneralSettingsResponse:
     try:
@@ -172,6 +241,108 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to update general settings: {exc}") from exc
+
+
+@router.get("/admin-profile", response_model=AdminProfileResponse)
+def get_admin_profile() -> AdminProfileResponse:
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            row = _load_primary_admin_row(cursor)
+            return AdminProfileResponse(name=_resolve_admin_name(row))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load admin profile: {exc}") from exc
+
+
+@router.patch("/admin-profile", response_model=AdminProfileResponse)
+def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResponse:
+    name_value = " ".join(payload.name.strip().split())
+    if not name_value:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            columns = get_table_columns(cursor, "user")
+            row = _load_primary_admin_row(cursor)
+            user_id = row[0]
+
+            set_clauses: list[str] = []
+            params: list = []
+
+            if "first_name" in columns:
+                first_name, last_name = _split_name(name_value)
+                set_clauses.append("first_name = ?")
+                params.append(first_name)
+                if "last_name" in columns:
+                    set_clauses.append("last_name = ?")
+                    params.append(last_name)
+
+            if "full_name" in columns:
+                set_clauses.append("full_name = ?")
+                params.append(name_value)
+            if "name" in columns:
+                set_clauses.append("[name] = ?")
+                params.append(name_value)
+            if "display_name" in columns:
+                set_clauses.append("display_name = ?")
+                params.append(name_value)
+
+            if not set_clauses:
+                raise HTTPException(status_code=400, detail="No supported name column found on dbo.[user]")
+
+            params.append(user_id)
+            execute_query(
+                cursor,
+                f"UPDATE dbo.[user] SET {', '.join(set_clauses)} WHERE user_id = ?",
+                tuple(params),
+            )
+            connection.commit()
+
+            return AdminProfileResponse(name=name_value)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update admin profile: {exc}") from exc
+
+
+@router.patch("/admin-profile/password", response_model=AdminPasswordChangeResponse)
+def change_admin_password(payload: AdminPasswordChangePayload) -> AdminPasswordChangeResponse:
+    if payload.currentPassword == payload.newPassword:
+        raise HTTPException(status_code=400, detail="New password must be different from current password")
+
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            columns = get_table_columns(cursor, "user")
+            if "password_hash" not in columns:
+                raise HTTPException(status_code=400, detail="Table dbo.[user] must include password_hash to change password")
+
+            row = _load_primary_admin_row(cursor)
+            user_id = row[0]
+            password_hash = str(row[8] or "").strip()
+
+            if not password_hash:
+                raise HTTPException(status_code=400, detail="Password login is not available for this admin account")
+
+            if not verify_password(payload.currentPassword, password_hash):
+                raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+            next_hash = hash_password(payload.newPassword)
+            execute_query(
+                cursor,
+                "UPDATE dbo.[user] SET password_hash = ? WHERE user_id = ?",
+                (next_hash, user_id),
+            )
+            connection.commit()
+
+            return AdminPasswordChangeResponse(message="Password updated successfully")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to change admin password: {exc}") from exc
 
 
 @router.get("/reply-generation", response_model=ReplyGenerationSettingsResponse)

@@ -249,6 +249,23 @@ class GeneralSettingsPayload(BaseModel):
     currency: str = Field(..., min_length=1, max_length=64)
 
 
+class AdminProfileResponse(BaseModel):
+    name: str
+
+
+class AdminProfileUpdatePayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+
+
+class AdminPasswordChangePayload(BaseModel):
+    currentPassword: str = Field(..., min_length=1, max_length=72)
+    newPassword: str = Field(..., min_length=8, max_length=72)
+
+
+class AdminPasswordChangeResponse(BaseModel):
+    message: str
+
+
 class ReplyGenerationSettingsResponse(BaseModel):
     googleApiKey: str
     claudeApiKey: str

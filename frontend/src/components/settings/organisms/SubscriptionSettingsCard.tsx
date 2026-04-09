@@ -8,9 +8,21 @@ import { useAuth } from '../../../contexts/AuthContext';
 import {
     fetchSubscriptionPlans,
     fetchSubscriptionUsage,
+    fetchUserOrganizations,
     type SubscriptionFeatureUsage,
     type SubscriptionPlan,
 } from '../../../services/subscriptionPlansService';
+
+const PLAN_ALIASES: Record<string, string> = {
+    professional: 'pro',
+    enterprise: 'enterprise',
+    free: 'free',
+    starter: 'starter',
+    pro: 'pro',
+};
+
+const normalizePlanKey = (value: string | null | undefined): string =>
+    (value || '').trim().toLowerCase();
 
 interface SubscriptionSettingsCardProps {
     data: SubscriptionSettings;
@@ -29,6 +41,8 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [featureUsage, setFeatureUsage] = useState<SubscriptionFeatureUsage[]>([]);
+    const [usagePlanId, setUsagePlanId] = useState<string | null>(null);
+    const [usagePlanName, setUsagePlanName] = useState<string | null>(null);
     const [usageLoading, setUsageLoading] = useState(true);
     const [usageError, setUsageError] = useState<string | null>(null);
 
@@ -39,9 +53,6 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
             try {
                 const loadedPlans = await fetchSubscriptionPlans();
                 setPlans(loadedPlans);
-                if (loadedPlans.length > 0 && !loadedPlans.some((plan) => plan.id === data.plan)) {
-                    onChange({ plan: loadedPlans[0].id });
-                }
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Failed to load plans';
                 setErrorMessage(message);
@@ -57,6 +68,8 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
         const userId = user?.user_id?.trim();
         if (!userId) {
             setFeatureUsage([]);
+            setUsagePlanId(null);
+            setUsagePlanName(null);
             setUsageLoading(false);
             setUsageError('No user session found for usage metrics.');
             return;
@@ -66,8 +79,28 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
             setUsageLoading(true);
             setUsageError(null);
             try {
-                const usage = await fetchSubscriptionUsage(userId);
-                setFeatureUsage(usage.features || []);
+                const [usage, organizations] = await Promise.all([
+                    fetchSubscriptionUsage(userId),
+                    fetchUserOrganizations(),
+                ]);
+
+                const organizationsCount = organizations.length;
+                const nextFeatureUsage = (usage.features || []).map((feature) => {
+                    if (feature.key !== 'organizations') {
+                        return feature;
+                    }
+
+                    const balance = feature.limit === null ? null : Math.max(feature.limit - organizationsCount, 0);
+                    return {
+                        ...feature,
+                        used: organizationsCount,
+                        balance,
+                    };
+                });
+
+                setFeatureUsage(nextFeatureUsage);
+                setUsagePlanId(usage.planId || null);
+                setUsagePlanName(usage.planName || null);
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Failed to load feature usage';
                 setUsageError(message);
@@ -80,8 +113,23 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
     }, [user?.user_id]);
 
     const selectedPlan = useMemo(
-        () => plans.find((plan) => plan.id === data.plan) ?? null,
-        [plans, data.plan],
+        () => {
+            const planKey = normalizePlanKey(usagePlanId || usagePlanName || data.plan);
+            if (!planKey) {
+                return null;
+            }
+
+            const aliasedPlanKey = PLAN_ALIASES[planKey] || planKey;
+
+            return (
+                plans.find((plan) => {
+                    const idKey = normalizePlanKey(plan.id);
+                    const nameKey = normalizePlanKey(plan.name);
+                    return idKey === aliasedPlanKey || nameKey === aliasedPlanKey || nameKey === planKey;
+                }) ?? null
+            );
+        },
+        [plans, data.plan, usagePlanId, usagePlanName],
     );
 
     return (

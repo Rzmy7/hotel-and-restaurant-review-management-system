@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Eye, Edit, ArrowUp, ArrowDown, Ban, Trash2 } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Ban, Trash2 } from 'lucide-react';
 import { ViewUserModal } from './ViewUserModal';
 import { EditUserModal } from './EditUserModal';
 import type { User } from '../types';
@@ -73,24 +73,6 @@ export const UserRow: React.FC<UserRowProps> = ({ user, onUserUpdate, onUserDele
 
     const handleSaveUser = async (updatedUser: User) => {
         await updateUser(updatedUser);
-    };
-
-    const handlePromoteToAdmin = async () => {
-        setIsMenuOpen(false);
-        await updateUser({
-            ...user,
-            role: 'Admin',
-            plan: undefined,
-        });
-    };
-
-    const handleDemoteToUser = async () => {
-        setIsMenuOpen(false);
-        await updateUser({
-            ...user,
-            role: 'User',
-            plan: user.plan || 'Free',
-        });
     };
 
     const handleSuspend = async () => {
@@ -167,27 +149,6 @@ export const UserRow: React.FC<UserRowProps> = ({ user, onUserUpdate, onUserDele
                                     <Edit size={16} />
                                     Edit User Info
                                 </button>
-                                
-                                {/* Role Management based on current role */}
-                                {user.role === 'Admin' && (
-                                    <button
-                                        onClick={handleDemoteToUser}
-                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors font-medium"
-                                    >
-                                        <ArrowDown size={16} />
-                                        Demote to User
-                                    </button>
-                                )}
-                                
-                                {user.role === 'User' && (
-                                    <button
-                                        onClick={handlePromoteToAdmin}
-                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors font-medium"
-                                    >
-                                        <ArrowUp size={16} />
-                                        Promote to Admin
-                                    </button>
-                                )}
                                 
                                 <div className="border-t border-gray-100 my-2"></div>
                                 <button

@@ -1,26 +1,4 @@
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_MAIN_BACKEND_URL).replace(/\/$/, '');
-};
-
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(`${getBaseUrl()}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(init?.headers || {}),
-        },
-        ...init,
-    });
-
-    if (!response.ok) {
-        const details = await response.text().catch(() => '');
-        throw new Error(details || `Request failed: ${response.status}`);
-    }
-
-    return response.json() as Promise<T>;
-};
+import { apiClient } from '../api/client';
 
 export interface SubscriptionPlanFeature {
     id: string;
@@ -61,13 +39,29 @@ export interface SubscriptionUsageSummary {
     features: SubscriptionFeatureUsage[];
 }
 
+export interface UserOrganizationSummary {
+    organization_id: string;
+    organization_name: string;
+    organization_type?: string | null;
+    organization_type_id?: string | number | null;
+    role?: string | null;
+}
+
 export const fetchSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
-    const plans = await requestJson<SubscriptionPlan[]>('/api/admin/subscription-plans', { method: 'GET' });
+    const plans = await apiClient.get<SubscriptionPlan[]>('/admin/subscription-plans');
     return plans.filter((plan) => plan.isActive);
 };
 
 export const fetchSubscriptionUsage = (userId: string): Promise<SubscriptionUsageSummary> => {
-    return requestJson<SubscriptionUsageSummary>(`/api/admin/subscription-usage/${encodeURIComponent(userId)}`, {
-        method: 'GET',
+    return apiClient.get<SubscriptionUsageSummary>(`/admin/subscription-usage/${encodeURIComponent(userId)}`);
+};
+
+export const fetchUserOrganizations = (): Promise<UserOrganizationSummary[]> => {
+    return apiClient.get<UserOrganizationSummary[]>('/user/organizations');
+};
+
+export const updateTenantPlan = (planId: string): Promise<{ message: string, plan_id: string }> => {
+    return apiClient.put<{ message: string, plan_id: string }>('/tenant/plan', {
+        plan_id: planId,
     });
 };
