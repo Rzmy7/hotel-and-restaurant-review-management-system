@@ -20,7 +20,7 @@ class ReviewModel(BaseModel):
     text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
     reviewText: Optional[str] = Field(..., validation_alias=AliasChoices("reviewText", "text"))
     summary: Optional[str] = None
-    sentiment: str = "Neutral"
+    sentiment: Optional[str] = "Neutral"
     language: Optional[str] = "English"
 
     categories: List[str] = []

@@ -122,8 +122,28 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
 
     # Fetch photos for all results
     results = []
+    import json
     for row in rows:
         rev_id = row["id"]
+        
+        # Parse JSON fields stored in DB as strings
+        for field in ["categories", "keyPhrases"]:
+            if row.get(field):
+                try:
+                    row[field] = json.loads(row[field])
+                except Exception:
+                    row[field] = []
+            else:
+                row[field] = []
+        
+        # Ensure sentiment/language/summary are never None for the Pydantic model
+        if row.get("sentiment") is None:
+            row["sentiment"] = "Neutral"
+        if row.get("language") is None:
+            row["language"] = "English"
+        if row.get("summary") is None:
+             row["summary"] = ""
+
         cursor.execute("SELECT src, alt FROM dbo.review_media WHERE review_id = ?", rev_id)
         row["photos"] = [{"src": p[0], "alt": p[1]} for p in cursor.fetchall()]
         results.append(row)
