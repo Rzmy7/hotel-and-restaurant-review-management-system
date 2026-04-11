@@ -132,10 +132,11 @@ export interface BackendNotification {
     user_id: string;
     title: string;
     message: string;
-    notification_type: 'info' | 'success' | 'warning' | 'error' | 'maintenance' | 'announcement';
+    notification_type: 'info' | 'success' | 'warning' | 'error' | 'maintenance' | 'announcement' | 'group_invite';
     is_read: boolean;
     created_at: string | null;
     read_at: string | null;
+    extra_data?: string | null; // JSON string for group_invite payload
 }
 
 interface NotificationsResponse {

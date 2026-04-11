@@ -4,6 +4,7 @@ import uuid
 from sqlalchemy import (
     Column,
     String,
+    Text,
     DateTime,
     Boolean,
     Integer,
@@ -37,7 +38,7 @@ class Notification(Base):
     __tablename__ = "notification"
     __table_args__ = (
         CheckConstraint(
-            "notification_type IN ('info', 'success', 'warning', 'error', 'maintenance', 'announcement')",
+            "notification_type IN ('info', 'success', 'warning', 'error', 'maintenance', 'announcement', 'group_invite')",
             name="ck_notification_type_valid",
         ),
         {'extend_existing': True}
@@ -47,6 +48,7 @@ class Notification(Base):
     title = Column(String(200), nullable=False)
     message = Column(String, nullable=False)
     notification_type = Column(String(30), nullable=False, default="info")
+    extra_data = Column(Text, nullable=True)  # JSON string for group_invite payload
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),

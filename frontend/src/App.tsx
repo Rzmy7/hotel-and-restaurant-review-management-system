@@ -65,6 +65,9 @@ import AdminDashboardPage from "./pages/AdminDashboardPage";
 import { maintenanceService } from './services/maintenanceService';
 
 import NoOrganizationPage from "./pages/NoOrganizationPage";
+import GroupsPage from './pages/GroupsPage';
+import GroupDetailPage from './pages/GroupDetailPage';
+import SubgroupsPage from './pages/SubgroupsPage';
 
 // Styles
 import "./App.css";
@@ -257,6 +260,11 @@ const AppContent: React.FC = () => {
                 <Route path="/subscription" element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
                 <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
                 <Route path="/no-organization" element={<RequireAuth><NoOrganizationPage /></RequireAuth>} />
+
+                {/* Groups & Subgroups */}
+                <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
+                <Route path="/groups/:groupId" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
+                <Route path="/subgroups" element={<RequireAuth><SubgroupsPage /></RequireAuth>} />
 
                 {/* Fallback for undefined routes within the main shell */}
                 <Route path="*" element={<NotFound />} />

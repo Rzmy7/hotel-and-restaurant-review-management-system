@@ -1,82 +1,182 @@
 """
-Group endpoints: create, add members, get role, get reviews.
-
-Moved from routers/groups.py.
+Groups router — 11 endpoints, JWT-based auth (matches competitors pattern).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
-from app.modules.groups.repository import (
-    create_group,
-    add_member_to_group,
-    get_user_group_role,
+from app.core.dependencies import get_current_user
+from app.modules.groups.services.group_service import (
+    create_group_service,
+    list_user_groups,
+    list_user_subgroups,
+    get_group_detail,
+    delete_group_service,
+    update_group_service,
+    remove_member_service,
+    change_role_service,
+    get_group_analytics,
 )
-from app.middleware.permissions import require_group_manager, require_group_member
+from app.modules.groups.services.invitation_service import (
+    invite_member,
+    respond_to_invitation,
+    get_pending_invitations_for_user,
+)
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
 
-def _get_current_user(request: Request):
-    """Session-based current user extraction (used by group routes)."""
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return user
+def _user_id(current_user) -> uuid.UUID:
+    uid = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
+    return uuid.UUID(uid)
 
+
+# ---------- Pydantic schemas ----------
+
+class CreateGroupRequest(BaseModel):
+    group_name: str
+    description: str | None = None
+    parent_group_id: str | None = None
+
+
+class UpdateGroupRequest(BaseModel):
+    group_name: str | None = None
+    description: str | None = None
+
+
+class InviteRequest(BaseModel):
+    email: str
+    role: str = "GROUP_MEMBER"
+
+
+class RespondRequest(BaseModel):
+    action: str  # "accept" or "reject"
+
+
+class ChangeRoleRequest(BaseModel):
+    role: str
+
+
+# ---------- Endpoints ----------
 
 @router.post("")
-def create_group_api(
-    group_name: str,
-    current_user=Depends(_get_current_user),
+def create_group(
+    payload: CreateGroupRequest,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    group = create_group(db, group_name, current_user["id"])
-
-    add_member_to_group(db, group.group_id, current_user["id"], "GROUP_MANAGER")
-
-    return {
-        "message": "Group created successfully",
-        "group_id": str(group.group_id),
-        "group_name": group.group_name,
-    }
+    uid = _user_id(current_user)
+    parent = uuid.UUID(payload.parent_group_id) if payload.parent_group_id else None
+    return create_group_service(db, payload.group_name, payload.description, uid, parent)
 
 
-@router.post("/{group_id}/members")
-def add_member_api(
+@router.get("")
+def list_groups(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return list_user_groups(db, _user_id(current_user))
+
+
+@router.get("/subgroups")
+def list_subgroups(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return list_user_subgroups(db, _user_id(current_user))
+
+
+@router.get("/invitations/pending")
+def pending_invitations(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_pending_invitations_for_user(db, _user_id(current_user))
+
+
+@router.get("/{group_id}")
+def get_group(
+    group_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_group_detail(db, uuid.UUID(group_id), _user_id(current_user))
+
+
+@router.patch("/{group_id}")
+def update_group(
+    group_id: str,
+    payload: UpdateGroupRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return update_group_service(db, uuid.UUID(group_id), payload.group_name, payload.description, _user_id(current_user))
+
+
+@router.delete("/{group_id}")
+def delete_group(
+    group_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return delete_group_service(db, uuid.UUID(group_id), _user_id(current_user))
+
+
+@router.post("/{group_id}/invite")
+def invite_to_group(
+    group_id: str,
+    payload: InviteRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return invite_member(db, uuid.UUID(group_id), payload.email, payload.role, _user_id(current_user))
+
+
+@router.post("/{group_id}/invitations/{invitation_id}/respond")
+def respond_invite(
+    group_id: str,
+    invitation_id: str,
+    payload: RespondRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return respond_to_invitation(
+        db,
+        uuid.UUID(group_id),
+        uuid.UUID(invitation_id),
+        payload.action,
+        _user_id(current_user),
+    )
+
+
+@router.delete("/{group_id}/members/{user_id}")
+def remove_member(
     group_id: str,
     user_id: str,
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    require_group_manager(group_id, current_user, db)
-
-    member = add_member_to_group(db, group_id, user_id, "GROUP_MEMBER")
-
-    return {
-        "message": "User added to group",
-        "group_id": group_id,
-        "user_id": user_id,
-        "role": member.role,
-    }
+    return remove_member_service(db, uuid.UUID(group_id), uuid.UUID(user_id), _user_id(current_user))
 
 
-@router.get("/{group_id}/my-role")
-def get_my_group_role(
+@router.patch("/{group_id}/members/{user_id}/role")
+def change_member_role(
     group_id: str,
-    current_user=Depends(_get_current_user),
+    user_id: str,
+    payload: ChangeRoleRequest,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    role = get_user_group_role(db, group_id, current_user["id"])
-    return {"group_id": group_id, "role": role}
+    return change_role_service(db, uuid.UUID(group_id), uuid.UUID(user_id), payload.role, _user_id(current_user))
 
 
-@router.get("/{group_id}/reviews")
-def get_group_reviews(
+@router.get("/{group_id}/analytics")
+def group_analytics(
     group_id: str,
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    require_group_member(group_id, current_user, db)
-    return {"message": "You can access group reviews"}
+    return get_group_analytics(db, uuid.UUID(group_id), _user_id(current_user))
