@@ -21,6 +21,11 @@ class BaseScraperConfig(BaseModel):
     trust_server_certificate: str = "yes"
     backend_url: str = "http://127.0.0.1:8000"
     
+    # Rate Limiting & Queue Protection
+    max_queue_size: int = 100
+    rate_limit_scrape: str = "10/minute"
+    rate_limit_global: str = "100/minute"
+    
 def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -44,5 +49,8 @@ config = BaseScraperConfig(
     db_pwd=os.getenv("DB_PWD", ""),
     db_encrypt=os.getenv("DB_ENCRYPT", "yes"),
     trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes"),
-    backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000")
+    backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000"),
+    max_queue_size=int(os.getenv("MAX_QUEUE_SIZE", "100")),
+    rate_limit_scrape=os.getenv("RATE_LIMIT_SCRAPE", "10/minute"),
+    rate_limit_global=os.getenv("RATE_LIMIT_GLOBAL", "100/minute")
 )

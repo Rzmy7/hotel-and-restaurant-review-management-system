@@ -11,10 +11,12 @@ from core.database import get_session
 from core.models import Source
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
-from core.config import setup_logger
-from core.utils import normalize_url
 from services.source_service import SourceService
 from platforms.agoda.logic import scrape_agoda
+from core.limiter import limiter
+from core.config import config, setup_logger
+from core.utils import normalize_url
+from fastapi import Request
 
 logger = setup_logger("agoda_api")
 router = APIRouter(prefix="/agoda", tags=["Agoda"])
@@ -30,11 +32,18 @@ class AgodaScrapeRequest(BaseModel):
 
 
 @router.post("/scrape")
-def trigger_agoda_scrape(body: AgodaScrapeRequest):
+@limiter.limit(config.rate_limit_scrape)
+def trigger_agoda_scrape(request: Request, body: AgodaScrapeRequest):
     """
     Upserts the source in the database and submits a scrape job to the
     thread pool. Returns the job_id for real-time monitoring.
     """
+    if scrape_pool.total_pending >= config.max_queue_size:
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Scraper queue depth limit reached ({config.max_queue_size}). Please try again later."
+        )
+
     logger.info(f"Scrape request: source_id={body.source_id}, url={body.source_url}")
     
     # Normalize URL to base URL

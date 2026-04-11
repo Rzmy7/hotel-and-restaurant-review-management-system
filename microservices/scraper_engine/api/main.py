@@ -28,6 +28,9 @@ from api.websockets.events import router as ws_router
 from api.middleware.audit_middleware import AuditMiddleware
 from core.config import setup_logger, config
 from core.database import init_db
+from core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 logger = setup_logger("api_main")
 
@@ -39,6 +42,10 @@ app = FastAPI(
     ),
     version="4.0.0"
 )
+
+# ── Rate Limiting ──
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Middleware ──
 app.add_middleware(AuditMiddleware)
