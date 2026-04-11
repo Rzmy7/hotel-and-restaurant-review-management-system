@@ -32,6 +32,25 @@ class JobQueue:
                 return None
             return self._queue.popleft()
 
+    def pop_runnable(self, can_run_fn: Callable[[str], bool]) -> Optional[QueuedJob]:
+        """
+        Finds the first job in the queue where can_run_fn(platform) is True.
+        Removes and returns that job.
+        """
+        with self._lock:
+            for i, job in enumerate(self._queue):
+                if can_run_fn(job.platform):
+                    # Found a runnable job!
+                    runnable_job = self._queue[i]
+                    # deque doesn't support del self._queue[i] directly
+                    # so we convert to a list, remove, and convert back
+                    # or better, just reconstruct the deque as this is usually small
+                    temp_list = list(self._queue)
+                    del temp_list[i]
+                    self._queue = deque(temp_list)
+                    return runnable_job
+            return None
+
     def peek(self) -> Optional[QueuedJob]:
         """Returns the first job without removing it."""
         with self._lock:

@@ -11,6 +11,7 @@ from typing import Dict, Callable, Any
 from core.config import setup_logger
 from core.queue import job_queue
 from core.job_manager import job_manager, JobStatus
+from core.throttler import throttler
 
 logger = setup_logger("scrape_pool")
 
@@ -62,8 +63,9 @@ class ScrapePool:
         platform = kwargs.pop("platform", "unknown")
         
         with self._lock:
-            # If we have free slots, submit immediately
-            if self.active_count < self._max_workers:
+            # If we have free slots AND the platform isn't throttled, submit immediately
+            if self.active_count < self._max_workers and throttler.can_run(platform):
+                throttler.mark_run(platform)
                 self._submit_to_executor(_pool_job_id, _pool_fn, *args, **kwargs)
                 return _pool_job_id
         
@@ -130,20 +132,37 @@ class ScrapePool:
         logger.info(f"Job {_pool_job_id} started (Active: {self.active_count}/{self._max_workers})")
 
     def _process_queue(self):
-        """Pick the next job from the queue and submit it if slots are available."""
+        """
+        Pick the next job from the queue and submit it if slots are available 
+        and the platform isn't throttled.
+        """
         with self._lock:
-            while self.active_count < self._max_workers:
-                next_job = job_queue.pop()
-                if not next_job:
-                    break
-                
-                logger.info(f"Picking Job {next_job.job_id} from queue...")
+            if self.active_count >= self._max_workers:
+                return
+
+            # Try to find a job in the queue that is allowed to run (not throttled)
+            next_job = job_queue.pop_runnable(throttler.can_run)
+            
+            if next_job:
+                logger.info(f"Picking Job {next_job.job_id} ({next_job.platform}) from queue...")
+                throttler.mark_run(next_job.platform)
                 self._submit_to_executor(
                     next_job.job_id, 
                     next_job.fn, 
                     *next_job.args, 
                     **next_job.kwargs
                 )
+                
+                # After starting one, try to fill another slot recursively or via loop
+                # (But respects max_workers in the while condition if we wrapped it)
+                # Since we want to potentially start multiple DIFFERENT platform jobs:
+                self._executor.submit(self._process_queue)
+            
+            elif job_queue.size > 0:
+                # We have jobs, but they are all throttled. 
+                # Schedule a re-check in 2 seconds to avoid busy-waiting.
+                logger.debug("Queue not empty but all jobs throttled. Scheduling re-check...")
+                threading.Timer(2.0, self._process_queue).start()
 
     @property
     def active_count(self) -> int:
