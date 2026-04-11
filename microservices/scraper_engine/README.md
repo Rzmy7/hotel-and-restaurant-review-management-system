@@ -18,6 +18,8 @@ A production-grade, multi-platform **review microservice** that scrapes, normali
 | **📝 Audit Logging** | System-wide API call tracking |
 | **📣 Callback Mechanism** | Automatic backend notification on completion |
 | **⚡ Concurrent Execution** | ThreadPoolExecutor for parallel scraping |
+| **🛡️ Rate Limiting** | Two-tier protection (API & Domain level) |
+| **🗓️ Smart Scheduling** | Domain-aware queuing to prevent IP bans |
 | **🏥 Health Monitoring** | Real-time job status and system diagnostics |
 | **🗄️ Source-Centric Design** | UUID-based source management for scalability |
 
@@ -260,6 +262,17 @@ BACKEND_API_URL=http://127.0.0.1:8000
 MAX_CONCURRENT_SCRAPES=3
 PAGE_TIMEOUT_SECONDS=60
 HEADLESS_MODE=true
+
+# ============================================
+# Rate Limiting & Scheduler
+# ============================================
+MAX_QUEUE_SIZE=100           # Max jobs waiting in queue
+RATE_LIMIT_SCRAPE=10/minute  # Requests per platform endpoint
+RATE_LIMIT_GLOBAL=100/minute # Total API requests allowed
+DELAY_GOOGLE=30              # Seconds between Google scrapes
+DELAY_AGODA=20               # Seconds between Agoda scrapes
+DELAY_BOOKING=20             # Seconds between Booking scrapes
+DELAY_TRIPADVISOR=40         # Seconds between TripAdvisor scrapes
 
 # ============================================
 # Logging
