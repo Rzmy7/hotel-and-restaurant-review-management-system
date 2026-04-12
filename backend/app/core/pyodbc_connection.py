@@ -18,4 +18,5 @@ def get_connection_string() -> str:
         f"UID={DB_UID};"
         f"PWD={DB_PWD};"
         "TrustServerCertificate=yes;"
+        "Encrypt=no;"
     )

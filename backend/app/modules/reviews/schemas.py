@@ -1,8 +1,9 @@
 """Pydantic schemas for review endpoints."""
 
 import datetime
+import uuid
 from typing import List, Optional
-from pydantic import BaseModel, AnyHttpUrl, Field
+from pydantic import BaseModel, AnyHttpUrl, Field, AliasChoices
 
 
 class PhotoModel(BaseModel):
@@ -14,23 +15,29 @@ class ReviewModel(BaseModel):
     id: str
     platformReviewId: Optional[str] = None
     rating: int
-    userName: str
-    reviewerName: Optional[str] = None
-    reviewText: Optional[str] = Field(..., validation_alias="text")
+    reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
+    userName: str = Field(..., validation_alias=AliasChoices("userName", "reviewerName"))
+    text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
+    reviewText: Optional[str] = Field(..., validation_alias=AliasChoices("reviewText", "text"))
     summary: Optional[str] = None
-    sentiment: str
+    sentiment: Optional[str] = "Neutral"
     language: Optional[str] = "English"
 
     categories: List[str] = []
     keyPhrases: List[str] = []
     photos: List[PhotoModel] = []
 
-    source: str
+    source_id: Optional[uuid.UUID] = None
     date: Optional[datetime.date] = None
 
-    status: str
-    replyStatus: Optional[str] = "Pending"
-    hasReply: Optional[str] = "No"
+    status: str = "pending"
+    
+    # AI Processing Metadata
+    positive_text: Optional[str] = None
+    negative_text: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_count: int = 0
+    last_attempt: Optional[datetime.datetime] = None
 
 
 class BookingScrapeRequest(BaseModel):

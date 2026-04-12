@@ -1,13 +1,10 @@
 """
-Reviews routes package — aggregates review and scraping sub-routers.
+Reviews routes package — aggregates review logic.
 """
 
 from fastapi import APIRouter
+from app.modules.reviews.routes.reviews import router as reviews_api_router
 
-from app.modules.reviews.routes.reviews import router as reviews_router
-from app.modules.reviews.routes.scraping import router as scraping_router
+router = APIRouter()
 
-router = APIRouter(tags=["Reviews"])
-
-router.include_router(reviews_router)
-router.include_router(scraping_router)
+router.include_router(reviews_api_router)

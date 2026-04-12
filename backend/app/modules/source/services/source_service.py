@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 import uuid
 from typing import List, Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, BackgroundTasks
 import pyodbc
 
 from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog, SyncFrequency
@@ -333,8 +333,15 @@ def get_sync_logs(
         ) for log in logs
     ]
 
-def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusRequest) -> SourceRead:
+def update_sync_status(
+    db: Session, 
+    source_id: uuid.UUID, 
+    request: SyncStatusRequest, 
+    background_tasks: Optional[BackgroundTasks] = None
+) -> SourceRead:
     """Update the sync status of a source and record logs if necessary."""
+    from app.modules.reviews.services.review_service import start_ingestion_and_processing_flow
+
     source = db.query(SourceSource).options(
         joinedload(SourceSource.platform)
     ).filter(SourceSource.source_id == source_id).first()
@@ -367,6 +374,10 @@ def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusReq
 
         # — Trigger embedding for newly scraped reviews (non-blocking background thread) —
         trigger_embedding_for_source(str(source.source_id))
+        
+        # Trigger Review Ingestion and Processing Pipeline
+        if background_tasks:
+            background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
         
     elif request.status == SyncStatus.FAILED:
         source.source_status = SourceStatus.ERROR
