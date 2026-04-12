@@ -34,7 +34,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
         # Update existing record back to pending
         sql = """
             UPDATE dbo.processed_review
-            SET rating = CAST(? AS INT), 
+            SET rating = CAST(? AS FLOAT), 
                 reviewerName = ?, 
                 text = ?, 
                 positive_text = ?, 
@@ -81,7 +81,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
                 ?, 
                 CAST(? AS UNIQUEIDENTIFIER), 
                 CAST(? AS INT), 
-                CAST(? AS INT), 
+                CAST(? AS FLOAT), 
                 ?, ?, ?, ?, ?, ?, ?, 'pending', 
                 CAST(? AS UNIQUEIDENTIFIER)
             )

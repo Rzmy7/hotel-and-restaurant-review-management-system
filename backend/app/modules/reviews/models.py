@@ -37,7 +37,7 @@ class ProcessedReview(Base):
     )
 
     # Review content
-    rating = Column(Integer, nullable=True)
+    rating = Column(Float, nullable=True)
     reviewerName = Column("reviewerName", String(255), nullable=True)
     text = Column(String, nullable=True)
     summary = Column(String, nullable=True)

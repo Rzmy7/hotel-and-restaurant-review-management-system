@@ -96,10 +96,19 @@ async def ingest_from_scraper(source_id: uuid.UUID, organization_id: uuid.UUID, 
                 else:
                     scraped_at_obj = datetime.now()
 
+                # Normalize rating (system standard is 1-5)
+                raw_rating = float(detail.get("rating", 0))
+                
+                # Booking.com (2) and Agoda (3) use a 10-point scale
+                if int(platform_id) in [2, 3]:
+                    normalized_rating = round(raw_rating / 2.0, 3)
+                else:
+                    normalized_rating = round(raw_rating, 3)
+
                 # Map raw scraper data to our internal fields
                 mapping = {
                     "platformReviewId": str(r_data.get("review_id")),
-                    "rating": int(detail.get("rating", 0)),
+                    "rating": normalized_rating,
                     "reviewerName": str(detail.get("author", "Guest")),
                     "text": raw_text if not (pos or neg) else None,
                     "positive_text": str(pos) if pos else None,
