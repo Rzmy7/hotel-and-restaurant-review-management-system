@@ -20,8 +20,10 @@ from app.modules.reviews.services.review_service import (
     get_all_reviews_from_db,
     count_all_reviews,
     start_ingestion_and_processing_flow,
-    get_processing_report
+    get_processing_report,
+    ingest_from_scraper
 )
+from app.modules.source.services.source_service import get_source_by_id
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
 
 logger = logging.getLogger(__name__)
@@ -41,9 +43,34 @@ def read_reviews(organization_id: uuid.UUID):
 
 @router.post("/trigger/{source_id}")
 async def trigger_review_sync(source_id: uuid.UUID, background_tasks: BackgroundTasks):
-    """Manually trigger the ingestion and processing flow for a source."""
+    """Manually trigger the full ingestion and processing flow for a source."""
     background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
     return {"message": "Processing flow started in background."}
+
+
+@router.post("/ingest/{source_id}")
+async def trigger_ingest_only(source_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    Triggers only the ingestion of reviews from the scraper engine.
+    Reviews are saved with 'pending' status. AI analysis is NOT triggered.
+    """
+    try:
+        source = get_source_by_id(db, source_id)
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found.")
+            
+        count = await ingest_from_scraper(source_id, source.organization_id, source.platform_id)
+        return {
+            "message": "Ingestion successful",
+            "source_id": str(source_id),
+            "reviews_ingested": count,
+            "status": "pending"
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Ingest-only failed for {source_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to ingest reviews.")
 
 
 @router.get("/meta/count")

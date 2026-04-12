@@ -17,63 +17,100 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
     Returns the internal primary key (UUID).
     """
     # Check if review already exists by platformReviewId
-    cursor.execute(
-       "SELECT id FROM dbo.processed_review WHERE platformReviewId = ?",
-       review_data["platformReviewId"]
-    )
-    row = cursor.fetchone()
+    try:
+        cursor.execute(
+           "SELECT CAST(id AS VARCHAR(36)) FROM dbo.processed_review WHERE platformReviewId = ?",
+           str(review_data["platformReviewId"])
+        )
+        row = cursor.fetchone()
+    except Exception as e:
+        import os
+        with open("db_error_dump.log", "a", encoding="utf-8") as f:
+            f.write(f"SELECT FAILURE: {e}\nPID: {review_data.get('platformReviewId')}\n\n")
+        raise e
     
     if row:
         review_id = row[0]
         # Update existing record back to pending
         sql = """
             UPDATE dbo.processed_review
-            SET rating = ?, reviewerName = ?, text = ?, 
-                positive_text = ?, negative_text = ?,
-                reviewDate = ?, scrapedAt = ?, status = 'pending',
-                source_id = ?, organization_id = ?
-            WHERE id = ?
+            SET rating = CAST(? AS INT), 
+                reviewerName = ?, 
+                text = ?, 
+                positive_text = ?, 
+                negative_text = ?, 
+                heading = ?,
+                reviewDate = ?, 
+                scrapedAt = ?, 
+                status = 'pending',
+                source_id = CAST(? AS UNIQUEIDENTIFIER), 
+                organization_id = CAST(? AS UNIQUEIDENTIFIER)
+            WHERE id = CAST(? AS UNIQUEIDENTIFIER)
         """
-        cursor.execute(
-            sql,
+        args = [
             review_data["rating"],
             review_data["reviewerName"],
             review_data.get("text"),
             review_data.get("positive_text"),
             review_data.get("negative_text"),
+            review_data.get("heading"),
             review_data["reviewDate"],
             review_data["scrapedAt"],
             review_data.get("source_id"),
             review_data.get("organization_id"),
             review_id
-        )
+        ]
+        try:
+            cursor.execute(sql, *args)
+        except Exception as e:
+            with open("db_error_dump.log", "a", encoding="utf-8") as f:
+                f.write(f"UPDATE FAILURE: {e}\nARGS: {args}\n\n")
+            raise e
         return review_id
     else:
         # Insert new record
-        new_id = uuid.uuid4()
+        new_id = str(uuid.uuid4())
         sql = """
             INSERT INTO dbo.processed_review (
-                id, platformReviewId, platform_id, rating, reviewerName,
-                text, positive_text, negative_text,
-                reviewDate, scrapedAt, status, source_id, organization_id
+                id, platformReviewId, organization_id, platform_id, rating, 
+                reviewerName, text, positive_text, negative_text, heading, 
+                reviewDate, scrapedAt, status, source_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            VALUES (
+                CAST(? AS UNIQUEIDENTIFIER), 
+                ?, 
+                CAST(? AS UNIQUEIDENTIFIER), 
+                CAST(? AS INT), 
+                CAST(? AS INT), 
+                ?, ?, ?, ?, ?, ?, ?, 'pending', 
+                CAST(? AS UNIQUEIDENTIFIER)
+            )
         """
-        cursor.execute(
-            sql,
+        args = [
             new_id,
-            review_data["platformReviewId"],
+            str(review_data["platformReviewId"]),
+            review_data.get("organization_id"),
             review_data.get("platform_id"),
-            review_data["rating"],
+            review_data.get("rating"),
             review_data["reviewerName"],
             review_data.get("text"),
             review_data.get("positive_text"),
             review_data.get("negative_text"),
+            review_data.get("heading"),
             review_data["reviewDate"],
             review_data["scrapedAt"],
-            review_data.get("source_id"),
-            review_data.get("organization_id")
-        )
+            review_data.get("source_id")
+        ]
+        
+        try:
+            cursor.execute(sql, *args)
+        except Exception as e:
+            # Emergency log on exact SQL failure
+            import os
+            with open("db_error_dump.log", "a", encoding="utf-8") as f:
+                f.write(f"INSERT FAILURE: {e}\nARGS: {args}\n\n")
+            raise e
+            
         return new_id
 
 
@@ -95,7 +132,7 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     sql = f"""
         SELECT TOP {limit}
             id, platformReviewId, rating, reviewerName, text, 
-            positive_text, negative_text,
+            positive_text, negative_text, heading,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 
             source_id
@@ -118,7 +155,7 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
             r.id, r.platformReviewId, r.platform_id, r.rating, r.reviewerName,
             r.text, r.summary, r.sentiment, r.language, r.categories,
             r.keyPhrases, r.reviewDate, r.scrapedAt, r.status, r.ai_reply,
-            r.source_id, r.positive_text, r.negative_text
+            r.source_id, r.positive_text, r.negative_text, r.heading
         FROM dbo.processed_review r
         WHERE r.organization_id = ?
         ORDER BY r.reviewDate DESC
@@ -208,7 +245,7 @@ def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[di
     sql = """
         SELECT
             id, platformReviewId, rating, reviewerName, text, 
-            positive_text, negative_text,
+            positive_text, negative_text, heading,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 
             source_id, status

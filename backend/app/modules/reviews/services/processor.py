@@ -66,6 +66,7 @@ async def run_analysis_pipeline():
                         "text": r.get("text"),
                         "positive_text": r.get("positive_text"),
                         "negative_text": r.get("negative_text"),
+                        "heading": r.get("heading"),
                         "reviewDate": str(r["reviewDate"]),
                     }
                     for r in pending_reviews
@@ -133,6 +134,7 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
             "text": review.get("text"),
             "positive_text": review.get("positive_text"),
             "negative_text": review.get("negative_text"),
+            "heading": review.get("heading"),
             "reviewDate": str(review["reviewDate"]),
         }]
 

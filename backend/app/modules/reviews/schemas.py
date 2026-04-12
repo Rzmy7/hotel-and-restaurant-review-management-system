@@ -19,6 +19,7 @@ class ReviewModel(BaseModel):
     userName: str = Field(..., validation_alias=AliasChoices("userName", "reviewerName"))
     text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
     reviewText: Optional[str] = Field(..., validation_alias=AliasChoices("reviewText", "text"))
+    heading: Optional[str] = None
     summary: Optional[str] = None
     sentiment: Optional[str] = "Neutral"
     language: Optional[str] = "English"

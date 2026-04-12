@@ -2,12 +2,13 @@
 Review Service — orchestrates review ingestion, analysis, and retrieval.
 """
 
+from datetime import datetime
 import json
 import logging
 import uuid
 import httpx
 from typing import List
-from datetime import datetime
+from dateutil import parser as date_parser
 
 import pyodbc
 from app.core.pyodbc_connection import get_connection_string
@@ -37,7 +38,7 @@ def get_all_reviews_from_db(organization_id: str) -> List[dict]:
         raise e
 
 
-async def ingest_from_scraper(source_id: uuid.UUID, organization_id: uuid.UUID) -> int:
+async def ingest_from_scraper(source_id: uuid.UUID, organization_id: uuid.UUID, platform_id: int) -> int:
     """
     Fetches raw review data from the external Scraper Engine (port 8001)
     and stores them as 'pending' in the database.
@@ -58,10 +59,14 @@ async def ingest_from_scraper(source_id: uuid.UUID, organization_id: uuid.UUID) 
     reviews = raw_data.get("data", [])
     count = 0
     
+    # Defensive log file for ingestion troubleshooting
+    debug_log_path = "ingest_debug.log"
+    
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         for r_data in reviews:
             try:
+                logger.info(f"RAW R_DATA: {json.dumps(r_data, indent=2)}")
                 # Handle nested detail from Scraper Engine
                 detail = r_data.get("detail", {})
                 
@@ -70,21 +75,47 @@ async def ingest_from_scraper(source_id: uuid.UUID, organization_id: uuid.UUID) 
                 neg = detail.get("negative_text")
                 raw_text = detail.get("review_text")
 
+                # Parse dates robustly
+                r_date = detail.get("review_date")
+                r_date_obj = None
+                if r_date:
+                    try:
+                        r_date_obj = date_parser.parse(str(r_date))
+                    except:
+                        r_date_obj = datetime.now()
+                else:
+                    r_date_obj = datetime.now()
+                
+                scraped_at = r_data.get("created_at")
+                scraped_at_obj = None
+                if scraped_at:
+                    try:
+                        scraped_at_obj = date_parser.parse(str(scraped_at))
+                    except:
+                        scraped_at_obj = datetime.now()
+                else:
+                    scraped_at_obj = datetime.now()
+
                 # Map raw scraper data to our internal fields
                 mapping = {
-                    "platformReviewId": r_data.get("review_id"),
-                    "rating": detail.get("rating", 0),
-                    "reviewerName": detail.get("author", "Guest"),
+                    "platformReviewId": str(r_data.get("review_id")),
+                    "rating": int(detail.get("rating", 0)),
+                    "reviewerName": str(detail.get("author", "Guest")),
                     "text": raw_text if not (pos or neg) else None,
-                    "positive_text": pos,
-                    "negative_text": neg,
-                    "reviewDate": detail.get("review_date"),
-                    "scrapedAt": r_data.get("created_at"),
+                    "positive_text": str(pos) if pos else None,
+                    "negative_text": str(neg) if neg else None,
+                    "heading": str(detail.get("review_heading")) if detail.get("review_heading") else None,
+                    "reviewDate": r_date_obj,
+                    "scrapedAt": scraped_at_obj,
                     "source_id": source_id,
                     "organization_id": organization_id,
-                    "platform_id": raw_data.get("platform_id") # May be None if not provided
+                    "platform_id": int(platform_id)
                 }
                 
+                # File-based emergency logging to bypass terminal truncation
+                with open(debug_log_path, "a", encoding="utf-8") as f:
+                    f.write(f"[{datetime.now()}] MAPPING: {json.dumps(mapping, default=str)}\n")
+
                 # Insert as pending
                 internal_id = upsert_review_pending(cursor, mapping)
                 
@@ -125,7 +156,7 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID):
 
         logger.info(f"Pipeline: Starting INGESTION for source {source_id}...")
         # 2. Ingest
-        ingested_count = await ingest_from_scraper(source_id, source.organization_id)
+        ingested_count = await ingest_from_scraper(source_id, source.organization_id, source.platform_id)
         
         if ingested_count > 0:
             logger.info(f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews...")

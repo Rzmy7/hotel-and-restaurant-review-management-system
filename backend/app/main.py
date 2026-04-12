@@ -195,18 +195,6 @@ except ImportError:
 
 if reviews_router:
     app.include_router(reviews_router)
-if competitors_router:
-    app.include_router(competitors_router, prefix="/api")
-if dashboard_router:
-    app.include_router(dashboard_router, prefix="/api")
-if admin_router:
-    app.include_router(admin_router, prefix="/api")
-if groups_router:
-    app.include_router(groups_router, prefix="/api")
-if legacy_source_router:
-    app.include_router(legacy_source_router, prefix="/api")
-# app.include_router(admin_backend_router) removed
-
 # Hansi routers (now standardized under /api)
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])

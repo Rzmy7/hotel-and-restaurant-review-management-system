@@ -81,7 +81,7 @@ The backend primarily operates under `/api` for domain-specific interfaces:
 - **Health & Infra**: `/health`, `/db-test`
 - **Auth**: `/api/auth/login`, `/api/auth/oauth/google`, `/api/auth/refresh`
 - **Administration**: `/api/admin/users`, `/api/admin/organizations`
-- **Reviews**: `/api/reviews/{org_id}`, `/api/reviews/trigger/{src_id}`, `/api/reviews/process/{review_id}`, `/api/reviews/generate-reply`, `/api/reviews/processing/status`
+- **Reviews**: `/api/reviews/{org_id}`, `/api/reviews/trigger/{src_id}`, `/api/reviews/ingest/{source_id}`, `/api/reviews/process/{review_id}`, `/api/reviews/generate-reply`, `/api/reviews/processing/status`
 - **Source/Sync**: `/api/source/tasks/{id}/sync-status`
 - **Data Access**: `/api/competitors`, `/api/dashboard`
 
