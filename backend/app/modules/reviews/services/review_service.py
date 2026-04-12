@@ -7,7 +7,7 @@ import json
 import logging
 import uuid
 import httpx
-from typing import List
+from typing import List, Optional, Dict
 from dateutil import parser as date_parser
 
 import pyodbc
@@ -29,10 +29,16 @@ import app.modules.reviews.models  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-def get_all_reviews_from_db(organization_id: str) -> List[dict]:
-    """Fetch all processed reviews with photos for a specific organization."""
+def get_all_reviews_from_db(
+    organization_id: str,
+    page: int = 0,
+    limit: int = 50,
+    filters: Optional[dict] = None
+) -> Dict:
+    """Fetch processed reviews with photos for a specific organization, supporting pagination and filtering."""
     try:
-        return fetch_all_reviews_enriched(organization_id)
+        from app.modules.reviews.repository import fetch_all_reviews_enriched
+        return fetch_all_reviews_enriched(organization_id, page=page, limit=limit, filters=filters)
     except Exception as e:
         logger.error(f"Failed to fetch reviews: {e}")
         raise e

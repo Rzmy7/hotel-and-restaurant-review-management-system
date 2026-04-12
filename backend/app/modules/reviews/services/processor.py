@@ -91,7 +91,7 @@ async def run_analysis_pipeline():
 
                 if analysis:
                     try:
-                        success = _update_review_success(cursor, review["id"], analysis)
+                        success = _update_review_success(cursor, review, analysis)
                         if success:
                             batch_success_count += 1
                     except Exception as e:
@@ -152,7 +152,7 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
 
         # 3. Update DB
         try:
-            success = _update_review_success(cursor, review_id, analysis)
+            success = _update_review_success(cursor, review, analysis)
             if not success:
                raise RuntimeError("Failed to update review record in database.")
             
@@ -166,7 +166,7 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
 
 
 def _update_review_success(
-    cursor: pyodbc.Cursor, review_id: Any, analysis: dict
+    cursor: pyodbc.Cursor, original_review: dict, analysis: dict
 ) -> bool:
     """Update a review with AI-generated insights and set status to 'processed'."""
     sql = """
@@ -190,6 +190,11 @@ def _update_review_success(
     categories = json.dumps(analysis.get("categories", []), ensure_ascii=False)
     key_phrases = json.dumps(analysis.get("keyPhrases", []), ensure_ascii=False)
 
+    # Strictly preserve original text if provided by scraper.
+    # No extraction if original was null/empty (as requested: "remain empty").
+    final_pos = original_review.get("positive_text")
+    final_neg = original_review.get("negative_text")
+
     cursor.execute(
         sql,
         analysis.get("sentiment", "Neutral"),
@@ -198,11 +203,11 @@ def _update_review_success(
         categories,
         key_phrases,
         analysis.get("summary"),
-        analysis.get("positive_text"),
-        analysis.get("negative_text"),
+        final_pos,
+        final_neg,
         analysis.get("ai_reply"),
         datetime.now(),
-        review_id,
+        original_review["id"],
     )
     return cursor.rowcount > 0
 

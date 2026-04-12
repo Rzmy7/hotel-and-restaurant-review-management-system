@@ -143,23 +143,92 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
-    """Fetch processed reviews with their associated media."""
+def fetch_all_reviews_enriched(
+    organization_id: str,
+    page: int = 0,
+    limit: int = 50,
+    filters: Optional[dict] = None
+) -> Dict:
+    """
+    Fetch processed reviews with associated media, supporting pagination and filtering.
+    Returns: { "data": List[dict], "total": int }
+    """
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
-    sql = """
+    # Base WHERE clause (only processed reviews)
+    where_clauses = ["s.organization_id = ?", "r.status = 'processed'"]
+    params = [organization_id]
+
+    if filters:
+        if filters.get("search"):
+            where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+            search_val = f"%{filters['search']}%"
+            params.extend([search_val, search_val, search_val, search_val, search_val])
+        
+        if filters.get("rating"):
+            ratings = filters["rating"]
+            if isinstance(ratings, list) and len(ratings) > 0:
+                placeholders = ",".join(["?"] * len(ratings))
+                where_clauses.append(f"r.rating IN ({placeholders})")
+                params.extend(ratings)
+        
+        if filters.get("sentiment"):
+            sentiments = filters["sentiment"]
+            if isinstance(sentiments, list) and len(sentiments) > 0:
+                placeholders = ",".join(["?"] * len(sentiments))
+                where_clauses.append(f"r.sentiment IN ({placeholders})")
+                params.extend(sentiments)
+        
+        if filters.get("source"):
+            sources = filters["source"]
+            if isinstance(sources, list) and len(sources) > 0:
+                # Joining with platform to filter by platform name
+                # (Note: we already have JOIN dbo.source s)
+                # We need to JOIN platform p
+                pass # Will handle in SQL below
+
+        # Date range
+        if filters.get("dateFrom"):
+            where_clauses.append("r.reviewDate >= ?")
+            params.append(filters["dateFrom"])
+        if filters.get("dateTo"):
+            where_clauses.append("r.reviewDate <= ?")
+            params.append(filters["dateTo"])
+
+    where_sql = " AND ".join(where_clauses)
+
+    # 1. Get Total Count
+    count_sql = f"""
+        SELECT COUNT(*)
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE {where_sql}
+    """
+    cursor.execute(count_sql, params)
+    total_count = cursor.fetchone()[0]
+
+    # 2. Fetch Paged Data
+    # Adding platform join for source name filtering if needed
+    fetch_sql = f"""
         SELECT
             r.id, r.scraper_review_id, r.rating, r.reviewerName,
             r.text, r.summary, r.sentiment, r.language, r.categories,
             r.keyPhrases, r.reviewDate, r.scrapedAt, r.status, r.ai_reply,
-            r.source_id, r.positive_text, r.negative_text, r.heading
+            r.source_id, r.positive_text, r.negative_text, r.heading,
+            p.platform_name as source
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.status = 'processed'
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        WHERE {where_sql}
         ORDER BY r.reviewDate DESC
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     """
-    cursor.execute(sql, (organization_id,))
+    
+    # Add pagination params
+    fetch_params = params + [page * limit, limit]
+    
+    cursor.execute(fetch_sql, fetch_params)
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -180,6 +249,17 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
             else:
                 row[field] = []
 
+        # Map reviewDate to date for frontend compatibility
+        row["date"] = row["reviewDate"]
+
+        # Combine text fields for display if positive/negative texts are present
+        text_parts = []
+        if row.get("text"): text_parts.append(row["text"])
+        if row.get("positive_text"): text_parts.append(row["positive_text"])
+        if row.get("negative_text"): text_parts.append(row["negative_text"])
+        if text_parts:
+            row["text"] = "\n\n".join(text_parts)
+
         # Ensure sentiment/language/summary are never None for the Pydantic model
         if row.get("sentiment") is None:
             row["sentiment"] = "Neutral"
@@ -195,7 +275,85 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
         results.append(row)
 
     conn.close()
-    return results
+    return {"data": results, "total": total_count}
+
+
+def get_review_options(organization_id: str) -> Dict[str, List[str]]:
+    """Fetch distinct sources and categories for an organization."""
+    conn = pyodbc.connect(get_connection_string())
+    cursor = conn.cursor()
+
+    # Get sources
+    cursor.execute("""
+        SELECT DISTINCT p.platform_name
+        FROM dbo.source s
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        WHERE s.organization_id = ?
+    """, organization_id)
+    sources = [row[0] for row in cursor.fetchall()]
+
+    # Get categories (requires parsing JSON from all reviews)
+    cursor.execute("""
+        SELECT categories
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND r.status = 'processed'
+    """, organization_id)
+    
+    all_categories = set()
+    import json
+    for row in cursor.fetchall():
+        if row[0]:
+            try:
+                cats = json.loads(row[0])
+                if isinstance(cats, list):
+                    for c in cats:
+                        all_categories.add(c)
+            except:
+                pass
+
+    conn.close()
+    return {
+        "sources": sorted(list(sources)),
+        "categories": sorted(list(all_categories))
+    }
+
+
+def get_review_stats(organization_id: str) -> Dict:
+    """Calculate aggregated stats for an organization's reviews."""
+    conn = pyodbc.connect(get_connection_string())
+    cursor = conn.cursor()
+
+    sql = """
+        SELECT
+            COUNT(*) as totalReviews,
+            AVG(CAST(rating AS FLOAT)) as averageRating,
+            SUM(CASE WHEN sentiment = 'Positive' THEN 1 WHEN sentiment = 'Negative' THEN -1 ELSE 0 END) as sentimentSum,
+            SUM(CASE WHEN status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND r.status = 'processed'
+    """
+    cursor.execute(sql, organization_id)
+    row = cursor.fetchone()
+    
+    total = row[0] or 0
+    avg_rating = round(float(row[1] or 0), 1)
+    sentiment_sum = row[2] or 0
+    pending = row[3] or 0
+
+    # Normalized sentiment score (0-100)
+    sentiment_score = 50
+    if total > 0:
+        sentiment_score = round(((sentiment_sum / total) + 1) * 50)
+
+    conn.close()
+    return {
+        "totalReviews": total,
+        "averageRating": avg_rating,
+        "pendingReplies": pending,
+        "sentimentScore": sentiment_score
+    }
 
 
 def count_reviews_raw() -> int:

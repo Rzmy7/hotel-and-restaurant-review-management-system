@@ -33,8 +33,8 @@ Rules:
    - "language": Detected language (e.g., "English", "German").
    - "keyPhrases": List of 3-5 keywords or short phrases.
    - "summary": A one-sentence professional summary of the reviewer's experience.
-   - "positive_text": If "positive_text" was provided in input, use/refine it; otherwise extract from "text".
-   - "negative_text": If "negative_text" was provided in input, use/refine it; otherwise extract from "text".
+   - "positive_text": DO NOT extract or refine. If input had a "positive_text", return it EXACTLY verbatim. If it was null, return null.
+   - "negative_text": DO NOT extract or refine. If input had a "negative_text", return it EXACTLY verbatim. If it was null, return null.
    - "ai_reply": A draft professional response to the guest. Use a professional, grateful tone.
 
 Batch Input Data:

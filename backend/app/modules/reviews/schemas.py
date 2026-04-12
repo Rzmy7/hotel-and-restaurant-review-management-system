@@ -29,9 +29,11 @@ class ReviewModel(BaseModel):
     photos: List[PhotoModel] = []
 
     source_id: Optional[uuid.UUID] = None
-    date: Optional[datetime.date] = None
+    date: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("date", "reviewDate"))
+    reviewDate: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("reviewDate", "date"))
 
     status: str = "pending"
+    source: Optional[str] = "Unknown"
     
     # AI Processing Metadata
     positive_text: Optional[str] = None
@@ -39,6 +41,13 @@ class ReviewModel(BaseModel):
     error_message: Optional[str] = None
     retry_count: int = 0
     last_attempt: Optional[datetime.datetime] = None
+
+class PaginatedReviewResponse(BaseModel):
+    data: List[ReviewModel]
+    total: int
+    page: int
+    limit: int
+    totalPages: int
 
 
 class BookingScrapeRequest(BaseModel):

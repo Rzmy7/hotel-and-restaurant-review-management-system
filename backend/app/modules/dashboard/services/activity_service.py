@@ -12,7 +12,12 @@ def get_alerts(org_id: str = None) -> dict:
     alerts = []
 
     if org_id:
-        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending' AND organization_id = ?", org_id)
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE r.[status] = 'Pending' AND s.organization_id = ?
+        """, org_id)
     else:
         cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'")
     
@@ -30,7 +35,12 @@ def get_alerts(org_id: str = None) -> dict:
     seven_days_ago = (datetime.now() - timedelta(days=7)).date()
     
     if org_id:
-        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= ? AND organization_id = ?", seven_days_ago, org_id)
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE r.sentiment = 'Negative' AND r.reviewDate >= ? AND s.organization_id = ?
+        """, seven_days_ago, org_id)
     else:
         cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= ?", seven_days_ago)
         
@@ -54,15 +64,24 @@ def get_activities(org_id: str = None) -> dict:
     cursor = conn.cursor()
     if org_id:
         cursor.execute("""
-            SELECT TOP 15 id, reviewerName as userName, sentiment, rating, reviewDate, [status], platform_id
-            FROM dbo.processed_review 
-            WHERE organization_id = ?
-            ORDER BY reviewDate DESC
+            SELECT TOP 15 
+                r.id, r.reviewerName as userName, r.sentiment, r.rating, 
+                r.reviewDate, r.[status], p.platform_name as platform_id
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            WHERE s.organization_id = ?
+            ORDER BY r.reviewDate DESC
         """, org_id)
     else:
         cursor.execute("""
-            SELECT TOP 15 id, reviewerName as userName, sentiment, rating, reviewDate, [status], platform_id
-            FROM dbo.processed_review ORDER BY reviewDate DESC
+            SELECT TOP 15 
+                r.id, r.reviewerName as userName, r.sentiment, r.rating, 
+                r.reviewDate, r.[status], p.platform_name as platform_id
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            ORDER BY r.reviewDate DESC
         """)
     rows = cursor.fetchall()
     conn.close()
@@ -85,18 +104,24 @@ def get_negative_reviews_for_org(org_id: str) -> dict:
     cursor = conn.cursor()
 
     # Get count
-    cursor.execute(
-        "SELECT COUNT(*) FROM dbo.processed_review WHERE organization_id = ? AND sentiment = 'Negative'", 
-        org_id
-    )
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND r.sentiment = 'Negative'
+    """, org_id)
     count = cursor.fetchone()[0]
 
     # Get detailed reviews
     cursor.execute("""
-        SELECT id, reviewerName, rating, text as reviewText, reviewDate, platform_id, sentiment
-        FROM dbo.processed_review 
-        WHERE organization_id = ? AND sentiment = 'Negative'
-        ORDER BY reviewDate DESC
+        SELECT 
+            r.id, r.reviewerName, r.rating, r.text as reviewText, 
+            r.reviewDate, p.platform_name as platform_id, r.sentiment
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        WHERE s.organization_id = ? AND r.sentiment = 'Negative'
+        ORDER BY r.reviewDate DESC
     """, org_id)
     
     rows = cursor.fetchall()
@@ -125,10 +150,11 @@ def get_sentiment_counts(org_id: str) -> dict:
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT sentiment, COUNT(*) as cnt 
-        FROM dbo.processed_review 
-        WHERE organization_id = ?
-        GROUP BY sentiment
+        SELECT r.sentiment, COUNT(*) as cnt 
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ?
+        GROUP BY r.sentiment
     """, org_id)
     
     rows = cursor.fetchall()
