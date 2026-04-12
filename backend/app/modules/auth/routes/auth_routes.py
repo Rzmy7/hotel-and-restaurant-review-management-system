@@ -99,6 +99,42 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         **result
     }
 
+from pydantic import BaseModel
+class SwitchOrganizationModel(BaseModel):
+    organization_id: str
+
+from app.modules.auth.utils.auth_utils import get_current_user as get_jwt_user
+
+@router.post("/switch-organization")
+def switch_organization(
+    payload: SwitchOrganizationModel,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_jwt_user)
+):
+    # Verify the user has access to that organization
+    org_query = db.execute(
+        text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id AND organization_id = :org_id"),
+        {"tenant_id": str(current_user.user_id), "org_id": payload.organization_id}
+    ).fetchone()
+    
+    if not org_query:
+        raise HTTPException(status_code=403, detail="Organization not found or access denied")
+        
+    roles = get_user_role_names(db, current_user.user_id)
+    from app.core.security import create_access_token
+    
+    access_token = create_access_token(
+        user_id=str(current_user.user_id),
+        role=roles[0] if roles else "TENANT",
+        organization_id=payload.organization_id
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "organization_id": payload.organization_id
+    }
+
 @router.post("/forgot-password")
 def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
     try:

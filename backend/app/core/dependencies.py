@@ -33,6 +33,7 @@ def get_current_user(credentials=Depends(security)):
         return {
             "user_id": payload.get("user_id"),
             "role": payload.get("role"),
+            "organization_id": payload.get("organization_id"),
         }
     except JWTError:
         raise HTTPException(
