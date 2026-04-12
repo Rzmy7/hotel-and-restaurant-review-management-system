@@ -45,9 +45,10 @@ sequenceDiagram
     participant S as Scraper Engine (:8001)
     participant API as FastAPI Router
     participant SS as Source Service
-    participant RP as Review pipeline
-    participant AI as Gemini 2.5
+    participant RP as Review Ingestion
     participant DB as SQL Server (PyODBC)
+    participant BP as AI Processor (Background)
+    participant AI as Gemini 2.5
 
     S->>API: POST /source/tasks/{id}/sync-status (COMPLETED)
     API->>SS: update_sync_status()
@@ -57,16 +58,21 @@ sequenceDiagram
     API->>RP: ingest_from_scraper()
     RP->>S: GET /api/reviews/{id}
     S-->>RP: Raw Review Batch
-    RP->>AI: analyze_reviews_batch()
-    AI-->>RP: Enriched JSON (Sentiment, Summary, Categories)
-    RP->>DB: execute_query(INSERT/UPDATE processed_review)
+    RP->>DB: INSERT (status='pending', split text preserved)
+    loop Until DB queue empty
+        DB-->>BP: fetch_pending_batch()
+        BP->>AI: analyze_reviews_batch()
+        AI-->>BP: Enriched JSON (Sentiment, Summary, Categories)
+        BP->>DB: UPDATE (status='processed', enriched data)
+    end
 ```
 
 1. **Triggering**: A sync status update is sent from the **Scraper Engine** to the `/sync-status` webhook. If the status is `COMPLETED`, the Review Processing Pipeline is triggered via `BackgroundTasks`.
-2. **Ingestion**: The backend environment communicates back to the engine over port `8001` to fetch the raw review batch associated with the sync.
-3. **AI Analysis**: Reviews are stored as `'pending'` and then sent in batches to **Google Gemini 2.5**. The AI performs sentiment analysis, summarization, and key-phrase extraction.
-4. **Resilience**: The system tracks `retry_count` and `error_message` for every review. Failed AI calls are retried up to 3 times before being flagged.
-5. **Retrieval**: Enriched data is served via the `/api/reviews` endpoints, providing the frontend with deep insights, photos, and drafted AI replies.
+2. **Ingestion**: The backend environment communicates back to the engine over port `8001` to fetch the raw review batch. Reviews are stored immediately in the `processed_review` table with a status of `'pending'`. Split text components (Positive/Negative) are preserved from the source.
+3. **AI Enrichment**: A background processor fetches `'pending'` reviews in batches and sends them to **Google Gemini 2.5**. The pipeline now processes in a loop until all pending reviews are handled (up to 50 consecutive batches).
+4. **Monitoring**: The real-time status of the processing pipeline (Pending vs Processed counts) is available via the `/api/reviews/processing/status` endpoint, providing a clear view of system throughput and any stalled tasks.
+5. **Resilience**: The system tracks `retry_count` and `error_message` for every review. Failed AI calls are retried up to 3 times before being flagged.
+6. **Retrieval**: Enriched data is served via the `/api/reviews` endpoints, providing the frontend with deep insights, photos, and drafted AI replies.
 
 ## 4. Interfaces & APIs
 
@@ -75,7 +81,7 @@ The backend primarily operates under `/api` for domain-specific interfaces:
 - **Health & Infra**: `/health`, `/db-test`
 - **Auth**: `/api/auth/login`, `/api/auth/oauth/google`, `/api/auth/refresh`
 - **Administration**: `/api/admin/users`, `/api/admin/organizations`
-- **Reviews**: `/api/reviews/{org_id}`, `/api/reviews/trigger/{src_id}`, `/api/reviews/generate-reply`
+- **Reviews**: `/api/reviews/{org_id}`, `/api/reviews/trigger/{src_id}`, `/api/reviews/process/{review_id}`, `/api/reviews/generate-reply`, `/api/reviews/processing/status`
 - **Source/Sync**: `/api/source/tasks/{id}/sync-status`
 - **Data Access**: `/api/competitors`, `/api/dashboard`
 

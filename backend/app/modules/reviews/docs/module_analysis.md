@@ -17,6 +17,7 @@ The module's logic is triggered under four primary conditions:
 2.  **Dashboard Access**: When the frontend requests review lists or statistics for an organization.
 3.  **On-Demand Reply Generation**: When a user requests a high-quality, customized response draft for a specific review via the `/api/reviews/generate-reply` endpoint.
 4.  **Platform Metrics**: When the admin dashboard requests total review counts via `/api/reviews/meta/count`.
+5.  **On-Demand Processing**: When a reviewer or admin manually triggers re-analysis of a single specific review via `/api/reviews/process/{review_id}`.
 
 ---
 
@@ -30,8 +31,8 @@ The module implements a two-stage background pipeline:
 - **Action**: Calls external **Scraper Engine** (`GET http://127.0.0.1:8001/api/reviews/{source_id}`).
 - **Data Mapping**:
   - Transforms platform-specific JSON into unified internal format.
-  - **Booking.com**: Combines `positive_text` and `negative_text` into single `text` field: `"Positive: {pos}\nNegative: {neg}"`.
-  - **Other platforms**: Uses `review_text` field directly.
+  - **Booking.com**: Preserves `positive_text` and `negative_text` as separate fields.
+  - **Other platforms**: Uses `review_text` field directly as `text`.
   - Maps `author` → `reviewerName`, `rating`, `review_date`, `photos`.
 - **Storage**: Upserts records to `dbo.processed_review` with status set to `pending`.
   - **Upsert Logic**: Checks `platformReviewId` for existence; updates existing record or inserts new one.
@@ -39,19 +40,12 @@ The module implements a two-stage background pipeline:
 
 #### Stage 2: AI Analysis (`processor.py`)
 - **Trigger**: Automatically follows ingestion (same background task) or run as standalone task.
-- **Batch Configuration**: Fetches `GEMINI_BATCH_SIZE` reviews (default: 10, configurable via env var).
+- **Batch Processing**: Fetches `GEMINI_BATCH_SIZE` reviews per batch (default: 10).
+- **Processing Loop**: The pipeline now processes all pending reviews in a loop (up to 50 consecutive batches) to ensure complete ingestion jobs aren't left partially processed.
 - **AI Processing**: Sends review batch to **Google Gemini** via `gemini_client.py`.
-- **Enrichment**: Receives structured JSON containing:
-  - `sentiment`: "Positive", "Neutral", or "Negative"
-  - `sentiment_score`: Float from 1.0 to 5.0
-  - `categories`: 1-3 tags from predefined list (Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size)
-  - `language`: Detected language (e.g., "English", "German")
-  - `keyPhrases`: 3-5 keywords or short phrases
-  - `summary`: One-sentence professional summary
-  - `positive_text`: Specific positive points mentioned
-  - `negative_text`: Specific negative points mentioned
-  - `ai_reply`: Draft professional response
-- **Finalization**: Updates database with all enriched fields and sets status to `processed`.
+- **Enrichment**: Receives structured JSON containing sentiment, scores, categories, key phrases, and draft replies.
+- **Finalization**: Updates database with enriched fields and sets status to `processed`.
+- **Monitoring**: The current state of this queue can be monitored via the `/api/reviews/processing/status` endpoint.
 
 #### Error Handling & Retry Logic
 - **Retry Counter**: Each review tracks `retry_count` (increments on each failure).
@@ -87,6 +81,8 @@ When a user requests an AI-generated reply:
 | `/api/reviews/{organization_id}` | GET | `organization_id` (UUID, path param) | List of `ReviewModel` (JSON), Status 200 |
 | `/api/reviews/trigger/{source_id}` | POST | `source_id` (UUID, path param) | `{"message": "Processing flow started in background."}`, Status 200 |
 | `/api/reviews/meta/count` | GET | None | `{"total_reviews": <int>}`, Status 200 |
+| `/api/reviews/processing/status` | GET | `organization_id` (UUID, optional query) | `{"metrics": {...}, "health": "string", "timestamp": "ISO8601"}`, Status 200 |
+| `/api/reviews/process/{review_id}` | POST | `review_id` (UUID, path param) | `{"message": "Review processed successfully", ...}`, Status 200 |
 | `/api/reviews/generate-reply` | POST | `ReplyGenerationRequest` (JSON body) | `ReplyGenerationResponse` (JSON), Status 200 |
 
 #### ReplyGenerationRequest Schema
@@ -336,18 +332,21 @@ These are registered in SQLAlchemy's `Base.metadata` for automatic table creatio
 
 **Data Mapping Logic**:
 ```python
-# Booking.com: Combine positive/negative text
-review_text = f"Positive: {positive_text}\nNegative: {negative_text}"
+# Booking.com: Preserve separate text components
+positive_text = detail.get("positive_text")
+negative_text = detail.get("negative_text")
 
-# Other platforms: Use review_text directly
+# Other platforms: Use review_text directly as 'text'
 review_text = detail.get("review_text", "")
 
-# Unified mapping
+# Unified mapping for pending storage
 mapping = {
     "platformReviewId": r_data.get("review_id"),
     "rating": detail.get("rating", 0),
     "reviewerName": detail.get("author", "Guest"),
-    "text": review_text,
+    "text": review_text if not (positive_text or negative_text) else None,
+    "positive_text": positive_text,
+    "negative_text": negative_text,
     "reviewDate": detail.get("review_date"),
     "scrapedAt": r_data.get("created_at"),
     "source_id": source_id,

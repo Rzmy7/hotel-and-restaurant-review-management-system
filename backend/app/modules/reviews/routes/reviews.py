@@ -15,10 +15,12 @@ from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.modules.reviews.schemas import ReviewModel, ReplyGenerationRequest, ReplyGenerationResponse
+from app.modules.reviews.services.processor import process_single_review
 from app.modules.reviews.services.review_service import (
     get_all_reviews_from_db,
     count_all_reviews,
-    start_ingestion_and_processing_flow
+    start_ingestion_and_processing_flow,
+    get_processing_report
 )
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
 
@@ -52,6 +54,39 @@ def get_total_review_count():
         return {"total_reviews": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/processing/status")
+def get_processing_status(organization_id: uuid.UUID = Query(None)):
+    """
+    Get the current processing status of reviews.
+    Optional organization_id filter.
+    """
+    try:
+        return get_processing_report(str(organization_id) if organization_id else None)
+    except Exception as e:
+        logger.error(f"Failed to fetch processing status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch processing status.")
+
+
+@router.post("/process/{review_id}")
+async def trigger_single_review_processing(review_id: uuid.UUID):
+    """
+    Manually trigger AI analysis for a specific review.
+    This will analyze/re-analyze the review and update its analytical columns.
+    """
+    try:
+        result = await process_single_review(review_id)
+        return {
+            "message": "Review processed successfully",
+            "review_id": str(review_id),
+            "analysis": result
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Single review processing failed for {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error during processing.")
 
 
 @router.post("/generate-reply", response_model=ReplyGenerationResponse)

@@ -29,6 +29,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
         sql = """
             UPDATE dbo.processed_review
             SET rating = ?, reviewerName = ?, text = ?, 
+                positive_text = ?, negative_text = ?,
                 reviewDate = ?, scrapedAt = ?, status = 'pending',
                 source_id = ?, organization_id = ?
             WHERE id = ?
@@ -37,7 +38,9 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
             sql,
             review_data["rating"],
             review_data["reviewerName"],
-            review_data["text"],
+            review_data.get("text"),
+            review_data.get("positive_text"),
+            review_data.get("negative_text"),
             review_data["reviewDate"],
             review_data["scrapedAt"],
             review_data.get("source_id"),
@@ -51,9 +54,10 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
         sql = """
             INSERT INTO dbo.processed_review (
                 id, platformReviewId, platform_id, rating, reviewerName,
-                text, reviewDate, scrapedAt, status, source_id, organization_id
+                text, positive_text, negative_text,
+                reviewDate, scrapedAt, status, source_id, organization_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
         """
         cursor.execute(
             sql,
@@ -62,7 +66,9 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
             review_data.get("platform_id"),
             review_data["rating"],
             review_data["reviewerName"],
-            review_data["text"],
+            review_data.get("text"),
+            review_data.get("positive_text"),
+            review_data.get("negative_text"),
             review_data["reviewDate"],
             review_data["scrapedAt"],
             review_data.get("source_id"),
@@ -89,6 +95,7 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     sql = f"""
         SELECT TOP {limit}
             id, platformReviewId, rating, reviewerName, text, 
+            positive_text, negative_text,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 
             source_id
@@ -160,3 +167,58 @@ def count_reviews_raw() -> int:
     count = cursor.fetchone()[0]
     conn.close()
     return count
+
+
+def get_processing_metrics(cursor: pyodbc.Cursor, organization_id: Optional[str] = None) -> Dict[str, int]:
+    """
+    Returns counts of reviews grouped by status.
+    If organization_id is provided, filters by that organization.
+    """
+    sql = "SELECT status, COUNT(*) FROM dbo.processed_review"
+    params = []
+    
+    if organization_id:
+        sql += " WHERE organization_id = ?"
+        params.append(organization_id)
+        
+    sql += " GROUP BY status"
+    
+    cursor.execute(sql, params)
+    rows = cursor.fetchall()
+    
+    # Initialize counts
+    metrics = {
+        "pending": 0,
+        "processed": 0,
+        "failed": 0,
+        "total": 0
+    }
+    
+    for status_str, count in rows:
+        status_key = status_str.lower()
+        if status_key in metrics:
+            metrics[status_key] = count
+        metrics["total"] += count
+        
+    return metrics
+
+
+def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[dict]:
+    """Fetch a single review by its internal ID for AI processing."""
+    sql = """
+        SELECT
+            id, platformReviewId, rating, reviewerName, text, 
+            positive_text, negative_text,
+            CAST(reviewDate AS VARCHAR) as reviewDate, 
+            CAST(scrapedAt AS VARCHAR) as scrapedAt, 
+            source_id, status
+        FROM dbo.processed_review
+        WHERE id = ?
+    """
+    cursor.execute(sql, (review_id,))
+    row = cursor.fetchone()
+    if not row:
+        return None
+        
+    columns = [column[0] for column in cursor.description]
+    return dict(zip(columns, row))

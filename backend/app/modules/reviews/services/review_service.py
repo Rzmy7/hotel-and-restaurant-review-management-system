@@ -7,6 +7,7 @@ import logging
 import uuid
 import httpx
 from typing import List
+from datetime import datetime
 
 import pyodbc
 from app.core.pyodbc_connection import get_connection_string
@@ -14,7 +15,8 @@ from app.modules.reviews.repository import (
     upsert_review_pending,
     insert_review_media,
     fetch_all_reviews_enriched,
-    count_reviews_raw
+    count_reviews_raw,
+    get_processing_metrics
 )
 
 # Ensure related models are registered in the SQLAlchemy registry
@@ -63,20 +65,19 @@ async def ingest_from_scraper(source_id: uuid.UUID, organization_id: uuid.UUID) 
                 # Handle nested detail from Scraper Engine
                 detail = r_data.get("detail", {})
                 
-                # Combine summary/text from platform-specific fields
-                # For booking, we combine positive and negative text
-                review_text = detail.get("review_text", "")
-                if not review_text and "positive_text" in detail:
-                    pos = detail.get("positive_text", "") or ""
-                    neg = detail.get("negative_text", "") or ""
-                    review_text = f"Positive: {pos}\nNegative: {neg}"
+                # Determine if we have split text (Booking.com) or single text
+                pos = detail.get("positive_text")
+                neg = detail.get("negative_text")
+                raw_text = detail.get("review_text")
 
                 # Map raw scraper data to our internal fields
                 mapping = {
                     "platformReviewId": r_data.get("review_id"),
                     "rating": detail.get("rating", 0),
                     "reviewerName": detail.get("author", "Guest"),
-                    "text": review_text,
+                    "text": raw_text if not (pos or neg) else None,
+                    "positive_text": pos,
+                    "negative_text": neg,
                     "reviewDate": detail.get("review_date"),
                     "scrapedAt": r_data.get("created_at"),
                     "source_id": source_id,
@@ -146,4 +147,30 @@ def count_all_reviews() -> int:
         return count_reviews_raw()
     except Exception as e:
         logger.error(f"Count reviews failed: {e}")
+        raise e
+
+
+def get_processing_report(organization_id: str = None) -> dict:
+    """
+    Returns a report on review processing status (pending, processed, failed).
+    """
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            metrics = get_processing_metrics(cursor, organization_id)
+            
+            # Simple health indicator
+            health = "healthy"
+            if metrics["failed"] > 0:
+                health = "warning"
+            if metrics["pending"] > 200: # Example threshold
+                health = "congested"
+                
+            return {
+                "metrics": metrics,
+                "health": health,
+                "timestamp": datetime.now().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Failed to generate processing report: {e}")
         raise e

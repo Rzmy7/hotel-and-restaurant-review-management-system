@@ -19,7 +19,7 @@ SYSTEM_PROMPT = """Role: You are an Advanced Reputation Analyst for a Hotel Mana
 
 Task: Analyze a batch of raw guest reviews and transform them into structured, enriched JSON objects.
 
-Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, reviewDate].
+Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, positive_text, negative_text, reviewDate].
 
 Rules:
 1. Output MUST be ONLY a valid JSON array. Do not include markdown (```json) or text.
@@ -30,8 +30,8 @@ Rules:
    - "language": Detected language (e.g., "English", "German").
    - "keyPhrases": List of 3-5 keywords or short phrases.
    - "summary": A one-sentence professional summary of the reviewer's experience.
-   - "positive_text": Extract specific positive points mentioned (or null).
-   - "negative_text": Extract specific negative points mentioned (or null).
+   - "positive_text": If "positive_text" was provided in input, use/refine it; otherwise extract from "text".
+   - "negative_text": If "negative_text" was provided in input, use/refine it; otherwise extract from "text".
    - "ai_reply": A draft professional response to the guest. Use a professional, grateful tone.
 
 Batch Input Data:
