@@ -15,9 +15,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # Canonical database imports — single source of truth
 from app.database.session import Base, engine, get_db
@@ -49,13 +52,20 @@ async def lifespan(app: FastAPI):
     setup_scheduler()
     start_scheduler()
     
-    # Run initial reconciliation in a background thread to avoid blocking startup
-    import threading
+    # Run initial reconciliation and review processing background tasks
+    import asyncio
     try:
         from app.modules.scheduler.tasks.reconciliation_tasks import reconcile_scraper_jobs
-        threading.Thread(target=reconcile_scraper_jobs, daemon=True).start()
+        from app.modules.reviews.services.processor import run_analysis_pipeline
+        
+        # reconcile_scraper_jobs is sync, run it in a thread pool via to_thread
+        asyncio.create_task(asyncio.to_thread(reconcile_scraper_jobs))
+        # run_analysis_pipeline is async, run it directly via create_task
+        asyncio.create_task(run_analysis_pipeline())
+        
+        logger.info("Lifespan: Initial background tasks launched.")
     except Exception as e:
-        print(f"Failed to start reconciliation thread: {e}")
+        logger.error(f"Lifespan: Failed to start initial background tasks: {e}")
 
     yield
     # Shutdown actions

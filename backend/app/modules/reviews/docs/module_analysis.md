@@ -18,6 +18,7 @@ The module's logic is triggered under four primary conditions:
 3.  **On-Demand Reply Generation**: When a user requests a high-quality, customized response draft for a specific review via the `/api/reviews/generate-reply` endpoint.
 4.  **Platform Metrics**: When the admin dashboard requests total review counts via `/api/reviews/meta/count`.
 5.  **On-Demand Processing**: When a reviewer or admin manually triggers re-analysis of a single specific review via `/api/reviews/process/{review_id}`.
+6.  **Automatic Background Scheduler**: The system's APScheduler runs the analysis pipeline every 1 minute, and a dedicated startup hook ensures any pending reviews are processed immediately upon system boot.
 
 ---
 

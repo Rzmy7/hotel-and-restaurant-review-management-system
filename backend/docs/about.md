@@ -69,9 +69,8 @@ sequenceDiagram
 
 1. **Triggering**: A sync status update is sent from the **Scraper Engine** to the `/sync-status` webhook. If the status is `COMPLETED`, the Review Processing Pipeline is triggered via `BackgroundTasks`.
 2. **Ingestion**: The backend environment communicates back to the engine over port `8001` to fetch the raw review batch. Reviews are stored immediately in the `processed_review` table with a status of `'pending'`. Split text components (Positive/Negative) are preserved from the source.
-3. **AI Enrichment**: A background processor fetches `'pending'` reviews in batches and sends them to **Google Gemini 2.5**. The pipeline now processes in a loop until all pending reviews are handled (up to 50 consecutive batches).
-4. **Monitoring**: The real-time status of the processing pipeline (Pending vs Processed counts) is available via the `/api/reviews/processing/status` endpoint, providing a clear view of system throughput and any stalled tasks.
-5. **Resilience**: The system tracks `retry_count` and `error_message` for every review. Failed AI calls are retried up to 3 times before being flagged.
+3. **AI Enrichment**: A background processor fetches `'pending'` reviews in batches and sends them to **Google Gemini 2.5**. This pipeline runs automatically every 1 minute via the system scheduler and is also triggered immediately upon system boot to clear any backlog.
+4. **Resilience**: The system tracks `retry_count` and `error_message` for every review. Failed AI calls are retried up to 3 times before being flagged.
 6. **Retrieval**: Enriched data is served via the `/api/reviews` endpoints, providing the frontend with deep insights, photos, and drafted AI replies.
 
 ## 4. Interfaces & APIs

@@ -8,6 +8,9 @@ import re
 from typing import List, Dict, Any
 
 from google import genai
+from google.genai import errors
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 from app.core.config import GENAI_KEY
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,12 @@ def _get_client():
     return genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
 
 
+@retry(
+    wait=wait_exponential(multiplier=2, min=2, max=20),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type((errors.ServerError, Exception)),
+    before_sleep=lambda retry_state: logger.warning(f"Gemini API busy (503/Error). Retrying in {retry_state.next_action.sleep} seconds... (Attempt {retry_state.attempt_number})")
+)
 def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Sends a batch of reviews to Gemini and returns the enriched data.
