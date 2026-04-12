@@ -69,7 +69,7 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
             db.commit()
 
     roles = get_user_role_names(db, user.user_id)
-    from app.modules.auth.services.jwt_service import create_access_token
+    from app.core.security import create_access_token
 
     access_token = create_access_token(
         user_id=str(user.user_id),

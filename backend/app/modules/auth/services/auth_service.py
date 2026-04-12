@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.modules.user.repositories.users_repo import get_user_by_email
 from app.modules.auth.repositories.roles_repo import get_user_primary_role
 from app.modules.auth.utils.auth_utils import verify_password
-from app.modules.auth.services.jwt_service import create_access_token
+from app.core.security import create_access_token
 from app.modules.admin.services.subscription_service import set_user_subscription_plan
 from app.core.db_utils import get_connection_string
 import pyodbc

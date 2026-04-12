@@ -2,11 +2,11 @@ import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from jose import jwt, JWTError
+from jose import JWTError
 
 from app.database.session import get_db
 from app.modules.auth.models import User
-from app.modules.auth.services.jwt_service import SECRET_KEY, ALGORITHM
+from app.core.security import decode_access_token
 
 # --------------------------------------------------
 # Password Hashing
@@ -55,10 +55,22 @@ def get_current_user(
     Extract current user from JWT token
     """
 
-    token = credentials.credentials
+    token = credentials.credentials.strip()
+
+    # Swagger users sometimes paste "Bearer <token>" into the authorize modal.
+    # HTTPBearer already handles the scheme, so strip it defensively if present.
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+
+    # A valid JWT has three dot-separated segments.
+    if token.count(".") != 2:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format. Use access_token from /api/auth/login (JWT), not user_id.",
+        )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
 
         user_id = payload.get("user_id")
 
@@ -82,7 +94,7 @@ def get_current_user(
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is invalid or expired",
+            detail="Token is invalid or expired. Ensure you use the access_token JWT from /api/auth/login.",
         )
     
 
