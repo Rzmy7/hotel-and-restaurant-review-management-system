@@ -1,8 +1,8 @@
 import logging
-import asyncio
 from app.modules.reviews.services.processor import run_analysis_pipeline
 
 logger = logging.getLogger(__name__)
+
 
 async def process_pending_reviews():
     """

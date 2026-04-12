@@ -36,7 +36,7 @@ The module implements a two-stage background pipeline:
   - **Other platforms**: Uses `review_text` field directly as `text`.
   - Maps `author` → `reviewerName`, `rating`, `review_date`, `photos`.
 - **Storage**: Upserts records to `dbo.processed_review` with status set to `pending`.
-  - **Upsert Logic**: Checks `platformReviewId` for existence; updates existing record or inserts new one.
+  - **Upsert Logic**: Checks `scraper_review_id` for existence; updates existing record or inserts new one.
   - **Media Handling**: Deletes existing `review_media` entries and re-inserts to prevent duplicates.
 
 #### Stage 2: AI Analysis (`processor.py`)
@@ -262,9 +262,7 @@ Acts as the central repository for all review data and AI-derived insights.
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UNIQUEIDENTIFIER (PK) | Internal unique identifier (UUID v4). |
-| `platformReviewId` | NVARCHAR(100) | Unique ID from the source platform (prevents duplicates). |
-| `organization_id` | UNIQUEIDENTIFIER | Links review to owning organization. |
-| `platform_id` | INT | Platform identifier (e.g., 1=Booking, 2=Google). |
+| `scraper_review_id` | NVARCHAR(100) | Unique ID from the source platform (prevents duplicates). |
 | `source_id` | UNIQUEIDENTIFIER (FK) | Foreign key to `source.source_id` (on delete CASCADE). |
 
 #### Review Content
@@ -327,8 +325,8 @@ These are registered in SQLAlchemy's `Base.metadata` for automatic table creatio
 **Purpose**: Orchestrates review ingestion and processing pipeline.
 
 **Key Functions**:
-- `get_all_reviews_from_db(organization_id)`: Fetches all enriched reviews for an organization.
-- `ingest_from_scraper(source_id, organization_id)`: Calls Scraper Engine, maps data, upserts to DB.
+- `get_all_reviews_from_db(organization_id)`: Fetches all enriched reviews for an organization (via JOIN).
+- `ingest_from_scraper(source_id, organization_id, platform_id)`: Calls Scraper Engine, maps data, upserts to DB.
 - `start_ingestion_and_processing_flow(source_id)`: Full pipeline (ingest → analyze) as background task.
 - `count_all_reviews()`: Returns total review count across all organizations.
 
@@ -343,7 +341,7 @@ review_text = detail.get("review_text", "")
 
 # Unified mapping for pending storage
 mapping = {
-    "platformReviewId": r_data.get("review_id"),
+    "scraper_review_id": r_data.get("review_id"),
     "rating": detail.get("rating", 0),
     "reviewerName": detail.get("author", "Guest"),
     "text": review_text if not (positive_text or negative_text) else None,
@@ -351,9 +349,7 @@ mapping = {
     "negative_text": negative_text,
     "reviewDate": detail.get("review_date"),
     "scrapedAt": r_data.get("created_at"),
-    "source_id": source_id,
-    "organization_id": organization_id,
-    "platform_id": raw_data.get("platform_id")
+    "source_id": source_id
 }
 ```
 
@@ -598,7 +594,7 @@ Database Error → Log Error → Raise HTTPException (500)
 ```python
 class ReviewModel(BaseModel):
     id: str
-    platformReviewId: Optional[str] = None
+    scraper_review_id: Optional[str] = None
     rating: int
     reviewerName: str  # Alias: userName
     userName: str      # Alias: reviewerName

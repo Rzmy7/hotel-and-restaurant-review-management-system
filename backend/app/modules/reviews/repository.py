@@ -16,19 +16,22 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
     Sets status to 'pending' to trigger the AI processing pipeline.
     Returns the internal primary key (UUID).
     """
-    # Check if review already exists by platformReviewId
+    # Check if review already exists by scraper_review_id
     try:
         cursor.execute(
-           "SELECT CAST(id AS VARCHAR(36)) FROM dbo.processed_review WHERE platformReviewId = ?",
-           str(review_data["platformReviewId"])
+            "SELECT CAST(id AS VARCHAR(36)) FROM dbo.processed_review WHERE scraper_review_id = ?",
+            str(review_data["scraper_review_id"]),
         )
         row = cursor.fetchone()
     except Exception as e:
         import os
+
         with open("db_error_dump.log", "a", encoding="utf-8") as f:
-            f.write(f"SELECT FAILURE: {e}\nPID: {review_data.get('platformReviewId')}\n\n")
+            f.write(
+                f"SELECT FAILURE: {e}\nPID: {review_data.get('scraper_review_id')}\n\n"
+            )
         raise e
-    
+
     if row:
         review_id = row[0]
         # Update existing record back to pending
@@ -43,8 +46,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
                 reviewDate = ?, 
                 scrapedAt = ?, 
                 status = 'pending',
-                source_id = CAST(? AS UNIQUEIDENTIFIER), 
-                organization_id = CAST(? AS UNIQUEIDENTIFIER)
+                source_id = CAST(? AS UNIQUEIDENTIFIER)
             WHERE id = CAST(? AS UNIQUEIDENTIFIER)
         """
         args = [
@@ -57,8 +59,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
             review_data["reviewDate"],
             review_data["scrapedAt"],
             review_data.get("source_id"),
-            review_data.get("organization_id"),
-            review_id
+            review_id,
         ]
         try:
             cursor.execute(sql, *args)
@@ -72,15 +73,13 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
         new_id = str(uuid.uuid4())
         sql = """
             INSERT INTO dbo.processed_review (
-                id, platformReviewId, organization_id, platform_id, rating, 
+                id, scraper_review_id, rating, 
                 reviewerName, text, positive_text, negative_text, heading, 
                 reviewDate, scrapedAt, status, source_id
             )
             VALUES (
                 CAST(? AS UNIQUEIDENTIFIER), 
                 ?, 
-                CAST(? AS UNIQUEIDENTIFIER), 
-                CAST(? AS INT), 
                 CAST(? AS FLOAT), 
                 ?, ?, ?, ?, ?, ?, ?, 'pending', 
                 CAST(? AS UNIQUEIDENTIFIER)
@@ -88,9 +87,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
         """
         args = [
             new_id,
-            str(review_data["platformReviewId"]),
-            review_data.get("organization_id"),
-            review_data.get("platform_id"),
+            str(review_data["scraper_review_id"]),
             review_data.get("rating"),
             review_data["reviewerName"],
             review_data.get("text"),
@@ -99,29 +96,30 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
             review_data.get("heading"),
             review_data["reviewDate"],
             review_data["scrapedAt"],
-            review_data.get("source_id")
+            review_data.get("source_id"),
         ]
-        
+
         try:
             cursor.execute(sql, *args)
         except Exception as e:
             # Emergency log on exact SQL failure
-            import os
             with open("db_error_dump.log", "a", encoding="utf-8") as f:
                 f.write(f"INSERT FAILURE: {e}\nARGS: {args}\n\n")
             raise e
-            
+
         return new_id
 
 
-def insert_review_media(cursor: pyodbc.Cursor, review_id: uuid.UUID, photos: List[dict]) -> None:
+def insert_review_media(
+    cursor: pyodbc.Cursor, review_id: uuid.UUID, photos: List[dict]
+) -> None:
     """Bulk insert photos for a processed review."""
     if not photos:
         return
-        
+
     # We clear existing photos for this review to avoid duplicates on re-ingestion
     cursor.execute("DELETE FROM dbo.review_media WHERE review_id = ?", review_id)
-    
+
     sql = "INSERT INTO dbo.review_media (media_id, review_id, src, alt) VALUES (?, ?, ?, ?)"
     for pic in photos:
         cursor.execute(sql, uuid.uuid4(), review_id, pic.get("src"), pic.get("alt", ""))
@@ -131,7 +129,7 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     """Fetch a batch of reviews that need AI processing."""
     sql = f"""
         SELECT TOP {limit}
-            id, platformReviewId, rating, reviewerName, text, 
+            id, scraper_review_id, rating, reviewerName, text, 
             positive_text, negative_text, heading,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 
@@ -152,12 +150,13 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
 
     sql = """
         SELECT
-            r.id, r.platformReviewId, r.platform_id, r.rating, r.reviewerName,
+            r.id, r.scraper_review_id, r.rating, r.reviewerName,
             r.text, r.summary, r.sentiment, r.language, r.categories,
             r.keyPhrases, r.reviewDate, r.scrapedAt, r.status, r.ai_reply,
             r.source_id, r.positive_text, r.negative_text, r.heading
         FROM dbo.processed_review r
-        WHERE r.organization_id = ?
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND r.status = 'processed'
         ORDER BY r.reviewDate DESC
     """
     cursor.execute(sql, (organization_id,))
@@ -167,9 +166,10 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
     # Fetch photos for all results
     results = []
     import json
+
     for row in rows:
         rev_id = row["id"]
-        
+
         # Parse JSON fields stored in DB as strings
         for field in ["categories", "keyPhrases"]:
             if row.get(field):
@@ -179,16 +179,18 @@ def fetch_all_reviews_enriched(organization_id: str) -> List[dict]:
                     row[field] = []
             else:
                 row[field] = []
-        
+
         # Ensure sentiment/language/summary are never None for the Pydantic model
         if row.get("sentiment") is None:
             row["sentiment"] = "Neutral"
         if row.get("language") is None:
             row["language"] = "English"
         if row.get("summary") is None:
-             row["summary"] = ""
+            row["summary"] = ""
 
-        cursor.execute("SELECT src, alt FROM dbo.review_media WHERE review_id = ?", rev_id)
+        cursor.execute(
+            "SELECT src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
+        )
         row["photos"] = [{"src": p[0], "alt": p[1]} for p in cursor.fetchall()]
         results.append(row)
 
@@ -206,37 +208,35 @@ def count_reviews_raw() -> int:
     return count
 
 
-def get_processing_metrics(cursor: pyodbc.Cursor, organization_id: Optional[str] = None) -> Dict[str, int]:
+def get_processing_metrics(
+    cursor: pyodbc.Cursor, organization_id: Optional[str] = None
+) -> Dict[str, int]:
     """
     Returns counts of reviews grouped by status.
     If organization_id is provided, filters by that organization.
     """
-    sql = "SELECT status, COUNT(*) FROM dbo.processed_review"
+    sql = "SELECT r.status, COUNT(*) FROM dbo.processed_review r"
     params = []
-    
+
     if organization_id:
-        sql += " WHERE organization_id = ?"
+        sql += " JOIN dbo.source s ON r.source_id = s.source_id"
+        sql += " WHERE s.organization_id = ?"
         params.append(organization_id)
-        
-    sql += " GROUP BY status"
-    
+
+    sql += " GROUP BY r.status"
+
     cursor.execute(sql, params)
     rows = cursor.fetchall()
-    
+
     # Initialize counts
-    metrics = {
-        "pending": 0,
-        "processed": 0,
-        "failed": 0,
-        "total": 0
-    }
-    
+    metrics = {"pending": 0, "processed": 0, "failed": 0, "total": 0}
+
     for status_str, count in rows:
         status_key = status_str.lower()
         if status_key in metrics:
             metrics[status_key] = count
         metrics["total"] += count
-        
+
     return metrics
 
 
@@ -244,7 +244,7 @@ def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[di
     """Fetch a single review by its internal ID for AI processing."""
     sql = """
         SELECT
-            id, platformReviewId, rating, reviewerName, text, 
+            id, scraper_review_id, rating, reviewerName, text, 
             positive_text, negative_text, heading,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 
@@ -256,6 +256,6 @@ def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[di
     row = cursor.fetchone()
     if not row:
         return None
-        
+
     columns = [column[0] for column in cursor.description]
     return dict(zip(columns, row))

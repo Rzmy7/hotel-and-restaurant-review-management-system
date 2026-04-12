@@ -13,8 +13,8 @@ class PhotoModel(BaseModel):
 
 class ReviewModel(BaseModel):
     id: str
-    platformReviewId: Optional[str] = None
-    rating: int
+    scraper_review_id: Optional[str] = None
+    rating: float
     reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
     userName: str = Field(..., validation_alias=AliasChoices("userName", "reviewerName"))
     text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
