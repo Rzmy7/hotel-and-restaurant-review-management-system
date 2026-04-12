@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.modules.user.repositories.users_repo import get_user_by_email
 from app.modules.auth.repositories.roles_repo import get_user_primary_role
 from app.modules.auth.utils.auth_utils import verify_password
-from app.modules.auth.services.jwt_service import create_access_token
+from app.core.security import create_access_token
 from app.modules.admin.services.subscription_service import set_user_subscription_plan
 from app.core.db_utils import get_connection_string
 import pyodbc
@@ -66,9 +66,21 @@ def login_user(db: Session, email: str, password: str) -> dict:
             # Don't block login if subscription init fails, but log it
             print(f"FAILED TO INIT SUBSCRIPTION FOR {user.user_id}: {e}")
 
+    # ----------------------------------------------------
+    # Get user's default organization
+    # ----------------------------------------------------
+    from sqlalchemy import text
+    org_query = db.execute(
+        text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"),
+        {"tenant_id": str(user.user_id)}
+    ).fetchone()
+    
+    org_id = str(org_query[0]) if org_query else None
+
     access_token = create_access_token(
         user_id=str(user.user_id),
         role=role,
+        organization_id=org_id
     )
 
     return {

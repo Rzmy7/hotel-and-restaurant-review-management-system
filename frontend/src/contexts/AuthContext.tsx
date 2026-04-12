@@ -17,6 +17,7 @@ type AuthContextType = {
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     persist: (user: User | null, token?: string) => void;
     checkUserOrganizations: () => Promise<void>;
+    exchangeTokenForOrganization: (orgId: string) => Promise<void>;
     isLoading: boolean;
 };
 
@@ -129,6 +130,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     // ----------------------------------------------------
+    // Exchange token for organization swap
+    // ----------------------------------------------------
+    const exchangeTokenForOrganization = async (orgId: string) => {
+        try {
+            const data = await apiClient.post<any>('/auth/switch-organization', { organization_id: orgId });
+            if (data && data.access_token) {
+                // Update the token in localStorage and state (via persist) without logging out
+                if (user) {
+                    persist(user, data.access_token);
+                }
+            }
+        } catch (err) {
+            console.error("Error exchanging token for organization:", err);
+            throw err;
+        }
+    };
+
+    // ----------------------------------------------------
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string) => {
@@ -222,6 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 resetPassword,
                 persist,
                 checkUserOrganizations,
+                exchangeTokenForOrganization,
                 isLoading,
             }}
         >

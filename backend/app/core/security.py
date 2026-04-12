@@ -36,13 +36,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # ── JWT tokens ──────────────────────────────────────────────────────
 
-def create_access_token(user_id: str, role: str) -> str:
+def create_access_token(user_id: str, role: str, organization_id: str | None = None) -> str:
     """Create a signed JWT access token."""
     payload = {
         "user_id": user_id,
         "role": role,
         "exp": datetime.utcnow() + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
     }
+    if organization_id:
+        payload["organization_id"] = organization_id
+        
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
