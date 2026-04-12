@@ -1,133 +1,193 @@
-﻿import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Link, Building2, Globe } from 'lucide-react';
+import { addCompetitor } from '../../services/competitorService';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const PLATFORMS = [
+  { id: 2, name: 'Booking.com', placeholder: 'https://www.booking.com/hotel/...' },
+  { id: 3, name: 'Agoda', placeholder: 'https://www.agoda.com/...' },
+];
 
-interface AvailableCompetitor {
-  id: number;
-  name: string;
-  location: string;
-  avgRating: number;
-  status: string;
-}
+const ORG_TYPES = [
+  { id: 1, name: 'Hotel / Resort' },
+  { id: 2, name: 'Restaurant / Cafe' },
+];
 
 interface AddCompetitorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddCompetitor: (competitorId: number) => Promise<void> | void;
+  onSuccess: () => void;
 }
 
-const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({
-  isOpen,
-  onClose,
-  onAddCompetitor,
-}) => {
-  const [competitors, setCompetitors] = useState<AvailableCompetitor[]>([]);
+const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const [name, setName] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [platformId, setPlatformId] = useState(2);
+  const [orgTypeId, setOrgTypeId] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [trackingId, setTrackingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    let cancelled = false;
-    const loadAvailable = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(API_BASE + '/competitors');
-        if (!res.ok) throw new Error('API error ' + res.status);
-        const data = await res.json();
-        if (!cancelled) setCompetitors(data.available ?? []);
-      } catch (err: unknown) {
-        // Handle silently
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    loadAvailable();
-    return () => { cancelled = true; };
-  }, [isOpen]);
+  const [success, setSuccess] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleAdd = async (competitorId: number) => {
-    setTrackingId(competitorId);
+  const selectedPlatform = PLATFORMS.find(p => p.id === platformId) ?? PLATFORMS[0];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !sourceUrl.trim()) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
     try {
-      await onAddCompetitor(competitorId);
-      setCompetitors(prev => prev.filter(c => c.id !== competitorId));
-    } catch {
-      // error handled by parent
+      const res = await addCompetitor(name.trim(), sourceUrl.trim(), platformId, orgTypeId);
+      const status = res.competitor?.status;
+      if (status === 'Active') {
+        setSuccess(`✓ "${res.competitor.name}" found in system — comparison data is ready!`);
+      } else {
+        setSuccess(`✓ "${res.competitor.name}" added! Reviews are being fetched in the background.`);
+      }
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+        resetForm();
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to register competitor.');
     } finally {
-      setTrackingId(null);
+      setLoading(false);
     }
   };
 
-
+  const resetForm = () => {
+    setName(''); setSourceUrl(''); setPlatformId(2); setOrgTypeId(1);
+    setError(null); setSuccess(null);
+  };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/40 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      {/* Modal Container */}
+    <div className="fixed inset-0 bg-gray-900/50 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
       >
-        {/* Header Section */}
-        <div className="px-8 py-6 flex items-start justify-between border-b border-gray-100 dark:border-slate-700 flex-shrink-0">
+        {/* Header */}
+        <div className="px-8 py-6 flex items-start justify-between border-b border-gray-100 dark:border-slate-700">
           <div>
-            <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">Competitors</h2>
-            <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">Manage your competitor list</p>
+            <h2 className="text-[20px] font-bold text-gray-900 dark:text-white leading-tight">Add Competitor</h2>
+            <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">
+              Enter a competitor's details. If their reviews are already in our system, comparison starts immediately.
+            </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => { onClose(); resetForm(); }}
             className="text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors p-1"
-            aria-label="Close modal"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* List Section */}
-        <div className="flex-1 overflow-y-auto px-8 py-4 custom-scrollbar">
-          {error && <div className="text-red-500 py-4 text-center">{error}</div>}
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-100/60 dark:border-slate-700/60 sticky top-0 bg-white dark:bg-slate-800 z-10 flex w-full">
-                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[40%]">Competitor Name</th>
-                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[25%] flex-1">Location</th>
-                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[20%] flex-1">Avg Rating</th>
-                <th className="py-4 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest w-[15%] text-center flex-1">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50/80 dark:divide-slate-700/80 flex flex-col w-full">
-              {loading ? (
-                <tr><td className="py-8 text-center text-gray-400 w-full block">Loading competitors...</td></tr>
-              ) : competitors.map((competitor) => (
-                <tr key={competitor.id} className="hover:bg-gray-50/40 dark:hover:bg-slate-700/40 transition-colors flex w-full items-center">
-                  <td className="py-[18px] w-[40%]">
-                    <span className="font-semibold text-gray-800 dark:text-gray-200 text-[14px]">{competitor.name}</span>
-                  </td>
-                  <td className="py-[18px] flex-1">
-                    <span className="text-gray-500 dark:text-slate-400 text-[14px]">{competitor.location}</span>
-                  </td>
-                  <td className="py-[18px] flex items-center gap-1.5 h-[60px] flex-1">
-                    <span className="font-bold text-gray-900 dark:text-white text-[14px]">{competitor.avgRating}</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                  </td>
-                  <td className="py-[18px] text-center flex-1">
-                    <button
-                      onClick={() => handleAdd(competitor.id)}
-                      disabled={trackingId === competitor.id}
-                      className="bg-[#4e80ee] hover:bg-blue-600 disabled:opacity-50 text-white px-5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all hover:shadow-md active:scale-95 uppercase tracking-wide">
-                      {trackingId === competitor.id ? 'Adding...' : 'Add'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <Building2 size={14} className="inline mr-1.5" />
+              Competitor Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Grand Ocean Hotel"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+
+          {/* Platform + Org Type row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                <Globe size={14} className="inline mr-1.5" />
+                Platform
+              </label>
+              <select
+                value={platformId}
+                onChange={e => setPlatformId(Number(e.target.value))}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                {PLATFORMS.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Type
+              </label>
+              <select
+                value={orgTypeId}
+                onChange={e => setOrgTypeId(Number(e.target.value))}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                {ORG_TYPES.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Source URL */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <Link size={14} className="inline mr-1.5" />
+              {selectedPlatform.name} Page URL
+            </label>
+            <input
+              type="url"
+              value={sourceUrl}
+              onChange={e => setSourceUrl(e.target.value)}
+              placeholder={selectedPlatform.placeholder}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5">
+              If this organization is already tracked in the system, comparison data will appear immediately.
+            </p>
+          </div>
+
+          {/* Status messages */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg px-4 py-2.5 text-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-400 rounded-lg px-4 py-2.5 text-sm">
+              {success}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => { onClose(); resetForm(); }}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
+            >
+              {loading ? 'Checking...' : 'Add Competitor'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

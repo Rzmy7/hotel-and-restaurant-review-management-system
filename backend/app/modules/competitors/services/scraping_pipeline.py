@@ -9,6 +9,7 @@ import re
 from dataclasses import asdict
 from datetime import datetime
 from typing import List, Dict
+import uuid
 
 import pyodbc
 from google import genai
@@ -33,16 +34,17 @@ def _strip_markdown_fences(text: str) -> str:
     return match.group(1) if match else text
 
 
-def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: int, rows: List[Dict]) -> None:
-    """Insert AI-processed reviews into CompetitorReviews table."""
+def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows: List[Dict]) -> None:
+    """Insert AI-processed reviews into CompetitorReviews table and ReviewCategory."""
     sql = """
         INSERT INTO dbo.CompetitorReviews (
-            competitorId, platformReviewId, rating, userName, reviewText,
+            id, competitorId, platformReviewId, rating, userName, reviewText,
             summary, sentiment, categories, keyPhrases, language,
             reviewDate, source
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
+    sql_cats = "INSERT INTO dbo.ReviewCategory (id, competitor_review_id, category_name) VALUES (?, ?, ?)"
     cur = conn.cursor()
     for r in rows:
         def parse_date(date_str):
@@ -51,8 +53,10 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: int, rows
             except (ValueError, TypeError):
                 return None
 
+        rev_id = str(uuid.uuid4())
         cur.execute(
             sql,
+            rev_id,
             competitor_id,
             r.get("platformReviewId", ""),
             r.get("rating", 0),
@@ -66,11 +70,16 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: int, rows
             parse_date(r.get("date")),
             r.get("source", "Booking.com"),
         )
+        
+        cats = r.get("categories", [])
+        if isinstance(cats, list):
+            for c in cats:
+                cur.execute(sql_cats, str(uuid.uuid4()), rev_id, str(c))
     conn.commit()
     print(f"✓ Saved {len(rows)} competitor reviews to DB.")
 
 
-def _update_competitor_stats(competitor_id: int) -> None:
+def _update_competitor_stats(competitor_id: str) -> None:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         row = cursor.execute("""
@@ -92,7 +101,7 @@ def _update_competitor_stats(competitor_id: int) -> None:
             conn.commit()
 
 
-def process_competitor_scrape(competitor_id: int, url: str, headless: bool = True) -> None:
+def process_competitor_scrape(competitor_id: str, url: str, headless: bool = True) -> None:
     """Full pipeline: scrape → AI process → save to DB. Runs as a background task."""
     from app.modules.reviews.scraper import scrape_booking_for_competitor
 

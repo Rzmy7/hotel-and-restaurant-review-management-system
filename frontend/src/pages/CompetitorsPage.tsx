@@ -1,12 +1,11 @@
 import { ChevronDown, TrendingUp, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/shared/PageHeader';
 import AddCompetitorModal from '../components/competitors/AddCompetitorModal';
 import {
     fetchCompetitors,
-    trackCompetitor,
     untrackCompetitor,
     type Competitor,
 } from '../services/competitorService';
@@ -23,32 +22,18 @@ const CompetitorsPage = () => {
     const tracked = data?.tracked ?? [];
     const errorMessage = error instanceof Error ? error.message : null;
 
-    const trackMutation = useMutation({
-        mutationFn: trackCompetitor,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['competitors'] });
-            setIsAddModalOpen(false);
-        },
-        onError: (err: any) => {
-            alert(err instanceof Error ? err.message : 'Failed to track competitor');
-        }
-    });
+    const handleSuccess = () => {
+        queryClient.invalidateQueries({ queryKey: ['competitors'] });
+    };
 
     const untrackMutation = useMutation({
         mutationFn: untrackCompetitor,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['competitors'] });
         },
-        onError: (err: any) => {
-            alert(err instanceof Error ? err.message : 'Failed to untrack competitor');
-        }
     });
 
-    const handleTrack = async (competitorId: number) => {
-        trackMutation.mutate(competitorId);
-    };
-
-    const handleUntrack = async (competitorId: number) => {
+    const handleUntrack = async (competitorId: string) => {
         if (!confirm('Remove this competitor from your tracked list?')) return;
         untrackMutation.mutate(competitorId);
     };
@@ -168,7 +153,7 @@ const CompetitorsPage = () => {
             <AddCompetitorModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                onAddCompetitor={handleTrack}
+                onSuccess={handleSuccess}
             />
         </div>
     );
