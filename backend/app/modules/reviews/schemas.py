@@ -13,12 +13,13 @@ class PhotoModel(BaseModel):
 
 class ReviewModel(BaseModel):
     id: str
-    platformReviewId: Optional[str] = None
-    rating: int
+    scraper_review_id: Optional[str] = None
+    rating: float
     reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
     userName: str = Field(..., validation_alias=AliasChoices("userName", "reviewerName"))
     text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
     reviewText: Optional[str] = Field(..., validation_alias=AliasChoices("reviewText", "text"))
+    heading: Optional[str] = None
     summary: Optional[str] = None
     sentiment: Optional[str] = "Neutral"
     language: Optional[str] = "English"
@@ -28,9 +29,11 @@ class ReviewModel(BaseModel):
     photos: List[PhotoModel] = []
 
     source_id: Optional[uuid.UUID] = None
-    date: Optional[datetime.date] = None
+    date: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("date", "reviewDate"))
+    reviewDate: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("reviewDate", "date"))
 
     status: str = "pending"
+    source: Optional[str] = "Unknown"
     
     # AI Processing Metadata
     positive_text: Optional[str] = None
@@ -38,6 +41,13 @@ class ReviewModel(BaseModel):
     error_message: Optional[str] = None
     retry_count: int = 0
     last_attempt: Optional[datetime.datetime] = None
+
+class PaginatedReviewResponse(BaseModel):
+    data: List[ReviewModel]
+    total: int
+    page: int
+    limit: int
+    totalPages: int
 
 
 class BookingScrapeRequest(BaseModel):

@@ -14,10 +14,20 @@ def get_stats(org_id: str = None) -> dict:
     cursor = conn.cursor()
 
     if org_id:
-        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE organization_id = ?", org_id)
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ?
+        """, org_id)
         total_reviews = cursor.fetchone()[0]
 
-        cursor.execute("SELECT AVG(CAST(rating AS FLOAT)) FROM dbo.processed_review WHERE organization_id = ?", org_id)
+        cursor.execute("""
+            SELECT AVG(CAST(r.rating AS FLOAT)) 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ?
+        """, org_id)
         avg_rating_row = cursor.fetchone()[0]
         average_rating = round(avg_rating_row, 2) if avg_rating_row else 0
 
@@ -87,7 +97,13 @@ def get_distribution(org_id: str = None) -> dict:
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
     if org_id:
-        cursor.execute("SELECT rating, COUNT(*) as cnt FROM dbo.processed_review WHERE organization_id = ? GROUP BY rating ORDER BY rating", org_id)
+        cursor.execute("""
+            SELECT r.rating, COUNT(*) as cnt 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? 
+            GROUP BY r.rating ORDER BY r.rating
+        """, org_id)
     else:
         cursor.execute("SELECT rating, COUNT(*) as cnt FROM dbo.processed_review GROUP BY rating ORDER BY rating")
     rows = cursor.fetchall()

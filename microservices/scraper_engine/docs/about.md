@@ -81,9 +81,12 @@ sequenceDiagram
     PL->>JM: status = COMPLETED
     PL->>SS: finalize_and_replicate(reviews, primary_id, companions)
     loop For each Source ID (Primary + Companions)
-        SS->>DB: Save reviews & deduplicate
+        SS->>DB: Save reviews locally
         SS->>B: POST /sync-status (COMPLETED)
     end
+    B->>API: GET /api/reviews/{source_id} (Pulls raw data)
+    B->>B: Normalize & Save as 'pending'
+    B->>B: Async AI Analysis -> 'processed'
     PL->>JM: update_job(status=COMPLETED)
 ```
 
@@ -108,8 +111,9 @@ The `job_manager.py` maintains an active dictionary. Progress is determined by c
     - `GET /system/jobs` (Returns volatile state memory tree)
     - `GET /system/pool`
 - **Data Management**:
-    - `GET /sources`
-    - `GET /reviews/{source_id}` (Retrieves all reviews for a source)
+    - `GET /reviews/{source_id}` (Retrieves all reviews for a source, includes full platform detail)
+    - `GET /reviews/unembedded/{source_id}` (Retrieves reviews with `is_embedded=False`)
+    - `PATCH /reviews/mark-embedded` (Marks reviews as embedded after backend processing)
     - `DELETE /reviews/{review_id}` (Deletes a review by integer ID. Cascades automatically via SQLAlchemy and DB constraints to purge all platform-specific child rows and media attachments.)
     - `GET /db/stats`, `POST /db/vacuum`
 
@@ -162,10 +166,18 @@ HEADLESS_MODE=true
 
 2. **Schema & Models Philosophy**:
    - `core/models.py` uses a **Base-to-Subtype pattern**. A central `Review` maps 1:1 to a `GoogleReviewDetail` or `BookingReviewDetail`.
+   - **Internal ID**: The `Review.review_id` (Integer) is local to this service.
+   - **Platform ID**: The `Review.platform_review_id` (Unicode) is the original ID from the source (e.g., Booking.com's review ID). 
+   - **Backend Sync**: The Main Backend refers to `platform_review_id` as `scraper_review_id`.
    - Multiple `source_id`s are permitted to share the same `source_url`. The `sources` table no longer has a `UNIQUE` constraint on `source_url`.
    - Never add foreign keys related to "Organizations" or "Tenants" here. This microservice maps `URL` ⟷ `Reviews`. The main backend maps `Organization` ⟷ `source_id`. 
    - One `source_id` ⟷ One `Organization` unit.
    - One `source_url` ⟷ Many `source_id` units.
+
+3. **Data Ingestion (The Pull Model)**:
+   - This service **does not push** review data directly into the backend's primary `processed_review` table.
+   - On completion, it notifies the backend. The backend then **pulls** the data via `GET /api/reviews/{source_id}`, normalizes it, and saves it as a `pending` record in the master DB.
+   - This separation ensures that raw data scraping and AI analysis/business logic enrichment are decoupled.
 
 3. **In-Memory Volatility**:
    - `JobManager.jobs` is volatile. Do not attempt to read historical jobs from it. Jobs are orphaned safely on reboot.

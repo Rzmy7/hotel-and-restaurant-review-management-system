@@ -27,9 +27,7 @@ class ProcessedReview(Base):
     id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
 
     # External identifiers
-    platformReviewId = Column("platformReviewId", String(100), nullable=True)
-    organization_id = Column(UNIQUEIDENTIFIER, nullable=True)
-    platform_id = Column(Integer, nullable=True)
+    scraper_review_id = Column("scraper_review_id", String(100), nullable=True)
     source_id = Column(
         UNIQUEIDENTIFIER,
         ForeignKey("source.source_id", ondelete="CASCADE"),
@@ -37,7 +35,7 @@ class ProcessedReview(Base):
     )
 
     # Review content
-    rating = Column(Integer, nullable=True)
+    rating = Column(Float, nullable=True)
     reviewerName = Column("reviewerName", String(255), nullable=True)
     text = Column(String, nullable=True)
     summary = Column(String, nullable=True)
