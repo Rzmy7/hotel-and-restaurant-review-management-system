@@ -2,6 +2,12 @@ from sqlalchemy import text
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.core.db_utils import get_connection_string
 import pyodbc
+from fastapi import UploadFile
+from uuid import uuid4
+import os
+from app.core.superbase_client import supabase
+from app.core.validators.file_validator import validate_image
+from app.core.exceptions.custom_exceptions import FileValidationException
 
 
 def create_organization(db, user_id, data):
@@ -51,3 +57,50 @@ def get_organization_types(db):
     """Fetch all organization types from the database."""
     result = db.execute(text("SELECT type_code, type_name, description FROM dbo.organization_type"))
     return [{"type_code": row[0], "type_name": row[1], "description": row[2]} for row in result.fetchall()]
+
+async def upload_organization_logo(db, org_id: str, file: UploadFile):
+    # Validate image
+    try:
+        file_bytes = await validate_image(file)
+    except ValueError as e:
+        raise FileValidationException(str(e))
+
+    # Generate unique filename
+    file_ext = file.filename.split(".")[-1]
+    file_name = f"organization_logos/{uuid4()}.{file_ext}"
+
+    bucket_name = (os.getenv("SUPABASE_BUCKET") or "hotel-logos").strip()
+    if not bucket_name:
+        raise RuntimeError("Storage bucket is not configured")
+
+    try:
+        # Upload to Supabase
+        response = supabase.storage.from_(bucket_name).upload(
+            path=file_name,
+            file=file_bytes,
+            file_options={
+                "content-type": file.content_type,
+                "upsert": "true",
+            },
+        )
+
+        # Handle storage SDK error payloads
+        if hasattr(response, "error") and response.error:
+            raise RuntimeError(str(response.error))
+
+        # Get public URL
+        public_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
+    except Exception as e:
+        raise RuntimeError(f"Logo upload failed: {str(e)}") from e
+
+    # Save URL in DB
+    db.execute(
+        text("UPDATE dbo.organization SET logo_url = :logo_url, updated_at = GETDATE() WHERE organization_id = :org_id"),
+        {"logo_url": public_url, "org_id": org_id}
+    )
+    db.commit()
+
+    return {
+        "message": "Logo uploaded successfully",
+        "logo_url": public_url,
+    }

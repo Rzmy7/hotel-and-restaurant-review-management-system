@@ -1,4 +1,5 @@
 import type { SettingsData } from '../types/settings';
+import axios from 'axios';
 
 // Mocked initial data
 const STORAGE_KEY = 'vite-ui-theme';
@@ -35,18 +36,215 @@ const defaultSettings: SettingsData = {
 
 let currentSettings = { ...defaultSettings };
 
+type UserOrganization = {
+    organization_id: string;
+    organization_name?: string;
+    organization_type?: string | null;
+    organization_type_id?: number | null;
+    website_url?: string | null;
+    primary_email?: string | null;
+    phone_number?: string | null;
+    logo_url?: string | null;
+};
+
+type OrganizationType = {
+    type_code: number;
+    type_name: string;
+};
+
+const API_BASE_URL =
+    import.meta.env.VITE_MAIN_BACKEND_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://localhost:8000';
+
+const getApiBaseUrl = (): string => {
+    const stored = localStorage.getItem('mainBackendUrl');
+    return (stored || API_BASE_URL).replace(/\/$/, '');
+};
+
+const toApiPath = (path: string): string => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return cleanPath.startsWith('/api') ? cleanPath : `/api${cleanPath}`;
+};
+
+const settingsAxios = axios.create({
+    baseURL: getApiBaseUrl(),
+});
+
+settingsAxios.interceptors.request.use((config) => {
+    config.baseURL = getApiBaseUrl();
+    const token = localStorage.getItem('token');
+    config.headers = config.headers ?? {};
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    config.headers['Content-Type'] = 'application/json';
+    return config;
+});
+
+const getActiveOrganizationId = (): string | null => {
+    const currentOrg = localStorage.getItem('current_organization');
+    if (currentOrg && currentOrg.trim()) {
+        return currentOrg;
+    }
+
+    try {
+        const orgIdsRaw = localStorage.getItem('organization_ids');
+        if (!orgIdsRaw) return null;
+        const parsed = JSON.parse(orgIdsRaw);
+        if (Array.isArray(parsed) && typeof parsed[0] === 'string' && parsed[0].trim()) {
+            return parsed[0];
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+};
+
+const normalizeEmpty = (value?: string | null): string | undefined => {
+    if (value == null) return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const mapOrganizationToHotelInfo = (org: UserOrganization): SettingsData['hotelInfo'] => ({
+    hotelName: org.organization_name || currentSettings.hotelInfo.hotelName,
+    websiteUrl: org.website_url || '',
+    propertyType: org.organization_type || currentSettings.hotelInfo.propertyType,
+    primaryEmail: org.primary_email || '',
+    phoneNumber: org.phone_number || '',
+    logoUrl: org.logo_url || undefined,
+});
+
+const fetchUserOrganizations = async (): Promise<UserOrganization[]> => {
+    const response = await settingsAxios.get<UserOrganization[]>(toApiPath('/user/organizations'));
+    return Array.isArray(response.data) ? response.data : [];
+};
+
+const resolveOrganizationTypeId = async (propertyType: string): Promise<number | undefined> => {
+    const normalizedTarget = propertyType.trim().toLowerCase();
+    if (!normalizedTarget) return undefined;
+
+    const numeric = Number(propertyType);
+    if (!Number.isNaN(numeric) && Number.isInteger(numeric) && numeric > 0) {
+        return numeric;
+    }
+
+    try {
+        const response = await settingsAxios.get<OrganizationType[]>(toApiPath('/organization-types'));
+        const matched = response.data.find((type) => type.type_name?.trim().toLowerCase() === normalizedTarget);
+        return matched?.type_code;
+    } catch {
+        return undefined;
+    }
+};
+
+const patchHotelInfoToBackend = async (hotelInfoUpdates: Partial<SettingsData['hotelInfo']>) => {
+    const orgId = getActiveOrganizationId();
+    if (!orgId) {
+        throw new Error('No active organization selected.');
+    }
+
+    const payload: Record<string, string | number> = {};
+
+    if (hotelInfoUpdates.hotelName !== undefined) {
+        payload.organization_name = hotelInfoUpdates.hotelName;
+    }
+    if (hotelInfoUpdates.websiteUrl !== undefined) {
+        payload.website_url = normalizeEmpty(hotelInfoUpdates.websiteUrl) ?? '';
+    }
+    if (hotelInfoUpdates.primaryEmail !== undefined) {
+        payload.primary_email = normalizeEmpty(hotelInfoUpdates.primaryEmail) ?? '';
+    }
+    if (hotelInfoUpdates.phoneNumber !== undefined) {
+        payload.phone_number = normalizeEmpty(hotelInfoUpdates.phoneNumber) ?? '';
+    }
+    if (hotelInfoUpdates.logoUrl !== undefined) {
+        payload.logo_url = normalizeEmpty(hotelInfoUpdates.logoUrl) ?? '';
+    }
+    if (hotelInfoUpdates.propertyType !== undefined) {
+        const organizationTypeId = await resolveOrganizationTypeId(hotelInfoUpdates.propertyType);
+        if (organizationTypeId !== undefined) {
+            payload.organization_type_id = organizationTypeId;
+        }
+    }
+
+    if (Object.keys(payload).length > 0) {
+        await settingsAxios.patch(toApiPath(`/organizations/${orgId}`), payload);
+    }
+};
+
+const syncOrganizationInStorage = (hotelInfo: SettingsData['hotelInfo']) => {
+    const currentOrgId = getActiveOrganizationId();
+    if (!currentOrgId) return;
+
+    try {
+        const raw = localStorage.getItem('organizations');
+        if (!raw) return;
+
+        const organizations = JSON.parse(raw);
+        if (!Array.isArray(organizations)) return;
+
+        const nextOrganizations = organizations.map((org) => {
+            if (!org || org.organization_id !== currentOrgId) {
+                return org;
+            }
+
+            return {
+                ...org,
+                organization_name: hotelInfo.hotelName,
+                website_url: hotelInfo.websiteUrl,
+                primary_email: hotelInfo.primaryEmail,
+                phone_number: hotelInfo.phoneNumber,
+                logo_url: hotelInfo.logoUrl ?? null,
+                organization_type: hotelInfo.propertyType,
+            };
+        });
+
+        localStorage.setItem('organizations', JSON.stringify(nextOrganizations));
+    } catch {
+        // Ignore storage sync failures; server save remains source of truth.
+    }
+};
+
 export const settingsApi = {
     fetchSettings: async (): Promise<SettingsData> => {
-        return new Promise((resolve) => {
-            setTimeout(() => resolve({ ...currentSettings }), 400); // simulate network latency
-        });
+        try {
+            const organizations = await fetchUserOrganizations();
+            const activeOrgId = getActiveOrganizationId();
+            const activeOrg =
+                organizations.find((org) => org.organization_id === activeOrgId) ||
+                organizations[0];
+
+            if (activeOrg) {
+                currentSettings = {
+                    ...currentSettings,
+                    hotelInfo: mapOrganizationToHotelInfo(activeOrg),
+                };
+            }
+        } catch {
+            // Keep local fallback settings when backend data is unavailable.
+        }
+
+        return { ...currentSettings };
     },
     updateSettings: async (updates: Partial<SettingsData>): Promise<SettingsData> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                currentSettings = { ...currentSettings, ...updates };
-                resolve({ ...currentSettings });
-            }, 500);
-        });
+        if (updates.hotelInfo) {
+            await patchHotelInfoToBackend(updates.hotelInfo);
+        }
+
+        currentSettings = {
+            ...currentSettings,
+            ...updates,
+            hotelInfo: {
+                ...currentSettings.hotelInfo,
+                ...(updates.hotelInfo || {}),
+            },
+        };
+
+        syncOrganizationInStorage(currentSettings.hotelInfo);
+
+        return { ...currentSettings };
     }
 };

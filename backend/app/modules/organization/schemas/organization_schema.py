@@ -26,3 +26,11 @@ class OrganizationTypeRead(BaseModel):
 class OrganizationUpdate(BaseModel):
     organization_name: Optional[str] = None
     organization_type_id: Optional[int] = None
+    website_url: Optional[str] = None
+    primary_email: Optional[str] = None
+    phone_number: Optional[str] = None
+    logo_url: Optional[str] = None
+
+class LogoUploadResponse(BaseModel):
+    message: str
+    logo_url: str
