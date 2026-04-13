@@ -700,7 +700,7 @@ POST {SCRAPING_BACKEND_URL}/api/tables/create
 {
   "table_name": "booking_reviews",
   "columns": [
-    {"name": "review_id", "type": "VARCHAR(100)", "nullable": false},
+    {"name": "review_id", "type": "UNIQUEIDENTIFIER", "nullable": false},
     {"name": "rating", "type": "INT", "nullable": false}
   ]
 }
