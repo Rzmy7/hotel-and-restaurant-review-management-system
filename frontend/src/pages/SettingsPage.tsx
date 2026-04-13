@@ -278,7 +278,6 @@ const SettingsPage: React.FC = () => {
                   data={localData.security}
                   onChange={(updates) => handleUpdateSection('security', updates)}
                   onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
-                  onSessionEdit={() => showToast('Session settings are managed by admins', 'info')}
                 />
               )}
               {activeTab === 'subscription' && (
