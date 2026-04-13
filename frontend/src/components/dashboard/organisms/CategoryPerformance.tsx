@@ -61,7 +61,7 @@ export const CategoryPerformance: React.FC<Props> = ({ categories = [] }) => {
                 className="mb-8 items-center"
             >
                 <span className="text-[10px] text-gray-400 dark:text-slate-500 font-black uppercase tracking-widest bg-gray-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-gray-100 dark:border-slate-700">
-                    Last 30 Days
+                    All Time
                 </span>
             </SectionHeader>
 

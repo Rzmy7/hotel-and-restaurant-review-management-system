@@ -44,21 +44,27 @@ def _parse_categories(raw) -> list:
     return []
 
 
-def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
-    """Return dict mapping category names to their avg score and count for a time window."""
-    cursor.execute(
-        """
+def _aggregate(cursor, org_id: str, days_from: int = None, days_to: int = None):
+    """Return dict mapping category names to their avg score and count (with optional time window)."""
+    sql = """
         SELECT rc.name, AVG(rc.score) as avg_score, COUNT(*) as mention_count
         FROM   dbo.review_category rc
         JOIN   dbo.processed_review r ON rc.review_id = r.id
         JOIN   dbo.source s ON r.source_id = s.source_id
         WHERE  s.organization_id = ?
-          AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
-          AND  r.reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
-        GROUP BY rc.name
-        """,
-        org_id, days_from, days_to,
-    )
+    """
+    params = [org_id]
+
+    if days_from is not None:
+        sql += " AND r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))"
+        params.append(days_from)
+    if days_to is not None:
+        sql += " AND r.reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))"
+        params.append(days_to)
+
+    sql += " GROUP BY rc.name"
+    cursor.execute(sql, params)
+
     rows = cursor.fetchall()
     results = {}
     for row in rows:
@@ -74,20 +80,24 @@ def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list
     Returns up to 6 category objects with score, count, icon, trend, trendType.
     Only categories with >= 1 mentions are included.
     """
+    all_time_data = _aggregate(cursor, org_id)
     cur_data = _aggregate(cursor, org_id, -period_days, 0)
     prev_data = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
 
     MIN_MENTIONS = 1
     results = []
 
-    for cat, data in cur_data.items():
+    for cat, data in all_time_data.items():
         count = data["count"]
         if count < MIN_MENTIONS:
             continue
 
-        score = data["score"]
-        prev_score = prev_data.get(cat, {}).get("score", score)
-        delta = score - prev_score
+        score = data["score"] # Use All Time score as primary
+        
+        # Calculate trend based on 30-day window
+        cur_period_score = cur_data.get(cat, {}).get("score", score)
+        prev_period_score = prev_data.get(cat, {}).get("score", cur_period_score)
+        delta = cur_period_score - prev_period_score
 
         if abs(delta) < 0.05:
             trend_str, trend_type = "0.0%", "neutral"
