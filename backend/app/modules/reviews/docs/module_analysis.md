@@ -36,7 +36,7 @@ The module implements a two-stage background pipeline:
   - **Other platforms**: Uses `review_text` field directly as `text`.
   - Maps `author` → `reviewerName`, `rating`, `review_date`, `photos`.
 - **Storage**: Upserts records to `dbo.processed_review` with status set to `pending`.
-  - **Upsert Logic**: Checks `scraper_review_id` for existence; updates existing record or inserts new one.
+  - **Upsert Logic**: Checks `id` for existence; updates existing record or inserts new one using the Scraper's UUID.
   - **Media Handling**: Deletes existing `review_media` entries and re-inserts to prevent duplicates.
 
 #### Stage 2: AI Analysis (`processor.py`)
@@ -261,8 +261,7 @@ Acts as the central repository for all review data and AI-derived insights.
 #### External Identifiers
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | UNIQUEIDENTIFIER (PK) | Internal unique identifier (UUID v4). |
-| `scraper_review_id` | NVARCHAR(100) | Unique ID from the source platform (prevents duplicates). |
+| `id` | UNIQUEIDENTIFIER (PK) | Unified identifier (UUID v4) synced with the Scraper Engine. |
 | `source_id` | UNIQUEIDENTIFIER (FK) | Foreign key to `source.source_id` (on delete CASCADE). |
 
 #### Review Content
@@ -341,7 +340,7 @@ review_text = detail.get("review_text", "")
 
 # Unified mapping for pending storage
 mapping = {
-    "scraper_review_id": r_data.get("review_id"),
+    "id": r_data.get("review_id"),
     "rating": detail.get("rating", 0),
     "reviewerName": detail.get("author", "Guest"),
     "text": review_text if not (positive_text or negative_text) else None,
@@ -594,7 +593,6 @@ Database Error → Log Error → Raise HTTPException (500)
 ```python
 class ReviewModel(BaseModel):
     id: str
-    scraper_review_id: Optional[str] = None
     rating: int
     reviewerName: str  # Alias: userName
     userName: str      # Alias: reviewerName
@@ -671,5 +669,5 @@ Headers:
 
 ---
 
-*Last Updated: 2026-04-12*  
-*Module Version: Reviews Module v2.0 (Complete Documentation)*
+*Last Updated: 2026-04-13*  
+*Module Version: Reviews Module v2.1 (Unified ID Refactoring)*

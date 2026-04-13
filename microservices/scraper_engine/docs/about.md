@@ -85,7 +85,7 @@ sequenceDiagram
         SS->>B: POST /sync-status (COMPLETED)
     end
     B->>API: GET /api/reviews/{source_id} (Pulls raw data)
-    B->>B: Normalize & Save as 'pending'
+    B->>B: Save directly as 'pending' using Scraper UUID as Primary Key
     B->>B: Async AI Analysis -> 'processed'
     PL->>JM: update_job(status=COMPLETED)
 ```
@@ -114,7 +114,7 @@ The `job_manager.py` maintains an active dictionary. Progress is determined by c
     - `GET /reviews/{source_id}` (Retrieves all reviews for a source, includes full platform detail)
     - `GET /reviews/unembedded/{source_id}` (Retrieves reviews with `is_embedded=False`)
     - `PATCH /reviews/mark-embedded` (Marks reviews as embedded after backend processing)
-    - `DELETE /reviews/{review_id}` (Deletes a review by integer ID. Cascades automatically via SQLAlchemy and DB constraints to purge all platform-specific child rows and media attachments.)
+    - `DELETE /reviews/{review_id}` (Deletes a review by UUID. Cascades automatically via SQLAlchemy and DB constraints to purge all platform-specific child rows and media attachments.)
     - `GET /db/stats`, `POST /db/vacuum`
 
 ---
@@ -166,9 +166,9 @@ HEADLESS_MODE=true
 
 2. **Schema & Models Philosophy**:
    - `core/models.py` uses a **Base-to-Subtype pattern**. A central `Review` maps 1:1 to a `GoogleReviewDetail` or `BookingReviewDetail`.
-   - **Internal ID**: The `Review.review_id` (Integer) is local to this service.
-   - **Platform ID**: The `Review.platform_review_id` (Unicode) is the original ID from the source (e.g., Booking.com's review ID). 
-   - **Backend Sync**: The Main Backend refers to `platform_review_id` as `scraper_review_id`.
+    - **Internal ID**: The `Review.review_id` is a UUID (UNIQUEIDENTIFIER) generated in the Python layer.
+    - **Platform ID**: The `Review.platform_review_id` (Unicode) is the original ID from the source (e.g., Booking.com's review ID). 
+    - **Backend Sync**: The Main Backend uses the Scraper's `review_id` as its own primary key (unified ID system).
    - Multiple `source_id`s are permitted to share the same `source_url`. The `sources` table no longer has a `UNIQUE` constraint on `source_url`.
    - Never add foreign keys related to "Organizations" or "Tenants" here. This microservice maps `URL` ⟷ `Reviews`. The main backend maps `Organization` ⟷ `source_id`. 
    - One `source_id` ⟷ One `Organization` unit.

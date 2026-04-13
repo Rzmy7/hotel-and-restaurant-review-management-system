@@ -228,7 +228,7 @@ Called when user tracks a competitor, increments plan-based limit.
 - Rating: score/2, rounded to integer
 - Name: Extract first 1-2 words from raw_review before room type
 - Text: Combine title + positive_txt + negative_txt
-- ID: "BK-" + review_id
+- ID: "BK-" + review_id (where review_id is now a UUID string)
 - Source: Always "Booking.com"
 
 #### `COMPARISON_INSIGHT_PROMPT`
