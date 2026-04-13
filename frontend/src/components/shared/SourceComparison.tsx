@@ -9,20 +9,31 @@ interface SourceComparisonProps {
 
 const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
     const cx = 100, cy = 100;
+    
+    // Production Grade: Handle 100% edge case where start and end points coincide.
+    // SVG arc command 'A' is mathematically undefined for a 360-degree arc in a single segment.
+    if (pct >= 99.99) {
+        return `M ${cx} ${cy - R} A ${R} ${R} 0 1 1 ${cx} ${cy + R} A ${R} ${R} 0 1 1 ${cx} ${cy - R} M ${cx} ${cy - r} A ${r} ${r} 0 1 0 ${cx} ${cy + r} A ${r} ${r} 0 1 0 ${cx} ${cy - r} Z`;
+    }
+
     const a = (pct / 100) * 360;
     const end = startAngle + a;
-    const rad = (d: number) => (Math.PI * d) / 180;
+    const rad = (d: number) => (Math.PI * (d - 90)) / 180; // Adjusted -90 to start from top
+    
     const x1 = cx + R * Math.cos(rad(startAngle));
     const y1 = cy + R * Math.sin(rad(startAngle));
     const x2 = cx + R * Math.cos(rad(end));
     const y2 = cy + R * Math.sin(rad(end));
+    
     const ix1 = cx + r * Math.cos(rad(startAngle));
     const iy1 = cy + r * Math.sin(rad(startAngle));
     const ix2 = cx + r * Math.cos(rad(end));
     const iy2 = cy + r * Math.sin(rad(end));
+    
     const lg = a > 180 ? 1 : 0;
     return `M ${x1} ${y1} A ${R} ${R} 0 ${lg} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${r} ${r} 0 ${lg} 0 ${ix1} ${iy1} Z`;
 };
+
 
 const SentimentBar = ({ pos, neu, neg }: { pos: number; neu: number; neg: number }) => (
     <div className="flex h-1 w-full rounded-full overflow-hidden bg-white/50 dark:bg-slate-700/50 mt-1.5 shadow-inner">
@@ -49,8 +60,13 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
 
         const top = sorted.slice(0, 5);
         const others = sorted.slice(5);
+        
+        const totalTopPct = top.reduce((s, x) => s + x.pct, 0);
         const totalOtherReviews = others.reduce((s, x) => s + x.reviews, 0);
-        const totalOtherPct = others.reduce((s, x) => s + x.pct, 0);
+        
+        // Ensure perfect mathematical consistency for the "Others" share
+        const normalizedOtherPct = Math.max(0, 100 - totalTopPct);
+        
         const avgRating = others.reduce((s, x) => s + (x.rating * x.reviews), 0) / totalOtherReviews;
 
         const otherSentiment = others.reduce((acc, x) => {
@@ -70,7 +86,7 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
             trend: '...',
             trendType: 'neutral' as const,
             reviews: totalOtherReviews,
-            pct: totalOtherPct,
+            pct: normalizedOtherPct,
             color: '#64748b',
             bgColor: 'bg-slate-50/60',
             borderColor: 'border-slate-100',
@@ -82,6 +98,7 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
             lastSync: 'Varies',
             isOthers: true
         }];
+
     }, [rawSources]);
 
     let angle = -90;
@@ -111,9 +128,10 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[220px_1fr] gap-12 items-center">
+            <div className="grid grid-cols-1 xl:grid-cols-[240px_1fr] gap-12 items-center">
                 <div className="flex flex-col items-center">
-                    <div className="w-[180px] h-[180px] shrink-0 relative flex items-center justify-center">
+                    <div className="w-[200px] h-[200px] shrink-0 relative flex items-center justify-center">
+
                         <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_4px_10px_rgba(0,0,0,0.03)] filter">
                             {processedSources.map((s) => {
                                 const isHovered = hoveredSource === s.name;

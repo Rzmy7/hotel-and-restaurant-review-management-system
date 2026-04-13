@@ -26,12 +26,12 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
     curr_start = (now - timedelta(days=period_days)).date()
     prev_start = (now - timedelta(days=period_days * 2)).date()
 
-    # Query current period stats per platform
+    # Query all-time stats per platform (Production Grade: Consistency with main metrics)
     cursor.execute("""
         SELECT 
             p.platform_name,
             COUNT(r.id) as review_count,
-            AVG(CAST(r.sentiment_score AS FLOAT)) as avg_rating,
+            AVG(CAST(r.rating AS FLOAT)) as avg_rating,
             SUM(CASE WHEN r.sentiment = 'Positive' THEN 1 ELSE 0 END) as pos_count,
             SUM(CASE WHEN r.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neu_count,
             SUM(CASE WHEN r.sentiment = 'Negative' THEN 1 ELSE 0 END) as neg_count,
@@ -39,9 +39,10 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
         JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
+        WHERE s.organization_id = ?
         GROUP BY s.source_id, p.platform_name
-    """, org_id, curr_start)
+    """, org_id)
+
     
     curr_rows = cursor.fetchall()
 
