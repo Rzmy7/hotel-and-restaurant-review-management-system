@@ -78,7 +78,11 @@ settingsAxios.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-    config.headers['Content-Type'] = 'application/json';
+
+    if (!(config.data instanceof FormData)) {
+        config.headers['Content-Type'] = 'application/json';
+    }
+
     return config;
 });
 
@@ -246,5 +250,37 @@ export const settingsApi = {
         syncOrganizationInStorage(currentSettings.hotelInfo);
 
         return { ...currentSettings };
+    },
+
+    uploadHotelLogo: async (file: File): Promise<string> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await settingsAxios.post<{ logo_url: string }>(
+            toApiPath(`/organizations/${orgId}/upload-logo`),
+            formData
+        );
+
+        const logoUrl = response.data?.logo_url;
+        if (!logoUrl) {
+            throw new Error('Logo upload succeeded but URL was not returned.');
+        }
+
+        currentSettings = {
+            ...currentSettings,
+            hotelInfo: {
+                ...currentSettings.hotelInfo,
+                logoUrl,
+            },
+        };
+
+        syncOrganizationInStorage(currentSettings.hotelInfo);
+
+        return logoUrl;
     }
 };

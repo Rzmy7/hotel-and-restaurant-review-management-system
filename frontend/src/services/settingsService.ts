@@ -20,5 +20,14 @@ export const settingsService = {
             console.error('Failed to update settings:', error);
             throw new Error('Failed to save settings');
         }
+    },
+
+    uploadHotelLogo: async (file: File): Promise<string> => {
+        try {
+            return await settingsApi.uploadHotelLogo(file);
+        } catch (error) {
+            console.error('Failed to upload hotel logo:', error);
+            throw new Error('Failed to upload hotel logo');
+        }
     }
 };

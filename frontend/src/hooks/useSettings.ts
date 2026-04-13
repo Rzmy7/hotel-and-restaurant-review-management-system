@@ -43,12 +43,34 @@ export const useSettings = () => {
         }
     };
 
+    const uploadHotelLogo = async (file: File) => {
+        try {
+            const logoUrl = await settingsService.uploadHotelLogo(file);
+            setData((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    hotelInfo: {
+                        ...prev.hotelInfo,
+                        logoUrl,
+                    },
+                };
+            });
+            showToast('Hotel logo uploaded successfully', 'success');
+            return logoUrl;
+        } catch (err) {
+            showToast('Failed to upload hotel logo', 'error');
+            throw err;
+        }
+    };
+
     return {
         data,
         loading,
         saving,
         error,
         refreshData: loadSettings,
-        updateSettings
+        updateSettings,
+        uploadHotelLogo
     };
 };
