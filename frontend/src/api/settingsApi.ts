@@ -150,22 +150,22 @@ const patchHotelInfoToBackend = async (hotelInfoUpdates: Partial<SettingsData['h
         throw new Error('No active organization selected.');
     }
 
-    const payload: Record<string, string | number> = {};
+    const payload: Record<string, string | number | null> = {};
 
     if (hotelInfoUpdates.hotelName !== undefined) {
-        payload.organization_name = hotelInfoUpdates.hotelName;
+        payload.organization_name = normalizeEmpty(hotelInfoUpdates.hotelName) ?? null;
     }
     if (hotelInfoUpdates.websiteUrl !== undefined) {
-        payload.website_url = normalizeEmpty(hotelInfoUpdates.websiteUrl) ?? '';
+        payload.website_url = normalizeEmpty(hotelInfoUpdates.websiteUrl) ?? null;
     }
     if (hotelInfoUpdates.primaryEmail !== undefined) {
-        payload.primary_email = normalizeEmpty(hotelInfoUpdates.primaryEmail) ?? '';
+        payload.primary_email = normalizeEmpty(hotelInfoUpdates.primaryEmail) ?? null;
     }
     if (hotelInfoUpdates.phoneNumber !== undefined) {
-        payload.phone_number = normalizeEmpty(hotelInfoUpdates.phoneNumber) ?? '';
+        payload.phone_number = normalizeEmpty(hotelInfoUpdates.phoneNumber) ?? null;
     }
     if (hotelInfoUpdates.logoUrl !== undefined) {
-        payload.logo_url = normalizeEmpty(hotelInfoUpdates.logoUrl) ?? '';
+        payload.logo_url = normalizeEmpty(hotelInfoUpdates.logoUrl) ?? null;
     }
     if (hotelInfoUpdates.propertyType !== undefined) {
         const organizationTypeId = await resolveOrganizationTypeId(hotelInfoUpdates.propertyType);

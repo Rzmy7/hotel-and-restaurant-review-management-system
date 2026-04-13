@@ -179,32 +179,40 @@ def update_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
 
+    def normalize_optional_text(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        trimmed = value.strip()
+        return trimmed if trimmed else None
+
+    provided_fields = data.model_fields_set if hasattr(data, "model_fields_set") else set()
+
     updates = []
     params = {"org_id": org_id, "tenant_id": user.user_id}
 
-    if data.organization_name is not None:
+    if "organization_name" in provided_fields:
         updates.append("organization_name = :name")
-        params["name"] = data.organization_name
+        params["name"] = normalize_optional_text(data.organization_name)
     
-    if data.organization_type_id is not None:
+    if "organization_type_id" in provided_fields:
         updates.append("organization_type_id = :type_id")
         params["type_id"] = data.organization_type_id
 
-    if data.website_url is not None:
+    if "website_url" in provided_fields:
         updates.append("website_url = :website_url")
-        params["website_url"] = data.website_url
+        params["website_url"] = normalize_optional_text(data.website_url)
 
-    if data.primary_email is not None:
+    if "primary_email" in provided_fields:
         updates.append("primary_email = :primary_email")
-        params["primary_email"] = data.primary_email
+        params["primary_email"] = normalize_optional_text(data.primary_email)
 
-    if data.phone_number is not None:
+    if "phone_number" in provided_fields:
         updates.append("phone_number = :phone_number")
-        params["phone_number"] = data.phone_number
+        params["phone_number"] = normalize_optional_text(data.phone_number)
 
-    if data.logo_url is not None:
+    if "logo_url" in provided_fields:
         updates.append("logo_url = :logo_url")
-        params["logo_url"] = data.logo_url
+        params["logo_url"] = normalize_optional_text(data.logo_url)
 
     if not updates:
         return {"message": "No updates provided", "organization_id": org_id}
