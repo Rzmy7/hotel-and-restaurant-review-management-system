@@ -8,7 +8,7 @@ DELETE /api/sources/{id}    — delete source and cascade all reviews
 from fastapi import APIRouter, HTTPException
 from core.database import get_session
 from core.models import Source, Review, AgodaReviewDetail, BookingReviewDetail, GoogleReviewDetail, TripAdvisorReviewDetail
-from core.deduplication.base import find_duplicate_review_ids
+from core.deduplication.base import find_duplicate_review_ids, remove_duplicate_reviews
 from core.config import setup_logger
 from sqlalchemy import func as sa_func
 
@@ -154,3 +154,55 @@ def test_duplicates(source_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+
+@router.delete("/{source_id}/duplicates")
+def delete_duplicates(source_id: str):
+    """
+    Remove duplicate reviews for a specific source and return the count of deleted items.
+    """
+    session = get_session()
+    try:
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found")
+
+        platform = source.platform_name.lower()
+        if platform == "agoda":
+            detail_model = AgodaReviewDetail
+            columns = [AgodaReviewDetail.author, AgodaReviewDetail.review_date, AgodaReviewDetail.review_text]
+        elif platform == "booking":
+            detail_model = BookingReviewDetail
+            columns = [BookingReviewDetail.author, BookingReviewDetail.review_date, BookingReviewDetail.positive_text, BookingReviewDetail.negative_text]
+        elif platform == "google":
+            detail_model = GoogleReviewDetail
+            columns = [GoogleReviewDetail.author, GoogleReviewDetail.review_date, GoogleReviewDetail.review_text]
+        elif platform == "tripadvisor":
+            detail_model = TripAdvisorReviewDetail
+            columns = [TripAdvisorReviewDetail.author, TripAdvisorReviewDetail.review_date, TripAdvisorReviewDetail.review_text]
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
+
+        duplicate_ids = find_duplicate_review_ids(session, detail_model, source_id, columns)
+        
+        deleted_count = 0
+        if duplicate_ids:
+            deleted_count = remove_duplicate_reviews(session, duplicate_ids)
+            session.commit()
+
+        return {
+            "source_id": source_id,
+            "platform_name": platform,
+            "status": "success",
+            "deleted_count": deleted_count,
+            "duplicate_ids_removed": duplicate_ids
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to delete duplicates for source {source_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
+
