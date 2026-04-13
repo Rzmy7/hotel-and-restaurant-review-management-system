@@ -277,7 +277,6 @@ const SettingsPage: React.FC = () => {
                 <SecuritySettingsCard
                   data={localData.security}
                   onChange={(updates) => handleUpdateSection('security', updates)}
-                  onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
                 />
               )}
               {activeTab === 'subscription' && (
