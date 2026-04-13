@@ -45,52 +45,48 @@ def _parse_categories(raw) -> list:
 
 
 def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
-    """Return (cat_total, cat_positive) dicts for a time window."""
+    """Return dict mapping category names to their avg score and count for a time window."""
     cursor.execute(
         """
-        SELECT r.categories, r.sentiment
-        FROM   dbo.processed_review r
+        SELECT rc.name, AVG(rc.score) as avg_score, COUNT(*) as mention_count
+        FROM   dbo.review_category rc
+        JOIN   dbo.processed_review r ON rc.review_id = r.id
         JOIN   dbo.source s ON r.source_id = s.source_id
         WHERE  s.organization_id = ?
           AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
           AND  r.reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+        GROUP BY rc.name
         """,
         org_id, days_from, days_to,
     )
     rows = cursor.fetchall()
-    total: dict = {}
-    positive: dict = {}
+    results = {}
     for row in rows:
-        cats = _parse_categories(row.categories)
-        is_pos = (row.sentiment or "").strip().lower() == "positive"
-        for cat in cats:
-            key = cat.strip()
-            if not key:
-                continue
-            total[key] = total.get(key, 0) + 1
-            if is_pos:
-                positive[key] = positive.get(key, 0) + 1
-    return total, positive
+        results[row.name] = {
+            "score": round(row.avg_score or 0),
+            "count": row.mention_count
+        }
+    return results
 
 
 def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list:
     """
     Returns up to 6 category objects with score, count, icon, trend, trendType.
-    Only categories with >= 5 mentions are included.
+    Only categories with >= 1 mentions are included.
     """
-    cur_total, cur_pos = _aggregate(cursor, org_id, -period_days, 0)
-    prev_total, prev_pos = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
+    cur_data = _aggregate(cursor, org_id, -period_days, 0)
+    prev_data = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
 
-    MIN_MENTIONS = 5
+    MIN_MENTIONS = 1
     results = []
 
-    for cat, total in cur_total.items():
-        if total < MIN_MENTIONS:
+    for cat, data in cur_data.items():
+        count = data["count"]
+        if count < MIN_MENTIONS:
             continue
 
-        score = round((cur_pos.get(cat, 0) / total) * 100)
-        prev_t = prev_total.get(cat, 0)
-        prev_score = round((prev_pos.get(cat, 0) / prev_t) * 100) if prev_t > 0 else score
+        score = data["score"]
+        prev_score = prev_data.get(cat, {}).get("score", score)
         delta = score - prev_score
 
         if abs(delta) < 0.05:
@@ -103,7 +99,7 @@ def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list
         results.append({
             "name": cat,
             "score": score,
-            "count": total,
+            "count": count,
             "icon": _resolve_icon(cat),
             "trend": trend_str,
             "trendType": trend_type,

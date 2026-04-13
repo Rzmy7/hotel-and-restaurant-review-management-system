@@ -29,7 +29,7 @@ Rules:
 2. For each review, provide:
    - "sentiment": "Positive", "Neutral", "Negative".
    - "sentiment_score": A float from 1.0 (Very Negative) to 5.0 (Very Positive).
-   - "categories": List of 1-3 tags from [Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size].
+   - "categories": List of 1-3 objects from [Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size]. Each object MUST have "name" (tag) and "score" (a score from 1 to 100).
    - "language": Detected language (e.g., "English", "German").
    - "keyPhrases": List of 3-5 keywords or short phrases.
    - "summary": A one-sentence professional summary of the reviewer's experience.

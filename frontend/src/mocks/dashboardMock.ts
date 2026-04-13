@@ -223,4 +223,12 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
             lastSync: '45m ago',
         },
     ],
-};
+    categoryPerformance: [
+        { name: 'Staff', score: 94, count: 85, icon: 'Users', trend: '+2.4%', trendType: 'up' },
+        { name: 'Cleanliness', score: 88, count: 120, icon: 'Droplets', trend: '+1.2%', trendType: 'up' },
+        { name: 'Location', score: 96, count: 64, icon: 'MapPin', trend: '0.0%', trendType: 'neutral' },
+        { name: 'Food', score: 72, count: 42, icon: 'Utensils', trend: '-5.2%', trendType: 'down' },
+        { name: 'WiFi', score: 65, count: 28, icon: 'Wifi', trend: '+10.5%', trendType: 'up' },
+        { name: 'Value', score: 82, count: 94, icon: 'DollarSign', trend: '-1.8%', trendType: 'down' },
+    ]
+};

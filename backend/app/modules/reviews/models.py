@@ -16,7 +16,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
-from sqlalchemy.sql import func
 
 from app.database.session import Base
 
@@ -42,9 +41,11 @@ class ProcessedReview(Base):
     sentiment = Column(String(20), nullable=True)
     sentiment_score = Column(Float, nullable=True)
     language = Column(String(50), nullable=True)
-    categories = Column(String, nullable=True)    # JSON stored as NVARCHAR(MAX)
-    keyPhrases = Column("keyPhrases", String, nullable=True)  # JSON stored as NVARCHAR(MAX)
-    
+    categories = Column(String, nullable=True)  # JSON stored as NVARCHAR(MAX)
+    keyPhrases = Column(
+        "keyPhrases", String, nullable=True
+    )  # JSON stored as NVARCHAR(MAX)
+
     # AI assessment & Error tracking
     positive_text = Column(String, nullable=True)
     negative_text = Column(String, nullable=True)

@@ -209,6 +209,33 @@ def _update_review_success(
         datetime.now(),
         original_review["id"],
     )
+
+    # NEW: Sync categories to dedicated dbo.review_category table
+    try:
+        review_id = original_review["id"]
+        # Clear existing entries for this review to prevent duplicates on re-analysis
+        cursor.execute("DELETE FROM dbo.review_category WHERE review_id = ?", review_id)
+        
+        raw_list = analysis.get("categories", [])
+        if isinstance(raw_list, list):
+            for cat_item in raw_list:
+                if isinstance(cat_item, dict):
+                    name = str(cat_item.get("name", "")).strip()
+                    score = cat_item.get("score")
+                else:
+                    name = str(cat_item).strip()
+                    # Fallback to overall sentiment if no category score provided
+                    score = analysis.get("sentiment_score", 3.0) * 20
+
+                if name:
+                    cursor.execute(
+                        "INSERT INTO dbo.review_category (review_id, name, score) VALUES (?, ?, ?)",
+                        review_id, name, score
+                    )
+    except Exception as e:
+        logger.error(f"Failed to sync categories to table for review {original_review['id']}: {e}")
+        # We don't fail the whole update if only the category sync fails
+        
     return cursor.rowcount > 0
 
 
