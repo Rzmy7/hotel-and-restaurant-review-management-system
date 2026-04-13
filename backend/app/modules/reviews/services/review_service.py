@@ -117,7 +117,7 @@ async def ingest_from_scraper(
 
                 # Map raw scraper data to our internal fields
                 mapping = {
-                    "scraper_review_id": str(r_data.get("review_id")),
+                    "id": str(r_data.get("review_id")),
                     "rating": normalized_rating,
                     "reviewerName": str(detail.get("author", "Guest")),
                     "text": raw_text if not (pos or neg) else None,

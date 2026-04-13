@@ -24,10 +24,8 @@ from app.database.session import Base
 class ProcessedReview(Base):
     __tablename__ = "processed_review"
 
-    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    id = Column(UNIQUEIDENTIFIER, primary_key=True)
 
-    # External identifiers
-    scraper_review_id = Column("scraper_review_id", String(100), nullable=True)
     source_id = Column(
         UNIQUEIDENTIFIER,
         ForeignKey("source.source_id", ondelete="CASCADE"),

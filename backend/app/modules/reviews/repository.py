@@ -16,11 +16,11 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
     Sets status to 'pending' to trigger the AI processing pipeline.
     Returns the internal primary key (UUID).
     """
-    # Check if review already exists by scraper_review_id
+    # Check if review already exists by primary key ID (now unified with scraper)
     try:
         cursor.execute(
-            "SELECT CAST(id AS VARCHAR(36)) FROM dbo.processed_review WHERE scraper_review_id = ?",
-            str(review_data["scraper_review_id"]),
+            "SELECT CAST(id AS VARCHAR(36)) FROM dbo.processed_review WHERE id = ?",
+            str(review_data["id"]),
         )
         row = cursor.fetchone()
     except Exception as e:
@@ -28,7 +28,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
 
         with open("db_error_dump.log", "a", encoding="utf-8") as f:
             f.write(
-                f"SELECT FAILURE: {e}\nPID: {review_data.get('scraper_review_id')}\n\n"
+                f"SELECT FAILURE: {e}\nID: {review_data.get('id')}\n\n"
             )
         raise e
 
@@ -69,25 +69,22 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
             raise e
         return review_id
     else:
-        # Insert new record
-        new_id = str(uuid.uuid4())
+        # Insert new record using the provided unified ID
         sql = """
             INSERT INTO dbo.processed_review (
-                id, scraper_review_id, rating, 
+                id, rating, 
                 reviewerName, text, positive_text, negative_text, heading, 
                 reviewDate, scrapedAt, status, source_id
             )
             VALUES (
                 CAST(? AS UNIQUEIDENTIFIER), 
-                ?, 
                 CAST(? AS FLOAT), 
                 ?, ?, ?, ?, ?, ?, ?, 'pending', 
                 CAST(? AS UNIQUEIDENTIFIER)
             )
         """
         args = [
-            new_id,
-            str(review_data["scraper_review_id"]),
+            str(review_data["id"]),
             review_data.get("rating"),
             review_data["reviewerName"],
             review_data.get("text"),
@@ -107,7 +104,7 @@ def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID
                 f.write(f"INSERT FAILURE: {e}\nARGS: {args}\n\n")
             raise e
 
-        return new_id
+        return str(review_data["id"])
 
 
 def insert_review_media(
@@ -129,7 +126,7 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     """Fetch a batch of reviews that need AI processing."""
     sql = f"""
         SELECT TOP {limit}
-            id, scraper_review_id, rating, reviewerName, text, 
+            id, rating, reviewerName, text, 
             positive_text, negative_text, heading,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 
@@ -212,7 +209,7 @@ def fetch_all_reviews_enriched(
     # Adding platform join for source name filtering if needed
     fetch_sql = f"""
         SELECT
-            r.id, r.scraper_review_id, r.rating, r.reviewerName,
+            r.id, r.rating, r.reviewerName,
             r.text, r.summary, r.sentiment, r.language, r.categories,
             r.keyPhrases, r.reviewDate, r.scrapedAt, r.status, r.ai_reply,
             r.source_id, r.positive_text, r.negative_text, r.heading,
@@ -402,7 +399,7 @@ def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[di
     """Fetch a single review by its internal ID for AI processing."""
     sql = """
         SELECT
-            id, scraper_review_id, rating, reviewerName, text, 
+            id, rating, reviewerName, text, 
             positive_text, negative_text, heading,
             CAST(reviewDate AS VARCHAR) as reviewDate, 
             CAST(scrapedAt AS VARCHAR) as scrapedAt, 

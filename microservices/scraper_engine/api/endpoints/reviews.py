@@ -188,7 +188,7 @@ def get_reviews_by_source(source_id: str, limit: int = 100, skip: int = 0):
 
 
 @router.delete("/{review_id}", status_code=204)
-def delete_review(review_id: int):
+def delete_review(review_id: str):
     """
     Deletes a specific review by its review_id.
     Cascades automatically to delete platform-specific detail rows and media.
@@ -212,7 +212,7 @@ def delete_review(review_id: int):
 class MarkEmbeddedRequest(BaseModel):
     """Payload to mark a list of review IDs as embedded."""
 
-    review_ids: List[int]
+    review_ids: List[str]
 
 
 @router.patch("/mark-embedded")
