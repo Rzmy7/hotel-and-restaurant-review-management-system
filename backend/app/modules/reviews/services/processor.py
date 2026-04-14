@@ -213,23 +213,36 @@ def _update_review_success(
     # NEW: Sync categories to dedicated dbo.review_category table
     try:
         review_id = original_review["id"]
-        # Clear existing entries for this review to prevent duplicates on re-analysis
-        cursor.execute("DELETE FROM dbo.review_category WHERE review_id = ?", review_id)
+        # Using CAST to ensure UNIQUEIDENTIFIER compatibility across drivers
+        cursor.execute("DELETE FROM dbo.review_category WHERE review_id = CAST(? AS UNIQUEIDENTIFIER)", review_id)
         
         raw_list = analysis.get("categories", [])
         if isinstance(raw_list, list):
             for cat_item in raw_list:
+                name = ""
+                score = None
+                
                 if isinstance(cat_item, dict):
                     name = str(cat_item.get("name", "")).strip()
-                    score = cat_item.get("score")
+                    # Support both 'score' and 'value' as keys (AI can be inconsistent)
+                    score = cat_item.get("score") or cat_item.get("value")
                 else:
                     name = str(cat_item).strip()
-                    # Fallback to overall sentiment if no category score provided
-                    score = analysis.get("sentiment_score", 3.0) * 20
+                
+                # Default score if missing (fallback to overall sentiment mapping)
+                if score is None:
+                    sentiment_score = analysis.get("sentiment_score", 0.5) 
+                    score = float(sentiment_score) * 100
+                else:
+                    try:
+                        score = float(score)
+                    except (ValueError, TypeError):
+                        score = 50.0
 
                 if name:
+                    # Explicitly target columns, letting ID and CreatedAt use DB defaults
                     cursor.execute(
-                        "INSERT INTO dbo.review_category (review_id, name, score) VALUES (?, ?, ?)",
+                        "INSERT INTO dbo.review_category (review_id, name, score) VALUES (CAST(? AS UNIQUEIDENTIFIER), ?, ?)",
                         review_id, name, score
                     )
     except Exception as e:

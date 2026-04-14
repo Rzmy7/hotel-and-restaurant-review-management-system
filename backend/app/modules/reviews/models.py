@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     Float,
     ForeignKey,
+    func,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
@@ -65,6 +66,9 @@ class ProcessedReview(Base):
     media = relationship(
         "ReviewMedia", back_populates="review", cascade="all, delete-orphan"
     )
+    category_scores = relationship(
+        "ReviewCategory", back_populates="review", cascade="all, delete-orphan"
+    )
 
 
 class ReviewMedia(Base):
@@ -81,3 +85,25 @@ class ReviewMedia(Base):
     alt = Column(String(500), nullable=True)
 
     review = relationship("ProcessedReview", back_populates="media")
+
+
+class ReviewCategory(Base):
+    """
+    Detailed numeric scores per category (Cleanliness, Staff, etc.).
+    Maps to dbo.review_category.
+    """
+
+    __tablename__ = "review_category"
+
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("processed_review.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = Column(String(100), nullable=False)
+    score = Column(Float, nullable=True)
+    created_at = Column("created_at", DateTime, server_default=func.now())
+
+    review = relationship("ProcessedReview", back_populates="category_scores")
