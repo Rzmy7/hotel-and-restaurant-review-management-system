@@ -7,8 +7,8 @@ import type { ServerStatus } from '../types';
 import { apiClient } from '../api/client';
 
 const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
-const DEFAULT_SCRAPING_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002';
-const DEFAULT_EMBEDDING_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8001';
+const DEFAULT_SCRAPING_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8001';
+const DEFAULT_EMBEDDING_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002';
 const DEFAULT_FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
 
 /**
@@ -97,7 +97,7 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
     }> = [
         // Main Backend card reads admin-backend server stats endpoint (same server context).
         { id: '1', name: 'Main Backend', url: urls.mainBackend, healthPath: '/admin/monitoring/main-backend-status', icon: Server },
-        { id: '2', name: 'Scraping Service', url: urls.scraping, healthPath: '/health', icon: Search },
+        { id: '2', name: 'Scraping Service', url: urls.scraping, healthPath: '/api/system/admin-health', icon: Search },
         { id: '3', name: 'Embedding Service', url: urls.embedding, healthPath: '/health', icon: Database },
         { id: '4', name: 'Frontend Server', url: urls.frontend, healthPath: '/health', icon: Globe }
     ];
@@ -176,7 +176,7 @@ export const fetchSingleServerStatus = async (serverName: 'mainBackend' | 'scrap
     const urls = getServerUrls();
     const urlMap = {
         mainBackend: { url: urls.mainBackend, healthPath: '/admin/monitoring/main-backend-status', name: 'Main Backend', icon: Server, id: '1' },
-        scraping: { url: urls.scraping, healthPath: '/health', name: 'Scraping Service', icon: Search, id: '2' },
+        scraping: { url: urls.scraping, healthPath: '/api/system/admin-health', name: 'Scraping Service', icon: Search, id: '2' },
         embedding: { url: urls.embedding, healthPath: '/health', name: 'Embedding Service', icon: Database, id: '3' },
         frontend: { url: urls.frontend, healthPath: '/health', name: 'Frontend Server', icon: Globe, id: '4' }
     };

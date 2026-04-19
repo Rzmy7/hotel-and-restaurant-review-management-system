@@ -13,6 +13,7 @@ from pydantic import BaseModel
 import time
 import sys
 import os
+import psutil
 from core.database import get_session
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
@@ -43,12 +44,42 @@ def health_check():
     finally:
         session.close()
 
+    days = int(uptime // 86400)
+    hours = int((uptime % 86400) // 3600)
+    minutes = int((uptime % 3600) // 60)
+    
     return {
         "status": "online",
+        "uptime": f"{days}d {hours}h {minutes}m",
         "uptime_seconds": round(uptime, 2),
         "database_connected": db_ok,
         "active_jobs": len(job_manager.get_active_jobs()),
         "pool": scrape_pool.get_pool_status()
+    }
+
+
+@router.get("/admin-health")
+def admin_health_check():
+    """Returns exactly the format expected by the admin panel."""
+    uptime = time.time() - START_TIME
+    days = int(uptime // 86400)
+    hours = int((uptime % 86400) // 3600)
+    minutes = int((uptime % 3600) // 60)
+    
+    cpu_usage = round(psutil.cpu_percent(interval=0.1), 1)
+    memory = psutil.virtual_memory()
+    ram_usage = round(memory.percent, 1)
+
+    # Scraper doesn't strictly have a "paused" state conceptually identical to embedding service,
+    # so we default to false or check if pool is empty. Let's just default to false for now.
+    service_paused = False
+
+    return {
+        "status": "Online",
+        "cpu_usage": cpu_usage,
+        "ram_usage": ram_usage,
+        "uptime": f"{days}d {hours}h {minutes}m",
+        "service_paused": service_paused
     }
 
 
