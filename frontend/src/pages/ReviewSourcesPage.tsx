@@ -105,6 +105,16 @@ const ReviewSourcesPage = () => {
     onError: () => showToast('Sync failed', 'error'),
   });
 
+  const stopSyncMutation = useMutation({
+    mutationFn: (id: string | number) => sourcesService.stopSync(id),
+    onSuccess: (_: any, id: string | number) => {
+      const source = sources.find((s: Source) => s.id === id);
+      showToast(`Sync stopped for ${source?.platform || 'source'}`, 'info');
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+    },
+    onError: () => showToast('Failed to stop sync', 'error'),
+  });
+
   // Combined Loading States
   const isLoading = isLoadingSources || isLoadingStats || isLoadingLogs;
   const isRefreshing = isRefreshingSources;
@@ -152,6 +162,10 @@ const ReviewSourcesPage = () => {
 
   const handleSyncNow = async (id: string | number) => {
     await triggerSyncMutation.mutateAsync(id);
+  };
+
+  const handleStopSync = async (id: string | number) => {
+    await stopSyncMutation.mutateAsync(id);
   };
 
   return (
@@ -236,6 +250,7 @@ const ReviewSourcesPage = () => {
           onDelete={handleDeleteSource}
           onToggleStatus={handleToggleStatus}
           onSync={handleSyncNow}
+          onStopSync={handleStopSync}
         />
       </main>
 

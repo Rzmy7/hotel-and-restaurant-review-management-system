@@ -108,3 +108,32 @@ def sync_source(source_id: uuid.UUID, db: Session = Depends(get_db)):
     # The Scraper Engine will notify us if it's actually QUEUED or RUNNING.
     trigger_platform_scrape(str(platform_name), str(source_url), str(source_id))
     return {"message": "Sync triggered successfully", "source_id": str(source_id)}
+
+
+@router.post("/{source_id}/stop-sync")
+def stop_sync(source_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    Stop any active scrape for a source.
+    Sends a cancel request to the scraper engine, and resets source status to 'active'.
+    """
+    import os
+    import httpx
+
+    scraper_url = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001")
+    cancel_endpoint = f"{scraper_url}/api/system/jobs/{source_id}/cancel"
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.post(cancel_endpoint)
+            resp.raise_for_status()
+    except Exception:
+        pass  # Best-effort: scraper may not be running or job already finished
+
+    # Reset source status back to active
+    source_service.update_source(
+        db, source_id,
+        SourceUpdate(source_status=SourceStatus.ACTIVE)
+    )
+
+    return {"message": "Sync stopped successfully", "source_id": str(source_id)}
+

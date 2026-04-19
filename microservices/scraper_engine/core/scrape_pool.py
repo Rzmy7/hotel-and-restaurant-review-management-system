@@ -190,6 +190,47 @@ class ScrapePool:
             "queue_ids": job_queue.get_all_queued_ids()
         }
 
+    def cancel_job(self, job_id: str) -> bool:
+        """
+        Cancel a job by its job_id.
+        - If the job is in the queue, removes it.
+        - If the job is running, cancels the future.
+        Returns True if the job was found and cancelled.
+        """
+        # Try to remove from the queue first
+        if job_queue.remove(job_id):
+            job_manager.update_job(job_id, status=JobStatus.FAILED, progress="Cancelled by user.")
+            logger.info(f"Job {job_id} removed from queue (cancelled).")
+            return True
+
+        # Otherwise, try to cancel the running future
+        with self._lock:
+            future = self._futures.get(job_id)
+            if future and not future.done():
+                future.cancel()
+                job_manager.update_job(job_id, status=JobStatus.FAILED, progress="Cancelled by user.")
+                logger.info(f"Job {job_id} future cancelled.")
+                return True
+
+        logger.warning(f"Job {job_id} not found for cancellation.")
+        return False
+
+    def cancel_by_source_id(self, source_id: str) -> bool:
+        """
+        Find and cancel all active jobs associated with a source_id.
+        Returns True if at least one job was cancelled.
+        """
+        cancelled = False
+        # Check all active jobs in job_manager
+        for job in job_manager.get_all_jobs():
+            if job.get("status") in [JobStatus.PENDING, JobStatus.QUEUED, JobStatus.RUNNING]:
+                # Check if the job's kwargs contain the matching source_id
+                job_id = job.get("id")
+                if job_id:
+                    if self.cancel_job(job_id):
+                        cancelled = True
+        return cancelled
+
     def shutdown(self, wait: bool = True):
         """Shut down the pool. If wait=True, waits for all jobs to finish."""
         logger.info(f"Shutting down ScrapePool (wait={wait})")

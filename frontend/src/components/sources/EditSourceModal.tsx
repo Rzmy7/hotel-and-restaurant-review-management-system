@@ -30,6 +30,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
   const [activeTab, setActiveTab] = useState<'settings' | 'analytics'>(initialTab);
   const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('daily');
   const [status, setStatus] = useState<SourceStatus>('Active');
+  const [propertyUrl, setPropertyUrl] = useState('');
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -39,6 +40,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
     if (source) {
       setSyncSchedule(source.syncSchedule);
       setStatus(source.status === 'Error' ? 'Active' : source.status);
+      setPropertyUrl(source.propertyUrl);
     }
   }, [source]);
 
@@ -72,6 +74,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
   const handleSave = () => {
     onSave({
       ...source,
+      propertyUrl,
       syncSchedule,
       status
     });
@@ -182,11 +185,12 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={source.propertyUrl}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600 rounded-xl font-bold text-gray-500 dark:text-slate-400 shadow-inner"
+                    value={propertyUrl}
+                    onChange={(e) => setPropertyUrl(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl font-bold text-gray-900 dark:text-white focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] outline-none shadow-sm transition-all"
+                    placeholder="https://..."
                   />
-                  <a href={source.propertyUrl} target="_blank" rel="noreferrer" className="p-3 bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-[#4e80ee] dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-[#4e80ee] dark:hover:border-[#4e80ee] rounded-xl shadow-sm transition-all">
+                  <a href={propertyUrl} target="_blank" rel="noreferrer" className="p-3 bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-[#4e80ee] dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-[#4e80ee] dark:hover:border-[#4e80ee] rounded-xl shadow-sm transition-all">
                     <ExternalLink size={20} />
                   </a>
                 </div>

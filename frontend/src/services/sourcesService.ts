@@ -96,6 +96,10 @@ class SourcesService {
     async triggerSync(id: string | number): Promise<void> {
         await apiClient.post(`/api/source/${id}/sync`);
     }
+
+    async stopSync(id: string | number): Promise<void> {
+        await apiClient.post(`/api/source/${id}/stop-sync`);
+    }
 }
 
 export const sourcesService = new SourcesService();

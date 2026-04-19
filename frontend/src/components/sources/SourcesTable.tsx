@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import {
   Play,
   Pause,
+  Square,
   Edit2,
   Trash2,
   Calendar,
@@ -24,6 +25,7 @@ interface SourcesTableProps {
   onDelete: (id: string | number) => void;
   onToggleStatus: (source: Source) => void;
   onSync: (id: string | number) => Promise<void> | void;
+  onStopSync: (id: string | number) => Promise<void> | void;
   isLoading?: boolean;
 }
 
@@ -113,6 +115,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   onDelete,
   onToggleStatus,
   onSync,
+  onStopSync,
   isLoading
 }) => {
   const [page, setPage] = useState(0);
@@ -264,19 +267,30 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         onClick={() => handleSyncClick(source.id)}
                         disabled={source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id)}
                         className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                        title={source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
+                        title={source.status === 'Paused' ? 'Resume source to sync' : source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
                       >
                         <RefreshCw size={18} className={source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'animate-spin' : ''} />
                       </button>
-                      <button
-                        onClick={() => onToggleStatus(source)}
-                        disabled={source.status === 'Syncing'}
-                        className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40' : 'text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'
-                          }`}
-                        title={source.status === 'Active' ? 'Pause' : 'Resume'}
-                      >
-                        {source.status === 'Active' ? <Pause size={18} /> : (source.status === 'Syncing' ? <Pause size={18} /> : <Play size={18} />)}
-                      </button>
+                      {(source.status === 'Syncing' || source.status === 'In Queue') ? (
+                        /* STOP button — shown when scraping is in progress */
+                        <button
+                          onClick={() => onStopSync(source.id)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-lg transition-all"
+                          title="Stop Sync"
+                        >
+                          <Square size={18} fill="currentColor" />
+                        </button>
+                      ) : (
+                        /* PLAY/PAUSE button — toggles scheduled scraping */
+                        <button
+                          onClick={() => onToggleStatus(source)}
+                          className={`p-2 rounded-lg transition-all ${source.status === 'Active' ? 'text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40' : 'text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40'
+                            }`}
+                          title={source.status === 'Active' ? 'Pause scheduled scraping' : 'Resume scheduled scraping'}
+                        >
+                          {source.status === 'Active' ? <Pause size={18} /> : <Play size={18} />}
+                        </button>
+                      )}
                       <button
                         onClick={() => onEdit(source)}
                         disabled={source.status === 'In Queue' || source.status === 'Syncing'}
