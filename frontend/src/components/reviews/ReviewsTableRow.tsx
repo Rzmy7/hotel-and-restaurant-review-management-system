@@ -114,7 +114,7 @@ const ReviewsTableRow = ({ review, isLastRows, onClick }: ReviewsTableRowProps) 
                 </div>
             </td>
 
-            {/* Source */}
+            {/* Platform */}
             <td className="px-6 py-5">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-[10px] font-black text-[#4e80ee] dark:text-blue-400 uppercase tracking-widest">
                     {review.source}

@@ -45,8 +45,8 @@ const ReviewsToolbar = () => {
     const options = {
         Rating: [5, 4, 3, 2, 1],
         Sentiment: ['Positive', 'Neutral', 'Negative'],
-        Source: sourceOptions.length > 0 ? sourceOptions : ['Google Reviews', 'TripAdvisor', 'Booking.com', 'Airbnb', 'Agoda'],
-        Category: categoryOptions.length > 0 ? categoryOptions : ['Food', 'Service', 'Cleanliness', 'Location', 'Value'],
+        Platform: sourceOptions,
+        Category: categoryOptions,
         Status: ['Pending', 'Replied', 'AI Draft']
     };
 
@@ -59,7 +59,7 @@ const ReviewsToolbar = () => {
         switch (type) {
             case "Rating": return filters.rating.length > 0;
             case "Sentiment": return filters.sentiment.length > 0;
-            case "Source": return filters.source.length > 0;
+            case "Platform": return filters.source.length > 0;
             case "Category": return filters.category.length > 0;
             case "Status": return filters.status.length > 0;
             default: return false;
@@ -75,13 +75,13 @@ const ReviewsToolbar = () => {
         switch (menu) {
             case 'Rating': filterType = 'rating'; break;
             case 'Sentiment': filterType = 'sentiment'; break;
-            case 'Source': filterType = 'source'; break;
+            case 'Platform': filterType = 'source'; break;
             case 'Category': filterType = 'category'; break;
             case 'Status': filterType = 'status'; break;
             default: return null;
         }
 
-        const hasSearch = menu === 'Category' || menu === 'Source';
+        const hasSearch = menu === 'Category' || menu === 'Platform';
 
         return (
             <div className={`absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-lg shadow-gray-200/50 dark:shadow-slate-900/50 z-50 p-2 min-w-[200px] ${hasSearch ? 'min-w-[240px]' : ''}`}>

@@ -39,7 +39,7 @@ _DATE_EXPR = (
 )
 
 _ACTIVITY_EXPR = (
-    "COALESCE(CAST(scrapedAt AS datetime), CAST(reviewDate AS datetime))"
+    "COALESCE(CAST(r.scrapedAt AS datetime), CAST(r.reviewDate AS datetime))"
 )
 
 # Activity type mappings
@@ -104,8 +104,18 @@ def get_review_metrics(cursor: "pyodbc.Cursor") -> dict[str, Any]:
     reviews_growth = growth(current_month_count, previous_month_count)
 
     # Per-platform distribution (top 8 by volume)
-    # We now strictly serve Booking.com reviews here
-    by_platform = [{"label": "Booking.com", "value": total}] if total > 0 else []
+    platform_rows = execute_query(
+        cursor,
+        """
+        SELECT p.platform_name, COUNT(*) AS cnt
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        GROUP BY p.platform_name
+        ORDER BY cnt DESC
+        """,
+    ).fetchall()
+    by_platform = [{"label": str(row[0]), "value": int(row[1])} for row in platform_rows[:8]]
 
     return {
         "totalReviews": total,
@@ -259,14 +269,16 @@ def get_recent_activity(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         cursor,
         f"""
         SELECT TOP 8
-            id,
-            platformReviewId,
-            reviewerName AS userName,
-            'Booking.com' AS source,
-            sentiment,
-            status,
+            r.id,
+            r.platformReviewId,
+            r.reviewerName AS userName,
+            p.platform_name AS source,
+            r.sentiment,
+            r.status,
             {_ACTIVITY_EXPR} AS activityDate
-        FROM dbo.processed_review
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
         ORDER BY {_ACTIVITY_EXPR} DESC
         """,
     ).fetchall()
