@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -27,6 +27,15 @@ PASSWORD_RESET_EXPIRE_MINUTES = 60
 
 def token_sha256(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def as_utc(dt: datetime | None) -> datetime | None:
+    """Normalize naive/aware datetimes to UTC-aware for safe comparison."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 @router.post("/signup")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
@@ -156,7 +165,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = token_sha256(raw_token)
-        expires_at = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
         db.execute(
             text("""
@@ -213,7 +222,10 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
             raise HTTPException(status_code=400, detail="Invalid token")
         if token_row.used_at is not None:
             raise HTTPException(status_code=400, detail="Token already used")
-        if token_row.expires_at is None or token_row.expires_at < datetime.utcnow():
+        expires_at = as_utc(token_row.expires_at)
+        now_utc = datetime.now(timezone.utc)
+
+        if expires_at is None or expires_at < now_utc:
             raise HTTPException(status_code=400, detail="Token expired")
 
         new_password_hash = hash_password(payload.new_password)
