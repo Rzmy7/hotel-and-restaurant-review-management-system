@@ -84,3 +84,6 @@ merge-temp.sh
 
 *.png
 scraper_debug.log
+microservices/scraper_engine/booking_modal_error.png
+microservices/scraper_engine/jobs_state.json
+microservices/scraper_engine/jobs_state.json
