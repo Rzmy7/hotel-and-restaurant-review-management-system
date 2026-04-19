@@ -101,16 +101,10 @@ def _embed_source_reviews(source_id: str) -> None:
     logger.info(f"[EmbeddingClient] Successfully embedded {len(embedded_ids_str)} reviews for source_id={source_id}")
 
     # ── Step 3: Mark reviews as embedded in Scraper Engine ────────────────────
-    # The embedding service returns review_ids as strings; convert back to int
-    try:
-        embedded_ids_int = [int(rid) for rid in embedded_ids_str]
-    except (ValueError, TypeError) as e:
-        logger.error(f"[EmbeddingClient] Could not parse embedded_ids as integers: {e}")
-        return
-
+    # The embedding service returns review_ids as strings.
     try:
         mark_url = f"{SCRAPER_ENGINE_URL}/api/reviews/mark-embedded"
-        mark_response = httpx.patch(mark_url, json={"review_ids": embedded_ids_int}, timeout=30.0)
+        mark_response = httpx.patch(mark_url, json={"review_ids": embedded_ids_str}, timeout=30.0)
         mark_response.raise_for_status()
         mark_result = mark_response.json()
         logger.info(f"[EmbeddingClient] Marked {mark_result.get('updated_count', 0)} reviews as embedded in Scraper Engine.")
