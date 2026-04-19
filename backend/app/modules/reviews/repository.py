@@ -180,10 +180,19 @@ def fetch_all_reviews_enriched(
         if filters.get("source"):
             sources = filters["source"]
             if isinstance(sources, list) and len(sources) > 0:
-                # Joining with platform to filter by platform name
-                # (Note: we already have JOIN dbo.source s)
-                # We need to JOIN platform p
-                pass # Will handle in SQL below
+                placeholders = ",".join(["?"] * len(sources))
+                where_clauses.append(f"p.platform_name IN ({placeholders})")
+                params.extend(sources)
+
+        if filters.get("category"):
+            categories = filters["category"]
+            if isinstance(categories, list) and len(categories) > 0:
+                cat_clauses = []
+                for cat in categories:
+                    # Categories are stored as JSON arrays, e.g., ["Food", "Service"]
+                    cat_clauses.append("r.categories LIKE ?")
+                    params.append(f'%"{cat}"%')
+                where_clauses.append(f"({' OR '.join(cat_clauses)})")
 
         # Date range
         if filters.get("dateFrom"):
@@ -200,6 +209,7 @@ def fetch_all_reviews_enriched(
         SELECT COUNT(*)
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
         WHERE {where_sql}
     """
     cursor.execute(count_sql, params)

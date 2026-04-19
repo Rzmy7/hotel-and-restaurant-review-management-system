@@ -18,6 +18,7 @@ class ReviewsService {
             rating: params.rating?.length ? params.rating : undefined,
             sentiment: params.sentiment?.length ? params.sentiment : undefined,
             source: params.source?.length ? params.source : undefined,
+            category: params.category?.length ? params.category : undefined,
             dateFrom: params.dateFrom || undefined,
             dateTo: params.dateTo || undefined,
         });

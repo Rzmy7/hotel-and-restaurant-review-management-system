@@ -21,6 +21,7 @@ _ICON_MAP = {
     "bathroom": "Bath", "bedding": "Bed",
     "safety": "Shield", "decor": "Palette",
     "atmosphere": "Smile", "maintenance": "Wrench",
+    "comfort": "Smile", "room size": "MapPin",
 }
 
 
@@ -44,33 +45,54 @@ def _parse_categories(raw) -> list:
     return []
 
 
-def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
-    """Return (cat_total, cat_positive) dicts for a time window."""
+def _aggregate_all_time_totals(cursor, org_id: str):
+    """Return all-time category mention counts."""
     cursor.execute(
         """
-        SELECT r.categories, r.sentiment
+        SELECT r.categories
         FROM   dbo.processed_review r
         JOIN   dbo.source s ON r.source_id = s.source_id
         WHERE  s.organization_id = ?
-          AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
-          AND  r.reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
         """,
-        org_id, days_from, days_to,
+        org_id,
     )
     rows = cursor.fetchall()
     total: dict = {}
-    positive: dict = {}
     for row in rows:
         cats = _parse_categories(row.categories)
-        is_pos = (row.sentiment or "").strip().lower() == "positive"
         for cat in cats:
             key = cat.strip()
             if not key:
                 continue
             total[key] = total.get(key, 0) + 1
-            if is_pos:
-                positive[key] = positive.get(key, 0) + 1
-    return total, positive
+    return total
+
+def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
+    """Return (cat_total, cat_score_sum) dicts for a time window."""
+    cursor.execute(
+        """
+        SELECT r.categories, ISNULL(r.sentiment_score, 3.0) as sentiment_score
+        FROM   dbo.processed_review r
+        JOIN   dbo.source s ON r.source_id = s.source_id
+        WHERE  s.organization_id = ?
+          AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+          AND  r.reviewDate <  DATEADD(DAY, ? + 1, CAST(GETDATE() AS DATE))
+        """,
+        org_id, days_from, days_to,
+    )
+    rows = cursor.fetchall()
+    total: dict = {}
+    score_sums: dict = {}
+    for row in rows:
+        cats = _parse_categories(row.categories)
+        s_score = float(row.sentiment_score)
+        for cat in cats:
+            key = cat.strip()
+            if not key:
+                continue
+            total[key] = total.get(key, 0) + 1
+            score_sums[key] = score_sums.get(key, 0.0) + s_score
+    return total, score_sums
 
 
 def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list:
@@ -78,36 +100,38 @@ def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list
     Returns up to 6 category objects with score, count, icon, trend, trendType.
     Only categories with >= 5 mentions are included.
     """
+    all_time_totals = _aggregate_all_time_totals(cursor, org_id)
     cur_total, cur_pos = _aggregate(cursor, org_id, -period_days, 0)
     prev_total, prev_pos = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
 
-    MIN_MENTIONS = 5
+    MIN_MENTIONS = 1
     results = []
 
     for cat, total in cur_total.items():
         if total < MIN_MENTIONS:
             continue
 
-        score = round((cur_pos.get(cat, 0) / total) * 100)
+        # sentiment_score is 1 to 5; multiply average by 20 to get percentage
+        score = round((cur_pos.get(cat, 0) / total) * 20)
         prev_t = prev_total.get(cat, 0)
-        prev_score = round((prev_pos.get(cat, 0) / prev_t) * 100) if prev_t > 0 else score
+        prev_score = round((prev_pos.get(cat, 0) / prev_t) * 20) if prev_t > 0 else score
         delta = score - prev_score
 
-        if abs(delta) < 0.05:
-            trend_str, trend_type = "0.0%", "neutral"
+        if delta == 0:
+            trend_str, trend_type = "0%", "neutral"
         elif delta > 0:
-            trend_str, trend_type = f"+{delta:.1f}%", "up"
+            trend_str, trend_type = f"+{delta}%", "up"
         else:
-            trend_str, trend_type = f"{delta:.1f}%", "down"
+            trend_str, trend_type = f"{delta}%", "down"
 
         results.append({
             "name": cat,
             "score": score,
-            "count": total,
+            "count": all_time_totals.get(cat, total),
             "icon": _resolve_icon(cat),
             "trend": trend_str,
             "trendType": trend_type,
         })
 
     results.sort(key=lambda x: x["count"], reverse=True)
-    return results[:6]
+    return results[:4]

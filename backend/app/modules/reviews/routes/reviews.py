@@ -46,6 +46,7 @@ def read_reviews(
     rating: List[int] = Query(None),
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
+    category: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
 ):
@@ -56,6 +57,7 @@ def read_reviews(
             "rating": rating,
             "sentiment": sentiment,
             "source": source,
+            "category": category,
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
