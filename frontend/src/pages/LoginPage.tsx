@@ -178,6 +178,14 @@ const LoginPage = () => {
                 Back to login
               </button>
             </div>
+            <Button
+              type="submit"
+              className="w-full h-12 text-sm uppercase tracking-widest mt-2"
+              isLoading={loading}
+              disabled={otpCode.length !== 6}
+            >
+              {loading ? 'Verifying...' : 'Verify & Sign In'}
+            </Button>
           </div>
         ) : (
         <>
