@@ -38,7 +38,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         db.execute(
             text("""
-                UPDATE dbo.password_reset_tokens
+                UPDATE dbo.password_reset_token
                 SET used_at = GETUTCDATE()
                 WHERE user_id = :user_id AND used_at IS NULL
             """),
@@ -47,10 +47,10 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         db.execute(
             text("""
-                INSERT INTO dbo.password_reset_tokens
-                    (user_id, token_hash, expires_at, created_at)
+                INSERT INTO dbo.password_reset_token
+                    (token_id, user_id, token_hash, expires_at, created_at)
                 VALUES
-                    (:user_id, :token_hash, :expires_at, GETUTCDATE())
+                    (NEWID(), :user_id, :token_hash, :expires_at, GETUTCDATE())
             """),
             {
                 "user_id": str(user.user_id),
@@ -87,7 +87,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         token_row = db.execute(
             text("""
                 SELECT TOP 1 token_id, user_id, expires_at, used_at
-                FROM dbo.password_reset_tokens
+                FROM dbo.password_reset_token
                 WHERE token_hash = :token_hash
                 ORDER BY created_at DESC
             """),
@@ -120,7 +120,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 
         db.execute(
             text("""
-                UPDATE dbo.password_reset_tokens
+                UPDATE dbo.password_reset_token
                 SET used_at = GETUTCDATE()
                 WHERE token_id = :token_id
             """),
