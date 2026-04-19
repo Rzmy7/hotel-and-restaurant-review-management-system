@@ -9,6 +9,7 @@ from app.modules.dashboard.services.charts_service import (
     get_weekly_review_trends
 )
 from app.modules.dashboard.services.categories_service import get_category_performance
+from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 from app.core.pyodbc_connection import get_connection_string
 import pyodbc
 import uuid
@@ -37,6 +38,7 @@ def get_unified_dashboard(org_id: str, period: int = 30):
             daily_trends = get_daily_review_trends(cursor, org_id, days=period)
             weekly_trends = get_weekly_review_trends(cursor, org_id, period_days=period)
             category_performance = get_category_performance(cursor, org_id, period_days=period)
+            source_comparison = get_source_comparison_metrics(cursor, org_id, period_days=period)
 
             # These still use internal connections (can be refactored later)
             recent_reviews = get_recent_reviews(org_id)["reviews"]
@@ -79,7 +81,7 @@ def get_unified_dashboard(org_id: str, period: int = 30):
                     }
                 },
                 "alerts": alerts_data[:4],
-                "sourceComparison": [],
+                "sourceComparison": source_comparison,
                 "categoryPerformance": category_performance
             }
         finally:
