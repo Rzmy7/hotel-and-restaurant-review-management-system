@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { settingsService } from '../services/settingsService';
 import type { SettingsData } from '../types/settings';
 import { useToast } from '../contexts/ToastContext';
+import type { PasswordChangePayload } from '../api/settingsApi';
 
 export const useSettings = () => {
     const [data, setData] = useState<SettingsData | null>(null);
@@ -64,6 +65,11 @@ export const useSettings = () => {
         }
     };
 
+    const changePassword = async (payload: PasswordChangePayload) => {
+        const message = await settingsService.changePassword(payload);
+        return message;
+    };
+
     return {
         data,
         loading,
@@ -71,6 +77,7 @@ export const useSettings = () => {
         error,
         refreshData: loadSettings,
         updateSettings,
-        uploadHotelLogo
+        uploadHotelLogo,
+        changePassword
     };
 };

@@ -32,7 +32,7 @@ const TABS = [
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo } = useSettings();
+  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -277,6 +277,7 @@ const SettingsPage: React.FC = () => {
                 <SecuritySettingsCard
                   data={localData.security}
                   onChange={(updates) => handleUpdateSection('security', updates)}
+                  onPasswordChange={changePassword}
                 />
               )}
               {activeTab === 'subscription' && (

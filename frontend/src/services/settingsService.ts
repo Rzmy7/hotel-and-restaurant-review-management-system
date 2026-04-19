@@ -1,5 +1,7 @@
 import { settingsApi } from '../api/settingsApi';
+import type { PasswordChangePayload } from '../api/settingsApi';
 import type { SettingsData } from '../types/settings';
+import axios from 'axios';
 
 export const settingsService = {
     getSettings: async (): Promise<SettingsData> => {
@@ -28,6 +30,24 @@ export const settingsService = {
         } catch (error) {
             console.error('Failed to upload hotel logo:', error);
             throw new Error('Failed to upload hotel logo');
+        }
+    },
+
+    changePassword: async (payload: PasswordChangePayload): Promise<string> => {
+        try {
+            const response = await settingsApi.changePassword(payload);
+            return response.message || 'Password updated successfully';
+        } catch (error) {
+            console.error('Failed to change password:', error);
+
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string' && detail.trim()) {
+                    throw new Error(detail);
+                }
+            }
+
+            throw new Error('Failed to update password');
         }
     }
 };

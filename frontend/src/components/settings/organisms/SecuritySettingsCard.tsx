@@ -10,11 +10,17 @@ import { Modal } from '../../ui/Modal';
 interface SecuritySettingsCardProps {
     data: SecuritySettings;
     onChange: (updates: Partial<SecuritySettings>) => void;
+    onPasswordChange: (payload: {
+        currentPassword: string;
+        newPassword: string;
+        confirmPassword?: string;
+    }) => Promise<string>;
 }
 
 export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     data,
-    onChange
+    onChange,
+    onPasswordChange
 }) => {
     const MAX_OTP_ATTEMPTS = 5;
     const OTP_TTL_SECONDS = 180;
@@ -37,6 +43,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     const [logoutAllSessions, setLogoutAllSessions] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
     const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
 
     const passwordChecks = useMemo(() => {
         return {
@@ -156,7 +163,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
         setIsPasswordModalOpen(true);
     };
 
-    const handleSavePassword = () => {
+    const handleSavePassword = async () => {
         if (!currentPassword) {
             setPasswordError('Current password is required.');
             return;
@@ -172,13 +179,27 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
             return;
         }
 
-        setPasswordError(null);
-        setIsPasswordModalOpen(false);
-        setPasswordSuccess(
-            logoutAllSessions
-                ? 'Password changed successfully. All other sessions will be logged out.'
-                : 'Password changed successfully.'
-        );
+        try {
+            setIsSavingPassword(true);
+            setPasswordError(null);
+
+            const responseMessage = await onPasswordChange({
+                currentPassword,
+                newPassword,
+                confirmPassword,
+            });
+
+            setIsPasswordModalOpen(false);
+            setPasswordSuccess(
+                logoutAllSessions
+                    ? `${responseMessage} All other sessions will be logged out.`
+                    : responseMessage
+            );
+        } catch (error) {
+            setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+        } finally {
+            setIsSavingPassword(false);
+        }
     };
 
     const canSavePassword = !!currentPassword && isPasswordValid && passwordsMatch;
@@ -334,7 +355,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                         <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)} className="dark:border-slate-600 dark:text-slate-300">
                             Cancel
                         </Button>
-                        <Button variant="primary" onClick={handleSavePassword} disabled={!canSavePassword}>
+                        <Button variant="primary" onClick={handleSavePassword} disabled={!canSavePassword || isSavingPassword} isLoading={isSavingPassword}>
                             Save Password
                         </Button>
                     </div>

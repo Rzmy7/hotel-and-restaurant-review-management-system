@@ -52,6 +52,12 @@ type OrganizationType = {
     type_name: string;
 };
 
+export type PasswordChangePayload = {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword?: string;
+};
+
 const API_BASE_URL =
     import.meta.env.VITE_MAIN_BACKEND_URL ||
     import.meta.env.VITE_API_BASE_URL ||
@@ -282,5 +288,18 @@ export const settingsApi = {
         syncOrganizationInStorage(currentSettings.hotelInfo);
 
         return logoUrl;
+    },
+
+    changePassword: async (payload: PasswordChangePayload): Promise<{ message: string }> => {
+        const response = await settingsAxios.post<{ message: string }>(
+            toApiPath('/users/me/password'),
+            {
+                current_password: payload.currentPassword,
+                new_password: payload.newPassword,
+                confirm_password: payload.confirmPassword ?? payload.newPassword,
+            }
+        );
+
+        return response.data;
     }
 };
