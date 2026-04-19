@@ -25,22 +25,23 @@ def get_db_stats():
         total_media = session.query(ReviewMedia).count()
 
         # Per-platform breakdown
-        platforms = (
+        source_counts = dict(
             session.query(Source.platform_name, sa_func.count(Source.source_id))
             .group_by(Source.platform_name)
             .all()
         )
+        review_counts = dict(
+            session.query(Source.platform_name, sa_func.count(Review.review_id))
+            .join(Review, Source.source_id == Review.source_id)
+            .group_by(Source.platform_name)
+            .all()
+        )
+
         platform_breakdown = {}
-        for platform, source_count in platforms:
-            review_count = (
-                session.query(Review)
-                .join(Source, Review.source_id == Source.source_id)
-                .filter(Source.platform_name == platform)
-                .count()
-            )
+        for platform, s_count in source_counts.items():
             platform_breakdown[platform] = {
-                "sources": source_count,
-                "reviews": review_count
+                "sources": s_count,
+                "reviews": review_counts.get(platform, 0)
             }
 
         return {

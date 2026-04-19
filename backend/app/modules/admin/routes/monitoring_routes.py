@@ -198,11 +198,9 @@ def scraping_stats() -> dict[str, int | float | bool]:
 
     reviews_ingested = 0
     try:
-        sources_payload = scraping_backend_get("/api/sources")
-        if isinstance(sources_payload, dict):
-            source_rows = sources_payload.get("data", [])
-            if isinstance(source_rows, list):
-                reviews_ingested = sum(int(row.get("total_reviews", 0) or 0) for row in source_rows)
+        db_stats = scraping_backend_get("/api/db/stats")
+        if isinstance(db_stats, dict):
+            reviews_ingested = db_stats.get("total_reviews", 0)
     except HTTPException:
         reviews_ingested = sum(int(job.get("reviews_extracted", 0) or 0) for job in all_jobs)
 
