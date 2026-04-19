@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, KeyRound, Lock, Shield, XCircle } from 'lucide-react';
+import { settingsService } from '../../../services/settingsService';
 import { ToggleRow } from '../molecules/ToggleRow';
 import { FormField } from '../molecules/FormField';
 import type { SecuritySettings } from '../../../types/settings';
@@ -88,14 +89,23 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
         return `${mm}:${ss}`;
     };
 
-    const issueNewOtp = () => {
-        const nextCode = Math.floor(100000 + Math.random() * 900000).toString();
-        setOtpCode(nextCode);
-        setOtpValue('');
-        setOtpAttempts(0);
-        setOtpExpiresIn(OTP_TTL_SECONDS);
-        setResendCooldown(RESEND_COOLDOWN_SECONDS);
-        setOtpError(null);
+    const [isIssuingOtp, setIsIssuingOtp] = useState(false);
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
+    const issueNewOtp = async () => {
+        try {
+            setIsIssuingOtp(true);
+            await settingsService.request2FA();
+            setOtpValue('');
+            setOtpAttempts(0);
+            setOtpExpiresIn(OTP_TTL_SECONDS);
+            setResendCooldown(RESEND_COOLDOWN_SECONDS);
+            setOtpError(null);
+        } catch (error) {
+            setOtpError(error instanceof Error ? error.message : 'Failed to send OTP code.');
+        } finally {
+            setIsIssuingOtp(false);
+        }
     };
 
     const open2faFlow = () => {
@@ -114,12 +124,12 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
         setTwoFaSuccess('2FA disabled successfully.');
     };
 
-    const handleConfirmEnable2fa = () => {
-        issueNewOtp();
+    const handleConfirmEnable2fa = async () => {
         setTwoFaStep('otp');
+        await issueNewOtp();
     };
 
-    const handleVerifyOtp = () => {
+    const handleVerifyOtp = async () => {
         if (otpExpiresIn <= 0) {
             setOtpError('Code expired. Please resend a new code.');
             return;
@@ -135,17 +145,19 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
             return;
         }
 
-        if (otpValue !== otpCode) {
+        try {
+            setIsVerifyingOtp(true);
+            await settingsService.enable2FA(otpValue);
+            onChange({ twoFactorAuth: true });
+            setIs2faModalOpen(false);
+            setTwoFaSuccess('2FA enabled successfully.');
+            setOtpValue('');
+        } catch (error) {
             setOtpAttempts((prev) => prev + 1);
-            setOtpError(`Invalid code. ${Math.max(MAX_OTP_ATTEMPTS - (otpAttempts + 1), 0)} attempts left.`);
-            return;
+            setOtpError(error instanceof Error ? error.message : `Invalid code. ${Math.max(MAX_OTP_ATTEMPTS - (otpAttempts + 1), 0)} attempts left.`);
+        } finally {
+            setIsVerifyingOtp(false);
         }
-
-        onChange({ twoFactorAuth: true });
-        setIs2faModalOpen(false);
-        setTwoFaSuccess('2FA enabled successfully.');
-        setOtpValue('');
-        setOtpCode('');
     };
 
     const handleResendOtp = () => {
@@ -312,19 +324,17 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                     placeholder="123456"
                                     className="tracking-[0.35em] text-center text-lg font-bold bg-slate-900 border-slate-700 text-slate-100"
                                 />
-                                {import.meta.env.DEV && (
-                                    <p className="text-[11px] text-slate-500">Dev code: {otpCode || '------'}</p>
-                                )}
+                                {/* Dev code removed since backend handles generation and emailing */}
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-slate-400">Code expires in: <span className="text-slate-200 font-bold">{formatTimer(otpExpiresIn)}</span></span>
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={handleResendOtp}
-                                        disabled={resendCooldown > 0}
+                                        disabled={resendCooldown > 0 || isIssuingOtp}
                                         className="text-blue-400"
                                     >
-                                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : (isIssuingOtp ? 'Sending...' : 'Resend Code')}
                                     </Button>
                                 </div>
                                 <p className="text-[11px] text-slate-500">Attempts left: {Math.max(MAX_OTP_ATTEMPTS - otpAttempts, 0)} | OTP is one-time use.</p>
@@ -334,7 +344,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                 <Button variant="outline" onClick={() => setTwoFaStep('confirm')} className="dark:border-slate-600 dark:text-slate-300">
                                     Back
                                 </Button>
-                                <Button variant="primary" onClick={handleVerifyOtp}>
+                                <Button variant="primary" onClick={handleVerifyOtp} disabled={isVerifyingOtp} isLoading={isVerifyingOtp}>
                                     Verify & Enable
                                 </Button>
                             </div>

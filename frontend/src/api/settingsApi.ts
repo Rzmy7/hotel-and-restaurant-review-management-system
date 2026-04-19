@@ -301,5 +301,20 @@ export const settingsApi = {
         );
 
         return response.data;
+    },
+
+    request2FA: async (): Promise<{ message: string }> => {
+        const response = await settingsAxios.post<{ message: string }>(
+            toApiPath('/users/me/2fa/request')
+        );
+        return response.data;
+    },
+
+    enable2FA: async (code: string): Promise<{ message: string }> => {
+        const response = await settingsAxios.post<{ message: string }>(
+            toApiPath('/users/me/2fa/enable'),
+            { code }
+        );
+        return response.data;
     }
 };

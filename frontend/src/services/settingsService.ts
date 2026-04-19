@@ -49,5 +49,33 @@ export const settingsService = {
 
             throw new Error('Failed to update password');
         }
+    },
+
+    request2FA: async (): Promise<string> => {
+        try {
+            const response = await settingsApi.request2FA();
+            return response.message;
+        } catch (error) {
+            console.error('Failed to request 2FA:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string') throw new Error(detail);
+            }
+            throw new Error('Failed to send verification code');
+        }
+    },
+    
+    enable2FA: async (code: string): Promise<string> => {
+        try {
+            const response = await settingsApi.enable2FA(code);
+            return response.message;
+        } catch (error) {
+            console.error('Failed to enable 2FA:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string') throw new Error(detail);
+            }
+            throw new Error('Failed to verify OTP');
+        }
     }
 };

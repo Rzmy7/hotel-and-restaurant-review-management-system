@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
@@ -8,11 +8,14 @@ import { Button } from '../components/ui/Button';
 import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [isTwoFactorStep, setIsTwoFactorStep] = useState(false);
-  const [twoFactorMessage, setTwoFactorMessage] = useState<string | null>(null);
+  const [isTwoFactorStep, setIsTwoFactorStep] = useState(searchParams.get('oauth_2fa') === 'true');
+  const [twoFactorMessage, setTwoFactorMessage] = useState<string | null>(
+    searchParams.get('oauth_2fa') === 'true' ? 'A verification code has been sent to your email.' : null
+  );
   const [resendLoading, setResendLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -89,6 +92,12 @@ const LoginPage = () => {
   const handleResendCode = async () => {
     setResendLoading(true);
     setError(null);
+    
+    if (searchParams.get('oauth_2fa') === 'true') {
+        handleGoogleLogin();
+        return;
+    }
+
     try {
       const result = await auth.login(email, password);
       if ('require_2fa' in result && result.require_2fa) {
@@ -172,6 +181,7 @@ const LoginPage = () => {
                   setIsTwoFactorStep(false);
                   setOtpCode('');
                   setTwoFactorMessage(null);
+                  setSearchParams({});
                 }}
                 className="text-sm font-bold text-gray-500 hover:text-gray-700"
               >
