@@ -154,3 +154,15 @@ def cancel_jobs_for_source(source_id: str):
     return {"status": "not_found", "source_id": source_id, "message": "No active jobs found for this source."}
 
 
+@router.post("/jobs/cancel/{job_id}")
+def cancel_job_by_id(job_id: str):
+    """
+    Cancel a specific scrape job by its internal job UUID.
+    Used by the admin panel where jobs are referenced by their job ID.
+    """
+    cancelled = scrape_pool.cancel_job(job_id)
+
+    if cancelled:
+        return {"status": "cancelled", "job_id": job_id}
+
+    return {"status": "not_found", "job_id": job_id, "message": "Job not found or already completed."}

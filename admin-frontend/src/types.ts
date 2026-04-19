@@ -135,7 +135,7 @@ export interface ScrapingJob {
     platformIcon: string;
     platformColor: string;
     organization: string;
-    status: 'Running' | 'Completed' | 'Failed';
+    status: 'Running' | 'Queued' | 'Completed' | 'Failed';
     startTime: string;
     duration: string;
     reviews: number | null;

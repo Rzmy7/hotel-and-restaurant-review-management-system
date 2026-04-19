@@ -753,10 +753,26 @@ def scraping_backend_get(path: str) -> dict | list:
         raise HTTPException(status_code=502, detail=f"Invalid JSON from scraping backend for {path}") from exc
 
 
+def scraping_backend_post(path: str, json_body: dict | None = None) -> dict | list:
+    """POST to the scraping backend."""
+    target = f"{DEFAULT_SCRAPING_BACKEND_URL}{path}"
+    try:
+        response = requests.post(target, json=json_body, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Scraping backend POST failed for {path}: {exc}") from exc
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=f"Invalid JSON from scraping backend for {path}") from exc
+
+
 def job_status_to_ui(raw_status: str) -> str:
     normalized = (raw_status or "").strip().lower()
     if normalized in {"running", "pending"}:
         return "Running"
+    if normalized == "queued":
+        return "Queued"
     if normalized == "failed":
         return "Failed"
     return "Completed"

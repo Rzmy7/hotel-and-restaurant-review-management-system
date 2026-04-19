@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil, Square } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
+import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform, stopScrapingJob } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
 type TableAttributeFormRow = {
@@ -39,6 +39,7 @@ export const Scraping: React.FC = () => {
     const [editPlatformFile, setEditPlatformFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
+    const [stoppingJobIds, setStoppingJobIds] = useState<Set<string>>(new Set());
 
     // Reset modal file state whenever the Add Platform modal closes.
     useEffect(() => {
@@ -377,9 +378,31 @@ export const Scraping: React.FC = () => {
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
             case 'Running': return 'bg-blue-100 text-blue-700';
+            case 'Queued': return 'bg-yellow-100 text-yellow-700';
             case 'Completed': return 'bg-green-100 text-green-700';
             case 'Failed': return 'bg-red-100 text-red-700';
             default: return 'bg-gray-100 text-gray-700';
+        }
+    };
+
+    const handleStopJob = async (job: ScrapingJob) => {
+        if (stoppingJobIds.has(job.id)) return;
+        setStoppingJobIds(prev => new Set(prev).add(job.id));
+        try {
+            await stopScrapingJob(job.id);
+            // Optimistically update the job status in local state
+            setJobs(prev => prev.map(j =>
+                j.id === job.id ? { ...j, status: 'Failed' as const } : j
+            ));
+        } catch (err) {
+            console.error('Failed to stop job:', err);
+            setError(err instanceof Error ? err.message : 'Failed to stop job.');
+        } finally {
+            setStoppingJobIds(prev => {
+                const next = new Set(prev);
+                next.delete(job.id);
+                return next;
+            });
         }
     };
 
@@ -958,8 +981,16 @@ export const Scraping: React.FC = () => {
                                     <td className="py-4 px-4 text-sm text-gray-900">{job.reviews !== null ? job.reviews : '--'}</td>
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-2">
-                                            {job.status === 'Running' && (
-                                                <button className="text-xs font-semibold text-blue-600 hover:text-blue-700 uppercase">Pause</button>
+                                            {(job.status === 'Running' || job.status === 'Queued') && (
+                                                <button
+                                                    onClick={() => handleStopJob(job)}
+                                                    disabled={stoppingJobIds.has(job.id)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 rounded-lg uppercase transition-all disabled:opacity-50"
+                                                    title="Stop this job"
+                                                >
+                                                    <Square size={12} fill="currentColor" />
+                                                    {stoppingJobIds.has(job.id) ? 'Stopping...' : 'Stop'}
+                                                </button>
                                             )}
                                             {job.status === 'Failed' && (
                                                 <>

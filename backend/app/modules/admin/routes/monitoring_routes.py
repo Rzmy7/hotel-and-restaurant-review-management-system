@@ -29,6 +29,7 @@ from app.modules.admin.services.monitoring_service import (
     organization_from_url,
     platform_visuals,
     scraping_backend_get,
+    scraping_backend_post,
     server_usage,
     update_platform_in_db,
 )
@@ -251,3 +252,10 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
         )
 
     return mapped_jobs
+
+
+@router.post("/scraping/jobs/{job_id}/cancel")
+def cancel_scraping_job(job_id: str) -> dict[str, str]:
+    """Cancels a running or queued scraping job by its internal job UUID."""
+    result = scraping_backend_post(f"/api/system/jobs/cancel/{job_id}")
+    return result

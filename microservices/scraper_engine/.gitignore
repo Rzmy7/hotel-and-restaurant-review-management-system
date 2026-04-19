@@ -40,3 +40,6 @@ output/
 # tmp files
 tmp/
 tmp/*
+
+*.png
+jobs_state.json
