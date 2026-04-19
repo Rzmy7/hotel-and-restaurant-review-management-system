@@ -38,14 +38,16 @@ export const Dashboard: React.FC = () => {
             try {
                 const [statsData, usage, reviews, alertsData, activitiesData] =
                     await Promise.all([
-                        fetchDashboardStats(),
-                        fetchUsageData(),
-                        fetchReviewData(),
-                        fetchSystemAlerts(),
-                        fetchRecentActivity(),
+                        fetchDashboardStats().catch(err => { console.error('fetchDashboardStats failed:', err); return null; }),
+                        fetchUsageData().catch(err => { console.error('fetchUsageData failed:', err); return []; }),
+                        fetchReviewData().catch(err => { console.error('fetchReviewData failed:', err); return []; }),
+                        fetchSystemAlerts().catch(err => { console.error('fetchSystemAlerts failed:', err); return []; }),
+                        fetchRecentActivity().catch(err => { console.error('fetchRecentActivity failed:', err); return []; }),
                     ]);
 
-                setStats(statsData);
+                if (statsData) {
+                    setStats(statsData);
+                }
                 setUsageData(usage);
                 setReviewData(reviews);
                 setAlerts(alertsData);

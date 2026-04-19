@@ -50,11 +50,11 @@ def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     sql = """
         SELECT TOP 10
             CAST(id AS VARCHAR(36)) as id,
-            reviewerName as [user],
-            'New Review' as action,
-            LEFT(ISNULL(text, 'No content'), 50) as target,
-            scrapedAt as [timestamp],
-            status as [status]
+            'scrape_completed' as [type],
+            'New Review Collected' as title,
+            LEFT(ISNULL(text, 'No content'), 50) as description,
+            CONVERT(VARCHAR(50), scrapedAt, 126) as [timestamp],
+            reviewerName as [user]
         FROM dbo.processed_review
         ORDER BY scrapedAt DESC
     """
