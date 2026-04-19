@@ -60,13 +60,13 @@ def get_unified_dashboard(org_id: str, period: int = 30):
                     {
                         "id": str(r["id"]),
                         "reviewerName": r["userName"],
-                        "title": "Review Entry",
+                        "title": (r.get("text") or "No review text")[:80] + ("..." if len(r.get("text") or "") > 80 else ""),
                         "source": r["source"],
                         "sentiment": r["sentiment"],
                         "time": "Recent",
                         "rating": r["rating"],
                         "date": r["date"],
-                        "reviewText": r["text"],
+                        "reviewText": r.get("text") or "",
                         "categories": r["categories"]
                     } for r in recent_reviews[:5]
                 ],
