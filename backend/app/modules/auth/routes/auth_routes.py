@@ -11,10 +11,10 @@ import os
 from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
-from app.modules.auth.services.auth_service import login_user
+from app.modules.auth.services.auth_service import login_user, verify_login_2fa
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
-from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, EmailModel, ResetModel
+from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
 from app.core.security import decode_access_token
 from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
@@ -97,6 +97,18 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
     return {
         "message": "Login successful",
         **result
+    }
+
+@router.post("/login/2fa")
+def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+    result = verify_login_2fa(
+        db=db,
+        email=payload.email.lower(),
+        code=payload.code,
+    )
+    return {
+        "message": "Login successful",
+        **result,
     }
 
 from pydantic import BaseModel
