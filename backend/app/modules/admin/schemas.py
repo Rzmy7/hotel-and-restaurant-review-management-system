@@ -314,6 +314,54 @@ class FeatureFlagUpdatePayload(BaseModel):
     limit: int | None = Field(default=None, ge=1, le=100)
 
 
+# ── Review processing schemas ──────────────────────────────────────
+
+
+class ReviewProcessingStatsResponse(BaseModel):
+    activeJobs: int = 0
+    activeJobsChange: int = 0
+    completedToday: int = 0
+    successRate: float = 0.0
+    failedJobs: int = 0
+    reviewsProcessed: int = 0
+    reviewsChange: float = 0.0
+    pendingReviews: int = 0
+
+
+class ReviewProcessingJobResponse(BaseModel):
+    id: str
+    jobId: str
+    platform: str
+    platformIcon: str
+    platformColor: str
+    organization: str
+    status: str
+    startTime: str
+    duration: str
+    reviewsProcessed: int | None = None
+    totalReviews: int | None = None
+
+
+class GeminiApiKeyConfigResponse(BaseModel):
+    apiKey: str = ""
+    isConfigured: bool = False
+    lastTestedAt: str | None = None
+    lastTestResult: str | None = None
+
+
+class GeminiApiKeySavePayload(BaseModel):
+    apiKey: str = Field(..., min_length=1, max_length=512)
+
+
+class GeminiApiKeyTestPayload(BaseModel):
+    apiKey: str = Field(..., min_length=1, max_length=512)
+
+
+class GeminiApiKeyTestResponse(BaseModel):
+    success: bool
+    message: str
+
+
 # ── Broadcasting schemas ────────────────────────────────────────────
 
 

@@ -11,7 +11,7 @@ from google import genai
 from google.genai import errors
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-from app.core.config import GENAI_KEY
+import app.core.config as app_config
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,45 @@ Batch Input Data:
 {batch_json}
 """
 
+def _resolve_api_key() -> str | None:
+    """
+    Resolve the Gemini API key with priority:
+      1. DB-stored key from admin panel (dbo.system_settings)
+      2. In-memory config (updated by admin save endpoint)
+      3. GENAI_KEY env var (loaded at startup)
+    """
+    # Try DB-stored key first (survives restarts)
+    try:
+        import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.system_settings_service import (
+            ensure_system_settings_table,
+            get_setting,
+        )
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            db_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
+            if db_key:
+                # Also sync in-memory so other parts of the app see it
+                app_config.GENAI_KEY = db_key
+                return db_key
+    except Exception as e:
+        logger.debug(f"Could not read Gemini key from DB, falling back to config: {e}")
+
+    # Fall back to in-memory / env var
+    return app_config.GENAI_KEY
+
+
 def _get_client():
-    return genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
+    api_key = _resolve_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "No Gemini API key configured. "
+            "Set it via Admin Panel → Review Processing → Gemini API Key, "
+            "or set the GENAI_KEY environment variable."
+        )
+    return genai.Client(api_key=api_key, http_options={"api_version": "v1"})
 
 
 @retry(

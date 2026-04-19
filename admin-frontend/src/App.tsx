@@ -12,6 +12,7 @@ import { Monitoring } from './pages/Monitoring';
 import { SubscriptionPlans } from './pages/SubscriptionPlans';
 import { Broadcasting } from './pages/Broadcasting';
 import { ReplyGeneration } from './pages/ReplyGeneration';
+import { ReviewProcessing } from './pages/ReviewProcessing';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="subscription-plans" element={<SubscriptionPlans />} />
           <Route path="broadcasting" element={<Broadcasting />} />
           <Route path="reply-generation" element={<ReplyGeneration />} />
+          <Route path="review-processing" element={<ReviewProcessing />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes> 

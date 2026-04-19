@@ -17,6 +17,8 @@ from app.core.db_utils import (
 from app.modules.admin.schemas import (
     ScrapingPlatformCreatePayload,
     ScrapingPlatformUpdatePayload,
+    GeminiApiKeySavePayload,
+    GeminiApiKeyTestPayload,
 )
 from app.modules.admin.services.monitoring_service import (
     create_platform_in_db,
@@ -259,3 +261,256 @@ def cancel_scraping_job(job_id: str) -> dict[str, str]:
     """Cancels a running or queued scraping job by its internal job UUID."""
     result = scraping_backend_post(f"/api/system/jobs/cancel/{job_id}")
     return result
+
+
+# ── Review processing endpoints ─────────────────────────────────────
+
+
+@router.get("/review-processing/stats")
+def review_processing_stats() -> dict:
+    """Returns review-processing pipeline statistics from dbo.processed_review."""
+    from app.modules.reviews.repository import get_processing_metrics
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            metrics = get_processing_metrics(cursor)
+
+            total = metrics.get("total", 0)
+            processed = metrics.get("processed", 0)
+            failed = metrics.get("failed", 0)
+            pending = metrics.get("pending", 0)
+
+            # Completed today: reviews with last_attempt = today and status = 'processed'
+            completed_today = 0
+            try:
+                row = execute_query(
+                    cursor,
+                    "SELECT COUNT(*) FROM dbo.processed_review "
+                    "WHERE status = 'processed' AND CAST(last_attempt AS DATE) = CAST(GETDATE() AS DATE)",
+                ).fetchone()
+                completed_today = row[0] if row else 0
+            except Exception:
+                pass
+
+            success_rate = 0.0
+            terminal = processed + failed
+            if terminal > 0:
+                success_rate = round((processed / terminal) * 100, 1)
+
+            return {
+                "activeJobs": pending,
+                "activeJobsChange": 0,
+                "completedToday": completed_today,
+                "successRate": success_rate,
+                "failedJobs": failed,
+                "reviewsProcessed": processed,
+                "reviewsChange": 0,
+                "pendingReviews": pending,
+            }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch review processing stats: {exc}") from exc
+
+
+@router.get("/review-processing/jobs")
+def review_processing_jobs() -> list[dict]:
+    """Returns recent review processing activity grouped by source as job-like rows."""
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+
+            sql = """
+                SELECT TOP 50
+                    r.source_id,
+                    p.platform_name,
+                    o.name AS organization_name,
+                    r.status,
+                    COUNT(*) AS review_count,
+                    MIN(r.last_attempt) AS earliest_attempt,
+                    MAX(r.last_attempt) AS latest_attempt
+                FROM dbo.processed_review r
+                LEFT JOIN dbo.source s ON r.source_id = s.source_id
+                LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
+                LEFT JOIN dbo.organization o ON s.organization_id = o.organization_id
+                GROUP BY r.source_id, p.platform_name, o.name, r.status
+                ORDER BY MAX(r.last_attempt) DESC
+            """
+            rows = execute_query(cursor, sql).fetchall()
+
+            jobs = []
+            for idx, row in enumerate(rows, start=1):
+                source_id = str(row[0]) if row[0] else str(idx)
+                platform_name = str(row[1] or "Unknown")
+                org_name = str(row[2] or "Unknown")
+                status_raw = str(row[3] or "pending").lower()
+                review_count = int(row[4] or 0)
+                earliest = row[5]
+                latest = row[6]
+
+                icon, color = platform_visuals(platform_name)
+                short_id = source_id[-6:].upper() if len(source_id) >= 6 else str(idx)
+
+                # Map DB status to UI status
+                if status_raw == "processed":
+                    ui_status = "Completed"
+                elif status_raw == "failed":
+                    ui_status = "Failed"
+                elif status_raw == "pending":
+                    ui_status = "Running"
+                else:
+                    ui_status = "Queued"
+
+                # Format start time
+                start_time = "--"
+                if earliest:
+                    try:
+                        dt = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
+                        start_time = dt.strftime("%b %d, %H:%M")
+                    except Exception:
+                        start_time = str(earliest)[:16]
+
+                # Format duration
+                duration = "--"
+                if earliest and latest:
+                    try:
+                        dt_start = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
+                        dt_end = latest if isinstance(latest, datetime) else datetime.fromisoformat(str(latest))
+                        delta = dt_end - dt_start
+                        total_secs = int(delta.total_seconds())
+                        if total_secs < 60:
+                            duration = f"{total_secs}s"
+                        elif total_secs < 3600:
+                            duration = f"{total_secs // 60}m {total_secs % 60}s"
+                        else:
+                            duration = f"{total_secs // 3600}h {(total_secs % 3600) // 60}m"
+                    except Exception:
+                        duration = "--"
+
+                jobs.append({
+                    "id": f"{source_id}-{status_raw}",
+                    "jobId": f"#RPJ-{short_id}",
+                    "platform": platform_name.title(),
+                    "platformIcon": icon,
+                    "platformColor": color,
+                    "organization": org_name,
+                    "status": ui_status,
+                    "startTime": start_time,
+                    "duration": duration,
+                    "reviewsProcessed": review_count,
+                    "totalReviews": None,
+                })
+
+            return jobs
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
+
+
+@router.get("/review-processing/gemini-config")
+def get_gemini_config() -> dict:
+    """Returns current Gemini API key configuration status."""
+    from app.modules.admin.services.system_settings_service import (
+        ensure_system_settings_table,
+        get_setting,
+    )
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+
+            raw_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
+            last_tested_at = get_setting(cursor, "review_processing_gemini_last_tested_at")
+            last_test_result = get_setting(cursor, "review_processing_gemini_last_test_result")
+
+            # Mask the key for display
+            masked_key = ""
+            if raw_key:
+                if len(raw_key) > 8:
+                    masked_key = raw_key[:4] + "•" * (len(raw_key) - 8) + raw_key[-4:]
+                else:
+                    masked_key = "•" * len(raw_key)
+
+            return {
+                "apiKey": masked_key,
+                "isConfigured": bool(raw_key),
+                "lastTestedAt": last_tested_at,
+                "lastTestResult": last_test_result,
+            }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load Gemini config: {exc}") from exc
+
+
+@router.post("/review-processing/gemini-config")
+def save_gemini_config(payload: GeminiApiKeySavePayload) -> dict:
+    """Saves Gemini API key for review processing and updates in-memory config."""
+    from app.modules.admin.services.system_settings_service import (
+        ensure_system_settings_table,
+        set_setting,
+    )
+    import app.core.config as app_config
+
+    api_key = payload.apiKey.strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required.")
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            set_setting(cursor, "review_processing_gemini_api_key", api_key)
+            conn.commit()
+
+        # Update in-memory config so the processor picks it up immediately
+        app_config.GENAI_KEY = api_key
+
+        return {"status": "saved", "message": "Gemini API key saved successfully."}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save Gemini API key: {exc}") from exc
+
+
+@router.post("/review-processing/gemini-config/test")
+def test_gemini_config(payload: GeminiApiKeyTestPayload) -> dict:
+    """Tests a Gemini API key by making a simple generation request."""
+    from google import genai
+    from app.modules.admin.services.system_settings_service import (
+        ensure_system_settings_table,
+        set_setting,
+    )
+
+    api_key = payload.apiKey.strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required.")
+
+    success = False
+    message = ""
+
+    try:
+        client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents="Reply with exactly: ok"
+        )
+        text = (getattr(response, "text", "") or "").strip()
+        if text:
+            success = True
+            message = "API key is valid and Gemini model is reachable."
+        else:
+            message = "API key accepted but model returned an empty response."
+    except Exception as exc:
+        message = f"API key test failed: {exc}"
+
+    # Persist test result
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            set_setting(cursor, "review_processing_gemini_last_tested_at", datetime.now().isoformat())
+            set_setting(cursor, "review_processing_gemini_last_test_result", "success" if success else "error")
+            conn.commit()
+    except Exception:
+        pass  # Non-critical — don't fail the test response
+
+    return {"success": success, "message": message}
+
