@@ -111,7 +111,7 @@ def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
             CAST(t.tenant_id AS NVARCHAR(64)) AS tenant_id,
             p.name AS plan_name
         FROM dbo.tenant t
-        INNER JOIN dbo.plans p ON p.plan_id = t.[plan]
+        INNER JOIN dbo.plans p ON p.plan_id = TRY_CAST(t.[plan] AS INT)
         WHERE t.[plan] IS NOT NULL
         """,
     ).fetchall()
