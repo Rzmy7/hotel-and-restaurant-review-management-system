@@ -9,6 +9,10 @@ class LoginModel(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1, max_length=72)
 
+class LoginTwoFactorModel(BaseModel):
+    email: EmailStr
+    code: str
+
 class EmailModel(BaseModel):
     email: EmailStr
 

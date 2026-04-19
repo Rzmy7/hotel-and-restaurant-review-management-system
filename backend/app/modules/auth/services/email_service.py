@@ -35,3 +35,30 @@ def send_reset_email(to_email: str, link: str) -> None:
         server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
     finally:
         server.quit()
+
+def send_2fa_email(to_email: str, code: str) -> None:
+    """Send a 2-factor authentication code email to the given address."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print("[warn] SMTP is not configured, fake-sending 2FA code:", code)
+        return
+
+    body = (
+        "Your Verification Code is:\n\n"
+        f"{code}\n\n"
+        "Please use this to complete your login or setting up 2FA."
+    )
+
+    msg = MIMEText(body)
+    msg["Subject"] = "Hotel System 2FA Code"
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = to_email
+
+    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+    try:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
+    finally:
+        server.quit()
