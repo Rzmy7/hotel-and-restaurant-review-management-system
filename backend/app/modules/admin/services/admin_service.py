@@ -285,35 +285,6 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
 
         return organizations
 
-    if table_exists(cursor, "reviews"):
-        rows = execute_query(
-            cursor,
-            """
-            SELECT
-                NULLIF(LTRIM(RTRIM(room_name)), '') AS orgName,
-                COUNT(*) AS usersCount,
-                MAX(CAST(posted_date AS datetime)) AS lastSeen
-            FROM dbo.reviews
-            WHERE NULLIF(LTRIM(RTRIM(room_name)), '') IS NOT NULL
-            GROUP BY NULLIF(LTRIM(RTRIM(room_name)), '')
-            ORDER BY COUNT(*) DESC
-            """,
-        ).fetchall()
-
-        organizations = []
-        for index, row in enumerate(rows, start=1):
-            name = str(row[0])
-            organizations.append(
-                OrganizationSummary(
-                    id=str(index),
-                    name=name,
-                    owner="",
-                    usersCount=int(row[1]) if row[1] is not None else 0,
-                )
-            )
-
-        return organizations
-
     if table_exists(cursor, "ProcessedReviews"):
         rows = execute_query(
             cursor,

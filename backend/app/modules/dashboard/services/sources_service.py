@@ -26,7 +26,7 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
     curr_start = (now - timedelta(days=period_days)).date()
     prev_start = (now - timedelta(days=period_days * 2)).date()
 
-    # Query current period stats per platform
+    # Query all-time stats per platform — LEFT JOIN so sources with no reviews still appear
     cursor.execute("""
         SELECT 
             p.platform_name,
@@ -36,12 +36,12 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
             SUM(CASE WHEN r.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neu_count,
             SUM(CASE WHEN r.sentiment = 'Negative' THEN 1 ELSE 0 END) as neg_count,
             s.source_id
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
+        FROM dbo.source s
         JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
+        LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND s.source_status = 'active'
         GROUP BY s.source_id, p.platform_name
-    """, org_id, curr_start)
+    """, org_id)
     
     curr_rows = cursor.fetchall()
 
@@ -65,9 +65,12 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
         platform = row.platform_name
         ui = PLATFORM_UI_MAPPING.get(platform, PLATFORM_UI_MAPPING["Default"])
         
+        review_count = row.review_count or 0
+        avg_rating = float(row.avg_rating) if row.avg_rating is not None else 0.0
+
         # Trend calculation based on rating
-        prev_rating = prev_rows.get(row.source_id, row.avg_rating) # Default to current if no prev data
-        trend_diff = float(row.avg_rating or 0) - float(prev_rating or 0)
+        prev_rating = prev_rows.get(row.source_id, avg_rating)  # Default to current if no prev data
+        trend_diff = avg_rating - float(prev_rating or 0)
         
         if trend_diff > 0.05:
             trend_type = "up"
@@ -80,27 +83,30 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
             trend_str = "0"
             
         # Calculate sentiment percentages
-        r_total = float(row.review_count) if row.review_count > 0 else 1.0
-        pos_pct = round((row.pos_count / r_total) * 100)
-        neu_pct = round((row.neu_count / r_total) * 100)
-        neg_pct = round((row.neg_count / r_total) * 100)
+        pos_count = row.pos_count or 0
+        neu_count = row.neu_count or 0
+        neg_count = row.neg_count or 0
+        r_total = float(review_count) if review_count > 0 else 1.0
+        pos_pct = round((pos_count / r_total) * 100)
+        neu_pct = round((neu_count / r_total) * 100)
+        neg_pct = round((neg_count / r_total) * 100)
         
         # Calculate overall market share percentage
-        pct = round((row.review_count / total_reviews) * 100) if total_reviews > 0 else 0
+        pct = round((review_count / total_reviews) * 100) if total_reviews > 0 else 0
 
         # Construct front-end object
         results.append({
             "name": platform,
-            "rating": round(float(row.avg_rating or 0), 1),
+            "rating": round(avg_rating, 1),
             "trend": trend_str,
             "trendType": trend_type,
-            "reviews": row.review_count,
+            "reviews": review_count,
             "pct": pct,
             "color": ui["color"],
             "bgColor": ui["bgColor"],
             "borderColor": ui["borderColor"],
             "sentiment": {"pos": pos_pct, "neu": neu_pct, "neg": neg_pct},
-            "lastSync": "Just now"
+            "lastSync": "Just now" if review_count > 0 else "No reviews"
         })
 
     # Sort by review volume descending

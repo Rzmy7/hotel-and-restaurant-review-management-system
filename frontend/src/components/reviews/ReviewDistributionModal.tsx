@@ -1,17 +1,70 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
-import { X, Star, BarChart2, Globe, ChevronDown, Check } from 'lucide-react';
-import { useReviewsStore } from '../../stores/useReviewsStore';
+import { X, Star, BarChart2, Globe, ChevronDown, Check, Loader2 } from 'lucide-react';
+import { apiClient } from '../../api/client';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 
+/* ── Types for the backend response ─────────────────────────────── */
+interface DistributionEntry {
+    rating: number;
+    count: number;
+    percentage: number;
+}
+
+interface SourceDistribution {
+    name: string;
+    total: number;
+    average: number;
+    distribution: DistributionEntry[];
+}
+
+interface FullDistributionResponse {
+    global: {
+        total: number;
+        average: number;
+        distribution: DistributionEntry[];
+    };
+    sources: SourceDistribution[];
+}
+
+/* ── Component ──────────────────────────────────────────────────── */
 interface ReviewDistributionModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
 export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = ({ isOpen, onClose }) => {
-    const reviews = useReviewsStore(state => state.reviews);
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
+    const [data, setData] = useState<FullDistributionResponse | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [selectedSource, setSelectedSource] = useState<string>('All Sources');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Fetch distribution data from backend when modal opens
+    useEffect(() => {
+        if (!isOpen || !currentOrg?.id) return;
+
+        let cancelled = false;
+        setLoading(true);
+        setError(null);
+
+        apiClient.get<FullDistributionResponse>('/reviews/meta/distribution', {
+            organization_id: currentOrg.id
+        })
+            .then(result => {
+                if (!cancelled) setData(result);
+            })
+            .catch(err => {
+                if (!cancelled) setError('Failed to load distribution data.');
+                console.error('Distribution fetch error:', err);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [isOpen, currentOrg?.id]);
 
     // Close on Escape key
     useEffect(() => {
@@ -39,61 +92,7 @@ export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = (
         };
     }, [dropdownOpen]);
 
-    // Calculate global and source distributions dynamically
-    const { globalStats, sourceStatsMap } = useMemo(() => {
-        const _globalStats = {
-            total: 0,
-            sumAvg: 0,
-            distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as Record<number, number>
-        };
-
-        const _sourceStatsMap = new Map<string, {
-            total: number;
-            sumAvg: number;
-            distribution: Record<number, number>;
-        }>();
-
-        if (!reviews || reviews.length === 0) {
-            return { globalStats: _globalStats, sourceStatsMap: _sourceStatsMap };
-        }
-
-        for (let i = 0; i < reviews.length; i++) {
-            const review = reviews[i];
-            const src = review.source || 'Other';
-            const rating = typeof review.rating === 'number' && review.rating >= 1 && review.rating <= 5
-                ? review.rating
-                : 0;
-
-            // Global stats
-            _globalStats.total += 1;
-            if (rating > 0) {
-                _globalStats.sumAvg += rating;
-                _globalStats.distribution[rating] += 1;
-            }
-
-            // Source stats
-            if (!_sourceStatsMap.has(src)) {
-                _sourceStatsMap.set(src, {
-                    total: 0,
-                    sumAvg: 0,
-                    distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
-                });
-            }
-
-            const stat = _sourceStatsMap.get(src)!;
-            stat.total += 1;
-            if (rating > 0) {
-                stat.sumAvg += rating;
-                stat.distribution[rating] += 1;
-            }
-        }
-
-        return { globalStats: _globalStats, sourceStatsMap: _sourceStatsMap };
-    }, [reviews]);
-
-    const availableSources = Array.from(sourceStatsMap.keys()).sort();
-
-    // Reset selected source to 'All Sources' when data loads or gets empty
+    // Reset state when modal closes
     useEffect(() => {
         if (!isOpen) {
             setSelectedSource('All Sources');
@@ -101,35 +100,38 @@ export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = (
         }
     }, [isOpen]);
 
-    // Helper to format stats to an array
-    const formatStats = (
-        data: { total: number; sumAvg: number; distribution: Record<number, number> },
-        isGlobal: boolean = false
-    ) => {
-        return {
-            total: data.total,
-            average: Number((data.sumAvg / Math.max(1, data.total)).toFixed(1)),
-            distribution: [5, 4, 3, 2, 1].map(r => {
-                const count = data.distribution[r];
-                const globalCount = globalStats.distribution[r];
-                const percentage = Math.round((count / Math.max(1, data.total)) * 100);
-                const globalPercentage = isGlobal ? null : Math.round((count / Math.max(1, globalCount)) * 100);
+    // Derive active data from the selected source
+    const activeData = useMemo(() => {
+        if (!data) return null;
 
-                return {
-                    rating: r,
-                    count,
-                    percentage,
-                    globalPercentage
-                };
-            })
-        };
-    };
+        if (selectedSource === 'All Sources') {
+            return data.global;
+        }
 
-    const activeData = selectedSource === 'All Sources'
-        ? formatStats(globalStats, true)
-        : sourceStatsMap.has(selectedSource)
-            ? formatStats(sourceStatsMap.get(selectedSource)!)
-            : null;
+        const sourceData = data.sources.find(s => s.name === selectedSource);
+        return sourceData ?? null;
+    }, [data, selectedSource]);
+
+    // Build distribution rows with global comparison percentages
+    const distributionRows = useMemo(() => {
+        if (!activeData || !data) return [];
+
+        const isGlobal = selectedSource === 'All Sources';
+        const globalDist = data.global.distribution;
+
+        return activeData.distribution.map(dist => {
+            const globalEntry = globalDist.find(g => g.rating === dist.rating);
+            const globalCount = globalEntry?.count || 0;
+            const globalPercentage = isGlobal ? null : (globalCount > 0 ? Math.round((dist.count / Math.max(1, globalCount)) * 100) : 0);
+
+            return {
+                ...dist,
+                globalPercentage
+            };
+        });
+    }, [activeData, data, selectedSource]);
+
+    const availableSources = data?.sources.map(s => s.name).sort() || [];
 
     if (!isOpen) return null;
 
@@ -162,7 +164,7 @@ export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = (
                     </div>
 
                     {/* Source Selection Dropdown Section */}
-                    {globalStats.total > 0 && (
+                    {activeData && activeData.total > 0 && (
                         <div className="px-6 pb-4 flex flex-col sm:flex-row sm:items-center gap-3 border-t border-gray-50 dark:border-slate-700 pt-4 bg-gray-50/20 dark:bg-slate-800/50">
                             <label className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest shrink-0">
                                 Source
@@ -216,7 +218,20 @@ export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = (
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50/40 dark:bg-slate-800/40">
-                    {!activeData ? (
+                    {loading ? (
+                        <div className="text-center py-10 flex flex-col items-center justify-center">
+                            <Loader2 size={28} className="text-[#5988EF] animate-spin mb-3" />
+                            <p className="text-gray-500 dark:text-slate-400 text-[12px] font-medium">Loading distribution data…</p>
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-10 flex flex-col items-center justify-center">
+                            <div className="w-12 h-12 bg-red-50 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-3">
+                                <BarChart2 size={24} className="text-red-400" />
+                            </div>
+                            <h3 className="text-[14px] font-bold text-gray-700 dark:text-gray-300 mb-1">Error</h3>
+                            <p className="text-gray-500 dark:text-slate-400 text-[12px] font-medium">{error}</p>
+                        </div>
+                    ) : !activeData ? (
                         <div className="text-center py-10 flex flex-col items-center justify-center">
                             <div className="w-12 h-12 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-3">
                                 <BarChart2 size={24} className="text-gray-300" />
@@ -247,7 +262,7 @@ export const ReviewDistributionModal: React.FC<ReviewDistributionModalProps> = (
 
                             {/* Distribution Bars */}
                             <div className="flex flex-col gap-4">
-                                {activeData.distribution.map(dist => (
+                                {distributionRows.map(dist => (
                                     <div key={dist.rating} className="flex flex-col gap-1.5 w-full group cursor-default">
                                         <div className="flex items-center justify-between w-full">
                                             <div className="flex items-center gap-1.5 min-w-[36px]">

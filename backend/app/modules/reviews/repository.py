@@ -424,3 +424,77 @@ def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[di
 
     columns = [column[0] for column in cursor.description]
     return dict(zip(columns, row))
+
+
+def get_full_distribution(organization_id: str) -> Dict:
+    """
+    Returns the full rating distribution (1-5 stars) with per-source breakdowns.
+    Used by the "See Details" distribution modal.
+    """
+    conn = pyodbc.connect(get_connection_string())
+    cursor = conn.cursor()
+
+    # Get distribution grouped by source platform and rounded rating
+    cursor.execute("""
+        SELECT 
+            p.platform_name AS source_name,
+            CAST(ROUND(r.rating, 0) AS INT) AS rounded_rating,
+            COUNT(*) AS cnt
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        WHERE s.organization_id = ? AND r.rating IS NOT NULL AND r.status = 'processed'
+        GROUP BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT)
+        ORDER BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT) DESC
+    """, organization_id)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Build per-source and global stats
+    source_map: Dict[str, Dict[int, int]] = {}
+    global_dist: Dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+    for row in rows:
+        source_name = row.source_name or "Unknown"
+        bucket = max(1, min(5, row.rounded_rating))
+        count = row.cnt
+
+        if source_name not in source_map:
+            source_map[source_name] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        
+        source_map[source_name][bucket] += count
+        global_dist[bucket] += count
+
+    global_total = sum(global_dist.values())
+
+    def build_distribution(dist: Dict[int, int], total: int):
+        return [
+            {
+                "rating": r,
+                "count": dist[r],
+                "percentage": round((dist[r] / total) * 100) if total > 0 else 0
+            }
+            for r in [5, 4, 3, 2, 1]
+        ]
+
+    sources = []
+    for name, dist in sorted(source_map.items()):
+        total = sum(dist.values())
+        avg = sum(r * c for r, c in dist.items()) / total if total > 0 else 0
+        sources.append({
+            "name": name,
+            "total": total,
+            "average": round(avg, 1),
+            "distribution": build_distribution(dist, total)
+        })
+
+    return {
+        "global": {
+            "total": global_total,
+            "average": round(sum(r * c for r, c in global_dist.items()) / global_total, 1) if global_total > 0 else 0,
+            "distribution": build_distribution(global_dist, global_total)
+        },
+        "sources": sources
+    }
+

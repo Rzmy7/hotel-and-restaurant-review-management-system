@@ -28,7 +28,7 @@ from app.modules.reviews.services.review_service import (
     ingest_from_scraper,
 )
 from app.modules.reviews.services.processor import process_single_review
-from app.modules.reviews.repository import get_review_options, get_review_stats
+from app.modules.reviews.repository import get_review_options, get_review_stats, get_full_distribution
 from app.modules.source.services.source_service import get_source_by_id
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
 
@@ -101,6 +101,16 @@ def get_stats(organization_id: uuid.UUID = Query(...)):
         raise HTTPException(
             status_code=500, detail="Failed to fetch review statistics."
         )
+
+
+@router.get("/meta/distribution")
+def get_distribution_details(organization_id: uuid.UUID = Query(...)):
+    """Fetch the full rating distribution broken down by source platform."""
+    try:
+        return get_full_distribution(str(organization_id))
+    except Exception as e:
+        logger.error(f"Failed to fetch distribution: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch distribution data.")
 
 
 @router.get("/{organization_id}", response_model=List[ReviewModel], deprecated=True)

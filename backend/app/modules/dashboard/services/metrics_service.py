@@ -84,13 +84,17 @@ def get_active_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Opt
     return cursor.fetchone()[0] or 0
 
 def get_rating_distribution(cursor: pyodbc.Cursor, org_id: str) -> List[Dict[str, Any]]:
-    """Calculates the all-time rating distribution (1-5 stars) with counts and percentages."""
+    """Calculates the all-time rating distribution (1-5 stars) with counts and percentages.
+    
+    Ratings are rounded to the nearest integer before grouping, since
+    platforms like Booking.com / Agoda store decimal ratings (e.g. 3.75).
+    """
     cursor.execute("""
-        SELECT r.rating, COUNT(*) as cnt 
+        SELECT ROUND(r.rating, 0) AS rounded_rating, COUNT(*) as cnt 
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? 
-        GROUP BY r.rating ORDER BY r.rating DESC
+        WHERE s.organization_id = ? AND r.rating IS NOT NULL
+        GROUP BY ROUND(r.rating, 0) ORDER BY ROUND(r.rating, 0) DESC
     """, org_id)
     
     rows = cursor.fetchall()
@@ -100,9 +104,15 @@ def get_rating_distribution(cursor: pyodbc.Cursor, org_id: str) -> List[Dict[str
     dist_map = {i: {"count": 0, "percentage": 0} for i in range(1, 6)}
     
     for row in rows:
-        if row.rating in dist_map:
-            dist_map[row.rating]["count"] = row.cnt
-            dist_map[row.rating]["percentage"] = round((row.cnt / total) * 100) if total > 0 else 0
+        bucket = int(row.rounded_rating)
+        # Clamp to 1-5 range
+        bucket = max(1, min(5, bucket))
+        if bucket in dist_map:
+            dist_map[bucket]["count"] += row.cnt
+            
+    # Calculate percentages after all rows have been accumulated
+    for bucket in dist_map:
+        dist_map[bucket]["percentage"] = round((dist_map[bucket]["count"] / total) * 100) if total > 0 else 0
             
     return [{"rating": r, "count": data["count"], "percentage": data["percentage"]} 
             for r, data in sorted(dist_map.items(), reverse=True)]

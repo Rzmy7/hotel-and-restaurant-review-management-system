@@ -197,14 +197,6 @@ def remove_all_reviews_from_db():
         cursor = conn.cursor()
 
         # Delete all records from ProcessedReviews
-        cursor.execute("DELETE FROM dbo.reviews")
-        conn.commit()
-
-        # Delete all records from ReviewPhotos
-        cursor.execute("DELETE FROM dbo.review_photos")
-        conn.commit()
-        
-        # Delete all records from RawReviews
         cursor.execute("DELETE FROM dbo.ProcessedReviews")
         conn.commit()
 
