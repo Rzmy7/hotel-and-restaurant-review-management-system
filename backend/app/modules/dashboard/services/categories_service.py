@@ -68,10 +68,12 @@ def _aggregate_all_time_totals(cursor, org_id: str):
     return total
 
 def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
-    """Return (cat_total, cat_score_sum) dicts for a time window."""
+    """Return (cat_total, cat_positive_count) dicts for a time window."""
     cursor.execute(
         """
-        SELECT r.categories, ISNULL(r.sentiment_score, 3.0) as sentiment_score
+        SELECT r.categories,
+               ISNULL(r.sentiment_score, 3.0) as sentiment_score,
+               ISNULL(r.sentiment, 'Neutral')  as sentiment
         FROM   dbo.processed_review r
         JOIN   dbo.source s ON r.source_id = s.source_id
         WHERE  s.organization_id = ?
@@ -82,52 +84,110 @@ def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
     )
     rows = cursor.fetchall()
     total: dict = {}
+    positive_counts: dict = {}
     score_sums: dict = {}
     for row in rows:
         cats = _parse_categories(row.categories)
         s_score = float(row.sentiment_score)
+        sentiment = row.sentiment
         for cat in cats:
             key = cat.strip()
             if not key:
                 continue
             total[key] = total.get(key, 0) + 1
             score_sums[key] = score_sums.get(key, 0.0) + s_score
-    return total, score_sums
+            if sentiment == "Positive":
+                positive_counts[key] = positive_counts.get(key, 0) + 1
+    return total, positive_counts, score_sums
 
 
-def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list:
+def _aggregate_all_time(cursor, org_id: str):
+    """Return per-category totals, positive counts, and score sums for ALL reviews."""
+    cursor.execute(
+        """
+        SELECT r.categories,
+               ISNULL(r.sentiment_score, 3.0) as sentiment_score,
+               ISNULL(r.sentiment, 'Neutral')  as sentiment
+        FROM   dbo.processed_review r
+        JOIN   dbo.source s ON r.source_id = s.source_id
+        WHERE  s.organization_id = ?
+        """,
+        org_id,
+    )
+    rows = cursor.fetchall()
+    total: dict = {}
+    positive_counts: dict = {}
+    score_sums: dict = {}
+    for row in rows:
+        cats = _parse_categories(row.categories)
+        s_score = float(row.sentiment_score)
+        sentiment = row.sentiment
+        for cat in cats:
+            key = cat.strip()
+            if not key:
+                continue
+            total[key] = total.get(key, 0) + 1
+            score_sums[key] = score_sums.get(key, 0.0) + s_score
+            if sentiment == "Positive":
+                positive_counts[key] = positive_counts.get(key, 0) + 1
+    return total, positive_counts, score_sums
+
+
+def get_category_performance(cursor, org_id: str, period_days: int = 0) -> list:
     """
-    Returns up to 6 category objects with score, count, icon, trend, trendType.
-    Only categories with >= 5 mentions are included.
+    Returns up to 4 category objects with score, count, icon, trend, trendType.
+    Score = average sentiment_score mapped to 0-100 scale (1.0→0%, 5.0→100%).
+    When period_days=0, shows all-time data with no trend comparison.
+    When period_days>0, shows period-filtered data with trend vs previous period.
     """
-    all_time_totals = _aggregate_all_time_totals(cursor, org_id)
-    cur_total, cur_pos = _aggregate(cursor, org_id, -period_days, 0)
-    prev_total, prev_pos = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
+    is_all_time = period_days <= 0
+
+    if is_all_time:
+        # All-time: use all data, no trend comparison
+        data_total, data_pos, data_scores = _aggregate_all_time(cursor, org_id)
+    else:
+        # Period-filtered: use current period data for scores/counts
+        data_total, data_pos, data_scores = _aggregate(cursor, org_id, -period_days, 0)
+        # Previous period for trend comparison
+        prev_total, prev_pos, prev_scores = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
 
     MIN_MENTIONS = 1
     results = []
 
-    for cat, total in cur_total.items():
+    for cat, total in data_total.items():
         if total < MIN_MENTIONS:
             continue
 
-        # sentiment_score is 1 to 5; multiply average by 20 to get percentage
-        score = round((cur_pos.get(cat, 0) / total) * 20)
-        prev_t = prev_total.get(cat, 0)
-        prev_score = round((prev_pos.get(cat, 0) / prev_t) * 20) if prev_t > 0 else score
-        delta = score - prev_score
+        # Score = average sentiment_score mapped from 1-5 to 0-100
+        avg_score = data_scores.get(cat, 0.0) / total
+        score = round(((avg_score - 1.0) / 4.0) * 100)
+        score = max(0, min(100, score))  # clamp
 
-        if delta == 0:
-            trend_str, trend_type = "0%", "neutral"
-        elif delta > 0:
-            trend_str, trend_type = f"+{delta}%", "up"
+        if is_all_time:
+            trend_str, trend_type = "—", "neutral"
         else:
-            trend_str, trend_type = f"{delta}%", "down"
+            # Trend: compare current period avg vs previous period avg
+            prev_t = prev_total.get(cat, 0)
+
+            if prev_t > 0:
+                prev_avg = prev_scores.get(cat, 0.0) / prev_t
+                prev_pct = round(((prev_avg - 1.0) / 4.0) * 100)
+            else:
+                prev_pct = score  # no previous data → no change
+
+            delta = score - prev_pct
+
+            if delta == 0:
+                trend_str, trend_type = "0%", "neutral"
+            elif delta > 0:
+                trend_str, trend_type = f"+{delta}%", "up"
+            else:
+                trend_str, trend_type = f"{delta}%", "down"
 
         results.append({
             "name": cat,
             "score": score,
-            "count": all_time_totals.get(cat, total),
+            "count": total,
             "icon": _resolve_icon(cat),
             "trend": trend_str,
             "trendType": trend_type,
@@ -135,3 +195,4 @@ def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list
 
     results.sort(key=lambda x: x["count"], reverse=True)
     return results[:4]
+

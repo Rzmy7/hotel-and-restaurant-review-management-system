@@ -56,10 +56,14 @@ class ReviewsService {
     }
 
     /**
-     * Fetch statistics from the server.
+     * Fetch statistics from the server, optionally filtered by date range.
      */
-    async getStats(organizationId: string): Promise<ReviewStats> {
-        return apiClient.get<ReviewStats>('/reviews/meta/stats', { organization_id: organizationId });
+    async getStats(organizationId: string, dateFrom?: string, dateTo?: string): Promise<ReviewStats> {
+        return apiClient.get<ReviewStats>('/reviews/meta/stats', {
+            organization_id: organizationId,
+            dateFrom: dateFrom || undefined,
+            dateTo: dateTo || undefined,
+        });
     }
 
     /**

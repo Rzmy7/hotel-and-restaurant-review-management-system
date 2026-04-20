@@ -32,12 +32,18 @@ def get_usage(org_id: str = None, period: int = 30) -> dict:
     return {"trendData": [{"date": row.review_day.isoformat() if row.review_day else None, "reviews": row.review_count} for row in rows]}
 
 
-def get_recent_reviews(org_id: str = None) -> dict:
+def get_recent_reviews(org_id: str = None, period_days: int = 0) -> dict:
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
     
+    date_filter = ""
+    params = []
+    if period_days > 0:
+        period_start = (datetime.now() - timedelta(days=period_days)).date()
+        date_filter = " AND r.reviewDate >= CAST(? AS DATE)"
+    
     if org_id:
-        cursor.execute("""
+        query = f"""
             SELECT TOP 10 
                 r.id, r.rating, r.reviewerName as userName, r.text as reviewText, 
                 r.positive_text, r.negative_text, r.heading,
@@ -46,11 +52,15 @@ def get_recent_reviews(org_id: str = None) -> dict:
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             JOIN dbo.platform p ON s.platform_id = p.platform_id
-            WHERE s.organization_id = ?
+            WHERE s.organization_id = ?{date_filter}
             ORDER BY r.reviewDate DESC
-        """, org_id)
+        """
+        params = [org_id]
+        if period_days > 0:
+            params.append(period_start)
+        cursor.execute(query, *params)
     else:
-        cursor.execute("""
+        query = f"""
             SELECT TOP 10 
                 r.id, r.rating, r.reviewerName as userName, r.text as reviewText, 
                 r.positive_text, r.negative_text, r.heading,
@@ -59,8 +69,13 @@ def get_recent_reviews(org_id: str = None) -> dict:
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             JOIN dbo.platform p ON s.platform_id = p.platform_id
+            {'WHERE r.reviewDate >= CAST(? AS DATE)' if period_days > 0 else ''}
             ORDER BY r.reviewDate DESC
-        """)
+        """
+        if period_days > 0:
+            cursor.execute(query, period_start)
+        else:
+            cursor.execute(query)
         
     rows = cursor.fetchall()
     conn.close()

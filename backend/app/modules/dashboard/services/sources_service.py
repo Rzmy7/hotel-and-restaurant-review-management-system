@@ -17,46 +17,70 @@ PLATFORM_UI_MAPPING = {
     "Default": {"color": "#64748b", "bgColor": "bg-slate-50/60", "borderColor": "border-slate-100"}
 }
 
-def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_days: int = 30) -> List[Dict[str, Any]]:
+def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_days: int = 0) -> List[Dict[str, Any]]:
     """
     Retrieves performance metrics (volume, rating, sentiment distribution) broken down by review platform.
     Also calculates the trend vs the previous period.
+    period_days=0 means all-time (no date filter, no trend comparison).
     """
+    is_all_time = period_days <= 0
     now = datetime.utcnow()
-    curr_start = (now - timedelta(days=period_days)).date()
-    prev_start = (now - timedelta(days=period_days * 2)).date()
 
-    # Query all-time stats per platform — LEFT JOIN so sources with no reviews still appear
-    cursor.execute("""
-        SELECT 
-            p.platform_name,
-            COUNT(r.id) as review_count,
-            AVG(CAST(r.sentiment_score AS FLOAT)) as avg_rating,
-            SUM(CASE WHEN r.sentiment = 'Positive' THEN 1 ELSE 0 END) as pos_count,
-            SUM(CASE WHEN r.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neu_count,
-            SUM(CASE WHEN r.sentiment = 'Negative' THEN 1 ELSE 0 END) as neg_count,
-            s.source_id
-        FROM dbo.source s
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND s.source_status = 'active'
-        GROUP BY s.source_id, p.platform_name
-    """, org_id)
+    if not is_all_time:
+        curr_start = (now - timedelta(days=period_days)).date()
+        prev_start = (now - timedelta(days=period_days * 2)).date()
+
+    # Query stats per platform — LEFT JOIN so sources with no reviews still appear
+    if is_all_time:
+        cursor.execute("""
+            SELECT 
+                p.platform_name,
+                COUNT(r.id) as review_count,
+                AVG(CAST(r.sentiment_score AS FLOAT)) as avg_rating,
+                SUM(CASE WHEN r.sentiment = 'Positive' THEN 1 ELSE 0 END) as pos_count,
+                SUM(CASE WHEN r.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neu_count,
+                SUM(CASE WHEN r.sentiment = 'Negative' THEN 1 ELSE 0 END) as neg_count,
+                s.source_id
+            FROM dbo.source s
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND s.source_status = 'active'
+            GROUP BY s.source_id, p.platform_name
+        """, org_id)
+    else:
+        cursor.execute("""
+            SELECT 
+                p.platform_name,
+                COUNT(r.id) as review_count,
+                AVG(CAST(r.sentiment_score AS FLOAT)) as avg_rating,
+                SUM(CASE WHEN r.sentiment = 'Positive' THEN 1 ELSE 0 END) as pos_count,
+                SUM(CASE WHEN r.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neu_count,
+                SUM(CASE WHEN r.sentiment = 'Negative' THEN 1 ELSE 0 END) as neg_count,
+                s.source_id
+            FROM dbo.source s
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
+                AND r.reviewDate >= CAST(? AS DATE)
+            WHERE s.organization_id = ? AND s.source_status = 'active'
+            GROUP BY s.source_id, p.platform_name
+        """, curr_start, org_id)
     
     curr_rows = cursor.fetchall()
 
-    # Query previous period stats for trend calculation
-    cursor.execute("""
-        SELECT 
-            s.source_id,
-            AVG(CAST(r.sentiment_score AS FLOAT)) as prev_avg_rating
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE) AND r.reviewDate < CAST(? AS DATE)
-        GROUP BY s.source_id
-    """, org_id, prev_start, curr_start)
-    
-    prev_rows = {row.source_id: row.prev_avg_rating for row in cursor.fetchall()}
+    # Query previous period stats for trend calculation (only when not all-time)
+    prev_rows = {}
+    if not is_all_time:
+        cursor.execute("""
+            SELECT 
+                s.source_id,
+                AVG(CAST(r.sentiment_score AS FLOAT)) as prev_avg_rating
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE) AND r.reviewDate < CAST(? AS DATE)
+            GROUP BY s.source_id
+        """, org_id, prev_start, curr_start)
+        
+        prev_rows = {row.source_id: row.prev_avg_rating for row in cursor.fetchall()}
 
     total_reviews = sum(row.review_count for row in curr_rows)
 
@@ -69,18 +93,22 @@ def get_source_comparison_metrics(cursor: pyodbc.Cursor, org_id: str, period_day
         avg_rating = float(row.avg_rating) if row.avg_rating is not None else 0.0
 
         # Trend calculation based on rating
-        prev_rating = prev_rows.get(row.source_id, avg_rating)  # Default to current if no prev data
-        trend_diff = avg_rating - float(prev_rating or 0)
-        
-        if trend_diff > 0.05:
-            trend_type = "up"
-            trend_str = f"+{trend_diff:.1f}"
-        elif trend_diff < -0.05:
-            trend_type = "down"
-            trend_str = f"{trend_diff:.1f}"
-        else:
+        if is_all_time:
             trend_type = "neutral"
-            trend_str = "0"
+            trend_str = "—"
+        else:
+            prev_rating = prev_rows.get(row.source_id, avg_rating)  # Default to current if no prev data
+            trend_diff = avg_rating - float(prev_rating or 0)
+            
+            if trend_diff > 0.05:
+                trend_type = "up"
+                trend_str = f"+{trend_diff:.1f}"
+            elif trend_diff < -0.05:
+                trend_type = "down"
+                trend_str = f"{trend_diff:.1f}"
+            else:
+                trend_type = "neutral"
+                trend_str = "0"
             
         # Calculate sentiment percentages
         pos_count = row.pos_count or 0

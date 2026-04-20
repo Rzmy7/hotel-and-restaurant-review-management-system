@@ -6,15 +6,25 @@ from typing import List, Dict, Any
 
 import pyodbc
 
-def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str) -> Dict[str, Any]:
-    """Retrieves all-time sentiment distribution counts and percentages."""
-    cursor.execute("""
-        SELECT r.sentiment, COUNT(*) as cnt 
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? 
-        GROUP BY r.sentiment
-    """, org_id)
+def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: int = 0) -> Dict[str, Any]:
+    """Retrieves sentiment distribution counts and percentages. period_days=0 means all-time."""
+    if period_days > 0:
+        start_date = (datetime.utcnow() - timedelta(days=period_days)).date()
+        cursor.execute("""
+            SELECT r.sentiment, COUNT(*) as cnt 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
+            GROUP BY r.sentiment
+        """, org_id, start_date)
+    else:
+        cursor.execute("""
+            SELECT r.sentiment, COUNT(*) as cnt 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? 
+            GROUP BY r.sentiment
+        """, org_id)
     
     rows = cursor.fetchall()
     total = sum(row.cnt for row in rows)
@@ -42,7 +52,27 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
     Retrieves review volume and sentiment trends.
     Adapts granularity and labeling based on the requested period.
     """
-    if days < 1: days = 7
+    if days <= 0:
+        # All-time: use monthly grouping
+        cursor.execute("""
+            SELECT 
+                FORMAT(MIN(r.reviewDate), 'MMM yyyy') as label,
+                COUNT(*) as volume,
+                AVG(CAST(r.sentiment_score * 20 AS FLOAT)) as sentiment_avg,
+                YEAR(r.reviewDate) * 100 + MONTH(r.reviewDate) as ym
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ?
+            GROUP BY YEAR(r.reviewDate) * 100 + MONTH(r.reviewDate)
+            ORDER BY ym ASC
+        """, org_id)
+        rows = cursor.fetchall()
+        return [{
+            "label": row.label,
+            "volume": row.volume,
+            "sentiment": round(float(row.sentiment_avg or 0))
+        } for row in rows]
+    
     start_date = (datetime.utcnow() - timedelta(days=days)).date()
     
     if days <= 7:
@@ -95,6 +125,33 @@ def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: in
     Retrieves weekly review trends relative to the start of the requested period.
     Example: Week 1, Week 2, etc.
     """
+    if period_days <= 0:
+        # All-time: use monthly grouping
+        cursor.execute("""
+            WITH MonthlyData AS (
+                SELECT 
+                    r.sentiment_score,
+                    YEAR(r.reviewDate) * 100 + MONTH(r.reviewDate) as ym
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE s.organization_id = ?
+            )
+            SELECT 
+                'Month ' + CAST(ROW_NUMBER() OVER (ORDER BY ym) AS VARCHAR) as label,
+                COUNT(*) as volume,
+                AVG(CAST(sentiment_score * 20 AS FLOAT)) as sentiment_avg,
+                ym
+            FROM MonthlyData
+            GROUP BY ym
+            ORDER BY ym ASC
+        """, org_id)
+        rows = cursor.fetchall()
+        return [{
+            "label": row.label,
+            "volume": row.volume,
+            "sentiment": round(float(row.sentiment_avg or 0))
+        } for row in rows]
+    
     start_date = (datetime.utcnow() - timedelta(days=period_days)).date()
     
     cursor.execute("""

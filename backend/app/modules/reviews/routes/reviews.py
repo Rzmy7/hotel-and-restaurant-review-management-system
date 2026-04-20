@@ -92,10 +92,14 @@ def get_options(organization_id: uuid.UUID = Query(...)):
 
 
 @router.get("/meta/stats")
-def get_stats(organization_id: uuid.UUID = Query(...)):
-    """Fetch aggregated review statistics."""
+def get_stats(
+    organization_id: uuid.UUID = Query(...),
+    dateFrom: Optional[str] = Query(None),
+    dateTo: Optional[str] = Query(None),
+):
+    """Fetch aggregated review statistics, optionally filtered by date range."""
     try:
-        return get_review_stats(str(organization_id))
+        return get_review_stats(str(organization_id), date_from=dateFrom, date_to=dateTo)
     except Exception as e:
         logger.error(f"Failed to fetch stats: {e}")
         raise HTTPException(

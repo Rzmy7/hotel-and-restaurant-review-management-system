@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useToast } from '../contexts/ToastContext';
@@ -6,7 +6,8 @@ import DashboardSkeleton from '../components/shared/DashboardSkeleton';
 import { DashboardTemplate } from '../components/dashboard/templates/DashboardTemplate';
 
 const DashboardPage: React.FC = () => {
-  const { data, loading, error } = useDashboardData();
+  const [period, setPeriod] = useState<number>(0); // 0 = All Time (default)
+  const { data, loading, error } = useDashboardData(period);
   useToast();
 
   if (loading) {
@@ -33,7 +34,7 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  return <DashboardTemplate data={data} />;
+  return <DashboardTemplate data={data} period={period} onPeriodChange={setPeriod} />;
 };
 
 export default DashboardPage;

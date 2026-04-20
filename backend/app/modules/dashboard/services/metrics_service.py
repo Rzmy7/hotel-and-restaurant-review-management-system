@@ -83,19 +83,30 @@ def get_active_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Opt
     cursor.execute(sql, params)
     return cursor.fetchone()[0] or 0
 
-def get_rating_distribution(cursor: pyodbc.Cursor, org_id: str) -> List[Dict[str, Any]]:
-    """Calculates the all-time rating distribution (1-5 stars) with counts and percentages.
+def get_rating_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: int = 0) -> List[Dict[str, Any]]:
+    """Calculates rating distribution (1-5 stars) with counts and percentages.
     
+    period_days=0 means all-time. period_days>0 filters to the last N days.
     Ratings are rounded to the nearest integer before grouping, since
     platforms like Booking.com / Agoda store decimal ratings (e.g. 3.75).
     """
-    cursor.execute("""
-        SELECT ROUND(r.rating, 0) AS rounded_rating, COUNT(*) as cnt 
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.rating IS NOT NULL
-        GROUP BY ROUND(r.rating, 0) ORDER BY ROUND(r.rating, 0) DESC
-    """, org_id)
+    if period_days > 0:
+        start_date = (datetime.utcnow() - timedelta(days=period_days)).date()
+        cursor.execute("""
+            SELECT ROUND(r.rating, 0) AS rounded_rating, COUNT(*) as cnt 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.rating IS NOT NULL AND r.reviewDate >= CAST(? AS DATE)
+            GROUP BY ROUND(r.rating, 0) ORDER BY ROUND(r.rating, 0) DESC
+        """, org_id, start_date)
+    else:
+        cursor.execute("""
+            SELECT ROUND(r.rating, 0) AS rounded_rating, COUNT(*) as cnt 
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.rating IS NOT NULL
+            GROUP BY ROUND(r.rating, 0) ORDER BY ROUND(r.rating, 0) DESC
+        """, org_id)
     
     rows = cursor.fetchall()
     total = sum(row.cnt for row in rows)
@@ -153,73 +164,81 @@ def _calculate_trend(current: float, previous: float, is_percentage: bool = Fals
 # 3. Main Dashboard Orchestrator
 # ------------------------------------------------------------------
 
-def get_dashboard_metrics(org_id: str, period: int = 30, cursor: Optional[pyodbc.Cursor] = None) -> Dict[str, Any]:
+def get_dashboard_metrics(org_id: str, period: int = 0, cursor: Optional[pyodbc.Cursor] = None) -> Dict[str, Any]:
     """
     Orchestrates the retrieval of all dashboard metrics for an organization.
-    Ensures production-grade handling of periods and data aggregation.
+    period=0 means "all time" (no date filtering).
+    period>0 means filter to the last N days with trend comparison.
     """
-    if period < 1:
-        period = 30 # Default to 30 if invalid period
-        
     local_conn = None
     if cursor is None:
         local_conn = pyodbc.connect(get_connection_string())
         cursor = local_conn.cursor()
     
     try:
-        # Define dynamic date windows based on the requested period
+        is_all_time = period <= 0
         now = datetime.utcnow()
-        curr_start = now - timedelta(days=period)
-        prev_start = now - timedelta(days=period * 2)
-        prev_end = now - timedelta(days=period + 1)
 
-        # 1. Average Rating
-        all_time_avg = get_avg_rating(cursor, org_id)
-        curr_avg = get_avg_rating(cursor, org_id, start_date=curr_start)
-        prev_avg = get_avg_rating(cursor, org_id, start_date=prev_start, end_date=prev_end)
-        avg_trend = _calculate_trend(curr_avg, prev_avg)
+        if is_all_time:
+            # All-time: no date filtering, no trend comparison
+            avg_val = get_avg_rating(cursor, org_id)
+            reviews_val = get_review_count(cursor, org_id)
+            sources_val = get_active_sources_count(cursor, org_id)
+            neg_val = get_negative_count(cursor, org_id)
+            avg_trend = {"value": "—", "type": "neutral"}
+            review_trend = {"value": "—", "type": "neutral"}
+            source_trend = {"value": "—", "type": "neutral"}
+            neg_trend = {"value": "—", "type": "neutral"}
+        else:
+            # Define dynamic date windows based on the requested period
+            curr_start = now - timedelta(days=period)
+            prev_start = now - timedelta(days=period * 2)
+            prev_end = now - timedelta(days=period + 1)
 
-        # 2. totalReviews
-        all_time_reviews = get_review_count(cursor, org_id)
-        curr_reviews = get_review_count(cursor, org_id, start_date=curr_start)
-        prev_reviews = get_review_count(cursor, org_id, start_date=prev_start, end_date=prev_end)
-        review_trend = _calculate_trend(curr_reviews, prev_reviews, is_percentage=True)
+            # 1. Average Rating
+            avg_val = get_avg_rating(cursor, org_id, start_date=curr_start)
+            prev_avg = get_avg_rating(cursor, org_id, start_date=prev_start, end_date=prev_end)
+            avg_trend = _calculate_trend(avg_val, prev_avg)
 
-        # 3. activeSources
-        all_time_sources = get_active_sources_count(cursor, org_id)
-        prev_sources = get_active_sources_count(cursor, org_id, as_of_date=prev_end)
-        source_trend = _calculate_trend(all_time_sources, prev_sources)
+            # 2. totalReviews
+            reviews_val = get_review_count(cursor, org_id, start_date=curr_start)
+            prev_reviews = get_review_count(cursor, org_id, start_date=prev_start, end_date=prev_end)
+            review_trend = _calculate_trend(reviews_val, prev_reviews, is_percentage=True)
 
-        # 4. negativeReviews
-        all_time_neg = get_negative_count(cursor, org_id)
-        curr_neg = get_negative_count(cursor, org_id, start_date=curr_start)
-        prev_neg = get_negative_count(cursor, org_id, start_date=prev_start, end_date=prev_end)
-        neg_trend = _calculate_trend(curr_neg, prev_neg, is_percentage=True)
+            # 3. activeSources
+            sources_val = get_active_sources_count(cursor, org_id)
+            prev_sources = get_active_sources_count(cursor, org_id, as_of_date=prev_end)
+            source_trend = _calculate_trend(sources_val, prev_sources)
+
+            # 4. negativeReviews
+            neg_val = get_negative_count(cursor, org_id, start_date=curr_start)
+            prev_neg = get_negative_count(cursor, org_id, start_date=prev_start, end_date=prev_end)
+            neg_trend = _calculate_trend(neg_val, prev_neg, is_percentage=True)
 
         # 5. ratingDistribution
-        distribution = get_rating_distribution(cursor, org_id)
+        distribution = get_rating_distribution(cursor, org_id, period_days=period)
 
         return {
             "avgRating": {
-                "value": str(all_time_avg),
+                "value": str(avg_val),
                 "change": avg_trend["value"],
                 "changeType": avg_trend["type"],
                 "colorScheme": "amber",
             },
             "activeSources": {
-                "value": str(all_time_sources),
+                "value": str(sources_val),
                 "change": source_trend["value"],
                 "changeType": source_trend["type"],
                 "colorScheme": "blue",
             },
             "totalReviews": {
-                "value": f"{all_time_reviews:,}", # Formatted with commas
+                "value": f"{reviews_val:,}",
                 "change": review_trend["value"],
                 "changeType": review_trend["type"],
                 "colorScheme": "indigo",
             },
             "negativeReviews": {
-                "value": str(all_time_neg),
+                "value": str(neg_val),
                 "change": neg_trend["value"],
                 "changeType": neg_trend["type"],
                 "colorScheme": "rose",

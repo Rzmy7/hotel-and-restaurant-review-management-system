@@ -17,7 +17,7 @@ import uuid
 router = APIRouter()
 
 @router.get("/organizations/{org_id}/dashboard")
-def get_unified_dashboard(org_id: str, period: int = 30):
+def get_unified_dashboard(org_id: str, period: int = 0):
     """
     Returns a unified dashboard response matching the frontend DashboardResponse interface.
     """
@@ -34,14 +34,14 @@ def get_unified_dashboard(org_id: str, period: int = 30):
         try:
             # Aggregate all atomic data using the same cursor for performance
             metrics = get_dashboard_metrics(org_id, period, cursor=cursor)
-            sentiment_charts = get_sentiment_distribution(cursor, org_id)
+            sentiment_charts = get_sentiment_distribution(cursor, org_id, period_days=period)
             daily_trends = get_daily_review_trends(cursor, org_id, days=period)
             weekly_trends = get_weekly_review_trends(cursor, org_id, period_days=period)
             category_performance = get_category_performance(cursor, org_id, period_days=period)
             source_comparison = get_source_comparison_metrics(cursor, org_id, period_days=period)
 
             # These still use internal connections (can be refactored later)
-            recent_reviews = get_recent_reviews(org_id)["reviews"]
+            recent_reviews = get_recent_reviews(org_id, period_days=period)["reviews"]
             alerts_data = get_alerts(org_id)["alerts"]
 
             return {

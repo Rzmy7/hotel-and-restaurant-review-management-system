@@ -326,12 +326,24 @@ def get_review_options(organization_id: str) -> Dict[str, List[str]]:
     }
 
 
-def get_review_stats(organization_id: str) -> Dict:
-    """Calculate aggregated stats for an organization's reviews."""
+def get_review_stats(organization_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict:
+    """Calculate aggregated stats for an organization's reviews, optionally filtered by date range."""
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
-    sql = """
+    where_clauses = ["s.organization_id = ?", "r.status = 'processed'"]
+    params = [organization_id]
+
+    if date_from:
+        where_clauses.append("r.reviewDate >= ?")
+        params.append(date_from)
+    if date_to:
+        where_clauses.append("r.reviewDate <= ?")
+        params.append(date_to)
+
+    where_sql = " AND ".join(where_clauses)
+
+    sql = f"""
         SELECT
             COUNT(*) as totalReviews,
             AVG(CAST(rating AS FLOAT)) as averageRating,
@@ -339,9 +351,9 @@ def get_review_stats(organization_id: str) -> Dict:
             SUM(CASE WHEN status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.status = 'processed'
+        WHERE {where_sql}
     """
-    cursor.execute(sql, organization_id)
+    cursor.execute(sql, params)
     row = cursor.fetchone()
     
     total = row[0] or 0
