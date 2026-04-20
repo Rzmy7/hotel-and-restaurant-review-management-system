@@ -1,4 +1,4 @@
-"""Reply generation service using configurable providers and embedding context."""
+"""Reply generation service using Google Gemini and embedding context."""
 
 from __future__ import annotations
 
@@ -8,14 +8,9 @@ from typing import Any
 import pyodbc
 import requests
 from google import genai
-try:
-    from anthropic import Anthropic
-except Exception:
-    Anthropic = None
 
 from app.core.db_utils import get_connection_string
 from app.modules.admin.services.system_settings_service import (
-    DEFAULT_REPLY_CLAUDE_MODEL,
     DEFAULT_REPLY_GOOGLE_MODEL,
     DEFAULT_REPLY_SELECTED_MODEL,
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
@@ -29,21 +24,6 @@ from app.modules.admin.services.system_settings_service import (
 from app.modules.reviews.schemas import ReplyGenerationRequest
 
 EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://localhost:8001").rstrip("/")
-CLAUDE_MODEL_ALIASES: dict[str, str] = {
-    "claude-3-5-sonnet-latest": "claude-sonnet-4-6",
-    "claude-3-5-sonnet-20241022": "claude-sonnet-4-6",
-    "claude-3-5-haiku-latest": "claude-haiku-4-5-20251001",
-    "claude-3-5-haiku-20241022": "claude-haiku-4-5-20251001",
-    "claude-3-opus-latest": "claude-opus-4-6",
-    "claude-3-opus-20240229": "claude-opus-4-6",
-}
-
-
-def _infer_provider_from_model(model: str) -> str:
-    normalized = model.strip().lower()
-    if normalized.startswith("claude"):
-        return "claude"
-    return "google"
 
 
 def _load_reply_generation_settings() -> dict[str, Any]:
@@ -52,7 +32,6 @@ def _load_reply_generation_settings() -> dict[str, Any]:
         ensure_system_settings_table(cursor)
 
         google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-        claude_api_key = (get_setting(cursor, "reply_claude_api_key") or "").strip()
         selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
         similar_reviews_count = get_similar_reviews_count(cursor)
         use_embedding_rules = get_setting_bool(
@@ -66,17 +45,13 @@ def _load_reply_generation_settings() -> dict[str, Any]:
             default=DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
         )
 
-    provider = _infer_provider_from_model(selected_model)
-    google_model = selected_model if provider == "google" else DEFAULT_REPLY_GOOGLE_MODEL
-    claude_model = selected_model if provider == "claude" else DEFAULT_REPLY_CLAUDE_MODEL
+    google_model = selected_model if selected_model else DEFAULT_REPLY_GOOGLE_MODEL
 
     return {
-        "provider": provider,
+        "provider": "google",
         "google_api_key": google_api_key,
-        "claude_api_key": claude_api_key,
         "selected_model": selected_model,
         "google_model": google_model,
-        "claude_model": claude_model,
         "similar_reviews_count": similar_reviews_count,
         "use_embedding_rules": use_embedding_rules,
         "use_similar_reviews": use_similar_reviews,
@@ -114,11 +89,6 @@ def _extract_token_usage(value: Any) -> int:
     completion_attr = getattr(value, "candidates_token_count", None)
     if prompt_attr is not None or completion_attr is not None:
         return _to_int(prompt_attr, default=0) + _to_int(completion_attr, default=0)
-
-    input_attr = getattr(value, "input_tokens", None)
-    output_attr = getattr(value, "output_tokens", None)
-    if input_attr is not None or output_attr is not None:
-        return _to_int(input_attr, default=0) + _to_int(output_attr, default=0)
 
     return 0
 
@@ -230,119 +200,14 @@ def _generate_with_google(api_key: str, model: str, prompt: str) -> tuple[str, i
     raise ValueError("Google generation failed for an unknown reason.")
 
 
-def _generate_with_claude(api_key: str, model: str, prompt: str) -> tuple[str, int]:
-    def _call_http(selected_model: str, prompt_text: str) -> requests.Response:
-        return requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": selected_model,
-                "max_tokens": 450,
-                "messages": [{"role": "user", "content": prompt_text}],
-            },
-            timeout=20,
-        )
-
-    def _call_sdk(selected_model: str, prompt_text: str) -> tuple[str, int]:
-        if Anthropic is None:
-            return "", 0
-
-        client = Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=selected_model,
-            max_tokens=450,
-            messages=[{"role": "user", "content": prompt_text}],
-        )
-
-        blocks = getattr(response, "content", None)
-        if not isinstance(blocks, list):
-            return "", 0
-
-        text_parts = []
-        for block in blocks:
-            text_value = getattr(block, "text", None)
-            if isinstance(text_value, str) and text_value.strip():
-                text_parts.append(text_value.strip())
-                continue
-
-            if isinstance(block, dict):
-                dict_text_value = block.get("text")
-                if isinstance(dict_text_value, str) and dict_text_value.strip():
-                    text_parts.append(dict_text_value.strip())
-
-        usage = _extract_token_usage(getattr(response, "usage", None))
-        return "\n".join(text_parts).strip(), usage
-
-    candidates = [
-        model,
-        CLAUDE_MODEL_ALIASES.get(model),
-        DEFAULT_REPLY_CLAUDE_MODEL,
-        CLAUDE_MODEL_ALIASES.get(DEFAULT_REPLY_CLAUDE_MODEL),
-        "claude-sonnet-4-6",
-        "claude-sonnet-4-5-20250929",
-        "claude-haiku-4-5-20251001",
-        "claude-opus-4-6",
-    ]
-
-    unique_candidates: list[str] = []
-    for candidate in candidates:
-        if candidate and candidate not in unique_candidates:
-            unique_candidates.append(candidate)
-
-    compact_prompt = prompt[:12000] if len(prompt) > 12000 else prompt
-    last_error = "unknown error"
-    for candidate_model in unique_candidates:
-        # Prefer SDK call style used in Anthropic docs; fallback to direct HTTP only if needed.
-        reply_text = ""
-        reply_tokens = 0
-        if Anthropic is not None:
-            try:
-                reply_text, reply_tokens = _call_sdk(candidate_model, prompt)
-                if not reply_text:
-                    reply_text, reply_tokens = _call_sdk(candidate_model, compact_prompt)
-            except Exception as sdk_exc:
-                last_error = str(sdk_exc)
-
-        if not reply_text:
-            response = _call_http(candidate_model, prompt)
-            if not response.ok and response.status_code == 400 and "too long" in (response.text or "").lower():
-                # Retry once with a compact prompt when Claude rejects oversized inputs.
-                response = _call_http(candidate_model, compact_prompt)
-
-            if response.ok:
-                payload = response.json()
-                content = payload.get("content") if isinstance(payload, dict) else None
-                if isinstance(content, list):
-                    text_parts = [str(chunk.get("text", "")).strip() for chunk in content if isinstance(chunk, dict)]
-                    reply_text = "\n".join(part for part in text_parts if part).strip()
-                    reply_tokens = _extract_token_usage(payload.get("usage") if isinstance(payload, dict) else None)
-                else:
-                    last_error = "invalid content payload"
-            else:
-                last_error = f"{response.status_code}: {response.text}"
-
-        if reply_text:
-            return reply_text, reply_tokens
-        if not last_error:
-            last_error = "empty text response"
-
-    raise ValueError(f"Claude generation failed for all model candidates. Last error: {last_error}")
-
-
-def _increment_provider_usage(provider: str, tokens_used: int = 0) -> None:
-    request_key = "reply_google_request_count" if provider == "google" else "reply_claude_request_count"
-    token_key = "reply_google_token_usage" if provider == "google" else "reply_claude_token_usage"
+def _increment_provider_usage(tokens_used: int = 0) -> None:
     with pyodbc.connect(get_connection_string()) as connection:
         cursor = connection.cursor()
         ensure_system_settings_table(cursor)
-        increment_setting_counter(cursor, request_key, delta=1)
+        increment_setting_counter(cursor, "reply_google_request_count", delta=1)
         safe_tokens_used = max(0, _to_int(tokens_used, default=0))
         if safe_tokens_used > 0:
-            increment_setting_counter(cursor, token_key, delta=safe_tokens_used)
+            increment_setting_counter(cursor, "reply_google_token_usage", delta=safe_tokens_used)
         connection.commit()
 
 
@@ -376,7 +241,6 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
     try:
         settings = _load_reply_generation_settings()
 
-        provider = str(settings["provider"])
         similar_reviews_count = int(settings["similar_reviews_count"])
         use_embedding_rules = bool(settings["use_embedding_rules"])
         use_similar_reviews = bool(settings["use_similar_reviews"])
@@ -400,27 +264,19 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
 
         reply = ""
         tokens_used = 0
-        provider_output = provider
+        provider_output = "google"
         provider_error: str | None = None
         try:
-            if provider == "google":
-                api_key = str(settings["google_api_key"])
-                model = str(settings["google_model"])
-                if not api_key:
-                    raise ValueError("Google API key is not configured in reply generation settings.")
-                reply, tokens_used = _generate_with_google(api_key, model, prompt)
-                _increment_provider_usage("google", tokens_used=tokens_used)
-            elif provider == "claude":
-                api_key = str(settings["claude_api_key"])
-                model = str(settings["claude_model"])
-                if not api_key:
-                    raise ValueError("Claude API key is not configured in reply generation settings.")
-                reply, tokens_used = _generate_with_claude(api_key, model, prompt)
-                _increment_provider_usage("claude", tokens_used=tokens_used)
+            api_key = str(settings["google_api_key"])
+            model = str(settings["google_model"])
+            if not api_key:
+                raise ValueError("Google API key is not configured in reply generation settings.")
+            reply, tokens_used = _generate_with_google(api_key, model, prompt)
+            _increment_provider_usage(tokens_used=tokens_used)
         except Exception as provider_exc:
             # Avoid surfacing provider/transient failures as HTTP 500 to the UI.
             reply = _fallback_reply(payload)
-            provider_output = f"{provider}-fallback"
+            provider_output = "google-fallback"
             provider_error = str(provider_exc)
 
         if not reply:

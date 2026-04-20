@@ -12,7 +12,6 @@ DEFAULT_CURRENCY = "USD ($)"
 DEFAULT_REPLY_PROVIDER = "google"
 DEFAULT_SIMILAR_REVIEWS_COUNT = 3
 DEFAULT_REPLY_GOOGLE_MODEL = "gemini-2.5-flash-lite"
-DEFAULT_REPLY_CLAUDE_MODEL = "claude-sonnet-4-6"
 DEFAULT_REPLY_SELECTED_MODEL = DEFAULT_REPLY_GOOGLE_MODEL
 DEFAULT_REPLY_USE_EMBEDDING_RULES = True
 DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
@@ -88,7 +87,7 @@ def get_system_timezone(cursor: pyodbc.Cursor) -> str:
 
 def get_reply_provider(cursor: pyodbc.Cursor) -> str:
     value = (get_setting(cursor, "reply_provider") or "").strip().lower()
-    if value in {"google", "claude"}:
+    if value == "google":
         return value
     return DEFAULT_REPLY_PROVIDER
 

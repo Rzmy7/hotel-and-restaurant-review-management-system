@@ -12,25 +12,22 @@ export interface GeneralSettings {
 
 export interface ReplyGenerationSettings {
     googleApiKey: string;
-    claudeApiKey: string;
     selectedModel: string;
     similarReviewsCount: number;
     googleRequestCount: number;
-    claudeRequestCount: number;
     googleTokenUsage: number;
-    claudeTokenUsage: number;
     useEmbeddingRules: boolean;
     useSimilarReviews: boolean;
 }
 
 export interface ReplyGenerationApiTestPayload {
-    provider: 'google' | 'claude';
+    provider: 'google';
     apiKey: string;
     model: string;
 }
 
 export interface ReplyGenerationApiTestResponse {
-    provider: 'google' | 'claude';
+    provider: 'google';
     success: boolean;
     message: string;
 }
@@ -82,7 +79,6 @@ export const settingsService = {
     async updateReplyGenerationSettings(payload: ReplyGenerationSettings): Promise<ReplyGenerationSettings> {
         const requestPayload = {
             googleApiKey: payload.googleApiKey,
-            claudeApiKey: payload.claudeApiKey,
             selectedModel: payload.selectedModel,
             similarReviewsCount: payload.similarReviewsCount,
             useEmbeddingRules: payload.useEmbeddingRules,

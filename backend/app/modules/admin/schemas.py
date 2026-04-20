@@ -275,20 +275,16 @@ class AdminPasswordChangeResponse(BaseModel):
 
 class ReplyGenerationSettingsResponse(BaseModel):
     googleApiKey: str
-    claudeApiKey: str
     selectedModel: str
     similarReviewsCount: int
     googleRequestCount: int
-    claudeRequestCount: int
     googleTokenUsage: int
-    claudeTokenUsage: int
     useEmbeddingRules: bool
     useSimilarReviews: bool
 
 
 class ReplyGenerationSettingsPayload(BaseModel):
     googleApiKey: str = Field(default="", max_length=512)
-    claudeApiKey: str = Field(default="", max_length=512)
     selectedModel: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=128)
     similarReviewsCount: int = Field(default=3, ge=1, le=20)
     useEmbeddingRules: bool = True
@@ -296,13 +292,13 @@ class ReplyGenerationSettingsPayload(BaseModel):
 
 
 class ReplyGenerationApiTestPayload(BaseModel):
-    provider: Literal["google", "claude"]
+    provider: Literal["google"]
     apiKey: str = Field(..., min_length=1, max_length=512)
     model: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class ReplyGenerationApiTestResponse(BaseModel):
-    provider: Literal["google", "claude"]
+    provider: Literal["google"]
     success: bool
     message: str
 
