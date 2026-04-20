@@ -248,7 +248,10 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
                 "organization": organization_from_url(row.get("url")),
                 "status": job_status_to_ui(str(row.get("status", ""))),
                 "startTime": format_job_start_time(row.get("created_at")),
-                "duration": format_duration_from_created_at(row.get("created_at")),
+                "duration": format_duration_from_created_at(
+                    row.get("created_at"), 
+                    row.get("ended_at")
+                ),
                 "reviews": int(reviews_value) if reviews_value is not None else None,
             }
         )

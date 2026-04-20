@@ -389,10 +389,11 @@ def update_sync_status(
             reviews_fetched=request.new_review_count
         )
         db.add(sync_log)
+        db.flush()
 
         # Trigger Review Ingestion and Processing Pipeline
         if background_tasks:
-            background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
+            background_tasks.add_task(start_ingestion_and_processing_flow, source_id, sync_log.log_id)
         
     elif request.status == SyncStatus.FAILED:
         source.source_status = SourceStatus.ERROR

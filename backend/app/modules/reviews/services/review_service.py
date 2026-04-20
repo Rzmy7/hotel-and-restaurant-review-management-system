@@ -233,7 +233,7 @@ async def ingest_from_scraper(
     return count
 
 
-async def start_ingestion_and_processing_flow(source_id: uuid.UUID):
+async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id: uuid.UUID = None):
     """
     Full background flow:
     1. Ingest from Scraper (Raw -> Pending)
@@ -259,6 +259,13 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID):
         ingested_count = await ingest_from_scraper(
             source_id, source.organization_id, source.platform_id
         )
+
+        if sync_log_id:
+            from app.modules.source.models import SyncLog
+            sync_log = db.query(SyncLog).filter(SyncLog.log_id == sync_log_id).first()
+            if sync_log:
+                sync_log.reviews_fetched = ingested_count
+                db.commit()
 
         if ingested_count > 0:
             logger.info(

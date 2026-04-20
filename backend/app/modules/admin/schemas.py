@@ -196,6 +196,7 @@ class SubscriptionFeatureUsage(BaseModel):
     used: int
     limit: int | None = None
     balance: int | None = None
+    supportsLimit: bool
 
 
 class SubscriptionUsageSummary(BaseModel):

@@ -694,6 +694,7 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
             f.feature_id,
             f.feature_key,
             f.display_name,
+            f.supports_limit,
             COALESCE(pf.is_enabled, 0) AS is_enabled,
             pf.feature_limit,
             COALESCE(ufu.used_quantity, 0) AS used_quantity
@@ -714,8 +715,9 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
         feature_id = str(row[0])
         feature_key = str(row[1])
         feature_name = str(row[2])
-        is_enabled = bool(row[3])
-        feature_limit = int(row[4]) if row[4] is not None else None
+        is_enabled = bool(row[4])
+        feature_limit = int(row[5]) if row[5] is not None else None
+        supports_limit = bool(row[3])
         
         # Calculate used_quantity dynamically
         used_quantity = _get_used_quantity(cursor, user_id, feature_key)
@@ -730,6 +732,7 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
                 used=used_quantity,
                 limit=feature_limit,
                 balance=balance,
+                supportsLimit=supports_limit,
             )
         )
 

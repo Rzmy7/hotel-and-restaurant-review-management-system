@@ -180,12 +180,14 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
                                 className="grid grid-cols-12 px-4 py-2.5 text-sm border-t border-gray-100 dark:border-slate-700/50"
                             >
                                 <div className="col-span-5 font-medium text-gray-800 dark:text-slate-100">{feature.name}</div>
-                                <div className="col-span-2 text-right text-gray-700 dark:text-slate-300">{feature.used}</div>
                                 <div className="col-span-2 text-right text-gray-700 dark:text-slate-300">
-                                    {feature.limit === null ? 'Unlimited' : feature.limit}
+                                    {feature.supportsLimit ? feature.used : '-'}
+                                </div>
+                                <div className="col-span-2 text-right text-gray-700 dark:text-slate-300">
+                                    {feature.supportsLimit ? (feature.limit === null ? 'Unlimited' : feature.limit) : '-'}
                                 </div>
                                 <div className="col-span-3 text-right font-semibold text-blue-600 dark:text-blue-400">
-                                    {feature.balance === null ? 'Unlimited' : feature.balance}
+                                    {feature.supportsLimit ? (feature.balance === null ? 'Unlimited' : feature.balance) : 'Included'}
                                 </div>
                             </div>
                         ))

@@ -788,16 +788,29 @@ def format_job_start_time(value: str | None) -> str:
     return dt_value.strftime("%b %d, %Y %I:%M %p")
 
 
-def format_duration_from_created_at(value: str | None) -> str:
-    if not value:
+def format_duration_from_created_at(created_at_str: str | None, ended_at_str: str | None = None) -> str:
+    if not created_at_str:
         return "--"
     try:
-        created = datetime.fromisoformat(value)
+        created = datetime.fromisoformat(created_at_str)
+        if ended_at_str:
+            end_time = datetime.fromisoformat(ended_at_str)
+        else:
+            end_time = datetime.now(created.tzinfo)
     except ValueError:
         return "--"
-    elapsed = max(0, int((datetime.now(created.tzinfo) - created).total_seconds()))
-    minutes = elapsed // 60
+
+    elapsed = max(0, int((end_time - created).total_seconds()))
+    
+    if elapsed < 60:
+        return f"{elapsed}s"
+    
+    hours = elapsed // 3600
+    minutes = (elapsed % 3600) // 60
     seconds = elapsed % 60
+
+    if hours > 0:
+        return f"{hours}h {minutes}m {seconds:02d}s"
     return f"{minutes}m {seconds:02d}s"
 
 
