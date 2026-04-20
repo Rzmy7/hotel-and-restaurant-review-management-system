@@ -172,24 +172,6 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     db.add(new_source)
     db.commit()
     db.refresh(new_source)
-
-    # ----------------------------------------------------
-    # Increment usage for the user (Tenant)
-    # ----------------------------------------------------
-    try:
-        # Find the tenant (user) ID who owns the organization
-        org = db.query(OrganizationSource).filter(
-            OrganizationSource.organization_id == source_data.organization_id
-        ).first()
-
-        if org and org.tenant_id:
-            with pyodbc.connect(get_connection_string()) as conn:
-                cursor = conn.cursor()
-                # Using 'review_count' as the feature representing source slots
-                increment_feature_usage(cursor, str(org.tenant_id), "review_count")
-                conn.commit()
-    except Exception as e:
-        print(f"FAILED TO INCREMENT SOURCE USAGE: {e}")
     
     # Load platform for the response
     source = db.query(SourceSource).options(

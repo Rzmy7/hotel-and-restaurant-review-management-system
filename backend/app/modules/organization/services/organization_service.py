@@ -1,5 +1,9 @@
 from sqlalchemy import text
-from app.modules.admin.services.subscription_service import increment_feature_usage
+from app.modules.admin.services.subscription_service import (
+    increment_feature_usage,
+    check_feature_limit,
+    send_limit_reached_notification,
+)
 from app.core.db_utils import get_connection_string
 import pyodbc
 
@@ -7,6 +11,27 @@ import pyodbc
 def create_organization(db, user_id, data):
     try:
         name = data.get("name")
+
+        # ── Check organization limit ──
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                limit_info = check_feature_limit(cursor, str(user_id), "organizations")
+                if not limit_info["allowed"]:
+                    send_limit_reached_notification(str(user_id), limit_info["feature_name"])
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Organization limit reached for your current plan. "
+                               f"You have used {limit_info['used']}/{limit_info['limit']}. "
+                               f"Please upgrade your subscription plan to add more organizations.",
+                    )
+        except ImportError:
+            pass  # HTTPException re-raised below
+        except Exception as limit_err:
+            if hasattr(limit_err, "status_code"):
+                raise
+            print(f"LIMIT CHECK WARNING (organizations): {limit_err}")
 
         # 1️⃣ Insert organization
         result = db.execute(text("""

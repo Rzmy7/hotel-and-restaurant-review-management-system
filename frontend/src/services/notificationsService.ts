@@ -182,7 +182,7 @@ export const notificationsService = {
     async getNotifications(limit = 50): Promise<NotificationsResponse> {
         const query = buildQuery({ limit: String(limit) });
         return requestJsonWithFallback<NotificationsResponse>(
-            buildPaths('/api/admin/notifications/admin', '/api/notifications', query),
+            buildPaths('/api/admin/notifications/', '/api/notifications/me', query),
             { method: 'GET' }
         );
     },
@@ -190,7 +190,7 @@ export const notificationsService = {
     async getUnreadCount(): Promise<UnreadCountResponse> {
         const query = buildQuery();
         return requestJsonWithFallback<UnreadCountResponse>(
-            buildPaths('/api/admin/notifications/unread-count', '/api/notifications/unread-count', query),
+            buildPaths('/api/admin/notifications/unread-count', '/api/notifications/me/unread-count', query),
             {
             method: 'GET',
             }

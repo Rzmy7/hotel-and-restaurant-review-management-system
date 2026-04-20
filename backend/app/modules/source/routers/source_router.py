@@ -104,6 +104,40 @@ def sync_source(source_id: uuid.UUID, db: Session = Depends(get_db)):
     platform_name = source.platform_name
     source_url = source.source_url
 
+    # ── Check scraping_frequency limit (per-user, Mon-Sun week) ──
+    try:
+        from sqlalchemy.orm import joinedload
+        source_obj = db.query(SourceSource).options(
+            joinedload(SourceSource.organization)
+        ).filter(SourceSource.source_id == source_id).first()
+
+        if source_obj and hasattr(source_obj, 'organization') and source_obj.organization:
+            tenant_id = str(source_obj.organization.tenant_id) if source_obj.organization.tenant_id else None
+            if tenant_id:
+                import pyodbc
+                from app.core.db_utils import get_connection_string
+                from app.modules.admin.services.subscription_service import (
+                    check_feature_limit,
+                    send_limit_reached_notification,
+                )
+                with pyodbc.connect(get_connection_string()) as conn:
+                    cursor = conn.cursor()
+                    limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
+                    if not limit_info["allowed"]:
+                        send_limit_reached_notification(tenant_id, limit_info["feature_name"])
+                        from fastapi import HTTPException as _HTTPException
+                        raise _HTTPException(
+                            status_code=403,
+                            detail=f"Weekly scraping limit reached for your current plan. "
+                                   f"You have used {limit_info['used']}/{limit_info['limit']} scrapes this week. "
+                                   f"Please upgrade your subscription plan to scrape more frequently.",
+                        )
+    except Exception as limit_err:
+        if hasattr(limit_err, "status_code"):
+            raise
+        import logging
+        logging.getLogger(__name__).warning(f"LIMIT CHECK WARNING (scraping_frequency): {limit_err}")
+
     # We do NOT set status to QUEUED here.
     # The Scraper Engine will notify us if it's actually QUEUED or RUNNING.
     trigger_platform_scrape(str(platform_name), str(source_url), str(source_id))

@@ -43,6 +43,35 @@ def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> boo
          logger.error(f"Unexpected error triggering scraper: {e}")
          return False
 
+
+def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
+    """
+    Returns True if the tenant is allowed to scrape (hasn't exceeded weekly limit).
+    Returns True on any error (fail-open).
+    """
+    try:
+        import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.subscription_service import (
+            check_feature_limit,
+            send_limit_reached_notification,
+        )
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
+            if not limit_info["allowed"]:
+                send_limit_reached_notification(tenant_id, limit_info["feature_name"])
+                logger.info(
+                    f"Tenant {tenant_id} has reached scraping frequency limit "
+                    f"({limit_info['used']}/{limit_info['limit']} this week). Skipping."
+                )
+                return False
+        return True
+    except Exception as e:
+        logger.warning(f"Scraping frequency check failed for tenant {tenant_id}: {e}")
+        return True  # Fail-open
+
+
 def process_pending_syncs():
     """
     Scheduled task to find pending sources and trigger their sync.
@@ -61,7 +90,8 @@ def process_pending_syncs():
         
         # Find ACTIVE sources where next_synced_at has passed
         pending_sources = db.query(SourceSource).options(
-            joinedload(SourceSource.platform)
+            joinedload(SourceSource.platform),
+            joinedload(SourceSource.organization)
         ).filter(
             SourceSource.source_status == 'active',
             SourceSource.next_synced_at <= now_utc
@@ -72,11 +102,27 @@ def process_pending_syncs():
             return
 
         logger.info(f"Found {len(pending_sources)} sources pending synchronization.")
-        
+
+        # Cache tenant limit checks to avoid redundant DB queries per tenant
+        tenant_allowed_cache: dict[str, bool] = {}
+
         for source in pending_sources:
             if not source.platform:
                 logger.warning(f"Source {source.source_id} has no linked platform. Skipping.")
                 continue
+
+            # ── Check scraping_frequency limit for the source's tenant ──
+            tenant_id = None
+            if hasattr(source, 'organization') and source.organization and source.organization.tenant_id:
+                tenant_id = str(source.organization.tenant_id)
+
+            if tenant_id:
+                if tenant_id not in tenant_allowed_cache:
+                    tenant_allowed_cache[tenant_id] = _check_scraping_frequency_for_tenant(tenant_id)
+
+                if not tenant_allowed_cache[tenant_id]:
+                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached.")
+                    continue
 
             # Trigger the microservice
             trigger_platform_scrape(

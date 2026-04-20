@@ -42,6 +42,28 @@ async function handleResponse(response: Response) {
         throw new Error("Session expired. Please log in again.");
     }
 
+    if (response.status === 403) {
+        let errorMessage = "Access denied";
+        try {
+            const errorData = await response.json();
+            errorMessage = errorData?.detail || errorMessage;
+        } catch {
+            // Ignore JSON parse errors
+        }
+
+        // Detect feature limit messages and show upgrade notification
+        const lowerMsg = errorMessage.toLowerCase();
+        if (lowerMsg.includes("limit reached") || lowerMsg.includes("upgrade your subscription")) {
+            // Dispatch a custom event so the ToastContext can show a notification
+            window.dispatchEvent(
+                new CustomEvent("feature-limit-reached", {
+                    detail: { message: errorMessage },
+                })
+            );
+        }
+        throw new Error(errorMessage);
+    }
+
     if (!response.ok) {
         let errorMessage = `API Request failed: ${response.status}`;
         try {

@@ -50,6 +50,7 @@ async def ingest_from_scraper(
     """
     Fetches raw review data from the external Scraper Engine (port 8001)
     and stores them as 'pending' in the database.
+    Respects the user's review_count plan limit — only ingests up to the remaining balance.
     """
     scraper_url = f"http://127.0.0.1:8001/api/reviews/{source_id}"
 
@@ -67,6 +68,43 @@ async def ingest_from_scraper(
             return 0
 
     reviews = raw_data.get("data", [])
+
+    # ── Check review_count limit and truncate if needed ──
+    review_balance = None  # None = unlimited
+    tenant_id = None
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            # Find the tenant (user) who owns this organization
+            tenant_row = cursor.execute(
+                "SELECT tenant_id FROM dbo.organization WHERE organization_id = ?",
+                (str(organization_id),),
+            ).fetchone()
+            if tenant_row and tenant_row[0]:
+                tenant_id = str(tenant_row[0])
+                from app.modules.admin.services.subscription_service import (
+                    check_feature_limit,
+                    send_limit_reached_notification,
+                )
+                limit_info = check_feature_limit(cursor, tenant_id, "review_count")
+                if limit_info["limit"] is not None:
+                    review_balance = limit_info["balance"]
+                    if review_balance <= 0:
+                        send_limit_reached_notification(tenant_id, limit_info["feature_name"])
+                        logger.info(
+                            f"Review count limit reached for tenant {tenant_id} "
+                            f"({limit_info['used']}/{limit_info['limit']}). Skipping ingestion."
+                        )
+                        return 0
+                    elif review_balance < len(reviews):
+                        logger.info(
+                            f"Truncating ingestion from {len(reviews)} to {review_balance} reviews "
+                            f"(tenant {tenant_id} balance: {review_balance}/{limit_info['limit']})"
+                        )
+                        reviews = reviews[:review_balance]
+    except Exception as limit_err:
+        logger.warning(f"Review count limit check failed: {limit_err}")
+
     count = 0
 
     # Defensive log file for ingestion troubleshooting
@@ -151,6 +189,14 @@ async def ingest_from_scraper(
                 continue
 
         conn.commit()
+
+    # Send notification if we hit the limit during this ingestion
+    if review_balance is not None and tenant_id and count >= review_balance:
+        try:
+            from app.modules.admin.services.subscription_service import send_limit_reached_notification
+            send_limit_reached_notification(tenant_id, "Review Count")
+        except Exception:
+            pass
 
     logger.info(
         f"Ingestion SUMMARY: Saved {count} reviews as 'pending' for source {source_id}"

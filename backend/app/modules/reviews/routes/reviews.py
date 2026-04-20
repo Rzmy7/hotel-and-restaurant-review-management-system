@@ -233,15 +233,37 @@ def generate_reply(
 ):
     """Generate an AI reply for a specific review."""
     try:
+        # ── Check reply_generations limit ──
+        user_id = (
+            str(current_user.user_id)
+            if hasattr(current_user, "user_id")
+            else str(current_user.id)
+        )
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                from app.modules.admin.services.subscription_service import (
+                    check_feature_limit,
+                    send_limit_reached_notification,
+                )
+                limit_info = check_feature_limit(cursor, user_id, "reply_generations")
+                if not limit_info["allowed"]:
+                    send_limit_reached_notification(user_id, limit_info["feature_name"])
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Reply generation limit reached for your current plan. "
+                               f"You have used {limit_info['used']}/{limit_info['limit']}. "
+                               f"Please upgrade your subscription plan to generate more replies.",
+                    )
+        except HTTPException:
+            raise
+        except Exception as limit_err:
+            logger.warning(f"LIMIT CHECK WARNING (reply_generations): {limit_err}")
+
         result = generate_review_reply(payload)
 
         # Increment usage tracker
         try:
-            user_id = (
-                str(current_user.user_id)
-                if hasattr(current_user, "user_id")
-                else str(current_user.id)
-            )
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()
                 increment_feature_usage(cursor, user_id, "reply_generations")
@@ -250,6 +272,8 @@ def generate_reply(
             logger.warning(f"Failed to increment usage: {e}")
 
         return ReplyGenerationResponse(**result)
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
