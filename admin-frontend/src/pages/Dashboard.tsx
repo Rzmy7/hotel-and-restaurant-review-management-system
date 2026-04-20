@@ -13,6 +13,7 @@ import {
     fetchReviewData,
     fetchSystemAlerts,
     fetchRecentActivity,
+    dismissAlert as dismissAlertApi,
 } from '../services/dashboardService';
 import { fetchServerStatuses } from '../services/monitoringService';
 import type {
@@ -92,6 +93,8 @@ export const Dashboard: React.FC = () => {
 
     const handleDismissAlert = (id: string) => {
         setAlerts((prev) => prev.filter((alert) => alert.id !== id));
+        // Fire-and-forget: persist dismiss to backend
+        dismissAlertApi(id).catch(err => console.error('dismissAlert failed:', err));
     };
 
     if (loading) {

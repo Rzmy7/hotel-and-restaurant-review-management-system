@@ -1,11 +1,34 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, Info, X, ShieldAlert } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, X, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import type { SystemAlert } from '../types';
 
 interface AlertsPanelProps {
     alerts: SystemAlert[];
     onDismiss?: (id: string) => void;
     onViewAll?: () => void;
+}
+
+/**
+ * Format an ISO timestamp string into a human-friendly relative label.
+ */
+function formatRelativeTime(timestamp: string): string {
+    try {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+
+        if (diffSec < 60) return 'Just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffHour < 24) return `${diffHour}h ago`;
+        if (diffDay < 7) return `${diffDay}d ago`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+        return timestamp;
+    }
 }
 
 export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onViewAll }) => {
@@ -28,6 +51,29 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                 return 'border-l-amber-400 bg-amber-50/50';
             case 'info':
                 return 'border-l-blue-400 bg-blue-50/50';
+        }
+    };
+
+    const getAlertBadge = (type: SystemAlert['type']) => {
+        switch (type) {
+            case 'error':
+                return (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                        Error
+                    </span>
+                );
+            case 'warning':
+                return (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
+                        Warning
+                    </span>
+                );
+            case 'info':
+                return (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
+                        Info
+                    </span>
+                );
         }
     };
 
@@ -64,9 +110,9 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
             <div className="divide-y divide-gray-50 max-h-[360px] overflow-y-auto flex-1">
                 {alerts.length === 0 ? (
                     <div className="px-5 py-10 text-center text-gray-400">
-                        <ShieldAlert size={28} className="mx-auto mb-2 text-gray-300" />
-                        <p className="text-sm">No active alerts</p>
-                        <p className="text-xs text-gray-400 mt-1">All systems running normally</p>
+                        <CheckCircle2 size={28} className="mx-auto mb-2 text-emerald-300" />
+                        <p className="text-sm font-medium text-gray-500">All Systems Operational</p>
+                        <p className="text-xs text-gray-400 mt-1">No active alerts — everything is running normally</p>
                     </div>
                 ) : (
                     alerts.slice(0, 5).map((alert) => (
@@ -79,15 +125,19 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
-                                    <p
-                                        className={`text-sm text-gray-900 ${!alert.isRead ? 'font-semibold' : 'font-medium'}`}
-                                    >
-                                        {alert.title}
-                                    </p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p
+                                            className={`text-sm text-gray-900 ${!alert.isRead ? 'font-semibold' : 'font-medium'}`}
+                                        >
+                                            {alert.title}
+                                        </p>
+                                        {getAlertBadge(alert.type)}
+                                    </div>
                                     {onDismiss && (
                                         <button
                                             onClick={() => onDismiss(alert.id)}
                                             className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-0.5 rounded hover:bg-gray-100 transition-colors"
+                                            title="Dismiss alert"
                                         >
                                             <X size={14} />
                                         </button>
@@ -96,7 +146,9 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                                 <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
                                     {alert.message}
                                 </p>
-                                <p className="text-[11px] text-gray-400 mt-1.5">{alert.timestamp}</p>
+                                <p className="text-[11px] text-gray-400 mt-1.5">
+                                    {formatRelativeTime(alert.timestamp)}
+                                </p>
                             </div>
                         </div>
                     ))

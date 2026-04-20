@@ -132,6 +132,14 @@ def build_review_data(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
             "Returning empty platform review data.",
             url, exc,
         )
+        # Log system alert for admin dashboard
+        try:
+            from app.modules.admin.services.system_alert_logger import (
+                alert_scraper_engine_unreachable,
+            )
+            alert_scraper_engine_unreachable(endpoint=url)
+        except Exception:
+            pass
         return []
 
     # ── Step 3: assemble and sort result ──

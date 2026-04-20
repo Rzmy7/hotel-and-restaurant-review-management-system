@@ -119,3 +119,61 @@ def get_recent_activity() -> list[RecentActivity]:
             conn.close()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to fetch recent activity: {exc}")
+
+
+@router.post("/alerts/{alert_id}/dismiss")
+def dismiss_alert(alert_id: str) -> dict:
+    """
+    Dismiss a single system alert by marking it as dismissed in the DB.
+    Dynamic alerts (prefixed with 'sync-' or 'dynamic-') are dismissed
+    client-side only. Persisted alerts are marked in system_alert_log.
+    """
+    if alert_id.startswith(("sync-", "dynamic-")):
+        return {"status": "ok", "message": "Dynamic alert dismissed client-side."}
+
+    try:
+        conn, cursor = _get_cursor()
+        try:
+            from app.modules.admin.services.system_alert_logger import (
+                ensure_system_alert_log_table,
+            )
+            ensure_system_alert_log_table(cursor)
+            cursor.execute(
+                """
+                UPDATE dbo.system_alert_log
+                SET is_dismissed = 1, is_read = 1
+                WHERE id = ?
+                """,
+                (alert_id,),
+            )
+            conn.commit()
+            return {"status": "ok"}
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to dismiss alert: {exc}")
+
+
+@router.post("/alerts/dismiss-all")
+def dismiss_all_alerts() -> dict:
+    """Dismiss all active system alerts."""
+    try:
+        conn, cursor = _get_cursor()
+        try:
+            from app.modules.admin.services.system_alert_logger import (
+                ensure_system_alert_log_table,
+            )
+            ensure_system_alert_log_table(cursor)
+            cursor.execute(
+                """
+                UPDATE dbo.system_alert_log
+                SET is_dismissed = 1, is_read = 1
+                WHERE is_dismissed = 0
+                """
+            )
+            conn.commit()
+            return {"status": "ok"}
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to dismiss alerts: {exc}")

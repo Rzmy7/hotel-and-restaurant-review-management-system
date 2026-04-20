@@ -426,6 +426,20 @@ def update_sync_status(
                 )
         except Exception:
             pass  # Best-effort
+
+        # ── Log system alert for admin dashboard ──
+        try:
+            from app.modules.admin.services.system_alert_logger import alert_scraping_failure
+            org = db.query(Organization).filter(
+                Organization.organization_id == source.organization_id
+            ).first()
+            alert_scraping_failure(
+                platform=source.platform.platform_name,
+                error_msg=request.error_message or "",
+                org_name=org.organization_name if org else "",
+            )
+        except Exception:
+            pass  # Best-effort
         
     elif request.status == SyncStatus.RUNNING:
         source.source_status = SourceStatus.RUNNING.value

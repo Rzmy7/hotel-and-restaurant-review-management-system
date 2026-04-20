@@ -151,6 +151,22 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         err_str = str(e)
         logger.error(f"Gemini analysis failed: {err_str}")
         
+        # Log system alert for admin dashboard visibility
+        try:
+            from app.modules.admin.services.system_alert_logger import (
+                alert_gemini_quota_exceeded,
+                alert_gemini_api_error,
+                alert_gemini_key_missing,
+            )
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                alert_gemini_quota_exceeded(err_str[:200])
+            elif "No Gemini API key configured" in err_str:
+                alert_gemini_key_missing()
+            else:
+                alert_gemini_api_error(err_str[:300])
+        except Exception as alert_err:
+            logger.debug(f"Failed to log system alert: {alert_err}")
+
         # Notify admin if it's a quota issue
         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
             try:
@@ -164,3 +180,4 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         if response:
             logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")
         raise e
+
