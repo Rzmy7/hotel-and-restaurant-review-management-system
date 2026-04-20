@@ -326,20 +326,56 @@ def get_review_options(organization_id: str) -> Dict[str, List[str]]:
     }
 
 
-def get_review_stats(organization_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict:
-    """Calculate aggregated stats for an organization's reviews, optionally filtered by date range."""
+def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Dict:
+    """Calculate aggregated stats for an organization's reviews, respecting all active filters."""
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
     where_clauses = ["s.organization_id = ?", "r.status = 'processed'"]
     params = [organization_id]
 
-    if date_from:
-        where_clauses.append("r.reviewDate >= ?")
-        params.append(date_from)
-    if date_to:
-        where_clauses.append("r.reviewDate <= ?")
-        params.append(date_to)
+    if filters:
+        if filters.get("search"):
+            where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+            search_val = f"%{filters['search']}%"
+            params.extend([search_val, search_val, search_val, search_val, search_val])
+
+        if filters.get("rating"):
+            ratings = filters["rating"]
+            if isinstance(ratings, list) and len(ratings) > 0:
+                placeholders = ",".join(["?"] * len(ratings))
+                where_clauses.append(f"r.rating IN ({placeholders})")
+                params.extend(ratings)
+
+        if filters.get("sentiment"):
+            sentiments = filters["sentiment"]
+            if isinstance(sentiments, list) and len(sentiments) > 0:
+                placeholders = ",".join(["?"] * len(sentiments))
+                where_clauses.append(f"r.sentiment IN ({placeholders})")
+                params.extend(sentiments)
+
+        if filters.get("source"):
+            sources = filters["source"]
+            if isinstance(sources, list) and len(sources) > 0:
+                placeholders = ",".join(["?"] * len(sources))
+                where_clauses.append(f"p.platform_name IN ({placeholders})")
+                params.extend(sources)
+
+        if filters.get("category"):
+            categories = filters["category"]
+            if isinstance(categories, list) and len(categories) > 0:
+                cat_clauses = []
+                for cat in categories:
+                    cat_clauses.append("r.categories LIKE ?")
+                    params.append(f'%"{cat}"%')
+                where_clauses.append(f"({' OR '.join(cat_clauses)})")
+
+        if filters.get("dateFrom"):
+            where_clauses.append("r.reviewDate >= ?")
+            params.append(filters["dateFrom"])
+        if filters.get("dateTo"):
+            where_clauses.append("r.reviewDate <= ?")
+            params.append(filters["dateTo"])
 
     where_sql = " AND ".join(where_clauses)
 
@@ -348,9 +384,10 @@ def get_review_stats(organization_id: str, date_from: Optional[str] = None, date
             COUNT(*) as totalReviews,
             AVG(CAST(rating AS FLOAT)) as averageRating,
             SUM(CASE WHEN sentiment = 'Positive' THEN 1 WHEN sentiment = 'Negative' THEN -1 ELSE 0 END) as sentimentSum,
-            SUM(CASE WHEN status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
+            SUM(CASE WHEN r.status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
         WHERE {where_sql}
     """
     cursor.execute(sql, params)

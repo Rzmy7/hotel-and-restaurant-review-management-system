@@ -56,13 +56,18 @@ class ReviewsService {
     }
 
     /**
-     * Fetch statistics from the server, optionally filtered by date range.
+     * Fetch statistics from the server, respecting all active filters.
      */
-    async getStats(organizationId: string, dateFrom?: string, dateTo?: string): Promise<ReviewStats> {
+    async getStats(organizationId: string, params: FetchReviewsParams): Promise<ReviewStats> {
         return apiClient.get<ReviewStats>('/reviews/meta/stats', {
             organization_id: organizationId,
-            dateFrom: dateFrom || undefined,
-            dateTo: dateTo || undefined,
+            search: params.search || undefined,
+            rating: params.rating?.length ? params.rating : undefined,
+            sentiment: params.sentiment?.length ? params.sentiment : undefined,
+            source: params.source?.length ? params.source : undefined,
+            category: params.category?.length ? params.category : undefined,
+            dateFrom: params.dateFrom || undefined,
+            dateTo: params.dateTo || undefined,
         });
     }
 

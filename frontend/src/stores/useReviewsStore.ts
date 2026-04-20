@@ -50,7 +50,7 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
             // Concurrent fetch of main data, stats and metadata options
             const [fetchedReviews, fetchedStats, fetchedOptions] = await Promise.all([
                 reviewsService.getReviews(organizationId, params),
-                reviewsService.getStats(organizationId, params.dateFrom, params.dateTo),
+                reviewsService.getStats(organizationId, params),
                 reviewsService.getOptions(organizationId)
             ]);
 
