@@ -74,6 +74,14 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_tenant)
 
+    # ── Send welcome notification ──
+    try:
+        from app.services.notification_helpers import notify_welcome
+        display_name = f"{first_name} {last_name}".strip() if last_name else first_name
+        notify_welcome(str(user.user_id), display_name)
+    except Exception:
+        pass  # Best-effort
+
     roles = get_user_role_names(db, user.user_id)
     return {
         "message": "User registered successfully in database",
@@ -228,6 +236,12 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
             {"token_id": str(token_row.token_id)}
         )
         db.commit()
+        # ── Send password changed notification ──
+        try:
+            from app.services.notification_helpers import notify_password_changed
+            notify_password_changed(str(token_row.user_id))
+        except Exception:
+            pass  # Best-effort
         return {"message": "Password reset successful"}
     except HTTPException:
         raise

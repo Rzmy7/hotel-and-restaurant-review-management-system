@@ -591,6 +591,12 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
     if next_role == "User" and payload.plan:
         set_user_subscription_plan(cursor, user_id, payload.plan)
+        # ── Notify user about admin-initiated plan change ──
+        try:
+            from app.services.notification_helpers import notify_plan_changed_by_admin
+            notify_plan_changed_by_admin(user_id, payload.plan)
+        except Exception:
+            pass  # Best-effort
     conn.commit()
 
     updated_row = _get_user_row_by_id(cursor, user_id, columns)

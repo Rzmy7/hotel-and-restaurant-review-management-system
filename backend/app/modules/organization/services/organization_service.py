@@ -53,6 +53,13 @@ def create_organization(db, user_id, data):
 
         db.commit()
 
+        # ── Send organization created notification ──
+        try:
+            from app.services.notification_helpers import notify_organization_created
+            notify_organization_created(str(user_id), name)
+        except Exception:
+            pass  # Best-effort
+
         # 3️⃣ Increment usage
         try:
             with pyodbc.connect(get_connection_string()) as conn:

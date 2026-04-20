@@ -48,6 +48,13 @@ def create_group_service(db: Session, group_name: str, current_user):
     db.commit()
     db.refresh(group)
 
+    # ── Send group created notification ──
+    try:
+        from app.services.notification_helpers import notify_group_created
+        notify_group_created(str(current_user.user_id), group_name)
+    except Exception:
+        pass  # Best-effort
+
     # ----------------------------------------------------
     # Increment usage for the user
     # ----------------------------------------------------

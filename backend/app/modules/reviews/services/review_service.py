@@ -198,6 +198,35 @@ async def ingest_from_scraper(
         except Exception:
             pass
 
+    # ── Send new reviews ingested notification ──
+    if count > 0 and tenant_id:
+        try:
+            from app.services.notification_helpers import notify_new_reviews_ingested
+            # Resolve platform name and organization name from the source
+            platform_name = None
+            org_name = None
+            try:
+                with pyodbc.connect(get_connection_string()) as conn:
+                    cursor = conn.cursor()
+                    info_row = cursor.execute(
+                        """
+                        SELECT p.platform_name, o.organization_name
+                        FROM dbo.source s
+                        INNER JOIN dbo.platform p ON p.platform_id = s.platform_id
+                        INNER JOIN dbo.organization o ON o.organization_id = s.organization_id
+                        WHERE s.source_id = ?
+                        """,
+                        (str(source_id),),
+                    ).fetchone()
+                    if info_row:
+                        platform_name = str(info_row[0]) if info_row[0] else None
+                        org_name = str(info_row[1]) if info_row[1] else None
+            except Exception:
+                pass
+            notify_new_reviews_ingested(tenant_id, count, platform_name, org_name)
+        except Exception:
+            pass  # Best-effort
+
     logger.info(
         f"Ingestion SUMMARY: Saved {count} reviews as 'pending' for source {source_id}"
     )

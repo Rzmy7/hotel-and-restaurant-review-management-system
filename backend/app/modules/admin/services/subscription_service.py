@@ -716,7 +716,9 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
         feature_name = str(row[2])
         is_enabled = bool(row[3])
         feature_limit = int(row[4]) if row[4] is not None else None
-        used_quantity = int(row[5]) if row[5] is not None else 0
+        
+        # Calculate used_quantity dynamically
+        used_quantity = _get_used_quantity(cursor, user_id, feature_key)
         balance = None if feature_limit is None else max(feature_limit - used_quantity, 0)
 
         feature_usages.append(
@@ -757,7 +759,8 @@ def get_user_review_count(cursor: pyodbc.Cursor, user_id: str) -> int:
         """
         SELECT COALESCE(COUNT(pr.id), 0)
         FROM dbo.processed_review pr
-        INNER JOIN dbo.organization o ON o.organization_id = pr.organization_id
+        INNER JOIN dbo.source s ON s.source_id = pr.source_id
+        INNER JOIN dbo.organization o ON o.organization_id = s.organization_id
         WHERE o.tenant_id = ?
         """,
         (user_id,),
@@ -785,6 +788,42 @@ def get_weekly_scrape_count(cursor: pyodbc.Cursor, user_id: str) -> int:
         (user_id, monday, sunday),
     ).fetchone()
     return int(row[0]) if row else 0
+
+
+def _get_used_quantity(cursor: pyodbc.Cursor, user_id: str, feature_key: str) -> int:
+    """Returns the current usage of a feature dynamically based on the latest tables."""
+    if feature_key == "organizations":
+        row = cursor.execute(
+            "SELECT COUNT(1) FROM dbo.organization WHERE tenant_id = ?", (user_id,)
+        ).fetchone()
+        return int(row[0]) if row else 0
+    elif feature_key == "groups":
+        row = cursor.execute(
+            "SELECT COUNT(1) FROM dbo.[group] WHERE created_by = ?", (user_id,)
+        ).fetchone()
+        return int(row[0]) if row else 0
+    elif feature_key == "competitors":
+        # Note: we might want to scope this down to the user's competitors in the future.
+        row = cursor.execute(
+            "SELECT COUNT(1) FROM dbo.Competitors WHERE isTracked = 1"
+        ).fetchone()
+        return int(row[0]) if row else 0
+    elif feature_key == "review_count":
+        return get_user_review_count(cursor, user_id)
+    elif feature_key == "scraping_frequency":
+        return get_weekly_scrape_count(cursor, user_id)
+    else:
+        # Fall back to user_feature_usage table (e.g. reply_generations)
+        usage_row = cursor.execute(
+            """
+            SELECT COALESCE(ufu.used_quantity, 0)
+            FROM dbo.user_feature_usage ufu
+            INNER JOIN dbo.features f ON f.feature_id = ufu.feature_id
+            WHERE ufu.user_id = ? AND f.feature_key = ?
+            """,
+            (user_id, feature_key),
+        ).fetchone()
+        return int(usage_row[0]) if usage_row else 0
 
 
 def check_feature_limit(
@@ -850,40 +889,19 @@ def check_feature_limit(
         }
 
     # 3. Get current usage — live counts for certain features
-    if feature_key == "organizations":
-        row = cursor.execute(
-            "SELECT COUNT(1) FROM dbo.organization WHERE tenant_id = ?", (user_id,)
-        ).fetchone()
-        used = int(row[0]) if row else 0
-    elif feature_key == "groups":
-        row = cursor.execute(
-            "SELECT COUNT(1) FROM dbo.[group] WHERE created_by = ?", (user_id,)
-        ).fetchone()
-        used = int(row[0]) if row else 0
-    elif feature_key == "competitors":
-        row = cursor.execute(
-            "SELECT COUNT(1) FROM dbo.Competitors WHERE isTracked = 1"
-        ).fetchone()
-        used = int(row[0]) if row else 0
-    elif feature_key == "review_count":
-        used = get_user_review_count(cursor, user_id)
-    elif feature_key == "scraping_frequency":
-        used = get_weekly_scrape_count(cursor, user_id)
-    else:
-        # Fall back to user_feature_usage table (e.g. reply_generations)
-        usage_row = cursor.execute(
-            """
-            SELECT COALESCE(ufu.used_quantity, 0)
-            FROM dbo.user_feature_usage ufu
-            INNER JOIN dbo.features f ON f.feature_id = ufu.feature_id
-            WHERE ufu.user_id = ? AND f.feature_key = ?
-            """,
-            (user_id, feature_key),
-        ).fetchone()
-        used = int(usage_row[0]) if usage_row else 0
-
+    used = _get_used_quantity(cursor, user_id, feature_key)
     balance = max(feature_limit - used, 0)
     allowed = used < feature_limit
+
+    # ── Approaching review_count limit warning (80% threshold) ──
+    if feature_key == "review_count" and allowed and feature_limit > 0:
+        usage_ratio = used / feature_limit
+        if usage_ratio >= 0.8:
+            try:
+                from app.services.notification_helpers import notify_approaching_review_limit
+                notify_approaching_review_limit(user_id, used, feature_limit)
+            except Exception:
+                pass  # Best-effort
 
     return {
         "allowed": allowed,

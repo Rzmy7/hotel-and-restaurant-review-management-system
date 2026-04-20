@@ -171,6 +171,25 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     
     db.add(new_source)
     db.commit()
+
+    # ── Send source added notification ──
+    try:
+        from app.services.notification_helpers import notify_source_added
+        org = db.query(Organization).filter(
+            Organization.organization_id == source_data.organization_id
+        ).first()
+        platform = db.query(PlatformSource).filter(
+            PlatformSource.platform_id == source_data.platform_id
+        ).first()
+        if org and org.tenant_id and platform:
+            notify_source_added(
+                user_id=str(org.tenant_id),
+                platform_name=platform.platform_name,
+                source_url=source_data.source_url,
+                org_name=org.organization_name,
+            )
+    except Exception:
+        pass  # Best-effort
     db.refresh(new_source)
     
     # Load platform for the response
@@ -246,12 +265,30 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
     )
 
 def delete_source(db: Session, source_id: uuid.UUID):
-    source = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+    source = db.query(SourceSource).options(
+        joinedload(SourceSource.platform)
+    ).filter(SourceSource.source_id == source_id).first()
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
-    
+
+    # Capture info before deleting
+    platform_name = source.platform.platform_name if source.platform else "Unknown"
+    org_id = source.organization_id
+
     db.delete(source)
     db.commit()
+
+    # ── Send source removed notification ──
+    try:
+        from app.services.notification_helpers import notify_source_removed
+        org = db.query(Organization).filter(
+            Organization.organization_id == org_id
+        ).first()
+        if org and org.tenant_id:
+            notify_source_removed(str(org.tenant_id), platform_name, org.organization_name)
+    except Exception:
+        pass  # Best-effort
+
     return {"message": "Source deleted successfully"}
 
 def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
@@ -372,6 +409,22 @@ def update_sync_status(
             error_message=request.error_message
         )
         db.add(sync_log)
+
+        # ── Send scrape failed notification ──
+        try:
+            from app.services.notification_helpers import notify_scrape_failed
+            org = db.query(Organization).filter(
+                Organization.organization_id == source.organization_id
+            ).first()
+            if org and org.tenant_id:
+                notify_scrape_failed(
+                    user_id=str(org.tenant_id),
+                    platform_name=source.platform.platform_name,
+                    error_message=request.error_message,
+                    org_name=org.organization_name,
+                )
+        except Exception:
+            pass  # Best-effort
         
     elif request.status == SyncStatus.RUNNING:
         source.source_status = SourceStatus.RUNNING.value
