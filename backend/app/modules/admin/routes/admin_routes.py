@@ -331,3 +331,33 @@ def get_user_stats_endpoint() -> UserStatsData:
             return get_user_stats(cursor)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch user stats: {error}")
+
+# ── Embeddings endpoints ────────────────────────────────────────────
+
+@router.post("/embeddings/trigger-pending")
+def trigger_pending_embeddings() -> dict:
+    """Manually triggers embedding for all unembedded, processed reviews."""
+    try:
+        from app.modules.source.services.embedding_client import trigger_embedding_for_source
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            
+            # Find all sources that have unembedded processed reviews
+            query = """
+                SELECT DISTINCT CAST(source_id AS VARCHAR(36))
+                FROM dbo.processed_review
+                WHERE status = 'processed' AND is_embedded = 0
+            """
+            rows = execute_query(cursor, query).fetchall()
+            
+            source_ids = [row[0] for row in rows if row[0]]
+            
+            for source_id in source_ids:
+                trigger_embedding_for_source(source_id)
+                
+            return {
+                "triggered_sources_count": len(source_ids),
+                "message": f"Successfully triggered embedding for {len(source_ids)} sources"
+            }
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Failed to trigger embeddings: {error}")

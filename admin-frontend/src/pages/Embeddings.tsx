@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Database, 
-    Settings2, 
+import {
+    Database,
+    Settings2,
     RefreshCw,
     Pause,
     Play,
     Loader
 } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { 
-    getThresholds, 
-    updateThresholds, 
+import {
+    getThresholds,
+    updateThresholds,
     resetThresholds,
     getRecentJobs,
     getDatabaseStats,
@@ -20,6 +20,7 @@ import {
     getServiceStatus
 } from '../services/embeddingService';
 import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
+import { triggerPendingEmbeddings } from '../services/adminDataService';
 
 export const Embeddings: React.FC = () => {
     const [thresholds, setThresholds] = useState<SimilarityThresholds>({
@@ -36,6 +37,7 @@ export const Embeddings: React.FC = () => {
     const [jobsLoading, setJobsLoading] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [pauseLoading, setPauseLoading] = useState(false);
+    const [triggering, setTriggering] = useState(false);
 
     // Load initial data on mount
     useEffect(() => {
@@ -87,7 +89,7 @@ export const Embeddings: React.FC = () => {
     // Save thresholds with debouncing
     const handleThresholdChange = (newThresholds: SimilarityThresholds) => {
         setThresholds(newThresholds);
-        
+
         // Clear existing timeout
         if (saveTimeout) {
             clearTimeout(saveTimeout);
@@ -143,19 +145,19 @@ export const Embeddings: React.FC = () => {
             'This will re-generate embeddings for all documents using the MiniLM model. ' +
             'This may take several minutes depending on the number of vectors.'
         );
-        
+
         if (!confirmed) return;
 
         try {
             setSaving(true);
             setError(null);
-            
+
             const result = await reindexDatabase();
-            
+
             // Refresh database stats to show updated info
             const dbStats = await getDatabaseStats();
             setVectorDb(dbStats);
-            
+
             alert(`Successfully re-indexed ${result.vectorsReindexed.toLocaleString()} vectors using MiniLM model.`);
         } catch (err) {
             console.error('Failed to re-index database:', err);
@@ -193,6 +195,21 @@ export const Embeddings: React.FC = () => {
         }
     };
 
+    const handleTriggerPending = async () => {
+        try {
+            setTriggering(true);
+            setError(null);
+            const response = await triggerPendingEmbeddings();
+            alert(`Successfully triggered embedding for ${response.triggered_sources_count} sources.`);
+            handleRefreshJobs();
+        } catch (err) {
+            console.error('Failed to trigger pending embeddings:', err);
+            setError('Failed to trigger pending embeddings. Please check the logs.');
+        } finally {
+            setTriggering(false);
+        }
+    };
+
     return (
         <div className="space-y-6 pt-4">
             {/* Error Banner */}
@@ -216,8 +233,8 @@ export const Embeddings: React.FC = () => {
                         <div>
                             <h3 className="text-base font-semibold text-gray-900">Embedding Service Control</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                {isPaused 
-                                    ? 'Service is paused. All embedding operations are on hold and will resume from where they stopped.' 
+                                {isPaused
+                                    ? 'Service is paused. All embedding operations are on hold and will resume from where they stopped.'
                                     : 'Service is running. Embedding operations are being processed normally.'}
                             </p>
                         </div>
@@ -309,15 +326,29 @@ export const Embeddings: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Re-index button */}
-                            <div className="flex items-center justify-end">
-                                <button 
+                            {/* Re-index & Force Embed Action buttons */}
+                            <div className="flex items-center justify-end gap-4 mt-6 pt-4 border-t border-gray-100">
+                                <button
+                                    onClick={handleTriggerPending}
+                                    disabled={triggering || !vectorDb}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Manually trigger embedding for all new, processed reviews that haven't been embedded yet."
+                                >
+                                    {triggering ? (
+                                        <Loader size={16} className="animate-spin" />
+                                    ) : (
+                                        <Play size={16} />
+                                    )}
+                                    Embed All
+                                </button>
+                                <button
                                     onClick={handleReindex}
                                     disabled={saving || !vectorDb}
-                                    className="flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-600 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Re-generate embeddings for all documents. This is a heavy operation."
                                 >
                                     <RefreshCw size={16} className={saving ? 'animate-spin' : ''} />
-                                    Re-index
+                                    Re-index All
                                 </button>
                             </div>
                         </>
@@ -338,7 +369,7 @@ export const Embeddings: React.FC = () => {
                                 <Loader size={16} className="animate-spin text-blue-500" />
                             )}
                         </div>
-                        <button 
+                        <button
                             onClick={handleResetThresholds}
                             disabled={saving || loading}
                             className="text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
@@ -362,7 +393,7 @@ export const Embeddings: React.FC = () => {
                                     min="0"
                                     max="2"
                                     value={thresholds.oneWord}
-                                    onChange={(e) => handleThresholdChange({...thresholds, oneWord: parseFloat(e.target.value) || 0})}
+                                    onChange={(e) => handleThresholdChange({ ...thresholds, oneWord: parseFloat(e.target.value) || 0 })}
                                     disabled={saving}
                                     className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                                 />
@@ -378,7 +409,7 @@ export const Embeddings: React.FC = () => {
                                     min="0"
                                     max="2"
                                     value={thresholds.twoWords}
-                                    onChange={(e) => handleThresholdChange({...thresholds, twoWords: parseFloat(e.target.value) || 0})}
+                                    onChange={(e) => handleThresholdChange({ ...thresholds, twoWords: parseFloat(e.target.value) || 0 })}
                                     disabled={saving}
                                     className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                                 />
@@ -394,7 +425,7 @@ export const Embeddings: React.FC = () => {
                                     min="0"
                                     max="2"
                                     value={thresholds.threeOrMore}
-                                    onChange={(e) => handleThresholdChange({...thresholds, threeOrMore: parseFloat(e.target.value) || 0})}
+                                    onChange={(e) => handleThresholdChange({ ...thresholds, threeOrMore: parseFloat(e.target.value) || 0 })}
                                     disabled={saving}
                                     className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                                 />
@@ -409,7 +440,7 @@ export const Embeddings: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="flex items-center justify-between p-6 pb-4">
                     <h3 className="text-base font-semibold text-gray-900">Recent Embedding Jobs</h3>
-                    <button 
+                    <button
                         onClick={handleRefreshJobs}
                         disabled={jobsLoading}
                         className="flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-600 font-medium transition-colors disabled:opacity-50"
@@ -440,34 +471,31 @@ export const Embeddings: React.FC = () => {
                                 <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 text-sm font-mono text-gray-600">{job.jobId}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                                            job.type === 'Review' 
-                                                ? 'bg-purple-100 text-purple-600' 
+                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${job.type === 'Review'
+                                                ? 'bg-purple-100 text-purple-600'
                                                 : 'bg-orange-100 text-orange-600'
-                                        }`}>
+                                            }`}>
                                             {job.type}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`text-sm font-medium ${
-                                            job.status === 'Completed' ? 'text-green-600' : 
-                                            job.status === 'Failed' ? 'text-red-500' : 
-                                            job.status === 'Paused' ? 'text-yellow-600' :
-                                            'text-blue-500'
-                                        }`}>
+                                        <span className={`text-sm font-medium ${job.status === 'Completed' ? 'text-green-600' :
+                                                job.status === 'Failed' ? 'text-red-500' :
+                                                    job.status === 'Paused' ? 'text-yellow-600' :
+                                                        'text-blue-500'
+                                            }`}>
                                             {job.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full transition-all ${
-                                                        job.status === 'Completed' ? 'bg-green-500' :
-                                                        job.status === 'Failed' ? 'bg-red-500' :
-                                                        job.status === 'Paused' ? 'bg-yellow-500' :
-                                                        'bg-blue-500'
-                                                    }`}
+                                                <div
+                                                    className={`h-full rounded-full transition-all ${job.status === 'Completed' ? 'bg-green-500' :
+                                                            job.status === 'Failed' ? 'bg-red-500' :
+                                                                job.status === 'Paused' ? 'bg-yellow-500' :
+                                                                    'bg-blue-500'
+                                                        }`}
                                                     style={{ width: `${job.progress}%` }}
                                                 />
                                             </div>
