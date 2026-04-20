@@ -8,6 +8,7 @@ the primary operation.
 
 import logging
 import uuid
+from app.modules.auth.constants.roles import ADMIN_ROLE_ID
 
 logger = logging.getLogger(__name__)
 
@@ -206,3 +207,38 @@ def notify_source_removed(user_id: str, platform_name: str, org_name: str | None
         ),
         notification_type="warning",
     )
+
+
+def notify_admin_gemini_quota_exceeded() -> None:
+    """Specialized alert for system admins when Gemini API quota is hit."""
+    from app.database.session import SessionLocal
+    from app.modules.user.models.user_models import User
+    from app.modules.groups.notifications_repo import create_notification
+
+    try:
+        db = SessionLocal()
+        try:
+            # Find all users with Admin role
+            admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
+            if not admins:
+                logger.warning("No administrators found to notify about Gemini quota issue.")
+                return
+
+            title = "Gemini API Quota Exceeded"
+            message = "The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits."
+
+            for admin in admins:
+                try:
+                    create_notification(
+                        db=db,
+                        user_id=admin.user_id,
+                        title=title,
+                        message=message,
+                        notification_type="error",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to notify admin {admin.user_id}: {e}")
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error(f"Failed to process admin Gemini quota notifications: {exc}")

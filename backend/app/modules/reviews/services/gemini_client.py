@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 
 from google import genai
 from google.genai import errors
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, retry_if_exception
 
 import app.core.config as app_config
 
@@ -82,10 +82,32 @@ def _get_client():
     return genai.Client(api_key=api_key, http_options={"api_version": "v1"})
 
 
+def is_retryable_exception(e: Exception) -> bool:
+    """
+    Determines if an exception from Gemini should trigger a retry.
+    We exclude 429 (RESOURCE_EXHAUSTED) because quota resets usually 
+    take longer than our retry window.
+    """
+    err_str = str(e)
+    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+        return False
+    
+    # Retry on ServerErrors (5xx)
+    if isinstance(e, errors.ServerError):
+        return True
+    
+    # Do not retry on other ClientErrors (4xx) like 400 or 403
+    if isinstance(e, errors.ClientError):
+        return False
+        
+    # Retry on generic exceptions (might be network issues)
+    return True
+
+
 @retry(
     wait=wait_exponential(multiplier=2, min=2, max=20),
     stop=stop_after_attempt(5),
-    retry=retry_if_exception_type((errors.ServerError, Exception)),
+    retry=retry_if_exception(is_retryable_exception),
     before_sleep=lambda retry_state: logger.warning(f"Gemini API busy (503/Error). Retrying in {retry_state.next_action.sleep} seconds... (Attempt {retry_state.attempt_number})")
 )
 def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -97,6 +119,7 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
     client = _get_client()
     batch_json = json.dumps(reviews, ensure_ascii=False)
+    response = None
     
     try:
         response = client.models.generate_content(
@@ -119,6 +142,19 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         return results
 
     except Exception as e:
-        logger.error(f"Gemini analysis failed: {e}")
-        logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")
+        err_str = str(e)
+        logger.error(f"Gemini analysis failed: {err_str}")
+        
+        # Notify admin if it's a quota issue
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            try:
+                from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
+                notify_admin_gemini_quota_exceeded()
+            except ImportError:
+                logger.warning("Could not import notification helper to notify admin of Gemini quota issue.")
+            except Exception as notify_err:
+                logger.warning(f"Failed to trigger admin notification for Gemini quota: {notify_err}")
+
+        if response:
+            logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")
         raise e
