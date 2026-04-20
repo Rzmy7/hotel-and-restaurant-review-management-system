@@ -46,7 +46,7 @@ def wait_if_paused():
 class Review(BaseModel):
     review_id: str
     text: str
-    hotel_id: int
+    source_id: str
 
 
 class ReviewItem(BaseModel):
@@ -54,17 +54,17 @@ class ReviewItem(BaseModel):
     text: str
 
 class BatchEmbedRequest(BaseModel):
-    hotel_id: int
+    source_id: str
     reviews: List[ReviewItem]
 
 class SearchRequest(BaseModel):
     query: str
-    hotel_id: int
+    source_ids: List[str]
     top_k: int = 3
 
 class Rule(BaseModel):
     rule_id: str
-    hotel_id: int
+    source_id: str
     text: str
 
 class RuleItem(BaseModel):
@@ -72,7 +72,7 @@ class RuleItem(BaseModel):
     text: str
 
 class BatchRuleEmbedRequest(BaseModel):
-    hotel_id: int
+    source_id: str
     rules: list[RuleItem]
 
 class ThresholdConfig(BaseModel):
@@ -100,7 +100,7 @@ def embed(review: Review):
             review.review_id,
             vector,
             {
-                "hotel_id": review.hotel_id,
+                "source_id": review.source_id,
                 "type": "review"
             },
             document=review.text
@@ -133,7 +133,7 @@ def embed_batch(data: BatchEmbedRequest):
             save_embedding(
                 review.review_id,
                 vector,
-                {"hotel_id": data.hotel_id, "type": "review"},
+                {"source_id": data.source_id, "type": "review"},
                 document=review.text
             )
 
@@ -172,7 +172,7 @@ def embed_rule(rule: Rule):
             rule.rule_id,
             vector,
             {
-                "hotel_id": rule.hotel_id,
+                "source_id": rule.source_id,
                 "type": "rule"
             },
             document=rule.text
@@ -209,7 +209,7 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
                 rule.rule_id,
                 vector,
                 {
-                    "hotel_id": data.hotel_id,
+                    "source_id": data.source_id,
                     "type": "rule"
                 },
                 document=rule.text
@@ -244,13 +244,19 @@ def search(data: SearchRequest):
 
     threshold = get_threshold(data.query)
 
+    # Build source_id filter: single value or $in for multiple
+    if len(data.source_ids) == 1:
+        source_filter = {"source_id": data.source_ids[0]}
+    else:
+        source_filter = {"source_id": {"$in": data.source_ids}}
+
     # Search REVIEWS
     review_results = collection.query(
         query_embeddings=[vector],
         n_results=data.top_k,
         where={
             "$and": [
-                {"hotel_id": data.hotel_id},
+                source_filter,
                 {"type": "review"}
             ]
         },
@@ -273,9 +279,9 @@ def search(data: SearchRequest):
         query_embeddings=[vector],
         n_results=5,
         where={
-        "$and": [
-            {"hotel_id": data.hotel_id},
-            {"type": "rule"}
+            "$and": [
+                source_filter,
+                {"type": "rule"}
             ]
         },
         include=["documents", "metadatas", "distances"]

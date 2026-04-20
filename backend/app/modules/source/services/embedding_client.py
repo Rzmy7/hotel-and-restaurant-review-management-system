@@ -6,7 +6,7 @@ Triggered by the main backend after the AI analysis pipeline completes.
 Flow:
   1. Fetch processed reviews from [ReviewMate].[dbo].[processed_review]
      that are status='processed' AND is_embedded=0 for the given source_id
-  2. Derive a stable integer hotel_id from the source_id for ChromaDB namespacing
+  2. Use the source_id UUID for ChromaDB namespacing
   3. POST them in one batch to the Embedding Service
      (POST {EMBEDDING_SERVICE_URL}/embed/batch)
   4. On success, mark those review IDs as is_embedded=1 directly in processed_review
@@ -26,13 +26,7 @@ logger = logging.getLogger(__name__)
 EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002")
 
 
-def _derive_hotel_id(source_id: str) -> int:
-    """
-    Derive a stable positive integer from a source_id UUID string.
-    Used to namespace embeddings in ChromaDB (the embedding service uses hotel_id).
-    The hash is deterministic — same source_id always yields the same int.
-    """
-    return abs(hash(source_id)) % (10 ** 9)
+
 
 
 def _embed_source_reviews(source_id: str) -> None:
@@ -99,9 +93,8 @@ def _embed_source_reviews(source_id: str) -> None:
     logger.info(f"[EmbeddingClient] Found {len(reviews_data)} unembedded processed reviews for source_id={source_id}")
 
     # ── Step 2: Send to Embedding Service ─────────────────────────────────────
-    hotel_id = _derive_hotel_id(source_id)
     embed_payload = {
-        "hotel_id": hotel_id,
+        "source_id": source_id,
         "reviews": [
             {
                 "review_id": r["review_id"],

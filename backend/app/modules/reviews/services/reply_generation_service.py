@@ -123,11 +123,11 @@ def _extract_token_usage(value: Any) -> int:
     return 0
 
 
-def _fetch_embedding_context(review_text: str, hotel_id: int, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     try:
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
-            json={"query": review_text, "hotel_id": hotel_id, "top_k": top_k},
+            json={"query": review_text, "source_ids": [source_id], "top_k": top_k},
             timeout=12,
         )
         response.raise_for_status()
@@ -380,14 +380,14 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
         similar_reviews_count = int(settings["similar_reviews_count"])
         use_embedding_rules = bool(settings["use_embedding_rules"])
         use_similar_reviews = bool(settings["use_similar_reviews"])
-        hotel_id = payload.hotelId or 1
+        source_id = payload.sourceId or ""
 
         similar_reviews: list[dict[str, Any]] = []
         rules: list[dict[str, Any]] = []
         if use_embedding_rules or use_similar_reviews:
             similar_reviews, rules = _fetch_embedding_context(
                 payload.reviewText,
-                hotel_id,
+                source_id,
                 similar_reviews_count,
             )
 

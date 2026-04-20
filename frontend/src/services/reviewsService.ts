@@ -15,6 +15,7 @@ class ReviewsService {
             page: params.page ?? 0,
             limit: params.limit ?? 15,
             search: params.search || undefined,
+            embedding_search: params.useEmbeddingSearch,
             rating: params.rating?.length ? params.rating : undefined,
             sentiment: params.sentiment?.length ? params.sentiment : undefined,
             source: params.source?.length ? params.source : undefined,
@@ -62,6 +63,7 @@ class ReviewsService {
         return apiClient.get<ReviewStats>('/reviews/meta/stats', {
             organization_id: organizationId,
             search: params.search || undefined,
+            embedding_search: params.useEmbeddingSearch,
             rating: params.rating?.length ? params.rating : undefined,
             sentiment: params.sentiment?.length ? params.sentiment : undefined,
             source: params.source?.length ? params.source : undefined,

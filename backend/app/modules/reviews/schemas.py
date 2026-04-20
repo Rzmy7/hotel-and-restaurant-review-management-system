@@ -63,7 +63,7 @@ class ReplyGenerationRequest(BaseModel):
     sentiment: Optional[str] = "Neutral"
     source: Optional[str] = None
     language: Optional[str] = None
-    hotelId: Optional[int] = 1
+    sourceId: Optional[str] = None
 
 
 class ReplyGenerationResponse(BaseModel):

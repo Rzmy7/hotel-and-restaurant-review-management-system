@@ -159,9 +159,38 @@ def fetch_all_reviews_enriched(
 
     if filters:
         if filters.get("search"):
-            where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
-            search_val = f"%{filters['search']}%"
-            params.extend([search_val, search_val, search_val, search_val, search_val])
+            if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+                import httpx
+                from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                
+                cursor.execute("SELECT CAST(source_id AS VARCHAR(36)) FROM dbo.source WHERE organization_id = ?", organization_id)
+                source_ids = [row[0] for row in cursor.fetchall()]
+                
+                matching_review_ids = []
+                if source_ids:
+                    try:
+                        resp = httpx.post(
+                            f"{EMBEDDING_SERVICE_URL}/search", 
+                            json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, 
+                            timeout=10.0
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            for review in data.get("reviews", []):
+                                matching_review_ids.append(review["id"])
+                    except Exception as e:
+                        print(f"Embedding search error: {e}")
+                
+                if not matching_review_ids:
+                    where_clauses.append("1 = 0")
+                else:
+                    placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(matching_review_ids))
+                    where_clauses.append(f"r.id IN ({placeholders})")
+                    params.extend(matching_review_ids)
+            else:
+                where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+                search_val = f"%{filters['search']}%"
+                params.extend([search_val, search_val, search_val, search_val, search_val])
         
         if filters.get("rating"):
             ratings = filters["rating"]
@@ -336,9 +365,38 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Di
 
     if filters:
         if filters.get("search"):
-            where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
-            search_val = f"%{filters['search']}%"
-            params.extend([search_val, search_val, search_val, search_val, search_val])
+            if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+                import httpx
+                from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                
+                cursor.execute("SELECT CAST(source_id AS VARCHAR(36)) FROM dbo.source WHERE organization_id = ?", organization_id)
+                source_ids = [row[0] for row in cursor.fetchall()]
+                
+                matching_review_ids = []
+                if source_ids:
+                    try:
+                        resp = httpx.post(
+                            f"{EMBEDDING_SERVICE_URL}/search", 
+                            json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, 
+                            timeout=10.0
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            for review in data.get("reviews", []):
+                                matching_review_ids.append(review["id"])
+                    except Exception as e:
+                        print(f"Embedding search error: {e}")
+                
+                if not matching_review_ids:
+                    where_clauses.append("1 = 0")
+                else:
+                    placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(matching_review_ids))
+                    where_clauses.append(f"r.id IN ({placeholders})")
+                    params.extend(matching_review_ids)
+            else:
+                where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+                search_val = f"%{filters['search']}%"
+                params.extend([search_val, search_val, search_val, search_val, search_val])
 
         if filters.get("rating"):
             ratings = filters["rating"]

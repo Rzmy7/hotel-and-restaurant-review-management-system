@@ -43,6 +43,7 @@ def read_reviews(
     page: int = Query(0, ge=0),
     limit: int = Query(15, gt=0),
     search: Optional[str] = Query(None),
+    embedding_search: bool = Query(False),
     rating: List[int] = Query(None),
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
@@ -54,6 +55,7 @@ def read_reviews(
     try:
         filters = {
             "search": search,
+            "embedding_search": embedding_search,
             "rating": rating,
             "sentiment": sentiment,
             "source": source,
@@ -95,6 +97,7 @@ def get_options(organization_id: uuid.UUID = Query(...)):
 def get_stats(
     organization_id: uuid.UUID = Query(...),
     search: Optional[str] = Query(None),
+    embedding_search: bool = Query(False),
     rating: List[int] = Query(None),
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
@@ -106,6 +109,7 @@ def get_stats(
     try:
         filters = {
             "search": search,
+            "embedding_search": embedding_search,
             "rating": rating,
             "sentiment": sentiment,
             "source": source,

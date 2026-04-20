@@ -183,7 +183,7 @@ reviews/
   ```json
   {
     "query": "review text",
-    "hotel_id": 123,
+    "source_ids": ["uuid-string"],
     "top_k": 3
   }
   ```
@@ -387,7 +387,7 @@ mapping = {
 **Key Functions**:
 - `generate_review_reply(payload)`: Main entry point for reply generation.
 - `_load_reply_generation_settings()`: Fetches provider, model, API keys, toggles from DB.
-- `_fetch_embedding_context(review_text, hotel_id, top_k)`: Calls Embedding Service for similar reviews and rules.
+- `_fetch_embedding_context(review_text, source_id, top_k)`: Calls Embedding Service for similar reviews and rules.
 - `_build_prompt(payload, similar_reviews, rules)`: Constructs prompt with tone, length, language hints.
 - `_generate_with_google(api_key, model, prompt)`: Calls Gemini API (tries v1 and v1beta).
 - `_generate_with_claude(api_key, model, prompt)`: Calls Claude API with 8-model fallback chain.
@@ -639,7 +639,7 @@ Timeout: 12s
 
 {
   "query": "review text here",
-  "hotel_id": 123,
+  "source_ids": ["uuid-string"],
   "top_k": 3
 }
 ```

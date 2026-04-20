@@ -237,7 +237,7 @@ AND last_synced_at < timeout_threshold
 
 | Function | Purpose |
 |----------|---------|
-| `search_embeddings(query, hotel_id, top_k)` | Semantic search for similar reviews |
+| `search_embeddings(query, source_id, top_k)` | Semantic search for similar reviews |
 | `get_embedding(text)` | Generate embedding for text |
 | `batch_embed(texts)` | Batch embedding generation |
 | `test_connection()` | Verify embedding service health |
@@ -247,7 +247,7 @@ AND last_synced_at < timeout_threshold
 POST {EMBEDDING_SERVICE_URL}/search
 {
     "query": "review text",
-    "hotel_id": 123,
+    "source_ids": ["uuid-string"],
     "top_k": 3
 }
 
