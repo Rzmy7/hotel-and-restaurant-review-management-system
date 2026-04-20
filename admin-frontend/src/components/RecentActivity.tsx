@@ -1,6 +1,7 @@
 import React from 'react';
 import {
     UserPlus,
+    UserMinus,
     Building2,
     CheckCircle2,
     XCircle,
@@ -8,6 +9,11 @@ import {
     Bot,
     Clock,
     Activity,
+    Settings,
+    Megaphone,
+    Wrench,
+    Trash2,
+    Database,
 } from 'lucide-react';
 import type { RecentActivity as RecentActivityType } from '../types';
 
@@ -31,6 +37,18 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, onVi
                 return <CreditCard size={14} className="text-amber-500" />;
             case 'ai_job':
                 return <Bot size={14} className="text-cyan-500" />;
+            case 'settings_updated':
+                return <Settings size={14} className="text-indigo-500" />;
+            case 'broadcast_sent':
+                return <Megaphone size={14} className="text-pink-500" />;
+            case 'maintenance_toggled':
+                return <Wrench size={14} className="text-orange-500" />;
+            case 'user_deleted':
+                return <UserMinus size={14} className="text-red-500" />;
+            case 'org_deleted':
+                return <Trash2 size={14} className="text-red-500" />;
+            case 'embeddings_triggered':
+                return <Database size={14} className="text-teal-500" />;
             default:
                 return <Clock size={14} className="text-gray-500" />;
         }
@@ -50,6 +68,18 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, onVi
                 return 'bg-amber-50 ring-1 ring-amber-100';
             case 'ai_job':
                 return 'bg-cyan-50 ring-1 ring-cyan-100';
+            case 'settings_updated':
+                return 'bg-indigo-50 ring-1 ring-indigo-100';
+            case 'broadcast_sent':
+                return 'bg-pink-50 ring-1 ring-pink-100';
+            case 'maintenance_toggled':
+                return 'bg-orange-50 ring-1 ring-orange-100';
+            case 'user_deleted':
+                return 'bg-red-50 ring-1 ring-red-100';
+            case 'org_deleted':
+                return 'bg-red-50 ring-1 ring-red-100';
+            case 'embeddings_triggered':
+                return 'bg-teal-50 ring-1 ring-teal-100';
             default:
                 return 'bg-gray-50 ring-1 ring-gray-100';
         }

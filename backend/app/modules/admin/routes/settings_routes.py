@@ -1,5 +1,7 @@
 """General admin settings routes (timezone/language/date/currency)."""
 
+from app.modules.admin.services.admin_activity_logger import log_admin_activity
+
 import pyodbc
 import requests
 from fastapi import APIRouter, HTTPException
@@ -231,6 +233,12 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
             set_setting(cursor, "currency", currency)
             connection.commit()
 
+            log_admin_activity(
+                "settings_updated",
+                "General Settings Updated",
+                f"Timezone: {timezone_value}, Language: {language}",
+            )
+
             return GeneralSettingsResponse(
                 timezone=timezone_value,
                 language=language,
@@ -301,6 +309,12 @@ def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResp
             )
             connection.commit()
 
+            log_admin_activity(
+                "settings_updated",
+                "Admin Profile Updated",
+                f"Name changed to '{name_value}'",
+            )
+
             return AdminProfileResponse(name=name_value)
     except HTTPException:
         raise
@@ -337,6 +351,12 @@ def change_admin_password(payload: AdminPasswordChangePayload) -> AdminPasswordC
                 (next_hash, user_id),
             )
             connection.commit()
+
+            log_admin_activity(
+                "settings_updated",
+                "Admin Password Changed",
+                "Password was updated via admin panel",
+            )
 
             return AdminPasswordChangeResponse(message="Password updated successfully")
     except HTTPException:
@@ -424,6 +444,12 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
             google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
             claude_token_usage = get_setting_int(cursor, "reply_claude_token_usage", default=0)
             connection.commit()
+
+            log_admin_activity(
+                "ai_job",
+                "Reply Generation Settings Updated",
+                f"Model: {selected_model}, Similar reviews: {similar_reviews_count}",
+            )
 
             return ReplyGenerationSettingsResponse(
                 googleApiKey=google_api_key,
@@ -557,6 +583,12 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
                 set_setting(cursor, limit_key, str(next_limit))
 
             connection.commit()
+
+            log_admin_activity(
+                "settings_updated",
+                "Feature Flag Updated",
+                f"Flag '{flag_key}' set to {payload.status}" + (f" (limit: {payload.limit})" if payload.limit else ""),
+            )
 
             updated_flags = _load_feature_flags(cursor)
             for flag in updated_flags:

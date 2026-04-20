@@ -3,6 +3,7 @@ Review Processor — orchestrates the AI analysis pipeline.
 """
 
 from pyasn1.type.univ import Any
+import asyncio
 import json
 import uuid
 import logging
@@ -72,7 +73,7 @@ async def run_analysis_pipeline():
                     for r in pending_reviews
                 ]
 
-                ai_results = analyze_reviews_batch(ai_input)
+                ai_results = await asyncio.to_thread(analyze_reviews_batch, ai_input)
 
             except Exception as e:
                 logger.error(f"!!! Gemini batch analysis FAILED: {e}", exc_info=True)
@@ -139,7 +140,7 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
         }]
 
         try:
-            ai_results = analyze_reviews_batch(ai_input)
+            ai_results = await asyncio.to_thread(analyze_reviews_batch, ai_input)
             if not ai_results:
                 raise RuntimeError("AI analysis returned no results.")
             

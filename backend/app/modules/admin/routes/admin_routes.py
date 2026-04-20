@@ -6,6 +6,8 @@ Migrated from admin-backend/app/admin_router.py.
 
 from datetime import datetime
 
+from app.modules.admin.services.admin_activity_logger import log_admin_activity
+
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
@@ -165,6 +167,7 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to update organization: {exc}") from exc
 
+    log_admin_activity("org_created", "Organization Updated", f"Renamed to '{name}' (ID: {org_id})")
     return {"id": org_id, "name": name, "status": "updated"}
 
 
@@ -212,6 +215,12 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
                 """,
                 (org_id,),
             ).fetchall()
+
+            log_admin_activity(
+                "org_created",
+                "Organization Sources Updated",
+                f"{len(payload.sources)} source(s) linked to org {org_id}",
+            )
 
             return [
                 {
@@ -271,6 +280,7 @@ def delete_organization(org_id: str) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to delete organization: {exc}") from exc
 
+    log_admin_activity("org_deleted", "Organization Deleted", f"'{found_name}' (ID: {org_id})")
     return {"status": "deleted", "id": org_id, "name": found_name}
 
 
@@ -292,7 +302,13 @@ def create_user(payload: AdminUserCreatePayload) -> AdminUser:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            return create_user_in_db(cursor, conn, payload)
+            result = create_user_in_db(cursor, conn, payload)
+            log_admin_activity(
+                "user_joined",
+                "Admin Created User",
+                f"{payload.email} ({payload.role})",
+            )
+            return result
     except HTTPException:
         raise
     except Exception as error:
@@ -304,7 +320,17 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload) -> AdminUser:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            return update_user_in_db(cursor, conn, user_id, payload)
+            result = update_user_in_db(cursor, conn, user_id, payload)
+            changes = []
+            if payload.role: changes.append(f"role={payload.role}")
+            if payload.status: changes.append(f"status={payload.status}")
+            if payload.plan: changes.append(f"plan={payload.plan}")
+            log_admin_activity(
+                "user_joined",
+                "User Updated",
+                f"User {result.email} updated" + (f" ({', '.join(changes)})" if changes else ""),
+            )
+            return result
     except HTTPException:
         raise
     except Exception as error:
@@ -316,7 +342,13 @@ def delete_user(user_id: str) -> DeleteUserResponse:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            return delete_user_in_db(cursor, conn, user_id)
+            result = delete_user_in_db(cursor, conn, user_id)
+            log_admin_activity(
+                "user_deleted",
+                "User Deleted",
+                f"User ID: {user_id}",
+            )
+            return result
     except HTTPException:
         raise
     except Exception as error:
@@ -354,6 +386,12 @@ def trigger_pending_embeddings() -> dict:
             
             for source_id in source_ids:
                 trigger_embedding_for_source(source_id)
+
+            log_admin_activity(
+                "embeddings_triggered",
+                "Embeddings Triggered",
+                f"Triggered embedding for {len(source_ids)} source(s)",
+            )
                 
             return {
                 "triggered_sources_count": len(source_ids),

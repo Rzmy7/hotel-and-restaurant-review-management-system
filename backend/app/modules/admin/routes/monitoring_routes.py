@@ -4,6 +4,8 @@ Monitoring routes — scraping platforms, jobs, and server status.
 Migrated from admin-backend/app/monitoring_router.py.
 """
 
+from app.modules.admin.services.admin_activity_logger import log_admin_activity
+
 from datetime import date, datetime
 
 import pyodbc
@@ -69,7 +71,13 @@ def scraping_platforms() -> list[dict[str, object]]:
 @router.post("/scraping/platforms")
 def create_scraping_platform(payload: ScrapingPlatformCreatePayload) -> dict[str, str | bool]:
     """Creates a scraping platform entry in the SQL database sources table."""
-    return create_platform_in_db(payload)
+    result = create_platform_in_db(payload)
+    log_admin_activity(
+        "scrape_completed",
+        "Scraping Platform Created",
+        f"Platform '{payload.name}' added",
+    )
+    return result
 
 
 @router.get("/scraping/platforms/{platform_id}")
@@ -81,7 +89,13 @@ def scraping_platform_details(platform_id: str) -> dict[str, object]:
 @router.put("/scraping/platforms/{platform_id}")
 def update_scraping_platform(platform_id: str, payload: ScrapingPlatformUpdatePayload) -> dict[str, object]:
     """Updates platform metadata and synchronizes its backing review table schema."""
-    return update_platform_in_db(platform_id, payload)
+    result = update_platform_in_db(platform_id, payload)
+    log_admin_activity(
+        "scrape_completed",
+        "Scraping Platform Updated",
+        f"Platform '{payload.name}' (ID: {platform_id}) updated",
+    )
+    return result
 
 
 @router.patch("/scraping/platforms/{platform_id}/toggle")
@@ -130,6 +144,11 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to toggle platform: {exc}") from exc
 
+    log_admin_activity(
+        "scrape_completed",
+        f"Platform {'Enabled' if new_enabled else 'Disabled'}",
+        f"Platform '{found_name}' toggled to {'active' if new_enabled else 'inactive'}",
+    )
     return {
         "id": str(found_id),
         "name": found_name,
@@ -169,6 +188,11 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to delete platform: {exc}") from exc
 
+    log_admin_activity(
+        "scrape_failed",
+        "Scraping Platform Deleted",
+        f"Platform '{found_name}' (ID: {found_id}) deleted",
+    )
     return {"status": "deleted", "id": str(found_id), "name": found_name}
 
 
@@ -263,6 +287,11 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
 def cancel_scraping_job(job_id: str) -> dict[str, str]:
     """Cancels a running or queued scraping job by its internal job UUID."""
     result = scraping_backend_post(f"/api/system/jobs/cancel/{job_id}")
+    log_admin_activity(
+        "scrape_failed",
+        "Scraping Job Cancelled",
+        f"Job {job_id} was cancelled by admin",
+    )
     return result
 
 
@@ -465,6 +494,12 @@ def save_gemini_config(payload: GeminiApiKeySavePayload) -> dict:
 
         # Update in-memory config so the processor picks it up immediately
         app_config.GENAI_KEY = api_key
+
+        log_admin_activity(
+            "ai_job",
+            "Gemini API Key Updated",
+            "Review processing Gemini API key was saved",
+        )
 
         return {"status": "saved", "message": "Gemini API key saved successfully."}
     except HTTPException:

@@ -46,17 +46,45 @@ def get_usage_trend(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
         return []
 
 def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
-    """Return latest review-related events for the activity feed."""
+    """Return latest admin-panel actions for the activity feed.
+
+    Reads from ``dbo.admin_activity_log`` which is populated by the
+    ``admin_activity_logger`` helper whenever an admin performs a
+    mutating action in the admin panel.
+    """
+    # Ensure the table exists before querying
+    try:
+        cursor.execute(
+            """
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'admin_activity_log'
+            )
+            BEGIN
+                CREATE TABLE dbo.admin_activity_log (
+                    id          NVARCHAR(36)   NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    action_type NVARCHAR(50)   NOT NULL,
+                    title       NVARCHAR(200)  NOT NULL,
+                    description NVARCHAR(500)  NULL,
+                    admin_user  NVARCHAR(200)  NULL,
+                    created_at  DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME()
+                );
+            END
+            """
+        )
+    except Exception:
+        pass
+
     sql = """
         SELECT TOP 10
             CAST(id AS VARCHAR(36)) as id,
-            'scrape_completed' as [type],
-            'New Review Collected' as title,
-            LEFT(ISNULL(text, 'No content'), 50) as description,
-            CONVERT(VARCHAR(50), scrapedAt, 126) as [timestamp],
-            reviewerName as [user]
-        FROM dbo.processed_review
-        ORDER BY scrapedAt DESC
+            action_type as [type],
+            title,
+            ISNULL(description, '') as description,
+            CONVERT(VARCHAR(50), created_at, 126) as [timestamp],
+            admin_user as [user]
+        FROM dbo.admin_activity_log
+        ORDER BY created_at DESC
     """
     try:
         cursor.execute(sql)

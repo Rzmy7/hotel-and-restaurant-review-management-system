@@ -51,6 +51,12 @@ class RecentActivity(BaseModel):
         "scrape_failed",
         "subscription_changed",
         "ai_job",
+        "settings_updated",
+        "broadcast_sent",
+        "maintenance_toggled",
+        "user_deleted",
+        "org_deleted",
+        "embeddings_triggered",
     ]
     title: str
     description: str

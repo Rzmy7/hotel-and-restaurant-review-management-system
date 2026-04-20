@@ -4,6 +4,8 @@ Broadcasting routes — send, resend, cancel broadcasts and view history.
 Migrated from admin-backend/app/broadcasting_router.py.
 """
 
+from app.modules.admin.services.admin_activity_logger import log_admin_activity
+
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -106,6 +108,12 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
             )
 
         connection.commit()
+        log_admin_activity(
+            "broadcast_sent",
+            "Broadcast Sent",
+            f"'{payload.subject}' to {recipient_count} recipient(s) via {payload.channel}",
+            admin_user=admin_identifier,
+        )
         return {
             "success": True,
             "broadcastId": broadcast_id,
@@ -268,6 +276,11 @@ def resend_broadcast(broadcast_id: str) -> dict:
         )
 
         connection.commit()
+        log_admin_activity(
+            "broadcast_sent",
+            "Broadcast Resent",
+            f"Broadcast {broadcast_id} resent to {len(recipient_ids)} recipient(s)",
+        )
         return {
             "success": True,
             "message": f"Broadcast resent to {len(recipient_ids)} recipients",
@@ -322,6 +335,11 @@ def cancel_broadcast(broadcast_id: str) -> dict:
         )
         connection.commit()
 
+        log_admin_activity(
+            "broadcast_sent",
+            "Broadcast Cancelled",
+            f"Broadcast {broadcast_id} was cancelled",
+        )
         return {
             "success": True,
             "message": "Broadcast cancelled",

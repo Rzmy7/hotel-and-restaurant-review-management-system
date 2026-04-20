@@ -8,7 +8,7 @@ import re
 from typing import List, Dict, Any
 
 from google import genai
-from google.genai import errors
+from google.genai import errors, types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, retry_if_exception
 
 import app.core.config as app_config
@@ -79,7 +79,13 @@ def _get_client():
             "Set it via Admin Panel → Review Processing → Gemini API Key, "
             "or set the GENAI_KEY environment variable."
         )
-    return genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+    return genai.Client(
+        api_key=api_key, 
+        http_options=types.HttpOptions(
+            api_version="v1",
+            retry_options=types.HttpRetryOptions(attempts=1)
+        )
+    )
 
 
 def is_retryable_exception(e: Exception) -> bool:

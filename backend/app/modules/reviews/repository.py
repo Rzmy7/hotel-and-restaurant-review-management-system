@@ -153,8 +153,8 @@ def fetch_all_reviews_enriched(
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
-    # Base WHERE clause (only processed reviews)
-    where_clauses = ["s.organization_id = ?", "r.status = 'processed'"]
+    # Base WHERE clause (we show all reviews regardless of AI processing status so users can see failed/pending ones)
+    where_clauses = ["s.organization_id = ?"]
     params = [organization_id]
 
     if filters:
@@ -360,7 +360,8 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Di
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
-    where_clauses = ["s.organization_id = ?", "r.status = 'processed'"]
+    # Include all reviews so stats reflect the raw data even if AI processing is pending or failed
+    where_clauses = ["s.organization_id = ?"]
     params = [organization_id]
 
     if filters:
@@ -550,7 +551,7 @@ def get_full_distribution(organization_id: str) -> Dict:
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
         JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ? AND r.rating IS NOT NULL AND r.status = 'processed'
+        WHERE s.organization_id = ? AND r.rating IS NOT NULL
         GROUP BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT)
         ORDER BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT) DESC
     """, organization_id)

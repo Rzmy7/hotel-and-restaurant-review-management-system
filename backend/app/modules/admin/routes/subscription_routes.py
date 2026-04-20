@@ -1,5 +1,7 @@
 """Subscription plans routes for admin panel."""
 
+from app.modules.admin.services.admin_activity_logger import log_admin_activity
+
 import pyodbc
 from fastapi import APIRouter, HTTPException
 
@@ -66,6 +68,11 @@ def create_plan(payload: SubscriptionPlanUpsertPayload) -> SubscriptionPlan:
             cursor = conn.cursor()
             plan = create_subscription_plan(cursor, payload)
             conn.commit()
+            log_admin_activity(
+                "subscription_changed",
+                "Subscription Plan Created",
+                f"Plan '{payload.name}' (${payload.monthlyPrice}/mo)",
+            )
             return plan
     except HTTPException:
         raise
@@ -85,6 +92,11 @@ def update_plan(plan_id: str, payload: SubscriptionPlanUpsertPayload) -> Subscri
             cursor = conn.cursor()
             plan = update_subscription_plan(cursor, plan_id_int, payload)
             conn.commit()
+            log_admin_activity(
+                "subscription_changed",
+                "Subscription Plan Updated",
+                f"Plan '{payload.name}' (ID: {plan_id})",
+            )
             return plan
     except HTTPException:
         raise
@@ -104,6 +116,11 @@ def delete_plan(plan_id: str) -> DeleteSubscriptionPlanResponse:
             cursor = conn.cursor()
             delete_subscription_plan(cursor, plan_id_int)
             conn.commit()
+        log_admin_activity(
+            "subscription_changed",
+            "Subscription Plan Deleted",
+            f"Plan ID: {plan_id}",
+        )
         return DeleteSubscriptionPlanResponse(status="deleted", planId=str(plan_id_int))
     except HTTPException:
         raise

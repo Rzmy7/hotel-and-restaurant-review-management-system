@@ -30,7 +30,19 @@ export interface SystemAlert {
 
 export interface RecentActivity {
     id: string;
-    type: 'user_joined' | 'org_created' | 'scrape_completed' | 'scrape_failed' | 'subscription_changed' | 'ai_job';
+    type:
+        | 'user_joined'
+        | 'org_created'
+        | 'scrape_completed'
+        | 'scrape_failed'
+        | 'subscription_changed'
+        | 'ai_job'
+        | 'settings_updated'
+        | 'broadcast_sent'
+        | 'maintenance_toggled'
+        | 'user_deleted'
+        | 'org_deleted'
+        | 'embeddings_triggered';
     title: string;
     description: string;
     timestamp: string;
