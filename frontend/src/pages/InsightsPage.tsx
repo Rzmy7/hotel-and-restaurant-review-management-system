@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import {
     Star, MessageSquare, TrendingUp, Clock, ThumbsUp, ThumbsDown,
     Zap, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight,
-    Minus, Lightbulb, Target, BarChart3
+    Minus, Lightbulb, Target, BarChart3, Lock
 } from 'lucide-react';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchSubscriptionUsage } from '../services/subscriptionPlansService';
+import { Button } from '../components/ui/Button';
 import InsightsHeader from '../components/shared/InsightsHeader';
 import SourceBreakdown from '../components/sources/SourceBreakdown';
 
@@ -281,6 +286,27 @@ const heatColor = (v: number, max: number) => {
 // ═══════════════════════════════════════════════════════════════════
 const InsightsPage: React.FC = () => {
     const [timeRange, setTimeRange] = useState('30d');
+    const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+
+        const checkAccess = async () => {
+            try {
+                const usage = await fetchSubscriptionUsage(user.user_id);
+                const hasInsights = usage.features.some(f => f.key === 'insights' && f.enabled);
+                setHasAccess(hasInsights);
+            } catch (err) {
+                console.error('Error checking plan access', err);
+                setHasAccess(false);
+            }
+        };
+
+        checkAccess();
+    }, [user?.user_id]);
+
     const d = dataByRange[timeRange];
 
     // ── Sentiment chart coordinates ─────────────────────────────
@@ -298,6 +324,40 @@ const InsightsPage: React.FC = () => {
 
     // ── Heatmap max ─────────────────────────────────────────────
     const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
+
+    if (hasAccess === null) {
+        return (
+            <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (hasAccess === false) {
+        return (
+            <div className="min-h-full bg-gray-50 dark:bg-slate-900">
+                <InsightsHeader timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+                <div className="flex-1 flex flex-col items-center justify-center p-8 mt-20">
+                    <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-slate-700 p-8 text-center">
+                        <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Lock size={32} className="text-blue-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Upgrade to Premium</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
+                            Your current plan does not include access to AI-powered insights and advanced analytics. Upgrade your plan to unlock these features.
+                        </p>
+                        <Button
+                            className="w-full"
+                            size="lg"
+                            onClick={() => navigate('/subscription')}
+                        >
+                            View Upgrade Options
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900">
