@@ -191,6 +191,11 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID):
             )
             # 3. Process
             await run_analysis_pipeline()
+            logger.info(f"--- Pipeline AI ANALYSIS COMPLETED for source {source_id} ---")
+
+            # 4. Trigger embedding for newly processed reviews
+            from app.modules.source.services.embedding_client import trigger_embedding_for_source
+            trigger_embedding_for_source(str(source_id))
             logger.info(f"--- Pipeline COMPLETED for source {source_id} ---")
         else:
             logger.info("Pipeline: Skipping analysis (0 new reviews ingested).")

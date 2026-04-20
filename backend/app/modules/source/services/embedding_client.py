@@ -1,27 +1,28 @@
 """
 Embedding Client
 ================
-Triggered by the main backend after a scrape COMPLETED notification.
+Triggered by the main backend after the AI analysis pipeline completes.
 
 Flow:
-  1. Fetch unembedded reviews from the Scraper Engine
-     (GET {SCRAPER_ENGINE_URL}/api/reviews/unembedded/{source_id})
+  1. Fetch processed reviews from [ReviewMate].[dbo].[processed_review]
+     that are status='processed' AND is_embedded=0 for the given source_id
   2. Derive a stable integer hotel_id from the source_id for ChromaDB namespacing
   3. POST them in one batch to the Embedding Service
      (POST {EMBEDDING_SERVICE_URL}/embed/batch)
-  4. On success, tell the Scraper Engine to mark those review_ids as embedded
-     (PATCH {SCRAPER_ENGINE_URL}/api/reviews/mark-embedded)
+  4. On success, mark those review IDs as is_embedded=1 directly in processed_review
 """
 
 import os
 import logging
 import threading
 import httpx
+import pyodbc
+
+from app.core.pyodbc_connection import get_connection_string
 
 logger = logging.getLogger(__name__)
 
 # ── Service URLs ─────────────────────────────────────────────────────────────
-SCRAPER_ENGINE_URL = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001")
 EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002")
 
 
@@ -37,31 +38,65 @@ def _derive_hotel_id(source_id: str) -> int:
 def _embed_source_reviews(source_id: str) -> None:
     """
     Core logic (runs in a background thread):
-      1. Fetch unembedded reviews from Scraper Engine
+      1. Fetch unembedded processed reviews from ReviewMate DB
       2. Batch-embed them via Embedding Service
-      3. Mark them as embedded in Scraper Engine
+      3. Mark them as embedded in processed_review table
     """
     logger.info(f"[EmbeddingClient] Starting embedding pipeline for source_id={source_id}")
 
-    # ── Step 1: Fetch unembedded reviews from Scraper Engine ──────────────────
+    # ── Step 1: Fetch unembedded, processed reviews from ReviewMate DB ────────
     try:
-        fetch_url = f"{SCRAPER_ENGINE_URL}/api/reviews/unembedded/{source_id}"
-        response = httpx.get(fetch_url, timeout=30.0)
-        response.raise_for_status()
-        payload = response.json()
-    except httpx.HTTPError as e:
-        logger.error(f"[EmbeddingClient] Failed to fetch unembedded reviews for {source_id}: {e}")
-        return
+        conn = pyodbc.connect(get_connection_string())
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                CAST(id AS VARCHAR(36)) AS review_id,
+                text,
+                positive_text,
+                negative_text
+            FROM dbo.processed_review
+            WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+              AND status = 'processed'
+              AND is_embedded = 0
+            ORDER BY scrapedAt ASC
+        """, source_id)
+
+        columns = [col[0] for col in cursor.description]
+        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        conn.close()
     except Exception as e:
-        logger.error(f"[EmbeddingClient] Unexpected error fetching unembedded reviews: {e}")
+        logger.error(f"[EmbeddingClient] Failed to fetch unembedded processed reviews for {source_id}: {e}")
         return
 
-    reviews_data = payload.get("data", [])
+    if not rows:
+        logger.info(f"[EmbeddingClient] No unembedded processed reviews found for source_id={source_id}. Skipping.")
+        return
+
+    # Build review text for embedding (combine text fields)
+    reviews_data = []
+    for row in rows:
+        # Build the review_text from available fields
+        text_parts = []
+        if row.get("text"):
+            text_parts.append(row["text"])
+        if row.get("positive_text"):
+            text_parts.append(row["positive_text"])
+        if row.get("negative_text"):
+            text_parts.append(row["negative_text"])
+
+        review_text = " ".join(text_parts).strip()
+        if review_text:
+            reviews_data.append({
+                "review_id": row["review_id"],
+                "review_text": review_text,
+            })
+
     if not reviews_data:
-        logger.info(f"[EmbeddingClient] No unembedded reviews found for source_id={source_id}. Skipping.")
+        logger.info(f"[EmbeddingClient] All fetched reviews have empty text for source_id={source_id}. Skipping.")
         return
 
-    logger.info(f"[EmbeddingClient] Found {len(reviews_data)} unembedded reviews for source_id={source_id}")
+    logger.info(f"[EmbeddingClient] Found {len(reviews_data)} unembedded processed reviews for source_id={source_id}")
 
     # ── Step 2: Send to Embedding Service ─────────────────────────────────────
     hotel_id = _derive_hotel_id(source_id)
@@ -69,7 +104,7 @@ def _embed_source_reviews(source_id: str) -> None:
         "hotel_id": hotel_id,
         "reviews": [
             {
-                "review_id": str(r["review_id"]),
+                "review_id": r["review_id"],
                 "text": r["review_text"]
             }
             for r in reviews_data
@@ -100,25 +135,33 @@ def _embed_source_reviews(source_id: str) -> None:
 
     logger.info(f"[EmbeddingClient] Successfully embedded {len(embedded_ids_str)} reviews for source_id={source_id}")
 
-    # ── Step 3: Mark reviews as embedded in Scraper Engine ────────────────────
-    # The embedding service returns review_ids as strings.
+    # ── Step 3: Mark reviews as embedded in processed_review table ────────────
     try:
-        mark_url = f"{SCRAPER_ENGINE_URL}/api/reviews/mark-embedded"
-        mark_response = httpx.patch(mark_url, json={"review_ids": embedded_ids_str}, timeout=30.0)
-        mark_response.raise_for_status()
-        mark_result = mark_response.json()
-        logger.info(f"[EmbeddingClient] Marked {mark_result.get('updated_count', 0)} reviews as embedded in Scraper Engine.")
-    except httpx.HTTPError as e:
-        logger.error(f"[EmbeddingClient] Failed to mark reviews as embedded in Scraper Engine: {e}")
+        conn = pyodbc.connect(get_connection_string())
+        cursor = conn.cursor()
+
+        # Build parameterized IN clause
+        placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(embedded_ids_str))
+        sql = f"""
+            UPDATE dbo.processed_review
+            SET is_embedded = 1
+            WHERE id IN ({placeholders})
+        """
+        cursor.execute(sql, *embedded_ids_str)
+        updated_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+
+        logger.info(f"[EmbeddingClient] Marked {updated_count} reviews as embedded in processed_review.")
     except Exception as e:
-        logger.error(f"[EmbeddingClient] Unexpected error marking reviews as embedded: {e}")
+        logger.error(f"[EmbeddingClient] Failed to mark reviews as embedded in processed_review: {e}")
 
 
 def trigger_embedding_for_source(source_id: str) -> None:
     """
     Fire-and-forget: launch embedding pipeline in a background thread.
-    Called from source_service.update_sync_status() when status == COMPLETED.
-    Does NOT block the sync-status API response.
+    Called from review_service after AI analysis pipeline completes.
+    Does NOT block the processing pipeline.
     """
     thread = threading.Thread(
         target=_embed_source_reviews,
