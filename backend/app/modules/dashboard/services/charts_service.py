@@ -27,25 +27,33 @@ def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: 
         """, org_id)
     
     rows = cursor.fetchall()
-    total = sum(row.cnt for row in rows)
-    
     counts = {"Positive": 0, "Neutral": 0, "Negative": 0}
     for row in rows:
         if row.sentiment in counts:
             counts[row.sentiment] = row.cnt
             
-    def fmt(name):
+    total = sum(counts.values())
+            
+    def get_pct(name):
         cnt = counts[name]
-        return {
-            "count": cnt,
-            "percentage": round((cnt / total) * 100) if total > 0 else 0
-        }
-        
-    return {
-        "positive": fmt("Positive"),
-        "neutral": fmt("Neutral"),
-        "negative": fmt("Negative")
+        return round((cnt / total) * 100) if total > 0 else 0
+
+    res = {
+        "positive": {"count": counts["Positive"], "percentage": get_pct("Positive")},
+        "neutral": {"count": counts["Neutral"], "percentage": get_pct("Neutral")},
+        "negative": {"count": counts["Negative"], "percentage": get_pct("Negative")}
     }
+
+    # Adjust for rounding errors to ensure sum is exactly 100%
+    if total > 0:
+        current_sum = sum(v["percentage"] for v in res.values())
+        if current_sum != 100:
+            diff = 100 - current_sum
+            # Add/subtract the difference from the largest category
+            largest_key = max(res.keys(), key=lambda k: res[k]["count"])
+            res[largest_key]["percentage"] += diff
+
+    return res
 
 def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -> List[Dict[str, Any]]:
     """
