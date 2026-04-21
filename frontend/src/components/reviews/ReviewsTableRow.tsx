@@ -76,6 +76,9 @@ const ReviewsTableRow = ({ review, isLastRows, onClick }: ReviewsTableRowProps) 
                     </div>
                     <div>
                         <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{review.userName}</p>
+                        {review.heading && (
+                            <p className="text-[12px] font-black text-gray-800 dark:text-gray-200 mb-1 leading-tight line-clamp-1">{review.heading}</p>
+                        )}
                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed pr-8">{review.reviewText}</p>
                     </div>
                 </div>

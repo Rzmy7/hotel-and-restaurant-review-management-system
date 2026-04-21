@@ -236,6 +236,11 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
                     <MessageSquareText size={18} className="text-gray-400 dark:text-slate-500" />
                     <h3 className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Customer Review</h3>
                   </div>
+                  {review.heading && (
+                    <h4 className="text-lg font-black text-gray-900 dark:text-white mb-2 leading-tight">
+                      {review.heading}
+                    </h4>
+                  )}
                   <p className="text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap font-medium">
                     "{review.reviewText}"
                   </p>

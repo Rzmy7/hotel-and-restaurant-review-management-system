@@ -34,7 +34,7 @@ def send_notification(
         One of: info, success, warning, error, maintenance, announcement.
     """
     from app.database.session import SessionLocal
-    from app.modules.groups.notifications_repo import create_notification
+    from app.modules.auth.repositories.notifications_repo import create_notification
 
     try:
         db = SessionLocal()
@@ -213,7 +213,7 @@ def notify_admin_gemini_quota_exceeded() -> None:
     """Specialized alert for system admins when Gemini API quota is hit."""
     from app.database.session import SessionLocal
     from app.modules.user.models.user_models import User
-    from app.modules.groups.notifications_repo import create_notification
+    from app.modules.auth.repositories.notifications_repo import create_notification
 
     try:
         db = SessionLocal()

@@ -20,6 +20,7 @@ export interface Review {
     scrapedAt?: string;
     hasReply?: string;
     isAiReply?: boolean;
+    heading?: string;
 }
 
 export interface ReviewStats {

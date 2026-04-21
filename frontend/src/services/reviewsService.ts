@@ -39,6 +39,7 @@ class ReviewsService {
             rating: typeof item.rating === 'number' ? item.rating : 0,
             userName: item.userName || item.reviewerName || 'Anonymous',
             reviewText: item.reviewText || item.text || '',
+            heading: item.heading || '',
             sentiment: item.sentiment || 'Neutral',
             categories: Array.isArray(item.categories) ? item.categories : [],
             source: item.source || item.platform || 'Unknown',

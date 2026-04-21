@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models import UserNotification
-from app.repositories.notifications_repo import (
+from app.modules.auth.repositories.notifications_repo import (
     create_notification,
     list_notifications_for_user,
     count_unread_notifications,

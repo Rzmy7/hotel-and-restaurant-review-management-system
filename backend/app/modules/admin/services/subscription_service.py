@@ -921,7 +921,7 @@ def send_limit_reached_notification(user_id: str, feature_name: str) -> None:
     and should upgrade their subscription plan.
     """
     from app.database.session import SessionLocal
-    from app.modules.groups.notifications_repo import create_notification
+    from app.modules.auth.repositories.notifications_repo import create_notification
     import uuid
 
     title = f"{feature_name} Limit Reached"

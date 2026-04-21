@@ -73,7 +73,7 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
         {
             id: 'REV-101',
             reviewerName: 'Julian Thorne',
-            title: 'Unbeatable ocean views and infinity pool',
+            heading: 'Unbeatable ocean views and infinity pool',
             source: 'Expedia',
             sentiment: 'Positive',
             time: '45m ago',
@@ -85,7 +85,7 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
         {
             id: 'REV-102',
             reviewerName: 'Elena Rodriguez',
-            title: 'Excellent spa, but parking is pricey',
+            heading: 'Excellent spa, but parking is pricey',
             source: 'Hotels.com',
             sentiment: 'Neutral',
             time: '5h ago',
@@ -97,7 +97,7 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
         {
             id: 'REV-103',
             reviewerName: 'Marcus Aurelius',
-            title: 'Modern, clean, and tech-friendly',
+            heading: 'Modern, clean, and tech-friendly',
             source: 'Agoda',
             sentiment: 'Positive',
             time: '12h ago',
