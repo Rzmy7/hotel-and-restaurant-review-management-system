@@ -47,7 +47,7 @@ const LoginPage = () => {
   }, [auth.user, navigate]);
 
   const setFieldError = (field: LoginField, message: string | null) => {
-    setFieldErrors((prev) => {
+    setFieldErrors((prev: LoginFieldErrors) => {
       const next = { ...prev };
       if (message) {
         next[field] = message;
@@ -85,7 +85,7 @@ const LoginPage = () => {
     } else {
       const validationErrors = validateLoginForm({ email, password });
       setFieldErrors(validationErrors);
-      const firstError = Object.values(validationErrors)[0];
+      const firstError = Object.values(validationErrors)[0] as string | undefined;
       if (firstError) {
         setError(firstError);
         return;
@@ -120,7 +120,7 @@ const LoginPage = () => {
       const backendMessage = err.message || 'Login failed';
       const mappedErrors = mapBackendLoginErrorToField(backendMessage);
       if (Object.keys(mappedErrors).length > 0) {
-        setFieldErrors((prev) => ({ ...prev, ...mappedErrors }));
+        setFieldErrors((prev: LoginFieldErrors) => ({ ...prev, ...mappedErrors }));
       }
       setError(backendMessage);
     } finally {
