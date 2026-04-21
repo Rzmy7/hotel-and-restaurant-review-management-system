@@ -16,6 +16,7 @@ from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
 from app.core.security import decode_access_token
+from app.core.validations.signup_validator import validate_signup_payload
 from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
@@ -39,21 +40,23 @@ def as_utc(dt: datetime | None) -> datetime | None:
 
 @router.post("/signup")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
-    existing_user = get_user_by_email(db, payload.email.lower())
+    validated = validate_signup_payload(payload.name, payload.email, payload.password)
+
+    existing_user = get_user_by_email(db, validated["email"])
     if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Email already exists in database"
         )
-    name_parts = payload.name.strip().split(" ", 1)
+    name_parts = validated["name"].split(" ", 1)
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
 
     # Create the user with the default role (TENANT is assigned in create_user repo)
     user = create_user(
         db=db,
-        email=payload.email.lower(),
-        password_hash=hash_password(payload.password),
+        email=validated["email"],
+        password_hash=hash_password(validated["password"]),
         first_name=first_name,
         last_name=last_name,
         is_email_verified=False,
