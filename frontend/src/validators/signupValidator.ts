@@ -9,9 +9,43 @@ export type SignupFormData = {
 export type SignupField = 'fullName' | 'email' | 'password' | 'confirmPassword' | 'acceptedTerms';
 export type SignupFieldErrors = Partial<Record<SignupField, string>>;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]*$/;
 const SYMBOL_PATTERN = /[!@#$%^&*(),.?":{}|<>\-_]/;
+
+// Only the most common generic TLDs
+const COMMON_TLDS = new Set(['com', 'org', 'net', 'edu']);
+
+const isRealisticDomain = (domain: string): boolean => {
+    const parts = domain.toLowerCase().split('.');
+    
+    // Must have at least 2 parts (domain + TLD)
+    if (parts.length < 2) return false;
+    
+    const tld = parts[parts.length - 1];
+    
+    // TLD must be in common list and at least 2 chars
+    if (tld.length < 2 || !COMMON_TLDS.has(tld)) return false;
+    
+    // Domain name part (before TLD) must be realistic
+    const domainName = parts.slice(0, -1).join('.');
+    
+    // No consecutive dots
+    if (domainName.includes('..')) return false;
+    
+    // Each label must be 1-63 chars, start/end with alphanumeric
+    const labels = domainName.split('.');
+    for (const label of labels) {
+        if (!label || label.length > 63) return false;
+        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i.test(label)) return false;
+        // Domain labels should be at least 4 chars to look realistic on simple domains
+        // (prevents obviously fake domains like 'kaa.com', 'xyz.net')
+        // But allow shorter labels in multi-part domains (e.g., co.uk)
+        if (label.length < 4 && parts.length === 2) return false;
+    }
+    
+    return true;
+};
 
 export const validateFullName = (value: string): string | null => {
     const trimmed = value.trim();
@@ -30,8 +64,21 @@ export const validateEmailAddress = (value: string): string | null => {
     const trimmed = value.trim();
 
     if (!trimmed) return 'Email is required.';
+    
+    // Basic pattern check
     if (!EMAIL_PATTERN.test(trimmed)) return 'Enter a valid email address.';
-
+    
+    const [localPart, domain] = trimmed.split('@');
+    
+    // Local part checks
+    if (!localPart || localPart.length > 64) return 'Invalid email format.';
+    if (localPart.startsWith('.') || localPart.endsWith('.')) return 'Invalid email format.';
+    if (localPart.includes('..')) return 'Invalid email format.';
+    
+    // Domain checks
+    if (!domain) return 'Invalid email format.';
+    if (!isRealisticDomain(domain)) return 'Please enter a valid email address with a recognized domain.';
+    
     return null;
 };
 

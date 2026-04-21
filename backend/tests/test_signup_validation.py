@@ -47,6 +47,63 @@ class TestSignupValidation(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SignupModel(name="   ", email="john@example.com", password="ValidPass1!")
 
+    def test_normalize_signup_email_rejects_unrealistic_domain_kaa(self):
+        """Email with unrealistic TLD (.kaa) should be rejected"""
+        with self.assertRaises(HTTPException) as context:
+            normalize_signup_email("kalani@kaa.com")
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertIn("recognized domain", context.exception.detail)
+
+    def test_normalize_signup_email_rejects_unrealistic_short_domain(self):
+        """Email with single-letter domain label should be rejected"""
+        with self.assertRaises(HTTPException) as context:
+            normalize_signup_email("user@x.z")
+
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_normalize_signup_email_rejects_non_allowed_tld(self):
+        """Email with a non-whitelisted TLD should be rejected"""
+        with self.assertRaises(HTTPException) as context:
+            normalize_signup_email("kalani@example.kaa")
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertIn("recognized domain", context.exception.detail)
+
+    def test_normalize_signup_email_rejects_consecutive_dots(self):
+        """Email with consecutive dots should be rejected"""
+        with self.assertRaises(HTTPException) as context:
+            normalize_signup_email("user..name@example.com")
+
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_normalize_signup_email_rejects_leading_dot_in_local(self):
+        """Email with leading dot in local part should be rejected"""
+        with self.assertRaises(HTTPException) as context:
+            normalize_signup_email(".username@example.com")
+
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_normalize_signup_email_rejects_trailing_dot_in_local(self):
+        """Email with trailing dot in local part should be rejected"""
+        with self.assertRaises(HTTPException) as context:
+            normalize_signup_email("username.@example.com")
+
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_normalize_signup_email_accepts_valid_realistic_emails(self):
+        """Valid emails with recognized domains should be accepted"""
+        valid_emails = [
+            "john.doe@example.com",
+            "user+tag@gmail.com",
+            "contact@company.org",
+            "support@service.net",
+            "student@university.edu",
+        ]
+        for email in valid_emails:
+            result = normalize_signup_email(email)
+            self.assertEqual(result, email)
+
 
 if __name__ == "__main__":
     unittest.main()
