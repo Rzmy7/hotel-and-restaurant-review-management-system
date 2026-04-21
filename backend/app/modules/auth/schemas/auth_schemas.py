@@ -14,11 +14,11 @@ class SignupModel(BaseModel):
 
 class LoginModel(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=1, max_length=72)
+    password: str = Field(..., min_length=8, max_length=72)
 
 class LoginTwoFactorModel(BaseModel):
     email: EmailStr
-    code: str
+    code: str = Field(..., min_length=6, max_length=6)
 
 class EmailModel(BaseModel):
     email: EmailStr

@@ -22,8 +22,18 @@ from datetime import timedelta
 from app.core.validations.otp_validator import validate_otp_format
 
 
+def _assert_password_matches_email(password: str, password_hash: str) -> None:
+    # Use a generic message so API responses do not reveal whether an email exists.
+    if not verify_password(password, password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+
 def login_user(db: Session, email: str, password: str) -> dict:
     """Authenticate a user by email/password and return a JWT token."""
+    # The route/validator normalizes email before this lookup.
     user = get_user_by_email(db, email)
     if not user:
         raise HTTPException(
@@ -43,11 +53,8 @@ def login_user(db: Session, email: str, password: str) -> dict:
             detail="Password login not available for this account",
         )
 
-    if not verify_password(password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
+    # This is the account-specific credential check (email + password pair).
+    _assert_password_matches_email(password, user.password_hash)
 
     role = get_user_primary_role(db, user.user_id)
     if not role:

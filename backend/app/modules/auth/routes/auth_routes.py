@@ -17,6 +17,7 @@ from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
 from app.core.security import decode_access_token
 from app.core.validations.signup_validator import validate_signup_payload
+from app.core.validations.login_validator import validate_login_payload, validate_login_otp_code
 from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
@@ -101,10 +102,11 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(payload: LoginModel, db: Session = Depends(get_db)):
+    validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
         db=db,
-        email=payload.email.lower(),
-        password=payload.password
+        email=validated["email"],
+        password=validated["password"]
     )
     return {
         "message": "Login successful",
@@ -113,10 +115,11 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
 
 @router.post("/login/2fa")
 def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+    normalized_code = validate_login_otp_code(payload.code)
     result = verify_login_2fa(
         db=db,
         email=payload.email.lower(),
-        code=payload.code,
+        code=normalized_code,
     )
     return {
         "message": "Login successful",

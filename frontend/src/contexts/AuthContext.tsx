@@ -24,7 +24,9 @@ type LoginSuccess = {
         first_name?: string;
         last_name?: string;
         full_name?: string;
+        name?: string;
         role?: string;
+        roles?: string[];
     };
 };
 
@@ -44,7 +46,9 @@ type AuthContextType = {
     isLoading: boolean;
 };
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+const isLoginChallenge = (value: LoginResponse): value is LoginChallenge => {
+    return 'require_2fa' in value && value.require_2fa === true;
+};
 
 const clearSetupTemporaryKeys = () => {
     localStorage.removeItem("setup_pending_organization_id");
@@ -177,11 +181,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
         console.log("Login response:", data);
 
-        if ('require_2fa' in data && data.require_2fa) {
+        if (isLoginChallenge(data)) {
             return data;
         }
 
-        const backendUser = data.user;
+        const successData: LoginSuccess = data;
+        const backendUser = successData.user;
 
         const normalizedUser: User = {
             user_id: backendUser.user_id,
@@ -191,13 +196,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
 
         // Save user + token
-        persist(normalizedUser, data.access_token);
+        persist(normalizedUser, successData.access_token);
 
         console.log("Calling checkUserOrganizations...");
         // Check organizations after login
         await checkUserOrganizations();
 
-        return data;
+        return successData;
     };
 
     const verifyLogin2fa = async (email: string, code: string) => {

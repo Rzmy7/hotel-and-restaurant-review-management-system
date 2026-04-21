@@ -13,8 +13,8 @@ export const normalizeRole = (value: unknown): string => {
 const ADMIN_ROLES = new Set(['ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN']);
 
 const getAdminPanelUrl = (): string => {
-    const configured = import.meta.env.VITE_ADMIN_PANEL_URL || 'http://localhost:4000';
-    return String(configured).replace(/\/$/, '');
+    const configured = localStorage.getItem('adminPanelUrl') || 'http://localhost:4000';
+    return configured.replace(/\/$/, '');
 };
 
 export const isAdminRole = (value: unknown): boolean => ADMIN_ROLES.has(normalizeRole(value));

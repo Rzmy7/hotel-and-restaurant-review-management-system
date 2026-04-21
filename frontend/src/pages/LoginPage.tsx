@@ -6,6 +6,16 @@ import { AuthLayout } from '../components/shared/AuthLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
+import {
+  mapBackendLoginErrorToField,
+  normalizeLoginPayload,
+  type LoginField,
+  type LoginFieldErrors,
+  validateLoginEmail,
+  validateLoginForm,
+  validateLoginPassword,
+  validateVerificationCode,
+} from '../validators/loginValidator';
 
 const LoginPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,6 +31,7 @@ const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const navigate = useNavigate();
   const auth = useAuth();
 
@@ -35,17 +46,66 @@ const LoginPage = () => {
     }
   }, [auth.user, navigate]);
 
+  const setFieldError = (field: LoginField, message: string | null) => {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (message) {
+        next[field] = message;
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  };
+
+  const validateSingleField = (field: LoginField, value?: string) => {
+    switch (field) {
+      case 'email':
+        return setFieldError('email', validateLoginEmail(String(value ?? email)));
+      case 'password':
+        return setFieldError('password', validateLoginPassword(String(value ?? password)));
+      case 'verificationCode':
+        return setFieldError('verificationCode', validateVerificationCode(String(value ?? otpCode)));
+      default:
+        return undefined;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    if (isTwoFactorStep) {
+      const verificationError = validateVerificationCode(otpCode);
+      if (verificationError) {
+        setFieldError('verificationCode', verificationError);
+        setError(verificationError);
+        return;
+      }
+    } else {
+      const validationErrors = validateLoginForm({ email, password });
+      setFieldErrors(validationErrors);
+      const firstError = Object.values(validationErrors)[0];
+      if (firstError) {
+        setError(firstError);
+        return;
+      }
+    }
+
+    setLoading(true);
+
     try {
-      const result = await auth.login(email, password);
+      const normalized = normalizeLoginPayload({ email, password });
+      const result = await auth.login(normalized.email, normalized.password);
 
       if ('require_2fa' in result && result.require_2fa) {
         setIsTwoFactorStep(true);
         setTwoFactorMessage(result.message || 'A verification code has been sent to your email.');
+        return;
+      }
+
+      if (!('user' in result)) {
+        setError('Login failed');
         return;
       }
 
@@ -57,7 +117,12 @@ const LoginPage = () => {
       navigate(destination);
 
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      const backendMessage = err.message || 'Login failed';
+      const mappedErrors = mapBackendLoginErrorToField(backendMessage);
+      if (Object.keys(mappedErrors).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...mappedErrors }));
+      }
+      setError(backendMessage);
     } finally {
       setLoading(false);
     }
@@ -65,7 +130,7 @@ const LoginPage = () => {
 
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
-    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    const apiBase = (localStorage.getItem('mainBackendUrl') || 'http://localhost:8000').replace(/\/$/, '');
     window.location.href = `${apiBase}/api/auth/login/google`;
   };
 
@@ -160,12 +225,18 @@ const LoginPage = () => {
                 inputMode="numeric"
                 placeholder="123456"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => {
+                  setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  setFieldError('verificationCode', null);
+                  setError(null);
+                }}
+                onBlur={() => validateSingleField('verificationCode')}
                 className="pl-11 tracking-[0.4em] text-center"
                 required
                 maxLength={6}
               />
             </div>
+            {fieldErrors.verificationCode && <p className="text-xs text-rose-500 ml-1">{fieldErrors.verificationCode}</p>}
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
@@ -209,11 +280,17 @@ const LoginPage = () => {
               type="email"
               placeholder="name@company.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldError('email', null);
+                setError(null);
+              }}
+              onBlur={() => validateSingleField('email')}
               className="pl-11"
               required
             />
           </div>
+          {fieldErrors.email && <p className="text-xs text-rose-500 ml-1">{fieldErrors.email}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -234,7 +311,12 @@ const LoginPage = () => {
               type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setFieldError('password', null);
+                setError(null);
+              }}
+              onBlur={() => validateSingleField('password')}
               className="px-11"
               required
             />
@@ -246,6 +328,7 @@ const LoginPage = () => {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          {fieldErrors.password && <p className="text-xs text-rose-500 ml-1">{fieldErrors.password}</p>}
         </div>
 
         <div className="flex items-center gap-3 px-1">
