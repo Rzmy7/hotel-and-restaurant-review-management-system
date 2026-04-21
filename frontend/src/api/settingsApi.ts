@@ -52,6 +52,10 @@ type OrganizationType = {
     type_name: string;
 };
 
+type UserProfile = {
+    is_2fa_enabled?: boolean;
+};
+
 export type PasswordChangePayload = {
     currentPassword: string;
     newPassword: string;
@@ -237,6 +241,19 @@ export const settingsApi = {
             // Keep local fallback settings when backend data is unavailable.
         }
 
+        try {
+            const profileResponse = await settingsAxios.get<UserProfile>(toApiPath('/users/me'));
+            currentSettings = {
+                ...currentSettings,
+                security: {
+                    ...currentSettings.security,
+                    twoFactorAuth: !!profileResponse.data?.is_2fa_enabled,
+                },
+            };
+        } catch {
+            // Keep existing local security fallback when profile call fails.
+        }
+
         return { ...currentSettings };
     },
     updateSettings: async (updates: Partial<SettingsData>): Promise<SettingsData> => {
@@ -314,6 +331,13 @@ export const settingsApi = {
         const response = await settingsAxios.post<{ message: string }>(
             toApiPath('/users/me/2fa/enable'),
             { code }
+        );
+        return response.data;
+    },
+
+    disable2FA: async (): Promise<{ message: string }> => {
+        const response = await settingsAxios.post<{ message: string }>(
+            toApiPath('/users/me/2fa/disable')
         );
         return response.data;
     }

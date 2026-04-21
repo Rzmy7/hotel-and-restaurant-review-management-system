@@ -91,6 +91,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
 
     const [isIssuingOtp, setIsIssuingOtp] = useState(false);
     const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [isDisabling2fa, setIsDisabling2fa] = useState(false);
 
     const issueNewOtp = async () => {
         try {
@@ -114,14 +115,23 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
         setIs2faModalOpen(true);
     };
 
-    const handleTwoFaToggle = (checked: boolean) => {
+    const handleTwoFaToggle = async (checked: boolean) => {
         if (checked) {
             open2faFlow();
             return;
         }
 
-        onChange({ twoFactorAuth: false });
-        setTwoFaSuccess('2FA disabled successfully.');
+        try {
+            setIsDisabling2fa(true);
+            setOtpError(null);
+            await settingsService.disable2FA();
+            onChange({ twoFactorAuth: false });
+            setTwoFaSuccess('2FA disabled successfully.');
+        } catch (error) {
+            setOtpError(error instanceof Error ? error.message : 'Failed to disable 2FA.');
+        } finally {
+            setIsDisabling2fa(false);
+        }
     };
 
     const handleConfirmEnable2fa = async () => {
@@ -246,8 +256,16 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                     label="Two-Factor Authentication"
                     description="Require a verification code during login"
                     checked={data.twoFactorAuth}
-                    onChange={(e) => handleTwoFaToggle(e.target.checked)}
+                    onChange={(e) => {
+                        void handleTwoFaToggle(e.target.checked);
+                    }}
                 />
+                {otpError && !is2faModalOpen && (
+                    <p className="mt-2 text-xs text-rose-400">{otpError}</p>
+                )}
+                {isDisabling2fa && (
+                    <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
+                )}
                 <FormField label="Password" orientation="horizontal">
                     <div className="flex items-center gap-4 w-full">
                         <span className="text-sm text-gray-400 font-medium tracking-[2px] flex-1">••••••••</span>

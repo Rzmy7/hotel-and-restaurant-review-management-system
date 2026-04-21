@@ -77,5 +77,19 @@ export const settingsService = {
             }
             throw new Error('Failed to verify OTP');
         }
+    },
+
+    disable2FA: async (): Promise<string> => {
+        try {
+            const response = await settingsApi.disable2FA();
+            return response.message;
+        } catch (error) {
+            console.error('Failed to disable 2FA:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string') throw new Error(detail);
+            }
+            throw new Error('Failed to disable 2FA');
+        }
     }
 };

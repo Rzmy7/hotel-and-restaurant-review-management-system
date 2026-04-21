@@ -35,6 +35,7 @@ def get_profile(db: Session, user_id):
         "bio": user.bio,
         "location": user.location,
         "avatar": user.profile_image_url,
+        "is_2fa_enabled": bool(user.is_2fa_enabled),
         "joinedDate": str(user.created_at),
     }
 
@@ -174,7 +175,9 @@ def disable_2fa(db: Session, user_id: str) -> dict[str, str]:
     user = get_user_profile(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
+    # Revoke any outstanding OTPs and disable 2FA for subsequent logins.
+    db.query(TwoFactorToken).filter(TwoFactorToken.user_id == user.user_id).delete()
     user.is_2fa_enabled = False
     db.commit()
     return {"message": "2FA has been successfully disabled"}
