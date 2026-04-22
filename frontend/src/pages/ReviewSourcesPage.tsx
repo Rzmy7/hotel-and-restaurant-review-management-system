@@ -114,6 +114,17 @@ const ReviewSourcesPage = () => {
     },
     onError: () => showToast('Failed to stop sync', 'error'),
   });
+  
+  const deleteReviewsMutation = useMutation({
+    mutationFn: (id: string | number) => sourcesService.deleteSourceReviews(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+      queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      showToast('All reviews cleared for this source', 'success');
+    },
+    onError: () => showToast('Failed to clear reviews', 'error'),
+  });
 
   // Combined Loading States
   const isLoading = isLoadingSources || isLoadingStats || isLoadingLogs;
@@ -166,6 +177,10 @@ const ReviewSourcesPage = () => {
 
   const handleStopSync = async (id: string | number) => {
     await stopSyncMutation.mutateAsync(id);
+  };
+
+  const handleClearReviews = async (id: string | number) => {
+    await deleteReviewsMutation.mutateAsync(id);
   };
 
   return (
@@ -280,6 +295,7 @@ const ReviewSourcesPage = () => {
           source={selectedSource}
           onSave={handleUpdateSource}
           onDelete={handleDeleteSource}
+          onClearReviews={handleClearReviews}
         />
       )}
     </div>

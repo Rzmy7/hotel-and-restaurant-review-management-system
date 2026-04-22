@@ -576,3 +576,22 @@ def health_check() -> Dict[str, Any]:
             "service_paused": False,
             "error": str(e)
         }
+
+@app.delete("/delete/source/{source_id}")
+def delete_by_source(source_id: str) -> Dict[str, Any]:
+    """Delete all embeddings associated with a specific source ID."""
+    try:
+        # Get count before deleting (informative)
+        # However, ChromaDB delete doesn't return count directly easily without a query
+        
+        # Delete items matching the source_id metadata
+        collection.delete(where={"source_id": source_id})
+        
+        return {
+            "status": "success",
+            "message": f"Deleted all embeddings for source_id: {source_id}",
+            "source_id": source_id
+        }
+    except Exception as e:
+        print(f"Error deleting embeddings for source {source_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

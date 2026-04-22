@@ -97,8 +97,8 @@ class SourcesService {
         await apiClient.post(`/api/source/${id}/sync`);
     }
 
-    async stopSync(id: string | number): Promise<void> {
-        await apiClient.post(`/api/source/${id}/stop-sync`);
+    async deleteSourceReviews(id: string | number): Promise<void> {
+        await apiClient.delete(`/api/reviews/source/${id}`);
     }
 }
 

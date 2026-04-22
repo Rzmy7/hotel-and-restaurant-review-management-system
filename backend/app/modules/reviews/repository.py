@@ -608,3 +608,34 @@ def get_full_distribution(organization_id: str) -> Dict:
         "sources": sources
     }
 
+
+def delete_reviews_by_source_id(source_id: str) -> int:
+    """
+    Delete all reviews and associated media for a specific source.
+    Returns the number of reviews deleted.
+    """
+    conn = pyodbc.connect(get_connection_string())
+    cursor = conn.cursor()
+    try:
+        # 1. Delete associated media
+        # We join with processed_review to find media belonging to this source
+        media_sql = """
+            DELETE rm
+            FROM dbo.review_media rm
+            INNER JOIN dbo.processed_review r ON rm.review_id = r.id
+            WHERE r.source_id = CAST(? AS UNIQUEIDENTIFIER)
+        """
+        cursor.execute(media_sql, source_id)
+
+        # 2. Delete processed reviews
+        reviews_sql = "DELETE FROM dbo.processed_review WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)"
+        cursor.execute(reviews_sql, source_id)
+        
+        deleted_count = cursor.rowcount
+        conn.commit()
+        return deleted_count
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

@@ -28,8 +28,14 @@ from app.modules.reviews.services.review_service import (
     ingest_from_scraper,
 )
 from app.modules.reviews.services.processor import process_single_review
-from app.modules.reviews.repository import get_review_options, get_review_stats, get_full_distribution
+from app.modules.reviews.repository import (
+    get_review_options,
+    get_review_stats,
+    get_full_distribution,
+    delete_reviews_by_source_id,
+)
 from app.modules.source.services.source_service import get_source_by_id
+from app.modules.source.services.embedding_client import delete_embeddings_for_source
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
 
 logger = logging.getLogger(__name__)
@@ -279,3 +285,37 @@ def generate_reply(
     except Exception as exc:
         logger.error(f"Reply generation failed: {exc}")
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
+
+
+@router.delete("/source/{source_id}")
+def delete_reviews_by_source(
+    source_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Delete all reviews associated with a specific source ID.
+    Also clears associated media and embeddings.
+    """
+    try:
+        # 1. Verify existence of source
+        source = get_source_by_id(db, source_id)
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found.")
+
+        # 2. Delete reviews and media from database
+        deleted_count = delete_reviews_by_source_id(str(source_id))
+
+        # 3. Clear embeddings for this source
+        delete_embeddings_for_source(str(source_id))
+
+        return {
+            "message": "Reviews deleted successfully",
+            "source_id": str(source_id),
+            "deleted_count": deleted_count,
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Failed to delete reviews for source {source_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete reviews.")

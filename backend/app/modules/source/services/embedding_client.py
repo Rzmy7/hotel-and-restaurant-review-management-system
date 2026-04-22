@@ -164,3 +164,17 @@ def trigger_embedding_for_source(source_id: str) -> None:
     )
     thread.start()
     logger.info(f"[EmbeddingClient] Background embedding thread launched for source_id={source_id}")
+
+def delete_embeddings_for_source(source_id: str) -> None:
+    """
+    Tells the Embedding Service to clear all vectors for a source.
+    Usually called when resetting or deleting source data.
+    """
+    logger.info(f"[EmbeddingClient] Requesting embedding deletion for source_id={source_id}")
+    try:
+        url = f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}"
+        resp = httpx.delete(url, timeout=30.0)
+        resp.raise_for_status()
+        logger.info(f"[EmbeddingClient] Successfully cleared embeddings for source {source_id}")
+    except Exception as e:
+        logger.error(f"[EmbeddingClient] Failed to delete embeddings for {source_id}: {e}")
