@@ -2,7 +2,6 @@ import re
 
 from fastapi import HTTPException
 
-from app.core.validations.password_validator import validate_password_strength
 from app.core.validations.signup_validator import normalize_signup_email
 
 LOGIN_OTP_PATTERN = re.compile(r"^\d{6}$")
@@ -13,7 +12,6 @@ def validate_login_email(email: str) -> str:
 
 
 def validate_login_password(password: str) -> str:
-    validate_password_strength(password)
     return password
 
 

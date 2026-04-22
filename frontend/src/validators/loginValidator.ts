@@ -1,6 +1,5 @@
 import {
     validateEmailAddress,
-    validatePassword,
 } from './signupValidator';
 
 export type LoginFormData = {
@@ -16,7 +15,8 @@ export const validateLoginEmail = (value: string): string | null => {
 };
 
 export const validateLoginPassword = (value: string): string | null => {
-    return validatePassword(value);
+    if (!value) return 'Password is required.';
+    return null;
 };
 
 export const validateVerificationCode = (value: string): string | null => {
