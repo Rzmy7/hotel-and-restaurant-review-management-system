@@ -31,7 +31,7 @@ const clearSetupDraftState = () => {
 
 const FinishSetupPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, persist } = useAuth();
   const [isFinishing, setIsFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const showUpgradePlanAction =
@@ -72,7 +72,13 @@ const FinishSetupPage = () => {
       const response = await apiClient.post<any>(`/api/organizations/${tenantId}`, payload);
       
       const organizationId = response?.organization_id;
+      const accessToken = response?.access_token;
+
       if (organizationId) {
+        // Update the session with the new token that includes the organization_id
+        if (accessToken) {
+          persist(user, accessToken);
+        }
         // Update local organizations list
         const organizations = parseJsonArray(localStorage.getItem('organizations'));
         const alreadyExists = organizations.some((org: any) => org?.organization_id === organizationId);

@@ -1,3 +1,5 @@
+import { isAdminRole } from '../utils/authRole';
+
 const DEFAULT_API_BASE_URL =
     import.meta.env.VITE_MAIN_BACKEND_URL ||
     import.meta.env.VITE_API_BASE_URL ||
@@ -168,7 +170,7 @@ const buildQuery = (extraParams?: Record<string, string>): string => {
 
 const isAdmin = (): boolean => {
     const role = getCurrentUser().role || '';
-    return role.toUpperCase() === 'ADMIN';
+    return isAdminRole(role);
 };
 
 const buildPaths = (adminPath: string, userPath: string, query = ''): string[] => {

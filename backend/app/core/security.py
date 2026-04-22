@@ -41,11 +41,10 @@ def create_access_token(user_id: str, role: str, organization_id: str | None = N
     payload = {
         "user_id": user_id,
         "role": role,
+        "organization_id": organization_id,
         "exp": datetime.utcnow() + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    if organization_id:
-        payload["organization_id"] = organization_id
-        
+    
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 

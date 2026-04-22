@@ -11,6 +11,8 @@ from app.modules.organization.schemas.organization_schema import OrganizationCre
 from app.modules.organization.services import organization_service
 from app.modules.source.services.source_service import calculate_next_sync_time
 from app.core.exceptions.custom_exceptions import FileValidationException
+from app.core.security import create_access_token
+from app.modules.auth.repositories.roles_repo import get_user_role_names
 
 router = APIRouter(prefix="/api", tags=["organization"])
 
@@ -155,10 +157,20 @@ def upsert_organization(
 
     db.commit()
 
+    # Generate fresh token with the new/updated organization_id
+    roles = get_user_role_names(db, user.user_id)
+    access_token = create_access_token(
+        user_id=str(user.user_id),
+        role=roles[0] if roles else "TENANT",
+        organization_id=str(org_id)
+    )
+
     return {
         "message": message,
         "organization_id": str(org_id),
         "organization_created": organization_created,
+        "access_token": access_token,
+        "token_type": "bearer"
     }
 
 

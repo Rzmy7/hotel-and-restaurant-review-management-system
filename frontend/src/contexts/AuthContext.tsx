@@ -251,9 +251,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 role: normalizeRole(loginUser.role || loginUser.roles),
             };
             persist(normalizedLoginUser, loginPayload.access_token);
+            await checkUserOrganizations();
             return normalizedLoginUser;
         }
 
+        await checkUserOrganizations();
         return normalizedUser;
     };
 

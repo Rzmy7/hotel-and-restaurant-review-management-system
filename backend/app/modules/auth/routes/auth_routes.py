@@ -15,7 +15,7 @@ from app.modules.auth.services.auth_service import login_user, verify_login_2fa
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, create_access_token
 from app.core.validations.signup_validator import validate_signup_payload
 from app.core.validations.login_validator import validate_login_payload, validate_login_otp_code
 from app.modules.source.models import Tenant
@@ -96,8 +96,18 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         pass  # Best-effort
 
     roles = get_user_role_names(db, user.user_id)
+    
+    # Generate token for the new user (organization_id will be null)
+    access_token = create_access_token(
+        user_id=str(user.user_id),
+        role=roles[0] if roles else "TENANT",
+        organization_id=None
+    )
+
     return {
         "message": "User registered successfully in database",
+        "access_token": access_token,
+        "token_type": "bearer",
         "user": {
             "id": str(user.user_id),
             "first_name": user.first_name,
@@ -156,7 +166,6 @@ def switch_organization(
         raise HTTPException(status_code=403, detail="Organization not found or access denied")
         
     roles = get_user_role_names(db, current_user.user_id)
-    from app.core.security import create_access_token
     
     access_token = create_access_token(
         user_id=str(current_user.user_id),
