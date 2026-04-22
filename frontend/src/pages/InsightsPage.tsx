@@ -7,6 +7,7 @@ import {
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { fetchSubscriptionUsage } from '../services/subscriptionPlansService';
 import { Button } from '../components/ui/Button';
 import InsightsHeader from '../components/shared/InsightsHeader';
@@ -289,11 +290,14 @@ const InsightsPage: React.FC = () => {
     const [hasAccess, setHasAccess] = useState<boolean | null>(null);
     const { user } = useAuth();
     const navigate = useNavigate();
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
+    const organizationId = currentOrg?.id;
 
     useEffect(() => {
         if (!user?.user_id) return;
 
         const checkAccess = async () => {
+            setHasAccess(null); // Reset access state when org changes to show loading
             try {
                 const usage = await fetchSubscriptionUsage(user.user_id);
                 const hasInsights = usage.features.some(f => f.key === 'insights' && f.enabled);
@@ -305,7 +309,7 @@ const InsightsPage: React.FC = () => {
         };
 
         checkAccess();
-    }, [user?.user_id]);
+    }, [user?.user_id, organizationId]);
 
     const d = dataByRange[timeRange];
 
