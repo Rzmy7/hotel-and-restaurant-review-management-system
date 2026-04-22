@@ -50,13 +50,20 @@ except ImportError:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-create any missing tables from ORM models
+    # Auto-create any missing tables from ORM models (non-fatal if DB is temporarily down)
     if engine:
-        Base.metadata.create_all(bind=engine)
-    # Startup actions
-    from app.modules.admin.services.subscription_service import seed_subscription_data
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            logger.warning(f"Lifespan: create_all skipped (DB not ready): {e}")
 
-    seed_subscription_data()
+    # Startup actions
+    try:
+        from app.modules.admin.services.subscription_service import seed_subscription_data
+        seed_subscription_data()
+    except Exception as e:
+        logger.warning(f"Lifespan: subscription seeding skipped: {e}")
+
     setup_scheduler()
     start_scheduler()
 

@@ -16,7 +16,7 @@ from typing import List, Optional, Dict
 
 import pyodbc
 
-from app.core.pyodbc_connection import get_connection_string
+from app.core.pyodbc_connection import connect_db
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ def _row_to_competitor(r) -> Dict:
 # ── Core read operations ─────────────────────────────────────────────
 
 def get_all_competitors() -> List[Dict]:
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         rows = cursor.execute("""
             SELECT id, name, location, source_url, platform_id, organization_id,
@@ -61,7 +61,7 @@ def get_available_competitors() -> List[Dict]:
 
 
 def get_competitor_by_id(competitor_id: str) -> Optional[Dict]:
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         row = cursor.execute("""
             SELECT id, name, location, source_url, platform_id, organization_id,
@@ -88,7 +88,7 @@ def register_competitor(
     """
     source_url_clean = source_url.strip().rstrip("/")
 
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
 
         # 1. Check if this URL already maps to an existing org
@@ -166,7 +166,7 @@ def _trigger_org_scrape(org_id: str, source_id: str, source_url: str, platform_i
                 import pyodbc as _pyodbc
                 raw = scrape_booking_for_competitor(source_url, headless=True)
                 if raw:
-                    with _pyodbc.connect(get_connection_string()) as conn:
+                    with _connect_db() as conn:
                         insert_processed_reviews(conn, _build_review_rows(raw, org_id))
                 # Mark source as active & update competitor stats
                 _finalize_org_competitor(org_id)
@@ -206,15 +206,16 @@ def _build_review_rows(raw_reviews, org_id: str) -> list:
 
 def _finalize_org_competitor(org_id: str):
     """After scraping, update competitor status and stats from processed_review."""
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         row = cursor.execute("""
             SELECT COUNT(*) as cnt,
-                   AVG(CAST(rating AS FLOAT)) as avgRating,
-                   SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) * 100.0
+                   AVG(CAST(pr.rating AS FLOAT)) as avgRating,
+                   SUM(CASE WHEN pr.sentiment = 'Positive' THEN 1 ELSE 0 END) * 100.0
                        / NULLIF(COUNT(*), 0) as sentimentScore
-            FROM dbo.processed_review
-            WHERE organization_id = ?
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON pr.source_id = s.source_id
+            WHERE s.organization_id = ?
         """, org_id).fetchone()
 
         if row and (row.cnt or 0) > 0:
@@ -231,7 +232,7 @@ def _finalize_org_competitor(org_id: str):
 # ── Update / Delete ──────────────────────────────────────────────────
 
 def track_competitor(competitor_id: str, user_id: str | None = None) -> Optional[Dict]:
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ?", competitor_id)
         conn.commit()
@@ -239,7 +240,7 @@ def track_competitor(competitor_id: str, user_id: str | None = None) -> Optional
 
 
 def untrack_competitor(competitor_id: str) -> bool:
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE dbo.Competitors SET isTracked = 0 WHERE id = ?", competitor_id)
         conn.commit()
@@ -247,7 +248,7 @@ def untrack_competitor(competitor_id: str) -> bool:
 
 
 def delete_competitor(competitor_id: str) -> bool:
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM dbo.Competitors WHERE id = ?", competitor_id)
         conn.commit()
@@ -261,14 +262,15 @@ def get_competitor_reviews(competitor_id: str) -> List[Dict]:
         return []
 
     org_id = competitor["organization_id"]
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         rows = cursor.execute("""
-            SELECT id, organization_id, rating, reviewerName, text,
-                   summary, sentiment, categories, keyPhrases, language, reviewDate
-            FROM dbo.processed_review
-            WHERE organization_id = ?
-            ORDER BY reviewDate DESC
+            SELECT pr.id, s.organization_id, pr.rating, pr.reviewerName, pr.text,
+                   pr.summary, pr.sentiment, pr.categories, pr.keyPhrases, pr.language, pr.reviewDate
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON pr.source_id = s.source_id
+            WHERE s.organization_id = ?
+            ORDER BY pr.reviewDate DESC
         """, org_id).fetchall()
 
     import json as _json

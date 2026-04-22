@@ -15,7 +15,7 @@ import pyodbc
 from google import genai
 
 from app.core.config import GENAI_KEY
-from app.core.pyodbc_connection import get_connection_string
+from app.core.pyodbc_connection import connect_db
 from app.modules.competitors.ai.prompts import COMPARISON_INSIGHT_PROMPT
 from app.modules.competitors.services.competitor_service import (
     get_competitor_by_id,
@@ -40,17 +40,18 @@ def _strip_markdown_fences(text: str) -> str:
 
 def _get_review_stats(org_id: str) -> Dict:
     """Generic stats for any organization_id from processed_review."""
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         row = cursor.execute("""
             SELECT
                 COUNT(*) as cnt,
-                AVG(CAST(rating AS FLOAT)) as avgRating,
-                SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) as positive,
-                SUM(CASE WHEN sentiment = 'Negative' THEN 1 ELSE 0 END) as negative,
-                SUM(CASE WHEN sentiment = 'Neutral' THEN 1 ELSE 0 END) as neutral
-            FROM dbo.processed_review
-            WHERE organization_id = ?
+                AVG(CAST(pr.rating AS FLOAT)) as avgRating,
+                SUM(CASE WHEN pr.sentiment = 'Positive' THEN 1 ELSE 0 END) as positive,
+                SUM(CASE WHEN pr.sentiment = 'Negative' THEN 1 ELSE 0 END) as negative,
+                SUM(CASE WHEN pr.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neutral
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON pr.source_id = s.source_id
+            WHERE s.organization_id = ?
         """, org_id).fetchone()
     cnt = row.cnt or 0
     return {
@@ -79,26 +80,31 @@ def get_competitor_stats(competitor_id: str) -> Dict:
 
 def get_category_scores(org_id: str) -> Dict[str, float]:
     """Average category scores for an organization via ReviewCategory JOIN."""
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         # First try the relational ReviewCategory table (populated by new pipeline)
-        rows = cursor.execute("""
-            SELECT rc.category_name, AVG(CAST(r.rating AS FLOAT)) as avgScore
-            FROM dbo.processed_review r
-            JOIN dbo.ReviewCategory rc ON r.id = rc.review_id
-            WHERE r.organization_id = ?
-            GROUP BY rc.category_name
-        """, org_id).fetchall()
+        try:
+            rows = cursor.execute("""
+                SELECT rc.category_name, AVG(CAST(r.rating AS FLOAT)) as avgScore
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                JOIN dbo.ReviewCategory rc ON r.id = rc.review_id
+                WHERE s.organization_id = ?
+                GROUP BY rc.category_name
+            """, org_id).fetchall()
 
-        if rows:
-            return {r.category_name: round(r.avgScore or 0, 2) for r in rows if r.category_name}
+            if rows:
+                return {r.category_name: round(r.avgScore or 0, 2) for r in rows if r.category_name}
+        except Exception:
+            pass  # ReviewCategory table doesn't exist yet; use JSON fallback below
 
         # Fallback: parse JSON categories column (for existing data)
         rows = cursor.execute("""
-            SELECT rating, categories
-            FROM dbo.processed_review
-            WHERE organization_id = ?
-              AND categories IS NOT NULL
+            SELECT pr.rating, pr.categories
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON pr.source_id = s.source_id
+            WHERE s.organization_id = ?
+              AND pr.categories IS NOT NULL
         """, org_id).fetchall()
 
     totals: Dict[str, List[float]] = {}
@@ -108,23 +114,30 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
         except Exception:
             cats = []
         for cat in cats:
-            totals.setdefault(cat, []).append(r.rating or 0)
+            # categories can be stored as plain strings OR as dicts like {"name": "Cleanliness"}
+            if isinstance(cat, dict):
+                cat_name = cat.get("name") or cat.get("category") or cat.get("type") or ""
+            else:
+                cat_name = str(cat)
+            if cat_name:
+                totals.setdefault(cat_name, []).append(r.rating or 0)
 
     return {cat: round(sum(v) / len(v), 2) for cat, v in totals.items() if v}
 
 
 def get_monthly_ratings(org_id: str) -> List[Dict]:
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         rows = cursor.execute("""
             SELECT
-                FORMAT(reviewDate, 'yyyy-MM') as month,
-                AVG(CAST(rating AS FLOAT)) as avgRating,
+                FORMAT(pr.reviewDate, 'yyyy-MM') as month,
+                AVG(CAST(pr.rating AS FLOAT)) as avgRating,
                 COUNT(*) as cnt
-            FROM dbo.processed_review
-            WHERE reviewDate IS NOT NULL
-              AND organization_id = ?
-            GROUP BY FORMAT(reviewDate, 'yyyy-MM')
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON pr.source_id = s.source_id
+            WHERE pr.reviewDate IS NOT NULL
+              AND s.organization_id = ?
+            GROUP BY FORMAT(pr.reviewDate, 'yyyy-MM')
             ORDER BY month
         """, org_id).fetchall()
     return [{"month": r.month, "avgRating": round(r.avgRating, 2), "count": r.cnt} for r in rows]
@@ -176,7 +189,7 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
     ]
 
     # Fetch the user's org name for display
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         row = cursor.execute(
             "SELECT organization_name FROM dbo.organization WHERE organization_id = ?", my_org_id
@@ -212,7 +225,7 @@ def get_rankings_data(my_org_id: str) -> Dict:
     tracked = get_tracked_competitors()
 
     # Fetch name for my org
-    with pyodbc.connect(get_connection_string()) as conn:
+    with connect_db() as conn:
         cursor = conn.cursor()
         row = cursor.execute(
             "SELECT organization_name FROM dbo.organization WHERE organization_id = ?", my_org_id

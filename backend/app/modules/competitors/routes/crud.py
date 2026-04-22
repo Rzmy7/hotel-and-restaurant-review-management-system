@@ -26,7 +26,8 @@ def _get_user_org_id(user, db: Session) -> str | None:
         text("""
             SELECT TOP 1 o.organization_id
             FROM dbo.organization o
-            LEFT JOIN dbo.processed_review pr ON pr.organization_id = o.organization_id
+            LEFT JOIN dbo.source s ON s.organization_id = o.organization_id
+            LEFT JOIN dbo.processed_review pr ON pr.source_id = s.source_id
             WHERE o.tenant_id = :tenant_id
               AND (o.is_competitor = 0 OR o.is_competitor IS NULL)
             GROUP BY o.organization_id, o.created_at
