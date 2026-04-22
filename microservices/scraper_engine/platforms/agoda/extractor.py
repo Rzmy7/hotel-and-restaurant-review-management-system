@@ -4,6 +4,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 from playwright.sync_api import Page
 from core.config import setup_logger
+from platforms.agoda.config import agoda_selectors
+
 
 logger = setup_logger("agoda_extractor")
 
@@ -108,11 +110,27 @@ class AgodaExtractor:
                 if nights_match:
                     num_of_nights = int(nights_match.group(1))
             
-            # 8. Images attached
+            # 8. Images attached (Modern Agoda uses buttons with data-picture-id)
             images = []
-            img_matches = re.finditer(r'<img[^>]*src="([^"]+)"[^>]*data-element-name="review-comment-ugc-thumbnail"', html)
-            for m in img_matches:
-                images.append(m.group(1) if not m.group(1).startswith('//') else 'https:' + m.group(1))
+            try:
+                # Use the robust locator from config to find images inside buttons/containers
+                img_elements = container.locator(agoda_selectors.review_images_selector).all()
+                for img_el in img_elements:
+                    src = img_el.get_attribute("src")
+                    if src:
+                        full_src = src if not src.startswith('//') else 'https:' + src
+                        if full_src not in images:
+                            images.append(full_src)
+            except Exception as e:
+                logger.debug(f"Locator-based image extraction failed, falling back to regex: {e}")
+            
+            if not images:
+                # Fallback: regex search for data-picture-id and src in the same block
+                img_matches = re.finditer(r'data-picture-id="[^"]*".*?src="([^"]+)"', html, re.DOTALL)
+                for m in img_matches:
+                    full_src = m.group(1) if not m.group(1).startswith('//') else 'https:' + m.group(1)
+                    if full_src not in images:
+                        images.append(full_src)
             
             # 9. Host Reply
             reply_match = re.search(r'class="[^"]*Review-response-text[^"]*"[^>]*>([^<]+)<', html)

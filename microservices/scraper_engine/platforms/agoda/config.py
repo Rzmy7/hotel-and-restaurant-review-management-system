@@ -12,7 +12,7 @@ class AgodaSelectors(BaseModel):
     review_stay_detail_selector: str = '[data-info-type="stay-detail"] span'
     review_nationality_selector: str = '[data-info-type="reviewer-name"] > span:last-child'
     review_date_xpath: str = "//span[contains(text(), 'Reviewed')]"
-    review_images_selector: str = '[data-element-name="review-comment-ugc-thumbnail"] img'
+    review_images_selector: str = '[data-element-name="review-comment-ugc-thumbnail"] img, [data-picture-id] img'
     review_reply_selector: str = ".Review-response"
     review_reply_text_selector: str = ".Review-response-text"
     next_page_button_selector: str = "button[data-element-name='review-paginator-next']"
