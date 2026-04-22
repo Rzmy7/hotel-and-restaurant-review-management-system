@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -11,11 +11,13 @@ import os
 from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
-from app.modules.auth.services.auth_service import login_user
+from app.modules.auth.services.auth_service import login_user, verify_login_2fa
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
-from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, EmailModel, ResetModel
+from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
 from app.core.security import decode_access_token
+from app.core.validations.signup_validator import validate_signup_payload
+from app.core.validations.login_validator import validate_login_payload, validate_login_otp_code
 from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
@@ -28,23 +30,34 @@ PASSWORD_RESET_EXPIRE_MINUTES = 60
 def token_sha256(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+
+def as_utc(dt: datetime | None) -> datetime | None:
+    """Normalize naive/aware datetimes to UTC-aware for safe comparison."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 @router.post("/signup")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
-    existing_user = get_user_by_email(db, payload.email.lower())
+    validated = validate_signup_payload(payload.name, payload.email, payload.password)
+
+    existing_user = get_user_by_email(db, validated["email"])
     if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Email already exists in database"
         )
-    name_parts = payload.name.strip().split(" ", 1)
+    name_parts = validated["name"].split(" ", 1)
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
 
     # Create the user with the default role (TENANT is assigned in create_user repo)
     user = create_user(
         db=db,
-        email=payload.email.lower(),
-        password_hash=hash_password(payload.password),
+        email=validated["email"],
+        password_hash=hash_password(validated["password"]),
         first_name=first_name,
         last_name=last_name,
         is_email_verified=False,
@@ -97,14 +110,28 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(payload: LoginModel, db: Session = Depends(get_db)):
+    validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
         db=db,
-        email=payload.email.lower(),
-        password=payload.password
+        email=validated["email"],
+        password=validated["password"]
     )
     return {
         "message": "Login successful",
         **result
+    }
+
+@router.post("/login/2fa")
+def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+    normalized_code = validate_login_otp_code(payload.code)
+    result = verify_login_2fa(
+        db=db,
+        email=payload.email.lower(),
+        code=normalized_code,
+    )
+    return {
+        "message": "Login successful",
+        **result,
     }
 
 from pydantic import BaseModel
@@ -152,11 +179,11 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = token_sha256(raw_token)
-        expires_at = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
         db.execute(
             text("""
-                UPDATE dbo.password_reset_tokens
+                UPDATE dbo.password_reset_token
                 SET used_at = GETUTCDATE()
                 WHERE user_id = :user_id AND used_at IS NULL
             """),
@@ -165,10 +192,10 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         db.execute(
             text("""
-                INSERT INTO dbo.password_reset_tokens
-                    (user_id, token_hash, expires_at, created_at)
+                INSERT INTO dbo.password_reset_token
+                    (token_id, user_id, token_hash, expires_at, created_at)
                 VALUES
-                    (:user_id, :token_hash, :expires_at, GETUTCDATE())
+                    (NEWID(), :user_id, :token_hash, :expires_at, GETUTCDATE())
             """),
             {
                 "user_id": str(user.user_id),
@@ -198,7 +225,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         token_row = db.execute(
             text("""
                 SELECT TOP 1 token_id, user_id, expires_at, used_at
-                FROM dbo.password_reset_tokens
+                FROM dbo.password_reset_token
                 WHERE token_hash = :token_hash
                 ORDER BY created_at DESC
             """),
@@ -209,7 +236,10 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
             raise HTTPException(status_code=400, detail="Invalid token")
         if token_row.used_at is not None:
             raise HTTPException(status_code=400, detail="Token already used")
-        if token_row.expires_at is None or token_row.expires_at < datetime.utcnow():
+        expires_at = as_utc(token_row.expires_at)
+        now_utc = datetime.now(timezone.utc)
+
+        if expires_at is None or expires_at < now_utc:
             raise HTTPException(status_code=400, detail="Token expired")
 
         new_password_hash = hash_password(payload.new_password)
@@ -229,7 +259,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 
         db.execute(
             text("""
-                UPDATE dbo.password_reset_tokens
+                UPDATE dbo.password_reset_token
                 SET used_at = GETUTCDATE()
                 WHERE token_id = :token_id
             """),

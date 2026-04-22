@@ -21,3 +21,14 @@ class ProfileUpdate(BaseModel):
     jobTitle: Optional[str]
     bio: Optional[str]
     location: Optional[str]
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: Optional[str] = None
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    code: str
+

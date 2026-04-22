@@ -6,6 +6,17 @@ import { AuthLayout } from '../components/shared/AuthLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
+import {
+  mapBackendSignupErrorToField,
+  normalizeSignupPayload,
+  type SignupField,
+  type SignupFieldErrors,
+  validateConfirmPassword,
+  validateEmailAddress,
+  validateFullName,
+  validatePassword,
+  validateSignupForm,
+} from '../validators/signupValidator';
 
 const SignUpPage = () => {
   const [fullName, setFullName] = useState('');
@@ -17,6 +28,7 @@ const SignUpPage = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
   
   const navigate = useNavigate();
   const auth = useAuth();
@@ -31,21 +43,65 @@ const SignUpPage = () => {
     navigate(destination);
   }, [auth.user, navigate]);
 
+  const setFieldError = (field: SignupField, message: string | null) => {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (message) {
+        next[field] = message;
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  };
+
+  const validateSingleField = (field: SignupField, value?: string | boolean) => {
+    switch (field) {
+      case 'fullName':
+        return setFieldError('fullName', validateFullName(String(value ?? fullName)));
+      case 'email':
+        return setFieldError('email', validateEmailAddress(String(value ?? email)));
+      case 'password':
+        return setFieldError('password', validatePassword(String(value ?? password)));
+      case 'confirmPassword':
+        return setFieldError('confirmPassword', validateConfirmPassword(password, String(value ?? confirmPassword)));
+      case 'acceptedTerms':
+        return setFieldError('acceptedTerms', (value ?? acceptedTerms) ? null : 'Please accept the Terms of Service and Privacy Policy.');
+      default:
+        return undefined;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      setError('Passwords do not match!');
-      return;
-    }
-    if (!acceptedTerms) {
-      setError('Please accept the Terms of Service and Privacy Policy');
+
+    const validationErrors = validateSignupForm({
+      fullName,
+      email,
+      password,
+      confirmPassword,
+      acceptedTerms,
+    });
+
+    setFieldErrors(validationErrors);
+    const firstError = Object.values(validationErrors)[0];
+    if (firstError) {
+      setError(firstError);
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const user = await auth.signup(fullName, email, password);
+      const normalized = normalizeSignupPayload({
+        fullName,
+        email,
+        password,
+        confirmPassword,
+        acceptedTerms,
+      });
+
+      const user = await auth.signup(normalized.fullName, normalized.email, normalized.password);
       const destination = getDashboardPathForRole(user.role);
       if (isExternalDestination(destination)) {
         window.location.href = destination;
@@ -53,7 +109,12 @@ const SignUpPage = () => {
       }
       navigate(destination);
     } catch (err: any) {
-      setError(err.message || 'Signup failed');
+      const backendMessage = err.message || 'Signup failed';
+      const mappedErrors = mapBackendSignupErrorToField(backendMessage);
+      if (Object.keys(mappedErrors).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...mappedErrors }));
+      }
+      setError(backendMessage);
     } finally {
       setLoading(false);
     }
@@ -88,11 +149,17 @@ const SignUpPage = () => {
               type="text"
               placeholder="John Doe"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                setFieldError('fullName', null);
+                setError(null);
+              }}
+              onBlur={() => validateSingleField('fullName')}
               className="pl-11"
               required
             />
           </div>
+          {fieldErrors.fullName && <p className="text-xs text-rose-500 ml-1">{fieldErrors.fullName}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -105,11 +172,17 @@ const SignUpPage = () => {
               type="email"
               placeholder="name@company.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldError('email', null);
+                setError(null);
+              }}
+              onBlur={() => validateSingleField('email')}
               className="pl-11"
               required
             />
           </div>
+          {fieldErrors.email && <p className="text-xs text-rose-500 ml-1">{fieldErrors.email}</p>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,7 +196,13 @@ const SignUpPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldError('password', null);
+                  setFieldError('confirmPassword', null);
+                  setError(null);
+                }}
+                onBlur={() => validateSingleField('password')}
                 className="px-11"
                 required
               />
@@ -135,6 +214,7 @@ const SignUpPage = () => {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {fieldErrors.password && <p className="text-xs text-rose-500 ml-1">{fieldErrors.password}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -147,7 +227,12 @@ const SignUpPage = () => {
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setFieldError('confirmPassword', null);
+                  setError(null);
+                }}
+                onBlur={() => validateSingleField('confirmPassword')}
                 className="px-11"
                 required
               />
@@ -159,6 +244,7 @@ const SignUpPage = () => {
                 {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {fieldErrors.confirmPassword && <p className="text-xs text-rose-500 ml-1">{fieldErrors.confirmPassword}</p>}
           </div>
         </div>
 
@@ -168,7 +254,12 @@ const SignUpPage = () => {
               type="checkbox"
               id="terms"
               checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              onChange={(e) => {
+                setAcceptedTerms(e.target.checked);
+                setFieldError('acceptedTerms', null);
+                setError(null);
+              }}
+              onBlur={() => validateSingleField('acceptedTerms')}
               className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
             />
           </div>
@@ -176,6 +267,7 @@ const SignUpPage = () => {
             I agree to the <Link to="/terms" className="text-blue-600 font-bold hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-blue-600 font-bold hover:underline">Privacy Policy</Link>
           </label>
         </div>
+        {fieldErrors.acceptedTerms && <p className="text-xs text-rose-500 ml-1">{fieldErrors.acceptedTerms}</p>}
 
         <Button
           type="submit"

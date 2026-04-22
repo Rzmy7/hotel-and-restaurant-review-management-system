@@ -31,6 +31,7 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     is_email_verified = Column(Boolean, nullable=False, default=False)
     is_phone_verified = Column(Boolean, nullable=False, default=False)
+    is_2fa_enabled = Column(Boolean, nullable=False, default=False)
 
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -60,6 +61,12 @@ class User(Base):
 
     password_reset_tokens = relationship(
         "PasswordResetToken",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    two_factor_tokens = relationship(
+        "TwoFactorToken",
         back_populates="user",
         cascade="all, delete-orphan"
     )

@@ -68,6 +68,43 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
             user.google_id = google_id
             db.commit()
 
+    # ----------------------------------------------------
+    # Intercept for 2FA (if enabled)
+    # ----------------------------------------------------
+    # We check their is_2fa_enabled DB flag. 
+    # If activated, the backend will generate an OTP, send out the email, 
+    # and then safely rebound the user's browser back to your login component 
+    # with a URL hint indicating that 2FA is required.
+    if getattr(user, 'is_2fa_enabled', False):
+        import random
+        from datetime import datetime, timedelta
+        from app.modules.auth.models.auth_models import TwoFactorToken
+        from app.modules.auth.services.email_service import send_2fa_email
+
+        # Generate a random 6-digit code
+        code = f"{random.randint(100000, 999999)}"
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        
+        # Clear existing tokens and save the new 2FA token to DB
+        db.query(TwoFactorToken).filter(TwoFactorToken.user_id == user.user_id).delete()
+        token = TwoFactorToken(
+            user_id=user.user_id,
+            code=code,
+            expires_at=expires_at
+        )
+        db.add(token)
+        db.commit()
+        
+        # Send 2FA verification email
+        send_2fa_email(user.email, code)
+        
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        # Redirect to the frontend login view with oauth_2fa query string
+        return RedirectResponse(
+            url=f"{frontend_url}/login?oauth_2fa=true&email={user.email}",
+            status_code=302
+        )
+
     roles = get_user_role_names(db, user.user_id)
     from app.core.security import create_access_token
     from sqlalchemy import text

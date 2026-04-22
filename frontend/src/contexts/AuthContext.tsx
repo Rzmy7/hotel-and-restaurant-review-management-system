@@ -8,9 +8,34 @@ type User = {
     role?: string;
 };
 
+type LoginChallenge = {
+    require_2fa: true;
+    message: string;
+    email: string;
+};
+
+type LoginSuccess = {
+    require_2fa?: false;
+    access_token: string;
+    token_type: string;
+    user: {
+        user_id: string;
+        email: string;
+        first_name?: string;
+        last_name?: string;
+        full_name?: string;
+        name?: string;
+        role?: string;
+        roles?: string[];
+    };
+};
+
+type LoginResponse = LoginChallenge | LoginSuccess;
+
 type AuthContextType = {
     user: User | null;
-    login: (email: string, password: string) => Promise<User>;
+    login: (email: string, password: string) => Promise<LoginResponse>;
+    verifyLogin2fa: (email: string, code: string) => Promise<User>;
     signup: (name: string, email: string, password: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
@@ -21,7 +46,9 @@ type AuthContextType = {
     isLoading: boolean;
 };
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+const isLoginChallenge = (value: LoginResponse): value is LoginChallenge => {
+    return 'require_2fa' in value && value.require_2fa === true;
+};
 
 const clearSetupTemporaryKeys = () => {
     localStorage.removeItem("setup_pending_organization_id");
@@ -151,9 +178,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string) => {
-        const data = await apiClient.post<any>('/auth/login', { email, password });
+        const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
         console.log("Login response:", data);
-        const backendUser = data.user;
+
+        if (isLoginChallenge(data)) {
+            return data;
+        }
+
+        const successData: LoginSuccess = data;
+        const backendUser = successData.user;
 
         const normalizedUser: User = {
             user_id: backendUser.user_id,
@@ -163,10 +196,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
 
         // Save user + token
-        persist(normalizedUser, data.access_token);
+        persist(normalizedUser, successData.access_token);
 
         console.log("Calling checkUserOrganizations...");
         // Check organizations after login
+        await checkUserOrganizations();
+
+        return successData;
+    };
+
+    const verifyLogin2fa = async (email: string, code: string) => {
+        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
+
+        const backendUser = data.user;
+        const normalizedUser: User = {
+            user_id: backendUser.user_id,
+            email: backendUser.email,
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            role: normalizeRole(backendUser.role),
+        };
+
+        persist(normalizedUser, data.access_token);
         await checkUserOrganizations();
 
         return normalizedUser;
@@ -235,6 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             value={{
                 user,
                 login,
+                verifyLogin2fa,
                 signup,
                 logout,
                 forgotPassword,

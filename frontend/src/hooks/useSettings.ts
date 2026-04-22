@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { settingsService } from '../services/settingsService';
 import type { SettingsData } from '../types/settings';
 import { useToast } from '../contexts/ToastContext';
+import type { PasswordChangePayload } from '../api/settingsApi';
 
 export const useSettings = () => {
     const [data, setData] = useState<SettingsData | null>(null);
@@ -43,12 +44,40 @@ export const useSettings = () => {
         }
     };
 
+    const uploadHotelLogo = async (file: File) => {
+        try {
+            const logoUrl = await settingsService.uploadHotelLogo(file);
+            setData((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    hotelInfo: {
+                        ...prev.hotelInfo,
+                        logoUrl,
+                    },
+                };
+            });
+            showToast('Hotel logo uploaded successfully', 'success');
+            return logoUrl;
+        } catch (err) {
+            showToast('Failed to upload hotel logo', 'error');
+            throw err;
+        }
+    };
+
+    const changePassword = async (payload: PasswordChangePayload) => {
+        const message = await settingsService.changePassword(payload);
+        return message;
+    };
+
     return {
         data,
         loading,
         saving,
         error,
         refreshData: loadSettings,
-        updateSettings
+        updateSettings,
+        uploadHotelLogo,
+        changePassword
     };
 };

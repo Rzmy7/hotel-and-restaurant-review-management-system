@@ -4,7 +4,7 @@ Password reset routes — POST /forgot-password, POST /reset-password/{token}
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
@@ -24,6 +24,15 @@ def _token_sha256(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _as_utc(dt: datetime | None) -> datetime | None:
+    """Normalize naive/aware datetimes to UTC-aware for safe comparison."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 @router.post("/forgot-password")
 def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
     try:
@@ -34,11 +43,11 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = _token_sha256(raw_token)
-        expires_at = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
         db.execute(
             text("""
-                UPDATE dbo.password_reset_tokens
+                UPDATE dbo.password_reset_token
                 SET used_at = GETUTCDATE()
                 WHERE user_id = :user_id AND used_at IS NULL
             """),
@@ -47,10 +56,10 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         db.execute(
             text("""
-                INSERT INTO dbo.password_reset_tokens
-                    (user_id, token_hash, expires_at, created_at)
+                INSERT INTO dbo.password_reset_token
+                    (token_id, user_id, token_hash, expires_at, created_at)
                 VALUES
-                    (:user_id, :token_hash, :expires_at, GETUTCDATE())
+                    (NEWID(), :user_id, :token_hash, :expires_at, GETUTCDATE())
             """),
             {
                 "user_id": str(user.user_id),
@@ -87,7 +96,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         token_row = db.execute(
             text("""
                 SELECT TOP 1 token_id, user_id, expires_at, used_at
-                FROM dbo.password_reset_tokens
+                FROM dbo.password_reset_token
                 WHERE token_hash = :token_hash
                 ORDER BY created_at DESC
             """),
@@ -100,7 +109,10 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         if token_row.used_at is not None:
             raise HTTPException(status_code=400, detail="Token already used")
 
-        if token_row.expires_at is None or token_row.expires_at < datetime.utcnow():
+        expires_at = _as_utc(token_row.expires_at)
+        now_utc = datetime.now(timezone.utc)
+
+        if expires_at is None or expires_at < now_utc:
             raise HTTPException(status_code=400, detail="Token expired")
 
         new_password_hash = hash_password(payload.new_password)
@@ -120,7 +132,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 
         db.execute(
             text("""
-                UPDATE dbo.password_reset_tokens
+                UPDATE dbo.password_reset_token
                 SET used_at = GETUTCDATE()
                 WHERE token_id = :token_id
             """),
