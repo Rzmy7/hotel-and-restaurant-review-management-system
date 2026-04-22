@@ -234,7 +234,7 @@ const SidebarHeader: React.FC<{ isExpanded: boolean; onToggle: () => void }> = (
               <div className="w-8 h-8 rounded-lg bg-brand/5 text-brand flex items-center justify-center">
                 <Plus size={16} />
               </div>
-              <span>Add New Source</span>
+              <span>Add New Organization</span>
             </button>
           </div>
         </div>

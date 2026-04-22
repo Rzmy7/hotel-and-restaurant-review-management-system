@@ -281,7 +281,17 @@ def fetch_all_reviews_enriched(
         for field in ["categories", "keyPhrases"]:
             if row.get(field):
                 try:
-                    row[field] = json.loads(row[field])
+                    parsed = json.loads(row[field])
+                    if isinstance(parsed, list):
+                        sanitized = []
+                        for item in parsed:
+                            if isinstance(item, dict) and "name" in item:
+                                sanitized.append(str(item["name"]))
+                            elif isinstance(item, str):
+                                sanitized.append(item)
+                        row[field] = sanitized
+                    else:
+                        row[field] = []
                 except Exception:
                     row[field] = []
             else:
@@ -346,7 +356,10 @@ def get_review_options(organization_id: str) -> Dict[str, List[str]]:
                 cats = json.loads(row[0])
                 if isinstance(cats, list):
                     for c in cats:
-                        all_categories.add(c)
+                        if isinstance(c, dict) and "name" in c:
+                            all_categories.add(str(c["name"]))
+                        elif isinstance(c, str):
+                            all_categories.add(c)
             except:
                 pass
 
