@@ -7,6 +7,7 @@ from pydantic import BaseModel, AnyHttpUrl, Field, AliasChoices
 
 
 class PhotoModel(BaseModel):
+    id: Optional[str] = None
     src: str
     alt: str = ""
 

@@ -119,7 +119,9 @@ def insert_review_media(
 
     sql = "INSERT INTO dbo.review_media (media_id, review_id, src, alt) VALUES (?, ?, ?, ?)"
     for pic in photos:
-        cursor.execute(sql, uuid.uuid4(), review_id, pic.get("src"), pic.get("alt", ""))
+        # Preserving original media_id if provided by the scraper for better tracking
+        m_id = pic.get("media_id") or uuid.uuid4()
+        cursor.execute(sql, m_id, review_id, pic.get("src"), pic.get("alt", ""))
 
 
 def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
@@ -305,9 +307,9 @@ def fetch_all_reviews_enriched(
             row["summary"] = ""
 
         cursor.execute(
-            "SELECT src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
+            "SELECT CAST(media_id AS VARCHAR(36)), src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
         )
-        row["photos"] = [{"src": p[0], "alt": p[1]} for p in cursor.fetchall()]
+        row["photos"] = [{"id": p[0], "src": p[1], "alt": p[2]} for p in cursor.fetchall()]
         results.append(row)
 
     conn.close()

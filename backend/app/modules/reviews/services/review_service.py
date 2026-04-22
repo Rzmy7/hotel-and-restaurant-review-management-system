@@ -179,7 +179,15 @@ async def ingest_from_scraper(
                 internal_id = upsert_review_pending(cursor, mapping)
 
                 # Handle photos
-                photos = r_data.get("photos", [])
+                photos_raw = r_data.get("media", [])
+                photos = [
+                    {
+                        "media_id": p.get("media_id"),
+                        "src": p.get("url"),
+                        "alt": ""
+                    }
+                    for p in photos_raw if p.get("url")
+                ]
                 if photos:
                     insert_review_media(cursor, internal_id, photos)
 

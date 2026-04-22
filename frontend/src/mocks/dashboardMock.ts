@@ -223,4 +223,5 @@ export const MOCK_DASHBOARD_DATA: DashboardResponse = {
             lastSync: '45m ago',
         },
     ],
+    categoryPerformance: []
 };
