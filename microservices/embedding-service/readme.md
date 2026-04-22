@@ -236,8 +236,8 @@ curl -X POST http://localhost:8001/embed/batch \
       "Poor experience, room was dirty"
     ],
     "metadata": [
-      { "review_id": "123", "hotel_id": "456" },
-      { "review_id": "124", "hotel_id": "456" }
+      { "review_id": "123", "source_id": "456" },
+      { "review_id": "124", "source_id": "456" }
     ]
   }'
 ```
@@ -249,7 +249,7 @@ curl -X POST http://localhost:8001/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "clean rooms and friendly staff",
-    "filter": { "hotel_id": "456" },
+    "filter": { "source_id": "456" },
     "n_results": 5
   }'
 ```

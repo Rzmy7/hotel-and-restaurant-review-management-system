@@ -21,27 +21,13 @@ const GOOGLE_MODELS = [
     'gemma-3-12b-it',
     'gemma-3-27b-it',
 ];
-const CLAUDE_MODELS = [
-    'claude-sonnet-4-6',
-    'claude-sonnet-4-5-20250929',
-    'claude-sonnet-4-20250514',
-    'claude-haiku-4-5-20251001',
-    'claude-opus-4-6',
-    'claude-opus-4-5-20251101',
-    'claude-opus-4-1-20250805',
-    'claude-opus-4-20250514',
-];
-const ALL_MODELS = [...GOOGLE_MODELS, ...CLAUDE_MODELS];
 
 const defaultSettings: ReplyGenerationSettings = {
     googleApiKey: '',
-    claudeApiKey: '',
     selectedModel: 'gemini-2.5-flash-lite',
     similarReviewsCount: 3,
     googleRequestCount: 0,
-    claudeRequestCount: 0,
     googleTokenUsage: 0,
-    claudeTokenUsage: 0,
     useEmbeddingRules: true,
     useSimilarReviews: true,
 };
@@ -52,9 +38,7 @@ export const ReplyGeneration: React.FC = () => {
     const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [googleTestState, setGoogleTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-    const [claudeTestState, setClaudeTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [googleTestMessage, setGoogleTestMessage] = useState<string | null>(null);
-    const [claudeTestMessage, setClaudeTestMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -79,9 +63,7 @@ export const ReplyGeneration: React.FC = () => {
         setSaveState('idle');
         setErrorMessage(null);
         setGoogleTestState('idle');
-        setClaudeTestState('idle');
         setGoogleTestMessage(null);
-        setClaudeTestMessage(null);
     };
 
     const handleTestGoogleApiKey = async () => {
@@ -90,7 +72,7 @@ export const ReplyGeneration: React.FC = () => {
         }
 
         const apiKey = settings.googleApiKey.trim();
-        const model = settings.selectedModel.startsWith('gemini') ? settings.selectedModel : GOOGLE_MODELS[0];
+        const model = settings.selectedModel;
         if (!apiKey) {
             setGoogleTestState('error');
             setGoogleTestMessage('Please enter a Google API key to test.');
@@ -107,32 +89,6 @@ export const ReplyGeneration: React.FC = () => {
         } catch (error) {
             setGoogleTestState('error');
             setGoogleTestMessage(error instanceof Error ? error.message : 'Failed to test Google API key.');
-        }
-    };
-
-    const handleTestClaudeApiKey = async () => {
-        if (claudeTestState === 'testing') {
-            return;
-        }
-
-        const apiKey = settings.claudeApiKey.trim();
-        const model = settings.selectedModel.startsWith('claude') ? settings.selectedModel : CLAUDE_MODELS[0];
-        if (!apiKey) {
-            setClaudeTestState('error');
-            setClaudeTestMessage('Please enter a Claude API key to test.');
-            return;
-        }
-
-        setClaudeTestState('testing');
-        setClaudeTestMessage(null);
-
-        try {
-            const result = await settingsService.testReplyGenerationApiKey({ provider: 'claude', apiKey, model });
-            setClaudeTestState(result.success ? 'success' : 'error');
-            setClaudeTestMessage(result.message);
-        } catch (error) {
-            setClaudeTestState('error');
-            setClaudeTestMessage(error instanceof Error ? error.message : 'Failed to test Claude API key.');
         }
     };
 
@@ -160,12 +116,6 @@ export const ReplyGeneration: React.FC = () => {
         return <LoadingSpinner />;
     }
 
-    const selectedProviderLabel = settings.selectedModel.startsWith('claude') ? 'Claude' : 'Google';
-    const selectedProviderClasses =
-        selectedProviderLabel === 'Claude'
-            ? 'bg-orange-100 text-orange-700 border-orange-200'
-            : 'bg-blue-100 text-blue-700 border-blue-200';
-
     return (
         <div className="pt-4 max-w-6xl space-y-5">
             <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -184,8 +134,8 @@ export const ReplyGeneration: React.FC = () => {
                         <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold w-fit bg-white/80 backdrop-blur-sm">
                             <Wand2 size={14} className="text-slate-600" />
                             Active Provider
-                            <span className={`rounded-full border px-2 py-0.5 ${selectedProviderClasses}`}>
-                                {selectedProviderLabel}
+                            <span className="rounded-full border px-2 py-0.5 bg-blue-100 text-blue-700 border-blue-200">
+                                Google
                             </span>
                         </div>
                     </div>
@@ -208,11 +158,11 @@ export const ReplyGeneration: React.FC = () => {
                                     onChange={(event) => updateField('selectedModel', event.target.value)}
                                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                                 >
-                                    {ALL_MODELS.map((model) => (
+                                    {GOOGLE_MODELS.map((model) => (
                                         <option key={model} value={model}>{model}</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-slate-500 mt-1.5">Combined list of Google and Claude models.</p>
+                                <p className="text-xs text-slate-500 mt-1.5">Select a Google Gemini model for reply generation.</p>
                             </div>
                         </div>
 
@@ -256,62 +206,33 @@ export const ReplyGeneration: React.FC = () => {
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm space-y-4">
                         <div className="flex items-center gap-2">
                             <KeyRound size={16} className="text-sky-600" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700">Provider API Keys</h3>
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700">Provider API Key</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 space-y-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Google API Key</label>
-                                    <input
-                                        type="password"
-                                        value={settings.googleApiKey}
-                                        onChange={(event) => updateField('googleApiKey', event.target.value)}
-                                        placeholder="Enter Google API key"
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                                    />
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <button
-                                        onClick={handleTestGoogleApiKey}
-                                        disabled={googleTestState === 'testing'}
-                                        className="px-4 py-2 bg-white border border-sky-200 rounded-lg text-sm font-semibold text-slate-700 hover:text-sky-700 hover:border-sky-300 hover:bg-sky-100 transition-colors disabled:opacity-70"
-                                    >
-                                        {googleTestState === 'testing' ? 'Testing Google...' : 'Test Google Key'}
-                                    </button>
-                                    {googleTestMessage && (
-                                        <span className={`text-sm ${googleTestState === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {googleTestMessage}
-                                        </span>
-                                    )}
-                                </div>
+                        <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Google API Key</label>
+                                <input
+                                    type="password"
+                                    value={settings.googleApiKey}
+                                    onChange={(event) => updateField('googleApiKey', event.target.value)}
+                                    placeholder="Enter Google API key"
+                                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                                />
                             </div>
-
-                            <div className="rounded-xl border border-orange-200 bg-orange-50/50 p-4 space-y-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Claude API Key</label>
-                                    <input
-                                        type="password"
-                                        value={settings.claudeApiKey}
-                                        onChange={(event) => updateField('claudeApiKey', event.target.value)}
-                                        placeholder="Enter Claude API key"
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                                    />
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <button
-                                        onClick={handleTestClaudeApiKey}
-                                        disabled={claudeTestState === 'testing'}
-                                        className="px-4 py-2 bg-white border border-orange-200 rounded-lg text-sm font-semibold text-slate-700 hover:text-orange-700 hover:border-orange-300 hover:bg-orange-100 transition-colors disabled:opacity-70"
-                                    >
-                                        {claudeTestState === 'testing' ? 'Testing Claude...' : 'Test Claude Key'}
-                                    </button>
-                                    {claudeTestMessage && (
-                                        <span className={`text-sm ${claudeTestState === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {claudeTestMessage}
-                                        </span>
-                                    )}
-                                </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <button
+                                    onClick={handleTestGoogleApiKey}
+                                    disabled={googleTestState === 'testing'}
+                                    className="px-4 py-2 bg-white border border-sky-200 rounded-lg text-sm font-semibold text-slate-700 hover:text-sky-700 hover:border-sky-300 hover:bg-sky-100 transition-colors disabled:opacity-70"
+                                >
+                                    {googleTestState === 'testing' ? 'Testing Google...' : 'Test Google Key'}
+                                </button>
+                                {googleTestMessage && (
+                                    <span className={`text-sm ${googleTestState === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {googleTestMessage}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -332,14 +253,6 @@ export const ReplyGeneration: React.FC = () => {
                             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider">Google Token Usage</div>
                                 <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.googleTokenUsage}</div>
-                            </div>
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider">Claude Requests</div>
-                                <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.claudeRequestCount}</div>
-                            </div>
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider">Claude Token Usage</div>
-                                <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.claudeTokenUsage}</div>
                             </div>
                         </div>
                     </section>

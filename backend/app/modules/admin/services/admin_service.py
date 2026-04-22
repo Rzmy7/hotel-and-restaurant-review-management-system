@@ -285,35 +285,6 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
 
         return organizations
 
-    if table_exists(cursor, "reviews"):
-        rows = execute_query(
-            cursor,
-            """
-            SELECT
-                NULLIF(LTRIM(RTRIM(room_name)), '') AS orgName,
-                COUNT(*) AS usersCount,
-                MAX(CAST(posted_date AS datetime)) AS lastSeen
-            FROM dbo.reviews
-            WHERE NULLIF(LTRIM(RTRIM(room_name)), '') IS NOT NULL
-            GROUP BY NULLIF(LTRIM(RTRIM(room_name)), '')
-            ORDER BY COUNT(*) DESC
-            """,
-        ).fetchall()
-
-        organizations = []
-        for index, row in enumerate(rows, start=1):
-            name = str(row[0])
-            organizations.append(
-                OrganizationSummary(
-                    id=str(index),
-                    name=name,
-                    owner="",
-                    usersCount=int(row[1]) if row[1] is not None else 0,
-                )
-            )
-
-        return organizations
-
     if table_exists(cursor, "ProcessedReviews"):
         rows = execute_query(
             cursor,
@@ -620,6 +591,12 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
     if next_role == "User" and payload.plan:
         set_user_subscription_plan(cursor, user_id, payload.plan)
+        # ── Notify user about admin-initiated plan change ──
+        try:
+            from app.services.notification_helpers import notify_plan_changed_by_admin
+            notify_plan_changed_by_admin(user_id, payload.plan)
+        except Exception:
+            pass  # Best-effort
     conn.commit()
 
     updated_row = _get_user_row_by_id(cursor, user_id, columns)

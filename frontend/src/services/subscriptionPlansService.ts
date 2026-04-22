@@ -30,6 +30,7 @@ export interface SubscriptionFeatureUsage {
     used: number;
     limit: number | null;
     balance: number | null;
+    supportsLimit: boolean;
 }
 
 export interface SubscriptionUsageSummary {

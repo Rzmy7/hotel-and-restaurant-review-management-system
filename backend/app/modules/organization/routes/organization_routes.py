@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
@@ -7,9 +7,10 @@ import uuid
 
 from app.database.session import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
-from app.modules.organization.schemas.organization_schema import OrganizationCreate, OrganizationUpdate, OrganizationTypeRead
+from app.modules.organization.schemas.organization_schema import OrganizationCreate, OrganizationUpdate, OrganizationTypeRead, LogoUploadResponse
 from app.modules.organization.services import organization_service
 from app.modules.source.services.source_service import calculate_next_sync_time
+from app.core.exceptions.custom_exceptions import FileValidationException
 
 router = APIRouter(prefix="/api", tags=["organization"])
 
@@ -162,7 +163,7 @@ def upsert_organization(
 
 
 @router.patch("/organizations/{org_id}")
-@router.post("/organizations/{org_id}")  # support both for convenience
+@router.post("/organizations/{org_id}", include_in_schema=False)  # legacy alias kept for backward compatibility
 def update_organization(
     org_id: str,
     data: OrganizationUpdate,
@@ -178,16 +179,40 @@ def update_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
 
+    def normalize_optional_text(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        trimmed = value.strip()
+        return trimmed if trimmed else None
+
+    provided_fields = data.model_fields_set if hasattr(data, "model_fields_set") else set()
+
     updates = []
     params = {"org_id": org_id, "tenant_id": user.user_id}
 
-    if data.organization_name is not None:
+    if "organization_name" in provided_fields:
         updates.append("organization_name = :name")
-        params["name"] = data.organization_name
+        params["name"] = normalize_optional_text(data.organization_name)
     
-    if data.organization_type_id is not None:
+    if "organization_type_id" in provided_fields:
         updates.append("organization_type_id = :type_id")
         params["type_id"] = data.organization_type_id
+
+    if "website_url" in provided_fields:
+        updates.append("website_url = :website_url")
+        params["website_url"] = normalize_optional_text(data.website_url)
+
+    if "primary_email" in provided_fields:
+        updates.append("primary_email = :primary_email")
+        params["primary_email"] = normalize_optional_text(data.primary_email)
+
+    if "phone_number" in provided_fields:
+        updates.append("phone_number = :phone_number")
+        params["phone_number"] = normalize_optional_text(data.phone_number)
+
+    if "logo_url" in provided_fields:
+        updates.append("logo_url = :logo_url")
+        params["logo_url"] = normalize_optional_text(data.logo_url)
 
     if not updates:
         return {"message": "No updates provided", "organization_id": org_id}
@@ -201,6 +226,30 @@ def update_organization(
         "message": "Organization updated successfully",
         "organization_id": org_id
     }
+
+@router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse)
+async def upload_organization_logo(
+    org_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    # Verify ownership
+    org = db.execute(
+        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
+        {"org_id": org_id, "tenant_id": user.user_id}
+    ).fetchone()
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+
+    try:
+        return await organization_service.upload_organization_logo(db, org_id, file)
+    except FileValidationException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
 
 @router.delete("/organizations/{org_id}")
 def delete_organization(

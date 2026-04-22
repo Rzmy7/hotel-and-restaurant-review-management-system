@@ -40,3 +40,19 @@ export const fetchSystemAlerts = (): Promise<SystemAlert[]> => {
 export const fetchRecentActivity = (): Promise<RecentActivity[]> => {
     return apiClient.get<RecentActivity[]>('/admin/dashboard/activities');
 };
+
+/**
+ * Dismiss a single system alert.
+ * Backend: POST /api/admin/dashboard/alerts/:id/dismiss
+ */
+export const dismissAlert = (alertId: string): Promise<void> => {
+    return apiClient.post<void>(`/admin/dashboard/alerts/${alertId}/dismiss`);
+};
+
+/**
+ * Dismiss all active system alerts.
+ * Backend: POST /api/admin/dashboard/alerts/dismiss-all
+ */
+export const dismissAllAlerts = (): Promise<void> => {
+    return apiClient.post<void>('/admin/dashboard/alerts/dismiss-all');
+};

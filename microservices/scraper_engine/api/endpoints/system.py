@@ -13,6 +13,7 @@ from pydantic import BaseModel
 import time
 import sys
 import os
+import psutil
 from core.database import get_session
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
@@ -43,12 +44,42 @@ def health_check():
     finally:
         session.close()
 
+    days = int(uptime // 86400)
+    hours = int((uptime % 86400) // 3600)
+    minutes = int((uptime % 3600) // 60)
+    
     return {
         "status": "online",
+        "uptime": f"{days}d {hours}h {minutes}m",
         "uptime_seconds": round(uptime, 2),
         "database_connected": db_ok,
         "active_jobs": len(job_manager.get_active_jobs()),
         "pool": scrape_pool.get_pool_status()
+    }
+
+
+@router.get("/admin-health")
+def admin_health_check():
+    """Returns exactly the format expected by the admin panel."""
+    uptime = time.time() - START_TIME
+    days = int(uptime // 86400)
+    hours = int((uptime % 86400) // 3600)
+    minutes = int((uptime % 3600) // 60)
+    
+    cpu_usage = round(psutil.cpu_percent(interval=0.1), 1)
+    memory = psutil.virtual_memory()
+    ram_usage = round(memory.percent, 1)
+
+    # Scraper doesn't strictly have a "paused" state conceptually identical to embedding service,
+    # so we default to false or check if pool is empty. Let's just default to false for now.
+    service_paused = False
+
+    return {
+        "status": "Online",
+        "cpu_usage": cpu_usage,
+        "ram_usage": ram_usage,
+        "uptime": f"{days}d {hours}h {minutes}m",
+        "service_paused": service_paused
     }
 
 
@@ -109,3 +140,60 @@ def system_metrics():
         "cpu_count": os.cpu_count(),
         "pool_max_workers": scrape_pool.max_workers
     }
+
+
+@router.post("/jobs/{source_id}/cancel")
+def cancel_jobs_for_source(source_id: str):
+    """
+    Cancel all active scrape jobs for a given source_id.
+    Looks up the source URL from the local database, then cancels any
+    active job matching that URL.
+    Note: Does NOT notify the backend — the calling backend endpoint
+    handles status reset directly to avoid race conditions.
+    """
+    from core.database import get_session
+    from core.models import Source
+
+    # Look up the source URL so we can find matching jobs
+    session = get_session()
+    try:
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        source_url = source.source_url if source else None
+    finally:
+        session.close()
+
+    cancelled = False
+
+    if source_url:
+        # Find active jobs matching this URL and cancel them
+        active_job = job_manager.get_active_job_by_url(source_url)
+        if active_job:
+            cancelled = scrape_pool.cancel_job(active_job["id"])
+
+    # Also try to cancel any queued jobs for this source
+    from core.queue import job_queue
+    with job_queue._lock:
+        for job in list(job_queue._queue):
+            if job.kwargs.get("source_id") == source_id:
+                job_queue._queue.remove(job)
+                job_manager.update_job(job.job_id, status="failed", progress="Cancelled by user.")
+                cancelled = True
+
+    if cancelled:
+        return {"status": "cancelled", "source_id": source_id}
+
+    return {"status": "not_found", "source_id": source_id, "message": "No active jobs found for this source."}
+
+
+@router.post("/jobs/cancel/{job_id}")
+def cancel_job_by_id(job_id: str):
+    """
+    Cancel a specific scrape job by its internal job UUID.
+    Used by the admin panel where jobs are referenced by their job ID.
+    """
+    cancelled = scrape_pool.cancel_job(job_id)
+
+    if cancelled:
+        return {"status": "cancelled", "job_id": job_id}
+
+    return {"status": "not_found", "job_id": job_id, "message": "Job not found or already completed."}

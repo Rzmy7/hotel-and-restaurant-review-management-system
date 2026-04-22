@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart3 } from 'lucide-react';
 import type { ChartDataPoint } from '../types';
 
 interface UsageChartProps {
@@ -10,12 +11,34 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
     const height = 250;
     const padding = 40;
 
-    const maxVal = Math.max(...data.map(d => d.value));
-    const yAxisValues = [0, 4500, 9000, 13500, 18000];
+    if (data.length === 0) {
+        return (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full min-h-[350px]">
+                <div className="flex items-center gap-2.5 mb-4">
+                    <div className="p-2 rounded-lg bg-blue-50">
+                        <BarChart3 size={18} className="text-blue-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900">Platform Usage Over Time</h3>
+                        <p className="text-xs text-gray-500">Active users per month</p>
+                    </div>
+                </div>
+                <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/50 text-sm text-gray-400">
+                    No usage data available.
+                </div>
+            </div>
+        );
+    }
+
+    const maxVal = Math.max(...data.map((d) => d.value), 1);
+    const ySteps = 5;
+    const yAxisValues = Array.from({ length: ySteps }, (_, i) =>
+        Math.round((maxVal / (ySteps - 1)) * i)
+    );
 
     const getPoints = () => {
         return data.map((d, i) => {
-            const x = padding + (i * ((width - padding * 2) / (data.length - 1)));
+            const x = padding + (i * ((width - padding * 2) / Math.max(data.length - 1, 1)));
             const y = height - padding - ((d.value / maxVal) * (height - padding * 2));
             return { x, y, value: d.value, label: d.label };
         });
@@ -23,14 +46,31 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
 
     const chartPoints = getPoints();
 
+    // Build smooth area path
+    const linePath = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+    const areaPath = `${linePath} L ${chartPoints[chartPoints.length - 1].x},${height - padding} L ${chartPoints[0].x},${height - padding} Z`;
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-            <div className="mb-4">
-                <h3 className="text-base font-semibold text-gray-900">Platform Usage Over Time</h3>
-                <p className="text-sm text-gray-500">Active users per month</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full min-h-[350px] group hover:shadow-md hover:border-gray-200 transition-all duration-200">
+            <div className="flex items-center gap-2.5 mb-4">
+                <div className="p-2 rounded-lg bg-blue-50">
+                    <BarChart3 size={18} className="text-blue-500" />
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Platform Usage Over Time</h3>
+                    <p className="text-xs text-gray-500">Active users per month</p>
+                </div>
             </div>
             <div className="flex-1 relative">
                 <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-64" preserveAspectRatio="xMidYMid meet">
+                    {/* Gradient fill */}
+                    <defs>
+                        <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
+                        </linearGradient>
+                    </defs>
+
                     {/* Y Axis Labels */}
                     {yAxisValues.map((val, i) => {
                         const y = height - padding - ((val / maxVal) * (height - padding * 2));
@@ -57,33 +97,31 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                                 y1={y}
                                 x2={width - padding}
                                 y2={y}
-                                stroke="#e5e7eb"
+                                stroke="#f3f4f6"
                                 strokeWidth="1"
                             />
                         );
                     })}
 
+                    {/* Area fill */}
+                    <path d={areaPath} fill="url(#usageGradient)" />
+
                     {/* The Line */}
                     <polyline
-                        points={chartPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                        points={chartPoints.map((p) => `${p.x},${p.y}`).join(' ')}
                         fill="none"
                         stroke="#3b82f6"
-                        strokeWidth="2"
+                        strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
 
                     {/* Dots */}
                     {chartPoints.map((p, i) => (
-                        <circle
-                            key={i}
-                            cx={p.x}
-                            cy={p.y}
-                            r="4"
-                            fill="white"
-                            stroke="#3b82f6"
-                            strokeWidth="2"
-                        />
+                        <g key={i}>
+                            <circle cx={p.x} cy={p.y} r="5" fill="#3b82f6" opacity="0.15" />
+                            <circle cx={p.x} cy={p.y} r="3" fill="white" stroke="#3b82f6" strokeWidth="2" />
+                        </g>
                     ))}
 
                     {/* X Axis Labels */}

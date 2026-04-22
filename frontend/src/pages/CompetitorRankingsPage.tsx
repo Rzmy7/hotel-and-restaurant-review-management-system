@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchRankings, type RankingEntry } from '../services/competitorService';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 type SortKey = 'rating' | 'sentiment' | 'reviews';
 
@@ -18,6 +19,8 @@ const CompetitorRankingsPage = () => {
     const [sortBy, setSortBy] = useState<SortKey>('rating');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
+    const organizationId = currentOrg?.id;
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -31,6 +34,7 @@ const CompetitorRankingsPage = () => {
     }, []);
 
     const loadRankings = useCallback(async () => {
+        if (!organizationId) return;
         try {
             setLoading(true);
             setError(null);
@@ -41,7 +45,7 @@ const CompetitorRankingsPage = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [organizationId]);
 
     useEffect(() => { loadRankings(); }, [loadRankings]);
 

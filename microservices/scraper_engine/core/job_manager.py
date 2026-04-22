@@ -1,6 +1,8 @@
 import uuid
 import math
 import datetime
+import json
+import os
 from typing import Dict, Any, List
 
 class JobStatus:
@@ -11,9 +13,32 @@ class JobStatus:
     FAILED = "failed"
 
 class JobManager:
-    def __init__(self):
+    def __init__(self, persistence_file="jobs_state.json"):
         # In-memory dictionary to hold live job states
+        self.persistence_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", persistence_file)
         self.jobs: Dict[str, Dict[str, Any]] = {}
+        self._load()
+
+    def _load(self):
+        if os.path.exists(self.persistence_file):
+            try:
+                with open(self.persistence_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    # Handle jobs that were active when the server died
+                    for jid, jdata in data.items():
+                        if jdata.get("status") in [JobStatus.PENDING, JobStatus.QUEUED, JobStatus.RUNNING]:
+                            jdata["status"] = JobStatus.FAILED
+                            jdata["progress"] = "Job aborted due to engine restart."
+                    self.jobs = data
+            except Exception as e:
+                print(f"[JobManager] Failed to load jobs persistence: {e}")
+
+    def _save(self):
+        try:
+            with open(self.persistence_file, "w", encoding="utf-8") as f:
+                json.dump(self.jobs, f)
+        except Exception as e:
+            print(f"[JobManager] Failed to save jobs persistence: {e}")
 
     def create_job(self, platform: str, url: str) -> str:
         """Initializes a new background task state and returns a unique Job ID."""
@@ -29,8 +54,10 @@ class JobManager:
             "reviews_extracted": 0,
             "total_reviews": 0,
             "percentage": 0.0,
-            "created_at": datetime.datetime.now().isoformat()
+            "created_at": datetime.datetime.now().isoformat(),
+            "ended_at": None
         }
+        self._save()
         return job_id
 
     def update_job(self, job_id: str, **kwargs):
@@ -70,6 +97,15 @@ class JobManager:
             pct = round((job["reviews_extracted"] / job["total_reviews"]) * 100, 1)
         
         job["percentage"] = min(pct, 100.0)
+
+        # Set ended_at when moving to a terminal state
+        if job["status"] in [JobStatus.COMPLETED, JobStatus.FAILED] and not job.get("ended_at"):
+            job["ended_at"] = datetime.datetime.now().isoformat()
+        elif job["status"] not in [JobStatus.COMPLETED, JobStatus.FAILED]:
+            # Reset ended_at if for some reason a job moves back to non-terminal
+            job["ended_at"] = None
+
+        self._save()
 
     def get_job(self, job_id: str) -> Dict[str, Any]:
         return self.jobs.get(job_id)

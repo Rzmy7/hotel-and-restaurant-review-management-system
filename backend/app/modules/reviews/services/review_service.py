@@ -50,6 +50,7 @@ async def ingest_from_scraper(
     """
     Fetches raw review data from the external Scraper Engine (port 8001)
     and stores them as 'pending' in the database.
+    Respects the user's review_count plan limit — only ingests up to the remaining balance.
     """
     scraper_url = f"http://127.0.0.1:8001/api/reviews/{source_id}"
 
@@ -67,6 +68,43 @@ async def ingest_from_scraper(
             return 0
 
     reviews = raw_data.get("data", [])
+
+    # ── Check review_count limit and truncate if needed ──
+    review_balance = None  # None = unlimited
+    tenant_id = None
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            # Find the tenant (user) who owns this organization
+            tenant_row = cursor.execute(
+                "SELECT tenant_id FROM dbo.organization WHERE organization_id = ?",
+                (str(organization_id),),
+            ).fetchone()
+            if tenant_row and tenant_row[0]:
+                tenant_id = str(tenant_row[0])
+                from app.modules.admin.services.subscription_service import (
+                    check_feature_limit,
+                    send_limit_reached_notification,
+                )
+                limit_info = check_feature_limit(cursor, tenant_id, "review_count")
+                if limit_info["limit"] is not None:
+                    review_balance = limit_info["balance"]
+                    if review_balance <= 0:
+                        send_limit_reached_notification(tenant_id, limit_info["feature_name"])
+                        logger.info(
+                            f"Review count limit reached for tenant {tenant_id} "
+                            f"({limit_info['used']}/{limit_info['limit']}). Skipping ingestion."
+                        )
+                        return 0
+                    elif review_balance < len(reviews):
+                        logger.info(
+                            f"Truncating ingestion from {len(reviews)} to {review_balance} reviews "
+                            f"(tenant {tenant_id} balance: {review_balance}/{limit_info['limit']})"
+                        )
+                        reviews = reviews[:review_balance]
+    except Exception as limit_err:
+        logger.warning(f"Review count limit check failed: {limit_err}")
+
     count = 0
 
     # Defensive log file for ingestion troubleshooting
@@ -141,7 +179,15 @@ async def ingest_from_scraper(
                 internal_id = upsert_review_pending(cursor, mapping)
 
                 # Handle photos
-                photos = r_data.get("photos", [])
+                photos_raw = r_data.get("media", [])
+                photos = [
+                    {
+                        "media_id": p.get("media_id"),
+                        "src": p.get("url"),
+                        "alt": ""
+                    }
+                    for p in photos_raw if p.get("url")
+                ]
                 if photos:
                     insert_review_media(cursor, internal_id, photos)
 
@@ -152,13 +198,50 @@ async def ingest_from_scraper(
 
         conn.commit()
 
+    # Send notification if we hit the limit during this ingestion
+    if review_balance is not None and tenant_id and count >= review_balance:
+        try:
+            from app.modules.admin.services.subscription_service import send_limit_reached_notification
+            send_limit_reached_notification(tenant_id, "Review Count")
+        except Exception:
+            pass
+
+    # ── Send new reviews ingested notification ──
+    if count > 0 and tenant_id:
+        try:
+            from app.services.notification_helpers import notify_new_reviews_ingested
+            # Resolve platform name and organization name from the source
+            platform_name = None
+            org_name = None
+            try:
+                with pyodbc.connect(get_connection_string()) as conn:
+                    cursor = conn.cursor()
+                    info_row = cursor.execute(
+                        """
+                        SELECT p.platform_name, o.organization_name
+                        FROM dbo.source s
+                        INNER JOIN dbo.platform p ON p.platform_id = s.platform_id
+                        INNER JOIN dbo.organization o ON o.organization_id = s.organization_id
+                        WHERE s.source_id = ?
+                        """,
+                        (str(source_id),),
+                    ).fetchone()
+                    if info_row:
+                        platform_name = str(info_row[0]) if info_row[0] else None
+                        org_name = str(info_row[1]) if info_row[1] else None
+            except Exception:
+                pass
+            notify_new_reviews_ingested(tenant_id, count, platform_name, org_name)
+        except Exception:
+            pass  # Best-effort
+
     logger.info(
         f"Ingestion SUMMARY: Saved {count} reviews as 'pending' for source {source_id}"
     )
     return count
 
 
-async def start_ingestion_and_processing_flow(source_id: uuid.UUID):
+async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id: uuid.UUID = None):
     """
     Full background flow:
     1. Ingest from Scraper (Raw -> Pending)
@@ -185,12 +268,24 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID):
             source_id, source.organization_id, source.platform_id
         )
 
+        if sync_log_id:
+            from app.modules.source.models import SyncLog
+            sync_log = db.query(SyncLog).filter(SyncLog.log_id == sync_log_id).first()
+            if sync_log:
+                sync_log.reviews_fetched = ingested_count
+                db.commit()
+
         if ingested_count > 0:
             logger.info(
                 f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews..."
             )
             # 3. Process
             await run_analysis_pipeline()
+            logger.info(f"--- Pipeline AI ANALYSIS COMPLETED for source {source_id} ---")
+
+            # 4. Trigger embedding for newly processed reviews
+            from app.modules.source.services.embedding_client import trigger_embedding_for_source
+            trigger_embedding_for_source(str(source_id))
             logger.info(f"--- Pipeline COMPLETED for source {source_id} ---")
         else:
             logger.info("Pipeline: Skipping analysis (0 new reviews ingested).")

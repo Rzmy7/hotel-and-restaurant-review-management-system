@@ -16,7 +16,7 @@ export interface ChartDataPoint {
 export interface Review {
     id: string;
     reviewerName: string;
-    title: string;
+    heading: string;
     source: string;
     sentiment: 'Positive' | 'Neutral' | 'Negative';
     time: string;

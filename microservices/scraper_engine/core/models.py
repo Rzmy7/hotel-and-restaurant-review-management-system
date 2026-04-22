@@ -10,7 +10,7 @@ type of data (e.g. stay_date, reviewer_nationality, traveler_type).
 """
 from sqlalchemy import (
     Column, Integer, String, Float, ForeignKey, Unicode, UnicodeText,
-    DateTime, Index, Numeric, Boolean, text
+    DateTime, Index, Numeric, text
 )
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 import uuid
@@ -58,15 +58,11 @@ class Review(Base):
     source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)
     platform_review_id = Column(Unicode(255), nullable=True)
 
-    # Embedding tracking — False until the embedding service processes this review
-    is_embedded = Column(Boolean, nullable=False, default=False, server_default='0')
-
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
         Index('IX_reviews_source', 'source_id'),
         Index('IX_reviews_platform_id', 'source_id', 'platform_review_id'),
-        Index('IX_reviews_embedded', 'source_id', 'is_embedded'),
     )
 
     # Relationships

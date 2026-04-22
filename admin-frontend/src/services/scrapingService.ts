@@ -114,6 +114,10 @@ export const toggleScrapingPlatform = (platformId: string): Promise<{ id: string
     return apiClient.patch<{ id: string; name: string; enabled: boolean; status: 'active' | 'maintenance' }>(`/admin/monitoring/scraping/platforms/${encodeURIComponent(platformId)}/toggle`, {});
 };
 
+export const stopScrapingJob = (jobId: string): Promise<{ status: string; job_id: string }> => {
+    return apiClient.post<{ status: string; job_id: string }>(`/admin/monitoring/scraping/jobs/${encodeURIComponent(jobId)}/cancel`, {});
+};
+
 // ── File upload goes directly to the scraping backend (not admin-backend) ──
 
 const DEFAULT_SCRAPING_BACKEND_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002';

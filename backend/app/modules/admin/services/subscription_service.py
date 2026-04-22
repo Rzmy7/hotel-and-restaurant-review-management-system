@@ -1,6 +1,6 @@
 """Subscription plan data service for admin management APIs."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pyodbc
@@ -111,7 +111,7 @@ def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
             CAST(t.tenant_id AS NVARCHAR(64)) AS tenant_id,
             p.name AS plan_name
         FROM dbo.tenant t
-        INNER JOIN dbo.plans p ON p.plan_id = t.[plan]
+        INNER JOIN dbo.plans p ON p.plan_id = TRY_CAST(t.[plan] AS INT)
         WHERE t.[plan] IS NOT NULL
         """,
     ).fetchall()
@@ -694,6 +694,7 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
             f.feature_id,
             f.feature_key,
             f.display_name,
+            f.supports_limit,
             COALESCE(pf.is_enabled, 0) AS is_enabled,
             pf.feature_limit,
             COALESCE(ufu.used_quantity, 0) AS used_quantity
@@ -714,9 +715,12 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
         feature_id = str(row[0])
         feature_key = str(row[1])
         feature_name = str(row[2])
-        is_enabled = bool(row[3])
-        feature_limit = int(row[4]) if row[4] is not None else None
-        used_quantity = int(row[5]) if row[5] is not None else 0
+        is_enabled = bool(row[4])
+        feature_limit = int(row[5]) if row[5] is not None else None
+        supports_limit = bool(row[3])
+        
+        # Calculate used_quantity dynamically
+        used_quantity = _get_used_quantity(cursor, user_id, feature_key)
         balance = None if feature_limit is None else max(feature_limit - used_quantity, 0)
 
         feature_usages.append(
@@ -728,6 +732,7 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
                 used=used_quantity,
                 limit=feature_limit,
                 balance=balance,
+                supportsLimit=supports_limit,
             )
         )
 
@@ -740,3 +745,202 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
         planName=plan_name,
         features=enabled_feature_usages,
     )
+
+
+def _get_monday_sunday_of_current_week() -> tuple[datetime, datetime]:
+    """Returns (monday_00:00, sunday_23:59:59) for the current ISO week."""
+    now = datetime.utcnow()
+    monday = now - timedelta(days=now.weekday())
+    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    sunday = monday + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    return monday, sunday
+
+
+def get_user_review_count(cursor: pyodbc.Cursor, user_id: str) -> int:
+    """Returns the total number of processed reviews across all organizations owned by the user."""
+    row = cursor.execute(
+        """
+        SELECT COALESCE(COUNT(pr.id), 0)
+        FROM dbo.processed_review pr
+        INNER JOIN dbo.source s ON s.source_id = pr.source_id
+        INNER JOIN dbo.organization o ON o.organization_id = s.organization_id
+        WHERE o.tenant_id = ?
+        """,
+        (user_id,),
+    ).fetchone()
+    return int(row[0]) if row else 0
+
+
+def get_weekly_scrape_count(cursor: pyodbc.Cursor, user_id: str) -> int:
+    """
+    Returns the number of completed scraping syncs for the user in the
+    current week (Monday 00:00 to Sunday 23:59:59 UTC).
+    """
+    monday, sunday = _get_monday_sunday_of_current_week()
+    row = cursor.execute(
+        """
+        SELECT COALESCE(COUNT(sl.log_id), 0)
+        FROM dbo.sync_log sl
+        INNER JOIN dbo.source s ON s.source_id = sl.source_id
+        INNER JOIN dbo.organization o ON o.organization_id = s.organization_id
+        WHERE o.tenant_id = ?
+          AND sl.status = 'Success'
+          AND sl.timestamp >= ?
+          AND sl.timestamp <= ?
+        """,
+        (user_id, monday, sunday),
+    ).fetchone()
+    return int(row[0]) if row else 0
+
+
+def _get_used_quantity(cursor: pyodbc.Cursor, user_id: str, feature_key: str) -> int:
+    """Returns the current usage of a feature dynamically based on the latest tables."""
+    if feature_key == "organizations":
+        row = cursor.execute(
+            "SELECT COUNT(1) FROM dbo.organization WHERE tenant_id = ?", (user_id,)
+        ).fetchone()
+        return int(row[0]) if row else 0
+    elif feature_key == "groups":
+        row = cursor.execute(
+            "SELECT COUNT(1) FROM dbo.[group] WHERE created_by = ?", (user_id,)
+        ).fetchone()
+        return int(row[0]) if row else 0
+    elif feature_key == "competitors":
+        # Note: we might want to scope this down to the user's competitors in the future.
+        row = cursor.execute(
+            "SELECT COUNT(1) FROM dbo.Competitors WHERE isTracked = 1"
+        ).fetchone()
+        return int(row[0]) if row else 0
+    elif feature_key == "review_count":
+        return get_user_review_count(cursor, user_id)
+    elif feature_key == "scraping_frequency":
+        return get_weekly_scrape_count(cursor, user_id)
+    else:
+        # Fall back to user_feature_usage table (e.g. reply_generations)
+        usage_row = cursor.execute(
+            """
+            SELECT COALESCE(ufu.used_quantity, 0)
+            FROM dbo.user_feature_usage ufu
+            INNER JOIN dbo.features f ON f.feature_id = ufu.feature_id
+            WHERE ufu.user_id = ? AND f.feature_key = ?
+            """,
+            (user_id, feature_key),
+        ).fetchone()
+        return int(usage_row[0]) if usage_row else 0
+
+
+def check_feature_limit(
+    cursor: pyodbc.Cursor, user_id: str, feature_key: str
+) -> dict:
+    """
+    Check whether a user can still use a feature.
+
+    Returns:
+        {
+            "allowed": bool,
+            "used": int,
+            "limit": int | None,  (None = unlimited)
+            "balance": int | None,
+            "feature_name": str,
+        }
+    """
+    # 1. Get user's plan
+    plan_row = cursor.execute(
+        """
+        SELECT TOP 1 p.plan_id
+        FROM dbo.tenant t
+        INNER JOIN dbo.plans p ON p.plan_id = TRY_CAST(t.[plan] AS INT)
+        WHERE (t.tenant_id = ? OR CAST(t.tenant_id AS NVARCHAR(36)) = ?)
+          AND t.[plan] IS NOT NULL
+        """,
+        (user_id, user_id),
+    ).fetchone()
+
+    if not plan_row:
+        # No plan = no limits enforced (allow by default)
+        return {"allowed": True, "used": 0, "limit": None, "balance": None, "feature_name": feature_key}
+
+    plan_id = int(plan_row[0])
+
+    # 2. Get feature limit from plan
+    feat_row = cursor.execute(
+        """
+        SELECT f.feature_id, f.display_name, pf.is_enabled, pf.feature_limit
+        FROM dbo.features f
+        LEFT JOIN dbo.plan_feature pf
+            ON pf.feature_id = f.feature_id AND pf.plan_id = ?
+        WHERE f.feature_key = ?
+        """,
+        (plan_id, feature_key),
+    ).fetchone()
+
+    if not feat_row:
+        return {"allowed": True, "used": 0, "limit": None, "balance": None, "feature_name": feature_key}
+
+    feature_name = str(feat_row[1])
+    is_enabled = bool(feat_row[2]) if feat_row[2] is not None else False
+    feature_limit = int(feat_row[3]) if feat_row[3] is not None else None
+
+    # Boolean features (e.g. insights) — just check enabled
+    if feature_limit is None:
+        return {
+            "allowed": is_enabled,
+            "used": 0,
+            "limit": None,
+            "balance": None,
+            "feature_name": feature_name,
+        }
+
+    # 3. Get current usage — live counts for certain features
+    used = _get_used_quantity(cursor, user_id, feature_key)
+    balance = max(feature_limit - used, 0)
+    allowed = used < feature_limit
+
+    # ── Approaching review_count limit warning (80% threshold) ──
+    if feature_key == "review_count" and allowed and feature_limit > 0:
+        usage_ratio = used / feature_limit
+        if usage_ratio >= 0.8:
+            try:
+                from app.services.notification_helpers import notify_approaching_review_limit
+                notify_approaching_review_limit(user_id, used, feature_limit)
+            except Exception:
+                pass  # Best-effort
+
+    return {
+        "allowed": allowed,
+        "used": used,
+        "limit": feature_limit,
+        "balance": balance,
+        "feature_name": feature_name,
+    }
+
+
+def send_limit_reached_notification(user_id: str, feature_name: str) -> None:
+    """
+    Creates an in-app notification telling the user they've hit a feature limit
+    and should upgrade their subscription plan.
+    """
+    from app.database.session import SessionLocal
+    from app.modules.auth.repositories.notifications_repo import create_notification
+    import uuid
+
+    title = f"{feature_name} Limit Reached"
+    message = (
+        f"You have reached the maximum limit for {feature_name} on your current plan. "
+        f"Please upgrade your subscription plan to continue using this feature."
+    )
+
+    try:
+        db = SessionLocal()
+        try:
+            create_notification(
+                db=db,
+                user_id=uuid.UUID(user_id),
+                title=title,
+                message=message,
+                notification_type="warning",
+            )
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"FAILED TO SEND LIMIT NOTIFICATION for {feature_name}: {e}")

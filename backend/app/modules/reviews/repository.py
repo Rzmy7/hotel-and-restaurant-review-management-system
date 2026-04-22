@@ -119,7 +119,9 @@ def insert_review_media(
 
     sql = "INSERT INTO dbo.review_media (media_id, review_id, src, alt) VALUES (?, ?, ?, ?)"
     for pic in photos:
-        cursor.execute(sql, uuid.uuid4(), review_id, pic.get("src"), pic.get("alt", ""))
+        # Preserving original media_id if provided by the scraper for better tracking
+        m_id = pic.get("media_id") or uuid.uuid4()
+        cursor.execute(sql, m_id, review_id, pic.get("src"), pic.get("alt", ""))
 
 
 def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
@@ -153,15 +155,44 @@ def fetch_all_reviews_enriched(
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
-    # Base WHERE clause (only processed reviews)
-    where_clauses = ["s.organization_id = ?", "r.status = 'processed'"]
+    # Base WHERE clause (we show all reviews regardless of AI processing status so users can see failed/pending ones)
+    where_clauses = ["s.organization_id = ?"]
     params = [organization_id]
 
     if filters:
         if filters.get("search"):
-            where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
-            search_val = f"%{filters['search']}%"
-            params.extend([search_val, search_val, search_val, search_val, search_val])
+            if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+                import httpx
+                from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                
+                cursor.execute("SELECT CAST(source_id AS VARCHAR(36)) FROM dbo.source WHERE organization_id = ?", organization_id)
+                source_ids = [row[0] for row in cursor.fetchall()]
+                
+                matching_review_ids = []
+                if source_ids:
+                    try:
+                        resp = httpx.post(
+                            f"{EMBEDDING_SERVICE_URL}/search", 
+                            json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, 
+                            timeout=10.0
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            for review in data.get("reviews", []):
+                                matching_review_ids.append(review["id"])
+                    except Exception as e:
+                        print(f"Embedding search error: {e}")
+                
+                if not matching_review_ids:
+                    where_clauses.append("1 = 0")
+                else:
+                    placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(matching_review_ids))
+                    where_clauses.append(f"r.id IN ({placeholders})")
+                    params.extend(matching_review_ids)
+            else:
+                where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+                search_val = f"%{filters['search']}%"
+                params.extend([search_val, search_val, search_val, search_val, search_val])
         
         if filters.get("rating"):
             ratings = filters["rating"]
@@ -180,10 +211,19 @@ def fetch_all_reviews_enriched(
         if filters.get("source"):
             sources = filters["source"]
             if isinstance(sources, list) and len(sources) > 0:
-                # Joining with platform to filter by platform name
-                # (Note: we already have JOIN dbo.source s)
-                # We need to JOIN platform p
-                pass # Will handle in SQL below
+                placeholders = ",".join(["?"] * len(sources))
+                where_clauses.append(f"p.platform_name IN ({placeholders})")
+                params.extend(sources)
+
+        if filters.get("category"):
+            categories = filters["category"]
+            if isinstance(categories, list) and len(categories) > 0:
+                cat_clauses = []
+                for cat in categories:
+                    # Categories are stored as JSON arrays, e.g., ["Food", "Service"]
+                    cat_clauses.append("r.categories LIKE ?")
+                    params.append(f'%"{cat}"%')
+                where_clauses.append(f"({' OR '.join(cat_clauses)})")
 
         # Date range
         if filters.get("dateFrom"):
@@ -200,6 +240,7 @@ def fetch_all_reviews_enriched(
         SELECT COUNT(*)
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
         WHERE {where_sql}
     """
     cursor.execute(count_sql, params)
@@ -240,7 +281,17 @@ def fetch_all_reviews_enriched(
         for field in ["categories", "keyPhrases"]:
             if row.get(field):
                 try:
-                    row[field] = json.loads(row[field])
+                    parsed = json.loads(row[field])
+                    if isinstance(parsed, list):
+                        sanitized = []
+                        for item in parsed:
+                            if isinstance(item, dict) and "name" in item:
+                                sanitized.append(str(item["name"]))
+                            elif isinstance(item, str):
+                                sanitized.append(item)
+                        row[field] = sanitized
+                    else:
+                        row[field] = []
                 except Exception:
                     row[field] = []
             else:
@@ -266,9 +317,9 @@ def fetch_all_reviews_enriched(
             row["summary"] = ""
 
         cursor.execute(
-            "SELECT src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
+            "SELECT CAST(media_id AS VARCHAR(36)), src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
         )
-        row["photos"] = [{"src": p[0], "alt": p[1]} for p in cursor.fetchall()]
+        row["photos"] = [{"id": p[0], "src": p[1], "alt": p[2]} for p in cursor.fetchall()]
         results.append(row)
 
     conn.close()
@@ -305,7 +356,10 @@ def get_review_options(organization_id: str) -> Dict[str, List[str]]:
                 cats = json.loads(row[0])
                 if isinstance(cats, list):
                     for c in cats:
-                        all_categories.add(c)
+                        if isinstance(c, dict) and "name" in c:
+                            all_categories.add(str(c["name"]))
+                        elif isinstance(c, str):
+                            all_categories.add(c)
             except:
                 pass
 
@@ -316,22 +370,101 @@ def get_review_options(organization_id: str) -> Dict[str, List[str]]:
     }
 
 
-def get_review_stats(organization_id: str) -> Dict:
-    """Calculate aggregated stats for an organization's reviews."""
+def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Dict:
+    """Calculate aggregated stats for an organization's reviews, respecting all active filters."""
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
 
-    sql = """
+    # Include all reviews so stats reflect the raw data even if AI processing is pending or failed
+    where_clauses = ["s.organization_id = ?"]
+    params = [organization_id]
+
+    if filters:
+        if filters.get("search"):
+            if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+                import httpx
+                from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                
+                cursor.execute("SELECT CAST(source_id AS VARCHAR(36)) FROM dbo.source WHERE organization_id = ?", organization_id)
+                source_ids = [row[0] for row in cursor.fetchall()]
+                
+                matching_review_ids = []
+                if source_ids:
+                    try:
+                        resp = httpx.post(
+                            f"{EMBEDDING_SERVICE_URL}/search", 
+                            json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, 
+                            timeout=10.0
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            for review in data.get("reviews", []):
+                                matching_review_ids.append(review["id"])
+                    except Exception as e:
+                        print(f"Embedding search error: {e}")
+                
+                if not matching_review_ids:
+                    where_clauses.append("1 = 0")
+                else:
+                    placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(matching_review_ids))
+                    where_clauses.append(f"r.id IN ({placeholders})")
+                    params.extend(matching_review_ids)
+            else:
+                where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+                search_val = f"%{filters['search']}%"
+                params.extend([search_val, search_val, search_val, search_val, search_val])
+
+        if filters.get("rating"):
+            ratings = filters["rating"]
+            if isinstance(ratings, list) and len(ratings) > 0:
+                placeholders = ",".join(["?"] * len(ratings))
+                where_clauses.append(f"r.rating IN ({placeholders})")
+                params.extend(ratings)
+
+        if filters.get("sentiment"):
+            sentiments = filters["sentiment"]
+            if isinstance(sentiments, list) and len(sentiments) > 0:
+                placeholders = ",".join(["?"] * len(sentiments))
+                where_clauses.append(f"r.sentiment IN ({placeholders})")
+                params.extend(sentiments)
+
+        if filters.get("source"):
+            sources = filters["source"]
+            if isinstance(sources, list) and len(sources) > 0:
+                placeholders = ",".join(["?"] * len(sources))
+                where_clauses.append(f"p.platform_name IN ({placeholders})")
+                params.extend(sources)
+
+        if filters.get("category"):
+            categories = filters["category"]
+            if isinstance(categories, list) and len(categories) > 0:
+                cat_clauses = []
+                for cat in categories:
+                    cat_clauses.append("r.categories LIKE ?")
+                    params.append(f'%"{cat}"%')
+                where_clauses.append(f"({' OR '.join(cat_clauses)})")
+
+        if filters.get("dateFrom"):
+            where_clauses.append("r.reviewDate >= ?")
+            params.append(filters["dateFrom"])
+        if filters.get("dateTo"):
+            where_clauses.append("r.reviewDate <= ?")
+            params.append(filters["dateTo"])
+
+    where_sql = " AND ".join(where_clauses)
+
+    sql = f"""
         SELECT
             COUNT(*) as totalReviews,
             AVG(CAST(rating AS FLOAT)) as averageRating,
             SUM(CASE WHEN sentiment = 'Positive' THEN 1 WHEN sentiment = 'Negative' THEN -1 ELSE 0 END) as sentimentSum,
-            SUM(CASE WHEN status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
+            SUM(CASE WHEN r.status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.status = 'processed'
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        WHERE {where_sql}
     """
-    cursor.execute(sql, organization_id)
+    cursor.execute(sql, params)
     row = cursor.fetchone()
     
     total = row[0] or 0
@@ -414,3 +547,108 @@ def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[di
 
     columns = [column[0] for column in cursor.description]
     return dict(zip(columns, row))
+
+
+def get_full_distribution(organization_id: str) -> Dict:
+    """
+    Returns the full rating distribution (1-5 stars) with per-source breakdowns.
+    Used by the "See Details" distribution modal.
+    """
+    conn = pyodbc.connect(get_connection_string())
+    cursor = conn.cursor()
+
+    # Get distribution grouped by source platform and rounded rating
+    cursor.execute("""
+        SELECT 
+            p.platform_name AS source_name,
+            CAST(ROUND(r.rating, 0) AS INT) AS rounded_rating,
+            COUNT(*) AS cnt
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        JOIN dbo.platform p ON s.platform_id = p.platform_id
+        WHERE s.organization_id = ? AND r.rating IS NOT NULL
+        GROUP BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT)
+        ORDER BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT) DESC
+    """, organization_id)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Build per-source and global stats
+    source_map: Dict[str, Dict[int, int]] = {}
+    global_dist: Dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+    for row in rows:
+        source_name = row.source_name or "Unknown"
+        bucket = max(1, min(5, row.rounded_rating))
+        count = row.cnt
+
+        if source_name not in source_map:
+            source_map[source_name] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        
+        source_map[source_name][bucket] += count
+        global_dist[bucket] += count
+
+    global_total = sum(global_dist.values())
+
+    def build_distribution(dist: Dict[int, int], total: int):
+        return [
+            {
+                "rating": r,
+                "count": dist[r],
+                "percentage": round((dist[r] / total) * 100) if total > 0 else 0
+            }
+            for r in [5, 4, 3, 2, 1]
+        ]
+
+    sources = []
+    for name, dist in sorted(source_map.items()):
+        total = sum(dist.values())
+        avg = sum(r * c for r, c in dist.items()) / total if total > 0 else 0
+        sources.append({
+            "name": name,
+            "total": total,
+            "average": round(avg, 1),
+            "distribution": build_distribution(dist, total)
+        })
+
+    return {
+        "global": {
+            "total": global_total,
+            "average": round(sum(r * c for r, c in global_dist.items()) / global_total, 1) if global_total > 0 else 0,
+            "distribution": build_distribution(global_dist, global_total)
+        },
+        "sources": sources
+    }
+
+
+def delete_reviews_by_source_id(source_id: str) -> int:
+    """
+    Delete all reviews and associated media for a specific source.
+    Returns the number of reviews deleted.
+    """
+    conn = pyodbc.connect(get_connection_string())
+    cursor = conn.cursor()
+    try:
+        # 1. Delete associated media
+        # We join with processed_review to find media belonging to this source
+        media_sql = """
+            DELETE rm
+            FROM dbo.review_media rm
+            INNER JOIN dbo.processed_review r ON rm.review_id = r.id
+            WHERE r.source_id = CAST(? AS UNIQUEIDENTIFIER)
+        """
+        cursor.execute(media_sql, source_id)
+
+        # 2. Delete processed reviews
+        reviews_sql = "DELETE FROM dbo.processed_review WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)"
+        cursor.execute(reviews_sql, source_id)
+        
+        deleted_count = cursor.rowcount
+        conn.commit()
+        return deleted_count
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

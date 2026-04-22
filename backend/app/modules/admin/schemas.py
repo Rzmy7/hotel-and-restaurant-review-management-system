@@ -51,6 +51,12 @@ class RecentActivity(BaseModel):
         "scrape_failed",
         "subscription_changed",
         "ai_job",
+        "settings_updated",
+        "broadcast_sent",
+        "maintenance_toggled",
+        "user_deleted",
+        "org_deleted",
+        "embeddings_triggered",
     ]
     title: str
     description: str
@@ -196,6 +202,7 @@ class SubscriptionFeatureUsage(BaseModel):
     used: int
     limit: int | None = None
     balance: int | None = None
+    supportsLimit: bool
 
 
 class SubscriptionUsageSummary(BaseModel):
@@ -268,20 +275,16 @@ class AdminPasswordChangeResponse(BaseModel):
 
 class ReplyGenerationSettingsResponse(BaseModel):
     googleApiKey: str
-    claudeApiKey: str
     selectedModel: str
     similarReviewsCount: int
     googleRequestCount: int
-    claudeRequestCount: int
     googleTokenUsage: int
-    claudeTokenUsage: int
     useEmbeddingRules: bool
     useSimilarReviews: bool
 
 
 class ReplyGenerationSettingsPayload(BaseModel):
     googleApiKey: str = Field(default="", max_length=512)
-    claudeApiKey: str = Field(default="", max_length=512)
     selectedModel: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=128)
     similarReviewsCount: int = Field(default=3, ge=1, le=20)
     useEmbeddingRules: bool = True
@@ -289,13 +292,13 @@ class ReplyGenerationSettingsPayload(BaseModel):
 
 
 class ReplyGenerationApiTestPayload(BaseModel):
-    provider: Literal["google", "claude"]
+    provider: Literal["google"]
     apiKey: str = Field(..., min_length=1, max_length=512)
     model: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class ReplyGenerationApiTestResponse(BaseModel):
-    provider: Literal["google", "claude"]
+    provider: Literal["google"]
     success: bool
     message: str
 
@@ -312,6 +315,54 @@ class FeatureFlagResponse(BaseModel):
 class FeatureFlagUpdatePayload(BaseModel):
     status: Literal["Enabled", "Disabled"]
     limit: int | None = Field(default=None, ge=1, le=100)
+
+
+# ── Review processing schemas ──────────────────────────────────────
+
+
+class ReviewProcessingStatsResponse(BaseModel):
+    activeJobs: int = 0
+    activeJobsChange: int = 0
+    completedToday: int = 0
+    successRate: float = 0.0
+    failedJobs: int = 0
+    reviewsProcessed: int = 0
+    reviewsChange: float = 0.0
+    pendingReviews: int = 0
+
+
+class ReviewProcessingJobResponse(BaseModel):
+    id: str
+    jobId: str
+    platform: str
+    platformIcon: str
+    platformColor: str
+    organization: str
+    status: str
+    startTime: str
+    duration: str
+    reviewsProcessed: int | None = None
+    totalReviews: int | None = None
+
+
+class GeminiApiKeyConfigResponse(BaseModel):
+    apiKey: str = ""
+    isConfigured: bool = False
+    lastTestedAt: str | None = None
+    lastTestResult: str | None = None
+
+
+class GeminiApiKeySavePayload(BaseModel):
+    apiKey: str = Field(..., min_length=1, max_length=512)
+
+
+class GeminiApiKeyTestPayload(BaseModel):
+    apiKey: str = Field(..., min_length=1, max_length=512)
+
+
+class GeminiApiKeyTestResponse(BaseModel):
+    success: bool
+    message: str
 
 
 # ── Broadcasting schemas ────────────────────────────────────────────

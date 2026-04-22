@@ -15,6 +15,7 @@ import {
     type KpiData,
     type Competitor,
 } from '../services/competitorService';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 const CompetitorComparison = () => {
     const [searchParams] = useSearchParams();
@@ -29,6 +30,8 @@ const CompetitorComparison = () => {
     const [error, setError] = useState<string | null>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
+    const organizationId = currentOrg?.id;
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -48,6 +51,7 @@ const CompetitorComparison = () => {
             setInsightsLoading(false);
             return;
         }
+        if (!organizationId) return;
         try {
             setLoading(true);
             setError(null);
@@ -58,10 +62,10 @@ const CompetitorComparison = () => {
         } finally {
             setLoading(false);
         }
-    }, [competitorId]);
+    }, [competitorId, organizationId]);
 
     const loadInsights = useCallback(async () => {
-        if (!competitorId) return;
+        if (!competitorId || !organizationId) return;
         try {
             setInsightsLoading(true);
             const data = await fetchAiInsights(competitorId);
@@ -71,7 +75,7 @@ const CompetitorComparison = () => {
         } finally {
             setInsightsLoading(false);
         }
-    }, [competitorId]);
+    }, [competitorId, organizationId]);
 
     useEffect(() => {
         loadData();

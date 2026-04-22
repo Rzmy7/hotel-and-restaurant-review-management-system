@@ -8,10 +8,10 @@ import re
 from typing import List, Dict, Any
 
 from google import genai
-from google.genai import errors
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.genai import errors, types
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, retry_if_exception
 
-from app.core.config import GENAI_KEY
+import app.core.config as app_config
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +41,79 @@ Batch Input Data:
 {batch_json}
 """
 
+def _resolve_api_key() -> str | None:
+    """
+    Resolve the Gemini API key with priority:
+      1. DB-stored key from admin panel (dbo.system_settings)
+      2. In-memory config (updated by admin save endpoint)
+      3. GENAI_KEY env var (loaded at startup)
+    """
+    # Try DB-stored key first (survives restarts)
+    try:
+        import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.system_settings_service import (
+            ensure_system_settings_table,
+            get_setting,
+        )
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            db_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
+            if db_key:
+                # Also sync in-memory so other parts of the app see it
+                app_config.GENAI_KEY = db_key
+                return db_key
+    except Exception as e:
+        logger.debug(f"Could not read Gemini key from DB, falling back to config: {e}")
+
+    # Fall back to in-memory / env var
+    return app_config.GENAI_KEY
+
+
 def _get_client():
-    return genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
+    api_key = _resolve_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "No Gemini API key configured. "
+            "Set it via Admin Panel → Review Processing → Gemini API Key, "
+            "or set the GENAI_KEY environment variable."
+        )
+    return genai.Client(
+        api_key=api_key, 
+        http_options=types.HttpOptions(
+            api_version="v1",
+            retry_options=types.HttpRetryOptions(attempts=1)
+        )
+    )
+
+
+def is_retryable_exception(e: Exception) -> bool:
+    """
+    Determines if an exception from Gemini should trigger a retry.
+    We exclude 429 (RESOURCE_EXHAUSTED) because quota resets usually 
+    take longer than our retry window.
+    """
+    err_str = str(e)
+    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+        return False
+    
+    # Retry on ServerErrors (5xx)
+    if isinstance(e, errors.ServerError):
+        return True
+    
+    # Do not retry on other ClientErrors (4xx) like 400 or 403
+    if isinstance(e, errors.ClientError):
+        return False
+        
+    # Retry on generic exceptions (might be network issues)
+    return True
 
 
 @retry(
     wait=wait_exponential(multiplier=2, min=2, max=20),
     stop=stop_after_attempt(5),
-    retry=retry_if_exception_type((errors.ServerError, Exception)),
+    retry=retry_if_exception(is_retryable_exception),
     before_sleep=lambda retry_state: logger.warning(f"Gemini API busy (503/Error). Retrying in {retry_state.next_action.sleep} seconds... (Attempt {retry_state.attempt_number})")
 )
 def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -60,6 +125,7 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
     client = _get_client()
     batch_json = json.dumps(reviews, ensure_ascii=False)
+    response = None
     
     try:
         response = client.models.generate_content(
@@ -82,6 +148,36 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         return results
 
     except Exception as e:
-        logger.error(f"Gemini analysis failed: {e}")
-        logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")
+        err_str = str(e)
+        logger.error(f"Gemini analysis failed: {err_str}")
+        
+        # Log system alert for admin dashboard visibility
+        try:
+            from app.modules.admin.services.system_alert_logger import (
+                alert_gemini_quota_exceeded,
+                alert_gemini_api_error,
+                alert_gemini_key_missing,
+            )
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                alert_gemini_quota_exceeded(err_str[:200])
+            elif "No Gemini API key configured" in err_str:
+                alert_gemini_key_missing()
+            else:
+                alert_gemini_api_error(err_str[:300])
+        except Exception as alert_err:
+            logger.debug(f"Failed to log system alert: {alert_err}")
+
+        # Notify admin if it's a quota issue
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            try:
+                from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
+                notify_admin_gemini_quota_exceeded()
+            except ImportError:
+                logger.warning("Could not import notification helper to notify admin of Gemini quota issue.")
+            except Exception as notify_err:
+                logger.warning(f"Failed to trigger admin notification for Gemini quota: {notify_err}")
+
+        if response:
+            logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")
         raise e
+

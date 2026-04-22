@@ -51,6 +51,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
     });
     onClose();
     // Reset form
+    setSelectedPlatformId(null);
     setPropertyUrl('');
     setApiKey('');
     setSchedule('daily');
@@ -76,7 +77,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={!propertyUrl}
+        disabled={!propertyUrl || !selectedPlatformId}
         className="px-8 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
       >
         Add Source
@@ -120,18 +121,13 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
               </div>
             ) : filteredPlatforms.length > 0 ? (
               filteredPlatforms.map((p: any) => {
-                const isAlreadyAdded = existingPlatformIds.includes(p.platform_id);
                 return (
                   <button
                     key={p.platform_id}
-                    onClick={() => !isAlreadyAdded && setSelectedPlatformId(p.platform_id)}
-                    disabled={isAlreadyAdded}
-                    title={isAlreadyAdded ? "This platform has already been added to this organization" : ""}
-                    className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between ${selectedPlatformId === p.platform_id
+                    onClick={() => setSelectedPlatformId(p.platform_id)}
+                    className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between cursor-pointer ${selectedPlatformId === p.platform_id
                       ? 'border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                      : isAlreadyAdded
-                        ? 'border-gray-100 bg-gray-100/50 text-gray-300 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800/20 dark:text-slate-600'
-                        : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
+                      : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
                       }`}
                   >
                     {p.platform_name}

@@ -39,8 +39,8 @@ def get_admin_notifications(
                 n.message,
                 n.notification_type,
                 CAST(COALESCE(un.is_read, 0) AS BIT) AS is_read,
-                n.created_at,
-                un.read_at
+                CAST(n.created_at AS DATETIME) AS created_at,
+                CAST(un.read_at AS DATETIME) AS read_at
             FROM dbo.user_notification AS un
             INNER JOIN dbo.notification AS n
                 ON n.notification_id = un.notification_id

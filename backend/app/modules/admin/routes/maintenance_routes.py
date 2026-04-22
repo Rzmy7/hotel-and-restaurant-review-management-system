@@ -1,5 +1,7 @@
 """Maintenance mode routes for globally controlling user-frontend availability."""
 
+from app.modules.admin.services.admin_activity_logger import log_admin_activity
+
 import pyodbc
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -50,6 +52,14 @@ def update_maintenance_status(payload: MaintenanceStatusPayload) -> dict:
             set_setting(cursor, "maintenance_mode", setting_value)
 
             connection.commit()
+
+            mode_label = "Enabled" if payload.maintenanceMode else "Disabled"
+            log_admin_activity(
+                "maintenance_toggled",
+                f"Maintenance Mode {mode_label}",
+                f"Maintenance mode has been {mode_label.lower()}",
+            )
+
             return {"success": True, "maintenanceMode": payload.maintenanceMode}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to update maintenance status: {exc}") from exc

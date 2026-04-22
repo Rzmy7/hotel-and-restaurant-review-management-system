@@ -14,12 +14,14 @@ import type { DashboardResponse } from '../../../types/dashboard';
 
 export interface DashboardTemplateProps {
     data: DashboardResponse;
+    period: number;
+    onPeriodChange: (period: number) => void;
 }
 
-export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data }) => {
+export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data, period, onPeriodChange }) => {
     return (
         <>
-            <DashboardHeader />
+            <DashboardHeader period={period} onPeriodChange={onPeriodChange} />
 
             <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50 dark:bg-transparent">
                 {/* Metrics Grid */}

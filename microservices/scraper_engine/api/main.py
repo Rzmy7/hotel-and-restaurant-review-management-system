@@ -14,6 +14,7 @@ import httpx
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from api.endpoints.agoda import router as agoda_router
 from api.endpoints.booking import router as booking_router
 from api.endpoints.google import router as google_router
@@ -48,6 +49,13 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Middleware ──
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(AuditMiddleware)
 
 

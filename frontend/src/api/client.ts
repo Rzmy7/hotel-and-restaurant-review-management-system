@@ -5,10 +5,7 @@
  * In a real application, this would wrap fetch() or axios().
  */
 
-const API_BASE_URL =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8000';
 
 const getApiBaseUrl = (): string => {
     const stored = localStorage.getItem('mainBackendUrl');
@@ -30,26 +27,63 @@ const getFullUrl = (url: string) => {
     return `${baseUrl}/${cleanPath}`;
 };
 
-async function handleResponse(response: Response) {
+const isAuthLoginRequest = (requestUrl: string): boolean => {
+    return /\/api\/auth\/login(?:\/2fa)?$/i.test(requestUrl);
+};
+
+const readErrorMessage = async (response: Response, fallback: string): Promise<string> => {
+    try {
+        const errorData = await response.json();
+        return errorData?.detail || fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+async function handleResponse(response: Response, requestUrl: string) {
     if (response.status === 401) {
+        const backendMessage = await readErrorMessage(response, "Unauthorized");
+
+        // Login endpoints should show credential-related errors, not session-expired messages.
+        if (isAuthLoginRequest(requestUrl)) {
+            throw new Error(backendMessage);
+        }
+
         console.warn("Unauthorized! Clearing session and redirecting to login...");
         localStorage.removeItem("token");
         localStorage.removeItem("authUser");
-        // Clear other session-related keys if needed
+        // For protected endpoints, 401 means the current session is no longer valid.
         if (window.location.pathname !== "/login") {
             window.location.href = "/login?expired=true";
         }
         throw new Error("Session expired. Please log in again.");
     }
 
-    if (!response.ok) {
-        let errorMessage = `API Request failed: ${response.status}`;
+    if (response.status === 403) {
+        let errorMessage = "Access denied";
         try {
             const errorData = await response.json();
             errorMessage = errorData?.detail || errorMessage;
         } catch {
-            // Ignore JSON parse errors for non-JSON responses
+            // Ignore JSON parse errors
         }
+
+        // Detect feature limit messages and show upgrade notification
+        const lowerMsg = errorMessage.toLowerCase();
+        if (lowerMsg.includes("limit reached") || lowerMsg.includes("upgrade your subscription")) {
+            // Dispatch a custom event so the ToastContext can show a notification
+            window.dispatchEvent(
+                new CustomEvent("feature-limit-reached", {
+                    detail: { message: errorMessage },
+                })
+            );
+        }
+        throw new Error(errorMessage);
+    }
+
+    if (!response.ok) {
+        let errorMessage = `API Request failed: ${response.status}`;
+        errorMessage = await readErrorMessage(response, errorMessage);
         throw new Error(errorMessage);
     }
     const contentType = response.headers.get("content-type");
@@ -95,7 +129,7 @@ export const apiClient = {
             method: 'GET',
             headers: getHeaders(customHeaders)
         });
-        return handleResponse(response);
+        return handleResponse(response, fullUrl);
     },
 
     async post<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
@@ -108,7 +142,7 @@ export const apiClient = {
             headers: getHeaders(customHeaders, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
         });
-        return handleResponse(response);
+        return handleResponse(response, fullUrl);
     },
 
     async put<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
@@ -121,7 +155,7 @@ export const apiClient = {
             headers: getHeaders(customHeaders, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
         });
-        return handleResponse(response);
+        return handleResponse(response, fullUrl);
     },
 
     async patch<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
@@ -134,7 +168,7 @@ export const apiClient = {
             headers: getHeaders(customHeaders, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
         });
-        return handleResponse(response);
+        return handleResponse(response, fullUrl);
     },
 
     async delete<T>(url: string, customHeaders?: Record<string, string>): Promise<T> {
@@ -144,6 +178,6 @@ export const apiClient = {
             method: 'DELETE',
             headers: getHeaders(customHeaders)
         });
-        return handleResponse(response);
+        return handleResponse(response, fullUrl);
     }
 };

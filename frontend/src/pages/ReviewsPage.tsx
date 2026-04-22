@@ -31,7 +31,7 @@ const ReviewsPageContent = () => {
 
   useEffect(() => {
     fetchReviews(organizationId, fetchParams);
-  }, [fetchParams, fetchReviews]);
+  }, [organizationId, fetchParams, fetchReviews]);
 
   const refreshData = () => {
     setPage(0);

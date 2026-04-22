@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Integer,
     Float,
+    Boolean,
     ForeignKey,
     func,
 )
@@ -61,6 +62,9 @@ class ProcessedReview(Base):
     # Status
     status = Column(String(20), nullable=True, default="pending")
     ai_reply = Column(String, nullable=True)
+
+    # Embedding tracking — False until the embedding service processes this review
+    is_embedded = Column(Boolean, nullable=False, default=False, server_default='0')
 
     # Relationships
     media = relationship(

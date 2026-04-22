@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
@@ -32,7 +32,7 @@ const TABS = [
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings } = useSettings();
+  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -41,6 +41,8 @@ const SettingsPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { setIsDirty, registerBlockHandler, unregisterBlockHandler } = useNavigationBlocker();
 
@@ -173,10 +175,38 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleLogoUploadClick = () => {
+    logoInputRef.current?.click();
+  };
+
+  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    try {
+      const logoUrl = await uploadHotelLogo(file);
+      handleUpdateSection('hotelInfo', { logoUrl });
+    } catch {
+      // Error toast is handled in useSettings.
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
     <>
+      <input
+        ref={logoInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        className="hidden"
+        onChange={handleLogoFileChange}
+      />
       <UnsavedChangesModal
         isOpen={isModalOpen}
         changes={getChanges()}
@@ -247,8 +277,7 @@ const SettingsPage: React.FC = () => {
                 <SecuritySettingsCard
                   data={localData.security}
                   onChange={(updates) => handleUpdateSection('security', updates)}
-                  onPasswordEdit={() => showToast('Password change wizard coming soon', 'info')}
-                  onSessionEdit={() => showToast('Session settings are managed by admins', 'info')}
+                  onPasswordChange={changePassword}
                 />
               )}
               {activeTab === 'subscription' && (
@@ -262,8 +291,9 @@ const SettingsPage: React.FC = () => {
                 <HotelInfoSettingsCard
                   data={localData.hotelInfo}
                   onChange={(updates) => handleUpdateSection('hotelInfo', updates)}
-                  onLogoUpload={() => showToast('Logo upload coming soon', 'info')}
+                  onLogoUpload={handleLogoUploadClick}
                   onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
+                  isUploadingLogo={isUploadingLogo}
                 />
               )}
             </div>

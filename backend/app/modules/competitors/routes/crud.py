@@ -52,6 +52,31 @@ def create_competitor(
     db: Session = Depends(get_db),
 ):
     try:
+        # ── Check competitors limit ──
+        user_id = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
+        try:
+            import pyodbc
+            from app.core.db_utils import get_connection_string
+            from app.modules.admin.services.subscription_service import (
+                check_feature_limit,
+                send_limit_reached_notification,
+            )
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                limit_info = check_feature_limit(cursor, user_id, "competitors")
+                if not limit_info["allowed"]:
+                    send_limit_reached_notification(user_id, limit_info["feature_name"])
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Competitor tracking limit reached for your current plan. "
+                               f"You have used {limit_info['used']}/{limit_info['limit']}. "
+                               f"Please upgrade your subscription plan to track more competitors.",
+                    )
+        except HTTPException:
+            raise
+        except Exception as limit_err:
+            print(f"LIMIT CHECK WARNING (competitors): {limit_err}")
+
         competitor = register_competitor(
             name=payload.name,
             source_url=payload.source_url,
@@ -59,6 +84,8 @@ def create_competitor(
             organization_type_id=payload.organization_type_id,
         )
         return {"message": "Competitor registered", "competitor": competitor}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

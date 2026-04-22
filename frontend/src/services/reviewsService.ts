@@ -15,9 +15,11 @@ class ReviewsService {
             page: params.page ?? 0,
             limit: params.limit ?? 15,
             search: params.search || undefined,
+            embedding_search: params.useEmbeddingSearch,
             rating: params.rating?.length ? params.rating : undefined,
             sentiment: params.sentiment?.length ? params.sentiment : undefined,
             source: params.source?.length ? params.source : undefined,
+            category: params.category?.length ? params.category : undefined,
             dateFrom: params.dateFrom || undefined,
             dateTo: params.dateTo || undefined,
         });
@@ -37,6 +39,7 @@ class ReviewsService {
             rating: typeof item.rating === 'number' ? item.rating : 0,
             userName: item.userName || item.reviewerName || 'Anonymous',
             reviewText: item.reviewText || item.text || '',
+            heading: item.heading || '',
             sentiment: item.sentiment || 'Neutral',
             categories: Array.isArray(item.categories) ? item.categories : [],
             source: item.source || item.platform || 'Unknown',
@@ -55,10 +58,20 @@ class ReviewsService {
     }
 
     /**
-     * Fetch statistics from the server.
+     * Fetch statistics from the server, respecting all active filters.
      */
-    async getStats(organizationId: string): Promise<ReviewStats> {
-        return apiClient.get<ReviewStats>('/reviews/meta/stats', { organization_id: organizationId });
+    async getStats(organizationId: string, params: FetchReviewsParams): Promise<ReviewStats> {
+        return apiClient.get<ReviewStats>('/reviews/meta/stats', {
+            organization_id: organizationId,
+            search: params.search || undefined,
+            embedding_search: params.useEmbeddingSearch,
+            rating: params.rating?.length ? params.rating : undefined,
+            sentiment: params.sentiment?.length ? params.sentiment : undefined,
+            source: params.source?.length ? params.source : undefined,
+            category: params.category?.length ? params.category : undefined,
+            dateFrom: params.dateFrom || undefined,
+            dateTo: params.dateTo || undefined,
+        });
     }
 
     /**

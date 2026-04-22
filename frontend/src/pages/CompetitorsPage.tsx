@@ -9,13 +9,16 @@ import {
     untrackCompetitor,
     type Competitor,
 } from '../services/competitorService';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const queryClient = useQueryClient();
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
+    const organizationId = currentOrg?.id ?? '';
 
     const { data, isLoading: loading, error } = useQuery({
-        queryKey: ['competitors'],
+        queryKey: ['competitors', organizationId],
         queryFn: fetchCompetitors,
     });
 
@@ -23,13 +26,13 @@ const CompetitorsPage = () => {
     const errorMessage = error instanceof Error ? error.message : null;
 
     const handleSuccess = () => {
-        queryClient.invalidateQueries({ queryKey: ['competitors'] });
+        queryClient.invalidateQueries({ queryKey: ['competitors', organizationId] });
     };
 
     const untrackMutation = useMutation({
         mutationFn: untrackCompetitor,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['competitors'] });
+            queryClient.invalidateQueries({ queryKey: ['competitors', organizationId] });
         },
     });
 

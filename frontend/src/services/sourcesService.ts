@@ -96,6 +96,10 @@ class SourcesService {
     async triggerSync(id: string | number): Promise<void> {
         await apiClient.post(`/api/source/${id}/sync`);
     }
+
+    async deleteSourceReviews(id: string | number): Promise<void> {
+        await apiClient.delete(`/api/reviews/source/${id}`);
+    }
 }
 
 export const sourcesService = new SourcesService();

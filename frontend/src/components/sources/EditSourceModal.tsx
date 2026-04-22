@@ -23,13 +23,15 @@ interface EditSourceModalProps {
   source: Source | null;
   onSave: (source: Source) => void;
   onDelete: (sourceId: string | number) => void;
+  onClearReviews?: (sourceId: string | number) => void;
   initialTab?: 'settings' | 'analytics';
 }
 
-const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab = 'settings' }: EditSourceModalProps) => {
+const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearReviews, initialTab = 'settings' }: EditSourceModalProps) => {
   const [activeTab, setActiveTab] = useState<'settings' | 'analytics'>(initialTab);
   const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('daily');
   const [status, setStatus] = useState<SourceStatus>('Active');
+  const [propertyUrl, setPropertyUrl] = useState('');
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -39,6 +41,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
     if (source) {
       setSyncSchedule(source.syncSchedule);
       setStatus(source.status === 'Error' ? 'Active' : source.status);
+      setPropertyUrl(source.propertyUrl);
     }
   }, [source]);
 
@@ -72,10 +75,17 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
   const handleSave = () => {
     onSave({
       ...source,
+      propertyUrl,
       syncSchedule,
       status
     });
     onClose();
+  };
+
+  const handleClearReviews = () => {
+    if (window.confirm('Are you absolutely sure you want to delete ALL reviews for this source? This will ALSO clear related media and embeddings. Action cannot be undone.')) {
+      onClearReviews?.(source.id);
+    }
   };
 
   const customHeader = (
@@ -182,11 +192,12 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={source.propertyUrl}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600 rounded-xl font-bold text-gray-500 dark:text-slate-400 shadow-inner"
+                    value={propertyUrl}
+                    onChange={(e) => setPropertyUrl(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl font-bold text-gray-900 dark:text-white focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] outline-none shadow-sm transition-all"
+                    placeholder="https://..."
                   />
-                  <a href={source.propertyUrl} target="_blank" rel="noreferrer" className="p-3 bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-[#4e80ee] dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-[#4e80ee] dark:hover:border-[#4e80ee] rounded-xl shadow-sm transition-all">
+                  <a href={propertyUrl} target="_blank" rel="noreferrer" className="p-3 bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-[#4e80ee] dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-[#4e80ee] dark:hover:border-[#4e80ee] rounded-xl shadow-sm transition-all">
                     <ExternalLink size={20} />
                   </a>
                 </div>
@@ -215,7 +226,26 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
               </div>
 
               {/* Danger Zone - Premium styling */}
-              <div className="pt-8 border-t border-gray-100/50 dark:border-slate-700/50">
+              <div className="pt-8 border-t border-gray-100/50 dark:border-slate-700/50 space-y-4">
+                <div className="bg-amber-50/30 border border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/30 rounded-2xl p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+                        <AlertTriangle size={16} />
+                        <h4 className="text-[12px] font-black uppercase tracking-tight text-amber-700 dark:text-amber-300">Clean Slate</h4>
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-slate-500 font-bold uppercase tracking-wider">Delete only the review records. The source stays connected.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleClearReviews}
+                      className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-sm border-amber-200 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/40"
+                    >
+                      Clear Reviews
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="bg-rose-50/30 border border-rose-100 dark:bg-rose-900/20 dark:border-rose-800/30 rounded-2xl p-6">
                   <div className="flex justify-between items-center">
                     <div>
@@ -223,7 +253,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, initialTab
                         <AlertTriangle size={16} />
                         <h4 className="text-[12px] font-black uppercase tracking-tight">Delete Source</h4>
                       </div>
-                      <p className="text-[11px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">Removing this source will archive its history.</p>
+                      <p className="text-[11px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">Removing this source will archive its history and disconnect it.</p>
                     </div>
                     <Button
                       variant="danger"

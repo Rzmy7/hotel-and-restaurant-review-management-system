@@ -21,7 +21,6 @@ from app.modules.source.schemas import (
     PlatformRead, OrganizationRead, OrganizationSourceDetails, SourceStats,
     SyncLogRead, SyncStatus, SyncStatusRequest
 )
-from app.modules.source.services.embedding_client import trigger_embedding_for_source
 
 def calculate_next_sync_time(base_time: datetime, frequency_id: int) -> datetime:
     """Calculate the next sync time based on base_time and frequency ID."""
@@ -172,25 +171,26 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     
     db.add(new_source)
     db.commit()
-    db.refresh(new_source)
 
-    # ----------------------------------------------------
-    # Increment usage for the user (Tenant)
-    # ----------------------------------------------------
+    # ── Send source added notification ──
     try:
-        # Find the tenant (user) ID who owns the organization
-        org = db.query(OrganizationSource).filter(
-            OrganizationSource.organization_id == source_data.organization_id
+        from app.services.notification_helpers import notify_source_added
+        org = db.query(Organization).filter(
+            Organization.organization_id == source_data.organization_id
         ).first()
-
-        if org and org.tenant_id:
-            with pyodbc.connect(get_connection_string()) as conn:
-                cursor = conn.cursor()
-                # Using 'review_count' as the feature representing source slots
-                increment_feature_usage(cursor, str(org.tenant_id), "review_count")
-                conn.commit()
-    except Exception as e:
-        print(f"FAILED TO INCREMENT SOURCE USAGE: {e}")
+        platform = db.query(PlatformSource).filter(
+            PlatformSource.platform_id == source_data.platform_id
+        ).first()
+        if org and org.tenant_id and platform:
+            notify_source_added(
+                user_id=str(org.tenant_id),
+                platform_name=platform.platform_name,
+                source_url=source_data.source_url,
+                org_name=org.organization_name,
+            )
+    except Exception:
+        pass  # Best-effort
+    db.refresh(new_source)
     
     # Load platform for the response
     source = db.query(SourceSource).options(
@@ -265,12 +265,30 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
     )
 
 def delete_source(db: Session, source_id: uuid.UUID):
-    source = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+    source = db.query(SourceSource).options(
+        joinedload(SourceSource.platform)
+    ).filter(SourceSource.source_id == source_id).first()
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
-    
+
+    # Capture info before deleting
+    platform_name = source.platform.platform_name if source.platform else "Unknown"
+    org_id = source.organization_id
+
     db.delete(source)
     db.commit()
+
+    # ── Send source removed notification ──
+    try:
+        from app.services.notification_helpers import notify_source_removed
+        org = db.query(Organization).filter(
+            Organization.organization_id == org_id
+        ).first()
+        if org and org.tenant_id:
+            notify_source_removed(str(org.tenant_id), platform_name, org.organization_name)
+    except Exception:
+        pass  # Best-effort
+
     return {"message": "Source deleted successfully"}
 
 def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
@@ -371,13 +389,11 @@ def update_sync_status(
             reviews_fetched=request.new_review_count
         )
         db.add(sync_log)
+        db.flush()
 
-        # — Trigger embedding for newly scraped reviews (non-blocking background thread) —
-        trigger_embedding_for_source(str(source.source_id))
-        
         # Trigger Review Ingestion and Processing Pipeline
         if background_tasks:
-            background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
+            background_tasks.add_task(start_ingestion_and_processing_flow, source_id, sync_log.log_id)
         
     elif request.status == SyncStatus.FAILED:
         source.source_status = SourceStatus.ERROR
@@ -394,6 +410,36 @@ def update_sync_status(
             error_message=request.error_message
         )
         db.add(sync_log)
+
+        # ── Send scrape failed notification ──
+        try:
+            from app.services.notification_helpers import notify_scrape_failed
+            org = db.query(Organization).filter(
+                Organization.organization_id == source.organization_id
+            ).first()
+            if org and org.tenant_id:
+                notify_scrape_failed(
+                    user_id=str(org.tenant_id),
+                    platform_name=source.platform.platform_name,
+                    error_message=request.error_message,
+                    org_name=org.organization_name,
+                )
+        except Exception:
+            pass  # Best-effort
+
+        # ── Log system alert for admin dashboard ──
+        try:
+            from app.modules.admin.services.system_alert_logger import alert_scraping_failure
+            org = db.query(Organization).filter(
+                Organization.organization_id == source.organization_id
+            ).first()
+            alert_scraping_failure(
+                platform=source.platform.platform_name,
+                error_msg=request.error_message or "",
+                org_name=org.organization_name if org else "",
+            )
+        except Exception:
+            pass  # Best-effort
         
     elif request.status == SyncStatus.RUNNING:
         source.source_status = SourceStatus.RUNNING.value

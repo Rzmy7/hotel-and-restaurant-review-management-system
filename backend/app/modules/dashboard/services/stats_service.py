@@ -98,17 +98,18 @@ def get_distribution(org_id: str = None) -> dict:
     cursor = conn.cursor()
     if org_id:
         cursor.execute("""
-            SELECT r.rating, COUNT(*) as cnt 
+            SELECT ROUND(r.rating, 0) AS rounded_rating, COUNT(*) as cnt 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE s.organization_id = ? 
-            GROUP BY r.rating ORDER BY r.rating
+            WHERE s.organization_id = ? AND r.rating IS NOT NULL
+            GROUP BY ROUND(r.rating, 0) ORDER BY ROUND(r.rating, 0)
         """, org_id)
     else:
-        cursor.execute("SELECT rating, COUNT(*) as cnt FROM dbo.processed_review GROUP BY rating ORDER BY rating")
+        cursor.execute("SELECT ROUND(rating, 0) AS rounded_rating, COUNT(*) as cnt FROM dbo.processed_review WHERE rating IS NOT NULL GROUP BY ROUND(rating, 0) ORDER BY ROUND(rating, 0)")
     rows = cursor.fetchall()
     conn.close()
     distribution = {str(i): 0 for i in range(1, 6)}
     for row in rows:
-        distribution[str(row.rating)] = row.cnt
+        bucket = str(max(1, min(5, int(row.rounded_rating))))
+        distribution[bucket] = distribution.get(bucket, 0) + row.cnt
     return {"distribution": distribution}

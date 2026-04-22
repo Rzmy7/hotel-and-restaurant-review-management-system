@@ -78,3 +78,7 @@ export const updateUser = (userId: string, payload: UserUpdatePayload): Promise<
 export const deleteUser = async (userId: string): Promise<void> => {
     await apiClient.delete<any>(`/admin/users/${encodeURIComponent(userId)}`);
 };
+ 
+export const triggerPendingEmbeddings = (): Promise<{ triggered_sources_count: number; message: string }> => {
+    return apiClient.post<{ triggered_sources_count: number; message: string }>('/admin/embeddings/trigger-pending', {});
+};

@@ -22,7 +22,11 @@ def get_user_organizations(
                 o.organization_id,
                 o.organization_name,
                 ot.type_name as organization_type,
-                o.organization_type_id
+                o.organization_type_id,
+                o.website_url,
+                o.primary_email,
+                o.phone_number,
+                o.logo_url
             FROM dbo.organization o
             LEFT JOIN dbo.organization_type ot
                 ON o.organization_type_id = ot.type_code
@@ -39,6 +43,10 @@ def get_user_organizations(
             "organization_name": row[1],      
             "organization_type": row[2],
             "organization_type_id": row[3],
+            "website_url": row[4],
+            "primary_email": row[5],
+            "phone_number": row[6],
+            "logo_url": row[7],
             "role": "owner" # In this unified model, the tenant owner is the owner of all its orgs
         }
         for row in rows

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Toast, type ToastType } from '../components/shared/Toast';
 
@@ -15,15 +15,28 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const id = Date.now();
         setToasts((prev) => [...prev, { id, message, type }]);
 
-        // Auto-remove after 3 seconds
+        // Auto-remove after 5 seconds for warnings, 3 seconds for others
+        const duration = type === 'warning' ? 5000 : 3000;
         setTimeout(() => {
             setToasts((prev) => prev.filter((toast) => toast.id !== id));
-        }, 3000);
+        }, duration);
     }, []);
 
     const removeToast = useCallback((id: number) => {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, []);
+
+    // ── Listen for feature-limit-reached events from the API client ──
+    useEffect(() => {
+        const handleLimitReached = (event: Event) => {
+            const customEvent = event as CustomEvent<{ message: string }>;
+            const message = customEvent.detail?.message || 'Feature limit reached. Please upgrade your plan.';
+            showToast(message, 'warning');
+        };
+
+        window.addEventListener('feature-limit-reached', handleLimitReached);
+        return () => window.removeEventListener('feature-limit-reached', handleLimitReached);
+    }, [showToast]);
 
     return (
         <ToastContext.Provider value={{ showToast }}>

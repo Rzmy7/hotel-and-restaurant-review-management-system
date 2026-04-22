@@ -2,25 +2,42 @@
 Category performance service — computes per-category sentiment scores
 from the processed_review.categories JSON column.
 """
+
 import json
 import pyodbc
 
 
 _ICON_MAP = {
-    "staff": "Users", "service": "Users",
-    "cleanliness": "Droplets", "hygiene": "Droplets",
-    "location": "MapPin", "area": "MapPin",
-    "food": "Utensils", "restaurant": "Utensils",
-    "breakfast": "Utensils", "dining": "Utensils",
-    "room": "BedDouble", "amenities": "Star",
-    "value": "DollarSign", "wifi": "Wifi",
-    "parking": "Car", "pool": "Waves",
-    "gym": "Dumbbell", "spa": "Sparkles",
-    "bar": "Wine", "check-in": "LogIn",
-    "check-out": "LogOut", "noise": "Volume2",
-    "bathroom": "Bath", "bedding": "Bed",
-    "safety": "Shield", "decor": "Palette",
-    "atmosphere": "Smile", "maintenance": "Wrench",
+    "staff": "Users",
+    "service": "Users",
+    "cleanliness": "Droplets",
+    "hygiene": "Droplets",
+    "location": "MapPin",
+    "area": "MapPin",
+    "food": "Utensils",
+    "restaurant": "Utensils",
+    "breakfast": "Utensils",
+    "dining": "Utensils",
+    "room": "BedDouble",
+    "amenities": "Star",
+    "value": "DollarSign",
+    "wifi": "Wifi",
+    "parking": "Car",
+    "pool": "Waves",
+    "gym": "Dumbbell",
+    "spa": "Sparkles",
+    "bar": "Wine",
+    "check-in": "LogIn",
+    "check-out": "LogOut",
+    "noise": "Volume2",
+    "bathroom": "Bath",
+    "bedding": "Bed",
+    "safety": "Shield",
+    "decor": "Palette",
+    "atmosphere": "Smile",
+    "maintenance": "Wrench",
+    "comfort": "Smile",
+    "room size": "MapPin",
 }
 
 
@@ -44,76 +61,160 @@ def _parse_categories(raw) -> list:
     return []
 
 
-def _aggregate(cursor, org_id: str, days_from: int = None, days_to: int = None):
-    """Return dict mapping category names to their avg score and count (with optional time window)."""
-    sql = """
-        SELECT rc.name, AVG(rc.score) as avg_score, COUNT(*) as mention_count
-        FROM   dbo.review_category rc
-        JOIN   dbo.processed_review r ON rc.review_id = r.id
+def _aggregate_all_time_totals(cursor, org_id: str):
+    """Return all-time category mention counts."""
+    cursor.execute(
+        """
+        SELECT r.categories
+        FROM   dbo.processed_review r
         JOIN   dbo.source s ON r.source_id = s.source_id
         WHERE  s.organization_id = ?
-    """
-    params = [org_id]
-
-    if days_from is not None:
-        sql += " AND r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))"
-        params.append(days_from)
-    if days_to is not None:
-        sql += " AND r.reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))"
-        params.append(days_to)
-
-    sql += " GROUP BY rc.name"
-    cursor.execute(sql, params)
-
+        """,
+        org_id,
+    )
     rows = cursor.fetchall()
-    results = {}
+    total: dict = {}
     for row in rows:
-        results[row.name] = {
-            "score": round(row.avg_score or 0),
-            "count": row.mention_count
-        }
-    return results
+        cats = _parse_categories(row.categories)
+        for cat in cats:
+            key = cat.strip()
+            if not key:
+                continue
+            total[key] = total.get(key, 0) + 1
+    return total
 
 
-def get_category_performance(cursor, org_id: str, period_days: int = 30) -> list:
+def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
+    """Return (cat_total, cat_positive_count) dicts for a time window."""
+    cursor.execute(
+        """
+        SELECT r.categories,
+               ISNULL(r.sentiment_score, 3.0) as sentiment_score,
+               ISNULL(r.sentiment, 'Neutral')  as sentiment
+        FROM   dbo.processed_review r
+        JOIN   dbo.source s ON r.source_id = s.source_id
+        WHERE  s.organization_id = ?
+          AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+          AND  r.reviewDate <  DATEADD(DAY, ? + 1, CAST(GETDATE() AS DATE))
+        """,
+        org_id,
+        days_from,
+        days_to,
+    )
+    rows = cursor.fetchall()
+    total: dict = {}
+    positive_counts: dict = {}
+    score_sums: dict = {}
+    for row in rows:
+        cats = _parse_categories(row.categories)
+        s_score = float(row.sentiment_score)
+        sentiment = row.sentiment
+        for cat in cats:
+            key = cat.strip()
+            if not key:
+                continue
+            total[key] = total.get(key, 0) + 1
+            score_sums[key] = score_sums.get(key, 0.0) + s_score
+            if sentiment == "Positive":
+                positive_counts[key] = positive_counts.get(key, 0) + 1
+    return total, positive_counts, score_sums
+
+
+def _aggregate_all_time(cursor, org_id: str):
+    """Return per-category totals, positive counts, and score sums for ALL reviews."""
+    cursor.execute(
+        """
+        SELECT r.categories,
+               ISNULL(r.sentiment_score, 3.0) as sentiment_score,
+               ISNULL(r.sentiment, 'Neutral')  as sentiment
+        FROM   dbo.processed_review r
+        JOIN   dbo.source s ON r.source_id = s.source_id
+        WHERE  s.organization_id = ?
+        """,
+        org_id,
+    )
+    rows = cursor.fetchall()
+    total: dict = {}
+    positive_counts: dict = {}
+    score_sums: dict = {}
+    for row in rows:
+        cats = _parse_categories(row.categories)
+        s_score = float(row.sentiment_score)
+        sentiment = row.sentiment
+        for cat in cats:
+            key = cat.strip()
+            if not key:
+                continue
+            total[key] = total.get(key, 0) + 1
+            score_sums[key] = score_sums.get(key, 0.0) + s_score
+            if sentiment == "Positive":
+                positive_counts[key] = positive_counts.get(key, 0) + 1
+    return total, positive_counts, score_sums
+
+
+def get_category_performance(cursor, org_id: str, period_days: int = 0) -> list:
     """
-    Returns up to 6 category objects with score, count, icon, trend, trendType.
-    Only categories with >= 1 mentions are included.
+    Returns up to 4 category objects with score, count, icon, trend, trendType.
+    Score = average sentiment_score mapped to 0-100 scale (1.0→0%, 5.0→100%).
+    When period_days=0, shows all-time data with no trend comparison.
+    When period_days>0, shows period-filtered data with trend vs previous period.
     """
-    all_time_data = _aggregate(cursor, org_id)
-    cur_data = _aggregate(cursor, org_id, -period_days, 0)
-    prev_data = _aggregate(cursor, org_id, -(period_days * 2), -period_days)
+    is_all_time = period_days <= 0
+
+    if is_all_time:
+        # All-time: use all data, no trend comparison
+        data_total, data_pos, data_scores = _aggregate_all_time(cursor, org_id)
+    else:
+        # Period-filtered: use current period data for scores/counts
+        data_total, data_pos, data_scores = _aggregate(cursor, org_id, -period_days, 0)
+        # Previous period for trend comparison
+        prev_total, prev_pos, prev_scores = _aggregate(
+            cursor, org_id, -(period_days * 2), -period_days
+        )
 
     MIN_MENTIONS = 1
     results = []
 
-    for cat, data in all_time_data.items():
-        count = data["count"]
-        if count < MIN_MENTIONS:
+    for cat, total in data_total.items():
+        if total < MIN_MENTIONS:
             continue
 
-        score = data["score"] # Use All Time score as primary
-        
-        # Calculate trend based on 30-day window
-        cur_period_score = cur_data.get(cat, {}).get("score", score)
-        prev_period_score = prev_data.get(cat, {}).get("score", cur_period_score)
-        delta = cur_period_score - prev_period_score
+        # Score = average sentiment_score mapped from 1-5 to 0-100
+        avg_score = data_scores.get(cat, 0.0) / total
+        score = round(((avg_score - 1.0) / 4.0) * 100)
+        score = max(0, min(100, score))  # clamp
 
-        if abs(delta) < 0.05:
-            trend_str, trend_type = "0.0%", "neutral"
-        elif delta > 0:
-            trend_str, trend_type = f"+{delta:.1f}%", "up"
+        if is_all_time:
+            trend_str, trend_type = "—", "neutral"
         else:
-            trend_str, trend_type = f"{delta:.1f}%", "down"
+            # Trend: compare current period avg vs previous period avg
+            prev_t = prev_total.get(cat, 0)
 
-        results.append({
-            "name": cat,
-            "score": score,
-            "count": count,
-            "icon": _resolve_icon(cat),
-            "trend": trend_str,
-            "trendType": trend_type,
-        })
+            if prev_t > 0:
+                prev_avg = prev_scores.get(cat, 0.0) / prev_t
+                prev_pct = round(((prev_avg - 1.0) / 4.0) * 100)
+            else:
+                prev_pct = score  # no previous data → no change
+
+            delta = score - prev_pct
+
+            if delta == 0:
+                trend_str, trend_type = "0%", "neutral"
+            elif delta > 0:
+                trend_str, trend_type = f"+{delta}%", "up"
+            else:
+                trend_str, trend_type = f"{delta}%", "down"
+
+        results.append(
+            {
+                "name": cat,
+                "score": score,
+                "count": count,
+                "icon": _resolve_icon(cat),
+                "trend": trend_str,
+                "trendType": trend_type,
+            }
+        )
 
     results.sort(key=lambda x: x["count"], reverse=True)
-    return results[:6]
+    return results[:4]

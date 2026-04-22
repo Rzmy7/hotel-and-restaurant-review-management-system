@@ -3,14 +3,14 @@ import type { DashboardResponse } from '../types/dashboard';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { dashboardService } from '../services/dashboardService';
 
-export const useDashboardData = () => {
+export const useDashboardData = (period: number = 0) => {
     const currentOrg = useOrganizationStore(state => state.currentOrg);
 
     const { data: responseData, isLoading: loading, error } = useQuery({
-        queryKey: ['dashboardData', currentOrg?.id],
+        queryKey: ['dashboardData', currentOrg?.id, period],
         queryFn: async () => {
             if (!currentOrg) return null;
-            return await dashboardService.getDashboardSummary(currentOrg.id);
+            return await dashboardService.getDashboardSummary(currentOrg.id, period);
         },
         enabled: !!currentOrg,
     });
