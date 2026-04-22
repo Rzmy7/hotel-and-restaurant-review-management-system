@@ -4,7 +4,7 @@ import sys
 
 sys.path.append('.')
 
-from app.modules.auth.services.jwt_service import create_access_token
+from app.core.security import create_access_token
 from app.core.database import SessionLocal
 from app.modules.auth.models import User
 

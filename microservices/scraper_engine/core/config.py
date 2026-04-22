@@ -21,6 +21,17 @@ class BaseScraperConfig(BaseModel):
     trust_server_certificate: str = "yes"
     backend_url: str = "http://127.0.0.1:8000"
     
+    # Rate Limiting & Queue Protection
+    max_queue_size: int = 100
+    rate_limit_scrape: str = "10/minute"
+    rate_limit_global: str = "100/minute"
+    
+    # Platform-Specific Delays (Seconds between scrapes)
+    delay_google: float = 30.0
+    delay_agoda: float = 20.0
+    delay_booking: float = 20.0
+    delay_tripadvisor: float = 40.0
+    
 def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -44,5 +55,12 @@ config = BaseScraperConfig(
     db_pwd=os.getenv("DB_PWD", ""),
     db_encrypt=os.getenv("DB_ENCRYPT", "yes"),
     trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes"),
-    backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000")
+    backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000"),
+    max_queue_size=int(os.getenv("MAX_QUEUE_SIZE", "100")),
+    rate_limit_scrape=os.getenv("RATE_LIMIT_SCRAPE", "10/minute"),
+    rate_limit_global=os.getenv("RATE_LIMIT_GLOBAL", "100/minute"),
+    delay_google=float(os.getenv("DELAY_GOOGLE", "30.0")),
+    delay_agoda=float(os.getenv("DELAY_AGODA", "20.0")),
+    delay_booking=float(os.getenv("DELAY_BOOKING", "20.0")),
+    delay_tripadvisor=float(os.getenv("DELAY_TRIPADVISOR", "40.0"))
 )

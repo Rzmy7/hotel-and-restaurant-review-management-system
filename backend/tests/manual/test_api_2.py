@@ -15,7 +15,7 @@ if resp_login.status_code != 200:
     print("Login failed, falling back to db token gen")
     
     sys.path.append('.')
-    from app.modules.auth.services.jwt_service import create_access_token
+    from app.core.security import create_access_token
     from app.core.database import SessionLocal
     from sqlalchemy import text
     

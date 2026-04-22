@@ -14,10 +14,11 @@ def get_usage(org_id: str = None, period: int = 30) -> dict:
     
     if org_id:
         cursor.execute("""
-            SELECT CAST(reviewDate AS DATE) as review_day, COUNT(*) as review_count
-            FROM dbo.processed_review 
-            WHERE reviewDate >= ? AND organization_id = ?
-            GROUP BY CAST(reviewDate AS DATE) ORDER BY review_day
+            SELECT CAST(r.reviewDate AS DATE) as review_day, COUNT(*) as review_count
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE r.reviewDate >= ? AND s.organization_id = ?
+            GROUP BY CAST(r.reviewDate AS DATE) ORDER BY review_day
         """, period_start, org_id)
     else:
         cursor.execute("""
@@ -37,15 +38,26 @@ def get_recent_reviews(org_id: str = None) -> dict:
     
     if org_id:
         cursor.execute("""
-            SELECT TOP 10 id, rating, reviewerName as userName, text as reviewText, sentiment, categories, reviewDate, [status], platform_id as source
-            FROM dbo.processed_review 
-            WHERE organization_id = ?
-            ORDER BY reviewDate DESC
+            SELECT TOP 10 
+                r.id, r.rating, r.reviewerName as userName, r.text as reviewText, 
+                r.sentiment, r.categories, r.reviewDate, r.[status], 
+                p.platform_name as source
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            WHERE s.organization_id = ?
+            ORDER BY r.reviewDate DESC
         """, org_id)
     else:
         cursor.execute("""
-            SELECT TOP 10 id, rating, reviewerName as userName, text as reviewText, sentiment, categories, reviewDate, [status], platform_id as source
-            FROM dbo.processed_review ORDER BY reviewDate DESC
+            SELECT TOP 10 
+                r.id, r.rating, r.reviewerName as userName, r.text as reviewText, 
+                r.sentiment, r.categories, r.reviewDate, r.[status], 
+                p.platform_name as source
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            ORDER BY r.reviewDate DESC
         """)
         
     rows = cursor.fetchall()

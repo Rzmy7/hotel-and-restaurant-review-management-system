@@ -1,16 +1,15 @@
-import re
-import time
 import math
+import time
 from platforms.booking.browser import BookingPlaywrightBrowser
 from platforms.booking.extractor import BookingExtractor
-from platforms.booking.storage import save_to_json
 from core.database import init_db
 from platforms.booking.models import save_reviews_to_db
 from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from platforms.booking.config import booking_selectors
 from core.audit import audit_logger
-from core.utils import notify_backend_sync_status
+from services.source_service import SourceService
+from core.deduplication.booking_deduplicator import clean_booking_duplicates
 
 logger = setup_logger("booking_logic")
 
@@ -61,7 +60,7 @@ def open_reviews_modal(page):
         logger.warning(f"Could not open review modal: {e}")
         try:
             page.screenshot(path="booking_modal_error.png")
-        except:
+        except Exception:
             pass
 
 def parse_pages(pages_str: str):
@@ -85,6 +84,9 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
 
     if job_id:
         job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
+
+    # Broadcast RUNNING status for all sources sharing this URL
+    SourceService.broadcast_running(url)
 
     # Initialize database tables
     init_db()
@@ -231,66 +233,25 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
                 # Reached end page limit
                 break
             
-        # Final Storage logic
-        if all_reviews:
-            logger.info(f"Saving final batch of {len(all_reviews)} reviews to database.")
-            save_reviews_to_db(all_reviews, source_id)
-            
-        if cumulative_reviews:
-            logger.info(f"Total reviews extracted: {len(cumulative_reviews)}. Saving full backup to JSON.")
-            save_to_json(cumulative_reviews, str(source_id))
-            
-            # Identify new reviews vs existing ones
-            from core.database import get_session
-            from core.utils import identify_new_reviews
-            from core.deduplication.booking_deduplicator import clean_booking_duplicates
-            
-            # Notify backend that we are verifying duplication
-            notify_backend_sync_status(str(source_id), "VERIFY_DUPLICATION")
-            
-            session = get_session()
-            new_count = 0
-            try:
-                removed_count = clean_booking_duplicates(session, str(source_id))
-                logger.info(f"Deduplication phase completed. Removed {removed_count} duplicates.")
-                
-                new_count, _ = identify_new_reviews(session, source_id, cumulative_reviews)
-                logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
-            except Exception as e:
-                logger.warning(f"Could not identify new reviews: {e}")
-            finally:
-                session.close()
+        # Centralized Finalization & Replication
+        SourceService.finalize_and_replicate(
+            url=url,
+            primary_source_id=str(source_id),
+            reviews=cumulative_reviews,
+            save_db_func=save_reviews_to_db,
+            deduplicator_func=clean_booking_duplicates
+        )
 
-            if job_id:
-                job_manager.update_job(
-                    job_id, status=JobStatus.COMPLETED,
-                    progress="Finished scraping, JSON generated.",
-                    reviews=len(cumulative_reviews),
-                    current_page=effective_total_pages,
-                    total_pages=effective_total_pages
-                )
-
-            audit_logger.info(
-                category=u'SCRAPE',
-                action=u'SCRAPE_COMPLETE',
-                target_type=u'SOURCE',
-                target_id=str(source_id),
-                details={"reviews_saved": len(cumulative_reviews), "job_id": job_id}
+        if job_id:
+            job_manager.update_job(
+                job_id, status=JobStatus.COMPLETED,
+                progress="Sync completed for all associated sources.",
+                reviews=len(cumulative_reviews),
+                current_page=effective_total_pages,
+                total_pages=effective_total_pages
             )
 
-            # Notify backend of completion
-            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
-
-            return {"status": "success", "count": f"Stored {len(cumulative_reviews)} reviews in DB & JSON", "source_id": source_id}
-        else:
-            logger.warning("No new reviews were extracted.")
-            if job_id:
-                job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="Scrape concluded without detecting new reviews.", reviews=0)
-            
-            # Notify backend even if no new reviews were found
-            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=0)
-            
-            return {"status": "warning", "message": "No new reviews found.", "count": 0, "data": []}
+        return {"status": "success", "count": f"Processed {len(cumulative_reviews)} reviews", "source_id": source_id}
             
     except Exception as e:
         logger.error(f"Error during scraping: {e}", exc_info=True)
@@ -305,8 +266,9 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
-        # Notify backend of failure
-        notify_backend_sync_status(str(source_id), "FAILED")
+        # Notify primary and all companions of failure
+        SourceService.broadcast_failed(url, error_message=str(e))
+        
         
         return {"status": "error", "message": str(e), "count": 0, "data": []}
     finally:

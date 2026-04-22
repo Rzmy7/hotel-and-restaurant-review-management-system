@@ -10,8 +10,10 @@ type of data (e.g. stay_date, reviewer_nationality, traveler_type).
 """
 from sqlalchemy import (
     Column, Integer, String, Float, ForeignKey, Unicode, UnicodeText,
-    DateTime, Index, Numeric, Boolean
+    DateTime, Index, Numeric, Boolean, text
 )
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+import uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
@@ -28,7 +30,7 @@ class Source(Base):
     __tablename__ = 'sources'
 
     source_id   = Column(String(36), primary_key=True)
-    source_url  = Column(Unicode(1000), nullable=False, unique=True)
+    source_url  = Column(Unicode(1000), nullable=False, unique=False)
     platform_name = Column(Unicode(100), nullable=False)  # agoda | booking | google | tripadvisor
 
     created_at = Column(DateTime, server_default=func.now())
@@ -52,7 +54,7 @@ class Review(Base):
     """
     __tablename__ = 'reviews'
 
-    review_id  = Column(Integer, primary_key=True, autoincrement=True)
+    review_id  = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)
     platform_review_id = Column(Unicode(255), nullable=True)
 
@@ -83,7 +85,7 @@ class AgodaReviewDetail(Base):
     """Agoda-specific review columns. PK is FK to reviews."""
     __tablename__ = 'agoda_reviews'
 
-    review_id            = Column(Integer, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
+    review_id            = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
     rating               = Column(Numeric(4, 2), nullable=True)
     review_heading       = Column(Unicode(500), nullable=True)
     author               = Column(Unicode(255), nullable=True)
@@ -111,7 +113,7 @@ class BookingReviewDetail(Base):
     """Booking.com-specific review columns. PK is FK to reviews."""
     __tablename__ = 'booking_reviews'
 
-    review_id            = Column(Integer, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
+    review_id            = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
     rating               = Column(Numeric(4, 2), nullable=True)
     review_heading       = Column(Unicode(500), nullable=True)
     author               = Column(Unicode(255), nullable=True)
@@ -140,7 +142,7 @@ class GoogleReviewDetail(Base):
     """Google Maps review columns. PK is FK to reviews."""
     __tablename__ = 'google_reviews'
 
-    review_id    = Column(Integer, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
+    review_id    = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
     rating       = Column(Numeric(4, 2), nullable=True)
     author       = Column(Unicode(255), nullable=True)
     review_text  = Column(UnicodeText, nullable=True)
@@ -163,7 +165,7 @@ class TripAdvisorReviewDetail(Base):
     """TripAdvisor review columns with granular sub-ratings (out of 5)."""
     __tablename__ = 'tripadvisor_reviews'
 
-    review_id            = Column(Integer, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
+    review_id            = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
     rating               = Column(Numeric(4, 2), nullable=True)
     review_heading       = Column(Unicode(500), nullable=True)
     author               = Column(Unicode(255), nullable=True)
@@ -198,8 +200,8 @@ class ReviewMedia(Base):
     """Images/videos attached to any review."""
     __tablename__ = 'review_media'
 
-    media_id  = Column(Integer, primary_key=True, autoincrement=True)
-    review_id = Column(Integer, ForeignKey('reviews.review_id', ondelete='CASCADE'), nullable=False)
+    media_id  = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    review_id = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), nullable=False)
 
     media_url     = Column(Unicode(1000), nullable=False)
     thumbnail_url = Column(Unicode(1000), nullable=True)

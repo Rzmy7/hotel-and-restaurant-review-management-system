@@ -7,9 +7,11 @@ import ProfileDropdown from '../shared/ProfileDropdown';
 import OrganizationSwitcher from '../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { notificationsService } from '../../services/notificationsService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const DashboardHeader: React.FC = () => {
   const navigate = useNavigate();
+  const { exchangeTokenForOrganization } = useAuth();
   const organizations = useOrganizationStore(state => state.organizations);
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const switchOrganization = useOrganizationStore(state => state.switchOrganization);
@@ -68,7 +70,14 @@ const DashboardHeader: React.FC = () => {
           <OrganizationSwitcher
             currentOrg={currentOrg}
             organizations={organizations}
-            onSwitch={switchOrganization}
+            onSwitch={async (orgId) => {
+              try {
+                await exchangeTokenForOrganization(orgId);
+                switchOrganization(orgId);
+              } catch (e) {
+                showToast("Failed to switch organization", "error");
+              }
+            }}
             onAdd={() => navigate('/setup')}
           />
         )}

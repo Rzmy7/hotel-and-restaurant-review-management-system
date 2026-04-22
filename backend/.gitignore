@@ -44,6 +44,10 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Flake8 cache
+.flake8/
+.cache/
+
 # Project Specific
 /app/test/scraping/screenshots
 /app/screenshots

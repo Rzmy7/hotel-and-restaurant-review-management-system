@@ -80,5 +80,12 @@ class JobManager:
     def get_active_jobs(self) -> List[Dict[str, Any]]:
         return [j for j in self.jobs.values() if j["status"] in [JobStatus.QUEUED, JobStatus.PENDING, JobStatus.RUNNING]]
 
+    def get_active_job_by_url(self, url: str) -> Dict[str, Any]:
+        """Returns the first active job matching the target URL, if any."""
+        for j in self.jobs.values():
+            if j["url"] == url and j["status"] in [JobStatus.QUEUED, JobStatus.PENDING, JobStatus.RUNNING]:
+                return j
+        return None
+
 # Global singleton
 job_manager = JobManager()

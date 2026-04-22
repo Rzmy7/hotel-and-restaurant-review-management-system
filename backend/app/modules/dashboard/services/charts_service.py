@@ -9,10 +9,11 @@ import pyodbc
 def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str) -> Dict[str, Any]:
     """Retrieves all-time sentiment distribution counts and percentages."""
     cursor.execute("""
-        SELECT sentiment, COUNT(*) as cnt 
-        FROM dbo.processed_review 
-        WHERE organization_id = ? 
-        GROUP BY sentiment
+        SELECT r.sentiment, COUNT(*) as cnt 
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? 
+        GROUP BY r.sentiment
     """, org_id)
     
     rows = cursor.fetchall()
@@ -48,14 +49,15 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
         # Standard daily grouping for small windows
         cursor.execute("""
             SELECT 
-                FORMAT(reviewDate, 'ddd') as label,
+                FORMAT(r.reviewDate, 'ddd') as label,
                 COUNT(*) as volume,
-                AVG(CAST(sentiment_score * 20 AS FLOAT)) as sentiment_avg,
-                reviewDate
-            FROM dbo.processed_review
-            WHERE organization_id = ? AND reviewDate >= CAST(? AS DATE)
-            GROUP BY reviewDate
-            ORDER BY reviewDate ASC
+                AVG(CAST(r.sentiment_score * 20 AS FLOAT)) as sentiment_avg,
+                r.reviewDate
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
+            GROUP BY r.reviewDate
+            ORDER BY r.reviewDate ASC
         """, org_id, start_date)
     else:
         # Adaptive bucketed grouping for larger windows (targeting ~6-7 points)
@@ -64,11 +66,12 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
         cursor.execute(f"""
             WITH BucketedData AS (
                 SELECT 
-                    reviewDate,
-                    sentiment_score,
-                    DATEDIFF(day, CAST(? AS DATE), reviewDate) / {bucket_size} as bucket
-                FROM dbo.processed_review
-                WHERE organization_id = ? AND reviewDate >= CAST(? AS DATE)
+                    r.reviewDate,
+                    r.sentiment_score,
+                    DATEDIFF(day, CAST(? AS DATE), r.reviewDate) / {bucket_size} as bucket
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
             )
             SELECT 
                 FORMAT(MIN(reviewDate), 'MMM dd') as label,
@@ -97,10 +100,11 @@ def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: in
     cursor.execute("""
         WITH WeeklyData AS (
             SELECT 
-                sentiment_score,
-                DATEDIFF(day, CAST(? AS DATE), reviewDate) / 7 as week_index
-            FROM dbo.processed_review
-            WHERE organization_id = ? AND reviewDate >= CAST(? AS DATE)
+                r.sentiment_score,
+                DATEDIFF(day, CAST(? AS DATE), r.reviewDate) / 7 as week_index
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
         )
         SELECT 
             'Week ' + CAST(week_index + 1 AS VARCHAR) as label,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 from sqlalchemy.orm import Session
 import uuid
 
@@ -9,9 +9,14 @@ from app.modules.source.schemas import SourceRead, SyncStatusRequest
 router = APIRouter()
 
 @router.post("/{source_id}/sync-status", response_model=SourceRead)
-def update_sync_status(source_id: uuid.UUID, request: SyncStatusRequest, db: Session = Depends(get_db)):
+def update_sync_status(
+    source_id: uuid.UUID, 
+    request: SyncStatusRequest, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Endpoint for scraper to notify sync status changes (QUEUED, RUNNING, COMPLETED, FAILED).
     Updates source status and records sync logs.
     """
-    return source_service.update_sync_status(db, source_id, request)
+    return source_service.update_sync_status(db, source_id, request, background_tasks)

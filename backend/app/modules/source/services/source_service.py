@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 import uuid
 from typing import List, Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, BackgroundTasks
 import pyodbc
 
 from app.modules.source.models import Tenant, Organization, Platform, Source, SyncLog, SyncFrequency
@@ -333,8 +333,15 @@ def get_sync_logs(
         ) for log in logs
     ]
 
-def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusRequest) -> SourceRead:
+def update_sync_status(
+    db: Session, 
+    source_id: uuid.UUID, 
+    request: SyncStatusRequest, 
+    background_tasks: Optional[BackgroundTasks] = None
+) -> SourceRead:
     """Update the sync status of a source and record logs if necessary."""
+    from app.modules.reviews.services.review_service import start_ingestion_and_processing_flow
+
     source = db.query(SourceSource).options(
         joinedload(SourceSource.platform)
     ).filter(SourceSource.source_id == source_id).first()
@@ -367,6 +374,10 @@ def update_sync_status(db: Session, source_id: uuid.UUID, request: SyncStatusReq
 
         # — Trigger embedding for newly scraped reviews (non-blocking background thread) —
         trigger_embedding_for_source(str(source.source_id))
+        
+        # Trigger Review Ingestion and Processing Pipeline
+        if background_tasks:
+            background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
         
     elif request.status == SyncStatus.FAILED:
         source.source_status = SourceStatus.ERROR
@@ -453,4 +464,36 @@ def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
 def get_sync_frequencies(db: Session) -> List[SyncFrequency]:
     """Fetch all synchronization frequency options."""
     return db.query(SyncFrequency).all()
+
+def get_stuck_sources(db: Session) -> List[SourceRead]:
+    """Fetch all sources that are currently running or queued (stuck state if scraper restarted)."""
+    sources = db.query(SourceSource).options(
+        joinedload(SourceSource.platform)
+    ).filter(
+        SourceSource.source_status.in_(["running", "queued", "verify_duplication"])
+    ).all()
     
+    return [
+        SourceRead(
+            source_id=s.source_id,
+            organization_id=s.organization_id,
+            platform_id=s.platform_id,
+            platform_name=s.platform.platform_name,
+            source_url=s.source_url,
+            source_status=s.source_status,
+            fetching_frequency=s.fetching_frequency,
+            last_synced_at=s.last_synced_at,
+            next_synced_at=s.next_synced_at,
+            num_of_syncs=s.num_of_syncs,
+            success_sync_count=s.success_sync_count,
+            platform_num_of_syncs=s.platform.num_of_syncs,
+            platform_success_sync_count=s.platform.success_sync_count,
+            success_rate=calculate_success_rate(
+                s.success_sync_count,
+                s.num_of_syncs,
+                s.platform.success_sync_count,
+                s.platform.num_of_syncs
+            ),
+            created_at=s.created_at
+        ) for s in sources
+    ]

@@ -44,6 +44,12 @@ def get_platforms(db: Session = Depends(get_db)):
     """Fetch all available review platforms."""
     return source_service.get_platforms(db)
 
+@router.get("/stuck-tasks", response_model=List[SourceRead])
+def get_stuck_tasks(db: Session = Depends(get_db)):
+    """Fetch all sources that are marked 'running' or 'queued', meaning they may be stuck if the engine restarted."""
+    return source_service.get_stuck_sources(db)
+
+
 
 @router.get("/sync-frequencies", response_model=List[SyncFrequencyRead])
 def get_sync_frequencies(db: Session = Depends(get_db)):

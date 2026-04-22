@@ -136,7 +136,7 @@ class Source(Base):
             name="uq_source_org_platform"
         ),
         CheckConstraint(
-            "source_status IN ('active', 'paused', 'error', 'queued', 'running')",
+            "source_status IN ('active', 'paused', 'error', 'queued', 'running', 'verify duplication')",
             name="ck_source_source_status",
         )
     )

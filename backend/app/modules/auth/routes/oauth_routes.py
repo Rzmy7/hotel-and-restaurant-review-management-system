@@ -69,11 +69,20 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
             db.commit()
 
     roles = get_user_role_names(db, user.user_id)
-    from app.modules.auth.services.jwt_service import create_access_token
+    from app.core.security import create_access_token
+    from sqlalchemy import text
+    
+    org_query = db.execute(
+        text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"),
+        {"tenant_id": str(user.user_id)}
+    ).fetchone()
+    
+    org_id = str(org_query[0]) if org_query else None
 
     access_token = create_access_token(
         user_id=str(user.user_id),
-        role=roles[0] if roles else "TENANT"
+        role=roles[0] if roles else "TENANT",
+        organization_id=org_id
     )
 
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")

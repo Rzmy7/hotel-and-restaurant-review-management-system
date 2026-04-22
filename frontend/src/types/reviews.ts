@@ -7,12 +7,13 @@ export interface Review {
     categories: string[];
     source: string;
     date: string;
-    status: 'Pending' | 'Replied' | 'AI Draft' | 'Archived' | 'Flagged';
+    status: 'pending' | 'processed' | 'Replied' | 'AI Draft' | 'Archived' | 'Flagged';
     language?: string;
     photos?: { id: number; src: string; alt: string }[];
     keyPhrases?: string[];
     summary?: string;
-    platformReviewId?: string;
+    scraper_review_id?: string;
+    platformReviewId?: string; // Kept for backward compatibility if needed temporarily
     replyStatus?: string;
     firstSeen?: string;
     lastUpdated?: string;

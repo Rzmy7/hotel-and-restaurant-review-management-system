@@ -48,11 +48,12 @@ def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
     """Return (cat_total, cat_positive) dicts for a time window."""
     cursor.execute(
         """
-        SELECT categories, sentiment
-        FROM   dbo.processed_review
-        WHERE  organization_id = ?
-          AND  review_date >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
-          AND  review_date <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+        SELECT r.categories, r.sentiment
+        FROM   dbo.processed_review r
+        JOIN   dbo.source s ON r.source_id = s.source_id
+        WHERE  s.organization_id = ?
+          AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+          AND  r.reviewDate <  DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
         """,
         org_id, days_from, days_to,
     )

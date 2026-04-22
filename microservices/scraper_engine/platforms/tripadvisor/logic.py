@@ -9,13 +9,13 @@ import random
 import time
 from platforms.tripadvisor.browser import TripAdvisorBrowser
 from platforms.tripadvisor.extractor import TripAdvisorExtractor
-from platforms.tripadvisor.storage import save_to_json
 from platforms.tripadvisor.models import save_reviews_to_db
 from core.database import init_db
 from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from core.audit import audit_logger
-from core.utils import notify_backend_sync_status
+from services.source_service import SourceService
+from core.deduplication.tripadvisor_deduplicator import clean_tripadvisor_duplicates
 
 logger = setup_logger("tripadvisor_logic")
 
@@ -99,7 +99,10 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
     logger.info(f"Starting TripAdvisor scraper: {url} (headless={headless}, pages={pages}, source_id={source_id})")
 
     if job_id:
-        job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing...")
+        job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
+
+    # Broadcast RUNNING status for all sources sharing this URL
+    SourceService.broadcast_running(url)
 
     init_db()
 
@@ -214,7 +217,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             
             if not page_reviews and page_num == 1:
                 # Capture diagnostic screenshot if page 1 extraction fails
-                logger.warning(f"No reviews found on page 1. Capturing screenshot for diagnosis.")
+                logger.warning("No reviews found on page 1. Capturing screenshot for diagnosis.")
                 page.screenshot(path=r"C:\Users\keshaka\.gemini\antigravity\brain\e3ecdacf-967a-4231-b073-12f72d4c853a\tripadvisor_extraction_failure.png")
                 # Also check for "Verification Required" in content
                 content = page.content().lower()
@@ -255,63 +258,26 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             human_delay(3, 7)
             jittery_scroll(page)
 
-        # Final completion
-        if all_reviews:
-            logger.info(f"Scraping complete. {len(all_reviews)} total reviews extracted.")
-            # Note: Reviews were saved in batches during pagination.
-            save_to_json(all_reviews, str(source_id))
+        # Centralized Finalization & Replication
+        SourceService.finalize_and_replicate(
+            url=url,
+            primary_source_id=str(source_id),
+            reviews=all_reviews,
+            save_db_func=save_reviews_to_db,
+            deduplicator_func=clean_tripadvisor_duplicates
+        )
 
-            # Identify new reviews vs existing ones
-            from core.database import get_session
-            from core.utils import identify_new_reviews
-            from core.deduplication.tripadvisor_deduplicator import clean_tripadvisor_duplicates
-            
-            notify_backend_sync_status(str(source_id), "VERIFY_DUPLICATION")
-            
-            session = get_session()
-            new_count = 0
-            try:
-                removed_count = clean_tripadvisor_duplicates(session, str(source_id))
-                logger.info(f"Deduplication phase completed. Removed {removed_count} duplicates.")
-                
-                new_count, _ = identify_new_reviews(session, source_id, all_reviews)
-                logger.info(f"Deduplication results: {new_count} new reviews identified for source {source_id}.")
-            except Exception as e:
-                logger.warning(f"Could not identify new reviews: {e}")
-            finally:
-                session.close()
-
-            if job_id:
-                job_manager.update_job(
-                    job_id,
-                    status=JobStatus.COMPLETED,
-                    progress=f"Done! {len(all_reviews)} reviews saved.",
-                    reviews=len(all_reviews),
-                    current_page=page_num,
-                    total_pages=page_num,
-                )
-
-            audit_logger.info(
-                category="SCRAPE",
-                action="SCRAPE_COMPLETE",
-                target_type="SOURCE",
-                target_id=str(source_id),
-                details={"reviews_saved": len(all_reviews), "job_id": job_id}
+        if job_id:
+            job_manager.update_job(
+                job_id,
+                status=JobStatus.COMPLETED,
+                progress="Sync completed for all associated sources.",
+                reviews=len(all_reviews),
+                current_page=page_num,
+                total_pages=page_num,
             )
-            
-            # Notify backend of completion
-            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=new_count)
 
-            return {"status": "success", "count": len(all_reviews), "source_id": source_id}
-        else:
-            logger.warning("No reviews found.")
-            if job_id:
-                job_manager.update_job(job_id, status=JobStatus.COMPLETED, progress="No reviews found.", reviews=0)
-            
-            # Notify backend even if no reviews were found
-            notify_backend_sync_status(str(source_id), "COMPLETED", new_review_count=0)
-            
-            return {"status": "warning", "message": "No reviews found.", "count": 0}
+        return {"status": "success", "count": len(all_reviews), "source_id": source_id}
 
     except Exception as e:
         logger.error(f"TripAdvisor scraper error: {e}", exc_info=True)
@@ -325,8 +291,8 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             details={"error": str(e), "job_id": job_id, "url": url},
             error=e
         )
-        # Notify backend of failure
-        notify_backend_sync_status(str(source_id), "FAILED")
+        # Notify primary and all companions of failure
+        SourceService.broadcast_failed(url, error_message=str(e))
         
         return {"status": "error", "message": str(e), "count": 0}
     finally:

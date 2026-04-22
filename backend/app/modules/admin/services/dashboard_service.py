@@ -26,7 +26,7 @@ from app.modules.user.services.admin_stats_service import (
     get_active_users_today,
     get_total_users,
 )
-from app.modules.reviews.services.admin_stats_service import (
+from app.modules.reviews.services.stats_service import (
     get_recent_activity,
     get_review_metrics,
     get_system_alerts,

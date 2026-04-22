@@ -1,8 +1,9 @@
 """Pydantic schemas for review endpoints."""
 
 import datetime
+import uuid
 from typing import List, Optional
-from pydantic import BaseModel, AnyHttpUrl, Field
+from pydantic import BaseModel, AnyHttpUrl, Field, AliasChoices
 
 
 class PhotoModel(BaseModel):
@@ -12,25 +13,40 @@ class PhotoModel(BaseModel):
 
 class ReviewModel(BaseModel):
     id: str
-    platformReviewId: Optional[str] = None
-    rating: int
-    userName: str
-    reviewerName: Optional[str] = None
-    reviewText: Optional[str] = Field(..., validation_alias="text")
+    rating: float
+    reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
+    userName: str = Field(..., validation_alias=AliasChoices("userName", "reviewerName"))
+    text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
+    reviewText: Optional[str] = Field(..., validation_alias=AliasChoices("reviewText", "text"))
+    heading: Optional[str] = None
     summary: Optional[str] = None
-    sentiment: str
+    sentiment: Optional[str] = "Neutral"
     language: Optional[str] = "English"
 
     categories: List[str] = []
     keyPhrases: List[str] = []
     photos: List[PhotoModel] = []
 
-    source: str
-    date: Optional[datetime.date] = None
+    source_id: Optional[uuid.UUID] = None
+    date: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("date", "reviewDate"))
+    reviewDate: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("reviewDate", "date"))
 
-    status: str
-    replyStatus: Optional[str] = "Pending"
-    hasReply: Optional[str] = "No"
+    status: str = "pending"
+    source: Optional[str] = "Unknown"
+    
+    # AI Processing Metadata
+    positive_text: Optional[str] = None
+    negative_text: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_count: int = 0
+    last_attempt: Optional[datetime.datetime] = None
+
+class PaginatedReviewResponse(BaseModel):
+    data: List[ReviewModel]
+    total: int
+    page: int
+    limit: int
+    totalPages: int
 
 
 class BookingScrapeRequest(BaseModel):

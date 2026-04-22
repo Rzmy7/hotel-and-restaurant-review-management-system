@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, timedelta
 import secrets
 import os
 
@@ -12,11 +15,13 @@ from app.modules.auth.services.auth_service import login_user
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, EmailModel, ResetModel
+from app.core.security import decode_access_token
 from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
 
 router = APIRouter()
+security = HTTPBearer()
 
 PASSWORD_RESET_EXPIRE_MINUTES = 60
 
@@ -92,6 +97,42 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
     return {
         "message": "Login successful",
         **result
+    }
+
+from pydantic import BaseModel
+class SwitchOrganizationModel(BaseModel):
+    organization_id: str
+
+from app.modules.auth.utils.auth_utils import get_current_user as get_jwt_user
+
+@router.post("/switch-organization")
+def switch_organization(
+    payload: SwitchOrganizationModel,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_jwt_user)
+):
+    # Verify the user has access to that organization
+    org_query = db.execute(
+        text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id AND organization_id = :org_id"),
+        {"tenant_id": str(current_user.user_id), "org_id": payload.organization_id}
+    ).fetchone()
+    
+    if not org_query:
+        raise HTTPException(status_code=403, detail="Organization not found or access denied")
+        
+    roles = get_user_role_names(db, current_user.user_id)
+    from app.core.security import create_access_token
+    
+    access_token = create_access_token(
+        user_id=str(current_user.user_id),
+        role=roles[0] if roles else "TENANT",
+        organization_id=payload.organization_id
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "organization_id": payload.organization_id
     }
 
 @router.post("/forgot-password")
@@ -211,6 +252,42 @@ def check_session(request: Request):
     if user:
         return {"user": user}
     return {"user": None}
+
+
+@router.get("/token-check")
+def token_check(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Validate a JWT and return decoded claims for debugging/testing."""
+    token = credentials.credentials.strip()
+
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+
+    if token.count(".") != 2:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format. Paste access_token JWT from /api/auth/login.",
+        )
+
+    try:
+        claims = decode_access_token(token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is invalid or expired.",
+        )
+
+    exp = claims.get("exp")
+    expires_at_utc = None
+    if isinstance(exp, (int, float)):
+        expires_at_utc = datetime.utcfromtimestamp(exp).isoformat() + "Z"
+
+    return {
+        "valid": True,
+        "claims": claims,
+        "expires_at_utc": expires_at_utc,
+    }
 
 def get_current_user(request: Request):
     user = request.session.get("user")

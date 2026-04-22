@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Review, ReviewStats, PaginatedResponse } from '../types/reviews';
+import type { Review, ReviewStats, FetchReviewsParams } from '../types/reviews';
 import { reviewsService } from '../services/reviewsService';
 
 interface ReviewsState {
@@ -19,8 +19,8 @@ interface ReviewsState {
     isModalOpen: boolean;
 
     // Actions
-    fetchReviews: (organizationId: string, params: any, silent?: boolean) => Promise<void>;
-    refreshData: (organizationId: string, params: any) => void;
+    fetchReviews: (organizationId: string, params: FetchReviewsParams, silent?: boolean) => Promise<void>;
+    refreshData: (organizationId: string, params: FetchReviewsParams) => void;
 
     // Modal Actions
     openReview: (review: Review) => void;
@@ -42,10 +42,12 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     isModalOpen: false,
 
     fetchReviews: async (organizationId, params, silent = false) => {
+        if (!organizationId) return;
         if (!silent) set({ loading: true });
         set({ error: null });
 
         try {
+            // Concurrent fetch of main data, stats and metadata options
             const [fetchedReviews, fetchedStats, fetchedOptions] = await Promise.all([
                 reviewsService.getReviews(organizationId, params),
                 reviewsService.getStats(organizationId),
@@ -71,9 +73,9 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
         }
     },
 
-    refreshData: (organizationId: string, params: any) => {
-        reviewsService.clearCache();
-        get().fetchReviews(organizationId, params, false);
+    refreshData: (organizationId: string, params: FetchReviewsParams) => {
+        set({ loading: true });
+        get().fetchReviews(organizationId, params, true);
     },
 
     openReview: (review) => {
