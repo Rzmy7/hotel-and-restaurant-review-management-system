@@ -314,6 +314,23 @@ def public_maintenance_status():
         return {"maintenanceMode": False}
 
 
+@app.get("/api/settings/feature-flags", tags=["Public"])
+def public_feature_flags():
+    """Public endpoint to get active feature flags (no auth required)."""
+    import pyodbc
+    from app.core.db_utils import get_connection_string
+    from app.modules.admin.routes.settings_routes import _load_feature_flags
+    from app.modules.admin.services.system_settings_service import ensure_system_settings_table
+    
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            return _load_feature_flags(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}")
+
+
 @app.get("/which-main", tags=["Debug"])
 def which_main():
     return {"message": "backend/app/main.py is running"}

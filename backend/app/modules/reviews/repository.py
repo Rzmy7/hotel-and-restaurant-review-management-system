@@ -179,7 +179,9 @@ def fetch_all_reviews_enriched(
                         if resp.status_code == 200:
                             data = resp.json()
                             for review in data.get("reviews", []):
-                                matching_review_ids.append(review["id"])
+                                r_id = review.get("review_id") or review.get("id")
+                                if r_id:
+                                    matching_review_ids.append(r_id)
                     except Exception as e:
                         print(f"Embedding search error: {e}")
                 
@@ -223,7 +225,7 @@ def fetch_all_reviews_enriched(
                     # Categories are stored as JSON arrays, e.g., ["Food", "Service"]
                     cat_clauses.append("r.categories LIKE ?")
                     params.append(f'%"{cat}"%')
-                where_clauses.append(f"({' OR '.join(cat_clauses)})")
+                where_clauses.append(f"({' AND '.join(cat_clauses)})")
 
         # Date range
         if filters.get("dateFrom"):
@@ -399,7 +401,9 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Di
                         if resp.status_code == 200:
                             data = resp.json()
                             for review in data.get("reviews", []):
-                                matching_review_ids.append(review["id"])
+                                r_id = review.get("review_id") or review.get("id")
+                                if r_id:
+                                    matching_review_ids.append(r_id)
                     except Exception as e:
                         print(f"Embedding search error: {e}")
                 
@@ -442,7 +446,7 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Di
                 for cat in categories:
                     cat_clauses.append("r.categories LIKE ?")
                     params.append(f'%"{cat}"%')
-                where_clauses.append(f"({' OR '.join(cat_clauses)})")
+                where_clauses.append(f"({' AND '.join(cat_clauses)})")
 
         if filters.get("dateFrom"):
             where_clauses.append("r.reviewDate >= ?")

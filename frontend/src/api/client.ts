@@ -119,7 +119,11 @@ export const apiClient = {
             const searchParams = new URLSearchParams();
             Object.entries(params).forEach(([key, value]) => {
                 if (value !== undefined && value !== null) {
-                    searchParams.append(key, String(value));
+                    if (Array.isArray(value)) {
+                        value.forEach(v => searchParams.append(key, String(v)));
+                    } else {
+                        searchParams.append(key, String(value));
+                    }
                 }
             });
             queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';

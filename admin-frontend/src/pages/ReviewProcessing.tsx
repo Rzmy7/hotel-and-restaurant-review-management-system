@@ -7,6 +7,7 @@ import {
     getGeminiApiKeyConfig,
     saveGeminiApiKey,
     testGeminiApiKey,
+    resumeReviewProcessing,
 } from '../services/reviewProcessingService';
 import type {
     ReviewProcessingStats,
@@ -23,6 +24,7 @@ const defaultStats: ReviewProcessingStats = {
     reviewsProcessed: 0,
     reviewsChange: 0,
     pendingReviews: 0,
+    isPaused: false,
 };
 
 const defaultGeminiConfig: GeminiApiKeyConfig = {
@@ -114,6 +116,16 @@ export const ReviewProcessing: React.FC = () => {
         }
     };
 
+    const handleResumeProcessing = async () => {
+        try {
+            await resumeReviewProcessing();
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to resume review processing:', err);
+            setError('Failed to resume review processing.');
+        }
+    };
+
     const handleSaveGeminiKey = async () => {
         if (geminiSaveState === 'saving') return;
 
@@ -202,6 +214,31 @@ export const ReviewProcessing: React.FC = () => {
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}
+                </div>
+            )}
+
+            {stats.isPaused && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-4 flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                        <div className="text-yellow-600 mt-0.5">
+                            <XCircle size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-yellow-800">Review Processing Paused</h3>
+                            <p className="text-sm text-yellow-700 mt-1">
+                                The system detected that the Gemini API has reached its usage limit or quota.
+                                Review processing has been automatically paused to prevent further errors.
+                                Please update your API key or quota settings, then click below to restart.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleResumeProcessing}
+                        className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors border border-yellow-300"
+                    >
+                        <Play size={16} />
+                        Restart Processing
+                    </button>
                 </div>
             )}
 

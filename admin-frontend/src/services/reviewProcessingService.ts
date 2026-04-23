@@ -9,6 +9,7 @@ export interface ReviewProcessingStats {
     reviewsProcessed: number;
     reviewsChange: number;
     pendingReviews: number;
+    isPaused: boolean;
 }
 
 export interface ReviewProcessingJob {
@@ -34,6 +35,10 @@ export interface GeminiApiKeyConfig {
 
 export const fetchReviewProcessingStats = (): Promise<ReviewProcessingStats> => {
     return apiClient.get<ReviewProcessingStats>('/admin/monitoring/review-processing/stats');
+};
+
+export const resumeReviewProcessing = (): Promise<{ status: string; message: string }> => {
+    return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/resume');
 };
 
 export const fetchReviewProcessingJobs = (): Promise<ReviewProcessingJob[]> => {

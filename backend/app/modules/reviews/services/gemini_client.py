@@ -176,6 +176,17 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 logger.warning("Could not import notification helper to notify admin of Gemini quota issue.")
             except Exception as notify_err:
                 logger.warning(f"Failed to trigger admin notification for Gemini quota: {notify_err}")
+                
+            try:
+                import pyodbc
+                from app.core.db_utils import get_connection_string
+                from app.modules.admin.services.system_settings_service import set_setting
+                with pyodbc.connect(get_connection_string()) as conn:
+                    cursor = conn.cursor()
+                    set_setting(cursor, "review_processing_paused", "true")
+                    conn.commit()
+            except Exception as pause_err:
+                logger.error(f"Failed to pause review processing: {pause_err}")
 
         if response:
             logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")

@@ -39,6 +39,14 @@ async def run_analysis_pipeline():
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
 
+            try:
+                from app.modules.admin.services.system_settings_service import get_setting_bool
+                if get_setting_bool(cursor, "review_processing_paused", default=False):
+                    logger.warning("Review processing is paused due to Gemini API limits. Skipping...")
+                    break
+            except Exception as e:
+                logger.error(f"Failed to check paused setting: {e}")
+
             # 1. Fetch pending reviews
             try:
                 pending_reviews = get_pending_batch(cursor, limit=BATCH_SIZE)

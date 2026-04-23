@@ -329,6 +329,7 @@ class ReviewProcessingStatsResponse(BaseModel):
     reviewsProcessed: int = 0
     reviewsChange: float = 0.0
     pendingReviews: int = 0
+    isPaused: bool = False
 
 
 class ReviewProcessingJobResponse(BaseModel):

@@ -51,13 +51,6 @@ FEATURE_FLAG_DEFINITIONS = {
         "description": "Enable semantic search across reviews and content using vector embeddings",
         "status_key": "feature_flag_content_search_embeddings",
     },
-    "reply_regeneration_limit": {
-        "id": "2",
-        "name": "Reply Regeneration Limit",
-        "description": "Set maximum number of times a reply can be regenerated per review",
-        "status_key": "feature_flag_reply_regeneration_limit",
-        "limit_key": "feature_flag_reply_regeneration_limit_value",
-    },
 }
 
 

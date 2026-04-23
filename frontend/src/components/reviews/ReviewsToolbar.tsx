@@ -162,16 +162,9 @@ const ReviewsToolbar = () => {
                         type="text"
                         placeholder="Search reviews..."
                         value={searchInput}
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            setSearchInput(value);
-
-                            if (!filters.useEmbeddingSearch) {
-                                setSearchQuery(value);
-                            }
-                        }}
+                        onChange={(e) => setSearchInput(e.target.value)}
                         onKeyDown={(e) => {
-                            if (filters.useEmbeddingSearch && e.key === 'Enter') {
+                            if (e.key === 'Enter') {
                                 triggerSearch();
                             }
                         }}
@@ -193,16 +186,14 @@ const ReviewsToolbar = () => {
                     </button>
                 )}
 
-                {isContentSearchEnabled && filters.useEmbeddingSearch && (
-                    <button
-                        type="button"
-                        onClick={triggerSearch}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-wider bg-[#4e80ee] text-white hover:bg-blue-600 transition-colors"
-                    >
-                        <Search size={14} />
-                        Search
-                    </button>
-                )}
+                <button
+                    type="button"
+                    onClick={triggerSearch}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-wider bg-[#4e80ee] text-white hover:bg-blue-600 transition-colors"
+                >
+                    <Search size={14} />
+                    Search
+                </button>
             </div>
 
             {/* Filters */}

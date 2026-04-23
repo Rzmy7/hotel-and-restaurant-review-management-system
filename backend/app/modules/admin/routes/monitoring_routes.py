@@ -330,6 +330,9 @@ def review_processing_stats() -> dict:
             if terminal > 0:
                 success_rate = round((processed / terminal) * 100, 1)
 
+            from app.modules.admin.services.system_settings_service import get_setting_bool
+            is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
+
             return {
                 "activeJobs": pending,
                 "activeJobsChange": 0,
@@ -339,9 +342,30 @@ def review_processing_stats() -> dict:
                 "reviewsProcessed": processed,
                 "reviewsChange": 0,
                 "pendingReviews": pending,
+                "isPaused": is_paused,
             }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing stats: {exc}") from exc
+
+
+@router.post("/review-processing/resume")
+def resume_review_processing() -> dict:
+    """Resumes review processing by unsetting the paused flag."""
+    from app.modules.admin.services.system_settings_service import set_setting
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            set_setting(cursor, "review_processing_paused", "false")
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "Review Processing Resumed",
+            "Review processing was manually resumed after API limit pause",
+        )
+        return {"status": "success", "message": "Review processing resumed."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to resume review processing: {exc}") from exc
 
 
 @router.get("/review-processing/jobs")
