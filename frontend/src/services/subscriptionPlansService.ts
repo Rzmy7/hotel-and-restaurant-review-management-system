@@ -49,12 +49,12 @@ export interface UserOrganizationSummary {
 }
 
 export const fetchSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
-    const plans = await apiClient.get<SubscriptionPlan[]>('/admin/subscription-plans');
+    const plans = await apiClient.get<SubscriptionPlan[]>('/subscription-plans');
     return plans.filter((plan) => plan.isActive);
 };
 
 export const fetchSubscriptionUsage = (userId: string): Promise<SubscriptionUsageSummary> => {
-    return apiClient.get<SubscriptionUsageSummary>(`/admin/subscription-usage/${encodeURIComponent(userId)}`);
+    return apiClient.get<SubscriptionUsageSummary>(`/subscription-usage/${encodeURIComponent(userId)}`);
 };
 
 export const fetchUserOrganizations = (): Promise<UserOrganizationSummary[]> => {

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Canonical database imports — single source of truth
 from app.database.session import Base, engine, get_db
+from app.modules.auth.utils.auth_utils import get_current_user as get_current_user_dep
 
 try:
     from app.core.config import SECRET_KEY, CORS_ORIGINS
@@ -232,6 +233,53 @@ app.include_router(onboarding_router, prefix="/api")
 app.include_router(user_router)  # already declares prefix="/api" internally
 app.include_router(user_org_router)  # already declares prefix="/api" internally
 app.include_router(org_source_router)  # already declares prefix="/api" internally
+
+# ── User-accessible subscription endpoints (not admin-only) ────────
+# These are read-only subscription endpoints needed by the user frontend
+# (settings → Subscription tab). The admin versions still exist behind
+# /api/admin/ for admin CRUD operations.
+
+
+@app.get("/api/subscription-plans", tags=["Subscription"])
+def user_subscription_plans(
+    current_user=Depends(get_current_user_dep),
+):
+    """List active subscription plans (available to any authenticated user)."""
+    import pyodbc
+    from app.core.db_utils import get_connection_string
+    from app.modules.admin.services.subscription_service import get_subscription_plans
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_subscription_plans(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}")
+
+
+@app.get("/api/subscription-usage/{user_id}", tags=["Subscription"])
+def user_subscription_usage(
+    user_id: str,
+    current_user=Depends(get_current_user_dep),
+):
+    """Get subscription usage for the authenticated user."""
+    import pyodbc
+    from app.core.db_utils import get_connection_string
+    from app.modules.admin.services.subscription_service import get_user_subscription_usage
+
+    try:
+        normalized_user_id = user_id.strip()
+        if not normalized_user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_user_subscription_usage(cursor, normalized_user_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load subscription usage: {exc}")
+
 
 # ----------------------
 # Debug / Root Endpoints
