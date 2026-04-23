@@ -382,6 +382,7 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
 @router.patch("/reply-generation", response_model=ReplyGenerationSettingsResponse)
 def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) -> ReplyGenerationSettingsResponse:
     google_api_key = payload.googleApiKey.strip()
+    google_api_key = "".join(c for c in google_api_key if ord(c) < 128)
     selected_model = payload.selectedModel.strip()
     similar_reviews_count = payload.similarReviewsCount
     use_embedding_rules = payload.useEmbeddingRules
@@ -435,6 +436,7 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
 def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> ReplyGenerationApiTestResponse:
     provider = payload.provider.strip().lower()
     api_key = payload.apiKey.strip()
+    api_key = "".join(c for c in api_key if ord(c) < 128)
     model = (payload.model or "").strip()
 
     if provider != "google":

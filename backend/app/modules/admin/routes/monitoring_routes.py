@@ -376,10 +376,10 @@ def review_processing_jobs() -> list[dict]:
             cursor = conn.cursor()
 
             sql = """
-                SELECT TOP 50
+                SELECT 
                     r.source_id,
                     p.platform_name,
-                    o.name AS organization_name,
+                    o.organization_name AS organization_name,
                     r.status,
                     COUNT(*) AS review_count,
                     MIN(r.last_attempt) AS earliest_attempt,
@@ -388,8 +388,10 @@ def review_processing_jobs() -> list[dict]:
                 LEFT JOIN dbo.source s ON r.source_id = s.source_id
                 LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
                 LEFT JOIN dbo.organization o ON s.organization_id = o.organization_id
-                GROUP BY r.source_id, p.platform_name, o.name, r.status
-                ORDER BY MAX(r.last_attempt) DESC
+                GROUP BY r.source_id, p.platform_name, o.organization_name, r.status
+                ORDER BY 
+                    CASE WHEN MAX(r.last_attempt) IS NULL THEN 1 ELSE 0 END DESC, 
+                    MAX(r.last_attempt) DESC
             """
             rows = execute_query(cursor, sql).fetchall()
 
@@ -506,6 +508,7 @@ def save_gemini_config(payload: GeminiApiKeySavePayload) -> dict:
     import app.core.config as app_config
 
     api_key = payload.apiKey.strip()
+    api_key = "".join(c for c in api_key if ord(c) < 128)
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required.")
 
@@ -542,6 +545,7 @@ def test_gemini_config(payload: GeminiApiKeyTestPayload) -> dict:
     )
 
     api_key = payload.apiKey.strip()
+    api_key = "".join(c for c in api_key if ord(c) < 128)
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required.")
 

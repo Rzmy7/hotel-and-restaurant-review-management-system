@@ -41,6 +41,8 @@ export const ReviewProcessing: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Gemini API Key state
     const [geminiConfig, setGeminiConfig] = useState<GeminiApiKeyConfig>(defaultGeminiConfig);
@@ -76,8 +78,11 @@ export const ReviewProcessing: React.FC = () => {
                 }
 
                 const errors: string[] = [];
-                if (statsResult.status === 'rejected' && jobsResult.status === 'rejected') {
-                    errors.push('Review processing service is unreachable (stats and jobs unavailable).');
+                if (statsResult.status === 'rejected') {
+                    errors.push('Failed to load review statistics.');
+                }
+                if (jobsResult.status === 'rejected') {
+                    errors.push('Failed to load processing jobs.');
                 }
                 if (errors.length > 0) setError(errors.join(' | '));
             } catch (err) {
@@ -187,6 +192,9 @@ export const ReviewProcessing: React.FC = () => {
             || job.platform.toLowerCase().includes(query)
         );
     });
+
+    const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
+    const paginatedJobs = filteredJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const formatNumber = (num: number): string => {
         if (num >= 1000) {
@@ -406,7 +414,10 @@ export const ReviewProcessing: React.FC = () => {
                                 type="text"
                                 placeholder="Search Job ID or Org..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                                 className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -439,7 +450,7 @@ export const ReviewProcessing: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredJobs.map(job => (
+                            {paginatedJobs.map(job => (
                                 <tr key={job.id} className="border-b border-gray-100 hover:bg-gray-50">
                                     <td className="py-4 px-4 text-sm font-mono text-gray-500">{job.jobId}</td>
                                     <td className="py-4 px-4">
@@ -495,14 +506,43 @@ export const ReviewProcessing: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Showing {filteredJobs.length} of {jobs.length} jobs</span>
+                    <span className="text-sm text-gray-500">
+                        Showing {filteredJobs.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
+                    </span>
                     <div className="flex items-center gap-1">
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50" disabled>Previous</button>
-                        <button className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium">1</button>
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">2</button>
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">3</button>
-                        <span className="px-2 text-gray-500">...</span>
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">Next</button>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50 hover:bg-gray-50"
+                        >
+                            Previous
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                            .map((p, i, arr) => (
+                                <React.Fragment key={p}>
+                                    {i > 0 && arr[i - 1] !== p - 1 && <span className="px-2 text-gray-500">...</span>}
+                                    <button
+                                        onClick={() => setCurrentPage(p)}
+                                        className={`px-3 py-1.5 border rounded-lg text-sm font-medium ${
+                                            currentPage === p
+                                                ? 'bg-blue-500 text-white border-blue-500'
+                                                : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                </React.Fragment>
+                            ))}
+
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50 hover:bg-gray-50"
+                        >
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>
