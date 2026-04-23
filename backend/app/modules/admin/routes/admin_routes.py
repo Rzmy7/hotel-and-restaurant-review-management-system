@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from app.core.db_utils import (
     execute_query,
     get_connection_string,
+    get_table_columns,
     table_exists,
 )
 from app.modules.admin.schemas import (
@@ -76,7 +77,11 @@ def get_all_sources() -> list[dict]:
                 "SELECT platform_id, platform_name FROM dbo.platform ORDER BY platform_name",
             ).fetchall()
             return [
-                {"platform_id": int(row[0]), "platform_name": str(row[1] or "").strip()}
+                {
+                    "source_id": int(row[0]),
+                    "platform_name": str(row[1] or "").strip(),
+                    "base_url": "",
+                }
                 for row in rows
             ]
     except Exception as exc:
@@ -108,13 +113,13 @@ def get_org_sources(org_id: str) -> list[dict]:
 
             return [
                 {
-                    "source_id": str(row[0]),
-                    "platform_id": int(row[1]),
+                    "organization_source_id": idx,
+                    "source_id": int(row[1]),
                     "platform_name": str(row[2] or "Unknown").strip(),
-                    "source_url": str(row[3]).strip() if row[3] else None,
+                    "external_url": str(row[3]).strip() if row[3] else None,
                     "last_synced_at": str(row[4]) if row[4] else None,
                 }
-                for row in rows
+                for idx, row in enumerate(rows)
             ]
     except HTTPException:
         raise
@@ -130,11 +135,6 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
         raise HTTPException(status_code=400, detail="Organization name cannot be empty")
 
     try:
-        org_id_int = int(org_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="org_id must be numeric")
-
-    try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             if not table_exists(cursor, "organization"):
@@ -143,7 +143,7 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
             row = execute_query(
                 cursor,
                 "SELECT TOP 1 organization_id FROM dbo.organization WHERE organization_id = ?",
-                (org_id_int,),
+                (org_id,),
             ).fetchone()
             if row is None:
                 raise HTTPException(status_code=404, detail="Organization not found")
@@ -153,13 +153,13 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
                 execute_query(
                     cursor,
                     "UPDATE dbo.organization SET organization_name = ?, updated_at = ? WHERE organization_id = ?",
-                    (name, datetime.utcnow(), org_id_int),
+                    (name, datetime.utcnow(), org_id),
                 )
             else:
                 execute_query(
                     cursor,
                     "UPDATE dbo.organization SET organization_name = ? WHERE organization_id = ?",
-                    (name, org_id_int),
+                    (name, org_id),
                 )
             conn.commit()
     except HTTPException:
@@ -224,13 +224,13 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
 
             return [
                 {
-                    "source_id": str(row[0]),
-                    "platform_id": int(row[1]),
+                    "organization_source_id": idx,
+                    "source_id": int(row[1]),
                     "platform_name": str(row[2] or "Unknown").strip(),
-                    "source_url": str(row[3]).strip() if row[3] else None,
+                    "external_url": str(row[3]).strip() if row[3] else None,
                     "last_synced_at": str(row[4]) if row[4] else None,
                 }
-                for row in rows
+                for idx, row in enumerate(rows)
             ]
     except HTTPException:
         raise
@@ -240,12 +240,7 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
 
 @router.delete("/organizations/{org_id}")
 def delete_organization(org_id: str) -> dict:
-    """Deletes an organization and its linked source entries."""
-    try:
-        org_id_int = int(org_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="org_id must be numeric")
-
+    """Deletes an organization and its linked source entries and reviews."""
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
@@ -255,7 +250,7 @@ def delete_organization(org_id: str) -> dict:
             row = execute_query(
                 cursor,
                 "SELECT TOP 1 organization_id, organization_name FROM dbo.organization WHERE organization_id = ?",
-                (org_id_int,),
+                (org_id,),
             ).fetchone()
             if row is None:
                 raise HTTPException(status_code=404, detail="Organization not found")
@@ -263,16 +258,29 @@ def delete_organization(org_id: str) -> dict:
             found_name = str(row[1] or "").strip()
 
             if table_exists(cursor, "source"):
+                # Delete all processed reviews that belong to this org's sources
+                if table_exists(cursor, "processed_review"):
+                    execute_query(
+                        cursor,
+                        """
+                        DELETE FROM dbo.processed_review
+                        WHERE source_id IN (
+                            SELECT source_id FROM dbo.source WHERE organization_id = ?
+                        )
+                        """,
+                        (org_id,),
+                    )
+
                 execute_query(
                     cursor,
                     "DELETE FROM dbo.source WHERE organization_id = ?",
-                    (org_id_int,),
+                    (org_id,),
                 )
 
             execute_query(
                 cursor,
                 "DELETE FROM dbo.organization WHERE organization_id = ?",
-                (org_id_int,),
+                (org_id,),
             )
             conn.commit()
     except HTTPException:

@@ -55,7 +55,18 @@ def _parse_categories(raw) -> list:
     try:
         parsed = json.loads(raw)
         if isinstance(parsed, list):
-            return [str(c) for c in parsed if c]
+            result = []
+            for c in parsed:
+                if not c:
+                    continue
+                # Handle dict items like {"name": "Comfort", "score": 90}
+                if isinstance(c, dict):
+                    name = c.get("name", "")
+                    if name:
+                        result.append(str(name))
+                else:
+                    result.append(str(c))
+            return result
     except Exception:
         pass
     return []

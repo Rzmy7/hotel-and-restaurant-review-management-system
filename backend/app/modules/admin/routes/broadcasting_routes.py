@@ -182,7 +182,11 @@ def get_history() -> list[dict]:
                 broadcast_id, subject, body, channel,
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
-                schedule_type, scheduled_at, sent_at, sent_by, created_at
+                schedule_type,
+                CAST(scheduled_at AS NVARCHAR(50)) AS scheduled_at,
+                CAST(sent_at AS NVARCHAR(50)) AS sent_at,
+                sent_by,
+                CAST(created_at AS NVARCHAR(50)) AS created_at
             FROM dbo.broadcast_event
             ORDER BY created_at DESC
             """
@@ -210,7 +214,11 @@ def get_broadcast_detail(broadcast_id: str) -> dict:
                 broadcast_id, subject, body, channel,
                 audience_type, audience_value, audience_label,
                 message_type, recipient_count, status,
-                schedule_type, scheduled_at, sent_at, sent_by, created_at
+                schedule_type,
+                CAST(scheduled_at AS NVARCHAR(50)) AS scheduled_at,
+                CAST(sent_at AS NVARCHAR(50)) AS sent_at,
+                sent_by,
+                CAST(created_at AS NVARCHAR(50)) AS created_at
             FROM dbo.broadcast_event
             WHERE broadcast_id = ?
             """,

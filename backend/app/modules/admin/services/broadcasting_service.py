@@ -223,7 +223,7 @@ def to_record(row) -> dict:
         "messageType": row.message_type,
         "recipientCount": int(row.recipient_count or 0),
         "status": row.status,
-        "sentAt": sent_at.isoformat() if sent_at else "",
+        "sentAt": (sent_at if isinstance(sent_at, str) else sent_at.isoformat()) if sent_at else "",
         "sentBy": row.sent_by or "Admin User",
     }
 

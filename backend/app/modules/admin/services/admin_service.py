@@ -437,8 +437,6 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
     user_id = str(uuid.uuid4())
     now = datetime.utcnow()
 
-    name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
-
     insert_fields = ["user_id", "email"]
     insert_values: list[object] = [user_id, email]
 
@@ -447,9 +445,19 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
         insert_values.append(hash_password(payload.password))
     else:
         raise HTTPException(status_code=400, detail="Table dbo.users must include password_hash to create admin accounts.")
-    if name_column:
-        insert_fields.append(name_column)
-        insert_values.append(name or None)
+
+    # Handle name storage: prefer first_name/last_name split, fall back to single column
+    if "first_name" in columns and "last_name" in columns:
+        name_parts = name.split(" ", 1) if name else [""]
+        insert_fields.append("first_name")
+        insert_values.append(name_parts[0] or None)
+        insert_fields.append("last_name")
+        insert_values.append(name_parts[1] if len(name_parts) > 1 else None)
+    else:
+        name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
+        if name_column:
+            insert_fields.append(name_column)
+            insert_values.append(name or None)
     if "phone" in columns:
         insert_fields.append("phone")
         insert_values.append(None)
@@ -554,10 +562,24 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
         set_clauses.append("email = ?")
         params.append(next_email)
 
-    name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
-    if name_column:
-        set_clauses.append(f"[{name_column}] = ?")
-        params.append(next_name)
+    # Handle name update: prefer first_name/last_name split, fall back to single column
+    if "first_name" in columns and "last_name" in columns:
+        if next_name:
+            name_parts = next_name.split(" ", 1)
+            set_clauses.append("first_name = ?")
+            params.append(name_parts[0])
+            set_clauses.append("last_name = ?")
+            params.append(name_parts[1] if len(name_parts) > 1 else None)
+        else:
+            set_clauses.append("first_name = ?")
+            params.append(None)
+            set_clauses.append("last_name = ?")
+            params.append(None)
+    else:
+        name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
+        if name_column:
+            set_clauses.append(f"[{name_column}] = ?")
+            params.append(next_name)
 
     if "is_active" in columns:
         set_clauses.append("is_active = ?")
