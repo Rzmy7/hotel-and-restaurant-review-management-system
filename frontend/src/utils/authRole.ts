@@ -13,8 +13,18 @@ export const normalizeRole = (value: unknown): string => {
 const ADMIN_ROLES = new Set(['ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN']);
 
 const getAdminPanelUrl = (): string => {
-    const configured = localStorage.getItem('adminPanelUrl') || 'http://localhost:4000';
-    return configured.replace(/\/$/, '');
+    const configured = localStorage.getItem('adminPanelUrl') || 'http://localhost:5174';
+    const base = configured.replace(/\/$/, '');
+    const token = localStorage.getItem('token');
+    const authUser = localStorage.getItem('authUser');
+    
+    if (token) {
+        const params = new URLSearchParams();
+        params.set('token', token);
+        if (authUser) params.set('user', authUser);
+        return `${base}?${params.toString()}`;
+    }
+    return base;
 };
 
 export const isAdminRole = (value: unknown): boolean => ADMIN_ROLES.has(normalizeRole(value));

@@ -14,7 +14,53 @@ import { Broadcasting } from './pages/Broadcasting';
 import { ReplyGeneration } from './pages/ReplyGeneration';
 import { ReviewProcessing } from './pages/ReviewProcessing';
 
+import { useEffect, useState } from 'react';
+
+const USER_FRONTEND_LOGIN = 'http://localhost:5173/login';
+
 function App() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // --- Token handoff: read token from URL (sent by user-frontend) ---
+    const params = new URLSearchParams(window.location.search);
+    let token = params.get('token');
+    let urlUser = params.get('user');
+    
+    if (token) {
+      localStorage.setItem('token', token);
+      if (urlUser) {
+        localStorage.setItem('authUser', urlUser);
+      }
+      
+      // Clean the token and user from the URL without a reload
+      params.delete('token');
+      params.delete('user');
+      const cleanUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    } else {
+      token = localStorage.getItem('token');
+    }
+
+    // --- Auth guard: redirect to user-frontend login if no token ---
+    if (!token) {
+      window.location.href = USER_FRONTEND_LOGIN;
+      return;
+    }
+
+    setReady(true);
+  }, []);
+
+  if (!ready) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f9fafb' }}>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Authenticating...</p>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>

@@ -131,19 +131,25 @@ def _load_primary_admin_row(cursor: pyodbc.Cursor) -> tuple:
     if "role_id" not in columns:
         raise HTTPException(status_code=400, detail="Table dbo.[user] must include role_id for admin profile operations")
 
+    def _col(name: str) -> str:
+        return f"[{name}]" if name.lower() in columns else "NULL"
+
+    select_clause = f"user_id, email, {_col('first_name')}, {_col('last_name')}, {_col('full_name')}, {_col('name')}, {_col('username')}, {_col('display_name')}, {_col('password_hash')}"
+    order_clause = "ORDER BY created_at ASC" if "created_at" in columns else ""
+
     if "is_active" in columns:
         query = (
-            "SELECT TOP 1 user_id, email, first_name, last_name, full_name, [name], username, display_name, password_hash "
+            f"SELECT TOP 1 {select_clause} "
             "FROM dbo.[user] "
             "WHERE role_id = ? AND COALESCE(is_active, 0) = 1 "
-            "ORDER BY created_at ASC"
+            f"{order_clause}"
         )
     else:
         query = (
-            "SELECT TOP 1 user_id, email, first_name, last_name, full_name, [name], username, display_name, password_hash "
+            f"SELECT TOP 1 {select_clause} "
             "FROM dbo.[user] "
             "WHERE role_id = ? "
-            "ORDER BY created_at ASC"
+            f"{order_clause}"
         )
 
     row = execute_query(cursor, query, (ADMIN_ROLE_ID,)).fetchone()
@@ -321,7 +327,7 @@ def change_admin_password(payload: AdminPasswordChangePayload) -> AdminPasswordC
                 raise HTTPException(status_code=400, detail="Password login is not available for this admin account")
 
             if not verify_password(payload.currentPassword, password_hash):
-                raise HTTPException(status_code=401, detail="Current password is incorrect")
+                raise HTTPException(status_code=400, detail="Current password is incorrect")
 
             next_hash = hash_password(payload.newPassword)
             execute_query(

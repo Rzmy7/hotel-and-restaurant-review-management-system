@@ -36,6 +36,20 @@ const LoginPage = () => {
   const auth = useAuth();
 
   useEffect(() => {
+    if (searchParams.get('logout') === 'true' || searchParams.get('expired') === 'true') {
+      localStorage.clear();
+      
+      if (auth.user) {
+        auth.logout();
+      } else {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('logout');
+        newParams.delete('expired');
+        setSearchParams(newParams, { replace: true });
+      }
+      return;
+    }
+
     if (auth.user) {
       const destination = getDashboardPathForRole(auth.user.role);
       if (isExternalDestination(destination)) {
@@ -44,7 +58,7 @@ const LoginPage = () => {
       }
       navigate(destination);
     }
-  }, [auth.user, navigate]);
+  }, [auth.user, navigate, searchParams, setSearchParams, auth]);
 
   const setFieldError = (field: LoginField, message: string | null) => {
     setFieldErrors((prev: LoginFieldErrors) => {

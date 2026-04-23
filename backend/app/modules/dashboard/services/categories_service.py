@@ -209,7 +209,7 @@ def get_category_performance(cursor, org_id: str, period_days: int = 0) -> list:
             {
                 "name": cat,
                 "score": score,
-                "count": count,
+                "count": total,
                 "icon": _resolve_icon(cat),
                 "trend": trend_str,
                 "trendType": trend_type,

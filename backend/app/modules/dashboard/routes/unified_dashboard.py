@@ -75,7 +75,7 @@ def get_unified_dashboard(org_id: str, period: int = 0, user=Depends(get_current
                     {
                         "id": str(r["id"]),
                         "reviewerName": r["userName"],
-                        "title": (r.get("text") or "No review text")[:80]
+                        "heading": (r.get("text") or "No review text")[:80]
                         + ("..." if len(r.get("text") or "") > 80 else ""),
                         "source": r["source"],
                         "sentiment": r["sentiment"],

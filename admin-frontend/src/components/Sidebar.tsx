@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -15,6 +15,7 @@ import {
   Megaphone,
   MessageSquareText,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -33,6 +34,44 @@ export const Sidebar: React.FC = () => {
     { to: '/review-processing', icon: Sparkles, label: 'Review Processing' },
     { to: '/settings', icon: SettingsIcon, label: 'Admin Setting' },
   ];
+
+  const [userProfile, setUserProfile] = useState<{name: string, email: string, initials: string}>({
+    name: 'Admin User',
+    email: 'admin@company.com',
+    initials: 'AD'
+  });
+  const [showLogout, setShowLogout] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('authUser');
+    if (storedUser) {
+      try {
+        const payload = JSON.parse(storedUser);
+        const name = payload.full_name || payload.name || 'Admin User';
+        const email = payload.email || 'admin@company.com';
+        
+        let initials = 'AD';
+        if (name) {
+          const parts = name.split(' ');
+          if (parts.length >= 2) {
+            initials = (parts[0][0] + parts[1][0]).toUpperCase();
+          } else {
+            initials = name.substring(0, 2).toUpperCase();
+          }
+        }
+        
+        setUserProfile({ name, email, initials });
+      } catch (e) {
+        console.error("Failed to parse authUser in sidebar", e);
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('authUser');
+    window.location.href = 'http://localhost:5173/login?logout=true';
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm">
@@ -69,14 +108,30 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* User Profile */}
-      <div className="px-3 py-4 border-t border-gray-100 bg-gray-50/50">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white transition-colors cursor-pointer">
+      <div className="px-3 py-4 border-t border-gray-100 bg-gray-50/50 relative">
+        {showLogout && (
+          <div className="absolute bottom-full left-0 w-full px-3 mb-2">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-2 animate-in fade-in slide-in-from-bottom-2">
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+              >
+                <LogOut size={16} />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        )}
+        <div 
+          onClick={() => setShowLogout(!showLogout)}
+          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white transition-colors cursor-pointer relative"
+        >
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-md">
-            AD
+            {userProfile.initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-900 truncate">Admin User</div>
-            <div className="text-xs text-gray-500 truncate">admin@company.com</div>
+            <div className="text-sm font-semibold text-gray-900 truncate">{userProfile.name}</div>
+            <div className="text-xs text-gray-500 truncate">{userProfile.email}</div>
           </div>
         </div>
       </div>

@@ -33,11 +33,9 @@ const getFullUrl = (url: string) => {
 
 async function handleResponse(response: Response) {
     if (response.status === 401) {
-        console.warn("Unauthorized! Redirecting...");
+        console.warn("Unauthorized! Redirecting to login...");
         localStorage.removeItem("token");
-        if (window.location.pathname !== "/login") {
-            window.location.href = "/login?expired=true";
-        }
+        window.location.href = "http://localhost:5173/login?expired=true";
         throw new Error("Session expired.");
     }
 

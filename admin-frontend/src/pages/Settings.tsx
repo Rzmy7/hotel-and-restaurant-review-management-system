@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save } from 'lucide-react';
+import { Save, X, KeyRound } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
@@ -63,6 +63,10 @@ export const Settings: React.FC = () => {
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [adminProfileSaveState, setAdminProfileSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [adminProfileError, setAdminProfileError] = useState<string | null>(null);
+
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
+    const [passwordModalSaveState, setPasswordModalSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
     useEffect(() => {
         const loadData = async () => {
@@ -179,26 +183,6 @@ export const Settings: React.FC = () => {
             return;
         }
 
-        if (newPassword || confirmNewPassword || currentPassword) {
-            if (!currentPassword) {
-                setAdminProfileSaveState('error');
-                setAdminProfileError('Current password is required to change password.');
-                return;
-            }
-
-            if (newPassword.length < 8) {
-                setAdminProfileSaveState('error');
-                setAdminProfileError('New password must be at least 8 characters.');
-                return;
-            }
-
-            if (newPassword !== confirmNewPassword) {
-                setAdminProfileSaveState('error');
-                setAdminProfileError('New password and confirm password do not match.');
-                return;
-            }
-        }
-
         setAdminProfileSaveState('saving');
 
         try {
@@ -206,17 +190,7 @@ export const Settings: React.FC = () => {
                 name: adminProfileName.trim(),
             });
 
-            if (newPassword) {
-                await settingsService.changeAdminPassword({
-                    currentPassword,
-                    newPassword,
-                });
-            }
-
             setAdminProfileName(updated.name);
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmNewPassword('');
             setAdminProfileSaveState('saved');
             window.setTimeout(() => setAdminProfileSaveState('idle'), 2500);
         } catch (error) {
@@ -225,6 +199,50 @@ export const Settings: React.FC = () => {
                 error instanceof Error
                     ? error.message
                     : 'Failed to save admin profile. Please try again.',
+            );
+        }
+    };
+
+    const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordModalError(null);
+
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+            setPasswordModalSaveState('error');
+            setPasswordModalError('All fields are required.');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            setPasswordModalSaveState('error');
+            setPasswordModalError('New password must be at least 8 characters.');
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            setPasswordModalSaveState('error');
+            setPasswordModalError('New password and confirm password do not match.');
+            return;
+        }
+
+        setPasswordModalSaveState('saving');
+        try {
+            await settingsService.changeAdminPassword({
+                currentPassword,
+                newPassword,
+            });
+            setPasswordModalSaveState('saved');
+            setTimeout(() => {
+                setIsPasswordModalOpen(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmNewPassword('');
+                setPasswordModalSaveState('idle');
+            }, 1500);
+        } catch (error) {
+            setPasswordModalSaveState('error');
+            setPasswordModalError(
+                error instanceof Error ? error.message : 'Failed to change password.'
             );
         }
     };
@@ -509,49 +527,19 @@ export const Settings: React.FC = () => {
 
                             <div className="border-t border-gray-100"></div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
-                                    <input
-                                        type="password"
-                                        value={currentPassword}
-                                        onChange={(event) => {
-                                            setCurrentPassword(event.target.value);
-                                            setAdminProfileError(null);
-                                            setAdminProfileSaveState('idle');
-                                        }}
-                                        placeholder="Enter current password"
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
+                                    <h3 className="text-sm font-semibold text-gray-900">Admin Password</h3>
+                                    <p className="text-sm text-gray-500">Change your administrator account password</p>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
-                                    <input
-                                        type="password"
-                                        value={newPassword}
-                                        onChange={(event) => {
-                                            setNewPassword(event.target.value);
-                                            setAdminProfileError(null);
-                                            setAdminProfileSaveState('idle');
-                                        }}
-                                        placeholder="At least 8 characters"
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
-                                    <input
-                                        type="password"
-                                        value={confirmNewPassword}
-                                        onChange={(event) => {
-                                            setConfirmNewPassword(event.target.value);
-                                            setAdminProfileError(null);
-                                            setAdminProfileSaveState('idle');
-                                        }}
-                                        placeholder="Re-enter new password"
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPasswordModalOpen(true)}
+                                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <KeyRound size={16} />
+                                    Change Password
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -572,6 +560,93 @@ export const Settings: React.FC = () => {
                             <Save size={16} />
                             {adminProfileSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
                         </button>
+                    </div>
+                </div>
+            )}
+            {isPasswordModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-lg font-bold text-gray-900">Change Password</h3>
+                            <button
+                                onClick={() => setIsPasswordModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4">
+                            {(passwordModalSaveState === 'error' && passwordModalError) && (
+                                <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-100">
+                                    {passwordModalError}
+                                </div>
+                            )}
+                            {passwordModalSaveState === 'saved' && (
+                                <div className="p-3 bg-green-50 text-green-600 text-sm font-medium rounded-lg border border-green-100">
+                                    Password changed successfully!
+                                </div>
+                            )}
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
+                                <input
+                                    type="password"
+                                    value={currentPassword}
+                                    onChange={(e) => {
+                                        setCurrentPassword(e.target.value);
+                                        setPasswordModalError(null);
+                                        setPasswordModalSaveState('idle');
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => {
+                                        setNewPassword(e.target.value);
+                                        setPasswordModalError(null);
+                                        setPasswordModalSaveState('idle');
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    placeholder="At least 8 characters"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
+                                <input
+                                    type="password"
+                                    value={confirmNewPassword}
+                                    onChange={(e) => {
+                                        setConfirmNewPassword(e.target.value);
+                                        setPasswordModalError(null);
+                                        setPasswordModalSaveState('idle');
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPasswordModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={passwordModalSaveState === 'saving'}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {passwordModalSaveState === 'saving' ? 'Saving...' : 'Update Password'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
