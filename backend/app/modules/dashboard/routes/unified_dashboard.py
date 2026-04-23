@@ -7,8 +7,10 @@ from app.modules.dashboard.services.activity_service import (
     get_activities,
     get_sentiment_counts,
 )
+=======
 from fastapi import APIRouter, Depends, HTTPException
 from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_sentiment_counts
+>>>>>>> Stashed changes
 from app.modules.dashboard.services.trends_service import get_usage, get_recent_reviews
 from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
 from app.modules.dashboard.services.charts_service import (
@@ -27,7 +29,6 @@ router = APIRouter()
 
 
 @router.get("/organizations/{org_id}/dashboard")
-def get_unified_dashboard(org_id: str, period: int = 0):
 def get_unified_dashboard(org_id: str, period: int = 0, user=Depends(get_current_user)):
     """
     Returns a unified dashboard response matching the frontend DashboardResponse interface.
