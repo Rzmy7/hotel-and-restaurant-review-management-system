@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
+from app.core.dependencies import get_optional_user
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.modules.reviews.schemas import (
     ReviewModel,
@@ -43,9 +44,42 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 
+def _resolve_org_id(user, organization_id_param):
+    """Resolve organization_id: prefer JWT, fall back to query param with ownership check."""
+    jwt_org_id = user.organization_id if hasattr(user, 'organization_id') else (
+        user.get("organization_id") if isinstance(user, dict) else None
+    )
+    if jwt_org_id:
+        return str(jwt_org_id)
+    if organization_id_param:
+        # Verify the user owns this organization
+        user_id = user.user_id if hasattr(user, 'user_id') else (
+            user.get("user_id") if isinstance(user, dict) else None
+        )
+        if user_id:
+            try:
+                with pyodbc.connect(get_connection_string()) as conn:
+                    cursor = conn.cursor()
+                    row = cursor.execute(
+                        "SELECT TOP 1 1 FROM dbo.organization WHERE organization_id = ? AND tenant_id = ?",
+                        (str(organization_id_param), str(user_id)),
+                    ).fetchone()
+                    if not row:
+                        raise HTTPException(
+                            status_code=403,
+                            detail="You do not have access to this organization.",
+                        )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"Org ownership check failed: {e}")
+        return str(organization_id_param)
+    raise HTTPException(status_code=400, detail="organization_id is required.")
+
+
 @router.get("/", response_model=PaginatedReviewResponse)
 def read_reviews(
-    organization_id: uuid.UUID = Query(...),
+    organization_id: Optional[uuid.UUID] = Query(None),
     page: int = Query(0, ge=0),
     limit: int = Query(15, gt=0),
     search: Optional[str] = Query(None),
@@ -56,9 +90,11 @@ def read_reviews(
     category: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
+    current_user=Depends(get_current_user),
 ):
     """Fetch processed reviews with pagination and filtering."""
     try:
+        resolved_org_id = _resolve_org_id(current_user, organization_id)
         filters = {
             "search": search,
             "embedding_search": embedding_search,
@@ -70,7 +106,7 @@ def read_reviews(
             "dateTo": dateTo,
         }
         result = get_all_reviews_from_db(
-            str(organization_id), page=page, limit=limit, filters=filters
+            resolved_org_id, page=page, limit=limit, filters=filters
         )
 
         # Calculate total pages
@@ -84,16 +120,24 @@ def read_reviews(
             "limit": limit,
             "totalPages": total_pages,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Read reviews error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
 @router.get("/meta/options")
-def get_options(organization_id: uuid.UUID = Query(...)):
+def get_options(
+    organization_id: Optional[uuid.UUID] = Query(None),
+    current_user=Depends(get_current_user),
+):
     """Fetch available filter options (sources, categories)."""
     try:
-        return get_review_options(str(organization_id))
+        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        return get_review_options(resolved_org_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to fetch options: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch filter options.")
@@ -101,7 +145,7 @@ def get_options(organization_id: uuid.UUID = Query(...)):
 
 @router.get("/meta/stats")
 def get_stats(
-    organization_id: uuid.UUID = Query(...),
+    organization_id: Optional[uuid.UUID] = Query(None),
     search: Optional[str] = Query(None),
     embedding_search: bool = Query(False),
     rating: List[int] = Query(None),
@@ -110,9 +154,11 @@ def get_stats(
     category: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
+    current_user=Depends(get_current_user),
 ):
     """Fetch aggregated review statistics, respecting all active filters."""
     try:
+        resolved_org_id = _resolve_org_id(current_user, organization_id)
         filters = {
             "search": search,
             "embedding_search": embedding_search,
@@ -123,7 +169,9 @@ def get_stats(
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
-        return get_review_stats(str(organization_id), filters=filters)
+        return get_review_stats(resolved_org_id, filters=filters)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to fetch stats: {e}")
         raise HTTPException(
@@ -132,35 +180,52 @@ def get_stats(
 
 
 @router.get("/meta/distribution")
-def get_distribution_details(organization_id: uuid.UUID = Query(...)):
+def get_distribution_details(
+    organization_id: Optional[uuid.UUID] = Query(None),
+    current_user=Depends(get_current_user),
+):
     """Fetch the full rating distribution broken down by source platform."""
     try:
-        return get_full_distribution(str(organization_id))
+        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        return get_full_distribution(resolved_org_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to fetch distribution: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch distribution data.")
 
 
 @router.get("/{organization_id}", response_model=List[ReviewModel], deprecated=True)
-def read_reviews_legacy(organization_id: uuid.UUID):
+def read_reviews_legacy(organization_id: uuid.UUID, current_user=Depends(get_current_user)):
     """Legacy endpoint for fetching reviews. Use GET / instead."""
     try:
-        result = get_all_reviews_from_db(str(organization_id))
+        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        result = get_all_reviews_from_db(resolved_org_id)
         return result["data"]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Read reviews error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
 @router.post("/trigger/{source_id}")
-async def trigger_review_sync(source_id: uuid.UUID, background_tasks: BackgroundTasks):
+async def trigger_review_sync(
+    source_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    current_user=Depends(get_optional_user),
+):
     """Manually trigger the full ingestion and processing flow for a source."""
     background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
     return {"message": "Processing flow started in background."}
 
 
 @router.post("/ingest/{source_id}")
-async def trigger_ingest_only(source_id: uuid.UUID, db: Session = Depends(get_db)):
+async def trigger_ingest_only(
+    source_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_optional_user),
+):
     """
     Triggers only the ingestion of reviews from the scraper engine.
     Reviews are saved with 'pending' status. AI analysis is NOT triggered.
@@ -187,7 +252,7 @@ async def trigger_ingest_only(source_id: uuid.UUID, db: Session = Depends(get_db
 
 
 @router.get("/meta/count")
-def get_total_review_count():
+def get_total_review_count(current_user=Depends(get_optional_user)):
     """Returns the total number of reviews across the entire platform."""
     try:
         count = count_all_reviews()
@@ -197,7 +262,10 @@ def get_total_review_count():
 
 
 @router.get("/processing/status")
-def get_processing_status(organization_id: uuid.UUID = Query(None)):
+def get_processing_status(
+    organization_id: uuid.UUID = Query(None),
+    current_user=Depends(get_optional_user),
+):
     """
     Get the current processing status of reviews.
     Optional organization_id filter.
@@ -212,7 +280,10 @@ def get_processing_status(organization_id: uuid.UUID = Query(None)):
 
 
 @router.post("/process/{review_id}")
-async def trigger_single_review_processing(review_id: uuid.UUID):
+async def trigger_single_review_processing(
+    review_id: uuid.UUID,
+    current_user=Depends(get_optional_user),
+):
     """
     Manually trigger AI analysis for a specific review.
     This will analyze/re-analyze the review and update its analytical columns.

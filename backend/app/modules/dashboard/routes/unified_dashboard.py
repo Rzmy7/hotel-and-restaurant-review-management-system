@@ -1,4 +1,5 @@
 """Unified dashboard route — aggregating stats, activities, and trends."""
+<<<<<<< Updated upstream
 
 from fastapi import APIRouter, HTTPException
 from app.modules.dashboard.services.activity_service import (
@@ -6,6 +7,8 @@ from app.modules.dashboard.services.activity_service import (
     get_activities,
     get_sentiment_counts,
 )
+from fastapi import APIRouter, Depends, HTTPException
+from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_sentiment_counts
 from app.modules.dashboard.services.trends_service import get_usage, get_recent_reviews
 from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
 from app.modules.dashboard.services.charts_service import (
@@ -16,6 +19,7 @@ from app.modules.dashboard.services.charts_service import (
 from app.modules.dashboard.services.categories_service import get_category_performance
 from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 from app.core.pyodbc_connection import get_connection_string
+from app.modules.auth.utils.auth_utils import get_current_user
 import pyodbc
 import uuid
 
@@ -24,6 +28,7 @@ router = APIRouter()
 
 @router.get("/organizations/{org_id}/dashboard")
 def get_unified_dashboard(org_id: str, period: int = 0):
+def get_unified_dashboard(org_id: str, period: int = 0, user=Depends(get_current_user)):
     """
     Returns a unified dashboard response matching the frontend DashboardResponse interface.
     """

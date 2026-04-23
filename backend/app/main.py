@@ -243,6 +243,29 @@ async def root():
     return {"message": "API is online", "status": "healthy"}
 
 
+@app.get("/api/maintenance/status", tags=["Public"])
+def public_maintenance_status():
+    """Public endpoint to check if maintenance mode is active (no auth required)."""
+    import pyodbc
+    from app.core.db_utils import get_connection_string
+    from app.modules.admin.services.system_settings_service import (
+        get_setting,
+        ensure_system_settings_table,
+    )
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            value = get_setting(cursor, "maintenance_mode")
+            maintenance = bool(
+                value and value.strip().lower() in {"1", "true", "yes", "on"}
+            )
+            return {"maintenanceMode": maintenance}
+    except Exception:
+        return {"maintenanceMode": False}
+
+
 @app.get("/which-main", tags=["Debug"])
 def which_main():
     return {"message": "backend/app/main.py is running"}

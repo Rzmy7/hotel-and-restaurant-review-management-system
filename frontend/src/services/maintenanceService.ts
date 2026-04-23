@@ -7,6 +7,6 @@ export interface MaintenanceStatusResponse {
 export const maintenanceService = {
     async getStatus(): Promise<MaintenanceStatusResponse> {
         // apiClient will handle the /api prefix and base URL automatically
-        return apiClient.get<MaintenanceStatusResponse>('/admin/maintenance/status');
+        return apiClient.get<MaintenanceStatusResponse>('/maintenance/status');
     },
 };

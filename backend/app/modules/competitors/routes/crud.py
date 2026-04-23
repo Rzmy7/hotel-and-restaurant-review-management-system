@@ -38,7 +38,7 @@ def _get_user_org_id(user, db: Session) -> str | None:
 
 
 @router.get("/")
-def list_competitors():
+def list_competitors(current_user=Depends(get_current_user)):
     try:
         return {"tracked": get_tracked_competitors(), "available": get_available_competitors()}
     except Exception as e:
