@@ -1,16 +1,6 @@
 """Unified dashboard route — aggregating stats, activities, and trends."""
-<<<<<<< Updated upstream
-
-from fastapi import APIRouter, HTTPException
-from app.modules.dashboard.services.activity_service import (
-    get_alerts,
-    get_activities,
-    get_sentiment_counts,
-)
-=======
 from fastapi import APIRouter, Depends, HTTPException
 from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_sentiment_counts
->>>>>>> Stashed changes
 from app.modules.dashboard.services.trends_service import get_usage, get_recent_reviews
 from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
 from app.modules.dashboard.services.charts_service import (
