@@ -44,14 +44,14 @@ class SourceService:
         notify_backend_sync_status(source_id, status, new_review_count, error_message)
 
     @staticmethod
-    def finalize_and_replicate(url: str, primary_source_id: str, reviews: list, save_db_func, deduplicator_func=None):
+    def finalize_and_replicate(url: str, primary_source_id: str, reviews: list, save_db_func, deduplicator_func=None, leftover_reviews: list = None):
         """
-        Saves reviews for the primary source, replicates to all companion sources,
+        Saves reviews for the primary source (handling leftovers), replicates to all companion sources,
         performs deduplication for each, and notifies the backend of completion.
         """
-        if not reviews:
+        if not reviews and not leftover_reviews:
             # Notify everyone of zero results
-            StatusService.broadcast_completed_no_data(url)
+            SourceService.broadcast_completed_no_data(url)
             return
 
         session = get_session()
@@ -68,7 +68,19 @@ class SourceService:
                     notify_backend_sync_status(sid, "VERIFY_DUPLICATION")
                     
                     # Save DB rows
-                    save_db_func(reviews, sid)
+                    if sid == primary_source_id:
+                        # For the primary source, only save the leftovers (batching handles the rest)
+                        # If leftover_reviews is None, we default to saving the full list (backwards compatibility)
+                        to_save = leftover_reviews if leftover_reviews is not None else reviews
+                        if to_save:
+                            logger.info(f"Saving {len(to_save)} leftover reviews for primary source {sid}")
+                            save_db_func(to_save, sid)
+                        else:
+                            logger.info(f"No leftovers to save for primary source {sid}")
+                    else:
+                        # For companion sources, save the full set as they weren't part of the batch scrape
+                        logger.info(f"Replicating {len(reviews)} reviews to companion source {sid}")
+                        save_db_func(reviews, sid)
                     
                     # Save JSON backup
                     save_to_json(reviews, sid)
@@ -78,9 +90,12 @@ class SourceService:
                     new_count = 0
                     try:
                         if deduplicator_func:
-                            deduplicator_func(sub_session, sid)
+                            logger.info(f"Running deduplication for source {sid}...")
+                            removed = deduplicator_func(sub_session, sid)
+                            sub_session.commit()  # CRITICAL: Commit the deduplication removals
+                            logger.info(f"Deduplication complete. Removed {removed} duplicates.")
                         
-                        # Identify new reviews
+                        # Identify new reviews (total unique reviews for this run)
                         new_count, _ = identify_new_reviews(sub_session, sid, reviews)
                     finally:
                         sub_session.close()

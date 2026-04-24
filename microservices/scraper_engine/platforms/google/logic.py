@@ -502,21 +502,31 @@ def scrape_google(
         extractor = GoogleExtractor(page)
         extracted = extractor.extract_reviews()
 
-        # Deduplicate
+        # Deduplicate and prepare for batch saving
+        current_batch = []
         for r in extracted:
             if r.id not in seen_ids:
                 seen_ids.add(r.id)
                 all_reviews.append(r)
+                current_batch.append(r)
+                
+                # Save in batches of 20 during the processing phase
+                if len(current_batch) >= 20:
+                    logger.info(f"Batch threshold reached. Saving {len(current_batch)} Google reviews to database.")
+                    verified_count = save_reviews_to_db(current_batch, source_id)
+                    logger.info(f"Verified {verified_count}/{len(current_batch)} Google reviews successfully persisted.")
+                    current_batch = []
 
-        logger.info(f"Extracted {len(all_reviews)} unique reviews from DOM.")
+        logger.info(f"Extracted {len(all_reviews)} unique reviews from DOM. Leftovers to finalize: {len(current_batch)}")
 
-        # Centralized Finalization & Replication (handles storage, deduplication, and completion callbacks)
+        # Centralized Finalization & Replication
         SourceService.finalize_and_replicate(
             url=url,
             primary_source_id=str(source_id),
             reviews=all_reviews,
             save_db_func=save_reviews_to_db,
             deduplicator_func=clean_google_duplicates,
+            leftover_reviews=current_batch
         )
 
         if job_id:

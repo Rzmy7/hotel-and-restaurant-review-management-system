@@ -323,7 +323,8 @@ def scrape_agoda(
                     logger.info(
                         f"Batch threshold reached. Saving {len(to_save)} reviews to database."
                     )
-                    save_reviews_to_db(to_save, source_id)
+                    verified_count = save_reviews_to_db(to_save, source_id)
+                    logger.info(f"Verified {verified_count}/{len(to_save)} Agoda reviews successfully persisted.")
 
             if current_page < end_page:
                 target_page = current_page + 1
@@ -384,6 +385,7 @@ def scrape_agoda(
             reviews=cumulative_reviews,
             save_db_func=save_reviews_to_db,
             deduplicator_func=clean_agoda_duplicates,
+            leftover_reviews=all_reviews
         )
 
         if job_id:

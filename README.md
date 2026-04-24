@@ -113,8 +113,10 @@ hotel-and-restaurant-review-management-system/
 - **📦 Batch Processing**: High-performance embedding generation
 - **🐳 Dockerized**: Ready for containerized deployment
 
-### Scraper Engine
+- **Scraper Engine**
 - **🌍 Multi-Platform**: Agoda, Booking.com, Google Maps, TripAdvisor
+- **🛡️ High Reliability**: Individual review savepoints with a 3-attempt retry logic
+- **🚀 Verified Batching**: Real-time progress updates and crash resilience
 - **🔗 Unified API**: Consistent data format across all sources
 - **📝 Audit Logging**: System-wide API call tracking
 - **📣 Callback Mechanism**: Automatic backend notification on completion
@@ -294,6 +296,8 @@ Comprehensive system documentation is available in the **[docs](docs/README.md)*
 | `/api/google/scrape` | POST | Trigger Google scrape |
 | `/api/tripadvisor/scrape` | POST | Trigger TripAdvisor scrape |
 | `/api/reviews` | GET | Query reviews |
+| `/api/sources/{id}/cleanup` | POST | Trigger deep trait-based deduplication |
+| `/api/sources/{id}/integrity` | GET | Detailed database health & consistency report |
 | `/api/system/health` | GET | Health check |
 | `/api/db/stats` | GET | Database statistics |
 

@@ -238,7 +238,15 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             # Save batch immediately per extraction
             if new_reviews:
                 logger.info(f"Saving batch of {len(new_reviews)} reviews to database...")
-                save_reviews_to_db(new_reviews, source_id)
+                verified_count = save_reviews_to_db(new_reviews, source_id)
+                logger.info(f"Verified {verified_count}/{len(new_reviews)} TripAdvisor reviews successfully persisted.")
+                
+                # In TripAdvisor, we save page-by-page. 
+                # So we consider everything saved as "not leftover".
+                # But to keep it safe, we'll clear the 'all_reviews' list for the finalization 
+                # and only pass what wasn't saved.
+                # Actually, TripAdvisor logic is simpler: it saves 'new_reviews' per page.
+                # So leftovers would be empty if everything is saved here.
 
             # Pagination check
             if effective_end and current_offset + REVIEWS_PER_PAGE >= effective_end:
@@ -264,7 +272,8 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             primary_source_id=str(source_id),
             reviews=all_reviews,
             save_db_func=save_reviews_to_db,
-            deduplicator_func=clean_tripadvisor_duplicates
+            deduplicator_func=clean_tripadvisor_duplicates,
+            leftover_reviews=[] # Everything was already saved in batches above
         )
 
         if job_id:

@@ -214,7 +214,8 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
                 all_reviews = all_reviews[batch_count * 20:]
                 
                 logger.info(f"Batch threshold reached. Saving {len(to_save)} reviews to database.")
-                save_reviews_to_db(to_save, source_id)
+                verified_count = save_reviews_to_db(to_save, source_id)
+                logger.info(f"Verified {verified_count}/{len(to_save)} reviews successfully persisted.")
             
             if current_page < end_page:
                 next_btn = page.locator(booking_selectors.next_page_button).first
@@ -239,7 +240,8 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
             primary_source_id=str(source_id),
             reviews=cumulative_reviews,
             save_db_func=save_reviews_to_db,
-            deduplicator_func=clean_booking_duplicates
+            deduplicator_func=clean_booking_duplicates,
+            leftover_reviews=all_reviews
         )
 
         if job_id:

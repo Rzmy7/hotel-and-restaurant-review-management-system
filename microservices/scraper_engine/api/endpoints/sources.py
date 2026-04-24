@@ -206,3 +206,78 @@ def delete_duplicates(source_id: str):
     finally:
         session.close()
 
+@router.post("/{source_id}/cleanup")
+def cleanup_source(source_id: str):
+    """
+    Perform a deep, trait-based deduplication sweep for a source.
+    This is an alias for DELETE /duplicates but follows a POST 'action' pattern.
+    """
+    return delete_duplicates(source_id)
+
+
+@router.get("/{source_id}/integrity")
+def check_source_integrity(source_id: str):
+    """
+    Detailed database integrity report for a source.
+    Compares the hub 'reviews' table with platform-specific detail tables.
+    """
+    session = get_session()
+    try:
+        source = session.query(Source).filter_by(source_id=source_id).first()
+        if not source:
+            raise HTTPException(status_code=404, detail="Source not found")
+
+        platform = source.platform_name.lower()
+        
+        # 1. Total Hub Reviews
+        hub_count = session.query(Review).filter_by(source_id=source_id).count()
+        
+        # 2. Detail Table Counts
+        detail_model = {
+            "agoda": AgodaReviewDetail,
+            "booking": BookingReviewDetail,
+            "google": GoogleReviewDetail,
+            "tripadvisor": TripAdvisorReviewDetail
+        }.get(platform)
+        
+        detail_count = 0
+        if detail_model:
+            detail_count = (
+                session.query(detail_model)
+                .join(Review, detail_model.review_id == Review.review_id)
+                .filter(Review.source_id == source_id)
+                .count()
+            )
+            
+        # 3. Media Counts
+        from core.models import ReviewMedia
+        media_count = (
+            session.query(ReviewMedia)
+            .join(Review, ReviewMedia.review_id == Review.review_id)
+            .filter(Review.source_id == source_id)
+            .count()
+        )
+        
+        # 4. Check for Orphans (Hub record exists but Detail record is missing)
+        # This shouldn't happen with CASCADE but good for verification.
+        orphans = hub_count - detail_count
+        
+        return {
+            "source_id": source_id,
+            "platform": platform,
+            "counts": {
+                "total_reviews": hub_count,
+                "detail_records": detail_count,
+                "media_files": media_count,
+                "orphaned_hub_records": orphans
+            },
+            "status": "healthy" if orphans == 0 else "degraded",
+            "message": "Data integrity check passed." if orphans == 0 else f"Detected {orphans} orphaned hub records."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Integrity check failed for source {source_id}: {e}", exc_info=Sa_func)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
