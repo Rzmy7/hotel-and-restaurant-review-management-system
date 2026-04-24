@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import or_, desc, func
 import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status, BackgroundTasks
@@ -172,24 +172,15 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     db.add(new_source)
     db.commit()
 
-    # ── Send source added notification ──
-    try:
-        from app.services.notification_helpers import notify_source_added
-        org = db.query(Organization).filter(
-            Organization.organization_id == source_data.organization_id
-        ).first()
-        platform = db.query(PlatformSource).filter(
-            PlatformSource.platform_id == source_data.platform_id
-        ).first()
-        if org and org.tenant_id and platform:
-            notify_source_added(
-                user_id=str(org.tenant_id),
-                platform_name=platform.platform_name,
-                source_url=source_data.source_url,
-                org_name=org.organization_name,
-            )
-    except Exception:
-        pass  # Best-effort
+    # Log Activity
+    log_activity(
+        db, 
+        new_source.source_id, 
+        activity_type="SOURCE_ADDED", 
+        activity_details=f"Connected {platform.platform_name} source: {source_data.source_url}",
+        is_important=True
+    )
+
     db.refresh(new_source)
     
     # Load platform for the response
@@ -238,6 +229,15 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
     for key, value in update_data.items():
         setattr(source, key, value)
     
+    # Log Activity for schedule changes
+    if "fetching_frequency" in update_data:
+        log_activity(
+            db,
+            source_id,
+            activity_type="SYNC_SCHEDULE_UPDATED",
+            activity_details=f"Sync frequency changed to {update_data['fetching_frequency']}"
+        )
+    
     db.commit()
     db.refresh(source)
     
@@ -278,16 +278,14 @@ def delete_source(db: Session, source_id: uuid.UUID):
     db.delete(source)
     db.commit()
 
-    # ── Send source removed notification ──
-    try:
-        from app.services.notification_helpers import notify_source_removed
-        org = db.query(Organization).filter(
-            Organization.organization_id == org_id
-        ).first()
-        if org and org.tenant_id:
-            notify_source_removed(str(org.tenant_id), platform_name, org.organization_name)
-    except Exception:
-        pass  # Best-effort
+    # Log Activity
+    log_activity(
+        db, 
+        source_id, 
+        activity_type="SOURCE_REMOVED", 
+        activity_details=f"Disconnected {platform_name} source",
+        is_important=True
+    )
 
     return {"message": "Source deleted successfully"}
 
@@ -325,16 +323,49 @@ def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
     ]
 
 def get_sync_logs(
-    db: Session, organization_id: uuid.UUID, skip: int = 0, limit: int = 10
+    db: Session, 
+    organization_id: uuid.UUID, 
+    skip: int = 0, 
+    limit: int = 10,
+    activity_type: Optional[str] = None,
+    is_important: Optional[bool] = None,
+    search: Optional[str] = None,
+    source_id: Optional[uuid.UUID] = None
 ) -> List[SyncLogRead]:
     # Fetch logs for sources belonging to this organization
-    logs = db.query(SyncLogSource).join(
+    query = db.query(SyncLogSource).join(
         SourceSource, SyncLogSource.source_id == SourceSource.source_id
     ).options(
         joinedload(SyncLogSource.source).joinedload(SourceSource.platform)
     ).filter(
         SourceSource.organization_id == organization_id
-    ).order_by(
+    )
+
+    if source_id:
+        query = query.filter(SyncLogSource.source_id == source_id)
+
+    if activity_type:
+        # Support multiple types if comma-separated
+        if "," in activity_type:
+            types = [t.strip() for t in activity_type.split(",")]
+            query = query.filter(SyncLogSource.activity_type.in_(types))
+        else:
+            query = query.filter(SyncLogSource.activity_type == activity_type)
+    
+    if is_important is not None:
+        query = query.filter(SyncLogSource.is_important == is_important)
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                SyncLogSource.activity_details.ilike(search_filter),
+                SyncLogSource.error_message.ilike(search_filter),
+                SourceSource.platform_name.ilike(search_filter)
+            )
+        )
+
+    logs = query.order_by(
         SyncLogSource.timestamp.desc()
     ).offset(skip).limit(limit).all()
 
@@ -347,7 +378,10 @@ def get_sync_logs(
             timestamp=log.timestamp,
             durationMs=log.duration_ms,
             reviewsFetched=log.reviews_fetched,
-            errorMessage=log.error_message
+            errorMessage=log.error_message,
+            activityType=log.activity_type,
+            isImportant=log.is_important,
+            activityDetails=log.activity_details
         ) for log in logs
     ]
 
@@ -381,14 +415,15 @@ def update_sync_status(
         source.platform.num_of_syncs += 1
         source.platform.success_sync_count += 1
         
-        # Create a sync log entry
-        sync_log = SyncLogSource(
+        # Create a sync log entry using log_activity
+        sync_log = log_activity(
+            db,
             source_id=source.source_id,
+            activity_type="SYNC_COMPLETED",
             status="Success",
-            timestamp=now,
-            reviews_fetched=request.new_review_count
+            reviews_fetched=request.new_review_count,
+            activity_details=f"Synchronization successfully finished for {source.platform.platform_name}. {request.new_review_count} reviews were detected."
         )
-        db.add(sync_log)
         db.flush()
 
         # Trigger Review Ingestion and Processing Pipeline
@@ -402,14 +437,16 @@ def update_sync_status(
         source.num_of_syncs += 1
         source.platform.num_of_syncs += 1
         
-        # Create a failure log entry
-        sync_log = SyncLogSource(
+        # Create a failure log entry using log_activity
+        sync_log = log_activity(
+            db,
             source_id=source.source_id,
+            activity_type="SYNC_FAILED",
             status="Failed",
-            timestamp=now,
-            error_message=request.error_message
+            error_message=request.error_message,
+            activity_details=f"Synchronization failed for {source.platform.platform_name}. Error: {request.error_message or 'Unknown error'}",
+            is_important=True
         )
-        db.add(sync_log)
 
         # ── Send scrape failed notification ──
         try:
@@ -443,9 +480,23 @@ def update_sync_status(
         
     elif request.status == SyncStatus.RUNNING:
         source.source_status = SourceStatus.RUNNING.value
+        log_activity(
+            db, 
+            source_id, 
+            activity_type="SYNC_STARTED", 
+            status="In Progress",
+            activity_details=f"Synchronization process initiated for {source.platform.platform_name}."
+        )
         
     elif request.status == SyncStatus.QUEUED:
         source.source_status = SourceStatus.QUEUED.value
+        log_activity(
+            db, 
+            source_id, 
+            activity_type="SYNC_QUEUED", 
+            status="In Progress",
+            activity_details=f"Source {source.platform.platform_name} placed in high-priority sync queue."
+        )
         
     elif request.status == SyncStatus.VERIFY_DUPLICATION:
         source.source_status = SourceStatus.VERIFY_DUPLICATION.value
@@ -543,3 +594,165 @@ def get_stuck_sources(db: Session) -> List[SourceRead]:
             created_at=s.created_at
         ) for s in sources
     ]
+
+def trigger_sync(db: Session, source_id: uuid.UUID):
+    """Manually trigger a synchronization task for a specific source."""
+    source = db.query(SourceSource).options(joinedload(SourceSource.platform)).filter(SourceSource.source_id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    
+    # Check if already syncing
+    if source.source_status in ["running", "queued", "verify_duplication"]:
+        return {"message": "Sync already in progress", "status": source.source_status}
+
+    # Update status to queued
+    source.source_status = "queued"
+    db.commit()
+    
+    # Log activity
+    log_activity(
+        db,
+        source_id=source.source_id,
+        activity_type="SYNC_QUEUED",
+        status="In Progress",
+        activity_details=f"Manual sync request received. {source.platform.platform_name} placed in high-priority sync queue."
+    )
+    
+    # Trigger the microservice (async trigger)
+    import os
+    import httpx
+    SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001")
+    platform_key = source.platform.platform_name.lower().replace(" reviews", "").replace(".com", "")
+    endpoint = f"{SCRAPER_API_BASE_URL}/api/{platform_key}/scrape"
+    
+    payload = {
+        "source_id": str(source.source_id),
+        "source_url": source.source_url,
+        "headless": True,
+        "pages": "*"
+    }
+    
+    try:
+        # We use a short timeout and fire-and-forget approach for the trigger
+        with httpx.Client() as client:
+            resp = client.post(endpoint, json=payload, timeout=2.0)
+            if resp.status_code in [200, 201, 202]:
+                data = resp.json()
+                job_id = data.get("job_id")
+                if job_id:
+                    from app.modules.source.services.sync_socket_manager import sync_socket_manager
+                    sync_socket_manager.register_job(str(source_id), job_id)
+    except Exception:
+        # The scraper might be slow to respond or busy, but the status is already 'queued'
+        # The scraper's own reconciliation will pick it up if it failed to receive the POST
+        pass
+
+    return {
+        "message": "Synchronization triggered successfully",
+        "source_id": str(source_id),
+        "status": "queued"
+    }
+
+def prune_activities(db: Session, organization_id: uuid.UUID):
+    """Keep only the latest 100 entries for a given organization."""
+    # Find all source IDs for this organization
+    source_ids_query = db.query(SourceSource.source_id).filter(
+        SourceSource.organization_id == organization_id
+    ).all()
+    source_ids = [s[0] for s in source_ids_query]
+
+    if not source_ids:
+        return
+
+    # Check total count first to avoid unnecessary subqueries
+    total_count = db.query(SyncLogSource).filter(
+        SyncLogSource.source_id.in_(source_ids)
+    ).count()
+    
+    if total_count <= 100:
+        return
+
+    # Get the top 100 latest log IDs for this organization
+    subquery = db.query(SyncLogSource.log_id).filter(
+        SyncLogSource.source_id.in_(source_ids)
+    ).order_by(SyncLogSource.timestamp.desc()).limit(100).all()
+    
+    latest_ids = [row[0] for row in subquery]
+    
+    if len(latest_ids) < 100:
+        return
+
+    # Delete logs for these sources that are NOT in the latest 100
+    db.query(SyncLogSource).filter(
+        SyncLogSource.source_id.in_(source_ids),
+        ~SyncLogSource.log_id.in_(latest_ids)
+    ).delete(synchronize_session=False)
+    db.commit()
+
+def log_activity(
+    db: Session,
+    source_id: uuid.UUID,
+    activity_type: str,
+    status: str = "Success",
+    reviews_fetched: int = 0,
+    duration_ms: int = 0,
+    error_message: Optional[str] = None,
+    activity_details: Optional[str] = None,
+    is_important: bool = False
+) -> SyncLogSource:
+    """Create a new activity log and prune old ones."""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    new_log = SyncLogSource(
+        source_id=source_id,
+        status=status,
+        timestamp=now,
+        reviews_fetched=reviews_fetched,
+        duration_ms=duration_ms,
+        error_message=error_message,
+        activity_type=activity_type,
+        is_important=is_important,
+        activity_details=activity_details
+    )
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+    
+    # Prune old activities for the organization
+    source = db.query(SourceSource).options(joinedload(SourceSource.platform)).filter(SourceSource.source_id == source_id).first()
+    if source:
+        prune_activities(db, source.organization_id)
+
+        # Trigger notifications for important activities
+        if is_important:
+            try:
+                from app.services.notification_helpers import send_notification
+                org = db.query(Organization).filter(Organization.organization_id == source.organization_id).first()
+                if org and org.tenant_id:
+                    title = f"Activity: {activity_type.replace('_', ' ').title()}"
+                    # Fallback message if activity_details is missing
+                    message = activity_details or error_message or f"An important activity occurred for {source.platform.platform_name}."
+                    notification_type = "error" if status == "Failed" or activity_type == "SOURCE_REMOVED" else "info"
+                    send_notification(str(org.tenant_id), title, message, notification_type)
+            except Exception:
+                pass # Best-effort
+    
+    return new_log
+def delete_organization_logs(db: Session, organization_id: uuid.UUID):
+    """Delete all sync logs for an organization, except the most recent 5 for context."""
+    # Find logs for this organization
+    log_ids_query = db.query(SyncLogSource.log_id).join(SourceSource).filter(
+        SourceSource.organization_id == organization_id
+    ).order_by(SyncLogSource.timestamp.desc())
+    
+    # Keep the top 5
+    logs_to_keep = [r[0] for r in log_ids_query.limit(5).all()]
+    
+    # Delete the rest
+    db.query(SyncLogSource).filter(
+        SyncLogSource.log_id.notin_(logs_to_keep)
+    ).join(SourceSource).filter(
+        SourceSource.organization_id == organization_id
+    ).delete(synchronize_session=False)
+    
+    db.commit()

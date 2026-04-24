@@ -260,7 +260,7 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
     1. Ingest from Scraper (Raw -> Pending)
     2. Run AI Analysis (Pending -> Processed)
     """
-    from app.modules.source.services.source_service import get_source_by_id
+    from app.modules.source.services.source_service import get_source_by_id, log_activity
     from app.database.session import SessionLocal
     from app.modules.reviews.services.processor import run_analysis_pipeline
 
@@ -281,6 +281,15 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
             source_id, source.organization_id, source.platform_id
         )
 
+        # Log Ingestion Activity
+        log_activity(
+            db, 
+            source_id, 
+            activity_type="INGESTION_COMPLETED", 
+            reviews_fetched=ingested_count,
+            activity_details=f"Successfully ingested {ingested_count} reviews from {source.platform_name}."
+        )
+
         if sync_log_id:
             from app.modules.source.models import SyncLog
             sync_log = db.query(SyncLog).filter(SyncLog.log_id == sync_log_id).first()
@@ -292,8 +301,16 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
             logger.info(
                 f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews..."
             )
+            
+            # Log AI Analysis Start
+            log_activity(db, source_id, activity_type="AI_ANALYSIS_STARTED", status="In Progress")
+            
             # 3. Process
             await run_analysis_pipeline()
+            
+            # Log AI Analysis Completion
+            log_activity(db, source_id, activity_type="AI_ANALYSIS_COMPLETED", status="Success")
+            
             logger.info(f"--- Pipeline AI ANALYSIS COMPLETED for source {source_id} ---")
 
             # 4. Trigger embedding for newly processed reviews

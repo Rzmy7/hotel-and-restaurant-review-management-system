@@ -125,6 +125,9 @@ class SyncLogRead(BaseModel):
     durationMs: int
     reviewsFetched: int
     errorMessage: Optional[str] = None
+    activityType: Optional[str] = None
+    isImportant: bool = False
+    activityDetails: Optional[str] = None
 
     class Config:
         from_attributes = True

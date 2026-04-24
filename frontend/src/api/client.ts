@@ -90,6 +90,9 @@ async function handleResponse(response: Response, requestUrl: string) {
     if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json();
     }
+    if (contentType && (contentType.indexOf("text/csv") !== -1 || contentType.indexOf("application/octet-stream") !== -1)) {
+        return response.blob() as any;
+    }
     return {};
 }
 
