@@ -13,8 +13,12 @@ html {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  background-color: #f4f4f4;
-  /* Match your app background */
+}
+
+@layer base {
+  html, body {
+    @apply bg-gray-50 dark:bg-slate-900;
+  }
 }
 
 @keyframes fadeIn {

@@ -189,8 +189,9 @@ const AppContent: React.FC = () => {
   // Show a blank or loading state while maintenance status or auth state is loading
   if (!maintenanceLoaded || isAuthLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-500 mb-4"></div>
+        <p className="text-gray-900 dark:text-white text-lg font-medium tracking-wide text-center">Loading application...</p>
       </div>
     );
   }
