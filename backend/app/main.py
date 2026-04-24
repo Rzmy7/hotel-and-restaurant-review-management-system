@@ -54,6 +54,14 @@ async def lifespan(app: FastAPI):
     # Auto-create any missing tables from ORM models
     if engine:
         Base.metadata.create_all(bind=engine)
+
+    # Run group schema migrations (idempotent — safe every startup)
+    try:
+        from app.modules.groups.migrations import run_group_migrations
+        run_group_migrations(engine)
+    except Exception as _mig_err:
+        logger.warning("Group migrations skipped: %s", _mig_err)
+
     # Startup actions
     from app.modules.admin.services.subscription_service import seed_subscription_data
 
@@ -123,7 +131,7 @@ except ImportError:
 import app.modules.user.models.user_models  # noqa: F401  (User)
 import app.modules.auth.models.auth_models  # noqa: F401  (Role, UserRole, Session, PasswordResetToken)
 import app.modules.auth.models  # noqa: F401  (Notification, UserNotification, BroadcastEvent)
-import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupMemberRole)
+import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupInvite)
 import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
 import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
 

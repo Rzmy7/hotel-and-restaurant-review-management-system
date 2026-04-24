@@ -62,6 +62,9 @@ import CompetitorsPage from './pages/CompetitorsPage';
 import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
 import CompetitorComparison from './pages/CompetitorComparison';
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import GroupsPage from './pages/GroupsPage';
+import GroupDashboardPage from './pages/GroupDashboardPage';
+import GroupInvitePage from './pages/GroupInvitePage';
 import { maintenanceService } from './services/maintenanceService';
 
 import NoOrganizationPage from "./pages/NoOrganizationPage";
@@ -248,6 +251,11 @@ const AppContent: React.FC = () => {
                 <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
                 <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
                 <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
+
+                {/* Group routes — no org requirement */}
+                <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
+                <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
+                <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
 
                 {/* Pages that don't require an org */}
                 <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
