@@ -268,6 +268,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                     ))}
 
                     {/* Loading State */}
+                    {(isLoading || isFetchingNextPage) && (
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
                             <Loader2 className="text-[#597FE6] animate-spin" size={32} />
                             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
