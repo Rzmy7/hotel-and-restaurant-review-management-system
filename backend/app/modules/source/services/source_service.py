@@ -172,12 +172,16 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
     db.add(new_source)
     db.commit()
 
+    # Get platform name for logging
+    platform = db.query(Platform).filter(Platform.platform_id == source_data.platform_id).first()
+    platform_name = platform.platform_name if platform else "Unknown"
+
     # Log Activity
     log_activity(
         db, 
         new_source.source_id, 
         activity_type="SOURCE_ADDED", 
-        activity_details=f"Connected {platform.platform_name} source: {source_data.source_url}",
+        activity_details=f"Connected {platform_name} source: {source_data.source_url}",
         is_important=True
     )
 
