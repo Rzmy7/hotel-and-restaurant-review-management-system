@@ -43,12 +43,13 @@ const StatCard: React.FC<{
   value: string | number;
   icon: React.ReactNode;
   sub?: string;
-  color?: string;
-}> = ({ label, value, icon, sub, color = 'brand' }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
+  iconBg?: string;
+  iconFg?: string;
+}> = ({ label, value, icon, sub, iconBg = 'bg-blue-50 dark:bg-blue-900/30', iconFg = 'text-blue-500 dark:text-blue-400' }) => (
+  <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-200">
     <div className="flex items-center justify-between mb-3">
-      <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center bg-${color}/10 text-${color} dark:bg-${color}/20`}>
+      <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconBg} ${iconFg}`}>
         {icon}
       </div>
     </div>
@@ -115,7 +116,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ groupId, onClose, onInvited }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-2xl w-full max-w-lg p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Invite via Organization</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
@@ -218,7 +219,7 @@ const DeleteGroupModal: React.FC<{ groupName: string; onConfirm: () => void; onC
   groupName, onConfirm, onClose, loading
 }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-2xl w-full max-w-sm p-6 text-center">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xl w-full max-w-sm p-6 text-center">
       <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
         <Trash2 size={22} className="text-red-500" />
       </div>
@@ -256,10 +257,11 @@ const OverviewTab: React.FC<{ group: Group; analytics: GroupAnalytics | null; lo
     <div className="space-y-6">
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Members" value={group.member_count} icon={<Users size={16} />} />
+        <StatCard label="Organizations" value={group.member_count} icon={<Building2 size={16} />} />
         <StatCard label="Your Role" value={isOwner ? 'Owner' : 'Member'}
           icon={isOwner ? <Crown size={16} /> : <Shield size={16} />}
-          color={isOwner ? 'amber-500' : 'brand'}
+          iconBg={isOwner ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-blue-50 dark:bg-blue-900/30'}
+          iconFg={isOwner ? 'text-amber-500 dark:text-amber-400' : 'text-blue-500 dark:text-blue-400'}
         />
         {canSeeAnalytics && analytics ? (
           <>
@@ -275,7 +277,7 @@ const OverviewTab: React.FC<{ group: Group; analytics: GroupAnalytics | null; lo
       </div>
 
       {/* Group info card */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
         <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-3">Group Info</h3>
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
@@ -291,23 +293,24 @@ const OverviewTab: React.FC<{ group: Group; analytics: GroupAnalytics | null; lo
         </div>
       </div>
 
-      {/* Recent members */}
-      {analytics && analytics.recent_members.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-4">Recent Members</h3>
+      {/* Recently joined orgs */}
+      {analytics && analytics.member_orgs.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+          <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-4">Member Organizations</h3>
           <div className="space-y-3">
-            {analytics.recent_members.map(m => (
-              <div key={m.user_id} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center text-xs font-bold shrink-0">
-                  {m.name.charAt(0).toUpperCase()}
+            {analytics.member_orgs.map(org => (
+              <div key={org.organization_id} className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400 flex items-center justify-center text-xs font-bold shrink-0">
+                  {org.organization_name.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{m.name}</p>
-                  <p className="text-xs text-gray-400 dark:text-slate-500">{m.email}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{org.organization_name}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">Owner: {org.owner_name}</p>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${m.role === 'GROUP_OWNER' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                  {m.role === 'GROUP_OWNER' ? 'Owner' : 'Member'}
-                </span>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-bold text-gray-700 dark:text-slate-300">{org.review_count} reviews</p>
+                  {org.avg_rating && <p className="text-xs text-gray-400">{org.avg_rating}★</p>}
+                </div>
               </div>
             ))}
           </div>
@@ -317,7 +320,7 @@ const OverviewTab: React.FC<{ group: Group; analytics: GroupAnalytics | null; lo
       {/* Loading analytics */}
       {loadingAnalytics && (
         <div className="flex items-center justify-center py-6">
-          <Loader2 size={20} className="animate-spin text-brand" />
+          <Loader2 size={20} className="animate-spin text-blue-500" />
           <span className="text-sm text-gray-400 dark:text-slate-500 ml-2">Loading analytics…</span>
         </div>
       )}
@@ -325,7 +328,7 @@ const OverviewTab: React.FC<{ group: Group; analytics: GroupAnalytics | null; lo
   );
 };
 
-// ── Members Tab ───────────────────────────────────────────────────────
+// ── Members Tab (Member Organizations) ───────────────────────────────
 
 const MembersTab: React.FC<{
   groupId: string;
@@ -343,7 +346,7 @@ const MembersTab: React.FC<{
       const res = await groupsService.listMembers(groupId);
       setMembers(res.members);
     } catch (err: any) {
-      showToast(err.message || 'Failed to load members', 'error');
+      showToast(err.message || 'Failed to load member organizations', 'error');
     } finally {
       setLoading(false);
     }
@@ -351,16 +354,16 @@ const MembersTab: React.FC<{
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
-  const handleRemove = async (userId: string, name: string) => {
-    if (!confirm(`Remove ${name} from the group?`)) return;
-    setRemovingId(userId);
+  const handleRemove = async (organizationId: string, orgName: string) => {
+    if (!confirm(`Remove "${orgName}" from the group?`)) return;
+    setRemovingId(organizationId);
     try {
-      await groupsService.removeMember(groupId, userId);
-      showToast(`${name} has been removed.`, 'success');
-      setMembers(prev => prev.filter(m => m.user_id !== userId));
+      await groupsService.removeMember(groupId, organizationId);
+      showToast(`"${orgName}" has been removed.`, 'success');
+      setMembers(prev => prev.filter(m => m.organization_id !== organizationId));
       onMemberRemoved();
     } catch (err: any) {
-      showToast(err.message || 'Failed to remove member', 'error');
+      showToast(err.message || 'Failed to remove organization', 'error');
     } finally {
       setRemovingId(null);
     }
@@ -368,52 +371,63 @@ const MembersTab: React.FC<{
 
   if (loading) return (
     <div className="flex items-center justify-center py-12">
-      <Loader2 size={24} className="animate-spin text-brand" />
+      <Loader2 size={24} className="animate-spin text-blue-500" />
     </div>
   );
 
   if (members.length === 0) return (
-    <div className="text-center py-12">
-      <Users size={36} className="text-gray-300 dark:text-slate-600 mx-auto mb-3" />
-      <p className="text-sm font-semibold text-gray-500 dark:text-slate-400">No members yet</p>
+    <div className="text-center py-16">
+      <Building2 size={36} className="text-gray-300 dark:text-slate-600 mx-auto mb-3" />
+      <p className="text-sm font-semibold text-gray-500 dark:text-slate-400">No member organizations yet</p>
+      <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Invite organizations to join this group</p>
     </div>
   );
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-        <span className="text-sm font-bold text-gray-700 dark:text-slate-300">{members.length} member{members.length !== 1 ? 's' : ''}</span>
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Building2 size={15} className="text-blue-500" />
+          <span className="text-sm font-bold text-gray-700 dark:text-slate-300">
+            {members.length} member organization{members.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
       <div className="divide-y divide-gray-100 dark:divide-slate-700">
         {members.map(m => {
-          const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email;
+          // Prefer organization_name if backend sends it, fall back to owner name
+          const orgName = m.organization_name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email;
+          const ownerDisplay = m.email;
           return (
-            <div key={m.user_id} className="flex items-center gap-4 px-5 py-4">
-              <div className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm shrink-0">
-                {name.charAt(0).toUpperCase()}
+            <div key={m.user_id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
+                {orgName.slice(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{name}</p>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${m.role === 'GROUP_OWNER' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                    {m.role === 'GROUP_OWNER' ? 'Owner' : 'Member'}
-                  </span>
+                  <p className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">{orgName}</p>
+                  {m.role === 'GROUP_OWNER' && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-wide">
+                      Group Owner
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{m.email}</p>
-                {m.job_title && <p className="text-xs text-gray-400 dark:text-slate-500">{m.job_title}</p>}
+                <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">
+                  Owner: {ownerDisplay}
+                </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-3 shrink-0">
                 <p className="text-xs text-gray-400 dark:text-slate-500">
                   Joined {new Date(m.joined_at).toLocaleDateString()}
                 </p>
                 {isOwner && m.role !== 'GROUP_OWNER' && (
                   <button
-                    onClick={() => handleRemove(m.user_id, name)}
-                    disabled={removingId === m.user_id}
+                    onClick={() => handleRemove(m.organization_id!, orgName)}
+                    disabled={removingId === m.organization_id}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                    title="Remove member"
+                    title="Remove organization"
                   >
-                    {removingId === m.user_id ? <Loader2 size={14} className="animate-spin" /> : <UserMinus size={14} />}
+                    {removingId === m.organization_id ? <Loader2 size={14} className="animate-spin" /> : <UserMinus size={14} />}
                   </button>
                 )}
               </div>
@@ -517,10 +531,10 @@ const InvitesTab: React.FC<{
   return (
     <div className="space-y-6">
       {/* Invite link card */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Link2 size={16} className="text-brand" />
-          <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider">Invite Link</h3>
+          <Link2 size={16} className="text-blue-500" />
+          <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">Invite Link</h3>
         </div>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
           Share this link with anyone you want to invite. Valid for 7 days.
@@ -566,11 +580,11 @@ const InvitesTab: React.FC<{
 
       {/* Send invite by org */}
       {isOwner && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider">Send Invitations</h3>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Search organizations and invite their owners</p>
+              <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">Invite Organizations</h3>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Search and invite organizations to join this group</p>
             </div>
             <button
               onClick={() => setShowInviteModal(true)}
@@ -584,37 +598,41 @@ const InvitesTab: React.FC<{
           {/* Invites table */}
           {loading ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 size={18} className="animate-spin text-brand" />
+              <Loader2 size={18} className="animate-spin text-blue-500" />
             </div>
           ) : invites.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-4">No invitations sent yet</p>
           ) : (
             <div className="space-y-2">
-              {invites.map(inv => (
-                <div key={inv.invite_id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-700">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {inv.invited_user_name || inv.invited_user_email || 'Unknown'}
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-slate-500">
-                      {new Date(inv.created_at).toLocaleDateString()}
-                    </p>
-                    {inv.message && <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-0.5">"{inv.message}"</p>}
+              {invites.map(inv => {
+                const orgLabel = inv.invited_org_name || inv.invited_user_name || inv.invited_user_email || 'Unknown Organization';
+                return (
+                  <div key={inv.invite_id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-700">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center shrink-0">
+                      <Building2 size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{orgLabel}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-500">
+                        Sent {new Date(inv.created_at).toLocaleDateString()}
+                      </p>
+                      {inv.message && <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-0.5">"{inv.message}"</p>}
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${statusBadge(inv.status)}`}>
+                      {inv.status}
+                    </span>
+                    {inv.status === 'pending' && (
+                      <button
+                        onClick={() => handleCancelInvite(inv.invite_id)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                        title="Cancel invite"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${statusBadge(inv.status)}`}>
-                    {inv.status}
-                  </span>
-                  {inv.status === 'pending' && (
-                    <button
-                      onClick={() => handleCancelInvite(inv.invite_id)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
-                      title="Cancel invite"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -684,8 +702,8 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
 
       {/* Reviews over time */}
       {analytics.reviews_over_time.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-4">Review Volume (Last 30 Days)</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+          <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-4">Review Volume (Last 30 Days)</h3>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={analytics.reviews_over_time} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
               <defs>
@@ -851,8 +869,8 @@ const SettingsTab: React.FC<{
   return (
     <div className="space-y-6">
       {/* General info */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-4">General</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+        <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-4">General</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Group Name</label>
@@ -884,8 +902,8 @@ const SettingsTab: React.FC<{
       </div>
 
       {/* Member permissions */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">Member Permissions</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+        <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-1">Member Permissions</h3>
         <p className="text-xs text-gray-400 dark:text-slate-500 mb-4">Control what members can see and do</p>
         <ToggleRow
           label="Allow Members to Invite"
@@ -913,15 +931,15 @@ const SettingsTab: React.FC<{
       <button
         onClick={handleSaveInfo}
         disabled={saving || !name.trim()}
-        className="w-full px-4 py-2.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+        className="w-full px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-blue-600 text-white font-bold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-sm shadow-blue-100 dark:shadow-none"
       >
         {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
         Save Changes
       </button>
 
       {/* Danger zone */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-red-200 dark:border-red-900/40 p-5">
-        <h3 className="text-sm font-black text-red-500 uppercase tracking-wider mb-2">Danger Zone</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-red-200 dark:border-red-900/40 shadow-sm p-5">
+        <h3 className="text-[11px] font-black text-red-500 uppercase tracking-widest mb-2">Danger Zone</h3>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
           Deleting this group is permanent. All members and invite history will be removed.
         </p>
@@ -998,8 +1016,8 @@ const GroupDashboardPage: React.FC = () => {
   }, [group, fetchAnalytics]);
 
   if (loadingGroup) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 size={32} className="animate-spin text-brand" />
+    <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+      <Loader2 size={32} className="animate-spin text-blue-500" />
     </div>
   );
 
@@ -1009,77 +1027,86 @@ const GroupDashboardPage: React.FC = () => {
   const visibleTabs = TABS.filter(t => !t.ownerOnly || isOwner);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start gap-4 mb-6">
-        <button
-          onClick={() => navigate('/groups')}
-          className="mt-1 w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white truncate">
-              {group.group_name}
-            </h1>
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold ${
-              isOwner ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-            }`}>
-              {isOwner ? <Crown size={11} /> : <Shield size={11} />}
-              {isOwner ? 'Owner' : 'Member'}
-            </span>
+    <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
+
+      {/* Sticky Header */}
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+        <div className="flex items-center gap-4 min-w-0">
+          <button
+            onClick={() => navigate('/groups')}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition-colors shrink-0"
+          >
+            <ArrowLeft size={17} />
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase truncate">
+                {group.group_name}
+              </h1>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                isOwner ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+              }`}>
+                {isOwner ? <Crown size={10} /> : <Shield size={10} />}
+                {isOwner ? 'Owner' : 'Member'}
+              </span>
+            </div>
+            {group.description && (
+              <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider truncate">
+                {group.description}
+              </p>
+            )}
           </div>
-          {group.description && (
-            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{group.description}</p>
-          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-sm text-gray-400 dark:text-slate-500 flex items-center gap-1.5">
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm font-semibold text-gray-500 dark:text-slate-400">
             <Users size={14} />
-            {group.member_count}
+            {group.member_count} {group.member_count === 1 ? 'member' : 'members'}
           </span>
         </div>
-      </div>
+      </header>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-slate-700 mb-6 overflow-x-auto no-scrollbar">
-        {visibleTabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === tab.id
-                ? 'border-brand text-brand'
-                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+      {/* Tabs bar */}
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-8">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {visibleTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3.5 text-[13px] font-bold border-b-2 whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'border-[#3b82f6] text-[#3b82f6] dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
-      {activeTab === 'overview' && (
-        <OverviewTab group={group} analytics={analytics} loadingAnalytics={loadingAnalytics} />
-      )}
-      {activeTab === 'members' && (
-        <MembersTab groupId={group.group_id} isOwner={isOwner} onMemberRemoved={fetchGroup} />
-      )}
-      {activeTab === 'invites' && (
-        <InvitesTab group={group} isOwner={isOwner} onInviteChange={fetchGroup} />
-      )}
-      {activeTab === 'analytics' && (
-        <AnalyticsTab analytics={analytics} loading={loadingAnalytics} restricted={analyticsRestricted} />
-      )}
-      {activeTab === 'settings' && isOwner && (
-        <SettingsTab
-          group={group}
-          onGroupUpdated={(updated) => setGroup(updated)}
-          onGroupDeleted={() => navigate('/groups')}
-        />
-      )}
+      <main className="w-full px-8 py-8 flex-1 max-w-[1600px] mx-auto">
+        {activeTab === 'overview' && (
+          <OverviewTab group={group} analytics={analytics} loadingAnalytics={loadingAnalytics} />
+        )}
+        {activeTab === 'members' && (
+          <MembersTab groupId={group.group_id} isOwner={isOwner} onMemberRemoved={fetchGroup} />
+        )}
+        {activeTab === 'invites' && (
+          <InvitesTab group={group} isOwner={isOwner} onInviteChange={fetchGroup} />
+        )}
+        {activeTab === 'analytics' && (
+          <AnalyticsTab analytics={analytics} loading={loadingAnalytics} restricted={analyticsRestricted} />
+        )}
+        {activeTab === 'settings' && isOwner && (
+          <SettingsTab
+            group={group}
+            onGroupUpdated={(updated) => setGroup(updated)}
+            onGroupDeleted={() => navigate('/groups')}
+          />
+        )}
+      </main>
     </div>
   );
 };

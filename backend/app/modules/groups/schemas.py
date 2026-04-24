@@ -16,6 +16,7 @@ class GroupCreate(BaseModel):
     description: Optional[str] = None
     is_private: bool = True
     settings: Optional[GroupSettings] = None
+    organization_id: Optional[str] = None  # explicit org scope from frontend
 
 
 class GroupUpdate(BaseModel):
