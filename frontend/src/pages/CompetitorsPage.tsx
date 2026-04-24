@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/shared/PageHeader';
 import AddCompetitorModal from '../components/competitors/AddCompetitorModal';
+import EditCompetitorModal from '../components/competitors/EditCompetitorModal';
 import {
     fetchCompetitors,
     fetchSuggestedCompetitors,
@@ -15,6 +16,7 @@ import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [competitorToEdit, setCompetitorToEdit] = useState<Competitor | null>(null);
     const queryClient = useQueryClient();
     const currentOrg = useOrganizationStore(state => state.currentOrg);
     const organizationId = currentOrg?.id ?? '';
@@ -227,6 +229,9 @@ const CompetitorsPage = () => {
                                                 <Link to={`/competitors/compare?id=${competitor.id}`} className="bg-[#4e80ee] hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-colors">
                                                     Compare
                                                 </Link>
+                                                <button onClick={() => setCompetitorToEdit(competitor)} className="text-gray-400 hover:text-blue-500 p-1.5 transition-colors" aria-label="Edit">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                </button>
                                                 <button onClick={() => handleUntrack(competitor.id)} className="text-red-400 hover:text-red-500 p-1.5 transition-colors" aria-label="Delete">
                                                     <Trash2 size={18} />
                                                 </button>
@@ -245,6 +250,13 @@ const CompetitorsPage = () => {
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onSuccess={handleSuccess}
+            />
+
+            <EditCompetitorModal
+                isOpen={!!competitorToEdit}
+                onClose={() => setCompetitorToEdit(null)}
+                onSuccess={handleSuccess}
+                competitor={competitorToEdit}
             />
         </div>
     );

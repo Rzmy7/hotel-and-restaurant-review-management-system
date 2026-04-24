@@ -216,7 +216,7 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
 def get_rankings_data(my_org_id: str) -> Dict:
     """Build the full rankings list including my hotel and all tracked competitors."""
     my_stats = _get_review_stats(my_org_id)
-    tracked = get_tracked_competitors()
+    tracked = get_tracked_competitors(my_org_id)
 
     # Fetch name for my org
     with pyodbc.connect(get_connection_string()) as conn:

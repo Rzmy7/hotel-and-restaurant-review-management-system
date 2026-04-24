@@ -10,12 +10,11 @@ export interface Competitor {
     id: string;
     name: string;
     location: string;
-    bookingUrl: string;
+    organization_id: string | null;
     avgRating: number;
     sentimentScore: number;
     reviewCount: number;
     isTracked: boolean;
-    status: string;
     createdAt: string | null;
 }
 
@@ -131,6 +130,11 @@ export async function untrackCompetitor(organizationId: string, competitorId: st
 /** Admin: permanently delete a competitor */
 export async function deleteCompetitor(organizationId: string, competitorId: string): Promise<{ message: string }> {
     return apiClient.delete<{ message: string }>(`/competitors/${competitorId}?organization_id=${organizationId}`);
+}
+
+/** User: edit a competitor's display name and location */
+export async function editCompetitor(organizationId: string, competitorId: string, params: { name: string; city: string; country: string }): Promise<{ message: string; competitor: Competitor }> {
+    return apiClient.put<{ message: string; competitor: Competitor }>(`/competitors/${competitorId}?organization_id=${organizationId}`, params);
 }
 
 /** Trigger scraping for a competitor's Booking.com page */

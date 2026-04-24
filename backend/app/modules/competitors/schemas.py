@@ -35,3 +35,9 @@ class AddFromOrganizationRequest(BaseModel):
 
 class ScrapeCompetitorRequest(BaseModel):
     headless: bool = True
+
+
+class EditCompetitorRequest(BaseModel):
+    name: str
+    city: str
+    country: str

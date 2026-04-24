@@ -11,12 +11,14 @@ from app.modules.competitors.schemas import (
     AddCompetitorRequest,
     AddFromOrganizationRequest,
     TrackCompetitorRequest,
+    EditCompetitorRequest,
 )
 from app.modules.competitors.services.competitor_service import (
     get_tracked_competitors, get_available_competitors,
     get_competitor_by_id, register_competitor,
     register_competitor_from_organization,
     track_competitor, untrack_competitor, delete_competitor,
+    edit_competitor,
     get_competitor_reviews,
 )
 from app.core.dependencies import get_current_user
@@ -236,6 +238,24 @@ def remove_competitor(
     try:
         delete_competitor(competitor_id, tracking_organization_id=organization_id)
         return {"message": "Competitor deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{competitor_id}")
+def update_competitor(
+    competitor_id: str,
+    payload: EditCompetitorRequest,
+    organization_id: str,
+    current_user=Depends(get_current_user)
+):
+    try:
+        result = edit_competitor(competitor_id, organization_id, payload.name, payload.city, payload.country)
+        if not result:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+        return {"message": "Competitor updated", "competitor": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

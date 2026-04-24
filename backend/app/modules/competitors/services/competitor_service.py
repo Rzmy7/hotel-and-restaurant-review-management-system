@@ -1,6 +1,12 @@
 """
 Competitor service — organization-based CRUD business logic.
 
+The dbo.Competitors table is a pure junction/linking table:
+    id | tracking_organization_id | competitor_organization_id | isTracked | createdAt
+
+All display data (name, location, sources, review stats) comes from
+dbo.organization and dbo.processed_review via SQL JOINs.
+
 When a competitor is added:
 1. Look up dbo.source by source_url to find an existing organization.
 2. If found   → link the competitor to that organization_id directly.
@@ -23,19 +29,46 @@ from app.core.pyodbc_connection import get_connection_string
 def _row_to_competitor(r) -> Dict:
     return {
         "id": str(r.id),
-        "name": r.name,
+        "name": r.name or "",
         "location": r.location or "",
-        "source_url": r.source_url or "",
-        "platform_id": r.platform_id,
-        "organization_id": str(r.organization_id) if r.organization_id else None,
-        "tracking_organization_id": str(r.tracking_organization_id) if getattr(r, "tracking_organization_id", None) else None,
+        "organization_id": str(r.competitor_organization_id) if r.competitor_organization_id else None,
+        "tracking_organization_id": str(r.tracking_organization_id) if r.tracking_organization_id else None,
         "avgRating": round(r.avgRating or 0, 2),
         "sentimentScore": round(r.sentimentScore or 0, 1),
         "reviewCount": r.reviewCount or 0,
         "isTracked": bool(r.isTracked),
-        "status": r.status or "Pending",
         "createdAt": r.createdAt.isoformat() if r.createdAt else None,
     }
+
+
+_BASE_SELECT = """
+    SELECT c.id,
+           o.organization_name as name,
+           CONCAT(ISNULL(o.city, ''), CASE WHEN o.city IS NOT NULL AND o.country IS NOT NULL THEN ', ' ELSE '' END, ISNULL(o.country, '')) as location,
+           c.competitor_organization_id,
+           c.tracking_organization_id,
+           c.isTracked,
+           c.createdAt,
+           COUNT(pr.id) as reviewCount,
+           AVG(CAST(pr.rating AS FLOAT)) as avgRating,
+           AVG(CAST(
+               CASE
+                   WHEN LOWER(pr.sentiment) = 'positive' THEN 100.0
+                   WHEN LOWER(pr.sentiment) = 'neutral' THEN 50.0
+                   ELSE 0.0
+               END AS FLOAT
+           )) as sentimentScore
+    FROM dbo.Competitors c
+    JOIN dbo.organization o ON o.organization_id = c.competitor_organization_id
+    LEFT JOIN dbo.source s ON s.organization_id = c.competitor_organization_id
+    LEFT JOIN dbo.processed_review pr ON pr.source_id = s.source_id
+"""
+
+_BASE_GROUP_BY = """
+    GROUP BY c.id, o.organization_name, o.city, o.country,
+             c.competitor_organization_id, c.tracking_organization_id,
+             c.isTracked, c.createdAt
+"""
 
 
 # ── Core read operations ─────────────────────────────────────────────
@@ -43,13 +76,13 @@ def _row_to_competitor(r) -> Dict:
 def get_all_competitors(tracking_organization_id: str) -> List[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        rows = cursor.execute("""
-            SELECT id, name, location, source_url, platform_id, organization_id,
-                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt, tracking_organization_id
-            FROM dbo.Competitors
-            WHERE tracking_organization_id = ?
-            ORDER BY isTracked DESC, name ASC
-        """, tracking_organization_id).fetchall()
+        rows = cursor.execute(
+            _BASE_SELECT
+            + " WHERE c.tracking_organization_id = ? "
+            + _BASE_GROUP_BY
+            + " ORDER BY c.isTracked DESC, o.organization_name ASC",
+            tracking_organization_id,
+        ).fetchall()
     return [_row_to_competitor(r) for r in rows]
 
 
@@ -64,11 +97,10 @@ def get_available_competitors(tracking_organization_id: str) -> List[Dict]:
 def get_competitor_by_id(competitor_id: str) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        row = cursor.execute("""
-            SELECT id, name, location, source_url, platform_id, organization_id,
-                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt, tracking_organization_id
-            FROM dbo.Competitors WHERE id = ?
-        """, competitor_id).fetchone()
+        row = cursor.execute(
+            _BASE_SELECT + " WHERE c.id = ? " + _BASE_GROUP_BY,
+            competitor_id,
+        ).fetchone()
     return _row_to_competitor(row) if row else None
 
 
@@ -95,7 +127,8 @@ def register_competitor_from_organization(organization_id: str, tracking_organiz
             return None
 
         existing = cursor.execute(
-            "SELECT id FROM dbo.Competitors WHERE organization_id = ? AND tracking_organization_id = ?", org.organization_id, tracking_organization_id
+            "SELECT id FROM dbo.Competitors WHERE competitor_organization_id = ? AND tracking_organization_id = ?",
+            org.organization_id, tracking_organization_id
         ).fetchone()
 
         if existing:
@@ -103,31 +136,14 @@ def register_competitor_from_organization(organization_id: str, tracking_organiz
             conn.commit()
             return get_competitor_by_id(str(existing.id))
 
-        # Pick a primary source row for display fields (source_url + platform_id).
-        source = cursor.execute(
-            """
-            SELECT TOP 1 source_url, platform_id
-            FROM dbo.source
-            WHERE organization_id = ?
-            ORDER BY created_at ASC
-            """,
-            org.organization_id,
-        ).fetchone()
-        primary_url = source.source_url if source else ""
-        primary_platform = source.platform_id if source else 2
-
-        location_display = ", ".join(p for p in [org.city, org.country] if p)
-
         new_id = uuid.uuid4()
         cursor.execute(
             """
             INSERT INTO dbo.Competitors
-                (id, name, location, source_url, platform_id, organization_id, tracking_organization_id,
-                 avgRating, sentimentScore, reviewCount, isTracked, status, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 0, 1, 'Active', GETDATE())
+                (id, competitor_organization_id, tracking_organization_id, isTracked, createdAt)
+            VALUES (?, ?, ?, 1, GETDATE())
             """,
-            new_id, org.organization_name, location_display,
-            primary_url, primary_platform, org.organization_id, tracking_organization_id,
+            new_id, org.organization_id, tracking_organization_id,
         )
         conn.commit()
 
@@ -230,7 +246,8 @@ def register_competitor(
 
         # Ensure a Competitors row exists for this org and is tracked.
         existing = cursor.execute(
-            "SELECT id FROM dbo.Competitors WHERE organization_id = ? AND tracking_organization_id = ?", org_id, tracking_organization_id
+            "SELECT id FROM dbo.Competitors WHERE competitor_organization_id = ? AND tracking_organization_id = ?",
+            org_id, tracking_organization_id
         ).fetchone()
 
         if existing:
@@ -239,16 +256,13 @@ def register_competitor(
             return get_competitor_by_id(str(existing.id))
 
         new_id = uuid.uuid4()
-        primary = cleaned[0]
-        location_display = f"{city}, {country}" if city and country else (city or country or "")
         cursor.execute(
             """
             INSERT INTO dbo.Competitors
-                (id, name, location, source_url, platform_id, organization_id, tracking_organization_id,
-                 avgRating, sentimentScore, reviewCount, isTracked, status, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 0, 1, 'Pending', GETDATE())
+                (id, competitor_organization_id, tracking_organization_id, isTracked, createdAt)
+            VALUES (?, ?, ?, 1, GETDATE())
             """,
-            new_id, name, location_display, primary["source_url"], primary["platform_id"], org_id, tracking_organization_id,
+            new_id, org_id, tracking_organization_id,
         )
         conn.commit()
 
@@ -260,7 +274,10 @@ def register_competitor(
 def track_competitor(competitor_id: str, tracking_organization_id: str, user_id: str | None = None) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ? AND tracking_organization_id = ?", competitor_id, tracking_organization_id)
+        cursor.execute(
+            "UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ? AND tracking_organization_id = ?",
+            competitor_id, tracking_organization_id
+        )
         conn.commit()
     return get_competitor_by_id(competitor_id)
 
@@ -268,7 +285,10 @@ def track_competitor(competitor_id: str, tracking_organization_id: str, user_id:
 def untrack_competitor(competitor_id: str, tracking_organization_id: str) -> bool:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE dbo.Competitors SET isTracked = 0 WHERE id = ? AND tracking_organization_id = ?", competitor_id, tracking_organization_id)
+        cursor.execute(
+            "UPDATE dbo.Competitors SET isTracked = 0 WHERE id = ? AND tracking_organization_id = ?",
+            competitor_id, tracking_organization_id
+        )
         conn.commit()
     return True
 
@@ -276,9 +296,33 @@ def untrack_competitor(competitor_id: str, tracking_organization_id: str) -> boo
 def delete_competitor(competitor_id: str, tracking_organization_id: str) -> bool:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM dbo.Competitors WHERE id = ? AND tracking_organization_id = ?", competitor_id, tracking_organization_id)
+        cursor.execute(
+            "DELETE FROM dbo.Competitors WHERE id = ? AND tracking_organization_id = ?",
+            competitor_id, tracking_organization_id
+        )
         conn.commit()
     return True
+
+
+def edit_competitor(competitor_id: str, tracking_organization_id: str, name: str, city: str, country: str) -> Optional[Dict]:
+    """Edit a competitor's organization details (name, city, country)."""
+    competitor = get_competitor_by_id(competitor_id)
+    if not competitor or competitor.get("tracking_organization_id") != tracking_organization_id:
+        return None
+
+    org_id = competitor["organization_id"]
+    with pyodbc.connect(get_connection_string()) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE dbo.organization
+            SET organization_name = ?, city = ?, country = ?, updated_at = GETDATE()
+            WHERE organization_id = ?
+            """,
+            name, city, country, org_id,
+        )
+        conn.commit()
+    return get_competitor_by_id(competitor_id)
 
 
 def get_competitor_reviews(competitor_id: str) -> List[Dict]:
