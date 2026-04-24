@@ -28,6 +28,7 @@ def _row_to_competitor(r) -> Dict:
         "source_url": r.source_url or "",
         "platform_id": r.platform_id,
         "organization_id": str(r.organization_id) if r.organization_id else None,
+        "tracking_organization_id": str(r.tracking_organization_id) if getattr(r, "tracking_organization_id", None) else None,
         "avgRating": round(r.avgRating or 0, 2),
         "sentimentScore": round(r.sentimentScore or 0, 1),
         "reviewCount": r.reviewCount or 0,
@@ -39,24 +40,25 @@ def _row_to_competitor(r) -> Dict:
 
 # ── Core read operations ─────────────────────────────────────────────
 
-def get_all_competitors() -> List[Dict]:
+def get_all_competitors(tracking_organization_id: str) -> List[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         rows = cursor.execute("""
             SELECT id, name, location, source_url, platform_id, organization_id,
-                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt
+                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt, tracking_organization_id
             FROM dbo.Competitors
+            WHERE tracking_organization_id = ?
             ORDER BY isTracked DESC, name ASC
-        """).fetchall()
+        """, tracking_organization_id).fetchall()
     return [_row_to_competitor(r) for r in rows]
 
 
-def get_tracked_competitors() -> List[Dict]:
-    return [c for c in get_all_competitors() if c["isTracked"]]
+def get_tracked_competitors(tracking_organization_id: str) -> List[Dict]:
+    return [c for c in get_all_competitors(tracking_organization_id) if c["isTracked"]]
 
 
-def get_available_competitors() -> List[Dict]:
-    return [c for c in get_all_competitors() if not c["isTracked"]]
+def get_available_competitors(tracking_organization_id: str) -> List[Dict]:
+    return [c for c in get_all_competitors(tracking_organization_id) if not c["isTracked"]]
 
 
 def get_competitor_by_id(competitor_id: str) -> Optional[Dict]:
@@ -64,7 +66,7 @@ def get_competitor_by_id(competitor_id: str) -> Optional[Dict]:
         cursor = conn.cursor()
         row = cursor.execute("""
             SELECT id, name, location, source_url, platform_id, organization_id,
-                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt
+                   avgRating, sentimentScore, reviewCount, isTracked, status, createdAt, tracking_organization_id
             FROM dbo.Competitors WHERE id = ?
         """, competitor_id).fetchone()
     return _row_to_competitor(row) if row else None
@@ -72,7 +74,7 @@ def get_competitor_by_id(competitor_id: str) -> Optional[Dict]:
 
 # ── Smart competitor registration ────────────────────────────────────
 
-def register_competitor_from_organization(organization_id: str) -> Optional[Dict]:
+def register_competitor_from_organization(organization_id: str, tracking_organization_id: str) -> Optional[Dict]:
     """Create a tracked Competitors row pointing at an already-existing organization.
 
     Used when the user adds a competitor from the suggestions list — the org
@@ -93,7 +95,7 @@ def register_competitor_from_organization(organization_id: str) -> Optional[Dict
             return None
 
         existing = cursor.execute(
-            "SELECT id FROM dbo.Competitors WHERE organization_id = ?", org.organization_id
+            "SELECT id FROM dbo.Competitors WHERE organization_id = ? AND tracking_organization_id = ?", org.organization_id, tracking_organization_id
         ).fetchone()
 
         if existing:
@@ -120,12 +122,12 @@ def register_competitor_from_organization(organization_id: str) -> Optional[Dict
         cursor.execute(
             """
             INSERT INTO dbo.Competitors
-                (id, name, location, source_url, platform_id, organization_id,
+                (id, name, location, source_url, platform_id, organization_id, tracking_organization_id,
                  avgRating, sentimentScore, reviewCount, isTracked, status, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, 0.0, 0.0, 0, 1, 'Active', GETDATE())
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 0, 1, 'Active', GETDATE())
             """,
             new_id, org.organization_name, location_display,
-            primary_url, primary_platform, org.organization_id,
+            primary_url, primary_platform, org.organization_id, tracking_organization_id,
         )
         conn.commit()
 
@@ -138,6 +140,7 @@ def register_competitor(
     city: str,
     country: str,
     sources: List[Dict],
+    tracking_organization_id: str,
 ) -> Dict:
     """
     Register a competitor by creating (or reusing) an ownerless organization.
@@ -227,7 +230,7 @@ def register_competitor(
 
         # Ensure a Competitors row exists for this org and is tracked.
         existing = cursor.execute(
-            "SELECT id FROM dbo.Competitors WHERE organization_id = ?", org_id
+            "SELECT id FROM dbo.Competitors WHERE organization_id = ? AND tracking_organization_id = ?", org_id, tracking_organization_id
         ).fetchone()
 
         if existing:
@@ -241,11 +244,11 @@ def register_competitor(
         cursor.execute(
             """
             INSERT INTO dbo.Competitors
-                (id, name, location, source_url, platform_id, organization_id,
+                (id, name, location, source_url, platform_id, organization_id, tracking_organization_id,
                  avgRating, sentimentScore, reviewCount, isTracked, status, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, 0.0, 0.0, 0, 1, 'Pending', GETDATE())
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, 0.0, 0, 1, 'Pending', GETDATE())
             """,
-            new_id, name, location_display, primary["source_url"], primary["platform_id"], org_id,
+            new_id, name, location_display, primary["source_url"], primary["platform_id"], org_id, tracking_organization_id,
         )
         conn.commit()
 
@@ -254,26 +257,26 @@ def register_competitor(
 
 # ── Update / Delete ──────────────────────────────────────────────────
 
-def track_competitor(competitor_id: str, user_id: str | None = None) -> Optional[Dict]:
+def track_competitor(competitor_id: str, tracking_organization_id: str, user_id: str | None = None) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ?", competitor_id)
+        cursor.execute("UPDATE dbo.Competitors SET isTracked = 1 WHERE id = ? AND tracking_organization_id = ?", competitor_id, tracking_organization_id)
         conn.commit()
     return get_competitor_by_id(competitor_id)
 
 
-def untrack_competitor(competitor_id: str) -> bool:
+def untrack_competitor(competitor_id: str, tracking_organization_id: str) -> bool:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE dbo.Competitors SET isTracked = 0 WHERE id = ?", competitor_id)
+        cursor.execute("UPDATE dbo.Competitors SET isTracked = 0 WHERE id = ? AND tracking_organization_id = ?", competitor_id, tracking_organization_id)
         conn.commit()
     return True
 
 
-def delete_competitor(competitor_id: str) -> bool:
+def delete_competitor(competitor_id: str, tracking_organization_id: str) -> bool:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM dbo.Competitors WHERE id = ?", competitor_id)
+        cursor.execute("DELETE FROM dbo.Competitors WHERE id = ? AND tracking_organization_id = ?", competitor_id, tracking_organization_id)
         conn.commit()
     return True
 

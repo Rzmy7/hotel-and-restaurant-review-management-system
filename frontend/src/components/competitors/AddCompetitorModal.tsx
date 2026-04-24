@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Link as LinkIcon, Building2, MapPin } from 'lucide-react';
 import { addCompetitor, type CompetitorSourceInput } from '../../services/competitorService';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 
 const PLATFORMS = [
   { id: 2, name: 'Booking.com', placeholder: 'https://www.booking.com/hotel/...' },
@@ -27,6 +28,8 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const organizationId = currentOrg?.id;
 
   if (!isOpen) return null;
 
@@ -48,6 +51,11 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
       return;
     }
 
+    if (!organizationId) {
+      setError('No active organization selected.');
+      return;
+    }
+
     const sources: CompetitorSourceInput[] = PLATFORMS
       .map(p => ({ platform_id: p.id, source_url: (urls[p.id] || '').trim() }))
       .filter(s => s.source_url.length > 0);
@@ -62,7 +70,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
     setSuccess(null);
 
     try {
-      const res = await addCompetitor({
+      const res = await addCompetitor(organizationId, {
         name: name.trim(),
         organization_type_id: orgTypeId,
         city: city.trim(),

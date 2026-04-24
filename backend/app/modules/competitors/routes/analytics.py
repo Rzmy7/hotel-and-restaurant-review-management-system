@@ -38,13 +38,14 @@ def _get_user_org_id(user, db: Session) -> str | None:
 
 @router.get("/rankings")
 def competitor_rankings(
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
-            raise HTTPException(status_code=400, detail="No organization found for this user")
+            raise HTTPException(status_code=400, detail="No organization ID provided")
         return get_rankings_data(my_org_id)
     except HTTPException:
         raise
@@ -55,13 +56,14 @@ def competitor_rankings(
 @router.get("/{competitor_id}/compare")
 def compare_with_competitor(
     competitor_id: str,
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
-            raise HTTPException(status_code=400, detail="No organization found for this user")
+            raise HTTPException(status_code=400, detail="No organization ID provided")
         data = get_comparison_data(competitor_id, my_org_id)
         if not data:
             raise HTTPException(status_code=404, detail="Competitor not found")
@@ -75,13 +77,14 @@ def compare_with_competitor(
 @router.get("/{competitor_id}/insights")
 def ai_competitor_insights(
     competitor_id: str,
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
-            raise HTTPException(status_code=400, detail="No organization found for this user")
+            raise HTTPException(status_code=400, detail="No organization ID provided")
         return get_ai_comparison_insights(competitor_id, my_org_id)
     except HTTPException:
         raise

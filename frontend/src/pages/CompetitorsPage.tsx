@@ -21,12 +21,14 @@ const CompetitorsPage = () => {
 
     const { data, isLoading: loading, error } = useQuery({
         queryKey: ['competitors', organizationId],
-        queryFn: fetchCompetitors,
+        queryFn: () => fetchCompetitors(organizationId),
+        enabled: !!organizationId,
     });
 
     const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
         queryKey: ['competitor-suggestions', organizationId],
-        queryFn: fetchSuggestedCompetitors,
+        queryFn: () => fetchSuggestedCompetitors(organizationId),
+        enabled: !!organizationId,
     });
 
     const tracked = data?.tracked ?? [];
@@ -40,12 +42,12 @@ const CompetitorsPage = () => {
     const handleSuccess = () => { invalidateAll(); };
 
     const untrackMutation = useMutation({
-        mutationFn: untrackCompetitor,
+        mutationFn: (competitorId: string) => untrackCompetitor(organizationId, competitorId),
         onSuccess: invalidateAll,
     });
 
     const addFromOrgMutation = useMutation({
-        mutationFn: addCompetitorFromOrganization,
+        mutationFn: (targetOrgId: string) => addCompetitorFromOrganization(organizationId, targetOrgId),
         onSuccess: invalidateAll,
     });
 

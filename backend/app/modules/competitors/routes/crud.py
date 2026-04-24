@@ -43,22 +43,23 @@ def _get_user_org_id(user, db: Session) -> str | None:
 
 
 @router.get("/")
-def list_competitors(current_user=Depends(get_current_user)):
+def list_competitors(organization_id: str, current_user=Depends(get_current_user)):
     try:
-        return {"tracked": get_tracked_competitors(), "available": get_available_competitors()}
+        return {"tracked": get_tracked_competitors(organization_id), "available": get_available_competitors(organization_id)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/suggestions")
 def suggested_competitors(
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Top 6 organizations with the same city+country+type as the user's own org,
     excluding the user's org and orgs already in dbo.Competitors. Ordered by review count desc."""
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
             return {"status": "no_organization", "suggestions": []}
 
@@ -127,6 +128,7 @@ def suggested_competitors(
 @router.post("/")
 def create_competitor(
     payload: AddCompetitorRequest,
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -167,6 +169,7 @@ def create_competitor(
             city=payload.city,
             country=payload.country,
             sources=[s.model_dump() for s in payload.sources],
+            tracking_organization_id=organization_id,
         )
         return {"message": "Competitor registered", "competitor": competitor}
     except HTTPException:
@@ -178,10 +181,11 @@ def create_competitor(
 @router.post("/from-organization")
 def add_from_organization(
     payload: AddFromOrganizationRequest,
+    organization_id: str,
     current_user=Depends(get_current_user),
 ):
     try:
-        competitor = register_competitor_from_organization(payload.organization_id)
+        competitor = register_competitor_from_organization(payload.organization_id, organization_id)
         if not competitor:
             raise HTTPException(status_code=404, detail="Organization not found")
         return {"message": "Competitor added", "competitor": competitor}
@@ -194,12 +198,13 @@ def add_from_organization(
 @router.post("/track")
 def track_a_competitor(
     payload: TrackCompetitorRequest,
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
         user_id = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
-        result = track_competitor(payload.competitorId, user_id=user_id)
+        result = track_competitor(payload.competitorId, tracking_organization_id=organization_id, user_id=user_id)
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor now tracked", "competitor": result}
@@ -212,19 +217,24 @@ def track_a_competitor(
 @router.post("/untrack")
 def untrack_a_competitor(
     payload: TrackCompetitorRequest,
+    organization_id: str,
     current_user=Depends(get_current_user),
 ):
     try:
-        untrack_competitor(payload.competitorId)
+        untrack_competitor(payload.competitorId, tracking_organization_id=organization_id)
         return {"message": "Competitor untracked"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{competitor_id}")
-def remove_competitor(competitor_id: str, current_user=Depends(get_current_user)):
+def remove_competitor(
+    competitor_id: str, 
+    organization_id: str,
+    current_user=Depends(get_current_user)
+):
     try:
-        delete_competitor(competitor_id)
+        delete_competitor(competitor_id, tracking_organization_id=organization_id)
         return {"message": "Competitor deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
