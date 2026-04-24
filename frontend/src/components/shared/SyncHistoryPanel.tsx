@@ -4,7 +4,7 @@ import {
     Rocket, Database, Brain, PlusCircle, Trash2, Zap, 
     History, BarChart3, Loader2, ArrowRight, RefreshCw as RefreshIcon, Search
 } from 'lucide-react';
-import type { SyncLog } from '../../types/sources';
+import type { Source, SyncLog } from '../../types/sources';
 import { useSyncProgress } from '../../hooks/useSyncProgress';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';

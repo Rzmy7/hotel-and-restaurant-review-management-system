@@ -86,7 +86,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-black text-lg">L</span>
                 </div>
-                <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white uppercase">L2 Project</span>
+                <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white uppercase">ReviewMate</span>
             </div>
             <Button 
                 variant="ghost" 

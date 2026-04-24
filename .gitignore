@@ -96,3 +96,8 @@ microservices/scraper_engine/jobs_state.json
 #debug
 backend/scratch/*
 output/
+
+PROJECT_LOG.md
+AGENTS.md
+opencode.json
+.opencode

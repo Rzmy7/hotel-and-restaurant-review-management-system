@@ -233,7 +233,7 @@ const FinishSetupPage = () => {
                 <span className="text-[11px] font-black uppercase tracking-widest">Ready to Launch</span>
             </div>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                Click the button below to finalize and head to your dashboard. Welcome to the L2 Project family.
+                Click the button below to finalize and head to your dashboard. Welcome to the ReviewMate family.
             </p>
         </div>
       </div>
