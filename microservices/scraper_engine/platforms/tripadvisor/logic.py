@@ -130,21 +130,19 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         human_delay(1, 2)
 
         # Ensure we are in the reviews section
-        # Sometimes we need to click "Reviews" tab or "All reviews" button
         try:
-            from platforms.tripadvisor.config import tripadvisor_selectors
+            from platforms.tripadvisor.config import tripadvisor_selectors as ts
             
-            # 1. Try "Reviews" tab first to scroll to the section
-            reviews_tab = page.locator('span:has-text("Reviews")').first
-            if reviews_tab.is_visible():
-                reviews_tab.click()
-                logger.info("Clicked 'Reviews' tab.")
+            # 1. Try to find and click the 'Reviews' tab/anchor to scroll into view
+            reviews_link = page.locator('a[href*="#REVIEWS"], span:has-text("Reviews")').first
+            if reviews_link.is_visible():
+                reviews_link.click()
+                logger.info("Clicked 'Reviews' link.")
                 page.wait_for_timeout(2000)
 
-            # 2. Try "All reviews" button if it exists (opens modal or expands list)
-            logger.info("Checking for 'All reviews' or 'Jump to all reviews' buttons...")
+            # 2. Aggressive search for reviews button (opens modal or expands list)
             all_reviews_selectors = [
-                tripadvisor_selectors.ALL_REVIEWS_BTN,
+                ts.ALL_REVIEWS_BTN,
                 'button:has-text("All reviews")',
                 'button:has-text("Jump to all reviews")',
                 'span:has-text("All reviews")'
@@ -153,10 +151,13 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             for sel in all_reviews_selectors:
                 btn = page.query_selector(sel)
                 if btn and btn.is_visible():
-                    btn.click()
-                    logger.info(f"Clicked reviews button via: {sel}")
-                    page.wait_for_timeout(3000)
-                    break
+                    try:
+                        btn.click()
+                        logger.info(f"Clicked reviews expansion button via: {sel}")
+                        page.wait_for_timeout(3000)
+                        break
+                    except Exception:
+                        continue
         except Exception as e:
             logger.warning(f"Could not refine reviews view: {e}")
 
