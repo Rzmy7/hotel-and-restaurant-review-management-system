@@ -18,7 +18,7 @@ def get_user_organizations(
 
     result = db.execute(
         text("""
-            SELECT 
+            SELECT
                 o.organization_id,
                 o.organization_name,
                 ot.type_name as organization_type,
@@ -26,7 +26,10 @@ def get_user_organizations(
                 o.website_url,
                 o.primary_email,
                 o.phone_number,
-                o.logo_url
+                o.logo_url,
+                o.location_url,
+                o.latitude,
+                o.longitude
             FROM dbo.organization o
             LEFT JOIN dbo.organization_type ot
                 ON o.organization_type_id = ot.type_code
@@ -39,15 +42,18 @@ def get_user_organizations(
 
     organizations = [
         {
-            "organization_id": str(row[0]),  
-            "organization_name": row[1],      
+            "organization_id": str(row[0]),
+            "organization_name": row[1],
             "organization_type": row[2],
             "organization_type_id": row[3],
             "website_url": row[4],
             "primary_email": row[5],
             "phone_number": row[6],
             "logo_url": row[7],
-            "role": "owner" # In this unified model, the tenant owner is the owner of all its orgs
+            "location_url": row[8],
+            "latitude": row[9],
+            "longitude": row[10],
+            "role": "owner"
         }
         for row in rows
     ]

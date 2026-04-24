@@ -63,6 +63,9 @@ class Organization(Base):
         ForeignKey("organization_type.type_code"),
         nullable=True,
     )
+    location_url = Column(String(2000), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),

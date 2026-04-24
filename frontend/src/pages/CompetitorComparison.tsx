@@ -55,7 +55,7 @@ const CompetitorComparison = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await fetchComparison(competitorId);
+            const data = await fetchComparison(organizationId, competitorId);
             setComparison(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load comparison data');
@@ -68,7 +68,7 @@ const CompetitorComparison = () => {
         if (!competitorId || !organizationId) return;
         try {
             setInsightsLoading(true);
-            const data = await fetchAiInsights(competitorId);
+            const data = await fetchAiInsights(organizationId, competitorId);
             setInsights(data);
         } catch {
             // silently fail
@@ -83,8 +83,10 @@ const CompetitorComparison = () => {
     }, [loadData, loadInsights]);
 
     useEffect(() => {
-        fetchCompetitors().then(res => setTrackedList(res.tracked)).catch(() => {});
-    }, []);
+        if (organizationId) {
+            fetchCompetitors(organizationId).then(res => setTrackedList(res.tracked)).catch(() => {});
+        }
+    }, [organizationId]);
 
     const myName = comparison?.myOrganizationName ?? 'My Organization';
     const compName = comparison?.competitor.name ?? 'Competitor';

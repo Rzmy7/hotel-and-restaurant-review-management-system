@@ -106,7 +106,7 @@ const SettingsPage: React.FC = () => {
       plan: 'Plan', billingEmail: 'Billing Email'
     });
     compareSection('Hotel Profile', serverData.hotelInfo, localData.hotelInfo, {
-      hotelName: 'Hotel Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', logoUrl: 'Logo URL'
+      hotelName: 'Hotel Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
     });
 
     return changes;

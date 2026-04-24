@@ -65,6 +65,7 @@ const SetupPage = () => {
     const { user } = useAuth();
     const [selectedType, setSelectedType] = useState<number | null>(null);
     const [organizationName, setOrganizationName] = useState('');
+    const [locationUrl, setLocationUrl] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isCheckingLimit, setIsCheckingLimit] = useState(false);
     const [organizationTypes, setOrganizationTypes] = useState<any[]>([]);
@@ -133,6 +134,8 @@ const SetupPage = () => {
                     if (draft.organization && draft.organization.type) {
                         setSelectedType(draft.organization.type);
                     }
+                    if (draft.organization?.name) setOrganizationName(draft.organization.name);
+                    if (draft.organization?.locationUrl) setLocationUrl(draft.organization.locationUrl);
                 }
             } catch (error) {
                 console.error('Failed to fetch organization types:', error);
@@ -151,8 +154,13 @@ const SetupPage = () => {
     const handleContinue = async () => {
         const token = localStorage.getItem("token");
 
-        // Use a generic name if none provided for now
-        const orgName = (organizationName || `My New Business`).trim();
+        const orgName = organizationName.trim();
+        const locUrlTrim = locationUrl.trim();
+
+        if (!orgName || !locUrlTrim) {
+            alert("Organization name and location URL are required.");
+            return;
+        }
 
         if (!token) {
             alert("User not authenticated");
@@ -172,7 +180,8 @@ const SetupPage = () => {
             ...draft,
             organization: {
                 name: orgName,
-                type: selectedType
+                type: selectedType,
+                locationUrl: locUrlTrim,
             }
         }));
 
@@ -221,7 +230,7 @@ const SetupPage = () => {
             currentStep={1}
             onContinue={handleContinue}
             showBack={false}
-            isContinueDisabled={!selectedType || isLoading || isCheckingLimit || !!limitError}
+            isContinueDisabled={!selectedType || !organizationName.trim() || !locationUrl.trim() || isLoading || isCheckingLimit || !!limitError}
             isContinueLoading={isLoading || isCheckingLimit}
         >
             <div className="text-center mb-10">
@@ -256,16 +265,30 @@ const SetupPage = () => {
                 </div>
             )}
 
-            {/* Optional Name Input */}
-            <div className="mb-6">
+            {/* Name */}
+            <div className="mb-4">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
-                    Organization Name (Optional)
+                    Organization Name
                 </label>
                 <input
                     type="text"
                     value={organizationName}
                     onChange={(e) => setOrganizationName(e.target.value)}
                     placeholder="E.g., Ocean Bay Hotel"
+                    className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all dark:text-white"
+                />
+            </div>
+
+            {/* Location URL */}
+            <div className="mb-6">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
+                    Google Maps Location Link
+                </label>
+                <input
+                    type="url"
+                    value={locationUrl}
+                    onChange={(e) => setLocationUrl(e.target.value)}
+                    placeholder="https://www.google.com/maps/place/..."
                     className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all dark:text-white"
                 />
             </div>
