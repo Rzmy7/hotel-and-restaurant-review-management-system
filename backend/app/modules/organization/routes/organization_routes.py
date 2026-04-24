@@ -323,6 +323,12 @@ def delete_organization(
     if not existing_org:
         raise HTTPException(status_code=403, detail="Not authorized to delete this organization")
 
+    # delete rules & regulations if any
+    db.execute(
+        text("DELETE FROM dbo.organization_rule WHERE organization_id = :org_id"),
+        {"org_id": org_id}
+    )
+
     # delete sources mapping if any
     db.execute(
         text("DELETE FROM dbo.source WHERE organization_id = :org_id"),
@@ -385,3 +391,56 @@ def discard_setup_organization(
 def get_organization_types(db: Session = Depends(get_db)):
     """Fetch all organization types (e.g., Hotel, Restaurant) from the database."""
     return organization_service.get_organization_types(db)
+
+
+@router.post("/organizations/{org_id}/upload-rules")
+async def upload_organization_rules(
+    org_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Upload a rules & regulations file (.txt, .docx, .pdf) for an organization.
+    
+    The file is parsed, sent to Gemini to extract individual rules,
+    stored in the database, and dispatched to the embedding service.
+    """
+    # Verify ownership
+    org = db.execute(
+        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
+        {"org_id": org_id, "tenant_id": user.user_id},
+    ).fetchone()
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+
+    try:
+        from app.modules.organization.services.rules_service import process_rules_upload
+        result = await process_rules_upload(db, org_id, file)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process rules file: {str(e)}")
+
+
+@router.get("/organizations/{org_id}/rules")
+def get_organization_rules(
+    org_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Fetch all rules for an organization."""
+    # Verify ownership
+    org = db.execute(
+        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
+        {"org_id": org_id, "tenant_id": user.user_id},
+    ).fetchone()
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+
+    from app.modules.organization.services.rules_service import get_organization_rules
+    return get_organization_rules(db, org_id)

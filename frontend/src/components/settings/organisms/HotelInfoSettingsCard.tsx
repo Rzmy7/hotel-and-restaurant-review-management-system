@@ -1,9 +1,17 @@
 import React from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import type { HotelInfoSettings } from '../../../types/settings';
+
+interface OrganizationRule {
+    rule_id: string;
+    rule_text: string;
+    rule_order: number;
+    is_embedded: boolean;
+    source_filename: string | null;
+}
 
 interface HotelInfoSettingsCardProps {
     data: HotelInfoSettings;
@@ -11,6 +19,9 @@ interface HotelInfoSettingsCardProps {
     onLogoUpload: () => void;
     onLogoRemove: () => void;
     isUploadingLogo?: boolean;
+    onRulesUpload?: () => void;
+    isUploadingRules?: boolean;
+    organizationRules?: OrganizationRule[];
 }
 
 export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
@@ -18,8 +29,13 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
     onChange,
     onLogoUpload,
     onLogoRemove,
-    isUploadingLogo = false
+    isUploadingLogo = false,
+    onRulesUpload,
+    isUploadingRules = false,
+    organizationRules = [],
 }) => {
+    const rulesFilename = organizationRules.length > 0 ? organizationRules[0]?.source_filename : null;
+
     return (
         <div className="flex flex-col">
 
@@ -107,6 +123,109 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                     />
                 </div>
             </div>
+
+            {/* Rules & Regulations Upload */}
+            {onRulesUpload && (
+                <div className="py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
+                    <div className="flex flex-col gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Rules & Regulations
+                            </label>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
+                                Upload a document containing your property's rules and regulations. The AI will extract individual rules and use them when generating review replies.
+                            </p>
+                        </div>
+
+                        <div className="flex items-start gap-4 max-md:flex-col">
+                            {/* Upload Area */}
+                            <div
+                                onClick={isUploadingRules ? undefined : onRulesUpload}
+                                className={`
+                                    flex-1 border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-all
+                                    ${isUploadingRules
+                                        ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10 cursor-wait'
+                                        : 'border-gray-200 dark:border-slate-600 bg-gray-50/50 dark:bg-slate-800/50 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group'
+                                    }
+                                `}
+                            >
+                                {isUploadingRules ? (
+                                    <>
+                                        <Loader2 className="text-blue-500 animate-spin" size={28} />
+                                        <span className="text-xs font-bold tracking-wider text-blue-500 uppercase">
+                                            Processing with AI...
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                                            Extracting rules from document. This may take a moment.
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <FileText className="text-gray-400 group-hover:text-[#4e80ee] transition-colors" size={28} />
+                                        <span className="text-xs font-bold tracking-wider text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors">
+                                            {organizationRules.length > 0 ? 'Replace Rules File' : 'Upload Rules File'}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                                            Supported formats: .txt, .docx, .pdf (max 10MB)
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-col gap-2 pt-1 min-w-[130px]">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onRulesUpload}
+                                    isLoading={isUploadingRules}
+                                    disabled={isUploadingRules}
+                                >
+                                    {organizationRules.length > 0 ? 'Replace File' : 'Upload File'}
+                                </Button>
+                                {rulesFilename && (
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[130px]" title={rulesFilename}>
+                                        📄 {rulesFilename}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Extracted Rules List */}
+                        {organizationRules.length > 0 && (
+                            <div className="mt-2">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <h4 className="text-xs font-black tracking-wider text-slate-600 dark:text-slate-300 uppercase">
+                                        Extracted Rules ({organizationRules.length})
+                                    </h4>
+                                </div>
+                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                    {organizationRules.map((rule) => (
+                                        <div
+                                            key={rule.rule_id}
+                                            className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 transition-all hover:border-slate-200 dark:hover:border-slate-600"
+                                        >
+                                            <span className="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-black mt-0.5">
+                                                {rule.rule_order}
+                                            </span>
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
+                                                {rule.rule_text}
+                                            </p>
+                                            <span className="flex-shrink-0 mt-0.5" title={rule.is_embedded ? 'Embedded' : 'Pending embedding'}>
+                                                {rule.is_embedded ? (
+                                                    <CheckCircle2 size={14} className="text-emerald-500" />
+                                                ) : (
+                                                    <Clock size={14} className="text-amber-400" />
+                                                )}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
         </div>
     );

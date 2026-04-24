@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hotel, Utensils } from 'lucide-react';
+import { Hotel, Utensils, FileText, X } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
 import { Loader2 } from 'lucide-react';
@@ -70,6 +70,8 @@ const SetupPage = () => {
     const [isCheckingLimit, setIsCheckingLimit] = useState(false);
     const [organizationTypes, setOrganizationTypes] = useState<any[]>([]);
     const [limitError, setLimitError] = useState<string | null>(null);
+    const [rulesFile, setRulesFile] = useState<File | null>(null);
+    const rulesInputRef = useRef<HTMLInputElement | null>(null);
 
     const checkOrganizationLimit = async (): Promise<boolean> => {
         const storedAuthUserRaw = localStorage.getItem('authUser');
@@ -182,8 +184,17 @@ const SetupPage = () => {
                 name: orgName,
                 type: selectedType,
                 locationUrl: locUrlTrim,
+                hasRulesFile: !!rulesFile,
+                rulesFileName: rulesFile?.name || null,
             }
         }));
+
+        // Store the rules file for later upload in the finish step
+        if (rulesFile) {
+            // Store file reference in sessionStorage as we can't store File objects in localStorage
+            // The FinishSetupPage will use the stored reference
+            (window as any).__setup_rules_file = rulesFile;
+        }
 
         // We still store a "pending name" for UI purposes across steps if needed
         localStorage.setItem(SETUP_PENDING_ORG_NAME_KEY, orgName);
@@ -291,6 +302,47 @@ const SetupPage = () => {
                     placeholder="https://www.google.com/maps/place/..."
                     className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all dark:text-white"
                 />
+            </div>
+
+            {/* Rules File Upload (Optional) */}
+            <div className="mb-6">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
+                    Rules & Regulations File
+                    <span className="text-slate-400 dark:text-slate-500 font-medium normal-case tracking-normal ml-2">(Optional)</span>
+                </label>
+                <input
+                    ref={rulesInputRef}
+                    type="file"
+                    accept=".txt,.docx,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setRulesFile(file);
+                        e.target.value = '';
+                    }}
+                />
+                {rulesFile ? (
+                    <div className="flex items-center gap-3 w-full h-12 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10 px-4">
+                        <FileText size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                        <span className="text-sm text-slate-700 dark:text-slate-300 truncate flex-1">{rulesFile.name}</span>
+                        <button
+                            type="button"
+                            onClick={() => setRulesFile(null)}
+                            className="text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                ) : (
+                    <div
+                        onClick={() => rulesInputRef.current?.click()}
+                        className="w-full h-12 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 flex items-center gap-3 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 transition-all group"
+                    >
+                        <FileText size={18} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                        <span className="text-sm text-slate-400 group-hover:text-blue-500 transition-colors">Click to upload .txt, .docx, or .pdf</span>
+                    </div>
+                )}
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Upload your property rules. AI will extract individual rules for review reply context.</p>
             </div>
 
             {isLoading ? (

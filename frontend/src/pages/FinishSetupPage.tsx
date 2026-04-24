@@ -84,6 +84,28 @@ const FinishSetupPage = () => {
         if (accessToken) {
           persist(user, accessToken);
         }
+
+        // Upload rules file if one was selected during setup
+        const rulesFile = (window as any).__setup_rules_file as File | undefined;
+        if (rulesFile) {
+          try {
+            const formData = new FormData();
+            formData.append('file', rulesFile);
+
+            const token = localStorage.getItem('token') || accessToken;
+            const baseUrl = localStorage.getItem('mainBackendUrl') || 'http://localhost:8000';
+            await fetch(`${baseUrl.replace(/\/$/, '')}/api/organizations/${organizationId}/upload-rules`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            });
+          } catch (rulesErr) {
+            console.warn('Rules file upload failed (non-blocking):', rulesErr);
+          } finally {
+            delete (window as any).__setup_rules_file;
+          }
+        }
+
         // Update local organizations list
         const organizations = parseJsonArray(localStorage.getItem('organizations'));
         const alreadyExists = organizations.some((org: any) => org?.organization_id === organizationId);

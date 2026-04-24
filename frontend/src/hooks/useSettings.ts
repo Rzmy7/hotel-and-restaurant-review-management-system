@@ -73,6 +73,21 @@ export const useSettings = () => {
         return message;
     };
 
+    const uploadRulesFile = async (file: File) => {
+        try {
+            const result = await settingsService.uploadRulesFile(file);
+            showToast(`${result.rules_extracted} rules extracted and processed`, 'success');
+            return result;
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to process rules file', 'error');
+            throw err;
+        }
+    };
+
+    const fetchOrganizationRules = async () => {
+        return await settingsService.fetchOrganizationRules();
+    };
+
     return {
         data,
         loading,
@@ -81,6 +96,8 @@ export const useSettings = () => {
         refreshData: loadSettings,
         updateSettings,
         uploadHotelLogo,
-        changePassword
+        changePassword,
+        uploadRulesFile,
+        fetchOrganizationRules,
     };
 };
