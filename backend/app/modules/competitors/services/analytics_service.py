@@ -45,12 +45,13 @@ def _get_review_stats(org_id: str) -> Dict:
         row = cursor.execute("""
             SELECT
                 COUNT(*) as cnt,
-                AVG(CAST(rating AS FLOAT)) as avgRating,
-                SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) as positive,
-                SUM(CASE WHEN sentiment = 'Negative' THEN 1 ELSE 0 END) as negative,
-                SUM(CASE WHEN sentiment = 'Neutral' THEN 1 ELSE 0 END) as neutral
-            FROM dbo.processed_review
-            WHERE organization_id = ?
+                AVG(CAST(pr.rating AS FLOAT)) as avgRating,
+                SUM(CASE WHEN pr.sentiment = 'Positive' THEN 1 ELSE 0 END) as positive,
+                SUM(CASE WHEN pr.sentiment = 'Negative' THEN 1 ELSE 0 END) as negative,
+                SUM(CASE WHEN pr.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neutral
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON s.source_id = pr.source_id
+            WHERE s.organization_id = ?
         """, org_id).fetchone()
     cnt = row.cnt or 0
     return {
@@ -85,8 +86,9 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
         rows = cursor.execute("""
             SELECT rc.category_name, AVG(CAST(r.rating AS FLOAT)) as avgScore
             FROM dbo.processed_review r
+            JOIN dbo.source s ON s.source_id = r.source_id
             JOIN dbo.ReviewCategory rc ON r.id = rc.review_id
-            WHERE r.organization_id = ?
+            WHERE s.organization_id = ?
             GROUP BY rc.category_name
         """, org_id).fetchall()
 
@@ -95,10 +97,11 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
 
         # Fallback: parse JSON categories column (for existing data)
         rows = cursor.execute("""
-            SELECT rating, categories
-            FROM dbo.processed_review
-            WHERE organization_id = ?
-              AND categories IS NOT NULL
+            SELECT r.rating, r.categories
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON s.source_id = r.source_id
+            WHERE s.organization_id = ?
+              AND r.categories IS NOT NULL
         """, org_id).fetchall()
 
     totals: Dict[str, List[float]] = {}
@@ -108,7 +111,10 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
         except Exception:
             cats = []
         for cat in cats:
-            totals.setdefault(cat, []).append(r.rating or 0)
+            name = cat.get("name") if isinstance(cat, dict) else cat
+            if not isinstance(name, str) or not name:
+                continue
+            totals.setdefault(name, []).append(r.rating or 0)
 
     return {cat: round(sum(v) / len(v), 2) for cat, v in totals.items() if v}
 
@@ -118,13 +124,14 @@ def get_monthly_ratings(org_id: str) -> List[Dict]:
         cursor = conn.cursor()
         rows = cursor.execute("""
             SELECT
-                FORMAT(reviewDate, 'yyyy-MM') as month,
-                AVG(CAST(rating AS FLOAT)) as avgRating,
+                FORMAT(pr.reviewDate, 'yyyy-MM') as month,
+                AVG(CAST(pr.rating AS FLOAT)) as avgRating,
                 COUNT(*) as cnt
-            FROM dbo.processed_review
-            WHERE reviewDate IS NOT NULL
-              AND organization_id = ?
-            GROUP BY FORMAT(reviewDate, 'yyyy-MM')
+            FROM dbo.processed_review pr
+            JOIN dbo.source s ON s.source_id = pr.source_id
+            WHERE pr.reviewDate IS NOT NULL
+              AND s.organization_id = ?
+            GROUP BY FORMAT(pr.reviewDate, 'yyyy-MM')
             ORDER BY month
         """, org_id).fetchall()
     return [{"month": r.month, "avgRating": round(r.avgRating, 2), "count": r.cnt} for r in rows]
@@ -209,7 +216,7 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
 def get_rankings_data(my_org_id: str) -> Dict:
     """Build the full rankings list including my hotel and all tracked competitors."""
     my_stats = _get_review_stats(my_org_id)
-    tracked = get_tracked_competitors()
+    tracked = get_tracked_competitors(my_org_id)
 
     # Fetch name for my org
     with pyodbc.connect(get_connection_string()) as conn:

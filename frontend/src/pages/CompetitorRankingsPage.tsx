@@ -38,7 +38,7 @@ const CompetitorRankingsPage = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await fetchRankings();
+            const data = await fetchRankings(organizationId);
             setRankings(data.rankings);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load rankings');

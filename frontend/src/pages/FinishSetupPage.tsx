@@ -59,9 +59,14 @@ const FinishSetupPage = () => {
         throw new Error("User session not found. Please log in again.");
       }
 
+      if (!draft.organization?.locationUrl) {
+        throw new Error("Location URL is missing. Please restart setup.");
+      }
+
       const payload = {
         organization_name: draft.organization.name,
         organization_type_id: draft.organization.type || 1,
+        location_url: draft.organization.locationUrl,
         sources: (draft.sources || []).map((s: any) => ({
           platform_id: s.platform_id,
           source_url: s.source_url,

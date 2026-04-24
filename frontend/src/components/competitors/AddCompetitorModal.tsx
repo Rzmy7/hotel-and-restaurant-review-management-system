@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { X, Link, Building2, Globe } from 'lucide-react';
-import { addCompetitor } from '../../services/competitorService';
+import { X, Link as LinkIcon, Building2, MapPin, Sparkles, Loader2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { addCompetitor, fetchSuggestedCompetitors, addCompetitorFromOrganization, type CompetitorSourceInput } from '../../services/competitorService';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 
 const PLATFORMS = [
   { id: 2, name: 'Booking.com', placeholder: 'https://www.booking.com/hotel/...' },
@@ -20,21 +22,63 @@ interface AddCompetitorModalProps {
 
 const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [name, setName] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [platformId, setPlatformId] = useState(2);
   const [orgTypeId, setOrgTypeId] = useState(1);
+  const [locationUrl, setLocationUrl] = useState('');
+  const [urls, setUrls] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const organizationId = currentOrg?.id;
+  const queryClient = useQueryClient();
+
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ['competitor-suggestions', organizationId],
+    queryFn: () => fetchSuggestedCompetitors(organizationId!),
+    enabled: !!organizationId && isOpen,
+  });
+
+  const addFromOrgMutation = useMutation({
+    mutationFn: (targetOrgId: string) => addCompetitorFromOrganization(organizationId!, targetOrgId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competitors', organizationId] });
+      queryClient.invalidateQueries({ queryKey: ['competitor-suggestions', organizationId] });
+      onSuccess();
+      onClose();
+      resetForm();
+    },
+  });
 
   if (!isOpen) return null;
 
-  const selectedPlatform = PLATFORMS.find(p => p.id === platformId) ?? PLATFORMS[0];
+  const resetForm = () => {
+    setName('');
+    setOrgTypeId(1);
+    setLocationUrl('');
+    setUrls({});
+    setError(null);
+    setSuccess(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !sourceUrl.trim()) {
-      setError('Please fill in all fields.');
+
+    if (!name.trim() || !locationUrl.trim()) {
+      setError('Name and location URL are required.');
+      return;
+    }
+
+    if (!organizationId) {
+      setError('No active organization selected.');
+      return;
+    }
+
+    const sources: CompetitorSourceInput[] = PLATFORMS
+      .map(p => ({ platform_id: p.id, source_url: (urls[p.id] || '').trim() }))
+      .filter(s => s.source_url.length > 0);
+
+    if (sources.length === 0) {
+      setError('Enter at least one platform URL.');
       return;
     }
 
@@ -43,18 +87,23 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
     setSuccess(null);
 
     try {
-      const res = await addCompetitor(name.trim(), sourceUrl.trim(), platformId, orgTypeId);
-      const status = res.competitor?.status;
-      if (status === 'Active') {
-        setSuccess(`✓ "${res.competitor.name}" found in system — comparison data is ready!`);
+      const res = await addCompetitor(organizationId, {
+        name: name.trim(),
+        organization_type_id: orgTypeId,
+        location_url: locationUrl.trim(),
+        sources,
+      });
+      const hasData = (res.competitor?.reviewCount ?? 0) > 0;
+      if (hasData) {
+        setSuccess(`"${res.competitor.name}" is already in the system — comparison data is ready.`);
       } else {
-        setSuccess(`✓ "${res.competitor.name}" added! Reviews are being fetched in the background.`);
+        setSuccess(`"${res.competitor.name}" added. Reviews are being scraped in the background.`);
       }
       setTimeout(() => {
         onSuccess();
         onClose();
         resetForm();
-      }, 2000);
+      }, 1800);
     } catch (err: any) {
       setError(err.message ?? 'Failed to register competitor.');
     } finally {
@@ -62,15 +111,10 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
     }
   };
 
-  const resetForm = () => {
-    setName(''); setSourceUrl(''); setPlatformId(2); setOrgTypeId(1);
-    setError(null); setSuccess(null);
-  };
-
   return (
     <div className="fixed inset-0 bg-gray-900/50 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -78,7 +122,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
           <div>
             <h2 className="text-[20px] font-bold text-gray-900 dark:text-white leading-tight">Add Competitor</h2>
             <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">
-              Enter a competitor's details. If their reviews are already in our system, comparison starts immediately.
+              Add a competitor as an organization. If any URL is already in the system, we'll link to it.
             </p>
           </div>
           <button
@@ -89,8 +133,75 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+        {/* Content */}
+        <div className="px-8 py-6 space-y-8">
+          
+          {/* Suggestions Section */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={18} className="text-blue-500" />
+              <h3 className="text-[16px] font-bold text-gray-900 dark:text-white">Suggested Competitors</h3>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-slate-900/50 rounded-xl p-4 border border-gray-100 dark:border-slate-700">
+              {suggestionsLoading && (
+                <div className="flex items-center gap-3 text-gray-500 dark:text-slate-400 text-sm">
+                  <Loader2 size={16} className="animate-spin" /> Loading suggestions…
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionsData?.status === 'missing_location' && (
+                <div className="text-sm text-amber-700 dark:text-amber-300">
+                  Set your organization's location in Settings to see suggestions here.
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionsData?.status === 'ok' && suggestionsData.suggestions.length === 0 && (
+                <div className="text-sm text-gray-500 dark:text-slate-400">
+                  No matching organizations within 50km yet.
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionsData?.status === 'ok' && suggestionsData.suggestions.length > 0 && (
+                <div className="flex overflow-x-auto gap-4 pb-2 snap-x">
+                  {suggestionsData.suggestions.map(s => (
+                    <div
+                      key={s.organization_id}
+                      className="shrink-0 w-64 border border-gray-200 dark:border-slate-600 rounded-xl p-4 flex flex-col gap-2 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-white dark:bg-slate-800 snap-center"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                          {s.organization_name}
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+                        {s.reviewCount} reviews
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addFromOrgMutation.mutate(s.organization_id)}
+                        disabled={addFromOrgMutation.isPending}
+                        className="mt-2 self-start px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-50 text-blue-700 dark:text-blue-300 text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        {addFromOrgMutation.isPending ? 'Adding…' : 'Add as Competitor'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-gray-200 dark:border-slate-700"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white dark:bg-slate-800 px-4 text-sm font-medium text-gray-500 dark:text-slate-400">or add manually</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* Name */}
           <div>
@@ -107,55 +218,55 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
             />
           </div>
 
-          {/* Platform + Org Type row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                <Globe size={14} className="inline mr-1.5" />
-                Platform
-              </label>
-              <select
-                value={platformId}
-                onChange={e => setPlatformId(Number(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                {PLATFORMS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Type
-              </label>
-              <select
-                value={orgTypeId}
-                onChange={e => setOrgTypeId(Number(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                {ORG_TYPES.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Source URL */}
+          {/* Type */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              <Link size={14} className="inline mr-1.5" />
-              {selectedPlatform.name} Page URL
+              Type
+            </label>
+            <select
+              value={orgTypeId}
+              onChange={e => setOrgTypeId(Number(e.target.value))}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              {ORG_TYPES.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Location URL */}
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <MapPin size={14} className="inline mr-1.5" />
+              Google Maps Location Link
             </label>
             <input
               type="url"
-              value={sourceUrl}
-              onChange={e => setSourceUrl(e.target.value)}
-              placeholder={selectedPlatform.placeholder}
+              value={locationUrl}
+              onChange={e => setLocationUrl(e.target.value)}
+              placeholder="https://www.google.com/maps/place/..."
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5">
-              If this organization is already tracked in the system, comparison data will appear immediately.
-            </p>
+          </div>
+
+          {/* Platform URL inputs */}
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <LinkIcon size={14} className="inline mr-1.5" />
+              Platform URLs <span className="font-normal text-gray-400">(at least one)</span>
+            </label>
+            {PLATFORMS.map(p => (
+              <div key={p.id}>
+                <div className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{p.name}</div>
+                <input
+                  type="url"
+                  value={urls[p.id] || ''}
+                  onChange={e => setUrls(prev => ({ ...prev, [p.id]: e.target.value }))}
+                  placeholder={p.placeholder}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            ))}
           </div>
 
           {/* Status messages */}
@@ -184,10 +295,11 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
               disabled={loading}
               className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
             >
-              {loading ? 'Checking...' : 'Add Competitor'}
+              {loading ? 'Adding…' : 'Add Competitor'}
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -26,9 +26,8 @@ const RESTAURANT_KEYWORDS = [
 export function inferCompetitorDomain(competitor: {
     name?: string | null;
     location?: string | null;
-    bookingUrl?: string | null;
 }): CompetitorDomain {
-    const haystack = [competitor.name, competitor.location, competitor.bookingUrl]
+    const haystack = [competitor.name, competitor.location]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();

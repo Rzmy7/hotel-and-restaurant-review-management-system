@@ -2,19 +2,15 @@
 -- Competitor Feature - Database Tables
 -- =============================================
 
--- 1. Master list of competitor hotels (added by admin)
--- Users pick from this list to track competitors
+-- 1. Junction table linking an organization to competitors it tracks.
+--    All display data (name, location, sources, review stats) is read
+--    from dbo.organization + dbo.source + dbo.processed_review via JOINs.
 CREATE TABLE dbo.Competitors (
-    id              INT IDENTITY(1,1) PRIMARY KEY,
-    name            NVARCHAR(255)   NOT NULL,
-    location        NVARCHAR(255)   NULL,
-    bookingUrl      NVARCHAR(500)   NULL,
-    avgRating       FLOAT           NULL DEFAULT 0,
-    sentimentScore  FLOAT           NULL DEFAULT 0,    -- % positive reviews
-    reviewCount     INT             NULL DEFAULT 0,
-    isTracked       BIT             NOT NULL DEFAULT 0, -- 0 = available pool, 1 = user is tracking
-    status          NVARCHAR(50)    NOT NULL DEFAULT 'Pending', -- 'Active' (scraped), 'Pending', 'Scraping'
-    createdAt       DATETIME        NOT NULL DEFAULT GETDATE()
+    id                          UNIQUEIDENTIFIER   PRIMARY KEY DEFAULT NEWID(),
+    tracking_organization_id    UNIQUEIDENTIFIER   NOT NULL,   -- the org that is tracking
+    competitor_organization_id  UNIQUEIDENTIFIER   NOT NULL,   -- the org being tracked as a competitor
+    isTracked                   BIT                NOT NULL DEFAULT 0,
+    createdAt                   DATETIME           NOT NULL DEFAULT GETDATE()
 );
 GO
 

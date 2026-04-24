@@ -25,9 +25,9 @@ def _get_user_org_id(user, db: Session) -> str | None:
         text("""
             SELECT TOP 1 o.organization_id
             FROM dbo.organization o
-            LEFT JOIN dbo.processed_review pr ON pr.organization_id = o.organization_id
+            LEFT JOIN dbo.source s ON s.organization_id = o.organization_id
+            LEFT JOIN dbo.processed_review pr ON pr.source_id = s.source_id
             WHERE o.tenant_id = :tenant_id
-              AND (o.is_competitor = 0 OR o.is_competitor IS NULL)
             GROUP BY o.organization_id, o.created_at
             ORDER BY COUNT(pr.id) DESC, o.created_at ASC
         """),
@@ -38,13 +38,14 @@ def _get_user_org_id(user, db: Session) -> str | None:
 
 @router.get("/rankings")
 def competitor_rankings(
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
-            raise HTTPException(status_code=400, detail="No organization found for this user")
+            raise HTTPException(status_code=400, detail="No organization ID provided")
         return get_rankings_data(my_org_id)
     except HTTPException:
         raise
@@ -55,13 +56,14 @@ def competitor_rankings(
 @router.get("/{competitor_id}/compare")
 def compare_with_competitor(
     competitor_id: str,
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
-            raise HTTPException(status_code=400, detail="No organization found for this user")
+            raise HTTPException(status_code=400, detail="No organization ID provided")
         data = get_comparison_data(competitor_id, my_org_id)
         if not data:
             raise HTTPException(status_code=404, detail="Competitor not found")
@@ -75,13 +77,14 @@ def compare_with_competitor(
 @router.get("/{competitor_id}/insights")
 def ai_competitor_insights(
     competitor_id: str,
+    organization_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
-        my_org_id = _get_user_org_id(current_user, db)
+        my_org_id = organization_id
         if not my_org_id:
-            raise HTTPException(status_code=400, detail="No organization found for this user")
+            raise HTTPException(status_code=400, detail="No organization ID provided")
         return get_ai_comparison_insights(competitor_id, my_org_id)
     except HTTPException:
         raise

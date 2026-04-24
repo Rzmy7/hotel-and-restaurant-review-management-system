@@ -3,6 +3,7 @@ import { settingsService } from '../services/settingsService';
 import type { SettingsData } from '../types/settings';
 import { useToast } from '../contexts/ToastContext';
 import type { PasswordChangePayload } from '../api/settingsApi';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 export const useSettings = () => {
     const [data, setData] = useState<SettingsData | null>(null);
@@ -10,6 +11,8 @@ export const useSettings = () => {
     const [saving, setSaving] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const { showToast } = useToast();
+    const currentOrg = useOrganizationStore(state => state.currentOrg);
+    const organizationId = currentOrg?.id;
 
     const loadSettings = useCallback(async () => {
         setLoading(true);
@@ -23,7 +26,7 @@ export const useSettings = () => {
         } finally {
             setLoading(false);
         }
-    }, [showToast]);
+    }, [showToast, organizationId]);
 
     useEffect(() => {
         loadSettings();

@@ -95,6 +95,19 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                 />
             </FormField>
 
+            <div className="py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Google Maps Location Link</label>
+                    <input
+                        type="url"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                        value={data.locationUrl || ''}
+                        onChange={(e) => onChange({ locationUrl: e.target.value })}
+                        placeholder="https://www.google.com/maps/place/..."
+                    />
+                </div>
+            </div>
+
         </div>
     );
 };
