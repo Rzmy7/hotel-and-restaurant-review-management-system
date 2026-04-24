@@ -119,6 +119,7 @@ hotel-and-restaurant-review-management-system/
 - **🚀 Verified Batching**: Real-time progress updates and crash resilience
 - **🔗 Unified API**: Consistent data format across all sources
 - **📝 Audit Logging**: System-wide API call tracking
+- **🔄 Scalable Ingestion**: Asynchronous pagination support for sources with 5,000+ reviews
 - **📣 Callback Mechanism**: Automatic backend notification on completion
 
 ---
