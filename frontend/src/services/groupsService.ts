@@ -21,26 +21,34 @@ export interface Group {
   my_role: 'GROUP_OWNER' | 'GROUP_MEMBER';
 }
 
+/** A member of a group — the member entity is an Organization, represented here by the org's owner account. */
 export interface GroupMember {
-  user_id: string;
-  first_name: string | null;
+  user_id: string;            // org owner's user ID (used as the remove key)
+  organization_id?: string;
+  organization_name?: string; // display name of the member org
+  first_name: string | null;  // owner first name (fallback display)
   last_name: string | null;
-  email: string;
+  email: string;              // owner email
   profile_image_url: string | null;
   job_title: string | null;
   role: 'GROUP_OWNER' | 'GROUP_MEMBER';
   joined_at: string;
 }
 
+/** An invitation sent to an Organization to join a group. */
 export interface GroupInvite {
   invite_id: string;
   group_id: string;
-  group_name?: string;
-  invited_by_name: string | null;
-  invited_user_id: string | null;
-  invited_user_name: string | null;
-  invited_user_email: string | null;
-  invite_type: 'user' | 'link';
+  group_name?: string;                   // populated when received by the invitee
+  invited_by_name: string | null;        // name of the inviting org's owner
+  invited_by_org_name?: string | null;   // name of the inviting organization
+  // invited organization fields
+  invited_org_id?: string | null;
+  invited_org_name?: string | null;      // preferred display field
+  invited_user_id?: string | null;       // kept for legacy compat
+  invited_user_name?: string | null;
+  invited_user_email?: string | null;
+  invite_type: 'organization' | 'link';
   status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
   message: string | null;
   expires_at: string | null;
@@ -100,21 +108,22 @@ export interface JoinLinkInfo {
 export const groupsService = {
   // ── Groups ──────────────────────────────────────────────────────
 
-  async listGroups(): Promise<{ groups: Group[]; count: number }> {
-    return apiClient.get('/groups');
+  /** List groups for a specific organization (org-scoped). */
+  async listGroups(organizationId: string): Promise<{ groups: Group[]; count: number }> {
+    return apiClient.get('/groups', { organization_id: organizationId });
   },
 
-  async createGroup(data: {
+  async createGroup(organizationId: string, data: {
     group_name: string;
     description?: string;
     is_private?: boolean;
     settings?: Partial<GroupSettings>;
   }): Promise<{ group_id: string; group_name: string }> {
-    return apiClient.post('/groups', data);
+    return apiClient.post('/groups', { ...data, organization_id: organizationId });
   },
 
-  async getGroup(groupId: string): Promise<Group> {
-    return apiClient.get(`/groups/${groupId}`);
+  async getGroup(groupId: string, organizationId: string): Promise<Group> {
+    return apiClient.get(`/groups/${groupId}`, { organization_id: organizationId });
   },
 
   async updateGroup(groupId: string, data: {
@@ -135,8 +144,9 @@ export const groupsService = {
     return apiClient.get(`/groups/${groupId}/members`);
   },
 
-  async removeMember(groupId: string, userId: string): Promise<{ message: string }> {
-    return apiClient.delete(`/groups/${groupId}/members/${userId}`);
+  /** Remove a member organization. Pass the organization_id (not user_id). */
+  async removeMember(groupId: string, organizationId: string): Promise<{ message: string }> {
+    return apiClient.delete(`/groups/${groupId}/members/${organizationId}`);
   },
 
   // ── Settings ─────────────────────────────────────────────────────
