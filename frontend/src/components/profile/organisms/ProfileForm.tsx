@@ -12,9 +12,19 @@ interface ProfileFormProps {
 }
 
 const ProfileForm: React.FC<ProfileFormProps> = ({ profile, onUpdate, onSave, onCancel, isSaving }) => {
+    const COUNTRY_CODE = '+94';
+    const phoneWithoutCountryCode = profile.phone.startsWith(COUNTRY_CODE)
+        ? profile.phone.slice(COUNTRY_CODE.length).trimStart()
+        : profile.phone.replace(/^\+\d+\s*/, '');
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         onUpdate({ ...profile, [name]: value });
+    };
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const remainingNumber = e.target.value.replace(/\D/g, '');
+        onUpdate({ ...profile, phone: `${COUNTRY_CODE}${remainingNumber}` });
     };
 
     return (
@@ -38,7 +48,30 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile, onUpdate, onSave, on
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Email" name="email" value={profile.email} type="email" onChange={handleChange} placeholder="sarah.j@example.com" />
-                    <FormField label="Phone" name="phone" value={profile.phone} onChange={handleChange} placeholder="+1 (555) 000-0000" />
+                    <div>
+                        <label className="block text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-[0.2em] mb-2">
+                            Phone Number
+                        </label>
+                        <div className="flex items-center h-12 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-all">
+                            <div className="h-full px-3 border-r border-gray-200 dark:border-slate-700 text-sm font-semibold text-gray-700 dark:text-slate-200 flex items-center gap-2 bg-gray-50 dark:bg-slate-800/70 whitespace-nowrap">
+                                <span role="img" aria-label="Sri Lanka">🇱🇰</span>
+                                <span>{COUNTRY_CODE}</span>
+                            </div>
+                            <input
+                                id="phone"
+                                name="phone"
+                                type="tel"
+                                inputMode="numeric"
+                                value={phoneWithoutCountryCode}
+                                onChange={handlePhoneChange}
+                                placeholder="Enter phone number"
+                                className="w-full h-full px-4 text-sm text-gray-900 dark:text-white bg-transparent outline-none placeholder:text-gray-400"
+                            />
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400 dark:text-slate-500">
+                            Enter your phone number (without country code)
+                        </p>
+                    </div>
                 </div>
 
                 <FormField label="Job Title" name="jobTitle" value={profile.jobTitle} onChange={handleChange} placeholder="Hotel Manager" />
