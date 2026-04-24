@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Link as LinkIcon, Building2, MapPin } from 'lucide-react';
-import { addCompetitor, type CompetitorSourceInput } from '../../services/competitorService';
+import { X, Link as LinkIcon, Building2, MapPin, Sparkles, Loader2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { addCompetitor, fetchSuggestedCompetitors, addCompetitorFromOrganization, type CompetitorSourceInput } from '../../services/competitorService';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
 
 const PLATFORMS = [
@@ -22,22 +23,38 @@ interface AddCompetitorModalProps {
 const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [name, setName] = useState('');
   const [orgTypeId, setOrgTypeId] = useState(1);
-  const [city, setCity] = useState('');
-  const [country, setCountry] = useState('');
+  const [locationUrl, setLocationUrl] = useState('');
   const [urls, setUrls] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const organizationId = currentOrg?.id;
+  const queryClient = useQueryClient();
+
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ['competitor-suggestions', organizationId],
+    queryFn: () => fetchSuggestedCompetitors(organizationId!),
+    enabled: !!organizationId && isOpen,
+  });
+
+  const addFromOrgMutation = useMutation({
+    mutationFn: (targetOrgId: string) => addCompetitorFromOrganization(organizationId!, targetOrgId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competitors', organizationId] });
+      queryClient.invalidateQueries({ queryKey: ['competitor-suggestions', organizationId] });
+      onSuccess();
+      onClose();
+      resetForm();
+    },
+  });
 
   if (!isOpen) return null;
 
   const resetForm = () => {
     setName('');
     setOrgTypeId(1);
-    setCity('');
-    setCountry('');
+    setLocationUrl('');
     setUrls({});
     setError(null);
     setSuccess(null);
@@ -46,8 +63,8 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !city.trim() || !country.trim()) {
-      setError('Name, city, and country are required.');
+    if (!name.trim() || !locationUrl.trim()) {
+      setError('Name and location URL are required.');
       return;
     }
 
@@ -73,8 +90,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
       const res = await addCompetitor(organizationId, {
         name: name.trim(),
         organization_type_id: orgTypeId,
-        city: city.trim(),
-        country: country.trim(),
+        location_url: locationUrl.trim(),
         sources,
       });
       const hasData = (res.competitor?.reviewCount ?? 0) > 0;
@@ -117,8 +133,75 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+        {/* Content */}
+        <div className="px-8 py-6 space-y-8">
+          
+          {/* Suggestions Section */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={18} className="text-blue-500" />
+              <h3 className="text-[16px] font-bold text-gray-900 dark:text-white">Suggested Competitors</h3>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-slate-900/50 rounded-xl p-4 border border-gray-100 dark:border-slate-700">
+              {suggestionsLoading && (
+                <div className="flex items-center gap-3 text-gray-500 dark:text-slate-400 text-sm">
+                  <Loader2 size={16} className="animate-spin" /> Loading suggestions…
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionsData?.status === 'missing_location' && (
+                <div className="text-sm text-amber-700 dark:text-amber-300">
+                  Set your organization's location in Settings to see suggestions here.
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionsData?.status === 'ok' && suggestionsData.suggestions.length === 0 && (
+                <div className="text-sm text-gray-500 dark:text-slate-400">
+                  No matching organizations within 50km yet.
+                </div>
+              )}
+
+              {!suggestionsLoading && suggestionsData?.status === 'ok' && suggestionsData.suggestions.length > 0 && (
+                <div className="flex overflow-x-auto gap-4 pb-2 snap-x">
+                  {suggestionsData.suggestions.map(s => (
+                    <div
+                      key={s.organization_id}
+                      className="shrink-0 w-64 border border-gray-200 dark:border-slate-600 rounded-xl p-4 flex flex-col gap-2 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-white dark:bg-slate-800 snap-center"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                          {s.organization_name}
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+                        {s.reviewCount} reviews
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addFromOrgMutation.mutate(s.organization_id)}
+                        disabled={addFromOrgMutation.isPending}
+                        className="mt-2 self-start px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-50 text-blue-700 dark:text-blue-300 text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        {addFromOrgMutation.isPending ? 'Adding…' : 'Add as Competitor'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-gray-200 dark:border-slate-700"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white dark:bg-slate-800 px-4 text-sm font-medium text-gray-500 dark:text-slate-400">or add manually</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* Name */}
           <div>
@@ -151,33 +234,19 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
             </select>
           </div>
 
-          {/* City + Country */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                <MapPin size={14} className="inline mr-1.5" />
-                City
-              </label>
-              <input
-                type="text"
-                value={city}
-                onChange={e => setCity(e.target.value)}
-                placeholder="Colombo"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Country
-              </label>
-              <input
-                type="text"
-                value={country}
-                onChange={e => setCountry(e.target.value)}
-                placeholder="Sri Lanka"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </div>
+          {/* Location URL */}
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <MapPin size={14} className="inline mr-1.5" />
+              Google Maps Location Link
+            </label>
+            <input
+              type="url"
+              value={locationUrl}
+              onChange={e => setLocationUrl(e.target.value)}
+              placeholder="https://www.google.com/maps/place/..."
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
           </div>
 
           {/* Platform URL inputs */}
@@ -230,6 +299,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -27,8 +27,9 @@ def get_user_organizations(
                 o.primary_email,
                 o.phone_number,
                 o.logo_url,
-                o.city,
-                o.country
+                o.location_url,
+                o.latitude,
+                o.longitude
             FROM dbo.organization o
             LEFT JOIN dbo.organization_type ot
                 ON o.organization_type_id = ot.type_code
@@ -49,8 +50,9 @@ def get_user_organizations(
             "primary_email": row[5],
             "phone_number": row[6],
             "logo_url": row[7],
-            "city": row[8],
-            "country": row[9],
+            "location_url": row[8],
+            "latitude": row[9],
+            "longitude": row[10],
             "role": "owner"
         }
         for row in rows

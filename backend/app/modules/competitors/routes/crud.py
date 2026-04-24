@@ -58,7 +58,7 @@ def suggested_competitors(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Top 6 organizations with the same city+country+type as the user's own org,
+    """Top 6 organizations within 50km of the user's own org,
     excluding the user's org and orgs already in dbo.Competitors. Ordered by review count desc."""
     try:
         my_org_id = organization_id
@@ -67,7 +67,7 @@ def suggested_competitors(
 
         loc = db.execute(
             text("""
-                SELECT city, country, organization_type_id
+                SELECT latitude, longitude, organization_type_id
                 FROM dbo.organization
                 WHERE organization_id = :org_id
             """),
@@ -77,11 +77,11 @@ def suggested_competitors(
         if not loc:
             return {"status": "no_organization", "suggestions": []}
 
-        city = (loc[0] or "").strip()
-        country = (loc[1] or "").strip()
+        lat = loc[0]
+        lng = loc[1]
         type_id = loc[2]
 
-        if not city or not country:
+        if lat is None or lng is None:
             return {"status": "missing_location", "suggestions": []}
 
         rows = db.execute(
@@ -89,8 +89,9 @@ def suggested_competitors(
                 SELECT TOP 6
                     o.organization_id,
                     o.organization_name,
-                    o.city,
-                    o.country,
+                    o.location_url,
+                    o.latitude,
+                    o.longitude,
                     o.organization_type_id,
                     COUNT(pr.id) AS review_count,
                     AVG(CAST(pr.rating AS FLOAT)) AS avg_rating
@@ -98,27 +99,32 @@ def suggested_competitors(
                 LEFT JOIN dbo.source s ON s.organization_id = o.organization_id
                 LEFT JOIN dbo.processed_review pr ON pr.source_id = s.source_id
                 WHERE o.organization_id <> :my_org
-                  AND LOWER(LTRIM(RTRIM(ISNULL(o.city, '')))) = LOWER(:city)
-                  AND LOWER(LTRIM(RTRIM(ISNULL(o.country, '')))) = LOWER(:country)
+                  AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL
+                  AND (6371 * ACOS(
+                        COS(RADIANS(:lat)) * COS(RADIANS(o.latitude)) *
+                        COS(RADIANS(o.longitude) - RADIANS(:lng)) +
+                        SIN(RADIANS(:lat)) * SIN(RADIANS(o.latitude))
+                      )) <= 50
                   AND o.organization_type_id = :type_id
                   AND NOT EXISTS (
-                        SELECT 1 FROM dbo.Competitors c WHERE c.organization_id = o.organization_id
+                        SELECT 1 FROM dbo.Competitors c WHERE c.competitor_organization_id = o.organization_id AND c.tracking_organization_id = :my_org
                   )
-                GROUP BY o.organization_id, o.organization_name, o.city, o.country, o.organization_type_id
+                GROUP BY o.organization_id, o.organization_name, o.location_url, o.latitude, o.longitude, o.organization_type_id
                 ORDER BY review_count DESC, o.organization_name ASC
             """),
-            {"my_org": my_org_id, "city": city.lower(), "country": country.lower(), "type_id": type_id},
+            {"my_org": my_org_id, "lat": lat, "lng": lng, "type_id": type_id},
         ).fetchall()
 
         suggestions = [
             {
                 "organization_id": str(r[0]),
                 "organization_name": r[1],
-                "city": r[2],
-                "country": r[3],
-                "organization_type_id": r[4],
-                "reviewCount": int(r[5] or 0),
-                "avgRating": round(float(r[6] or 0), 2),
+                "location_url": r[2],
+                "latitude": r[3],
+                "longitude": r[4],
+                "organization_type_id": r[5],
+                "reviewCount": int(r[6] or 0),
+                "avgRating": round(float(r[7] or 0), 2),
             }
             for r in rows
         ]
@@ -160,16 +166,15 @@ def create_competitor(
         except Exception as limit_err:
             print(f"LIMIT CHECK WARNING (competitors): {limit_err}")
 
-        if not payload.city.strip() or not payload.country.strip():
-            raise HTTPException(status_code=400, detail="City and country are required")
+        if not payload.location_url.strip():
+            raise HTTPException(status_code=400, detail="Location URL is required")
         if not payload.sources:
             raise HTTPException(status_code=400, detail="At least one source URL is required")
 
         competitor = register_competitor(
             name=payload.name,
             organization_type_id=payload.organization_type_id,
-            city=payload.city,
-            country=payload.country,
+            location_url=payload.location_url,
             sources=[s.model_dump() for s in payload.sources],
             tracking_organization_id=organization_id,
         )
@@ -250,7 +255,7 @@ def update_competitor(
     current_user=Depends(get_current_user)
 ):
     try:
-        result = edit_competitor(competitor_id, organization_id, payload.name, payload.city, payload.country)
+        result = edit_competitor(competitor_id, organization_id, payload.name, payload.location_url)
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor updated", "competitor": result}

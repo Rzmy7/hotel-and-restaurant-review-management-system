@@ -22,6 +22,7 @@ from typing import Dict, List, Optional
 import pyodbc
 
 from app.core.pyodbc_connection import get_connection_string
+from app.core.geo_utils import parse_google_maps_url
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -30,7 +31,9 @@ def _row_to_competitor(r) -> Dict:
     return {
         "id": str(r.id),
         "name": r.name or "",
-        "location": r.location or "",
+        "location_url": r.location_url or "",
+        "latitude": r.latitude,
+        "longitude": r.longitude,
         "organization_id": str(r.competitor_organization_id) if r.competitor_organization_id else None,
         "tracking_organization_id": str(r.tracking_organization_id) if r.tracking_organization_id else None,
         "avgRating": round(r.avgRating or 0, 2),
@@ -44,7 +47,9 @@ def _row_to_competitor(r) -> Dict:
 _BASE_SELECT = """
     SELECT c.id,
            o.organization_name as name,
-           CONCAT(ISNULL(o.city, ''), CASE WHEN o.city IS NOT NULL AND o.country IS NOT NULL THEN ', ' ELSE '' END, ISNULL(o.country, '')) as location,
+           o.location_url,
+           o.latitude,
+           o.longitude,
            c.competitor_organization_id,
            c.tracking_organization_id,
            c.isTracked,
@@ -65,7 +70,7 @@ _BASE_SELECT = """
 """
 
 _BASE_GROUP_BY = """
-    GROUP BY c.id, o.organization_name, o.city, o.country,
+    GROUP BY c.id, o.organization_name, o.location_url, o.latitude, o.longitude,
              c.competitor_organization_id, c.tracking_organization_id,
              c.isTracked, c.createdAt
 """
@@ -117,7 +122,7 @@ def register_competitor_from_organization(organization_id: str, tracking_organiz
 
         org = cursor.execute(
             """
-            SELECT organization_id, organization_name, city, country, organization_type_id
+            SELECT organization_id, organization_name, location_url, latitude, longitude, organization_type_id
             FROM dbo.organization
             WHERE organization_id = ?
             """,
@@ -153,8 +158,7 @@ def register_competitor_from_organization(organization_id: str, tracking_organiz
 def register_competitor(
     name: str,
     organization_type_id: int,
-    city: str,
-    country: str,
+    location_url: str,
     sources: List[Dict],
     tracking_organization_id: str,
 ) -> Dict:
@@ -170,8 +174,14 @@ def register_competitor(
     normal scheduler picks them up on its next tick — same pipeline as owned
     organizations.
     """
-    city = (city or "").strip()
-    country = (country or "").strip()
+    location_url = (location_url or "").strip()
+    
+    lat = None
+    lng = None
+    if location_url:
+        coords = parse_google_maps_url(location_url)
+        if coords:
+            lat, lng = coords
     cleaned = [
         {"platform_id": int(s["platform_id"]), "source_url": s["source_url"].strip().rstrip("/")}
         for s in sources
@@ -204,12 +214,12 @@ def register_competitor(
                 """
                 INSERT INTO dbo.organization
                     (organization_id, organization_name, tenant_id, organization_type_id,
-                     city, country, created_at, updated_at)
-                VALUES (?, ?, NULL, ?, ?, ?, GETDATE(), GETDATE())
+                     location_url, latitude, longitude, created_at, updated_at)
+                VALUES (?, ?, NULL, ?, ?, ?, ?, GETDATE(), GETDATE())
                 """,
-                org_id, name, organization_type_id, city, country,
+                org_id, name, organization_type_id, location_url, lat, lng,
             )
-            print(f"[Competitor] Created ownerless org {org_id} ({city}, {country})")
+            print(f"[Competitor] Created ownerless org {org_id} ({location_url})")
         else:
             # Backfill location/type on existing ownerless competitor orgs if missing
             cursor.execute(
@@ -217,12 +227,13 @@ def register_competitor(
                 UPDATE dbo.organization
                 SET organization_name = COALESCE(NULLIF(organization_name, ''), ?),
                     organization_type_id = COALESCE(organization_type_id, ?),
-                    city = COALESCE(NULLIF(city, ''), ?),
-                    country = COALESCE(NULLIF(country, ''), ?),
+                    location_url = COALESCE(NULLIF(location_url, ''), ?),
+                    latitude = COALESCE(latitude, ?),
+                    longitude = COALESCE(longitude, ?),
                     updated_at = GETDATE()
                 WHERE organization_id = ? AND tenant_id IS NULL
                 """,
-                name, organization_type_id, city, country, org_id,
+                name, organization_type_id, location_url, lat, lng, org_id,
             )
 
         # Add any missing (platform_id, source_url) rows for this org.
@@ -304,22 +315,29 @@ def delete_competitor(competitor_id: str, tracking_organization_id: str) -> bool
     return True
 
 
-def edit_competitor(competitor_id: str, tracking_organization_id: str, name: str, city: str, country: str) -> Optional[Dict]:
-    """Edit a competitor's organization details (name, city, country)."""
+def edit_competitor(competitor_id: str, tracking_organization_id: str, name: str, location_url: str) -> Optional[Dict]:
+    """Edit a competitor's organization details (name, location)."""
     competitor = get_competitor_by_id(competitor_id)
     if not competitor or competitor.get("tracking_organization_id") != tracking_organization_id:
         return None
 
     org_id = competitor["organization_id"]
+    lat = None
+    lng = None
+    if location_url:
+        coords = parse_google_maps_url(location_url)
+        if coords:
+            lat, lng = coords
+
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
             UPDATE dbo.organization
-            SET organization_name = ?, city = ?, country = ?, updated_at = GETDATE()
+            SET organization_name = ?, location_url = ?, latitude = ?, longitude = ?, updated_at = GETDATE()
             WHERE organization_id = ?
             """,
-            name, city, country, org_id,
+            name, location_url, lat, lng, org_id,
         )
         conn.commit()
     return get_competitor_by_id(competitor_id)

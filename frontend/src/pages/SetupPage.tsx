@@ -65,8 +65,7 @@ const SetupPage = () => {
     const { user } = useAuth();
     const [selectedType, setSelectedType] = useState<number | null>(null);
     const [organizationName, setOrganizationName] = useState('');
-    const [city, setCity] = useState('');
-    const [country, setCountry] = useState('');
+    const [locationUrl, setLocationUrl] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isCheckingLimit, setIsCheckingLimit] = useState(false);
     const [organizationTypes, setOrganizationTypes] = useState<any[]>([]);
@@ -136,8 +135,7 @@ const SetupPage = () => {
                         setSelectedType(draft.organization.type);
                     }
                     if (draft.organization?.name) setOrganizationName(draft.organization.name);
-                    if (draft.organization?.city) setCity(draft.organization.city);
-                    if (draft.organization?.country) setCountry(draft.organization.country);
+                    if (draft.organization?.locationUrl) setLocationUrl(draft.organization.locationUrl);
                 }
             } catch (error) {
                 console.error('Failed to fetch organization types:', error);
@@ -157,11 +155,10 @@ const SetupPage = () => {
         const token = localStorage.getItem("token");
 
         const orgName = organizationName.trim();
-        const cityTrim = city.trim();
-        const countryTrim = country.trim();
+        const locUrlTrim = locationUrl.trim();
 
-        if (!orgName || !cityTrim || !countryTrim) {
-            alert("Organization name, city, and country are required.");
+        if (!orgName || !locUrlTrim) {
+            alert("Organization name and location URL are required.");
             return;
         }
 
@@ -184,8 +181,7 @@ const SetupPage = () => {
             organization: {
                 name: orgName,
                 type: selectedType,
-                city: cityTrim,
-                country: countryTrim,
+                locationUrl: locUrlTrim,
             }
         }));
 
@@ -234,7 +230,7 @@ const SetupPage = () => {
             currentStep={1}
             onContinue={handleContinue}
             showBack={false}
-            isContinueDisabled={!selectedType || !organizationName.trim() || !city.trim() || !country.trim() || isLoading || isCheckingLimit || !!limitError}
+            isContinueDisabled={!selectedType || !organizationName.trim() || !locationUrl.trim() || isLoading || isCheckingLimit || !!limitError}
             isContinueLoading={isLoading || isCheckingLimit}
         >
             <div className="text-center mb-10">
@@ -283,32 +279,18 @@ const SetupPage = () => {
                 />
             </div>
 
-            {/* City + Country */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
-                        City
-                    </label>
-                    <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="E.g., Colombo"
-                        className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all dark:text-white"
-                    />
-                </div>
-                <div>
-                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
-                        Country
-                    </label>
-                    <input
-                        type="text"
-                        value={country}
-                        onChange={(e) => setCountry(e.target.value)}
-                        placeholder="E.g., Sri Lanka"
-                        className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all dark:text-white"
-                    />
-                </div>
+            {/* Location URL */}
+            <div className="mb-6">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
+                    Google Maps Location Link
+                </label>
+                <input
+                    type="url"
+                    value={locationUrl}
+                    onChange={(e) => setLocationUrl(e.target.value)}
+                    placeholder="https://www.google.com/maps/place/..."
+                    className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all dark:text-white"
+                />
             </div>
 
             {isLoading ? (

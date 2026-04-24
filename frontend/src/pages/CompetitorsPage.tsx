@@ -7,8 +7,6 @@ import AddCompetitorModal from '../components/competitors/AddCompetitorModal';
 import EditCompetitorModal from '../components/competitors/EditCompetitorModal';
 import {
     fetchCompetitors,
-    fetchSuggestedCompetitors,
-    addCompetitorFromOrganization,
     untrackCompetitor,
     type Competitor,
 } from '../services/competitorService';
@@ -27,18 +25,13 @@ const CompetitorsPage = () => {
         enabled: !!organizationId,
     });
 
-    const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
-        queryKey: ['competitor-suggestions', organizationId],
-        queryFn: () => fetchSuggestedCompetitors(organizationId),
-        enabled: !!organizationId,
-    });
+
 
     const tracked = data?.tracked ?? [];
     const errorMessage = error instanceof Error ? error.message : null;
 
     const invalidateAll = () => {
         queryClient.invalidateQueries({ queryKey: ['competitors', organizationId] });
-        queryClient.invalidateQueries({ queryKey: ['competitor-suggestions', organizationId] });
     };
 
     const handleSuccess = () => { invalidateAll(); };
@@ -48,10 +41,7 @@ const CompetitorsPage = () => {
         onSuccess: invalidateAll,
     });
 
-    const addFromOrgMutation = useMutation({
-        mutationFn: (targetOrgId: string) => addCompetitorFromOrganization(organizationId, targetOrgId),
-        onSuccess: invalidateAll,
-    });
+
 
     const handleUntrack = async (competitorId: string) => {
         if (!confirm('Remove this competitor from your tracked list?')) return;
@@ -77,78 +67,7 @@ const CompetitorsPage = () => {
                     </div>
                 )}
 
-                {/* Suggested Competitors */}
-                <section className="mb-8 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                    <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2">
-                        <Sparkles size={18} className="text-blue-500" />
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Suggested Competitors</h2>
-                        <span className="text-xs text-gray-400 dark:text-slate-400">
-                            Same location and type as your organization
-                        </span>
-                    </div>
 
-                    <div className="px-6 py-5">
-                        {suggestionsLoading && (
-                            <div className="flex items-center gap-3 text-gray-500 dark:text-slate-400 text-sm">
-                                <Loader2 size={16} className="animate-spin" /> Loading suggestions…
-                            </div>
-                        )}
-
-                        {!suggestionsLoading && suggestionsData?.status === 'missing_location' && (
-                            <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm text-amber-800 dark:text-amber-200">
-                                <MapPin size={18} className="shrink-0 mt-0.5" />
-                                <div>
-                                    <div className="font-semibold">Add your organization's location</div>
-                                    <div className="text-amber-700 dark:text-amber-300 mt-0.5">
-                                        Set a city and country on your organization to see similar organizations you can track as competitors.
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {!suggestionsLoading && suggestionsData?.status === 'no_organization' && (
-                            <div className="text-sm text-gray-500 dark:text-slate-400">
-                                Create an organization first to get competitor suggestions.
-                            </div>
-                        )}
-
-                        {!suggestionsLoading && suggestionsData?.status === 'ok' && suggestionsData.suggestions.length === 0 && (
-                            <div className="text-sm text-gray-500 dark:text-slate-400">
-                                No matching organizations yet. As more competitors in your area join the system, they'll appear here.
-                            </div>
-                        )}
-
-                        {!suggestionsLoading && suggestionsData?.status === 'ok' && suggestionsData.suggestions.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {suggestionsData.suggestions.map(s => (
-                                    <div
-                                        key={s.organization_id}
-                                        className="border border-gray-100 dark:border-slate-700 rounded-xl p-4 flex flex-col gap-2 hover:border-blue-200 dark:hover:border-blue-700 transition-colors"
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                                                {s.organization_name}
-                                            </div>
-                                            <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-                                                {s.reviewCount} reviews
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1">
-                                            <MapPin size={12} /> {s.city}, {s.country}
-                                        </div>
-                                        <button
-                                            onClick={() => addFromOrgMutation.mutate(s.organization_id)}
-                                            disabled={addFromOrgMutation.isPending}
-                                            className="mt-2 self-start px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
-                                        >
-                                            {addFromOrgMutation.isPending ? 'Adding…' : 'Add as Competitor'}
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </section>
 
                 {/* Competitor List Card */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">

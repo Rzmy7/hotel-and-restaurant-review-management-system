@@ -13,6 +13,7 @@ from app.modules.source.services.source_service import calculate_next_sync_time
 from app.core.exceptions.custom_exceptions import FileValidationException
 from app.core.security import create_access_token
 from app.modules.auth.repositories.roles_repo import get_user_role_names
+from app.core.geo_utils import parse_google_maps_url
 
 router = APIRouter(prefix="/api", tags=["organization"])
 
@@ -33,15 +34,19 @@ def upsert_organization(
 
     organization_name = data.organization_name
     type_id = data.organization_type_id
-    city = (data.city or "").strip()
-    country = (data.country or "").strip()
+    location_url = (data.location_url or "").strip()
 
     # validate name
     if not organization_name or organization_name.strip() == "":
         raise HTTPException(status_code=400, detail="Organization name required")
 
-    if not city or not country:
-        raise HTTPException(status_code=400, detail="City and country are required")
+    if not location_url:
+        raise HTTPException(status_code=400, detail="Location URL is required")
+
+    coords = parse_google_maps_url(location_url)
+    if not coords:
+        raise HTTPException(status_code=400, detail="Invalid Google Maps URL. Could not extract coordinates.")
+    lat, lng = coords
 
     # check if an organization with the same name exists for this tenant
     existing_org = db.execute(
@@ -98,36 +103,51 @@ def upsert_organization(
             text("""
                 UPDATE dbo.organization
                 SET organization_type_id = :type_id,
-                    city = :city,
-                    country = :country,
+                    location_url = :location_url,
+                    latitude = :lat,
+                    longitude = :lng,
                     updated_at = GETDATE()
                 WHERE organization_id = :org_id
             """),
             {
                 "type_id": type_id,
-                "city": city,
-                "country": country,
+                "location_url": location_url,
+                "lat": lat,
+                "lng": lng,
                 "org_id": org_id,
             }
         )
         organization_created = False
         message = "Organization updated successfully"
     else:
+        # ensure tenant exists
+        db.execute(
+            text("""
+                IF NOT EXISTS (SELECT 1 FROM dbo.tenant WHERE tenant_id = :tenant_id)
+                BEGIN
+                    INSERT INTO dbo.tenant (tenant_id, [plan], created_at)
+                    VALUES (:tenant_id, '1', GETDATE())
+                END
+            """),
+            {"tenant_id": tenant_id}
+        )
+
         # insert new organization
         new_org_id = uuid.uuid4()
         db.execute(
             text("""
                 INSERT INTO dbo.organization
-                (organization_id, organization_name, tenant_id, organization_type_id, city, country, created_at, updated_at)
-                VALUES (:org_id, :name, :tenant_id, :type_id, :city, :country, GETDATE(), GETDATE())
+                (organization_id, organization_name, tenant_id, organization_type_id, location_url, latitude, longitude, created_at, updated_at)
+                VALUES (:org_id, :name, :tenant_id, :type_id, :location_url, :lat, :lng, GETDATE(), GETDATE())
             """),
             {
                 "org_id": new_org_id,
                 "name": organization_name,
                 "tenant_id": tenant_id,
                 "type_id": type_id,
-                "city": city,
-                "country": country,
+                "location_url": location_url,
+                "lat": lat,
+                "lng": lng,
             }
         )
         org_id = new_org_id
@@ -237,13 +257,19 @@ def update_organization(
         updates.append("logo_url = :logo_url")
         params["logo_url"] = normalize_optional_text(data.logo_url)
 
-    if "city" in provided_fields:
-        updates.append("city = :city")
-        params["city"] = normalize_optional_text(data.city)
-
-    if "country" in provided_fields:
-        updates.append("country = :country")
-        params["country"] = normalize_optional_text(data.country)
+    if "location_url" in provided_fields:
+        loc_url = normalize_optional_text(data.location_url)
+        if loc_url:
+            coords = parse_google_maps_url(loc_url)
+            if not coords:
+                raise HTTPException(status_code=400, detail="Invalid Google Maps URL")
+            lat, lng = coords
+            updates.append("location_url = :location_url")
+            updates.append("latitude = :lat")
+            updates.append("longitude = :lng")
+            params["location_url"] = loc_url
+            params["lat"] = lat
+            params["lng"] = lng
 
     if not updates:
         return {"message": "No updates provided", "organization_id": org_id}

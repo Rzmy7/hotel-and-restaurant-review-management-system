@@ -31,8 +31,7 @@ const defaultSettings: SettingsData = {
         propertyType: 'Hotel',
         primaryEmail: 'reviews@grandplazahotel.com',
         phoneNumber: '+1 (555) 987-6543',
-        city: '',
-        country: '',
+        locationUrl: '',
     }
 };
 
@@ -132,8 +131,7 @@ const mapOrganizationToHotelInfo = (org: UserOrganization): SettingsData['hotelI
     propertyType: org.organization_type || currentSettings.hotelInfo.propertyType,
     primaryEmail: org.primary_email || '',
     phoneNumber: org.phone_number || '',
-    city: org.city || '',
-    country: org.country || '',
+    locationUrl: org.location_url || '',
     logoUrl: org.logo_url || undefined,
 });
 
@@ -183,11 +181,8 @@ const patchHotelInfoToBackend = async (hotelInfoUpdates: Partial<SettingsData['h
     if (hotelInfoUpdates.logoUrl !== undefined) {
         payload.logo_url = normalizeEmpty(hotelInfoUpdates.logoUrl) ?? null;
     }
-    if (hotelInfoUpdates.city !== undefined) {
-        payload.city = normalizeEmpty(hotelInfoUpdates.city) ?? null;
-    }
-    if (hotelInfoUpdates.country !== undefined) {
-        payload.country = normalizeEmpty(hotelInfoUpdates.country) ?? null;
+    if (hotelInfoUpdates.locationUrl !== undefined) {
+        payload.location_url = normalizeEmpty(hotelInfoUpdates.locationUrl) ?? null;
     }
     if (hotelInfoUpdates.propertyType !== undefined) {
         const organizationTypeId = await resolveOrganizationTypeId(hotelInfoUpdates.propertyType);
@@ -225,8 +220,7 @@ const syncOrganizationInStorage = (hotelInfo: SettingsData['hotelInfo']) => {
                 phone_number: hotelInfo.phoneNumber,
                 logo_url: hotelInfo.logoUrl ?? null,
                 organization_type: hotelInfo.propertyType,
-                city: hotelInfo.city || null,
-                country: hotelInfo.country || null,
+                location_url: hotelInfo.locationUrl || null,
             };
         });
 

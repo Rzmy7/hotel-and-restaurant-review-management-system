@@ -82,8 +82,7 @@ export interface CompetitorSourceInput {
 export async function addCompetitor(organizationId: string, params: {
     name: string;
     organization_type_id: number;
-    city: string;
-    country: string;
+    location_url: string;
     sources: CompetitorSourceInput[];
 }): Promise<{ message: string; competitor: Competitor }> {
     return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors/?organization_id=${organizationId}`, params);
@@ -92,8 +91,7 @@ export async function addCompetitor(organizationId: string, params: {
 export interface SuggestedCompetitor {
     organization_id: string;
     organization_name: string;
-    city: string;
-    country: string;
+    location_url: string;
     organization_type_id: number;
     reviewCount: number;
     avgRating: number;
@@ -133,7 +131,7 @@ export async function deleteCompetitor(organizationId: string, competitorId: str
 }
 
 /** User: edit a competitor's display name and location */
-export async function editCompetitor(organizationId: string, competitorId: string, params: { name: string; city: string; country: string }): Promise<{ message: string; competitor: Competitor }> {
+export async function editCompetitor(organizationId: string, competitorId: string, params: { name: string; location_url: string }): Promise<{ message: string; competitor: Competitor }> {
     return apiClient.put<{ message: string; competitor: Competitor }>(`/competitors/${competitorId}?organization_id=${organizationId}`, params);
 }
 

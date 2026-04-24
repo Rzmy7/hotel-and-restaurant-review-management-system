@@ -12,8 +12,7 @@ interface EditCompetitorModalProps {
 
 const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClose, onSuccess, competitor }) => {
   const [name, setName] = useState('');
-  const [city, setCity] = useState('');
-  const [country, setCountry] = useState('');
+  const [locationUrl, setLocationUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -23,10 +22,7 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
   useEffect(() => {
     if (competitor) {
       setName(competitor.name);
-      // Parse "City, Country" back into separate fields
-      const parts = (competitor.location || '').split(',').map(s => s.trim());
-      setCity(parts[0] || '');
-      setCountry(parts[1] || '');
+      setLocationUrl(competitor.location_url || '');
       setError(null);
     }
   }, [competitor, isOpen]);
@@ -52,8 +48,7 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
     try {
       await editCompetitor(organizationId, competitor.id, {
         name: name.trim(),
-        city: city.trim(),
-        country: country.trim(),
+        location_url: locationUrl.trim(),
       });
       onSuccess();
       onClose();
@@ -104,33 +99,19 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
             />
           </div>
 
-          {/* City + Country */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                <MapPin size={14} className="inline mr-1.5" />
-                City
-              </label>
-              <input
-                type="text"
-                value={city}
-                onChange={e => setCity(e.target.value)}
-                placeholder="Colombo"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Country
-              </label>
-              <input
-                type="text"
-                value={country}
-                onChange={e => setCountry(e.target.value)}
-                placeholder="Sri Lanka"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </div>
+          {/* Location URL */}
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <MapPin size={14} className="inline mr-1.5" />
+              Google Maps Location Link
+            </label>
+            <input
+              type="url"
+              value={locationUrl}
+              onChange={e => setLocationUrl(e.target.value)}
+              placeholder="https://www.google.com/maps/place/..."
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
           </div>
 
           {/* Status messages */}

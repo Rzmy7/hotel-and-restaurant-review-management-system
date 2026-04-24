@@ -20,8 +20,7 @@ class AddCompetitorRequest(BaseModel):
     """
     name: str
     organization_type_id: int = 1
-    city: str
-    country: str
+    location_url: str
     sources: List[CompetitorSourceInput]
 
 
@@ -39,5 +38,4 @@ class ScrapeCompetitorRequest(BaseModel):
 
 class EditCompetitorRequest(BaseModel):
     name: str
-    city: str
-    country: str
+    location_url: str
