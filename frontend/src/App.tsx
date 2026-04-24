@@ -119,12 +119,15 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  * Higher-order component for public-only routes (Login, Signup).
  * Redirects to the dashboard if the user is already authenticated.
  */
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const PublicRoute: React.FC<{ children: React.ReactNode; allowWhenAuthenticated?: boolean }> = ({
+  children,
+  allowWhenAuthenticated = false,
+}) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) return null; // Wait for auth check
 
-  if (user) {
+  if (user && !allowWhenAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -204,8 +207,8 @@ const AppContent: React.FC = () => {
       */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
-      <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-      <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+      <Route path="/forgot-password" element={<PublicRoute allowWhenAuthenticated><ForgotPasswordPage /></PublicRoute>} />
+      <Route path="/reset-password/:token" element={<PublicRoute allowWhenAuthenticated><ResetPasswordPage /></PublicRoute>} />
       <Route path="/oauth-success" element={<OAuthSuccessPage />} />
 
       {/* 

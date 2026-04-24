@@ -16,6 +16,7 @@ from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
 from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
 from app.core.security import decode_access_token, create_access_token
+from app.core.config import FRONTEND_URL
 from app.core.validations.signup_validator import validate_signup_payload
 from app.core.validations.login_validator import validate_login_payload, validate_login_otp_code
 from app.modules.source.models import Tenant
@@ -214,7 +215,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         )
         db.commit()
 
-        reset_link = f"http://localhost:5173/reset-password/{raw_token}"
+        reset_link = f"{FRONTEND_URL}/reset-password/{raw_token}"
         try:
             send_reset_email(user.email, reset_link)
         except Exception as exc:
