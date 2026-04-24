@@ -277,7 +277,7 @@ def check_source_integrity(source_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Integrity check failed for source {source_id}: {e}", exc_info=Sa_func)
+        logger.error(f"Integrity check failed for source {source_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
