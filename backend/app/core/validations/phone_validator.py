@@ -10,11 +10,12 @@ def normalize_profile_phone(phone: str | None) -> str | None:
 
     if not normalized:
         return None
-
+    
+    # remove spaces using substitute(replace) function
     compact = re.sub(r"\s+", "", normalized)
 
     if compact.startswith("+94"):
-        local_number = compact[3:]
+        local_number = compact[3:]       # remove country code 
     elif compact.startswith("94"):
         local_number = compact[2:]
     else:
