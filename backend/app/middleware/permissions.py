@@ -45,15 +45,21 @@ def require_admin_or_tenant(current_user=Depends(get_current_user)):
 
 # ── Group-level permissions ─────────────────────────────────────────
 
-def require_group_manager(group_id, current_user, db):
-    """Require GROUP_MANAGER role for a specific group."""
+def require_group_owner(group_id, current_user, db):
+    """Require GROUP_OWNER role for a specific group."""
     role = get_user_group_role(db, group_id, current_user["user_id"])
-    if role != "GROUP_MANAGER":
-        raise HTTPException(status_code=403, detail="Not group manager")
+    if role != "GROUP_OWNER":
+        raise HTTPException(status_code=403, detail="Group owner access required.")
 
 
 def require_group_member(group_id, current_user, db):
     """Require at least GROUP_MEMBER role for a specific group."""
     role = get_user_group_role(db, group_id, current_user["user_id"])
-    if role not in ["GROUP_MANAGER", "GROUP_MEMBER"]:
-        raise HTTPException(status_code=403, detail="Not group member")
+    if role not in ("GROUP_OWNER", "GROUP_MEMBER"):
+        raise HTTPException(status_code=403, detail="Group membership required.")
+
+
+# Keep old name as alias so any existing callers don't break
+def require_group_manager(group_id, current_user, db):
+    """Deprecated alias for require_group_owner."""
+    return require_group_owner(group_id, current_user, db)
