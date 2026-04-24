@@ -52,22 +52,42 @@ async def ingest_from_scraper(
     and stores them as 'pending' in the database.
     Respects the user's review_count plan limit — only ingests up to the remaining balance.
     """
-    scraper_url = f"http://127.0.0.1:8001/api/reviews/{source_id}"
+    base_scraper_url = f"http://127.0.0.1:8001/api/reviews/{source_id}"
+    all_reviews_data = []
+    skip = 0
+    batch_size = 1000
+    total_on_server = 0
 
     async with httpx.AsyncClient() as client:
-        try:
-            logger.info(f"Connecting to Scraper Engine at {scraper_url}...")
-            response = await client.get(scraper_url, timeout=30.0)
-            logger.info(f"Scraper Engine responded with status: {response.status_code}")
-            response.raise_for_status()
-            raw_data = response.json()
-        except Exception as e:
-            logger.error(
-                f"!!! Scraper Engine communication FAILED for source {source_id}: {e}"
-            )
-            return 0
+        while True:
+            try:
+                current_url = f"{base_scraper_url}?limit={batch_size}&skip={skip}"
+                logger.info(f"Fetching reviews page (skip={skip}) from {current_url}...")
+                response = await client.get(current_url, timeout=60.0)
+                response.raise_for_status()
+                page_data = response.json()
+                
+                batch = page_data.get("data", [])
+                total_on_server = page_data.get("total", 0)
+                
+                if not batch:
+                    break
+                    
+                all_reviews_data.extend(batch)
+                logger.info(f"Received {len(batch)} reviews. Total so far: {len(all_reviews_data)}/{total_on_server}")
+                
+                if len(all_reviews_data) >= total_on_server:
+                    break
+                    
+                skip += batch_size
+            except Exception as e:
+                logger.error(f"!!! Scraper Engine communication FAILED at skip={skip} for source {source_id}: {e}")
+                break # Process what we have so far
 
-    reviews = raw_data.get("data", [])
+    if not all_reviews_data:
+        return 0
+
+    reviews_to_process = all_reviews_data
 
     # ── Check review_count limit and truncate if needed ──
     review_balance = None  # None = unlimited
@@ -75,7 +95,6 @@ async def ingest_from_scraper(
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            # Find the tenant (user) who owns this organization
             tenant_row = cursor.execute(
                 "SELECT tenant_id FROM dbo.organization WHERE organization_id = ?",
                 (str(organization_id),),
@@ -84,24 +103,18 @@ async def ingest_from_scraper(
                 tenant_id = str(tenant_row[0])
                 from app.modules.admin.services.subscription_service import (
                     check_feature_limit,
-                    send_limit_reached_notification,
                 )
                 limit_info = check_feature_limit(cursor, tenant_id, "review_count")
                 if limit_info["limit"] is not None:
                     review_balance = limit_info["balance"]
                     if review_balance <= 0:
+                        from app.modules.admin.services.subscription_service import send_limit_reached_notification
                         send_limit_reached_notification(tenant_id, limit_info["feature_name"])
-                        logger.info(
-                            f"Review count limit reached for tenant {tenant_id} "
-                            f"({limit_info['used']}/{limit_info['limit']}). Skipping ingestion."
-                        )
+                        logger.info(f"Review count limit reached for tenant {tenant_id}. Skipping ingestion.")
                         return 0
-                    elif review_balance < len(reviews):
-                        logger.info(
-                            f"Truncating ingestion from {len(reviews)} to {review_balance} reviews "
-                            f"(tenant {tenant_id} balance: {review_balance}/{limit_info['limit']})"
-                        )
-                        reviews = reviews[:review_balance]
+                    elif review_balance < len(reviews_to_process):
+                        logger.info(f"Truncating ingestion from {len(reviews_to_process)} to {review_balance} (limit reached).")
+                        reviews_to_process = reviews_to_process[:review_balance]
     except Exception as limit_err:
         logger.warning(f"Review count limit check failed: {limit_err}")
 
@@ -112,7 +125,7 @@ async def ingest_from_scraper(
 
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        for r_data in reviews:
+        for r_data in reviews_to_process:
             try:
                 logger.info(f"RAW R_DATA: {json.dumps(r_data, indent=2)}")
                 # Handle nested detail from Scraper Engine

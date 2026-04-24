@@ -108,7 +108,7 @@ _PLATFORM_SERIALIZERS = {
 
 
 @router.get("/{source_id}")
-def get_reviews_by_source(source_id: str, limit: int = 100, skip: int = 0):
+def get_reviews_by_source(source_id: str, limit: int = 1000, skip: int = 0):
     """
     Retrieve all reviews for a given source_id.
     Returns platform-specific details and attached media for each review.
