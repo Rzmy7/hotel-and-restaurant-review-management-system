@@ -33,10 +33,15 @@ def upsert_organization(
 
     organization_name = data.organization_name
     type_id = data.organization_type_id
+    city = (data.city or "").strip()
+    country = (data.country or "").strip()
 
     # validate name
     if not organization_name or organization_name.strip() == "":
         raise HTTPException(status_code=400, detail="Organization name required")
+
+    if not city or not country:
+        raise HTTPException(status_code=400, detail="City and country are required")
 
     # check if an organization with the same name exists for this tenant
     existing_org = db.execute(
@@ -88,17 +93,21 @@ def upsert_organization(
 
     if existing_org:
         org_id = existing_org[0]
-        # Update existing organization (e.g. type_id)
+        # Update existing organization (e.g. type_id, location)
         db.execute(
             text("""
-                UPDATE dbo.organization 
-                SET organization_type_id = :type_id, 
+                UPDATE dbo.organization
+                SET organization_type_id = :type_id,
+                    city = :city,
+                    country = :country,
                     updated_at = GETDATE()
                 WHERE organization_id = :org_id
             """),
             {
                 "type_id": type_id,
-                "org_id": org_id
+                "city": city,
+                "country": country,
+                "org_id": org_id,
             }
         )
         organization_created = False
@@ -108,15 +117,17 @@ def upsert_organization(
         new_org_id = uuid.uuid4()
         db.execute(
             text("""
-                INSERT INTO dbo.organization 
-                (organization_id, organization_name, tenant_id, organization_type_id, created_at, updated_at)
-                VALUES (:org_id, :name, :tenant_id, :type_id, GETDATE(), GETDATE())
+                INSERT INTO dbo.organization
+                (organization_id, organization_name, tenant_id, organization_type_id, city, country, created_at, updated_at)
+                VALUES (:org_id, :name, :tenant_id, :type_id, :city, :country, GETDATE(), GETDATE())
             """),
             {
                 "org_id": new_org_id,
                 "name": organization_name,
                 "tenant_id": tenant_id,
-                "type_id": type_id
+                "type_id": type_id,
+                "city": city,
+                "country": country,
             }
         )
         org_id = new_org_id
@@ -225,6 +236,14 @@ def update_organization(
     if "logo_url" in provided_fields:
         updates.append("logo_url = :logo_url")
         params["logo_url"] = normalize_optional_text(data.logo_url)
+
+    if "city" in provided_fields:
+        updates.append("city = :city")
+        params["city"] = normalize_optional_text(data.city)
+
+    if "country" in provided_fields:
+        updates.append("country = :country")
+        params["country"] = normalize_optional_text(data.country)
 
     if not updates:
         return {"message": "No updates provided", "organization_id": org_id}

@@ -95,6 +95,24 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                 />
             </FormField>
 
+            <div className="grid grid-cols-2 gap-6 py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0 max-md:grid-cols-1">
+                <FormField label="City">
+                    <Input
+                        value={data.city}
+                        onChange={(e) => onChange({ city: e.target.value })}
+                        placeholder="e.g. Colombo"
+                    />
+                </FormField>
+
+                <FormField label="Country">
+                    <Input
+                        value={data.country}
+                        onChange={(e) => onChange({ country: e.target.value })}
+                        placeholder="e.g. Sri Lanka"
+                    />
+                </FormField>
+            </div>
+
         </div>
     );
 };

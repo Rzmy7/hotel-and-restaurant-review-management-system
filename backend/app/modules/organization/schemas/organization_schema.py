@@ -11,6 +11,8 @@ class SourceCreateNested(BaseModel):
 class OrganizationCreate(BaseModel):
     organization_name: str
     organization_type_id: int = 1
+    city: str
+    country: str
     sources: Optional[List[SourceCreateNested]] = None
 
 
@@ -30,6 +32,8 @@ class OrganizationUpdate(BaseModel):
     primary_email: Optional[str] = None
     phone_number: Optional[str] = None
     logo_url: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
 
 class LogoUploadResponse(BaseModel):
     message: str

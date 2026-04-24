@@ -74,16 +74,48 @@ export async function fetchCompetitors(): Promise<CompetitorListResponse> {
     return apiClient.get<CompetitorListResponse>(`/competitors`);
 }
 
-/** Register a new competitor by name + source URL (auto-detects if org already exists) */
-export async function addCompetitor(
-    name: string,
-    source_url: string,
-    platform_id: number = 2,
-    organization_type_id: number = 1,
-): Promise<{ message: string; competitor: Competitor }> {
-    return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors`, {
-        name, source_url, platform_id, organization_type_id
-    });
+export interface CompetitorSourceInput {
+    platform_id: number;
+    source_url: string;
+}
+
+/** Register a new competitor as an ownerless organization with city+country+type+sources. */
+export async function addCompetitor(params: {
+    name: string;
+    organization_type_id: number;
+    city: string;
+    country: string;
+    sources: CompetitorSourceInput[];
+}): Promise<{ message: string; competitor: Competitor }> {
+    return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors`, params);
+}
+
+export interface SuggestedCompetitor {
+    organization_id: string;
+    organization_name: string;
+    city: string;
+    country: string;
+    organization_type_id: number;
+    reviewCount: number;
+    avgRating: number;
+}
+
+export interface SuggestionsResponse {
+    status: 'ok' | 'missing_location' | 'no_organization';
+    suggestions: SuggestedCompetitor[];
+}
+
+/** Fetch up-to-6 orgs with the same city+country+type, excluding own org + already-tracked. */
+export async function fetchSuggestedCompetitors(): Promise<SuggestionsResponse> {
+    return apiClient.get<SuggestionsResponse>(`/competitors/suggestions`);
+}
+
+/** Track a suggested organization as a competitor (no new org is created). */
+export async function addCompetitorFromOrganization(organization_id: string):
+    Promise<{ message: string; competitor: Competitor }> {
+    return apiClient.post<{ message: string; competitor: Competitor }>(
+        `/competitors/from-organization`, { organization_id }
+    );
 }
 
 /** User: start tracking a competitor from the available pool */

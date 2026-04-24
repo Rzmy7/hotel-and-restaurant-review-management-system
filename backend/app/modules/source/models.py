@@ -63,6 +63,8 @@ class Organization(Base):
         ForeignKey("organization_type.type_code"),
         nullable=True,
     )
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),

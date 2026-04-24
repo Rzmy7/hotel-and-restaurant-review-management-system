@@ -27,6 +27,8 @@ export interface HotelInfoSettings {
     propertyType: string;
     primaryEmail: string;
     phoneNumber: string;
+    city: string;
+    country: string;
     logoUrl?: string;
 }
 
