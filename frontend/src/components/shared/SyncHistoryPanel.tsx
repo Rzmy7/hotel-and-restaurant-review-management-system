@@ -95,13 +95,13 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
             />
 
             {/* Panel */}
-            <div className="fixed inset-y-0 right-0 w-full max-w-[480px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-l border-white/20 dark:border-slate-800 shadow-2xl z-[100] flex flex-col transition-transform duration-500 animate-in slide-in-from-right">
+            <div className="fixed inset-y-0 right-0 w-full max-w-[480px] bg-white dark:bg-[#121826] border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[100] flex flex-col transition-transform duration-500 animate-in slide-in-from-right">
                 
                 {/* Header */}
-                <div className="p-8 flex items-center justify-between">
+                <div className="p-8 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/50">
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-                            <History className="text-[#4e80ee]" size={24} />
+                            <History className="text-[#597FE6]" size={24} />
                             Activity Log
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">
@@ -111,7 +111,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                     <div className="flex items-center gap-2">
                         <button 
                             onClick={onExport}
-                            className="w-10 h-10 grid place-items-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-[#4e80ee] transition-all"
+                            className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-[#597FE6] transition-all"
                             title="Export to CSV"
                         >
                             <ArrowRight className="rotate-[-90deg]" size={18} />
@@ -122,14 +122,14 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                                     onClear?.();
                                 }
                             }}
-                            className="w-10 h-10 grid place-items-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-all"
+                            className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-all"
                             title="Clear History"
                         >
                             <Trash2 size={18} />
                         </button>
                         <button 
                             onClick={onClose}
-                            className="w-10 h-10 grid place-items-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                            className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
                             <X size={20} />
                         </button>
@@ -137,8 +137,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                 </div>
 
 
-                {/* Search & Source Filter */}
-                <div className="px-8 pb-4 flex gap-3">
+                <div className="px-8 py-6 flex gap-3 bg-[#F9FAFB] dark:bg-[#121826] border-b border-slate-100 dark:border-slate-800/50">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input
@@ -146,13 +145,13 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                             value={currentSearch}
                             onChange={(e) => onSearchChange?.(e.target.value)}
                             placeholder="Search activity..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4e80ee]/50 transition-all"
+                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#597FE6]/50 transition-all"
                         />
                     </div>
                     <select
                         value={currentFilter?.sourceId || ''}
                         onChange={(e) => onFilterChange?.({ ...currentFilter, sourceId: e.target.value || undefined })}
-                        className="px-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4e80ee]/50 transition-all cursor-pointer"
+                        className="px-4 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#597FE6]/50 transition-all cursor-pointer"
                     >
                         <option value="">All Sources</option>
                         {sources.map(s => (
@@ -178,8 +177,8 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                                     className={cn(
                                         "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300",
                                         isActive 
-                                            ? "bg-white dark:bg-slate-700 text-[#4e80ee] shadow-sm" 
-                                            : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                            ? "bg-white dark:bg-slate-700 text-[#597FE6] shadow-sm" 
+                                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                                     )}
                                 >
                                     {tab.label}
@@ -191,30 +190,30 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
 
                 {/* Real-time Progress Bar */}
                 {activeSyncSourceId && progress && (
-                    <div className="mx-6 mb-6 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50">
+                    <div className="mx-6 my-6 p-4 rounded-2xl bg-[#597FE6]/5 dark:bg-[#597FE6]/10 border border-[#597FE6]/20 dark:border-[#597FE6]/30">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                                    <RefreshIcon size={14} className="text-blue-600 dark:text-blue-400 animate-spin" />
+                                <div className="p-1.5 bg-[#597FE6]/10 dark:bg-[#597FE6]/20 rounded-lg">
+                                    <RefreshIcon size={14} className="text-[#597FE6] animate-spin" />
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-[#597FE6] dark:text-[#597FE6]">
                                     Live Sync Progress
                                 </span>
                             </div>
-                            <span className="text-[13px] font-black text-blue-700 dark:text-blue-300 tabular-nums">
+                            <span className="text-[13px] font-black text-[#597FE6] dark:text-[#597FE6] tabular-nums">
                                 {progress.percentage}%
                             </span>
                         </div>
                         
-                        <div className="w-full h-2 bg-blue-100 dark:bg-blue-800/50 rounded-full overflow-hidden mb-2">
+                        <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
                             <div 
-                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                className="h-full bg-gradient-to-r from-[#597FE6] to-[#80a0f0] transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(89,127,230,0.3)]"
                                 style={{ width: `${progress.percentage}%` }}
                             />
                         </div>
                         
-                        <p className="text-[10px] font-bold text-blue-600/70 dark:text-blue-400/70 uppercase tracking-widest flex items-center gap-1.5">
-                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-ping" />
+                        <p className="text-[10px] font-bold text-[#597FE6]/70 dark:text-[#597FE6]/70 uppercase tracking-widest flex items-center gap-1.5">
+                            <span className="w-1 h-1 bg-[#597FE6] rounded-full animate-ping" />
                             {progress.progress || 'Processing...'}
                         </p>
                     </div>
@@ -229,7 +228,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                         <div key={log.id} className="relative flex gap-6 group">
                             {/* Line */}
                             {index !== logs.length - 1 && (
-                                <div className="absolute left-[19px] top-10 bottom-[-32px] w-[2px] bg-slate-100 dark:bg-slate-800 group-hover:bg-[#4e80ee]/30 transition-colors" />
+                                <div className="absolute left-[19px] top-10 bottom-[-32px] w-[2px] bg-slate-100 dark:bg-slate-800/50 group-hover:bg-[#597FE6]/20 transition-colors" />
                             )}
 
                             {/* Icon Wrapper */}
@@ -269,9 +268,8 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                     ))}
 
                     {/* Loading State */}
-                    {(isLoading || isFetchingNextPage) && (
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                            <Loader2 className="text-[#4e80ee] animate-spin" size={32} />
+                            <Loader2 className="text-[#597FE6] animate-spin" size={32} />
                             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
                                 {isLoading ? 'Initializing Log...' : 'Loading history...'}
                             </p>
@@ -304,10 +302,10 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                 </div>
 
                 {/* Bottom Action */}
-                <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-900/30">
+                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-[#F9FAFB] dark:bg-[#121826]">
                     <button
                         onClick={onClose}
-                        className="w-full py-4 px-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[13px] font-black uppercase tracking-widest hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-slate-200 dark:shadow-none"
+                        className="w-full py-4 px-6 bg-[#597FE6] text-white rounded-2xl text-[13px] font-black uppercase tracking-widest hover:bg-blue-600 active:scale-[0.98] transition-all shadow-xl shadow-[#597FE6]/20"
                     >
                         Close History
                     </button>
