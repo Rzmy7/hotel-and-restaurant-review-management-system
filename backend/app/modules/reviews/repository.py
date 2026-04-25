@@ -154,6 +154,13 @@ def fetch_all_reviews_enriched(
     """
     Fetch processed reviews with associated media using SQLAlchemy ORM.
     """
+    # Ensure dependencies are in the registry to avoid 'User not found' errors in joins
+    try:
+        import app.modules.auth.models.auth_models  # noqa
+        import app.modules.organization.models.org_models  # noqa
+    except ImportError:
+        pass
+
     from app.modules.reviews.models import ProcessedReview
     from app.modules.source.models import Source, Platform
 
@@ -264,6 +271,12 @@ def fetch_all_reviews_enriched(
 
 def get_review_options(organization_id: str, db: Session = None) -> Dict[str, List[str]]:
     """Fetch distinct sources and categories for an organization using ORM."""
+    try:
+        import app.modules.auth.models.auth_models  # noqa
+        import app.modules.organization.models.org_models  # noqa
+    except ImportError:
+        pass
+
     from app.modules.source.models import Source, Platform
     from app.modules.reviews.models import ProcessedReview
 
@@ -305,6 +318,12 @@ def get_review_options(organization_id: str, db: Session = None) -> Dict[str, Li
 
 def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: Session = None) -> Dict:
     """Calculate aggregated stats for an organization's reviews using ORM."""
+    try:
+        import app.modules.auth.models.auth_models  # noqa
+        import app.modules.organization.models.org_models  # noqa
+    except ImportError:
+        pass
+
     from app.modules.reviews.models import ProcessedReview
     from app.modules.source.models import Source, Platform
 
@@ -354,20 +373,12 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
             if filters.get("dateTo"): query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         # Aggregations
-        stats = db.query(
-            func.count(ProcessedReview.id).label("total"),
-            func.avg(ProcessedReview.rating).label("avg_rating"),
-            func.sum(case((ProcessedReview.sentiment == 'Positive', 1), (ProcessedReview.sentiment == 'Negative', -1), else_=0)).label("sentiment_sum"),
-            func.sum(case((or_(ProcessedReview.status == 'pending', ProcessedReview.ai_reply == None), 1), else_=0)).label("pending")
-        ).select_from(ProcessedReview).join(Source).join(Platform).filter(Source.organization_id == organization_id)
-        
-        # Apply the same filters to aggregation query
-        # ... actually we should have just reused the query object
+        # Apply the same filters to aggregation query by reusing the query object
         stats_row = query.with_entities(
             func.count(ProcessedReview.id),
             func.avg(ProcessedReview.rating),
-            func.sum(func.case((ProcessedReview.sentiment == 'Positive', 1), (ProcessedReview.sentiment == 'Negative', -1), else_=0)),
-            func.sum(func.case((or_(ProcessedReview.status == 'pending', ProcessedReview.ai_reply == None), 1), else_=0))
+            func.sum(case((ProcessedReview.sentiment == 'Positive', 1), (ProcessedReview.sentiment == 'Negative', -1), else_=0)),
+            func.sum(case((or_(ProcessedReview.status == 'pending', ProcessedReview.ai_reply.is_(None)), 1), else_=0))
         ).one()
 
         total = stats_row[0] or 0
