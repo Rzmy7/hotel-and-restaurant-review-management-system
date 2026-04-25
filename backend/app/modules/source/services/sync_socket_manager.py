@@ -53,7 +53,10 @@ class SyncConnectionManager:
         # Use registered job_id, fall back to source_id if none registered (backward compat)
         target_id = self.source_to_job.get(source_id, source_id)
         
-        scraper_ws_url = os.getenv("SCRAPER_WS_URL", "ws://127.0.0.1:8001/ws/jobs")
+        scraper_ws_url = os.getenv("SCRAPER_WS_URL", "")
+        if not scraper_ws_url:
+            base = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
+            scraper_ws_url = base.replace("https://", "wss://").replace("http://", "ws://") + "/ws/jobs"
         url = f"{scraper_ws_url}/{target_id}"
         
         retry_count = 0

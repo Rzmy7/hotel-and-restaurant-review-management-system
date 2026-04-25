@@ -11,7 +11,7 @@ from app.modules.source.services.source_service import update_sync_status
 logger = logging.getLogger(__name__)
 
 # Scraper microservice URL, default to 8001 if backend is on 8000
-SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001")
+SCRAPER_API_BASE_URL = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
 
 def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """

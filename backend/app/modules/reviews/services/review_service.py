@@ -5,6 +5,7 @@ Review Service — orchestrates review ingestion, analysis, and retrieval.
 from datetime import datetime
 import json
 import logging
+import os
 import uuid
 import httpx
 from typing import List, Optional, Dict
@@ -54,7 +55,8 @@ async def ingest_from_scraper(
     and stores them as 'pending' in the database.
     Respects the user's review_count plan limit — only ingests up to the remaining balance.
     """
-    base_scraper_url = f"http://127.0.0.1:8001/api/reviews/{source_id}"
+    scraper_base = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
+    base_scraper_url = f"{scraper_base}/api/reviews/{source_id}"
     all_reviews_data = []
     skip = 0
     batch_size = 1000

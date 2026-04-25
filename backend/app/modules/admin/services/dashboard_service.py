@@ -116,7 +116,7 @@ def build_review_data(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         return []
 
     # ── Step 2: call Scraper Engine row-counts endpoint ──
-    scraper_base = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001").rstrip("/")
+    scraper_base = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
     table_csv = urllib.parse.quote(",".join(platform_map.keys()))
     url = f"{scraper_base}/api/tables/row-counts?table_names={table_csv}"
 
