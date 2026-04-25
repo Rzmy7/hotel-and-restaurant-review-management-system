@@ -30,7 +30,7 @@ from app.modules.admin.services.system_settings_service import (
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://localhost:8001").rstrip("/")
+EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://localhost:8002").rstrip("/")
 
 ALLOWED_EXTENSIONS = {".txt", ".docx", ".pdf"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
