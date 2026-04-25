@@ -14,9 +14,9 @@ export const getFrontendBaseUrl = (): string => {
 
     // Helper: derive main frontend URL from admin domain (strip "admin." prefix)
     const deriveFromCurrentHost = (): string => {
-        const host = window.location.host; // e.g. admin.reviewmate.blimas.live
+        const host = window.location.host; // e.g. admin.reviewmate.live
         if (host.startsWith('admin.')) {
-            return `${window.location.protocol}//${host.slice(6)}`; // reviewmate.blimas.live
+            return `${window.location.protocol}//${host.slice(6)}`; // reviewmate.live
         }
         return currentOrigin;
     };
