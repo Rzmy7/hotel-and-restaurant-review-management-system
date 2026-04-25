@@ -7,6 +7,10 @@ interface SourceComparisonProps {
     sources: SourceData[];
 }
 
+const CHART_COLORS = ['#4e80ee', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+const CHART_BG_COLORS = ['bg-blue-50/50', 'bg-emerald-50/50', 'bg-amber-50/50', 'bg-pink-50/50', 'bg-violet-50/50'];
+const CHART_BORDER_COLORS = ['border-blue-100', 'border-emerald-100', 'border-amber-100', 'border-pink-100', 'border-violet-100'];
+
 const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
     const cx = 100, cy = 100;
     
