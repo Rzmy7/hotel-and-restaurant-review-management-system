@@ -663,9 +663,8 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
     )
     
     # Trigger the microservice (async trigger)
-    import os
     import httpx
-    SCRAPER_API_BASE_URL = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
+    from app.core.config import SCRAPER_ENGINE_URL as SCRAPER_API_BASE_URL
     platform_key = source.platform.platform_name.lower().replace(" reviews", "").replace(".com", "")
     endpoint = f"{SCRAPER_API_BASE_URL}/api/{platform_key}/scrape"
     

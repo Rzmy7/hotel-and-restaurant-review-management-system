@@ -4,12 +4,11 @@ import logging
 from app.database.session import SessionLocal
 from app.modules.source.schemas import SyncStatus, SyncStatusRequest
 from app.modules.source.services.source_service import get_stuck_sources, update_sync_status
+from app.core.config import SCRAPER_ENGINE_URL as _SCRAPER_URL
 
 logger = logging.getLogger(__name__)
 
-SCRAPER_ENGINE_URL = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001/")
-if not SCRAPER_ENGINE_URL.endswith("/"):
-    SCRAPER_ENGINE_URL += "/"
+_RECONCILIATION_SCRAPER_URL = _SCRAPER_URL.rstrip("/") + "/"
 
 def reconcile_scraper_jobs():
     """
@@ -27,13 +26,13 @@ def reconcile_scraper_jobs():
 
         # Contact Scraper Engine
         try:
-            url = f"{SCRAPER_ENGINE_URL}api/system/jobs"
+            url = f"{_RECONCILIATION_SCRAPER_URL}api/system/jobs"
             with httpx.Client(timeout=10.0) as client:
                 resp = client.get(url)
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.RequestError as e:
-            logger.warning(f"Reconciliation failed: Could not connect to Scraper Engine at {SCRAPER_ENGINE_URL} ({e})")
+            logger.warning(f"Reconciliation failed: Could not connect to Scraper Engine at {_RECONCILIATION_SCRAPER_URL} ({e})")
             return
         except Exception as e:
             logger.error(f"Reconciliation failed: Unexpected error contacting Scraper Engine ({e})")

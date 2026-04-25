@@ -55,8 +55,8 @@ class SyncConnectionManager:
         
         scraper_ws_url = os.getenv("SCRAPER_WS_URL", "")
         if not scraper_ws_url:
-            base = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
-            scraper_ws_url = base.replace("https://", "wss://").replace("http://", "ws://") + "/ws/jobs"
+            from app.core.config import SCRAPER_ENGINE_URL
+            scraper_ws_url = SCRAPER_ENGINE_URL.replace("https://", "wss://").replace("http://", "ws://") + "/ws/jobs"
         url = f"{scraper_ws_url}/{target_id}"
         
         retry_count = 0

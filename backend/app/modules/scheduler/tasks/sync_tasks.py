@@ -7,11 +7,12 @@ from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
 from app.modules.source.services.source_service import update_sync_status
+from app.core.config import SCRAPER_ENGINE_URL
 
 logger = logging.getLogger(__name__)
 
-# Scraper microservice URL, default to 8001 if backend is on 8000
-SCRAPER_API_BASE_URL = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
+# Scraper microservice URL from centralized config
+SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
 def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """
