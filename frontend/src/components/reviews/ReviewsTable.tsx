@@ -32,9 +32,17 @@ const ReviewsTable = ({ reviews: propsReviews, pagination: propsPagination, isLo
                     <ReviewsTableHeader />
                     <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                         {loading ? (
-                            Array.from({ length: 5 }).map((_, i) => (
-                                <tr key={i} className="animate-pulse">
-                                    <td colSpan={6} className="px-6 py-6"><div className="h-12 bg-gray-50 dark:bg-slate-700 rounded" /></td>
+                            Array.from({ length: 10 }).map((_, i) => (
+                                <tr key={i}>
+                                    <td colSpan={6} className="px-6 py-4">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-10 h-10 rounded-full animate-shimmer" />
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-4 w-1/4 rounded animate-shimmer" />
+                                                <div className="h-3 w-3/4 rounded animate-shimmer" />
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))
                         ) : currentReviews.length === 0 ? (
@@ -59,6 +67,7 @@ const ReviewsTable = ({ reviews: propsReviews, pagination: propsPagination, isLo
                                         review={review}
                                         isLastRows={isLastRows}
                                         onClick={openReview}
+                                        index={rowIndex}
                                     />
                                 )
                             })

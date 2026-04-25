@@ -85,3 +85,58 @@ body,
   scrollbar-width: none;
   /* Firefox */
 }
+/* --- Premium Animations --- */
+
+/* Shimmer effect for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(to right, #f6f7f8 4%, #edeef1 25%, #f6f7f8 36%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(to right, #1e293b 4%, #334155 25%, #1e293b 36%);
+  background-size: 1000px 100%;
+}
+
+/* Staggered Entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.staggered-item {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Premium row hover effect */
+.premium-row {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background-color: rgba(249, 250, 251, 0.8);
+}
+
+.dark .premium-row:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background-color: rgba(30, 41, 59, 0.5);
+}

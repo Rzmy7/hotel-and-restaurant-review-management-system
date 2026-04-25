@@ -223,7 +223,8 @@ def fetch_all_reviews_enriched(
         total_count = query.count()
 
         # Fetch Data
-        query = query.options(joinedload(ProcessedReview.media))
+        from sqlalchemy.orm import selectinload
+        query = query.options(selectinload(ProcessedReview.media))
         query = query.order_by(ProcessedReview.reviewDate.desc())
         query = query.offset(page * limit).limit(limit)
         db_reviews = query.all()

@@ -69,10 +69,11 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            {reviews.map((review) => (
+                            {reviews.map((review, index) => (
                                 <div
                                     key={review.id}
-                                    className="p-4 border border-gray-100 dark:border-slate-700 rounded-lg transition-all cursor-pointer hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 bg-white dark:bg-slate-800/80 group/item"
+                                    className="staggered-item p-4 border border-gray-100 dark:border-slate-700 rounded-lg transition-all cursor-pointer hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 bg-white dark:bg-slate-800/80 group/item"
+                                    style={{ animationDelay: `${index * 0.05}s` }}
                                     onClick={() => handleReviewClick(review)}
                                 >
                                     <div className="flex justify-between items-start mb-2">
