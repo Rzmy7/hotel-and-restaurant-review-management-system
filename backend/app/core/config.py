@@ -54,6 +54,11 @@ DEFAULT_CORS_ORIGINS: list[str] = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
     "http://127.0.0.1:4000",
+    # Production origins
+    "http://reviewmate.blimas.live",
+    "http://admin.reviewmate.blimas.live",
+    "https://reviewmate.blimas.live",
+    "https://admin.reviewmate.blimas.live",
 ]
 
 _cors_from_env = os.getenv("CORS_ORIGINS", "")
