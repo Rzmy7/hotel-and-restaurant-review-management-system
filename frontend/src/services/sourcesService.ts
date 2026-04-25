@@ -6,9 +6,10 @@ import type { Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '.
 import { apiClient } from '../api/client';
 
 class SourcesService {
-    stopSync(id: string | number): Promise<any> {
-      throw new Error('Method not implemented.');
+    async stopSync(id: string | number): Promise<any> {
+        return apiClient.patch(`/api/source/${id}`, { source_status: 'active' });
     }
+
     async getPlatforms(): Promise<any[]> {
         return apiClient.get<any[]>('/api/source/platforms');
     }
