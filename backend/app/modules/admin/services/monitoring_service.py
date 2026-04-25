@@ -23,10 +23,11 @@ from app.core.db_utils import (
     table_exists,
 )
 from app.modules.admin.schemas import ScrapingPlatformCreatePayload, ScrapingPlatformUpdatePayload, ScrapingTableAttributePayload
+from app.core.config import SCRAPER_ENGINE_URL
 
 load_dotenv()
 
-DEFAULT_SCRAPING_BACKEND_URL = os.getenv("SCRAPER_ENGINE_URL", os.getenv("SCRAPING_BACKEND_URL", "http://localhost:8001")).rstrip("/")
+DEFAULT_SCRAPING_BACKEND_URL = SCRAPER_ENGINE_URL
 
 
 # ── Visual helpers ──────────────────────────────────────────────────

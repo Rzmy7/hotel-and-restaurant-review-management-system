@@ -55,7 +55,8 @@ async def ingest_from_scraper(
     and stores them as 'pending' in the database.
     Respects the user's review_count plan limit — only ingests up to the remaining balance.
     """
-    scraper_base = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
+    from app.core.config import SCRAPER_ENGINE_URL
+    scraper_base = SCRAPER_ENGINE_URL
     base_scraper_url = f"{scraper_base}/api/reviews/{source_id}"
     all_reviews_data = []
     skip = 0

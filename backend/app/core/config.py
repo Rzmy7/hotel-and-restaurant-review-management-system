@@ -46,6 +46,13 @@ GENAI_KEY: str | None = os.getenv("GENAI_KEY")
 # ── Password reset ──────────────────────────────────────────────────
 PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 
+# ── Microservices ───────────────────────────────────────────────────
+_IS_PROD = "reviewmate.live" in FRONTEND_URL
+_DEFAULT_SCRAPER = "https://scrape.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8001"
+_DEFAULT_EMBED = "https://embed.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8002"
+
+SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", _DEFAULT_SCRAPER).rstrip("/")
+EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", _DEFAULT_EMBED).rstrip("/")
 # ── CORS allowed origins ────────────────────────────────────────────
 DEFAULT_CORS_ORIGINS: list[str] = [
     "http://localhost:5173",
