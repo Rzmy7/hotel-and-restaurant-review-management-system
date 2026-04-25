@@ -16,7 +16,7 @@ def save_to_json(reviews: List[Review], org_name: str) -> str:
     filename = f"{clean_org_name}_{timestamp}.json"
     filepath = os.path.join(config.output_dir, filename)
 
-    data = [review.model_dump() for review in reviews]
+    data = [r.model_dump() if hasattr(r, 'model_dump') else r for r in reviews]
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 

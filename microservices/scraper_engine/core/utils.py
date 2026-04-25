@@ -60,6 +60,23 @@ def notify_backend_sync_status(source_id: str, status: str, new_review_count: in
         response = httpx.post(url, json=payload, timeout=10)
         response.raise_for_status()
         logger.info(f"Backend notified successfully for source {source_id} status {status}.")
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            logger.warning(f"Backend returned 404 for source {source_id}. This source likely no longer exists in the backend. Cleaning up local record...")
+            try:
+                from core.database import get_session
+                from core.models import Source
+                session = get_session()
+                source = session.query(Source).filter_by(source_id=source_id).first()
+                if source:
+                    session.delete(source)
+                    session.commit()
+                    logger.info(f"Successfully deleted orphan source {source_id} from local database.")
+                session.close()
+            except Exception as delete_err:
+                logger.error(f"Failed to delete orphan source {source_id}: {delete_err}")
+        else:
+            logger.error(f"HTTP error notifying backend: {e}")
     except httpx.HTTPError as e:
         logger.error(f"HTTP error notifying backend: {e}")
     except Exception as e:
