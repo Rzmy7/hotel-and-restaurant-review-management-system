@@ -25,6 +25,7 @@ from app.modules.source.models import (
     Source as SourceSource,
 )  # alias for backward compat
 from app.modules.scheduler.tasks.sync_tasks import trigger_platform_scrape
+from app.modules.auth.utils.internal_auth import verify_internal_api_key
 
 router = APIRouter()
 
@@ -83,7 +84,10 @@ def get_platforms(db: Session = Depends(get_db), user=Depends(get_current_user))
     return source_service.get_platforms(db, include_inactive=is_admin)
 
 @router.get("/stuck-tasks", response_model=List[SourceRead])
-def get_stuck_tasks(db: Session = Depends(get_db), user=Depends(get_current_user)):
+def get_stuck_tasks(
+    db: Session = Depends(get_db), 
+    internal: bool = Depends(verify_internal_api_key)
+):
     """Fetch all sources that are marked 'running' or 'queued', meaning they may be stuck if the engine restarted."""
     return source_service.get_stuck_sources(db)
 
@@ -154,6 +158,7 @@ def update_sync_status(
     request: SyncStatusRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    internal: bool = Depends(verify_internal_api_key)
 ):
     """Endpoint for the scraper engine to report synchronization progress or completion."""
     return source_service.update_sync_status(db, source_id, request, background_tasks)
