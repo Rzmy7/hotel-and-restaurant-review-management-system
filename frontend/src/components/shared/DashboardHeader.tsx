@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CalendarDays } from 'lucide-react';
+import { Bell, CalendarDays, Sun, Moon } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import NotificationPanel from '../shared/NotificationPanel';
 import ProfileDropdown from '../shared/ProfileDropdown';
@@ -8,6 +8,7 @@ import OrganizationSwitcher from '../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { notificationsService } from '../../services/notificationsService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const DashboardHeader: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const DashboardHeader: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const { theme, setTheme, darkModeAllowed } = useTheme();
 
   // Close panels on outside click
   useEffect(() => {
@@ -92,6 +94,24 @@ const DashboardHeader: React.FC = () => {
           <CalendarDays size={16} className="text-gray-400 group-hover:text-blue-500" />
           <span>Last 30 Days</span>
         </button>
+
+        {/* Theme Toggle Button */}
+        {darkModeAllowed && (
+          <button
+            onClick={() => {
+              const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              setTheme(isDark ? 'light' : 'dark');
+            }}
+            className="w-10 h-10 grid place-items-center rounded-full cursor-pointer transition-all duration-300 active:scale-90 bg-gray-50 border border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
+            aria-label="Toggle Dark Mode"
+          >
+            {(theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) ? (
+              <Sun size={20} />
+            ) : (
+              <Moon size={20} />
+            )}
+          </button>
+        )}
 
         {/* Improved Notification Bell */}
         <div className="relative" ref={notifRef}>
