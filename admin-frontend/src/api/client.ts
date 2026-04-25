@@ -1,15 +1,7 @@
 /**
  * Centralized API Client for admin-frontend
  */
-const API_BASE_URL =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://localhost:8000';
-
-const getApiBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || API_BASE_URL).replace(/\/$/, '');
-};
+import { getApiBaseUrl } from '../config/api';
 
 const getFullUrl = (url: string) => {
     if (url.startsWith('http')) return url;
@@ -35,7 +27,8 @@ async function handleResponse(response: Response) {
     if (response.status === 401) {
         console.warn("Unauthorized! Redirecting to login...");
         localStorage.removeItem("token");
-        window.location.href = "http://localhost:5173/login?expired=true";
+        const frontendUrl = (import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+        window.location.href = `${frontendUrl}/login?expired=true`;
         throw new Error("Session expired.");
     }
 

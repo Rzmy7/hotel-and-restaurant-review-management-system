@@ -3,12 +3,13 @@ import { Save, Globe, Loader } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import { setEmbeddingServiceUrl } from '../services/embeddingService';
+import { getApiBaseUrl } from '../config/api';
 
 export const APIManage: React.FC = () => {
     const [apiSettings, setApiSettings] = useState({
-        embeddingServiceUrl: 'http://localhost:8001',
-        mainBackendUrl: 'http://localhost:8000',
-        scrapingBackendUrl: 'http://localhost:8002'
+        embeddingServiceUrl: import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8001',
+        mainBackendUrl: getApiBaseUrl(),
+        scrapingBackendUrl: import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -21,9 +22,9 @@ export const APIManage: React.FC = () => {
                 setLoading(true);
                 
                 // Get URLs from localStorage (client-side settings)  
-                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || 'http://localhost:8001';
-                const storedMainBackendUrl = localStorage.getItem('mainBackendUrl') || 'http://localhost:8000';
-                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || 'http://localhost:8002';
+                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8001';
+                const storedMainBackendUrl = getApiBaseUrl();
+                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002';
                 
                 setApiSettings({
                     embeddingServiceUrl: storedEmbeddingUrl,
@@ -35,9 +36,9 @@ export const APIManage: React.FC = () => {
             } catch (err) {
                 console.error('Failed to load API settings:', err);
                 // Don't show error on initialization - just use defaults
-                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || 'http://localhost:8001';
-                const storedMainBackendUrl = localStorage.getItem('mainBackendUrl') || 'http://localhost:8000';
-                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || 'http://localhost:8002';
+                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8001';
+                const storedMainBackendUrl = getApiBaseUrl();
+                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002';
                 setApiSettings({
                     embeddingServiceUrl: storedEmbeddingUrl,
                     mainBackendUrl: storedMainBackendUrl,

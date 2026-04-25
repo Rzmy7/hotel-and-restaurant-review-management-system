@@ -1,5 +1,6 @@
 import type { SettingsData } from '../types/settings';
 import axios from 'axios';
+import { getApiBaseUrl } from '../config/api';
 
 // Mocked initial data
 const STORAGE_KEY = 'vite-ui-theme';
@@ -66,15 +67,7 @@ export type PasswordChangePayload = {
     confirmPassword?: string;
 };
 
-const API_BASE_URL =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://localhost:8000';
-
-const getApiBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || API_BASE_URL).replace(/\/$/, '');
-};
+// API base URL is resolved from config/api.ts
 
 const toApiPath = (path: string): string => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;

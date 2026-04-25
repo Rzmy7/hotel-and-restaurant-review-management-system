@@ -1,8 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, X } from 'lucide-react';
 import { inferCompetitorDomain, type CompetitorDomain } from '../utils/competitorDomain';
+import { getApiBaseUrl } from '../config/api';
 
-const API_BASE = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = getApiBaseUrl();
 
 interface AvailableCompetitor {
   id: number;

@@ -5,6 +5,7 @@ import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
+import { getApiBaseUrl } from '../config/api';
 
 const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
@@ -93,7 +94,7 @@ const FinishSetupPage = () => {
             formData.append('file', rulesFile);
 
             const token = localStorage.getItem('token') || accessToken;
-            const baseUrl = localStorage.getItem('mainBackendUrl') || 'http://localhost:8000';
+            const baseUrl = getApiBaseUrl();
             await fetch(`${baseUrl.replace(/\/$/, '')}/api/organizations/${organizationId}/upload-rules`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}` },

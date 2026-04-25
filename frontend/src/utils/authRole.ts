@@ -1,3 +1,5 @@
+import { getAdminPanelUrl as getAdminPanelBaseUrl } from '../config/api';
+
 export const normalizeRole = (value: unknown): string => {
     if (Array.isArray(value)) {
         return String(value[0] || '').trim().toUpperCase();
@@ -13,8 +15,7 @@ export const normalizeRole = (value: unknown): string => {
 const ADMIN_ROLES = new Set(['ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN']);
 
 const getAdminPanelUrl = (): string => {
-    const configured = localStorage.getItem('adminPanelUrl') || 'http://localhost:5174';
-    const base = configured.replace(/\/$/, '');
+    const base = getAdminPanelBaseUrl();
     const token = localStorage.getItem('token');
     const authUser = localStorage.getItem('authUser');
     

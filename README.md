@@ -5,6 +5,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![MSSQL](https://img.shields.io/badge/Database-MS%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
+[![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/features/actions)
 
 ## 📌 Project Overview
 
@@ -137,6 +139,7 @@ hotel-and-restaurant-review-management-system/
 | **Vector Store** | ChromaDB |
 | **Security** | JWT, Bcrypt, Authlib, Python-JOSE |
 | **Containerization** | Docker |
+| **CI/CD** | GitHub Actions, GHCR, SSH Deployment |
 
 ---
 
@@ -365,6 +368,149 @@ DB_PWD=your_password
 
 # Backend notification
 BACKEND_API_URL=http://127.0.0.1:8000
+```
+
+---
+
+## 🚢 CI/CD & Deployment
+
+The project uses **GitHub Actions** to automatically build Docker images and deploy them to production servers whenever changes are pushed to the `keshaka` branch. The pipeline is optimized with **path-based change detection** so only modified services are rebuilt and redeployed.
+
+### Deployment Architecture
+
+Services are distributed across **4 dedicated servers**, each running Docker Compose:
+
+| Server | Services | Domain(s) | Port(s) | Deploy Config |
+|--------|----------|-----------|---------|---------------|
+| **Server 1** — Frontends | User Frontend, Admin Frontend, Nginx reverse proxy | `reviewmate.blimas.live`, `admin.reviewmate.blimas.live` | 80, 443 | `deploy/server1-frontends/` |
+| **Server 2** — Backend | FastAPI Backend | — | 8000 | `deploy/server2-backend/` |
+| **Server 3** — Embedding | Embedding Service + ChromaDB | — | 8002 | `deploy/server3-embedding/` |
+| **Server 4** — Scraper | Scraper Engine + Playwright | — | 8001 | `deploy/server4-scraper/` |
+
+### Docker Images
+
+All images are built and pushed to the **GitHub Container Registry (GHCR)**:
+
+| Image | Source |
+|-------|--------|
+| `ghcr.io/rzmy7/reviewmate-frontend:latest` | `frontend/Dockerfile` |
+| `ghcr.io/rzmy7/reviewmate-admin-frontend:latest` | `admin-frontend/Dockerfile` |
+| `ghcr.io/rzmy7/reviewmate-backend:latest` | `backend/Dockerfile` |
+| `ghcr.io/rzmy7/reviewmate-embedding:latest` | `microservices/embedding-service/Dockerfile` |
+| `ghcr.io/rzmy7/reviewmate-scraper:latest` | `microservices/scraper_engine/Dockerfile` |
+
+Each image is tagged with both `latest` and the commit SHA (`${{ github.sha }}`) for rollback support.
+
+### Pipeline Flow
+
+```
+Push to 'keshaka' branch
+        │
+        ▼
+┌─────────────────┐
+│ Detect Changes  │  (dorny/paths-filter)
+│ per service     │
+└────────┬────────┘
+         │ outputs: frontend, admin-frontend, backend, embedding, scraper
+         ▼
+┌────────────────────────────────────────────────────────────────────┐
+│              BUILD (parallel, only changed services)              │
+├────────────┬──────────────┬───────────┬────────────┬──────────────┤
+│  Frontend  │ Admin Front. │  Backend  │ Embedding  │   Scraper    │
+│  (if ∆)    │   (if ∆)     │  (if ∆)   │  (if ∆)    │   (if ∆)     │
+└─────┬──────┴──────┬───────┴─────┬─────┴─────┬──────┴──────┬───────┘
+      │             │             │           │             │
+      ▼             ▼             ▼           ▼             ▼
+┌────────────────────────────────────────────────────────────────────┐
+│              DEPLOY (SSH → docker compose pull & up)              │
+├─────────────────────┬───────────┬────────────┬────────────────────┤
+│  Server 1           │ Server 2  │  Server 3  │     Server 4      │
+│  (if front. or      │ (if back  │ (if embed  │   (if scraper     │
+│   admin built)      │  built)   │  built)    │    built)         │
+└─────────────────────┴───────────┴────────────┴────────────────────┘
+```
+
+### Change Detection Rules
+
+The pipeline uses [`dorny/paths-filter`](https://github.com/dorny/paths-filter) to detect which services have changed:
+
+| Service | Trigger Paths |
+|---------|---------------|
+| Frontend | `frontend/**`, `deploy/server1-frontends/**` |
+| Admin Frontend | `admin-frontend/**`, `deploy/server1-frontends/**` |
+| Backend | `backend/**`, `deploy/server2-backend/**` |
+| Embedding | `microservices/embedding-service/**`, `deploy/server3-embedding/**` |
+| Scraper | `microservices/scraper_engine/**`, `deploy/server4-scraper/**` |
+
+### Required GitHub Secrets & Variables
+
+Configure these in **Settings → Secrets and variables → Actions**:
+
+#### Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `GITHUB_TOKEN` | Automatically provided; used for GHCR authentication during builds |
+| `GHCR_TOKEN` | Personal Access Token with `read:packages` scope for servers to pull images |
+| `SSH_KEY` | Private SSH key for deployment to all servers |
+| `USER` | SSH username on all servers |
+| `FRONTEND_HOST` | IP / hostname of Server 1 (frontends) |
+| `BACKEND_HOST` | IP / hostname of Server 2 (backend) |
+| `EMBEDDING_HOST` | IP / hostname of Server 3 (embedding) |
+| `SCRAPING_HOST` | IP / hostname of Server 4 (scraper) |
+
+#### Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PROD_API_URL` | Production backend API URL | `https://api.reviewmate.io` |
+| `PROD_SCRAPER_URL` | Production scraper engine URL | `https://scraper.reviewmate.io` |
+| `PROD_EMBEDDING_URL` | Production embedding service URL | `https://embed.reviewmate.io` |
+| `PROD_FRONTEND_URL` | Production frontend URL | `https://reviewmate.blimas.live` |
+
+### First-Time Server Setup
+
+Each server requires a one-time setup before the pipeline can deploy to it:
+
+```bash
+# 1. Create the application directory
+sudo mkdir -p /opt/reviewmate
+cd /opt/reviewmate
+
+# 2. Copy the corresponding deploy config from this repo
+#    Example for Server 2 (backend):
+scp deploy/server2-backend/docker-compose.yml  user@server:/opt/reviewmate/
+scp deploy/server2-backend/.env.example        user@server:/opt/reviewmate/.env
+
+# 3. Edit the .env file with production credentials
+nano .env
+
+# 4. Authenticate with GHCR (one-time)
+echo "<GHCR_TOKEN>" | docker login ghcr.io -u <github-username> --password-stdin
+
+# 5. Start the services
+docker compose pull
+docker compose up -d
+```
+
+> **Note**: Server 1 (Frontends) also requires the `nginx.conf` file from `deploy/server1-frontends/`.
+
+### Deployment File Structure
+
+```
+deploy/
+├── server1-frontends/
+│   ├── docker-compose.yml     # Frontend + Admin + Nginx reverse proxy
+│   └── nginx.conf             # Domain-based routing
+├── server2-backend/
+│   ├── docker-compose.yml     # Backend API with health checks
+│   └── .env.example           # Full environment template
+├── server3-embedding/
+│   ├── docker-compose.yml     # Embedding service + ChromaDB volume
+│   └── .env.example           # Embedding env template
+└── server4-scraper/
+    ├── docker-compose.yml     # Scraper engine (2GB shared memory)
+    └── .env.example           # Scraper env template
 ```
 
 ---

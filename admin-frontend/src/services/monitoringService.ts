@@ -5,8 +5,9 @@
 import { Server, Database, Search, Globe } from 'lucide-react';
 import type { ServerStatus } from '../types';
 import { apiClient } from '../api/client';
+import { getApiBaseUrl } from '../config/api';
 
-const DEFAULT_MAIN_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL || 'http://localhost:8000';
+const DEFAULT_MAIN_BACKEND_URL = getApiBaseUrl();
 const DEFAULT_SCRAPING_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8001';
 const DEFAULT_EMBEDDING_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002';
 const DEFAULT_FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
