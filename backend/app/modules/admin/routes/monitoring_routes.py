@@ -54,6 +54,18 @@ def admin_backend_status() -> dict[str, float | str]:
     }
 
 
+@router.get("/frontend-status")
+def frontend_status() -> dict[str, float | str]:
+    """Returns status and resource usage for the frontend server."""
+    cpu_percent, ram_percent = server_usage()
+    return {
+        "service": "frontend",
+        "status": "healthy",
+        "cpu": cpu_percent,
+        "ram": ram_percent,
+    }
+
+
 @router.get("/admin-backend-usage")
 @router.get("/main-backend-usage")
 def admin_backend_usage() -> dict[str, float]:

@@ -100,7 +100,7 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
         { id: '1', name: 'Main Backend', url: urls.mainBackend, healthPath: '/admin/monitoring/main-backend-status', icon: Server },
         { id: '2', name: 'Scraping Service', url: urls.scraping, healthPath: '/api/system/admin-health', icon: Search },
         { id: '3', name: 'Embedding Service', url: urls.embedding, healthPath: '/health', icon: Database },
-        { id: '4', name: 'Frontend Server', url: urls.frontend, healthPath: '/health', icon: Globe }
+        { id: '4', name: 'Frontend Server', url: urls.mainBackend, healthPath: '/admin/monitoring/frontend-status', icon: Globe }
     ];
 
     // Fetch all server statuses in parallel
@@ -108,7 +108,7 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
         servers.map(async (server) => {
             try {
                 let health;
-                if (server.id === '1') {
+                if (server.id === '1' || server.id === '4') {
                     // Use apiClient for main backend with a timeout to avoid hanging when offline
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -187,14 +187,14 @@ export const fetchSingleServerStatus = async (serverName: 'mainBackend' | 'scrap
         mainBackend: { url: urls.mainBackend, healthPath: '/admin/monitoring/main-backend-status', name: 'Main Backend', icon: Server, id: '1' },
         scraping: { url: urls.scraping, healthPath: '/api/system/admin-health', name: 'Scraping Service', icon: Search, id: '2' },
         embedding: { url: urls.embedding, healthPath: '/health', name: 'Embedding Service', icon: Database, id: '3' },
-        frontend: { url: urls.frontend, healthPath: '/health', name: 'Frontend Server', icon: Globe, id: '4' }
+        frontend: { url: urls.mainBackend, healthPath: '/admin/monitoring/frontend-status', name: 'Frontend Server', icon: Globe, id: '4' }
     };
 
     const server = urlMap[serverName];
     
     try {
         let health;
-        if (server.id === '1') {
+        if (server.id === '1' || server.id === '4') {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
             try {
