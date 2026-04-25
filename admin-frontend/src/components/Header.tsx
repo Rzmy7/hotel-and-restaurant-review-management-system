@@ -10,7 +10,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export const Header: React.FC = () => {
     const location = useLocation();
-    const { theme, setTheme, resolvedTheme } = useTheme();
+    const { setTheme, resolvedTheme } = useTheme();
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
