@@ -181,7 +181,7 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-scraper:${{ github.sha }}
 
   # ═══════════════════════════════════════════════════════════════════
-  # DEPLOY JOBS — only run when their respective build ran
+  # DEPLOY JOBS — sync configs, bootstrap SSL if needed, start stack
   # ═══════════════════════════════════════════════════════════════════
 
   deploy-frontends:
@@ -210,18 +210,21 @@ jobs:
           host: ${{ secrets.FRONTEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
           script: |
             cd /opt/reviewmate
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
-            # Auto-bootstrap SSL if certs don't exist yet
-            if [ ! -d "/etc/letsencrypt/live/reviewmate.live" ] && [ ! -f "/var/lib/docker/volumes/reviewmate_certbot_conf/_data/live/reviewmate.live/fullchain.pem" ]; then
+            # Check if SSL certs exist before starting (nginx needs them)
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
               echo "SSL certs not found, running init-ssl.sh..."
               bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
             fi
+            docker image prune -f
             echo "Frontends deployed successfully"
 
   deploy-backend:
@@ -247,17 +250,20 @@ jobs:
           host: ${{ secrets.BACKEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
           script: |
             cd /opt/reviewmate
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
-            if ! docker volume inspect reviewmate-backend_certbot_conf >/dev/null 2>&1 || [ -z "$(docker run --rm -v reviewmate-backend_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null)" ]; then
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/api.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
               echo "SSL certs not found, running init-ssl.sh..."
               bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
             fi
+            docker image prune -f
             echo "Backend deployed successfully"
 
   deploy-embedding:
@@ -283,17 +289,20 @@ jobs:
           host: ${{ secrets.EMBEDDING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
           script: |
             cd /opt/reviewmate
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
-            if ! docker volume inspect reviewmate-embedding_certbot_conf >/dev/null 2>&1 || [ -z "$(docker run --rm -v reviewmate-embedding_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null)" ]; then
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/embed.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
               echo "SSL certs not found, running init-ssl.sh..."
               bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
             fi
+            docker image prune -f
             echo "Embedding service deployed successfully"
 
   deploy-scraper:
@@ -319,16 +328,18 @@ jobs:
           host: ${{ secrets.SCRAPING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
           script: |
             cd /opt/reviewmate
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
-            if ! docker volume inspect reviewmate-scraper_certbot_conf >/dev/null 2>&1 || [ -z "$(docker run --rm -v reviewmate-scraper_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null)" ]; then
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/scrape.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
               echo "SSL certs not found, running init-ssl.sh..."
               bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
             fi
+            docker image prune -f
             echo "Scraper engine deployed successfully"
-

@@ -13,12 +13,15 @@ EMAIL="admin@reviewmate.live"
 
 echo "Starting SSL certificate setup for $DOMAIN..."
 
-# Step 1: Start temp nginx for ACME challenge
+# Stop any running containers
 docker compose down 2>/dev/null || true
+docker stop temp-nginx 2>/dev/null || true
+docker rm temp-nginx 2>/dev/null || true
 
+# Step 1: Start temp nginx for ACME challenge
 docker run -d --name temp-nginx \
   -p 80:80 \
-  -v $(pwd)/certbot_www:/var/www/certbot \
+  -v reviewmate_certbot_www:/var/www/certbot \
   -e "NGINX_CONF=$(cat <<'CONF'
 server { listen 80; server_name _; location /.well-known/acme-challenge/ { root /var/www/certbot; } location / { return 200 'SSL setup in progress'; add_header Content-Type text/plain; } }
 CONF
@@ -30,8 +33,8 @@ sleep 3
 # Step 2: Obtain certificate
 echo "Requesting SSL certificate for: $DOMAIN"
 docker run --rm \
-  -v $(pwd)/certbot_www:/var/www/certbot \
-  -v reviewmate-backend_certbot_conf:/etc/letsencrypt \
+  -v reviewmate_certbot_www:/var/www/certbot \
+  -v reviewmate_certbot_conf:/etc/letsencrypt \
   certbot/certbot certonly \
     --webroot \
     --webroot-path=/var/www/certbot \
@@ -42,7 +45,6 @@ docker run --rm \
 
 # Step 3: Cleanup
 docker stop temp-nginx && docker rm temp-nginx
-rm -rf $(pwd)/certbot_www
 
 # Step 4: Start the real stack
 echo "Starting full stack with SSL..."
