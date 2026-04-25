@@ -218,7 +218,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             
             try:
                 page.wait_for_selector(tripadvisor_selectors.REVIEW_CARD, state="visible", timeout=15000)
-                human_delay(2, 4)
+                human_delay(3, 5)
             except Exception:
                 logger.warning(f"Timeout waiting for reviews on page {page_num}. Page content length: {len(page.content())}")
 

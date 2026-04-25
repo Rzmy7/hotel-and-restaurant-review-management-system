@@ -98,6 +98,7 @@ backend/scratch/*
 output/
 
 PROJECT_LOG.md
+API_CALLS.md
 AGENTS.md
 opencode.json
 .opencode

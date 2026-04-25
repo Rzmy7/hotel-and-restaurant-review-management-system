@@ -63,6 +63,7 @@ def trigger_tripadvisor_scrape(request: Request, body: TripAdvisorScrapeRequest)
             session.add(source)
         else:
             source.source_url = normalized_url
+            source.platform_name = "tripadvisor"
         session.commit()
     except Exception as e:
         session.rollback()

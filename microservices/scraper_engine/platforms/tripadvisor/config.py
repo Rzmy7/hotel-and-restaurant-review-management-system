@@ -22,7 +22,11 @@ class TripAdvisorSelectors:
     LIKES              = 'button[aria-label*="helpful vote"] span, button span.biGQs._P.navcl'
     RATING             = 'svg[data-automation="bubbleRatingImage"], svg[aria-label*="bubbles"]'
     IMAGES             = 'img[data-mediaid]' # Strictly user-uploaded photos
-    REPLY              = 'div:has-text("Response from"), div:has-text("Management response"), div.WvSsn'
+    
+    # Management Response
+    REPLY_CONTAINER    = 'div.swNpl, div[data-test-target="management-response"], div.WvSsn'
+    REPLY_TEXT         = 'div.fIrGe._T.bgMZj, div.MyMKp, span.yCeTE'
+    REPLY              = 'div.swNpl, div:has-text("Response from"), div:has-text("Management response")'
 
     # ── Sub-scores & Metadata ──
     SUB_RATING_LABELS  = ["Value", "Rooms", "Location", "Cleanliness", "Service", "Sleep Quality"]
@@ -30,4 +34,5 @@ class TripAdvisorSelectors:
     READ_MORE_BTN      = 'span:has-text("Read more"), button.UikNM, button[aria-expanded="false"]'
 
 tripadvisor_selectors = TripAdvisorSelectors()
+
 

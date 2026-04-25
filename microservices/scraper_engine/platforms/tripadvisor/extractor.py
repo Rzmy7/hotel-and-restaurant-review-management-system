@@ -116,30 +116,52 @@ class TripAdvisorExtractor:
 
     def _expand_review(self, card):
         try:
+            # 1. Expand the main review
             btn = card.query_selector(config.READ_MORE_BTN)
             if btn and btn.is_visible():
                 btn.click()
-                # Brief wait for dynamic sub-ratings to load
+                # Brief wait for dynamic content to load
                 self.page.wait_for_timeout(800)
+            
+            # 2. Expand management response if present
+            reply_container = card.query_selector(config.REPLY_CONTAINER)
+            if reply_container:
+                reply_btn = reply_container.query_selector(config.READ_MORE_BTN)
+                if reply_btn and reply_btn.is_visible():
+                    reply_btn.click()
+                    self.page.wait_for_timeout(500)
         except Exception:
             pass
 
     def _parse_reply(self, card) -> str | None:
         try:
-            reply_container = card.query_selector(config.REPLY)
+            reply_container = card.query_selector(config.REPLY_CONTAINER)
             if reply_container:
-                text = reply_container.inner_text().strip()
+                # Find the actual text body within the container
+                body = reply_container.query_selector(config.REPLY_TEXT)
+                text = body.inner_text().strip() if body else reply_container.inner_text().strip()
                 
-                # 1. Remove "Read more"
-                text = text.replace("Read more", "").strip()
+                # 1. Remove "Read more" / "Read less"
+                text = text.replace("Read more", "").replace("Read less", "").strip()
                 
-                # 2. Remove legal disclaimer
+                # 2. Remove "Response from..." header if we grabbed the whole container
+                if "Response from" in text:
+                    # Look for the last newline or separator after the header
+                    # Usually "Responded 6 Jan 2026" or similar
+                    parts = re.split(r"Responded\s+\d{1,2}\s+\w+\s+\d{4}", text, flags=re.IGNORECASE)
+                    if len(parts) > 1:
+                        text = parts[-1].strip()
+                    else:
+                        # Fallback for different date formats
+                        parts = re.split(r"Responded\s+\w+\s+\d{4}", text, flags=re.IGNORECASE)
+                        if len(parts) > 1:
+                            text = parts[-1].strip()
+                
+                # 3. Remove legal disclaimer
                 disclaimer = "This response is the subjective opinion of the management representative"
                 if disclaimer in text:
                     text = text.split(disclaimer)[0].strip()
                 
-                # 3. Try to strip the header if possible (e.g. "Responded 10 Jan 2026")
-                # But sometimes the header is useful. Let's keep it if it's short.
                 return text
         except Exception:
             pass
@@ -166,30 +188,33 @@ class TripAdvisorExtractor:
             "rating_sleep_quality": None,
         }
         try:
-            # Use JS to find all sub-rating pairs in the card
-            # This is much faster and more reliable than multiple query_selectors
+            # Refined JS evaluation to find SVGs strictly relative to their labels
             results = card.evaluate(r"""
                 (card) => {
                     const data = {};
                     const labels = ["Value", "Rooms", "Location", "Cleanliness", "Service", "Sleep Quality"];
                     
-                    // Find all SVGs with bubble ratings
-                    const svgs = Array.from(card.querySelectorAll('svg'));
-                    
                     labels.forEach(label => {
-                        // Find the element containing the label text
-                        const labelEl = Array.from(card.querySelectorAll('div, span'))
-                                           .find(el => el.innerText.trim() === label);
+                        // Find the deepest element containing exactly this label text
+                        const allElements = Array.from(card.querySelectorAll('*'));
+                        const labelEl = allElements.find(el => 
+                            el.children.length === 0 && 
+                            el.textContent && 
+                            el.textContent.trim() === label
+                        );
                         
                         if (labelEl) {
-                            // Look for the nearest SVG (usually a sibling or child of a sibling)
-                            let p = labelEl.parentElement;
+                            // Search up through parents for the nearest SVG
+                            let current = labelEl;
                             let svg = null;
                             for (let i = 0; i < 3; i++) {
-                                if (!p) break;
-                                svg = p.querySelector('svg');
+                                if (!current || current === card) break;
+                                
+                                // Check if the parent contains an SVG with a title
+                                svg = current.parentElement.querySelector('svg');
                                 if (svg && svg.querySelector('title')) break;
-                                p = p.parentElement;
+                                
+                                current = current.parentElement;
                             }
                             
                             if (svg) {
