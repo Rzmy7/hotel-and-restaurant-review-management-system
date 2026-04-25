@@ -1,23 +1,35 @@
 FROM python:3.11-slim
 
 # ── Install MSSQL ODBC Driver 18 ───────────────────────────────────
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        curl apt-transport-https gnupg2 unixodbc unixodbc-dev gcc g++ \
-    # Import Microsoft GPG key
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-        | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    # Add Microsoft repo (with signed-by for Bookworm)
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
-        > /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
-    # Verify the driver was installed
-    && ls -la /opt/microsoft/msodbcsql18/lib64/ \
-    && odbcinst -q -d \
-    # Cleanup build-only deps (keep unixodbc at runtime)
-    && apt-get purge -y --auto-remove curl gnupg2 gcc g++ apt-transport-https \
+# Step 1: Install build/runtime deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl gnupg2 apt-transport-https \
+        unixodbc unixodbc-dev \
+        gcc g++ \
+        libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Step 2: Use Microsoft's official .deb package to configure the repo
+RUN curl -sSL -O https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb
+
+# Step 3: Install the ODBC driver
+RUN apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Step 4: Verify installation (build will fail loudly if driver is missing)
+RUN ls -la /opt/microsoft/msodbcsql18/lib64/ \
+    && odbcinst -q -d -n "ODBC Driver 18 for SQL Server" \
+    && echo "✅ ODBC Driver 18 installed successfully"
+
+# Step 5: Cleanup build-only deps (keep unixodbc + libgssapi at runtime)
+RUN apt-get purge -y --auto-remove curl gnupg2 gcc g++ apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ensure the driver library path is always discoverable
+ENV LD_LIBRARY_PATH="/opt/microsoft/msodbcsql18/lib64:${LD_LIBRARY_PATH}"
 
 WORKDIR /app
 
