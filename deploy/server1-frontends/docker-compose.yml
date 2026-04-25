@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-frontend:latest
+    image: ghcr.io/rzmy7/reviewmate-frontend:latest
     restart: unless-stopped
     expose:
       - "80"
@@ -8,7 +8,7 @@ services:
       - frontend-net
 
   admin-frontend:
-    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-admin-frontend:latest
+    image: ghcr.io/rzmy7/reviewmate-admin-frontend:latest
     restart: unless-stopped
     expose:
       - "80"

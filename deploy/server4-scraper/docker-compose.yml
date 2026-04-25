@@ -1,6 +1,6 @@
 services:
   scraper:
-    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-scraper:latest
+    image: ghcr.io/rzmy7/reviewmate-scraper:latest
     restart: unless-stopped
     ports:
       - "8001:8001"

@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-backend:latest
+    image: ghcr.io/rzmy7/reviewmate-backend:latest
     restart: unless-stopped
     ports:
       - "8000:8000"

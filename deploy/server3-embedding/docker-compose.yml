@@ -1,6 +1,6 @@
 services:
   embedding:
-    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-embedding:latest
+    image: ghcr.io/rzmy7/reviewmate-embedding:latest
     restart: unless-stopped
     ports:
       - "8002:8002"
