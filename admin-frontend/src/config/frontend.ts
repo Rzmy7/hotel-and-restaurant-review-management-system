@@ -4,14 +4,26 @@ const isLocalHost = (hostname: string): boolean => {
 
 /**
  * Resolve the user-frontend base URL.
- * Falls back to current origin in production when configured value points to localhost.
+ *
+ * In production, if the configured value points to localhost (or is empty),
+ * derive the frontend URL by stripping the "admin." prefix from the current host.
  */
 export const getFrontendBaseUrl = (): string => {
     const configured = (import.meta.env.VITE_FRONTEND_URL || '').trim().replace(/\/$/, '');
     const currentOrigin = window.location.origin.replace(/\/$/, '');
 
-    if (!configured) {
+    // Helper: derive main frontend URL from admin domain (strip "admin." prefix)
+    const deriveFromCurrentHost = (): string => {
+        const host = window.location.host; // e.g. admin.reviewmate.live
+        if (host.startsWith('admin.')) {
+            return `${window.location.protocol}//${host.slice(6)}`; // reviewmate.live
+        }
         return currentOrigin;
+    };
+
+    if (!configured) {
+        const currentIsLocal = isLocalHost(window.location.hostname);
+        return currentIsLocal ? currentOrigin : deriveFromCurrentHost();
     }
 
     try {
@@ -21,12 +33,12 @@ export const getFrontendBaseUrl = (): string => {
 
         // Prevent production deployments from redirecting users to localhost.
         if (configuredIsLocal && !currentIsLocal) {
-            return currentOrigin;
+            return deriveFromCurrentHost();
         }
 
         return configured;
     } catch {
-        return currentOrigin;
+        return deriveFromCurrentHost();
     }
 };
 

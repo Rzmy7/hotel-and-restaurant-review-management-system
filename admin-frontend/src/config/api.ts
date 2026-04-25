@@ -1,5 +1,6 @@
 /**
  * Centralised API configuration for admin-frontend.
+ * @version 2.0.0 – Added robust URL protocol normalization
  *
  * Resolution order:
  *   1. localStorage  "mainBackendUrl"  (set at runtime via API Management page)

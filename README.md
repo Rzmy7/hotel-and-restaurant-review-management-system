@@ -374,18 +374,18 @@ BACKEND_API_URL=http://127.0.0.1:8000
 
 ## 🚢 CI/CD & Deployment
 
-The project uses **GitHub Actions** to automatically build Docker images and deploy them to production servers whenever changes are pushed to the `keshaka` branch. The pipeline is optimized with **path-based change detection** so only modified services are rebuilt and redeployed.
+The project uses **GitHub Actions** to automatically build Docker images and deploy them to production servers whenever changes are pushed to the `dev` branch. The pipeline is optimized with **path-based change detection** so only modified services are rebuilt and redeployed.
 
 ### Deployment Architecture
 
-Services are distributed across **4 dedicated servers**, each running Docker Compose:
+Services are distributed across **4 dedicated servers**, each running Docker Compose with Nginx + SSL (Let's Encrypt):
 
-| Server | Services | Domain(s) | Port(s) | Deploy Config |
-|--------|----------|-----------|---------|---------------|
-| **Server 1** — Frontends | User Frontend, Admin Frontend, Nginx reverse proxy | `reviewmate.blimas.live`, `admin.reviewmate.blimas.live` | 80, 443 | `deploy/server1-frontends/` |
-| **Server 2** — Backend | FastAPI Backend | — | 8000 | `deploy/server2-backend/` |
-| **Server 3** — Embedding | Embedding Service + ChromaDB | — | 8002 | `deploy/server3-embedding/` |
-| **Server 4** — Scraper | Scraper Engine + Playwright | — | 8001 | `deploy/server4-scraper/` |
+| Server | Services | Domain | Deploy Config |
+|--------|----------|--------|---------------|
+| **Server 1** — Frontends | User Frontend, Admin Frontend, Nginx, Certbot | `reviewmate.live`, `admin.reviewmate.live` | `deploy/server1-frontends/` |
+| **Server 2** — Backend | FastAPI Backend, Nginx, Certbot | `api.reviewmate.live` | `deploy/server2-backend/` |
+| **Server 3** — Embedding | Embedding Service + ChromaDB, Nginx, Certbot | `embed.reviewmate.live` | `deploy/server3-embedding/` |
+| **Server 4** — Scraper | Scraper Engine + Playwright, Nginx, Certbot | `scrape.reviewmate.live` | `deploy/server4-scraper/` |
 
 ### Docker Images
 
@@ -404,7 +404,7 @@ Each image is tagged with both `latest` and the commit SHA (`${{ github.sha }}`)
 ### Pipeline Flow
 
 ```
-Push to 'keshaka' branch
+Push to 'dev' branch
         │
         ▼
 ┌─────────────────┐
@@ -463,10 +463,11 @@ Configure these in **Settings → Secrets and variables → Actions**:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `PROD_API_URL` | Production backend API URL | `https://api.reviewmate.io` |
-| `PROD_SCRAPER_URL` | Production scraper engine URL | `https://scraper.reviewmate.io` |
-| `PROD_EMBEDDING_URL` | Production embedding service URL | `https://embed.reviewmate.io` |
-| `PROD_FRONTEND_URL` | Production frontend URL | `https://reviewmate.blimas.live` |
+| `PROD_API_URL` | Production backend API URL | `https://api.reviewmate.live` |
+| `PROD_SCRAPER_URL` | Production scraper engine URL | `https://scrape.reviewmate.live` |
+| `PROD_EMBEDDING_URL` | Production embedding service URL | `https://embed.reviewmate.live` |
+| `PROD_FRONTEND_URL` | Production frontend URL | `https://reviewmate.live` |
+| `PROD_ADMIN_URL` | Production admin panel URL | `https://admin.reviewmate.live` |
 
 ### First-Time Server Setup
 
@@ -491,26 +492,35 @@ echo "<GHCR_TOKEN>" | docker login ghcr.io -u <github-username> --password-stdin
 # 5. Start the services
 docker compose pull
 docker compose up -d
+
+# 6. Set up SSL certificates (one-time)
+sudo bash init-ssl.sh
 ```
 
-> **Note**: Server 1 (Frontends) also requires the `nginx.conf` file from `deploy/server1-frontends/`.
+> **Note**: Each server includes an `init-ssl.sh` script for bootstrapping Let's Encrypt SSL certificates. Run it once after the first deployment. Certificates auto-renew via the `certbot` container.
 
 ### Deployment File Structure
 
 ```
 deploy/
 ├── server1-frontends/
-│   ├── docker-compose.yml     # Frontend + Admin + Nginx reverse proxy
-│   └── nginx.conf             # Domain-based routing
+│   ├── docker-compose.yml     # Frontend + Admin + Nginx + Certbot
+│   ├── nginx.conf             # SSL + domain-based routing
+│   └── init-ssl.sh            # One-time SSL bootstrap script
 ├── server2-backend/
-│   ├── docker-compose.yml     # Backend API with health checks
-│   └── .env.example           # Full environment template
+│   ├── docker-compose.yml     # Backend + Nginx + Certbot
+│   ├── nginx.conf             # SSL reverse proxy for api.reviewmate.live
+│   ├── .env.example           # Full environment template
+│   └── init-ssl.sh            # One-time SSL bootstrap script
 ├── server3-embedding/
-│   ├── docker-compose.yml     # Embedding service + ChromaDB volume
-│   └── .env.example           # Embedding env template
+│   ├── docker-compose.yml     # Embedding + Nginx + Certbot
+│   ├── nginx.conf             # SSL reverse proxy for embed.reviewmate.live
+│   └── init-ssl.sh            # One-time SSL bootstrap script
 └── server4-scraper/
-    ├── docker-compose.yml     # Scraper engine (2GB shared memory)
-    └── .env.example           # Scraper env template
+    ├── docker-compose.yml     # Scraper + Nginx + Certbot
+    ├── nginx.conf             # SSL reverse proxy for scrape.reviewmate.live
+    ├── .env.example           # Scraper env template
+    └── init-ssl.sh            # One-time SSL bootstrap script
 ```
 
 ---

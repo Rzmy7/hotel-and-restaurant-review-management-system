@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/rzmy7/reviewmate
+  RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════
@@ -23,6 +24,8 @@ jobs:
       scraper: ${{ steps.filter.outputs.scraper }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -179,7 +182,7 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-scraper:${{ github.sha }}
 
   # ═══════════════════════════════════════════════════════════════════
-  # DEPLOY JOBS — only run when their respective build ran
+  # DEPLOY JOBS — sync configs, bootstrap SSL if needed, start stack
   # ═══════════════════════════════════════════════════════════════════
 
   deploy-frontends:
@@ -195,13 +198,27 @@ jobs:
           host: ${{ secrets.FRONTEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            # Sync config files from repo
+            curl -sL "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
+            # Bootstrap SSL if certs don't exist (must run BEFORE docker compose up)
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
             docker image prune -f
-            echo "✅ Frontends deployed successfully"
+            echo "Frontends deployed successfully"
 
   deploy-backend:
     needs: [build-backend]
@@ -213,13 +230,25 @@ jobs:
           host: ${{ secrets.BACKEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/api.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
             docker image prune -f
-            echo "✅ Backend deployed successfully"
+            echo "Backend deployed successfully"
 
   deploy-embedding:
     needs: [build-embedding]
@@ -231,13 +260,25 @@ jobs:
           host: ${{ secrets.EMBEDDING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/embed.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
             docker image prune -f
-            echo "✅ Embedding service deployed successfully"
+            echo "Embedding service deployed successfully"
 
   deploy-scraper:
     needs: [build-scraper]
@@ -249,10 +290,22 @@ jobs:
           host: ${{ secrets.SCRAPING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            docker compose up -d --remove-orphans
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/scrape.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
             docker image prune -f
-            echo "✅ Scraper engine deployed successfully"
+            echo "Scraper engine deployed successfully"
