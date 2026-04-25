@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/rzmy7/reviewmate
+  RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════
@@ -192,31 +193,23 @@ jobs:
       !(needs.build-frontend.result == 'failure' || needs.build-admin-frontend.result == 'failure')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Sync config files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.FRONTEND_HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "deploy/server1-frontends/docker-compose.yml,deploy/server1-frontends/nginx.conf,deploy/server1-frontends/init-ssl.sh"
-          target: /opt/reviewmate
-          strip_components: 2
-
-      - name: Deploy
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.FRONTEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            # Sync config files from repo
+            curl -sL "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
-            # Check if SSL certs exist before starting (nginx needs them)
+            # Bootstrap SSL if certs don't exist (must run BEFORE docker compose up)
             CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/reviewmate.live/fullchain.pem && echo "yes" || echo "no")
             if [ "$CERT_EXISTS" = "no" ]; then
               echo "SSL certs not found, running init-ssl.sh..."
@@ -232,27 +225,18 @@ jobs:
     if: needs.build-backend.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Sync config files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.BACKEND_HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "deploy/server2-backend/docker-compose.yml,deploy/server2-backend/nginx.conf,deploy/server2-backend/init-ssl.sh"
-          target: /opt/reviewmate
-          strip_components: 2
-
-      - name: Deploy
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.BACKEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
@@ -271,27 +255,18 @@ jobs:
     if: needs.build-embedding.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Sync config files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EMBEDDING_HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "deploy/server3-embedding/docker-compose.yml,deploy/server3-embedding/nginx.conf,deploy/server3-embedding/init-ssl.sh"
-          target: /opt/reviewmate
-          strip_components: 2
-
-      - name: Deploy
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EMBEDDING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
@@ -310,27 +285,18 @@ jobs:
     if: needs.build-scraper.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Sync config files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SCRAPING_HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "deploy/server4-scraper/docker-compose.yml,deploy/server4-scraper/nginx.conf,deploy/server4-scraper/init-ssl.sh"
-          target: /opt/reviewmate
-          strip_components: 2
-
-      - name: Deploy
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SCRAPING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
+          envs: RAW_BASE
           script: |
             cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
