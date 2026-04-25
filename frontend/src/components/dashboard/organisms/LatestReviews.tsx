@@ -13,11 +13,13 @@ export interface LatestReviewsProps {
 
 export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
     const navigate = useNavigate();
-    const [selectedReview, setSelectedReview] = useState<DetailedReview | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const openReview = useReviewsStore(state => state.openReview);
+    const selectedReview = useReviewsStore(state => state.selectedReview);
+    const isModalOpen = useReviewsStore(state => state.isModalOpen);
+    const closeReview = useReviewsStore(state => state.closeReview);
 
     const handleReviewClick = (review: Review) => {
-        setSelectedReview({
+        openReview({
             id: review.id,
             rating: review.rating,
             userName: review.reviewerName,
@@ -29,12 +31,6 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
             date: review.date,
             status: 'pending' // Default fallback status
         });
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedReview(null);
     };
 
     return (
@@ -104,8 +100,9 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
             {selectedReview && (
                 <ReviewDetailModal
                     isOpen={isModalOpen}
-                    onClose={handleCloseModal}
+                    onClose={closeReview}
                     review={selectedReview}
+                    allReviews={reviews as any}
                 />
             )}
         </>

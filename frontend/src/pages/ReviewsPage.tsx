@@ -108,6 +108,7 @@ const ReviewsPageContent = () => {
           isOpen={isModalOpen}
           onClose={closeReview}
           review={selectedReview as any}
+          allReviews={reviews as any}
         />
       )}
 

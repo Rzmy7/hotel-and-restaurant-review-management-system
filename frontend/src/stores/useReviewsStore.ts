@@ -25,7 +25,7 @@ interface ReviewsState {
     // Modal Actions
     openReview: (review: Review) => void;
     closeReview: () => void;
-    navigateReview: (direction: 'next' | 'prev') => void;
+    navigateReview: (direction: 'next' | 'prev', customReviews?: Review[]) => void;
 }
 
 export const useReviewsStore = create<ReviewsState>((set, get) => ({
@@ -86,9 +86,12 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
         set({ isModalOpen: false, selectedReview: null });
     },
 
-    navigateReview: (direction) => {
-        const { selectedReview, reviews } = get();
-        if (!selectedReview) return;
+    navigateReview: (direction, customReviews) => {
+        const { selectedReview, reviews: storeReviews } = get();
+        const reviews = customReviews || storeReviews;
+        
+        if (!selectedReview || !reviews.length) return;
+        
         const currentIndex = reviews.findIndex(r => r.id === selectedReview.id);
         if (currentIndex === -1) return;
 
