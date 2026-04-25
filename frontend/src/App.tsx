@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { maintenanceService } from './services/maintenanceService';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 
 // Providers and Contexts
@@ -35,39 +36,37 @@ const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children
   return <>{children}</>;
 };
 
-// Pages - Auth & Setup
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import SetupPage from './pages/SetupPage';
-import AddSourcesPage from './pages/AddSourcesPage';
-import ChooseSchedulePage from './pages/ChooseSchedulePage';
-import ChoosePlanPage from './pages/ChoosePlanPage';
-import FinishSetupPage from './pages/FinishSetupPage';
-import OAuthSuccessPage from "./pages/OAuthSuccessPage";
+// Pages - Auth & Setup (Lazy Loaded)
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const SignUpPage = React.lazy(() => import('./pages/SignUpPage'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
+const SetupPage = React.lazy(() => import('./pages/SetupPage'));
+const AddSourcesPage = React.lazy(() => import('./pages/AddSourcesPage'));
+const ChooseSchedulePage = React.lazy(() => import('./pages/ChooseSchedulePage'));
+const ChoosePlanPage = React.lazy(() => import('./pages/ChoosePlanPage'));
+const FinishSetupPage = React.lazy(() => import('./pages/FinishSetupPage'));
+const OAuthSuccessPage = React.lazy(() => import("./pages/OAuthSuccessPage"));
 
-// Pages - Main Application
-import DashboardPage from './pages/DashboardPage';
-import ReviewsPage from './pages/ReviewsPage';
-import ReviewSourcesPage from './pages/ReviewSourcesPage';
-import SettingsPage from './pages/SettingsPage';
-import ProfilePage from './pages/ProfilePage';
-import NotificationsPage from './pages/NotificationsPage';
-import InsightsPage from './pages/InsightsPage';
-import HelpPage from './pages/HelpPage';
-import SupportPage from './pages/SupportPage';
-import SubscriptionPage from './pages/SubscriptionPage';
-import CompetitorsPage from './pages/CompetitorsPage';
-import CompetitorRankingsPage from './pages/CompetitorRankingsPage';
-import CompetitorComparison from './pages/CompetitorComparison';
-import AdminDashboardPage from "./pages/AdminDashboardPage";
-import GroupsPage from './pages/GroupsPage';
-import GroupDashboardPage from './pages/GroupDashboardPage';
-import GroupInvitePage from './pages/GroupInvitePage';
-import { maintenanceService } from './services/maintenanceService';
-
-import NoOrganizationPage from "./pages/NoOrganizationPage";
+// Pages - Main Application (Lazy Loaded)
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const ReviewsPage = React.lazy(() => import('./pages/ReviewsPage'));
+const ReviewSourcesPage = React.lazy(() => import('./pages/ReviewSourcesPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
+const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage'));
+const InsightsPage = React.lazy(() => import('./pages/InsightsPage'));
+const HelpPage = React.lazy(() => import('./pages/HelpPage'));
+const SupportPage = React.lazy(() => import('./pages/SupportPage'));
+const SubscriptionPage = React.lazy(() => import('./pages/SubscriptionPage'));
+const CompetitorsPage = React.lazy(() => import('./pages/CompetitorsPage'));
+const CompetitorRankingsPage = React.lazy(() => import('./pages/CompetitorRankingsPage'));
+const CompetitorComparison = React.lazy(() => import('./pages/CompetitorComparison'));
+const AdminDashboardPage = React.lazy(() => import("./pages/AdminDashboardPage"));
+const GroupsPage = React.lazy(() => import('./pages/GroupsPage'));
+const GroupDashboardPage = React.lazy(() => import('./pages/GroupDashboardPage'));
+const GroupInvitePage = React.lazy(() => import('./pages/GroupInvitePage'));
+const NoOrganizationPage = React.lazy(() => import("./pages/NoOrganizationPage"));
 
 // Styles
 import "./App.css";
@@ -201,81 +200,87 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <Routes>
-      {/* 
-        Authentication Routes
-        Only accessible when not logged in.
-      */}
-      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
-      <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-      <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
-      <Route path="/oauth-success" element={<OAuthSuccessPage />} />
+    <Suspense fallback={
+      <div className="h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-500 mb-4"></div>
+      </div>
+    }>
+      <Routes>
+        {/* 
+          Authentication Routes
+          Only accessible when not logged in.
+        */}
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+        <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+        <Route path="/oauth-success" element={<OAuthSuccessPage />} />
 
-      {/* 
-        Initial Setup Workflow
-        Standalone pages for the first-time user setup experience.
-      */}
-      <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
-      <Route path="/setup/sources" element={<RequireAuth><AddSourcesPage /></RequireAuth>} />
-      <Route path="/setup/schedule" element={<RequireAuth><ChooseSchedulePage /></RequireAuth>} />
-      <Route path="/setup/plan" element={<RequireAuth><ChoosePlanPage /></RequireAuth>} />
-      <Route path="/setup/finish" element={<RequireAuth><FinishSetupPage /></RequireAuth>} />
+        {/* 
+          Initial Setup Workflow
+          Standalone pages for the first-time user setup experience.
+        */}
+        <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
+        <Route path="/setup/sources" element={<RequireAuth><AddSourcesPage /></RequireAuth>} />
+        <Route path="/setup/schedule" element={<RequireAuth><ChooseSchedulePage /></RequireAuth>} />
+        <Route path="/setup/plan" element={<RequireAuth><ChoosePlanPage /></RequireAuth>} />
+        <Route path="/setup/finish" element={<RequireAuth><FinishSetupPage /></RequireAuth>} />
 
 
-      {/* Utility/Admin Routes */}
-      <Route path="/scrape" element={<RequireAuth><ScrapeLauncher /></RequireAuth>} />
-      <Route path="/admin-dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
+        {/* Utility/Admin Routes */}
+        <Route path="/scrape" element={<RequireAuth><ScrapeLauncher /></RequireAuth>} />
+        <Route path="/admin-dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
 
-      {/* 
-        Main Application Shell
-        All routes here share the sidebar navigation layout.
-      */}
-      <Route
-        path="/*"
-        element={
-          <div
-            className="flex w-full h-full overflow-hidden"
-            style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
-          >
-            <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
-            <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
-              <Routes>
-                {/* Default root handling */}
-                <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-                
-                {/* Org-dependent feature pages — all require both auth AND an active organization */}
-                <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
-                <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
-                <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
-                <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
-                <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
-                <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
-                <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
+        {/* 
+          Main Application Shell
+          All routes here share the sidebar navigation layout.
+        */}
+        <Route
+          path="/*"
+          element={
+            <div
+              className="flex w-full h-full overflow-hidden"
+              style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
+            >
+              <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
+              <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
+                <Routes>
+                  {/* Default root handling */}
+                  <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+                  
+                  {/* Org-dependent feature pages — all require both auth AND an active organization */}
+                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
 
-                {/* Group routes — no org requirement */}
-                <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
-                <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
-                <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
+                  {/* Group routes — no org requirement */}
+                  <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
+                  <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
+                  <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
 
-                {/* Pages that don't require an org */}
-                <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
-                <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
-                <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
-                <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />
-                <Route path="/subscription" element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
-                <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-                <Route path="/no-organization" element={<RequireAuth><NoOrganizationPage /></RequireAuth>} />
+                  {/* Pages that don't require an org */}
+                  <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+                  <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
+                  <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
+                  <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />
+                  <Route path="/subscription" element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
+                  <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+                  <Route path="/no-organization" element={<RequireAuth><NoOrganizationPage /></RequireAuth>} />
 
-                {/* Fallback for undefined routes within the main shell */}
-                <Route path="*" element={<NotFound />} />
+                  {/* Fallback for undefined routes within the main shell */}
+                  <Route path="*" element={<NotFound />} />
 
-              </Routes>
-            </main>
-          </div>
-        }
-      />
-    </Routes>
+                </Routes>
+              </main>
+            </div>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 };
 

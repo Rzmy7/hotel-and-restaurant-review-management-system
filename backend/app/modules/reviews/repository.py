@@ -272,57 +272,64 @@ def fetch_all_reviews_enriched(
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-    # Fetch photos for all results
+    # 3. Batch fetch photos for all results to avoid N+1 queries
     results = []
-    import json
+    if rows:
+        review_ids = [row["id"] for row in rows]
+        placeholders = ",".join(["?"] * len(review_ids))
+        media_sql = f"SELECT CAST(review_id AS VARCHAR(36)) as rid, CAST(media_id AS VARCHAR(36)) as mid, src, alt FROM dbo.review_media WHERE review_id IN ({placeholders})"
+        cursor.execute(media_sql, review_ids)
+        
+        media_map = {}
+        for m_row in cursor.fetchall():
+            rid = str(m_row[0])
+            if rid not in media_map:
+                media_map[rid] = []
+            media_map[rid].append({"id": m_row[1], "src": m_row[2], "alt": m_row[3]})
 
-    for row in rows:
-        rev_id = row["id"]
+        import json
+        for row in rows:
+            rev_id = str(row["id"])
 
-        # Parse JSON fields stored in DB as strings
-        for field in ["categories", "keyPhrases"]:
-            if row.get(field):
-                try:
-                    parsed = json.loads(row[field])
-                    if isinstance(parsed, list):
-                        sanitized = []
-                        for item in parsed:
-                            if isinstance(item, dict) and "name" in item:
-                                sanitized.append(str(item["name"]))
-                            elif isinstance(item, str):
-                                sanitized.append(item)
-                        row[field] = sanitized
-                    else:
+            # Parse JSON fields stored in DB as strings
+            for field in ["categories", "keyPhrases"]:
+                if row.get(field):
+                    try:
+                        parsed = json.loads(row[field])
+                        if isinstance(parsed, list):
+                            sanitized = []
+                            for item in parsed:
+                                if isinstance(item, dict) and "name" in item:
+                                    sanitized.append(str(item["name"]))
+                                elif isinstance(item, str):
+                                    sanitized.append(item)
+                            row[field] = sanitized
+                        else:
+                            row[field] = []
+                    except Exception:
                         row[field] = []
-                except Exception:
+                else:
                     row[field] = []
-            else:
-                row[field] = []
 
-        # Map reviewDate to date for frontend compatibility
-        row["date"] = row["reviewDate"]
+            # Map reviewDate to date for frontend compatibility
+            row["date"] = row["reviewDate"]
 
-        # Combine text fields for display if positive/negative texts are present
-        text_parts = []
-        if row.get("text"): text_parts.append(row["text"])
-        if row.get("positive_text"): text_parts.append(row["positive_text"])
-        if row.get("negative_text"): text_parts.append(row["negative_text"])
-        if text_parts:
-            row["text"] = "\n\n".join(text_parts)
+            # Combine text fields for display if positive/negative texts are present
+            text_parts = []
+            if row.get("text"): text_parts.append(row["text"])
+            if row.get("positive_text"): text_parts.append(row["positive_text"])
+            if row.get("negative_text"): text_parts.append(row["negative_text"])
+            if text_parts:
+                row["text"] = "\n\n".join(text_parts)
 
-        # Ensure sentiment/language/summary are never None for the Pydantic model
-        if row.get("sentiment") is None:
-            row["sentiment"] = "Neutral"
-        if row.get("language") is None:
-            row["language"] = "English"
-        if row.get("summary") is None:
-            row["summary"] = ""
+            # Ensure sentiment/language/summary are never None
+            if row.get("sentiment") is None: row["sentiment"] = "Neutral"
+            if row.get("language") is None: row["language"] = "English"
+            if row.get("summary") is None: row["summary"] = ""
 
-        cursor.execute(
-            "SELECT CAST(media_id AS VARCHAR(36)), src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
-        )
-        row["photos"] = [{"id": p[0], "src": p[1], "alt": p[2]} for p in cursor.fetchall()]
-        results.append(row)
+            # Assign pre-fetched photos
+            row["photos"] = media_map.get(rev_id, [])
+            results.append(row)
 
     conn.close()
     return {"data": results, "total": total_count}
@@ -342,28 +349,18 @@ def get_review_options(organization_id: str) -> Dict[str, List[str]]:
     """, organization_id)
     sources = [row[0] for row in cursor.fetchall()]
 
-    # Get categories (requires parsing JSON from all reviews)
+    # Get categories using native SQL Server JSON parsing (OPENJSON)
+    # This is significantly faster than fetching all strings and parsing in Python.
     cursor.execute("""
-        SELECT categories
+        SELECT DISTINCT 
+            COALESCE(JSON_VALUE(c.value, '$.name'), c.value) as category_name
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
+        CROSS APPLY OPENJSON(r.categories) AS c
         WHERE s.organization_id = ? AND r.status = 'processed'
     """, organization_id)
     
-    all_categories = set()
-    import json
-    for row in cursor.fetchall():
-        if row[0]:
-            try:
-                cats = json.loads(row[0])
-                if isinstance(cats, list):
-                    for c in cats:
-                        if isinstance(c, dict) and "name" in c:
-                            all_categories.add(str(c["name"]))
-                        elif isinstance(c, str):
-                            all_categories.add(c)
-            except:
-                pass
+    all_categories = [row[0] for row in cursor.fetchall() if row[0]]
 
     conn.close()
     return {
