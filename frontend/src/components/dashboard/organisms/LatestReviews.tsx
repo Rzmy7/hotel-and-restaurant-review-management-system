@@ -6,6 +6,7 @@ import type { Review } from '../../../types/dashboard';
 import type { Review as DetailedReview } from '../../../types/reviews';
 import { Card } from '../atoms/Card';
 import { SectionHeader } from '../molecules/SectionHeader';
+import { useReviewsStore } from '../../../stores/useReviewsStore';
 
 export interface LatestReviewsProps {
     reviews: Review[];
@@ -22,7 +23,7 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
         openReview({
             id: review.id,
             rating: review.rating,
-            userName: review.reviewerName,
+            userName: review.reviewerName || 'Anonymous',
             reviewText: review.reviewText,
             heading: review.heading,
             sentiment: review.sentiment,

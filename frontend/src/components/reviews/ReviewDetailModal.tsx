@@ -132,10 +132,10 @@ const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewD
     <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 sticky top-0 z-10 backdrop-blur-md w-full">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800 flex items-center justify-center flex-shrink-0 text-lg font-black text-[#4e80ee] dark:text-blue-400 uppercase">
-          {review.userName.charAt(0)}
+          {review.userName ? review.userName.charAt(0) : 'U'}
         </div>
         <div>
-          <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{review.userName}</h2>
+          <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{review.userName || 'User'}</h2>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (

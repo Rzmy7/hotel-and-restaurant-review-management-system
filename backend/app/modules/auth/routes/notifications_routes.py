@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.auth.auth_permissions import require_admin, require_admin_or_tenant
+from app.middleware.permissions import require_admin, require_admin_or_tenant
 from app.services.notifications_service import (
     NotificationCreate,
     NotificationResponse,
@@ -18,7 +18,7 @@ from app.services.notifications_service import (
 )
 
 
-router = APIRouter(prefix="/api/notifications", tags=["notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def _get_current_user_uuid(current_user: dict) -> uuid.UUID:

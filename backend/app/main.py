@@ -243,6 +243,10 @@ app.include_router(user_router)  # already declares prefix="/api" internally
 app.include_router(user_org_router)  # already declares prefix="/api" internally
 app.include_router(org_source_router)  # already declares prefix="/api" internally
 
+# User Notifications
+from app.modules.auth.routes.notifications_routes import router as user_notifications_router
+app.include_router(user_notifications_router, prefix="/api")
+
 # ── User-accessible subscription endpoints (not admin-only) ────────
 # These are read-only subscription endpoints needed by the user frontend
 # (settings → Subscription tab). The admin versions still exist behind
