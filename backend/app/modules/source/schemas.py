@@ -71,6 +71,7 @@ class SourceRead(BaseModel):
     organization_id: uuid.UUID
     platform_id: int
     platform_name: str
+    platform_status: PlatformStatus
     source_url: str
     source_status: SourceStatus
     fetching_frequency: int

@@ -78,7 +78,9 @@ def get_sync_logs(
 @router.get("/platforms", response_model=List[PlatformRead])
 def get_platforms(db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Fetch all available review platforms."""
-    return source_service.get_platforms(db)
+    # Only admins can see inactive platforms
+    is_admin = hasattr(user, 'role') and user.role.role_name.lower() == 'admin'
+    return source_service.get_platforms(db, include_inactive=is_admin)
 
 @router.get("/stuck-tasks", response_model=List[SourceRead])
 def get_stuck_tasks(db: Session = Depends(get_db), user=Depends(get_current_user)):
