@@ -1,12 +1,13 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from 'tailwindcss'
 import os from 'os'
+import type { ServerResponse, IncomingMessage } from 'http'
 
 const healthCheckPlugin = () => ({
   name: 'health-check',
-  configureServer(server) {
-    server.middlewares.use('/health', (req, res) => {
+  configureServer(server: ViteDevServer) {
+    server.middlewares.use('/health', (_req: IncomingMessage, res: ServerResponse) => {
       const totalMem = os.totalmem();
       const freeMem = os.freemem();
       const usedMem = totalMem - freeMem;
