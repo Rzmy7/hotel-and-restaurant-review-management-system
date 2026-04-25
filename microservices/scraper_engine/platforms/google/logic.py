@@ -392,7 +392,7 @@ def scrape_google(
     SourceService.broadcast_running(url)
 
     # Initialize database tables
-    init_db()
+    # init_db()  <-- REMOVED REDUNDANT CALL
 
     # Ensure active Google session before starting scraping
     auth = GoogleAuthManager()

@@ -23,6 +23,14 @@ class TripAdvisorSelectors:
     RATING             = 'svg[data-automation="bubbleRatingImage"], svg[aria-label*="bubbles"]'
     IMAGES             = 'img[data-mediaid]' # Strictly user-uploaded photos
     
+    # ── Gallery Modal (for reviews with 3+ photos) ──
+    SEE_ALL_PHOTOS_BTN = '[aria-label^="See all"], [aria-label*="See full review image"], div[role="button"]:has-text("See all")'
+    GALLERY_MODAL      = 'div.pXUDb'
+    GALLERY_AUTHOR     = 'a.FGwzt.ukgoS'
+    GALLERY_IMAGE      = 'div.pXUDb img'
+    GALLERY_NEXT_BTN   = 'button[aria-label="Next Photo"]'
+    GALLERY_CLOSE_BTN  = 'button[aria-label="close"]'
+    
     # Management Response
     REPLY_CONTAINER    = 'div.swNpl, div[data-test-target="management-response"], div.WvSsn'
     REPLY_TEXT         = 'div.fIrGe._T.bgMZj, div.MyMKp, span.yCeTE'
