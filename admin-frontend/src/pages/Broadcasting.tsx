@@ -134,7 +134,7 @@ export const Broadcasting: React.FC = () => {
     };
 
     return (
-        <div className="pt-4 space-y-5 max-w-6xl">
+        <div className="space-y-6 pt-4">
             {successMessage && (
                 <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
                     <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />

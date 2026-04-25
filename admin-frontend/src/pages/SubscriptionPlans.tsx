@@ -696,7 +696,7 @@ export const SubscriptionPlans: React.FC = () => {
     }
 
     return (
-        <div className="pt-4 space-y-6 max-w-7xl">
+        <div className="space-y-6 pt-4">
             {errorMessage && <Alert type="error" message={errorMessage} onClose={() => setErrorMessage(null)} />}
 
             <div className="grid grid-cols-3 gap-4">

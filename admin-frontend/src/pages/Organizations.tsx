@@ -185,7 +185,7 @@ export const Organizations: React.FC = () => {
     }
 
     return (
-        <div className="space-y-8 pt-4">
+        <div className="space-y-6 pt-4">
             {stats && <OrganizationStatsGrid stats={stats} />}
 
             <OrganizationFilters

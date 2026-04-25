@@ -47,7 +47,7 @@ export const Monitoring: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pt-4">
             {/* Error Alert */}
             {error && (
                 <Alert 

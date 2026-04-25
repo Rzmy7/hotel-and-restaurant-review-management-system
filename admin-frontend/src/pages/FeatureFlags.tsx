@@ -94,7 +94,7 @@ export const FeatureFlags: React.FC = () => {
     );
 
     return (
-        <div className="max-w-5xl pt-4 space-y-4">
+        <div className="space-y-6 pt-4">
             {/* Search */}
             <SearchBar
                 value={searchQuery}

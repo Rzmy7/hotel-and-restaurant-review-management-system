@@ -77,7 +77,7 @@ export const APIManage: React.FC = () => {
     }
 
     return (
-        <div className="pt-4 max-w-5xl">
+        <div className="space-y-6 pt-4">
             {/* Success/Error Messages */}
             {error && <Alert type="error" message={error} className="mb-6" />}
             {success && <Alert type="success" message={success} className="mb-6" />}
