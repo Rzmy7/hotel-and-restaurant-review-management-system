@@ -9,10 +9,13 @@ interface SyncProgressData {
     total_reviews: number;
 }
 
+import { useQueryClient } from '@tanstack/react-query';
+
 export const useSyncProgress = (sourceId: string | number | null, isActive: boolean) => {
     const [progress, setProgress] = useState<SyncProgressData | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const wsRef = useRef<WebSocket | null>(null);
+    const queryClient = useQueryClient();
 
     const connect = useCallback(() => {
         if (!sourceId || !isActive) return;
@@ -39,6 +42,12 @@ export const useSyncProgress = (sourceId: string | number | null, isActive: bool
             try {
                 const data = JSON.parse(event.data);
                 setProgress(data);
+                
+                // If the sync is complete, invalidate reviews query to refresh UI
+                if (data.status === 'completed' || data.status === 'processed') {
+                    queryClient.invalidateQueries({ queryKey: ['reviews'] });
+                    queryClient.invalidateQueries({ queryKey: ['review-stats'] });
+                }
             } catch (err) {
                 console.error('Failed to parse sync progress message', err);
             }

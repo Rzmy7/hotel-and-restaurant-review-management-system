@@ -6,12 +6,22 @@ import ReviewsTableRow from './ReviewsTableRow';
 import ReviewsTablePagination from './ReviewsTablePagination';
 import type { Review } from '../../types/reviews';
 
-const ReviewsTable = () => {
-    const reviews = useReviewsStore(state => state.reviews);
-    const loading = useReviewsStore(state => state.loading);
-    const pagination = useReviewsStore(state => state.pagination);
+interface ReviewsTableProps {
+    reviews?: Review[];
+    pagination?: { total: number; page: number; limit: number; totalPages: number };
+    isLoading?: boolean;
+}
+
+const ReviewsTable = ({ reviews: propsReviews, pagination: propsPagination, isLoading: propsLoading }: ReviewsTableProps) => {
+    const storeReviews = useReviewsStore(state => state.reviews);
+    const storeLoading = useReviewsStore(state => state.loading);
+    const storePagination = useReviewsStore(state => state.pagination);
     const openReview = useReviewsStore(state => state.openReview);
     const { setPage } = useReviewFilters();
+
+    const reviews = propsReviews ?? storeReviews;
+    const loading = propsLoading ?? storeLoading;
+    const pagination = propsPagination ?? storePagination;
     const { page, totalPages, limit, total } = pagination;
     const currentReviews = reviews;
 
