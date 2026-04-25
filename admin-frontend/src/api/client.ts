@@ -63,7 +63,7 @@ const getHeaders = (customHeaders?: Record<string, string>) => {
 };
 
 export const apiClient = {
-    async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
+    async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>, signal?: AbortSignal): Promise<T> {
         const fullUrl = getFullUrl(url);
         let queryString = '';
         if (params) {
@@ -81,7 +81,8 @@ export const apiClient = {
         }
         const response = await fetch(`${fullUrl}${queryString}`, {
             method: 'GET',
-            headers: getHeaders(customHeaders)
+            headers: getHeaders(customHeaders),
+            signal
         });
         return handleResponse(response);
     },

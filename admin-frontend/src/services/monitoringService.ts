@@ -27,7 +27,7 @@ const getServerUrls = () => {
 /**
  * Fetch health status from a server
  */
-const fetchServerHealth = async (url: string, healthPath: string = '/health', timeout: number = 5000): Promise<{
+const fetchServerHealth = async (url: string, healthPath: string = '/health', timeout: number = 3000): Promise<{
     status: 'Online' | 'Offline' | 'Warning';
     cpuUsage: number;
     ramUsage: number;
@@ -109,21 +109,29 @@ export const fetchServerStatuses = async (): Promise<ServerStatus[]> => {
             try {
                 let health;
                 if (server.id === '1') {
-                    // Use apiClient for main backend to handle /api prefix and auth
-                    const data = await apiClient.get<any>(server.healthPath);
-                    const rawStatus = String(data.status || 'online').toLowerCase();
-                    const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
-                        rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
-                            ? 'Online'
-                            : rawStatus === 'warning' || rawStatus === 'degraded'
-                                ? 'Warning'
-                                : 'Offline';
-                    health = {
-                        status: normalizedStatus,
-                        cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
-                        ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
-                        uptime: data.uptime || '0d 0h 0m'
-                    };
+                    // Use apiClient for main backend with a timeout to avoid hanging when offline
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    try {
+                        const data = await apiClient.get<any>(server.healthPath, undefined, undefined, controller.signal);
+                        clearTimeout(timeoutId);
+                        const rawStatus = String(data.status || 'online').toLowerCase();
+                        const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
+                            rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
+                                ? 'Online'
+                                : rawStatus === 'warning' || rawStatus === 'degraded'
+                                    ? 'Warning'
+                                    : 'Offline';
+                        health = {
+                            status: normalizedStatus,
+                            cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
+                            ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
+                            uptime: data.uptime || '0d 0h 0m'
+                        };
+                    } catch {
+                        clearTimeout(timeoutId);
+                        health = { status: 'Offline' as const, cpuUsage: 0, ramUsage: 0, uptime: 'N/A' };
+                    }
                 } else {
                     health = await fetchServerHealth(server.url, server.healthPath);
                 }
@@ -187,20 +195,28 @@ export const fetchSingleServerStatus = async (serverName: 'mainBackend' | 'scrap
     try {
         let health;
         if (server.id === '1') {
-            const data = await apiClient.get<any>(server.healthPath);
-            const rawStatus = String(data.status || 'online').toLowerCase();
-            const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
-                rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
-                    ? 'Online'
-                    : rawStatus === 'warning' || rawStatus === 'degraded'
-                        ? 'Warning'
-                        : 'Offline';
-            health = {
-                status: normalizedStatus,
-                cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
-                ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
-                uptime: data.uptime || '0d 0h 0m'
-            };
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            try {
+                const data = await apiClient.get<any>(server.healthPath, undefined, undefined, controller.signal);
+                clearTimeout(timeoutId);
+                const rawStatus = String(data.status || 'online').toLowerCase();
+                const normalizedStatus: 'Online' | 'Offline' | 'Warning' =
+                    rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'online'
+                        ? 'Online'
+                        : rawStatus === 'warning' || rawStatus === 'degraded'
+                            ? 'Warning'
+                            : 'Offline';
+                health = {
+                    status: normalizedStatus,
+                    cpuUsage: data.cpu_usage || data.cpuUsage || data.cpu || 0,
+                    ramUsage: data.ram_usage || data.ramUsage || data.memory_usage || data.memoryUsage || data.ram || 0,
+                    uptime: data.uptime || '0d 0h 0m'
+                };
+            } catch {
+                clearTimeout(timeoutId);
+                health = { status: 'Offline' as const, cpuUsage: 0, ramUsage: 0, uptime: 'N/A' };
+            }
         } else {
             health = await fetchServerHealth(server.url, server.healthPath);
         }

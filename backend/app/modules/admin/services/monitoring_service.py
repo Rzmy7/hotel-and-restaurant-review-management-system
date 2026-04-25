@@ -26,7 +26,7 @@ from app.modules.admin.schemas import ScrapingPlatformCreatePayload, ScrapingPla
 
 load_dotenv()
 
-DEFAULT_SCRAPING_BACKEND_URL = os.getenv("SCRAPING_BACKEND_URL", "http://localhost:8001").rstrip("/")
+DEFAULT_SCRAPING_BACKEND_URL = os.getenv("SCRAPER_ENGINE_URL", os.getenv("SCRAPING_BACKEND_URL", "http://localhost:8001")).rstrip("/")
 
 
 # ── Visual helpers ──────────────────────────────────────────────────

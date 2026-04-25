@@ -72,8 +72,7 @@ def get_negative_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[
     return cursor.fetchone()[0] or 0
 
 def get_active_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Optional[datetime] = None) -> int:
-    """Calculates the count of active sources for an organization as of a specific date."""
-    sql = "SELECT COUNT(*) FROM dbo.source WHERE organization_id = ? AND source_status = 'active'"
+    sql = "SELECT COUNT(*) FROM dbo.source WHERE organization_id = ? AND (source_status IS NULL OR LOWER(source_status) = 'active')"
     params = [org_id]
     
     if as_of_date:

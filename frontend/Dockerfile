@@ -17,12 +17,17 @@ ENV VITE_ADMIN_PANEL_URL=$VITE_ADMIN_PANEL_URL
 
 RUN npm run build
 
-# ── Stage 2: Serve via Nginx ────────────────────────────────────────
-FROM nginx:1.27-alpine
+# ── Stage 2: Serve via Node ────────────────────────────────────────
+FROM node:20-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+COPY server.js ./
+
+# Install express for the simple server
+RUN npm install express
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server.js"]

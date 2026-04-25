@@ -23,7 +23,7 @@ export const getFrontendBaseUrl = (): string => {
 
     if (!configured) {
         const currentIsLocal = isLocalHost(window.location.hostname);
-        return currentIsLocal ? currentOrigin : deriveFromCurrentHost();
+        return currentIsLocal ? 'http://localhost:5173' : deriveFromCurrentHost();
     }
 
     try {
