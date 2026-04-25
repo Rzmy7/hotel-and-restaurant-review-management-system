@@ -308,10 +308,7 @@ def delete_source(db: Session, source_id: uuid.UUID):
     platform_name = source.platform.platform_name if source.platform else "Unknown"
     org_id = source.organization_id
 
-    db.delete(source)
-    db.commit()
-
-    # Log Activity
+    # Log Activity BEFORE deleting to avoid foreign key violation
     log_activity(
         db, 
         source_id, 
@@ -319,6 +316,9 @@ def delete_source(db: Session, source_id: uuid.UUID):
         activity_details=f"Disconnected {platform_name} source",
         is_important=True
     )
+
+    db.delete(source)
+    db.commit()
 
     return {"message": "Source deleted successfully"}
 
@@ -679,7 +679,7 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
     try:
         # We use a short timeout and fire-and-forget approach for the trigger
         with httpx.Client() as client:
-            resp = client.post(endpoint, json=payload, timeout=2.0)
+            resp = client.post(endpoint, json=payload, timeout=10.0)
             if resp.status_code in [200, 201, 202]:
                 data = resp.json()
                 job_id = data.get("job_id")

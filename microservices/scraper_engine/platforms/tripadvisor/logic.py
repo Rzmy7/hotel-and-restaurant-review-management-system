@@ -104,10 +104,12 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
     # Broadcast RUNNING status for all sources sharing this URL
     SourceService.broadcast_running(url)
 
-    init_db()
-
+    logger.info("Initializing TripAdvisor browser...")
     browser_ctrl = TripAdvisorBrowser()
     page = browser_ctrl.start()
+
+    logger.info("Initializing TripAdvisor extractor...")
+    extractor = TripAdvisorExtractor(page)
 
     audit_logger.info(
         category="SCRAPE",
@@ -199,7 +201,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
                     job_id,
                     status=JobStatus.RUNNING,
                     progress=f"Extracting page {page_num}...",
-                    current_page=page_num,
+                    current_page=page_num - 1,
                     total_pages=total_pages_count,
                     reviews=len(all_reviews),
                     total_reviews=total_reviews_count,

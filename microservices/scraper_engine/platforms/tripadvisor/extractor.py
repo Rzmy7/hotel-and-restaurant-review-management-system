@@ -241,22 +241,86 @@ class TripAdvisorExtractor:
             logger.debug(f"Sub-rating JS extraction failed: {e}")
         return subs
 
-    def _parse_photos(self, card) -> list[str]:
+    def _parse_card_photos(self, card) -> list[str]:
+        """Extract images visible directly on the review card."""
         photos = []
         try:
-            # Strictly use data-mediaid to avoid avatars
             imgs = card.query_selector_all(config.IMAGES)
             for img in imgs:
                 media_id = img.get_attribute("data-mediaid")
                 if media_id:
                     src = img.get_attribute("src") or img.get_attribute("srcset") or ""
-                    # If srcset, take the largest one
                     if " " in src:
                         src = src.split(",")[-1].split(" ")[0].strip()
                     if src and src not in photos:
                         photos.append(src)
         except Exception:
             pass
+        return photos
+
+    def _parse_photos(self, card, author_name: str) -> list[str]:
+        """
+        Orchestrates photo extraction. 
+        Collects card photos first, then enters gallery if a 'See all' button exists.
+        """
+        photos = self._parse_card_photos(card)
+        
+        try:
+            see_all = card.query_selector(config.SEE_ALL_PHOTOS_BTN)
+            if see_all:
+                see_all.scroll_into_view_if_needed()
+                self.page.wait_for_timeout(500) # Wait for animation
+                
+                if see_all.is_visible():
+                    logger.info(f"Detected 'See all' media button for review by {author_name}. Opening gallery...")
+                    see_all.click(force=True)
+                    self.page.wait_for_selector(config.GALLERY_MODAL, timeout=10000)
+                    
+                    gallery_photos = []
+                max_gallery_attempts = 20 # Safety limit
+                
+                for _ in range(max_gallery_attempts):
+                    # 1. Verify author in gallery
+                    gallery_author_el = self.page.query_selector(config.GALLERY_AUTHOR)
+                    if gallery_author_el:
+                        gallery_author = gallery_author_el.inner_text().strip()
+                        if author_name not in gallery_author and gallery_author not in author_name:
+                            logger.info(f"Gallery author changed to {gallery_author}. Finished this review's media.")
+                            break
+                    
+                    # 2. Extract current image
+                    img_el = self.page.query_selector(config.GALLERY_IMAGE)
+                    if img_el:
+                        src = img_el.get_attribute("src") or ""
+                        if src and src not in gallery_photos:
+                            gallery_photos.append(src)
+                    
+                    # 3. Click next
+                    next_btn = self.page.query_selector(config.GALLERY_NEXT_BTN)
+                    if next_btn and next_btn.is_enabled():
+                        next_btn.click()
+                        self.page.wait_for_timeout(1000) # Small delay for transition
+                    else:
+                        break
+                
+                # Merge and close
+                for p in gallery_photos:
+                    if p not in photos:
+                        photos.append(p)
+                
+                close_btn = self.page.query_selector(config.GALLERY_CLOSE_BTN)
+                if close_btn:
+                    close_btn.click()
+                    self.page.wait_for_timeout(500)
+                    
+        except Exception as e:
+            logger.warning(f"Failed to extract photos from TripAdvisor gallery: {e}")
+            # Try to close the modal if we are stuck
+            try:
+                self.page.keyboard.press("Escape")
+            except Exception:
+                pass
+                
         return photos
 
     def extract_review(self, card) -> dict | None:
@@ -299,7 +363,7 @@ class TripAdvisorExtractor:
             trip_type, trip_date = self._parse_trip_info(card)
             reply = self._parse_reply(card)
             likes_count = self._parse_likes(card)
-            photos = self._parse_photos(card)
+            photos = self._parse_photos(card, name)
             sub_ratings = self._parse_sub_ratings(card)
 
             return {

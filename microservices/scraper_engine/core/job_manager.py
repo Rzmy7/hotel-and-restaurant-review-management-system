@@ -89,13 +89,18 @@ class JobManager:
         
         if job["status"] == JobStatus.COMPLETED:
             pct = 100.0
-        elif job["total_pages"] > 0 and job["current_page"] > 0:
+        elif job["total_pages"] > 0:
             # Page-based progress is the most reliable indicator
-            pct = round((job["current_page"] / job["total_pages"]) * 100, 1)
+            # current_page starts at 0, so (current_page + 1) / total_pages gives current progress
+            pct = round(((job["current_page"] + 1) / job["total_pages"]) * 100, 1)
         elif job["total_reviews"] > 0 and job["reviews_extracted"] > 0:
             # Fallback to review-count-based progress
             pct = round((job["reviews_extracted"] / job["total_reviews"]) * 100, 1)
         
+        # Give a tiny baseline progress if running so the bar shows up
+        if job["status"] == JobStatus.RUNNING and pct < 1.0:
+            pct = 1.0
+
         job["percentage"] = min(pct, 100.0)
 
         # Set ended_at when moving to a terminal state

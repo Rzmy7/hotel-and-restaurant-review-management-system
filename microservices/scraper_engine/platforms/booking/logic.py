@@ -88,9 +88,7 @@ def scrape_booking(url: str, headless: bool = True, pages: str = "1", job_id: st
     # Broadcast RUNNING status for all sources sharing this URL
     SourceService.broadcast_running(url)
 
-    # Initialize database tables
-    init_db()
-
+    # init_db()  <-- REMOVED REDUNDANT CALL
     browser_controller = BookingPlaywrightBrowser()
     page = browser_controller.start()
     
