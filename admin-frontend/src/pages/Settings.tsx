@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Save, X, KeyRound } from 'lucide-react';
+import { Save, X, KeyRound, Sun, Moon, Monitor } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { settingsService } from '../services/settingsService';
+import { useTheme } from '../contexts/ThemeContext';
 import type { AdminSettings } from '../types';
 
 interface TimezoneOption {
@@ -49,6 +50,7 @@ const defaultSettings: AdminSettings = {
 };
 
 export const Settings: React.FC = () => {
+    const { theme, setTheme } = useTheme();
     const [settings, setSettings] = useState<AdminSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
@@ -271,19 +273,19 @@ export const Settings: React.FC = () => {
             {activeTab === 'general' && (
                 <div className="space-y-4">
                     {/* General Settings Card */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                         <div className="mb-4">
-                            <h2 className="text-base font-semibold text-gray-900">General Settings</h2>
-                            <p className="text-sm text-gray-500">Configure basic platform settings and preferences</p>
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">General Settings</h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Configure basic platform settings and preferences</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">System Timezone</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">System Timezone</label>
                                 <select
                                     value={settings.timezone}
                                     onChange={(event) => handleGeneralSettingChange('timezone', event.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     {timezoneOptions.map(option => (
                                         <option key={option.value} value={option.value}>
@@ -293,14 +295,42 @@ export const Settings: React.FC = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Currency</label>
                                 <input
                                     type="text"
                                     value={settings.currency}
                                     onChange={(event) => handleGeneralSettingChange('currency', event.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Theme / Dark Mode Card */}
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                        <div className="mb-4">
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Appearance</h3>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Choose your preferred theme for the admin panel</p>
+                        </div>
+                        <div className="flex gap-3">
+                            {[
+                                { value: 'light' as const, label: 'Light', icon: Sun },
+                                { value: 'dark' as const, label: 'Dark', icon: Moon },
+                                { value: 'system' as const, label: 'System', icon: Monitor },
+                            ].map(({ value, label, icon: Icon }) => (
+                                <button
+                                    key={value}
+                                    onClick={() => setTheme(value)}
+                                    className={`flex-1 flex flex-col items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
+                                        theme === value
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
+                                            : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <Icon size={20} />
+                                    <span className="text-sm font-medium">{label}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -312,10 +342,10 @@ export const Settings: React.FC = () => {
                     )}
 
                     {/* Maintenance Mode Card */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center justify-between">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 flex items-center justify-between">
                         <div>
-                            <h3 className="text-sm font-semibold text-gray-900">Maintenance Mode</h3>
-                            <p className="text-sm text-gray-500">Enable maintenance mode to prevent users from accessing the platform</p>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Maintenance Mode</h3>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Enable maintenance mode to prevent users from accessing the platform</p>
                         </div>
                         <label className="flex items-center gap-2 cursor-pointer">
                             <div className="relative">
@@ -326,7 +356,7 @@ export const Settings: React.FC = () => {
                                     onChange={(event) => handleMaintenanceChange(event.target.checked)}
                                     disabled={isMaintenanceSaving}
                                 />
-                                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+                                <div className="w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                 <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                             </div>
                         </label>
@@ -351,17 +381,17 @@ export const Settings: React.FC = () => {
 
             {activeTab === 'security' && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                         <div className="mb-4">
-                            <h2 className="text-base font-semibold text-gray-900">Security Settings</h2>
-                            <p className="text-sm text-gray-500">Configure security and authentication settings</p>
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Security Settings</h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Configure security and authentication settings</p>
                         </div>
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Two-Factor Authentication</h3>
-                                    <p className="text-sm text-gray-500">Require two-factor authentication for all admin accounts</p>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Two-Factor Authentication</h3>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">Require two-factor authentication for all admin accounts</p>
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <div className="relative">
@@ -369,21 +399,21 @@ export const Settings: React.FC = () => {
                                             type="checkbox"
                                             className="sr-only peer"
                                         />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
                                         <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                                     </div>
                                 </label>
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-1">Session Timeout</label>
-                                <p className="text-sm text-gray-500 mb-2">Automatically log out users after a period of inactivity</p>
+                                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Session Timeout</label>
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">Automatically log out users after a period of inactivity</p>
                                 <input
                                     type="text"
                                     defaultValue={settings.sessionTimeout}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
@@ -403,10 +433,10 @@ export const Settings: React.FC = () => {
 
             {activeTab === 'notifications' && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                         <div className="mb-4">
-                            <h2 className="text-base font-semibold text-gray-900">Admin Notifications</h2>
-                            <p className="text-sm text-gray-500">Configure operational alerts for administrators</p>
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Admin Notifications</h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Configure operational alerts for administrators</p>
                         </div>
 
                         <div className="space-y-4">
@@ -504,10 +534,10 @@ export const Settings: React.FC = () => {
 
             {activeTab === 'admin-profile' && (
                 <div className="space-y-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                         <div className="mb-4">
-                            <h2 className="text-base font-semibold text-gray-900">Admin Profile</h2>
-                            <p className="text-sm text-gray-500">Update administrator identity and password</p>
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Admin Profile</h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Update administrator identity and password</p>
                         </div>
 
                         <div className="space-y-4">
@@ -565,9 +595,9 @@ export const Settings: React.FC = () => {
             )}
             {isPasswordModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="text-lg font-bold text-gray-900">Change Password</h3>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/30">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Change Password</h3>
                             <button
                                 onClick={() => setIsPasswordModalOpen(false)}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"

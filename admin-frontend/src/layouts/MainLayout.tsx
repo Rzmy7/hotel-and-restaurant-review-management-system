@@ -9,7 +9,7 @@ export const MainLayout: React.FC = () => {
     useMaintenanceModePoller();
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
             <Sidebar />
             <Header />
             <main className="ml-64 pt-20 p-8 min-h-screen">

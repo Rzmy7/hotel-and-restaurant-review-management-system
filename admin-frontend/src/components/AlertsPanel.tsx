@@ -46,11 +46,11 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
     const getAlertAccent = (type: SystemAlert['type']) => {
         switch (type) {
             case 'error':
-                return 'border-l-red-400 bg-red-50/50';
+                return 'border-l-red-400 bg-red-50/50 dark:bg-red-900/10';
             case 'warning':
-                return 'border-l-amber-400 bg-amber-50/50';
+                return 'border-l-amber-400 bg-amber-50/50 dark:bg-amber-900/10';
             case 'info':
-                return 'border-l-blue-400 bg-blue-50/50';
+                return 'border-l-blue-400 bg-blue-50/50 dark:bg-blue-900/10';
         }
     };
 
@@ -58,19 +58,19 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
         switch (type) {
             case 'error':
                 return (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
                         Error
                     </span>
                 );
             case 'warning':
                 return (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
                         Warning
                     </span>
                 );
             case 'info':
                 return (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
                         Info
                     </span>
                 );
@@ -80,15 +80,15 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
     const unreadCount = alerts.filter((a) => !a.isRead).length;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full hover:shadow-md hover:border-gray-200 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col h-full hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-red-50">
-                        <ShieldAlert size={18} className="text-red-500" />
+                    <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30">
+                        <ShieldAlert size={18} className="text-red-500 dark:text-red-400" />
                     </div>
                     <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900">System Alerts</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">System Alerts</h3>
                         {unreadCount > 0 && (
                             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                                 {unreadCount}
@@ -99,7 +99,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                 {onViewAll && (
                     <button
                         onClick={onViewAll}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
                     >
                         View All
                     </button>
@@ -107,12 +107,12 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
             </div>
 
             {/* Alerts List */}
-            <div className="divide-y divide-gray-50 max-h-[360px] overflow-y-auto flex-1">
+            <div className="divide-y divide-gray-50 dark:divide-slate-700/50 max-h-[360px] overflow-y-auto flex-1">
                 {alerts.length === 0 ? (
-                    <div className="px-5 py-10 text-center text-gray-400">
-                        <CheckCircle2 size={28} className="mx-auto mb-2 text-emerald-300" />
-                        <p className="text-sm font-medium text-gray-500">All Systems Operational</p>
-                        <p className="text-xs text-gray-400 mt-1">No active alerts — everything is running normally</p>
+                    <div className="px-5 py-10 text-center text-gray-400 dark:text-slate-500">
+                        <CheckCircle2 size={28} className="mx-auto mb-2 text-emerald-300 dark:text-emerald-500" />
+                        <p className="text-sm font-medium text-gray-500 dark:text-slate-400">All Systems Operational</p>
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">No active alerts — everything is running normally</p>
                     </div>
                 ) : (
                     alerts.slice(0, 5).map((alert) => (
@@ -127,7 +127,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <p
-                                            className={`text-sm text-gray-900 ${!alert.isRead ? 'font-semibold' : 'font-medium'}`}
+                                            className={`text-sm text-gray-900 dark:text-white ${!alert.isRead ? 'font-semibold' : 'font-medium'}`}
                                         >
                                             {alert.title}
                                         </p>
@@ -136,17 +136,17 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                                     {onDismiss && (
                                         <button
                                             onClick={() => onDismiss(alert.id)}
-                                            className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-0.5 rounded hover:bg-gray-100 transition-colors"
+                                            className="flex-shrink-0 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                                             title="Dismiss alert"
                                         >
                                             <X size={14} />
                                         </button>
                                     )}
                                 </div>
-                                <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5 line-clamp-2">
                                     {alert.message}
                                 </p>
-                                <p className="text-[11px] text-gray-400 mt-1.5">
+                                <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
                                     {formatRelativeTime(alert.timestamp)}
                                 </p>
                             </div>

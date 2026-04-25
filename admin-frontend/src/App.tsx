@@ -14,6 +14,7 @@ import { Broadcasting } from './pages/Broadcasting';
 import { ReplyGeneration } from './pages/ReplyGeneration';
 import { ReviewProcessing } from './pages/ReviewProcessing';
 import { getFrontendLoginUrl } from './config/frontend';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 import { useEffect, useState } from 'react';
 
@@ -61,28 +62,31 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="organizations" element={<Organizations />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="feature-flags" element={<FeatureFlags />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="embeddings" element={<Embeddings />} />
-          <Route path="scraping" element={<Scraping />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="organizations" element={<Organizations />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="feature-flags" element={<FeatureFlags />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="embeddings" element={<Embeddings />} />
+            <Route path="scraping" element={<Scraping />} />
 
-          <Route path="monitoring" element={<Monitoring />} />
-          <Route path="subscription-plans" element={<SubscriptionPlans />} />
-          <Route path="broadcasting" element={<Broadcasting />} />
-          <Route path="reply-generation" element={<ReplyGeneration />} />
-          <Route path="review-processing" element={<ReviewProcessing />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes> 
-      
-    </BrowserRouter>
+            <Route path="monitoring" element={<Monitoring />} />
+            <Route path="subscription-plans" element={<SubscriptionPlans />} />
+            <Route path="broadcasting" element={<Broadcasting />} />
+            <Route path="reply-generation" element={<ReplyGeneration />} />
+            <Route path="review-processing" element={<ReviewProcessing />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes> 
+        
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
 export default App;
+

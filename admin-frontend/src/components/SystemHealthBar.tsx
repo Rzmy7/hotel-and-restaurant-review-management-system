@@ -22,7 +22,7 @@ const getStatusColor = (status: string) => {
                 dot: 'bg-emerald-500',
                 ring: 'ring-emerald-500/20',
                 bg: 'bg-emerald-50',
-                text: 'text-emerald-700',
+                text: 'text-emerald-700 dark:text-emerald-400',
                 label: 'Online',
             };
         case 'Warning':
@@ -30,7 +30,7 @@ const getStatusColor = (status: string) => {
                 dot: 'bg-amber-500',
                 ring: 'ring-amber-500/20',
                 bg: 'bg-amber-50',
-                text: 'text-amber-700',
+                text: 'text-amber-700 dark:text-amber-400',
                 label: 'Warning',
             };
         default:
@@ -38,7 +38,7 @@ const getStatusColor = (status: string) => {
                 dot: 'bg-red-500',
                 ring: 'ring-red-500/20',
                 bg: 'bg-red-50',
-                text: 'text-red-700',
+                text: 'text-red-700 dark:text-red-400',
                 label: 'Offline',
             };
     }
@@ -52,19 +52,19 @@ export const SystemHealthBar: React.FC<SystemHealthBarProps> = ({ servers, loadi
     const allHealthy = onlineCount === totalCount && totalCount > 0;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5 transition-colors duration-200">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-lg ${allHealthy ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                    <div className={`p-2 rounded-lg ${allHealthy ? 'bg-emerald-50 dark:bg-emerald-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
                         <Activity
                             size={18}
-                            className={allHealthy ? 'text-emerald-600' : 'text-amber-600'}
+                            className={allHealthy ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}
                         />
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-900">System Health</h3>
-                        <p className="text-xs text-gray-500">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">System Health</h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
                             {loading
                                 ? 'Checking services...'
                                 : `${onlineCount}/${totalCount} services operational`}
@@ -73,7 +73,7 @@ export const SystemHealthBar: React.FC<SystemHealthBarProps> = ({ servers, loadi
                 </div>
                 <button
                     onClick={() => navigate('/monitoring')}
-                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                    className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                 >
                     View Details
                     <ChevronRight size={14} />
@@ -86,12 +86,12 @@ export const SystemHealthBar: React.FC<SystemHealthBarProps> = ({ servers, loadi
                     {[1, 2, 3, 4].map((i) => (
                         <div
                             key={i}
-                            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 border border-gray-100 animate-pulse"
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600 animate-pulse"
                         >
-                            <div className="w-8 h-8 rounded-lg bg-gray-200" />
+                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-600" />
                             <div className="flex-1">
-                                <div className="h-3 w-20 bg-gray-200 rounded mb-1.5" />
-                                <div className="h-2.5 w-12 bg-gray-200 rounded" />
+                                <div className="h-3 w-20 bg-gray-200 dark:bg-slate-600 rounded mb-1.5" />
+                                <div className="h-2.5 w-12 bg-gray-200 dark:bg-slate-600 rounded" />
                             </div>
                         </div>
                     ))}
@@ -104,13 +104,13 @@ export const SystemHealthBar: React.FC<SystemHealthBarProps> = ({ servers, loadi
                         return (
                             <div
                                 key={server.id}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50/70 border border-gray-100 hover:border-gray-200 transition-colors"
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50/70 dark:bg-slate-700/40 border border-gray-100 dark:border-slate-600 hover:border-gray-200 dark:hover:border-slate-500 transition-colors"
                             >
-                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                    <Icon size={16} className="text-blue-500" />
+                                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                    <Icon size={16} className="text-blue-500 dark:text-blue-400" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium text-gray-800 truncate">
+                                    <p className="text-xs font-medium text-gray-800 dark:text-slate-200 truncate">
                                         {server.name}
                                     </p>
                                     <div className="flex items-center gap-1.5 mt-0.5">
