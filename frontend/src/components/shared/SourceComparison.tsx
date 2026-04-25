@@ -60,17 +60,35 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
 
     const processedSources = useMemo(() => {
         const sorted = [...rawSources].sort((a, b) => b.reviews - a.reviews);
-        if (sorted.length <= 6) return sorted;
+        if (sorted.length <= 6) return sorted.map((s, i) => ({
+            ...s,
+            pct: Math.round((s.reviews / totalReviews) * 100),
+            color: CHART_COLORS[i % CHART_COLORS.length],
+            bgColor: CHART_BG_COLORS[i % CHART_BG_COLORS.length],
+            borderColor: CHART_BORDER_COLORS[i % CHART_BORDER_COLORS.length],
+            isOthers: false
+        }));
 
         const top = sorted.slice(0, 5);
         const others = sorted.slice(5);
-        const othersPct = others.reduce((s, x) => s + (x.reviews / totalReviews) * 100, 0);
-        const othersCount = others.reduce((s, x) => s + x.reviews, 0);
         
+        const totalTopPct = top.reduce((s, x) => s + (x.reviews / totalReviews) * 100, 0);
+        const totalOtherReviews = others.reduce((s, x) => s + x.reviews, 0);
+        const normalizedOtherPct = Math.max(0, 100 - totalTopPct);
+        
+        // Aggregate rating and sentiment for "Others"
+        const avgRating = others.reduce((s, x) => s + (x.rating * x.reviews), 0) / totalOtherReviews;
+        const otherSentiment = others.reduce((acc, x) => {
+            acc.pos += (x.sentiment.pos * x.reviews);
+            acc.neu += (x.sentiment.neu * x.reviews);
+            acc.neg += (x.sentiment.neg * x.reviews);
+            return acc;
+        }, { pos: 0, neu: 0, neg: 0 });
+
         return [
             ...top.map((s, i) => ({
                 ...s,
-                pct: (s.reviews / totalReviews) * 100,
+                pct: Math.round((s.reviews / totalReviews) * 100),
                 color: CHART_COLORS[i % CHART_COLORS.length],
                 bgColor: CHART_BG_COLORS[i % CHART_BG_COLORS.length],
                 borderColor: CHART_BORDER_COLORS[i % CHART_BORDER_COLORS.length],
@@ -78,8 +96,17 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
             })),
             {
                 name: 'Others',
-                reviews: othersCount,
-                pct: othersPct,
+                reviews: totalOtherReviews,
+                pct: Math.round(normalizedOtherPct),
+                rating: parseFloat(avgRating.toFixed(1)),
+                sentiment: {
+                    pos: Math.round(otherSentiment.pos / totalOtherReviews),
+                    neu: Math.round(otherSentiment.neu / totalOtherReviews),
+                    neg: Math.round(otherSentiment.neg / totalOtherReviews)
+                },
+                trend: 'stable',
+                trendType: 'neutral' as const,
+                lastSync: 'Varies',
                 color: '#94a3b8',
                 bgColor: 'bg-slate-50/50',
                 borderColor: 'border-slate-200',
