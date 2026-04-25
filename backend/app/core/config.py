@@ -53,7 +53,12 @@ _DEFAULT_SCRAPER = "https://scrape.reviewmate.live" if _IS_PROD else "http://127
 _DEFAULT_EMBED = "https://embed.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8002"
 
 SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", _DEFAULT_SCRAPER).rstrip("/")
+if _IS_PROD and ("127.0.0.1" in SCRAPER_ENGINE_URL or "localhost" in SCRAPER_ENGINE_URL):
+    SCRAPER_ENGINE_URL = "https://scrape.reviewmate.live"
+
 EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", _DEFAULT_EMBED).rstrip("/")
+if _IS_PROD and ("127.0.0.1" in EMBEDDING_SERVICE_URL or "localhost" in EMBEDDING_SERVICE_URL):
+    EMBEDDING_SERVICE_URL = "https://embed.reviewmate.live"
 # ── CORS allowed origins ────────────────────────────────────────────
 DEFAULT_CORS_ORIGINS: list[str] = [
     "http://localhost:5173",
