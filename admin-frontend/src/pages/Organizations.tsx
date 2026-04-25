@@ -207,17 +207,17 @@ export const Organizations: React.FC = () => {
 
             {deleteOrg && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-                        <h2 className="text-base font-semibold text-gray-900">Delete Organization</h2>
-                        <p className="text-sm text-gray-600">
-                            Are you sure you want to delete <strong>{deleteOrg.name}</strong>?
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Delete Organization</h2>
+                        <p className="text-sm text-gray-600 dark:text-slate-300">
+                            Are you sure you want to delete <strong className="text-gray-900 dark:text-white">{deleteOrg.name}</strong>?
                             This will also remove all linked source URLs and cannot be undone.
                         </p>
                         <div className="flex justify-end gap-3 pt-1">
                             <button
                                 onClick={() => setDeleteOrg(null)}
                                 disabled={deleteInProgress}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
                             >
                                 Cancel
                             </button>
@@ -236,50 +236,50 @@ export const Organizations: React.FC = () => {
 
             {editOrg && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
-                        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
-                            <h2 className="text-base font-semibold text-gray-900">Edit Organization</h2>
-                            <button onClick={handleCloseEdit} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 dark:border-slate-700">
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Edit Organization</h2>
+                            <button onClick={handleCloseEdit} className="p-1.5 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg">
                                 <X size={18} />
                             </button>
                         </div>
 
                         <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Organization Name</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Organization Name</label>
                                 <input
                                     type="text"
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <h3 className="text-sm font-medium text-gray-700 mb-2">Source URLs</h3>
+                                <h3 className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Source URLs</h3>
                                 {editLoading ? (
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400 py-3">
                                         <Loader2 size={15} className="animate-spin" /> Loading sources...
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
                                         {editSources.length === 0 && (
-                                            <p className="text-xs text-gray-400 py-1">No sources linked yet.</p>
+                                            <p className="text-xs text-gray-400 dark:text-slate-500 py-1">No sources linked yet.</p>
                                         )}
 
                                         {editSources.map((src) => (
                                             <div key={src.source_id} className="flex items-center gap-2">
-                                                <span className="w-28 text-xs font-medium text-gray-600 truncate shrink-0">{src.platform_name}</span>
+                                                <span className="w-28 text-xs font-medium text-gray-600 dark:text-slate-300 truncate shrink-0">{src.platform_name}</span>
                                                 <input
                                                     type="url"
                                                     placeholder="https://..."
                                                     value={sourceUrls[src.source_id] ?? ''}
                                                     onChange={(e) => setSourceUrls((prev) => ({ ...prev, [src.source_id]: e.target.value }))}
-                                                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="flex-1 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                 />
                                                 <button
                                                     onClick={() => handleRemoveSource(src.source_id)}
-                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                                    className="p-1.5 text-gray-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors shrink-0"
                                                     title="Remove source"
                                                 >
                                                     <Trash2 size={14} />
@@ -288,12 +288,12 @@ export const Organizations: React.FC = () => {
                                         ))}
 
                                         {unusedSources.length > 0 && (
-                                            <div className="flex items-center gap-2 pt-1 border-t border-gray-100 mt-2">
+                                            <div className="flex items-center gap-2 pt-1 border-t border-gray-100 dark:border-slate-700 mt-2">
                                                 <select
                                                     ref={addSelectRef}
                                                     value={addSourceId}
                                                     onChange={(e) => setAddSourceId(e.target.value === '' ? '' : Number(e.target.value))}
-                                                    className="w-28 px-2 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0"
+                                                    className="w-28 px-2 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0"
                                                 >
                                                     <option value="">Platform...</option>
                                                     {unusedSources.map((s) => (
@@ -305,7 +305,7 @@ export const Organizations: React.FC = () => {
                                                     placeholder="https://..."
                                                     value={addSourceUrl}
                                                     onChange={(e) => setAddSourceUrl(e.target.value)}
-                                                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="flex-1 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                 />
                                                 <button
                                                     onClick={handleAddSource}
@@ -322,17 +322,17 @@ export const Organizations: React.FC = () => {
                             </div>
 
                             {editError && (
-                                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
                                     {editError}
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-slate-700">
                             <button
                                 onClick={handleCloseEdit}
                                 disabled={editSaving}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
                             >
                                 Cancel
                             </button>

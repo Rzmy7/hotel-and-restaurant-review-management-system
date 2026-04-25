@@ -306,63 +306,66 @@ export const Settings: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Theme / Dark Mode Card */}
-                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
-                        <div className="mb-4">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Appearance</h3>
-                            <p className="text-sm text-gray-500 dark:text-slate-400">Choose your preferred theme for the admin panel</p>
-                        </div>
-                        <div className="flex gap-3">
-                            {[
-                                { value: 'light' as const, label: 'Light', icon: Sun },
-                                { value: 'dark' as const, label: 'Dark', icon: Moon },
-                                { value: 'system' as const, label: 'System', icon: Monitor },
-                            ].map(({ value, label, icon: Icon }) => (
-                                <button
-                                    key={value}
-                                    onClick={() => setTheme(value)}
-                                    className={`flex-1 flex flex-col items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
-                                        theme === value
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
-                                            : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-                                    }`}
-                                >
-                                    <Icon size={20} />
-                                    <span className="text-sm font-medium">{label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {generalSaveState === 'saved' && (
-                        <div className="text-sm text-green-600">General settings saved.</div>
-                    )}
-                    {(generalSaveState === 'error' && generalSaveError) && (
-                        <div className="text-sm text-red-600">{generalSaveError}</div>
-                    )}
-
-                    {/* Maintenance Mode Card */}
-                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 flex items-center justify-between">
-                        <div>
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Maintenance Mode</h3>
-                            <p className="text-sm text-gray-500 dark:text-slate-400">Enable maintenance mode to prevent users from accessing the platform</p>
-                        </div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <div className="relative">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={maintenanceMode}
-                                    onChange={(event) => handleMaintenanceChange(event.target.checked)}
-                                    disabled={isMaintenanceSaving}
-                                />
-                                <div className="w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+                    {/* Appearance + Maintenance Mode - side by side */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Theme / Dark Mode Card */}
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Appearance</h3>
+                                <p className="text-sm text-gray-500 dark:text-slate-400">Choose your preferred theme for the admin panel</p>
                             </div>
-                        </label>
+                            <div className="flex gap-3">
+                                {[
+                                    { value: 'light' as const, label: 'Light', icon: Sun },
+                                    { value: 'dark' as const, label: 'Dark', icon: Moon },
+                                    { value: 'system' as const, label: 'System', icon: Monitor },
+                                ].map(({ value, label, icon: Icon }) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => setTheme(value)}
+                                        className={`flex-1 flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 transition-all duration-200 ${
+                                            theme === value
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
+                                                : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                        }`}
+                                    >
+                                        <Icon size={18} />
+                                        <span className="text-xs font-medium">{label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Maintenance Mode Card */}
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 flex flex-col justify-between">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Maintenance Mode</h3>
+                                <p className="text-sm text-gray-500 dark:text-slate-400">Enable maintenance mode to prevent users from accessing the platform</p>
+                            </div>
+                            <div className="flex justify-end">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={maintenanceMode}
+                                            onChange={(event) => handleMaintenanceChange(event.target.checked)}
+                                            disabled={isMaintenanceSaving}
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
+
                     {maintenanceError && (
                         <div className="text-sm text-red-600">{maintenanceError}</div>
+                    )}
+
+                    {generalSaveError && (
+                        <div className="text-sm text-red-600 dark:text-red-400">{generalSaveError}</div>
                     )}
 
                     {/* Save Button */}
