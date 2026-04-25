@@ -21,6 +21,7 @@ export interface Source {
     id: string | number;
     platformId: number;
     platform: SourcePlatform;
+    platformStatus: 'active' | 'inactive';
     status: SourceStatus;
     lastSyncedAt: string | null;
     syncSchedule: SyncSchedule;

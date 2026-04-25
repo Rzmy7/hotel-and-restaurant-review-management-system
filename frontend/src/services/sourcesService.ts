@@ -18,6 +18,7 @@ class SourcesService {
             id: s.source_id,
             platformId: s.platform_id,
             platform: s.platform_name,
+            platformStatus: s.platform_status,
             status: (() => {
                 const lower = (s.source_status || '').toLowerCase();
                 if (lower === 'queued')  return 'In Queue';

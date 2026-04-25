@@ -111,6 +111,11 @@ def process_pending_syncs():
                 logger.warning(f"Source {source.source_id} has no linked platform. Skipping.")
                 continue
 
+            # Skip if platform is inactive
+            if source.platform.platform_status == 'inactive':
+                logger.info(f"Skipping source {source.source_id} because platform '{source.platform.platform_name}' is inactive.")
+                continue
+
             # ── Check scraping_frequency limit for the source's tenant ──
             tenant_id = None
             if hasattr(source, 'organization') and source.organization and source.organization.tenant_id:

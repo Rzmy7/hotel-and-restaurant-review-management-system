@@ -223,6 +223,11 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         >
                           {source.platform}
                         </button>
+                        {source.platformStatus === 'inactive' && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-rose-50 text-rose-500 border border-rose-100/50">
+                            Inactive
+                          </span>
+                        )}
                         <a
                           href={source.propertyUrl}
                           target="_blank"
@@ -290,9 +295,9 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                     <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleSyncClick(source.id)}
-                        disabled={source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id)}
+                        disabled={source.platformStatus === 'inactive' || source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id)}
                         className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                        title={source.status === 'Paused' ? 'Resume source to sync' : source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
+                        title={source.platformStatus === 'inactive' ? `Platform ${source.platform} is disabled by admin` : source.status === 'Paused' ? 'Resume source to sync' : source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
                       >
                         <RefreshCw size={18} className={source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'animate-spin' : ''} />
                       </button>

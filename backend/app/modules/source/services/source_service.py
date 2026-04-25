@@ -59,8 +59,11 @@ def calculate_success_rate(
     return round(((psr + isr) / 2) * 100, 2)
 
 
-def get_platforms(db: Session) -> List[PlatformRead]:
-    platforms = db.query(PlatformSource).all()
+def get_platforms(db: Session, include_inactive: bool = False) -> List[PlatformRead]:
+    query = db.query(PlatformSource)
+    if not include_inactive:
+        query = query.filter(PlatformSource.platform_status == "active")
+    platforms = query.all()
     return [
         PlatformRead(
             platform_id=p.platform_id,
@@ -106,6 +109,7 @@ def get_organization_sources_with_stats(
             organization_id=source.organization_id,
             platform_id=source.platform_id,
             platform_name=source.platform.platform_name,
+            platform_status=source.platform.platform_status,
             source_url=source.source_url,
             source_status=source.source_status,
             fetching_frequency=source.fetching_frequency,
@@ -159,6 +163,17 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
             detail="A source link already exists for this organization and platform."
         )
 
+    # Check platform status
+    platform = db.query(Platform).filter(Platform.platform_id == source_data.platform_id).first()
+    if not platform:
+        raise HTTPException(status_code=404, detail="Platform not found")
+    
+    if platform.platform_status == "inactive":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"The platform '{platform.platform_name}' is currently inactive and cannot be added."
+        )
+
     now = datetime.now(timezone.utc)
     new_source = SourceSource(
         organization_id=source_data.organization_id,
@@ -197,6 +212,7 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
+        platform_status=source.platform.platform_status,
         source_url=source.source_url,
         source_status=source.source_status,
         fetching_frequency=source.fetching_frequency,
@@ -223,7 +239,19 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
     
+    
     update_data = source_data.dict(exclude_unset=True)
+
+    # If platform_id is being changed, verify the new platform is active
+    if "platform_id" in update_data and update_data["platform_id"] != source.platform_id:
+        new_platform = db.query(Platform).filter(Platform.platform_id == update_data["platform_id"]).first()
+        if not new_platform:
+            raise HTTPException(status_code=404, detail="New platform not found")
+        if new_platform.platform_status == "inactive":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"The platform '{new_platform.platform_name}' is currently inactive."
+            )
     
     # Check if frequency is being updated to recalculate next_synced_at
     if "fetching_frequency" in update_data and update_data["fetching_frequency"] != source.fetching_frequency:
@@ -250,6 +278,7 @@ def update_source(db: Session, source_id: uuid.UUID, source_data: SourceUpdate) 
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
+        platform_status=source.platform.platform_status,
         source_url=source.source_url,
         source_status=source.source_status,
         fetching_frequency=source.fetching_frequency,
@@ -307,6 +336,7 @@ def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:
             organization_id=s.organization_id,
             platform_id=s.platform_id,
             platform_name=s.platform.platform_name,
+            platform_status=s.platform.platform_status,
             source_url=s.source_url,
             source_status=s.source_status,
             fetching_frequency=s.fetching_frequency,
@@ -513,6 +543,7 @@ def update_sync_status(
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
+        platform_status=source.platform.platform_status,
         source_url=source.source_url,
         source_status=source.source_status,
         fetching_frequency=source.fetching_frequency,
@@ -544,6 +575,7 @@ def get_source_by_id(db: Session, source_id: uuid.UUID) -> SourceRead:
         organization_id=source.organization_id,
         platform_id=source.platform_id,
         platform_name=source.platform.platform_name,
+        platform_status=source.platform.platform_status,
         source_url=source.source_url,
         source_status=source.source_status,
         fetching_frequency=source.fetching_frequency,
@@ -580,6 +612,7 @@ def get_stuck_sources(db: Session) -> List[SourceRead]:
             organization_id=s.organization_id,
             platform_id=s.platform_id,
             platform_name=s.platform.platform_name,
+            platform_status=s.platform.platform_status,
             source_url=s.source_url,
             source_status=s.source_status,
             fetching_frequency=s.fetching_frequency,
@@ -605,6 +638,13 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
     
+    # Check platform status
+    if source.platform.platform_status == "inactive":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Synchronization is disabled for the inactive platform '{source.platform.platform_name}'."
+        )
+
     # Check if already syncing
     if source.source_status in ["running", "queued", "verify_duplication"]:
         return {"message": "Sync already in progress", "status": source.source_status}
