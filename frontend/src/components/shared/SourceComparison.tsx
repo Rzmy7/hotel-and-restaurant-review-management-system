@@ -60,46 +60,37 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
 
         const top = sorted.slice(0, 5);
         const others = sorted.slice(5);
+        const othersPct = others.reduce((s, x) => s + (x.reviews / totalReviews) * 100, 0);
+        const othersCount = others.reduce((s, x) => s + x.reviews, 0);
         
-        const totalTopPct = top.reduce((s, x) => s + x.pct, 0);
-        const totalOtherReviews = others.reduce((s, x) => s + x.reviews, 0);
-        
-        // Ensure perfect mathematical consistency for the "Others" share
-        const normalizedOtherPct = Math.max(0, 100 - totalTopPct);
-        
-        const avgRating = others.reduce((s, x) => s + (x.rating * x.reviews), 0) / totalOtherReviews;
+        return [
+            ...top.map((s, i) => ({
+                ...s,
+                pct: (s.reviews / totalReviews) * 100,
+                color: CHART_COLORS[i % CHART_COLORS.length],
+                bgColor: CHART_BG_COLORS[i % CHART_BG_COLORS.length],
+                borderColor: CHART_BORDER_COLORS[i % CHART_BORDER_COLORS.length],
+                isOthers: false
+            })),
+            {
+                name: 'Others',
+                reviews: othersCount,
+                pct: othersPct,
+                color: '#94a3b8',
+                bgColor: 'bg-slate-50/50',
+                borderColor: 'border-slate-200',
+                isOthers: true
+            }
+        ];
+    }, [rawSources, totalReviews]);
 
-        const otherSentiment = others.reduce((acc, x) => {
-            acc.pos += (x.sentiment.pos * x.reviews);
-            acc.neu += (x.sentiment.neu * x.reviews);
-            acc.neg += (x.sentiment.neg * x.reviews);
-            return acc;
-        }, { pos: 0, neu: 0, neg: 0 });
+    const activeSource = useMemo(() => 
+        hoveredSource ? processedSources.find(s => s.name === hoveredSource) : null
+    , [hoveredSource, processedSources]);
 
-        otherSentiment.pos /= totalOtherReviews;
-        otherSentiment.neu /= totalOtherReviews;
-        otherSentiment.neg /= totalOtherReviews;
+    const displayCount = activeSource ? activeSource.reviews : totalReviews;
+    const displayLabel = activeSource ? activeSource.name : "Total";
 
-        return [...top, {
-            name: 'Others',
-            rating: parseFloat(avgRating.toFixed(1)),
-            trend: '...',
-            trendType: 'neutral' as const,
-            reviews: totalOtherReviews,
-            pct: normalizedOtherPct,
-            color: '#64748b',
-            bgColor: 'bg-slate-50/60',
-            borderColor: 'border-slate-100',
-            sentiment: {
-                pos: Math.round(otherSentiment.pos),
-                neu: Math.round(otherSentiment.neu),
-                neg: Math.round(otherSentiment.neg)
-            },
-            lastSync: 'Varies',
-            isOthers: true
-        }];
-
-    }, [rawSources]);
 
     let angle = -90;
 
@@ -150,9 +141,19 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                 );
                             })}
                         </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-transform duration-300">
-                            <span className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{totalReviews}</span>
-                            <span className="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-2">Total</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-all duration-500">
+                            <span 
+                                key={displayCount}
+                                className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter leading-none animate-in fade-in zoom-in duration-300"
+                            >
+                                {displayCount.toLocaleString()}
+                            </span>
+                            <span 
+                                key={displayLabel}
+                                className="text-[10px] font-extrabold text-gray-400 dark:text-slate-500 uppercase tracking-[0.25em] mt-2.5 animate-in slide-in-from-bottom-1 duration-500"
+                            >
+                                {displayLabel}
+                            </span>
                         </div>
                     </div>
                 </div>
