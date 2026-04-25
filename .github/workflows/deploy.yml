@@ -214,13 +214,13 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
-          envs: RAW_BASE
+          envs: RAW_BASE,GHCR_TOKEN
           script: |
             cd /opt/reviewmate
-            # Sync config files from repo
-            curl -sL "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml
-            curl -sL "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf
-            curl -sL "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh
+            # Sync config files from repo (auth required for private repos)
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
@@ -249,12 +249,12 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
-          envs: RAW_BASE
+          envs: RAW_BASE,GHCR_TOKEN
           script: |
             cd /opt/reviewmate
-            curl -sL "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml
-            curl -sL "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf
-            curl -sL "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
@@ -282,12 +282,12 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
-          envs: RAW_BASE
+          envs: RAW_BASE,GHCR_TOKEN
           script: |
             cd /opt/reviewmate
-            curl -sL "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml
-            curl -sL "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf
-            curl -sL "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
@@ -315,12 +315,12 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           command_timeout: 5m
-          envs: RAW_BASE
+          envs: RAW_BASE,GHCR_TOKEN
           script: |
             cd /opt/reviewmate
-            curl -sL "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml
-            curl -sL "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf
-            curl -sL "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
             chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
