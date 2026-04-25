@@ -2,6 +2,7 @@
  * Centralized API Client for admin-frontend
  */
 import { getApiBaseUrl } from '../config/api';
+import { getFrontendLoginUrl } from '../config/frontend';
 
 const getFullUrl = (url: string) => {
     if (url.startsWith('http')) return url;
@@ -27,8 +28,7 @@ async function handleResponse(response: Response) {
     if (response.status === 401) {
         console.warn("Unauthorized! Redirecting to login...");
         localStorage.removeItem("token");
-        const frontendUrl = (import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-        window.location.href = `${frontendUrl}/login?expired=true`;
+        window.location.href = getFrontendLoginUrl('expired=true');
         throw new Error("Session expired.");
     }
 

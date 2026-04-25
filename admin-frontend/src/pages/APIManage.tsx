@@ -3,7 +3,7 @@ import { Save, Globe, Loader } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import { setEmbeddingServiceUrl } from '../services/embeddingService';
-import { getApiBaseUrl } from '../config/api';
+import { getApiBaseUrl, normalizeBackendBaseUrl } from '../config/api';
 
 export const APIManage: React.FC = () => {
     const [apiSettings, setApiSettings] = useState({
@@ -56,11 +56,15 @@ export const APIManage: React.FC = () => {
             setSaving(true);
             setError(null);
             setSuccess(null);
+
+            const normalizedMainBackendUrl = normalizeBackendBaseUrl(apiSettings.mainBackendUrl, getApiBaseUrl());
             
             // Save URLs to localStorage (client-side settings)
             setEmbeddingServiceUrl(apiSettings.embeddingServiceUrl);
-            localStorage.setItem('mainBackendUrl', apiSettings.mainBackendUrl);
+            localStorage.setItem('mainBackendUrl', normalizedMainBackendUrl);
             localStorage.setItem('scrapingBackendUrl', apiSettings.scrapingBackendUrl);
+
+            setApiSettings((prev) => ({ ...prev, mainBackendUrl: normalizedMainBackendUrl }));
             
             setSuccess('Service URLs saved successfully!');
             
