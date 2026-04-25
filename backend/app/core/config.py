@@ -47,7 +47,8 @@ GENAI_KEY: str | None = os.getenv("GENAI_KEY")
 PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 
 # ── Microservices ───────────────────────────────────────────────────
-_IS_PROD = "reviewmate.live" in FRONTEND_URL
+_IN_DOCKER = os.path.exists("/.dockerenv")
+_IS_PROD = "reviewmate.live" in FRONTEND_URL or _IN_DOCKER
 _DEFAULT_SCRAPER = "https://scrape.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8001"
 _DEFAULT_EMBED = "https://embed.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8002"
 
