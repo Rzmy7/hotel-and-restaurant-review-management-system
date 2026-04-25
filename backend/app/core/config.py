@@ -69,3 +69,11 @@ if _cors_from_env.strip():
     CORS_ORIGINS: list[str] = list(dict.fromkeys(_base_origins + _extra))
 else:
     CORS_ORIGINS = list(dict.fromkeys(_base_origins))
+
+# ── Startup diagnostic ─────────────────────────────────────────────
+print(f"[CONFIG] SCRAPER_ENGINE_URL = {SCRAPER_ENGINE_URL}")
+print(f"[CONFIG] EMBEDDING_SERVICE_URL = {EMBEDDING_SERVICE_URL}")
+print(f"[CONFIG] FRONTEND_URL = {FRONTEND_URL}")
+print(f"[CONFIG] ADMIN_FRONTEND_URL = {ADMIN_FRONTEND_URL}")
+print(f"[CONFIG] CORS_ORIGINS = {CORS_ORIGINS}")
+
