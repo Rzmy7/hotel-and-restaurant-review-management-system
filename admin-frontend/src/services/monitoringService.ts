@@ -8,9 +8,9 @@ import { apiClient } from '../api/client';
 import { getApiBaseUrl } from '../config/api';
 
 const DEFAULT_MAIN_BACKEND_URL = getApiBaseUrl();
-const DEFAULT_SCRAPING_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8001';
-const DEFAULT_EMBEDDING_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002';
-const DEFAULT_FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+const DEFAULT_SCRAPING_URL = import.meta.env.VITE_SCRAPING_URL || '';
+const DEFAULT_EMBEDDING_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
+const DEFAULT_FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || '';
 
 /**
  * Get server URLs from localStorage or environment variables

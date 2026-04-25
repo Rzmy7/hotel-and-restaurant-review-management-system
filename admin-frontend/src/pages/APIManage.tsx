@@ -7,9 +7,9 @@ import { getApiBaseUrl, normalizeBackendBaseUrl } from '../config/api';
 
 export const APIManage: React.FC = () => {
     const [apiSettings, setApiSettings] = useState({
-        embeddingServiceUrl: import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002',
+        embeddingServiceUrl: import.meta.env.VITE_EMBEDDING_SERVICE_URL || '',
         mainBackendUrl: getApiBaseUrl(),
-        scrapingBackendUrl: import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8001'
+        scrapingBackendUrl: import.meta.env.VITE_SCRAPING_URL || ''
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -22,9 +22,9 @@ export const APIManage: React.FC = () => {
                 setLoading(true);
                 
                 // Get URLs from localStorage (client-side settings)  
-                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002';
+                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
                 const storedMainBackendUrl = getApiBaseUrl();
-                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8001';
+                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || '';
                 
                 setApiSettings({
                     embeddingServiceUrl: storedEmbeddingUrl,
@@ -36,9 +36,9 @@ export const APIManage: React.FC = () => {
             } catch (err) {
                 console.error('Failed to load API settings:', err);
                 // Don't show error on initialization - just use defaults
-                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002';
+                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
                 const storedMainBackendUrl = getApiBaseUrl();
-                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8001';
+                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || '';
                 setApiSettings({
                     embeddingServiceUrl: storedEmbeddingUrl,
                     mainBackendUrl: storedMainBackendUrl,
@@ -103,11 +103,11 @@ export const APIManage: React.FC = () => {
                             type="text"
                             value={apiSettings.embeddingServiceUrl}
                             onChange={(e) => setApiSettings({...apiSettings, embeddingServiceUrl: e.target.value})}
-                            placeholder="http://localhost:8002"
+                            placeholder="e.g. http://localhost:8002"
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                            URL where the embedding service is running. Saved locally in your browser. Default is <code className="bg-gray-100 px-1 py-0.5 rounded">http://localhost:8002</code>
+                            URL where the embedding service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_EMBEDDING_SERVICE_URL</code> in your .env file.
                         </p>
                     </div>
                 </div>
@@ -127,11 +127,11 @@ export const APIManage: React.FC = () => {
                             type="text"
                             value={apiSettings.mainBackendUrl}
                             onChange={(e) => setApiSettings({...apiSettings, mainBackendUrl: e.target.value})}
-                            placeholder="http://localhost:8000"
+                            placeholder="e.g. http://localhost:8000"
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                            URL where the main backend service is running. Saved locally in your browser. Default is <code className="bg-gray-100 px-1 py-0.5 rounded">http://localhost:8000</code>
+                            URL where the main backend service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_MAIN_BACKEND_URL</code> in your .env file.
                         </p>
                     </div>
                 </div>
@@ -151,11 +151,11 @@ export const APIManage: React.FC = () => {
                             type="text"
                             value={apiSettings.scrapingBackendUrl}
                             onChange={(e) => setApiSettings({...apiSettings, scrapingBackendUrl: e.target.value})}
-                            placeholder="http://localhost:8001"
+                            placeholder="e.g. http://localhost:8001"
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                            URL where the scraping backend service is running. Saved locally in your browser. Default is <code className="bg-gray-100 px-1 py-0.5 rounded">http://localhost:8001</code>
+                            URL where the scraping backend service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_SCRAPING_URL</code> in your .env file.
                         </p>
                     </div>
                 </div>

@@ -3,6 +3,10 @@ Centralised application configuration.
 
 Every environment variable, connection string, and app-wide constant
 lives here — one single source of truth for the entire backend.
+
+All service URLs are read from the .env file.
+  - Local dev: point to localhost addresses
+  - Production: point to production URLs
 """
 
 import os
@@ -13,6 +17,7 @@ load_dotenv()
 # ── General ─────────────────────────────────────────────────────────
 SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret")
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+ADMIN_FRONTEND_URL: str = os.getenv("ADMIN_FRONTEND_URL", "http://localhost:5174")
 
 # ── SQLAlchemy (used by auth / users / groups / roles) ──────────────
 DATABASE_URL: str | None = os.getenv("DATABASE_URL")
@@ -47,45 +52,20 @@ GENAI_KEY: str | None = os.getenv("GENAI_KEY")
 PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 
 # ── Microservices ───────────────────────────────────────────────────
-_IN_DOCKER = (
-    os.path.exists("/.dockerenv")
-    or os.path.exists("/run/.containerenv")
-    or os.getenv("container") is not None            # systemd-nspawn / podman
-    or (os.path.isfile("/proc/1/cgroup") and "docker" in open("/proc/1/cgroup").read())
-)
-_IS_PROD = (
-    os.getenv("ENVIRONMENT", "").lower() == "production"
-    or "reviewmate.live" in FRONTEND_URL
-    or _IN_DOCKER
-)
-_DEFAULT_SCRAPER = "https://scrape.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8001"
-_DEFAULT_EMBED = "https://embed.reviewmate.live" if _IS_PROD else "http://127.0.0.1:8002"
+# All URLs come from the .env file. No auto-detection magic.
+SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
+EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002").rstrip("/")
 
-SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", _DEFAULT_SCRAPER).rstrip("/")
-if _IS_PROD and ("127.0.0.1" in SCRAPER_ENGINE_URL or "localhost" in SCRAPER_ENGINE_URL):
-    SCRAPER_ENGINE_URL = "https://scrape.reviewmate.live"
-
-EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", _DEFAULT_EMBED).rstrip("/")
-if _IS_PROD and ("127.0.0.1" in EMBEDDING_SERVICE_URL or "localhost" in EMBEDDING_SERVICE_URL):
-    EMBEDDING_SERVICE_URL = "https://embed.reviewmate.live"
 # ── CORS allowed origins ────────────────────────────────────────────
-DEFAULT_CORS_ORIGINS: list[str] = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:4000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:4000",
-    # Production origins
-    "http://reviewmate.live",
-    "http://admin.reviewmate.live",
-    "https://reviewmate.live",
-    "https://admin.reviewmate.live",
+# Base origins always allowed (constructed from FRONTEND_URL and ADMIN_FRONTEND_URL)
+_base_origins: list[str] = [
+    FRONTEND_URL,
+    ADMIN_FRONTEND_URL,
 ]
 
 _cors_from_env = os.getenv("CORS_ORIGINS", "")
 if _cors_from_env.strip():
-    parsed = [origin.strip() for origin in _cors_from_env.split(",") if origin.strip()]
-    CORS_ORIGINS: list[str] = list(dict.fromkeys(DEFAULT_CORS_ORIGINS + parsed))
+    _extra = [origin.strip() for origin in _cors_from_env.split(",") if origin.strip()]
+    CORS_ORIGINS: list[str] = list(dict.fromkeys(_base_origins + _extra))
 else:
-    CORS_ORIGINS = DEFAULT_CORS_ORIGINS
+    CORS_ORIGINS = list(dict.fromkeys(_base_origins))

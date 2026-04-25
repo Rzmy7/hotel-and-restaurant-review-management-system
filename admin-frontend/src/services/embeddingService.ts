@@ -2,7 +2,7 @@
  * API Service for Embedding Service Configuration
  */
 
-const DEFAULT_EMBEDDING_SERVICE_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || 'http://localhost:8002';
+const DEFAULT_EMBEDDING_SERVICE_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
 const STORAGE_KEY = 'embeddingServiceUrl';
 
 /**

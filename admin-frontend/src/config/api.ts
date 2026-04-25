@@ -1,20 +1,19 @@
 /**
  * Centralised API configuration for admin-frontend.
- * @version 2.0.0 – Added robust URL protocol normalization
+ *
+ * All URLs are read from VITE_* environment variables set in the .env file.
+ * Local dev: point to localhost addresses.
+ * Production: point to production URLs.
  *
  * Resolution order:
  *   1. localStorage  "mainBackendUrl"  (set at runtime via API Management page)
- *   2. VITE_MAIN_BACKEND_URL          (build-time env var)
- *   3. VITE_API_BASE_URL              (build-time env var, legacy alias)
- *   4. "http://localhost:8000"         (local-dev fallback)
+ *   2. VITE_MAIN_BACKEND_URL          (build-time env var from .env)
+ *   3. VITE_API_BASE_URL              (legacy alias)
  */
 
-const FALLBACK_BACKEND_URL = 'http://localhost:8000';
-
-const BUILD_TIME_BACKEND_URL: string =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    FALLBACK_BACKEND_URL;
+const FALLBACK_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL
+    || import.meta.env.VITE_API_BASE_URL
+    || 'http://localhost:8000';
 
 const hasHttpProtocol = (url: string): boolean => /^https?:\/\//i.test(url);
 
@@ -49,5 +48,5 @@ export const normalizeBackendBaseUrl = (value: string, fallback: string = FALLBA
  */
 export const getApiBaseUrl = (): string => {
     const stored = localStorage.getItem('mainBackendUrl');
-    return normalizeBackendBaseUrl(stored || BUILD_TIME_BACKEND_URL, BUILD_TIME_BACKEND_URL);
+    return normalizeBackendBaseUrl(stored || FALLBACK_BACKEND_URL, FALLBACK_BACKEND_URL);
 };

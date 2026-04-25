@@ -28,12 +28,9 @@ try:
     from app.core.config import SECRET_KEY, CORS_ORIGINS
 except ImportError:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
-    CORS_ORIGINS = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ]
+    _frontend = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    _admin = os.getenv("ADMIN_FRONTEND_URL", "http://localhost:5174")
+    CORS_ORIGINS = [_frontend, _admin]
 
 try:
     from app.modules.scheduler import setup_scheduler, start_scheduler, stop_scheduler
@@ -166,14 +163,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS
-    if isinstance(CORS_ORIGINS, list)
-    else [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

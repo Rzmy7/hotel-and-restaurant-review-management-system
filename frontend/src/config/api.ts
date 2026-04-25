@@ -1,23 +1,24 @@
 /**
- * Centralised API configuration.
+ * Centralised API configuration for user-frontend.
  *
- * Every module that needs the backend URL should import from here
- * instead of defining its own fallback.
+ * All URLs are read from VITE_* environment variables set in the .env file.
+ * Local dev: point to localhost addresses.
+ * Production: point to production URLs.
  *
  * Resolution order:
- *   1. localStorage  "mainBackendUrl"  (set at runtime, e.g. during setup)
- *   2. VITE_MAIN_BACKEND_URL          (build-time env var)
- *   3. VITE_API_BASE_URL              (build-time env var, legacy alias)
- *   4. "http://localhost:8000"         (local-dev fallback)
+ *   1. localStorage  "mainBackendUrl"  (runtime override from setup/admin)
+ *   2. VITE_MAIN_BACKEND_URL          (build-time env var from .env)
+ *   3. VITE_API_BASE_URL              (legacy alias)
  */
 
-const FALLBACK_BACKEND_URL = 'http://localhost:8000';
-const FALLBACK_ADMIN_PANEL_URL = 'http://localhost:5174';
+const FALLBACK_BACKEND_URL = import.meta.env.VITE_MAIN_BACKEND_URL
+    || import.meta.env.VITE_API_BASE_URL
+    || 'http://localhost:8000';
+
+const FALLBACK_ADMIN_PANEL_URL = import.meta.env.VITE_ADMIN_PANEL_URL
+    || 'http://localhost:5174';
 
 const hasHttpProtocol = (url: string): boolean => /^https?:\/\//i.test(url);
-
-const isLocalHost = (hostname: string): boolean =>
-    hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 
 const withProtocol = (url: string): string => {
     const trimmed = url.trim();
@@ -38,18 +39,6 @@ const normalizeUrl = (value: string, fallback: string): string => {
 };
 
 /**
- * Build-time default resolved once at module load so every call
- * to `getApiBaseUrl` doesn't re-read `import.meta.env`.
- */
-const BUILD_TIME_BACKEND_URL: string =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    FALLBACK_BACKEND_URL;
-
-const BUILD_TIME_ADMIN_URL: string =
-    import.meta.env.VITE_ADMIN_PANEL_URL || FALLBACK_ADMIN_PANEL_URL;
-
-/**
  * Return the current backend base URL (no trailing slash).
  *
  * Prefers a runtime override stored in localStorage so that the
@@ -58,31 +47,13 @@ const BUILD_TIME_ADMIN_URL: string =
  */
 export const getApiBaseUrl = (): string => {
     const stored = localStorage.getItem('mainBackendUrl');
-    return normalizeUrl(stored || BUILD_TIME_BACKEND_URL, FALLBACK_BACKEND_URL);
+    return normalizeUrl(stored || FALLBACK_BACKEND_URL, FALLBACK_BACKEND_URL);
 };
 
 /**
  * Return the admin-panel base URL (no trailing slash).
- *
- * In production, if the configured value points to localhost,
- * infer the admin URL by prepending "admin." to the current host.
  */
 export const getAdminPanelUrl = (): string => {
     const stored = localStorage.getItem('adminPanelUrl');
-    const configured = normalizeUrl(stored || BUILD_TIME_ADMIN_URL, FALLBACK_ADMIN_PANEL_URL);
-
-    try {
-        const configuredUrl = new URL(configured);
-        const configuredIsLocal = isLocalHost(configuredUrl.hostname);
-        const currentIsLocal = isLocalHost(window.location.hostname);
-
-        // In production, don't redirect to localhost — derive admin URL from current origin
-        if (configuredIsLocal && !currentIsLocal) {
-            return `${window.location.protocol}//admin.${window.location.host}`;
-        }
-    } catch {
-        // fall through
-    }
-
-    return configured;
+    return normalizeUrl(stored || FALLBACK_ADMIN_PANEL_URL, FALLBACK_ADMIN_PANEL_URL);
 };

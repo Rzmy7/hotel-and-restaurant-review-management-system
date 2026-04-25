@@ -8,6 +8,8 @@ from sqlalchemy import text
 import secrets
 import os
 
+from app.core.config import FRONTEND_URL
+
 from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
@@ -214,7 +216,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         )
         db.commit()
 
-        reset_link = f"http://localhost:5173/reset-password/{raw_token}"
+        reset_link = f"{FRONTEND_URL}/reset-password/{raw_token}"
         try:
             send_reset_email(user.email, reset_link)
         except Exception as exc:
@@ -294,7 +296,7 @@ def test_smtp():
         test_email = os.getenv("SMTP_EMAIL")
         if not test_email:
             return {"error": "SMTP_EMAIL not configured"}
-        send_reset_email(test_email, "http://localhost:5173/test-link-123")
+        send_reset_email(test_email, f"{FRONTEND_URL}/test-link-123")
         return {"success": True, "message": f"Test email sent successfully to {test_email}"}
     except Exception as e:
         return {"success": False, "error": str(e)}
