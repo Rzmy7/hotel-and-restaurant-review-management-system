@@ -192,69 +192,143 @@ jobs:
       !(needs.build-frontend.result == 'failure' || needs.build-admin-frontend.result == 'failure')
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Sync config files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.FRONTEND_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy/server1-frontends/docker-compose.yml,deploy/server1-frontends/nginx.conf,deploy/server1-frontends/init-ssl.sh"
+          target: /opt/reviewmate
+          strip_components: 2
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.FRONTEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/reviewmate
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
-            echo "✅ Frontends deployed successfully"
+            # Auto-bootstrap SSL if certs don't exist yet
+            if [ ! -d "/etc/letsencrypt/live/reviewmate.live" ] && [ ! -f "/var/lib/docker/volumes/reviewmate_certbot_conf/_data/live/reviewmate.live/fullchain.pem" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            fi
+            echo "Frontends deployed successfully"
 
   deploy-backend:
     needs: [build-backend]
     if: needs.build-backend.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Sync config files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.BACKEND_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy/server2-backend/docker-compose.yml,deploy/server2-backend/nginx.conf,deploy/server2-backend/init-ssl.sh"
+          target: /opt/reviewmate
+          strip_components: 2
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.BACKEND_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/reviewmate
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
-            echo "✅ Backend deployed successfully"
+            if ! docker volume inspect reviewmate-backend_certbot_conf >/dev/null 2>&1 || [ -z "$(docker run --rm -v reviewmate-backend_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null)" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            fi
+            echo "Backend deployed successfully"
 
   deploy-embedding:
     needs: [build-embedding]
     if: needs.build-embedding.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Sync config files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EMBEDDING_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy/server3-embedding/docker-compose.yml,deploy/server3-embedding/nginx.conf,deploy/server3-embedding/init-ssl.sh"
+          target: /opt/reviewmate
+          strip_components: 2
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EMBEDDING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/reviewmate
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
-            echo "✅ Embedding service deployed successfully"
+            if ! docker volume inspect reviewmate-embedding_certbot_conf >/dev/null 2>&1 || [ -z "$(docker run --rm -v reviewmate-embedding_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null)" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            fi
+            echo "Embedding service deployed successfully"
 
   deploy-scraper:
     needs: [build-scraper]
     if: needs.build-scraper.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Sync config files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SCRAPING_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy/server4-scraper/docker-compose.yml,deploy/server4-scraper/nginx.conf,deploy/server4-scraper/init-ssl.sh"
+          target: /opt/reviewmate
+          strip_components: 2
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SCRAPING_HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/reviewmate
+            chmod +x init-ssl.sh
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
-            echo "✅ Scraper engine deployed successfully"
+            if ! docker volume inspect reviewmate-scraper_certbot_conf >/dev/null 2>&1 || [ -z "$(docker run --rm -v reviewmate-scraper_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null)" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            fi
+            echo "Scraper engine deployed successfully"
+
