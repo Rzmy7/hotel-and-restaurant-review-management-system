@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { featureFlagService } from '../services/featureFlagService';
 
 type Theme = 'dark' | 'light' | 'system';
 
 interface ThemeContextType {
     theme: Theme;
     setTheme: (theme: Theme) => void;
+    darkModeAllowed: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -18,14 +20,32 @@ export function ThemeProvider({
     defaultTheme?: Theme;
     storageKey?: string;
 }) {
-    const [theme, setTheme] = useState<Theme>(
+    const [theme, setThemeState] = useState<Theme>(
         () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
     );
+    const [darkModeAllowed, setDarkModeAllowed] = useState(true);
 
+    // Check the dark mode feature flag on mount
+    useEffect(() => {
+        featureFlagService.isDarkModeEnabled().then((enabled) => {
+            setDarkModeAllowed(enabled);
+            if (!enabled) {
+                // Force light theme when dark mode is disabled by admin
+                setThemeState('light');
+            }
+        });
+    }, []);
+
+    // Apply the theme class to the document root
     useEffect(() => {
         const root = window.document.documentElement;
-
         root.classList.remove('light', 'dark');
+
+        // If dark mode is not allowed, always use light
+        if (!darkModeAllowed) {
+            root.classList.add('light');
+            return;
+        }
 
         if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
@@ -38,11 +58,11 @@ export function ThemeProvider({
         }
 
         root.classList.add(theme);
-    }, [theme]);
+    }, [theme, darkModeAllowed]);
 
     // Listen to system changes if we are currently using system logic
     useEffect(() => {
-        if (theme !== 'system') return;
+        if (!darkModeAllowed || theme !== 'system') return;
 
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -54,13 +74,15 @@ export function ThemeProvider({
 
         mediaQuery.addEventListener('change', handleChange);
         return () => mediaQuery.removeEventListener('change', handleChange);
-    }, [theme]);
+    }, [theme, darkModeAllowed]);
 
     const value = {
-        theme,
+        theme: darkModeAllowed ? theme : 'light',
+        darkModeAllowed,
         setTheme: (newTheme: Theme) => {
+            if (!darkModeAllowed) return; // Block theme changes when dark mode is disabled
             localStorage.setItem(storageKey, newTheme);
-            setTheme(newTheme);
+            setThemeState(newTheme);
         },
     };
 

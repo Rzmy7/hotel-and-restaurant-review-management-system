@@ -18,7 +18,7 @@ interface GeneralSettingsCardProps {
 }
 
 export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, onChange }) => {
-    const { setTheme } = useTheme();
+    const { setTheme, darkModeAllowed } = useTheme();
     const { showToast } = useToast();
     const [organizations, setOrganizations] = useState<UserOrganizationSummary[]>([]);
     const [isLoadingOrganizations, setIsLoadingOrganizations] = useState(true);
@@ -155,6 +155,7 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
                     ]}
                 />
             </FormField>
+            {darkModeAllowed && (
             <FormField label="Application Theme" orientation="horizontal" description="Select your preferred UI appearance">
                 <div className="flex bg-gray-100/80 dark:bg-slate-700/50 p-1 rounded-xl w-full max-w-[280px]">
                     {[
@@ -181,6 +182,7 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
                     })}
                 </div>
             </FormField>
+            )}
 
             {organizationPendingDelete && (
                 <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">

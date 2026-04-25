@@ -51,6 +51,12 @@ FEATURE_FLAG_DEFINITIONS = {
         "description": "Enable semantic search across reviews and content using vector embeddings",
         "status_key": "feature_flag_content_search_embeddings",
     },
+    "dark_mode": {
+        "id": "2",
+        "name": "Dark Mode",
+        "description": "Allow users to switch between light, dark, and system themes in their settings",
+        "status_key": "feature_flag_dark_mode",
+    },
 }
 
 

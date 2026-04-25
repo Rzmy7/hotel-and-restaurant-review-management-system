@@ -165,8 +165,7 @@ export const Header: React.FC = () => {
                 return { title: 'AI Configuration & Embeddings', subtitle: 'Manage embedding models, thresholds, and vector database connections.' };
             case '/scraping':
                 return { title: 'Scraping Management', subtitle: '' };
-            case '/api-manage':
-                return { title: 'API Management', subtitle: 'Manage API credentials and service endpoints' };
+
             case '/monitoring':
                 return { title: 'System Monitoring', subtitle: 'Real-time server status and performance metrics' };
             case '/subscription-plans':

@@ -9,7 +9,7 @@ import {
   Check,
   Database,
   Search,
-  Key,
+
   Activity,
   CreditCard,
   Megaphone,
@@ -27,7 +27,7 @@ export const Sidebar: React.FC = () => {
     { to: '/feature-flags', icon: Flag, label: 'Feature Flags' },
     { to: '/embeddings', icon: Database, label: 'Embeddings' },
     { to: '/scraping', icon: Search, label: 'Scraping' },
-    { to: '/api-manage', icon: Key, label: 'API Management' },
+
     { to: '/monitoring', icon: Activity, label: 'Monitoring' },
     { to: '/subscription-plans', icon: CreditCard, label: 'Subscription Plans' },
     { to: '/broadcasting', icon: Megaphone, label: 'Broadcasting' },
