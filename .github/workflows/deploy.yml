@@ -10,10 +10,47 @@ env:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════
-  # BUILD JOBS — run in parallel
+  # CHANGE DETECTION — figure out what actually changed
+  # ═══════════════════════════════════════════════════════════════════
+
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      admin-frontend: ${{ steps.filter.outputs.admin-frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      embedding: ${{ steps.filter.outputs.embedding }}
+      scraper: ${{ steps.filter.outputs.scraper }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'deploy/server1-frontends/**'
+            admin-frontend:
+              - 'admin-frontend/**'
+              - 'deploy/server1-frontends/**'
+            backend:
+              - 'backend/**'
+              - 'deploy/server2-backend/**'
+            embedding:
+              - 'microservices/embedding-service/**'
+              - 'deploy/server3-embedding/**'
+            scraper:
+              - 'microservices/scraper_engine/**'
+              - 'deploy/server4-scraper/**'
+
+  # ═══════════════════════════════════════════════════════════════════
+  # BUILD JOBS — only run when their code changes
   # ═══════════════════════════════════════════════════════════════════
 
   build-frontend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,6 +76,8 @@ jobs:
             VITE_MAIN_BACKEND_URL=${{ vars.PROD_API_URL }}
 
   build-admin-frontend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.admin-frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -66,6 +105,8 @@ jobs:
             VITE_FRONTEND_URL=${{ vars.PROD_FRONTEND_URL }}
 
   build-backend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,6 +129,8 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
 
   build-embedding:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.embedding == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -110,6 +153,8 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-embedding:${{ github.sha }}
 
   build-scraper:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.scraper == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -132,11 +177,15 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-scraper:${{ github.sha }}
 
   # ═══════════════════════════════════════════════════════════════════
-  # DEPLOY JOBS — run after their respective build jobs
+  # DEPLOY JOBS — only run when their respective build ran
   # ═══════════════════════════════════════════════════════════════════
 
   deploy-frontends:
-    needs: [build-frontend, build-admin-frontend]
+    needs: [detect-changes, build-frontend, build-admin-frontend]
+    if: |
+      always() &&
+      (needs.build-frontend.result == 'success' || needs.build-admin-frontend.result == 'success') &&
+      !(needs.build-frontend.result == 'failure' || needs.build-admin-frontend.result == 'failure')
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
@@ -154,6 +203,7 @@ jobs:
 
   deploy-backend:
     needs: [build-backend]
+    if: needs.build-backend.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
@@ -171,6 +221,7 @@ jobs:
 
   deploy-embedding:
     needs: [build-embedding]
+    if: needs.build-embedding.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
@@ -188,6 +239,7 @@ jobs:
 
   deploy-scraper:
     needs: [build-scraper]
+    if: needs.build-scraper.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Globe } from 'lucide-react';
+import { Save, Globe, Loader } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import { setEmbeddingServiceUrl } from '../services/embeddingService';

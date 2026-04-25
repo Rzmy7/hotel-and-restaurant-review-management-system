@@ -24,7 +24,7 @@ export function useReviewsData(organizationId: string, params: FetchReviewsParam
         try {
             const [fetchedReviews, fetchedStats, fetchedOptions] = await Promise.all([
                 reviewsService.getReviews(organizationId, params),
-                reviewsService.getStats(organizationId),
+                reviewsService.getStats(organizationId, params),
                 reviewsService.getOptions(organizationId)
             ]);
 

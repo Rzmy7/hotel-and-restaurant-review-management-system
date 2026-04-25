@@ -48,6 +48,7 @@ type UserOrganization = {
     logo_url?: string | null;
     city?: string | null;
     country?: string | null;
+    location_url?: string | null;
 };
 
 type OrganizationType = {

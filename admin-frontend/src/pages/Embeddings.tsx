@@ -7,7 +7,6 @@ import {
     Play,
     Loader
 } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
     getThresholds,
     updateThresholds,

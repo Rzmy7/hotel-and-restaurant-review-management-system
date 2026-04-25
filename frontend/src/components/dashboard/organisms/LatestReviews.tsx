@@ -27,7 +27,7 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
             categories: review.categories || [],
             source: review.source,
             date: review.date,
-            status: 'Pending' // Default fallback status
+            status: 'pending' // Default fallback status
         });
         setIsModalOpen(true);
     };

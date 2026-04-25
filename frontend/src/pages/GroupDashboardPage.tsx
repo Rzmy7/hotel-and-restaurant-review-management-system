@@ -20,6 +20,7 @@ import {
   type Organization,
 } from '../services/groupsService';
 import { useToast } from '../contexts/ToastContext';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 const SENTIMENT_COLORS = { positive: '#22c55e', negative: '#ef4444', neutral: '#94a3b8' };
 const BRAND_COLOR = '#3b82f6';
@@ -74,7 +75,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ groupId, onClose, onInvited }
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const { showToast } = useToast();
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) { setResults([]); return; }
@@ -972,6 +973,8 @@ const GroupDashboardPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const organizationId = currentOrg?.id;
 
   const [group, setGroup] = useState<Group | null>(null);
   const [analytics, setAnalytics] = useState<GroupAnalytics | null>(null);
@@ -981,10 +984,10 @@ const GroupDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   const fetchGroup = useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || !organizationId) return;
     setLoadingGroup(true);
     try {
-      const g = await groupsService.getGroup(groupId);
+      const g = await groupsService.getGroup(groupId, organizationId);
       setGroup(g);
     } catch (err: any) {
       showToast(err.message || 'Failed to load group', 'error');
@@ -992,7 +995,7 @@ const GroupDashboardPage: React.FC = () => {
     } finally {
       setLoadingGroup(false);
     }
-  }, [groupId, navigate, showToast]);
+  }, [groupId, organizationId, navigate, showToast]);
 
   const fetchAnalytics = useCallback(async () => {
     if (!groupId) return;

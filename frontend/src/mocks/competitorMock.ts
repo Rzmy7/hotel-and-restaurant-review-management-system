@@ -3,10 +3,11 @@ import type { Competitor, CompetitorListResponse, RankingsData, ComparisonData, 
 export const MOCK_COMPETITORS: CompetitorListResponse = {
     tracked: [
         {
-            id: 1,
+            id: '1',
             name: 'Grand Plaza Hotel',
             location: 'Downtown District',
-            bookingUrl: 'https://booking.com/grand-plaza',
+            location_url: 'https://booking.com/grand-plaza',
+            organization_id: null,
             avgRating: 4.8,
             sentimentScore: 92,
             reviewCount: 1250,
@@ -15,10 +16,11 @@ export const MOCK_COMPETITORS: CompetitorListResponse = {
             createdAt: new Date().toISOString()
         },
         {
-            id: 2,
+            id: '2',
             name: 'Riverside Resort & Spa',
             location: 'Waterfront Area',
-            bookingUrl: 'https://booking.com/riverside-resort',
+            location_url: 'https://booking.com/riverside-resort',
+            organization_id: null,
             avgRating: 4.5,
             sentimentScore: 85,
             reviewCount: 980,
@@ -29,10 +31,11 @@ export const MOCK_COMPETITORS: CompetitorListResponse = {
     ],
     available: [
         {
-            id: 101,
+            id: '101',
             name: 'The Skyline Inn',
             location: 'Central Heights',
-            bookingUrl: 'https://booking.com/skyline-inn',
+            location_url: 'https://booking.com/skyline-inn',
+            organization_id: null,
             avgRating: 4.2,
             sentimentScore: 78,
             reviewCount: 450,
@@ -55,8 +58,9 @@ export const MOCK_RANKINGS: RankingsData = {
     topPerformer: { rank: 1, name: 'Grand Plaza Hotel', isYou: false, rating: 4.8, sentiment: 92, reviews: 1250 }
 };
 
-export const MOCK_COMPARISON = (competitorId: number): ComparisonData => ({
+export const MOCK_COMPARISON = (competitorId: string): ComparisonData => ({
     competitor: MOCK_COMPETITORS.tracked.find(c => c.id === competitorId) || MOCK_COMPETITORS.tracked[0],
+    myOrganizationName: 'My Hotel',
     kpis: {
         avgRating: { myHotel: 4.6, competitor: 4.8, gap: -0.2 },
         reviewCount: { myHotel: 850, competitor: 1250, gap: -400 },

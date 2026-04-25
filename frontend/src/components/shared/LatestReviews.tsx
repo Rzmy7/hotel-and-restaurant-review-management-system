@@ -54,7 +54,7 @@ const LatestReviews = ({ reviews }: LatestReviewsProps) => {
                   </div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{review.time}</span>
                 </div>
-                <p className="m-0 mb-3 text-sm font-bold text-gray-800 leading-snug group-hover/item:text-blue-600 transition-colors">{review.title}</p>
+                <p className="m-0 mb-3 text-sm font-bold text-gray-800 leading-snug group-hover/item:text-blue-600 transition-colors">{review.heading}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100/50">{review.source}</span>
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${review.sentiment === 'Positive' ? 'bg-green-50 text-[green] border-green-100' :
