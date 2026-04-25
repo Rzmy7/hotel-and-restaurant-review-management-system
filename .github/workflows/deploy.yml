@@ -17,42 +17,46 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      admin-frontend: ${{ steps.filter.outputs['admin-frontend'] }}
-      backend: ${{ steps.filter.outputs.backend }}
-      embedding: ${{ steps.filter.outputs.embedding }}
-      scraper: ${{ steps.filter.outputs.scraper }}
-      deploy-frontends: ${{ steps.filter.outputs['deploy-frontends'] }}
-      deploy-backend: ${{ steps.filter.outputs['deploy-backend'] }}
-      deploy-embedding: ${{ steps.filter.outputs['deploy-embedding'] }}
-      deploy-scraper: ${{ steps.filter.outputs['deploy-scraper'] }}
+      frontend: ${{ steps.check.outputs.frontend }}
+      admin-frontend: ${{ steps.check.outputs.admin-frontend }}
+      backend: ${{ steps.check.outputs.backend }}
+      embedding: ${{ steps.check.outputs.embedding }}
+      scraper: ${{ steps.check.outputs.scraper }}
+      deploy-frontends: ${{ steps.check.outputs.deploy-frontends }}
+      deploy-backend: ${{ steps.check.outputs.deploy-backend }}
+      deploy-embedding: ${{ steps.check.outputs.deploy-embedding }}
+      deploy-scraper: ${{ steps.check.outputs.deploy-scraper }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            frontend:
-              - 'frontend/**'
-            admin-frontend:
-              - 'admin-frontend/**'
-            backend:
-              - 'backend/**'
-            embedding:
-              - 'microservices/embedding-service/**'
-            scraper:
-              - 'microservices/scraper_engine/**'
-            deploy-frontends:
-              - 'deploy/server1-frontends/**'
-            deploy-backend:
-              - 'deploy/server2-backend/**'
-            deploy-embedding:
-              - 'deploy/server3-embedding/**'
-            deploy-scraper:
-              - 'deploy/server4-scraper/**'
+      - name: Detect changed paths
+        id: check
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          check_path() {
+            local name=$1
+            local pattern=$2
+            if echo "$CHANGED" | grep -q "^${pattern}"; then
+              echo "${name}=true" >> $GITHUB_OUTPUT
+            else
+              echo "${name}=false" >> $GITHUB_OUTPUT
+            fi
+          }
+
+          check_path "frontend" "frontend/"
+          check_path "admin-frontend" "admin-frontend/"
+          check_path "backend" "backend/"
+          check_path "embedding" "microservices/embedding-service/"
+          check_path "scraper" "microservices/scraper_engine/"
+          check_path "deploy-frontends" "deploy/server1-frontends/"
+          check_path "deploy-backend" "deploy/server2-backend/"
+          check_path "deploy-embedding" "deploy/server3-embedding/"
+          check_path "deploy-scraper" "deploy/server4-scraper/"
 
   # ═══════════════════════════════════════════════════════════════════
   # BUILD JOBS — only run when their code changes
