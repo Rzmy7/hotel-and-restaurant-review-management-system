@@ -1,0 +1,14 @@
+services:
+  backend:
+    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-backend:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

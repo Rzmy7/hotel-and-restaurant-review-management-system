@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+.env*.local
+*.tsbuildinfo
+.git
+.gitignore
+README.md
+MONITORING_API.md
+MONITORING_IMPLEMENTATION.md

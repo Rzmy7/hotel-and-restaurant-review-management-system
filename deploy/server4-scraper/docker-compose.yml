@@ -1,0 +1,15 @@
+services:
+  scraper:
+    image: ghcr.io/${GITHUB_USER:-your-github-user}/reviewmate-scraper:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    shm_size: '2gb'
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

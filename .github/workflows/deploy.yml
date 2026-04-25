@@ -1,0 +1,204 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [keshaka]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/reviewmate
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════
+  # BUILD JOBS — run in parallel
+  # ═══════════════════════════════════════════════════════════════════
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-frontend:latest
+            ${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.PROD_API_URL }}
+            VITE_MAIN_BACKEND_URL=${{ vars.PROD_API_URL }}
+
+  build-admin-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./admin-frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-admin-frontend:latest
+            ${{ env.IMAGE_PREFIX }}-admin-frontend:${{ github.sha }}
+          build-args: |
+            VITE_MAIN_BACKEND_URL=${{ vars.PROD_API_URL }}
+            VITE_SCRAPING_URL=${{ vars.PROD_SCRAPER_URL }}
+            VITE_EMBEDDING_SERVICE_URL=${{ vars.PROD_EMBEDDING_URL }}
+            VITE_FRONTEND_URL=${{ vars.PROD_FRONTEND_URL }}
+
+  build-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-backend:latest
+            ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
+
+  build-embedding:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./microservices/embedding-service
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-embedding:latest
+            ${{ env.IMAGE_PREFIX }}-embedding:${{ github.sha }}
+
+  build-scraper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./microservices/scraper_engine
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-scraper:latest
+            ${{ env.IMAGE_PREFIX }}-scraper:${{ github.sha }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # DEPLOY JOBS — run after their respective build jobs
+  # ═══════════════════════════════════════════════════════════════════
+
+  deploy-frontends:
+    needs: [build-frontend, build-admin-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.FRONTEND_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/reviewmate
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+            echo "✅ Frontends deployed successfully"
+
+  deploy-backend:
+    needs: [build-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.BACKEND_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/reviewmate
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+            echo "✅ Backend deployed successfully"
+
+  deploy-embedding:
+    needs: [build-embedding]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EMBEDDING_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/reviewmate
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+            echo "✅ Embedding service deployed successfully"
+
+  deploy-scraper:
+    needs: [build-scraper]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SCRAPING_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/reviewmate
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+            echo "✅ Scraper engine deployed successfully"
