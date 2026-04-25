@@ -25,6 +25,7 @@ import app.modules.auth.models  # noqa: F401
 import app.modules.organization.models  # noqa: F401
 import app.modules.source.models  # noqa: F401
 import app.modules.reviews.models  # noqa: F401
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +34,13 @@ def get_all_reviews_from_db(
     organization_id: str,
     page: int = 0,
     limit: int = 50,
-    filters: Optional[dict] = None
+    filters: Optional[dict] = None,
+    db: Session = None
 ) -> Dict:
     """Fetch processed reviews with photos for a specific organization, supporting pagination and filtering."""
     try:
         from app.modules.reviews.repository import fetch_all_reviews_enriched
-        return fetch_all_reviews_enriched(organization_id, page=page, limit=limit, filters=filters)
+        return fetch_all_reviews_enriched(organization_id, page=page, limit=limit, filters=filters, db=db)
     except Exception as e:
         logger.error(f"Failed to fetch reviews: {e}")
         raise e
