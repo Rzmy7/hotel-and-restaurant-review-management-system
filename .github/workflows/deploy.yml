@@ -22,6 +22,10 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       embedding: ${{ steps.filter.outputs.embedding }}
       scraper: ${{ steps.filter.outputs.scraper }}
+      deploy-frontends: ${{ steps.filter.outputs.deploy-frontends }}
+      deploy-backend: ${{ steps.filter.outputs.deploy-backend }}
+      deploy-embedding: ${{ steps.filter.outputs.deploy-embedding }}
+      deploy-scraper: ${{ steps.filter.outputs.deploy-scraper }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,18 +37,21 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
-              - 'deploy/server1-frontends/**'
             admin-frontend:
               - 'admin-frontend/**'
-              - 'deploy/server1-frontends/**'
             backend:
               - 'backend/**'
-              - 'deploy/server2-backend/**'
             embedding:
               - 'microservices/embedding-service/**'
-              - 'deploy/server3-embedding/**'
             scraper:
               - 'microservices/scraper_engine/**'
+            deploy-frontends:
+              - 'deploy/server1-frontends/**'
+            deploy-backend:
+              - 'deploy/server2-backend/**'
+            deploy-embedding:
+              - 'deploy/server3-embedding/**'
+            deploy-scraper:
               - 'deploy/server4-scraper/**'
 
   # ═══════════════════════════════════════════════════════════════════
@@ -189,7 +196,11 @@ jobs:
     needs: [detect-changes, build-frontend, build-admin-frontend]
     if: |
       always() &&
-      (needs.build-frontend.result == 'success' || needs.build-admin-frontend.result == 'success') &&
+      (
+        needs.build-frontend.result == 'success' ||
+        needs.build-admin-frontend.result == 'success' ||
+        needs.detect-changes.outputs.deploy-frontends == 'true'
+      ) &&
       !(needs.build-frontend.result == 'failure' || needs.build-admin-frontend.result == 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -221,8 +232,11 @@ jobs:
             echo "Frontends deployed successfully"
 
   deploy-backend:
-    needs: [build-backend]
-    if: needs.build-backend.result == 'success'
+    needs: [detect-changes, build-backend]
+    if: |
+      always() &&
+      (needs.build-backend.result == 'success' || needs.detect-changes.outputs.deploy-backend == 'true') &&
+      needs.build-backend.result != 'failure'
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
@@ -251,8 +265,11 @@ jobs:
             echo "Backend deployed successfully"
 
   deploy-embedding:
-    needs: [build-embedding]
-    if: needs.build-embedding.result == 'success'
+    needs: [detect-changes, build-embedding]
+    if: |
+      always() &&
+      (needs.build-embedding.result == 'success' || needs.detect-changes.outputs.deploy-embedding == 'true') &&
+      needs.build-embedding.result != 'failure'
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
@@ -281,8 +298,11 @@ jobs:
             echo "Embedding service deployed successfully"
 
   deploy-scraper:
-    needs: [build-scraper]
-    if: needs.build-scraper.result == 'success'
+    needs: [detect-changes, build-scraper]
+    if: |
+      always() &&
+      (needs.build-scraper.result == 'success' || needs.detect-changes.outputs.deploy-scraper == 'true') &&
+      needs.build-scraper.result != 'failure'
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
