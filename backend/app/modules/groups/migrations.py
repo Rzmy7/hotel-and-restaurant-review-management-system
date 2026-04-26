@@ -171,7 +171,7 @@ def _migrate_group_member_to_org(conn) -> None:
     """
     if _column_exists(conn, "group_member", "organization_id"):
         logger.info(
-            "group_member.organization_id already exists — skipping v2 migration"
+            "group_member.organization_id already exists - skipping v2 migration"
         )
         return
 
@@ -335,7 +335,7 @@ def _migrate_group_invite_to_org(conn) -> None:
             SET invite_type = 'organization'
             WHERE invite_type = 'user' AND invited_org_id IS NOT NULL
         """))
-        logger.info("Migrated 'user' invite_type → 'organization' where org resolved")
+        logger.info("Migrated 'user' invite_type -> 'organization' where org resolved")
     except Exception as exc:
         logger.warning("Could not migrate invite_type values: %s", exc)
 
