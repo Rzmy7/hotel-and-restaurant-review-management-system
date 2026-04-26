@@ -71,6 +71,7 @@ def get_connection_string() -> str:
         f"DATABASE={database}",
         f"UID={uid}",
         f"PWD={pwd}",
+        "LoginTimeout=30",
     ]
     d_lower = driver.lower()
     if "odbc driver 18" in d_lower:

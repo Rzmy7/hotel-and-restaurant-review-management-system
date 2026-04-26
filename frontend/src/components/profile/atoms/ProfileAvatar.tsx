@@ -27,15 +27,15 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   return (
     <div
       className={`
-                ${sizeClasses[size]}
-                rounded-full
-                overflow-hidden
-                border-2 border-white dark:border-slate-800
-                shadow-sm
-                shrink-0
-                flex items-center justify-center
-                bg-gray-100 dark:bg-slate-700
-            `}
+        ${sizeClasses[size]}
+        rounded-full
+        overflow-hidden
+        border-2 border-white dark:border-slate-800
+        shadow-sm
+        shrink-0
+        flex items-center justify-center
+        bg-gray-100 dark:bg-slate-700
+      `}
     >
       {/* 🔹 If image exists → show image */}
       {imageUrl ? (

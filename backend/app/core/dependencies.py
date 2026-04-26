@@ -1,7 +1,6 @@
 """
 Shared FastAPI dependencies.
 
-get_db is re-exported from database.py for convenience.
 get_current_user extracts the authenticated user from a Bearer JWT.
 get_optional_user returns the user if a JWT is present, or None (for dual-use endpoints).
 """

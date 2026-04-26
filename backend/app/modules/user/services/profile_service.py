@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from app.modules.auth.models.auth_models import TwoFactorToken
 from app.modules.auth.services.email_service import send_2fa_email
 from app.core.validations.otp_validator import validate_otp_format
+from app.core.validations.phone_validator import normalize_profile_phone
 from app.modules.user.schemas.profile_schema import TwoFactorVerifyRequest
 
 # Get bucket name from .env
@@ -50,13 +51,14 @@ def update_profile(db: Session, user_id, data):
 
     # Update basic profile details
     user = get_user_profile(db, user_id)
+    normalized_phone = normalize_profile_phone(data.phone)
 
     return update_user_profile(
         db,
         user,
         first_name=data.firstName,
         last_name=data.lastName,
-        phone=data.phone,
+        phone=normalized_phone,
         job_title=data.jobTitle,
         bio=data.bio,
         location=data.location,

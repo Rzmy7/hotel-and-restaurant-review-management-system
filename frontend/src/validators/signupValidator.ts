@@ -19,7 +19,7 @@ const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]*$/;
 const SYMBOL_PATTERN = /[!@#$%^&*(),.?":{}|<>\-_]/;
 
 // Only the most common generic TLDs
-const COMMON_TLDS = new Set(["com", "org", "net", "edu"]);
+const COMMON_TLDS = new Set(["com", "org", "net", "edu", "lk"]);
 
 const isRealisticDomain = (domain: string): boolean => {
   const parts = domain.toLowerCase().split(".");
@@ -111,6 +111,8 @@ export const validateConfirmPassword = (
   return null;
 };
 
+
+// Validate ALL signup fields at once and return errors
 export const validateSignupForm = (data: SignupFormData): SignupFieldErrors => {
   const errors: SignupFieldErrors = {};
 
@@ -137,11 +139,15 @@ export const validateSignupForm = (data: SignupFormData): SignupFieldErrors => {
   return errors;
 };
 
+// Prepares data before sending to backend
 export const normalizeSignupPayload = (data: SignupFormData) => ({
   fullName: data.fullName.trim(),
   email: data.email.trim().toLowerCase(),
   password: data.password,
 });
+
+/* Prepares data before sending to backend - so if have errors can be displayed next to the relevant inputs,
+ improving user experience and clarity   */
 
 export const mapBackendSignupErrorToField = (
   message: string,

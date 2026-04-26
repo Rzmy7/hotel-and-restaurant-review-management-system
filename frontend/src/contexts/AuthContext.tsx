@@ -307,8 +307,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // ----------------------------------------------------
   // RESET PASSWORD
   // ----------------------------------------------------
+  // ----------------------------------------------------
+  // RESET PASSWORD
+  // ----------------------------------------------------
   const resetPassword = async (token: string, newPassword: string) => {
-    await apiClient.post<any>(`/auth/reset-password/${token}`, {
+    const encodedToken = encodeURIComponent(token);
+    await apiClient.post<any>(`/auth/reset-password/${encodedToken}`, {
       new_password: newPassword,
     });
   };

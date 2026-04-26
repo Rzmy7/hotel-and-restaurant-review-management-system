@@ -29,7 +29,6 @@ def create_user(
 
     # ------------------------------------------------
     # Get default role (TENANT)
-    # ------------------------------------------------
     role = db.query(Role).filter(Role.role_name == TENANT).first()
     if not role:
         # Fallback case — if roles table isn't seeded correctly
@@ -37,9 +36,8 @@ def create_user(
             f"CRITICAL: Default role '{TENANT}' not found in Roles table. Please seed the database."
         )
 
-    # ------------------------------------------------
+
     # Create user with mandatory role_id
-    # ------------------------------------------------
     user = User(
         email=email,
         password_hash=password_hash,

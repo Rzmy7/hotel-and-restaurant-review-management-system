@@ -20,6 +20,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   const initials =
     `${profile.firstName?.charAt(0) || ""}${profile.lastName?.charAt(0) || ""}`.toUpperCase();
 
+<<<<<<< HEAD
   return (
     <aside className="space-y-6">
       <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-slate-800 p-8 shadow-sm text-center relative overflow-hidden transition-all duration-300">

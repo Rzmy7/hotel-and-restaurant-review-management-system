@@ -27,6 +27,7 @@ from app.modules.auth.schemas.auth_schemas import (
     ResetModel,
 )
 from app.core.security import decode_access_token, create_access_token
+from app.core.config import FRONTEND_URL
 from app.core.validations.signup_validator import validate_signup_payload
 from app.core.validations.login_validator import (
     validate_login_payload,

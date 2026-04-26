@@ -37,8 +37,11 @@ const SignUpPage = () => {
   const navigate = useNavigate();
   const auth = useAuth();
 
+
   useEffect(() => {
     if (!auth.user) return;
+
+    //role-based routing after signup/login
     const destination = getDashboardPathForRole(auth.user.role);
     if (isExternalDestination(destination)) {
       window.location.href = destination;
@@ -59,10 +62,8 @@ const SignUpPage = () => {
     });
   };
 
-  const validateSingleField = (
-    field: SignupField,
-    value?: string | boolean,
-  ) => {
+  // helper function to validate ONE field at a time (used in onBlur of each field)
+  const validateSingleField = (field: SignupField, value?: string | boolean) => {
     switch (field) {
       case "fullName":
         return setFieldError(
@@ -125,6 +126,7 @@ const SignUpPage = () => {
         acceptedTerms,
       });
 
+      // Call backend & error handling
       const user = await auth.signup(
         normalized.fullName,
         normalized.email,
