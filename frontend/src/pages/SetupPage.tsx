@@ -10,6 +10,7 @@ import {
   fetchUserOrganizations,
 } from "../services/subscriptionPlansService";
 import { Button } from "../components/ui/Button";
+import { logger } from "../utils/logger";
 
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = "setup_snapshot_current_organization";
 const SETUP_PENDING_ORG_ID_KEY = "setup_pending_organization_id";
@@ -51,7 +52,7 @@ const discardPendingSetupOrganizationIfNeeded = async () => {
       `/api/setup/organizations/${pendingOrganizationId}/discard`,
     );
   } catch (error) {
-    console.warn(
+    logger.warn(
       "Failed to discard pending setup organization from backend:",
       error,
     );
@@ -129,7 +130,7 @@ const SetupPage = () => {
       setLimitError(null);
       return false;
     } catch (error) {
-      console.warn("Failed to validate organization quota:", error);
+      logger.warn("Failed to validate organization quota:", error);
       return false;
     } finally {
       setIsCheckingLimit(false);
@@ -162,7 +163,7 @@ const SetupPage = () => {
             setLocationUrl(draft.organization.locationUrl);
         }
       } catch (error) {
-        console.error("Failed to fetch organization types:", error);
+        logger.error("Failed to fetch organization types:", error);
       } finally {
         setIsLoading(false);
       }

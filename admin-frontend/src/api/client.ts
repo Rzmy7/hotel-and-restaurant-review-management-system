@@ -3,6 +3,7 @@
  */
 import { getApiBaseUrl } from "../config/api";
 import { getFrontendLoginUrl } from "../config/frontend";
+import { logger } from "../utils/logger";
 
 const getFullUrl = (url: string) => {
   if (url.startsWith("http")) return url;
@@ -27,7 +28,7 @@ const getFullUrl = (url: string) => {
 
 async function handleResponse(response: Response) {
   if (response.status === 401) {
-    console.warn("Unauthorized! Redirecting to login...");
+    logger.warn("Unauthorized! Redirecting to login...");
     localStorage.removeItem("token");
     window.location.href = getFrontendLoginUrl("expired=true");
     throw new Error("Session expired.");
@@ -89,6 +90,7 @@ export const apiClient = {
         ? `?${searchParams.toString()}`
         : "";
     }
+    logger.api("GET", fullUrl, params);
     const response = await fetch(`${fullUrl}${queryString}`, {
       method: "GET",
       headers: getHeaders(customHeaders),
@@ -103,6 +105,7 @@ export const apiClient = {
     customHeaders?: Record<string, string>,
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
+    logger.api("POST", fullUrl, body);
     const response = await fetch(fullUrl, {
       method: "POST",
       headers: getHeaders(customHeaders),
@@ -117,6 +120,7 @@ export const apiClient = {
     customHeaders?: Record<string, string>,
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
+    logger.api("PATCH", fullUrl, body);
     const response = await fetch(fullUrl, {
       method: "PATCH",
       headers: getHeaders(customHeaders),
@@ -131,6 +135,7 @@ export const apiClient = {
     customHeaders?: Record<string, string>,
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
+    logger.api("PUT", fullUrl, body);
     const response = await fetch(fullUrl, {
       method: "PUT",
       headers: getHeaders(customHeaders),
@@ -144,6 +149,7 @@ export const apiClient = {
     customHeaders?: Record<string, string>,
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
+    logger.api("DELETE", fullUrl);
     const response = await fetch(fullUrl, {
       method: "DELETE",
       headers: getHeaders(customHeaders),

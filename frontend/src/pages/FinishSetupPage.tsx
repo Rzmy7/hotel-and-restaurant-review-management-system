@@ -5,6 +5,7 @@ import SetupLayout from "../components/shared/SetupLayout";
 import { apiClient } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/ui/Button";
+import { logger } from "../utils/logger";
 import { getApiBaseUrl } from "../config/api";
 
 const SETUP_DRAFT_CONFIG_KEY = "setup_draft_config";
@@ -54,8 +55,8 @@ const FinishSetupPage = () => {
 
       // Get User ID for Tenant ID
       const tenantId = user?.user_id;
-
-      console.log("Setup finish user:", user);
+ 
+      logger.info("Setup finish user:", user);
 
       if (!tenantId) {
         throw new Error("User session not found. Please log in again.");
@@ -110,7 +111,7 @@ const FinishSetupPage = () => {
               },
             );
           } catch (rulesErr) {
-            console.warn("Rules file upload failed (non-blocking):", rulesErr);
+            logger.warn("Rules file upload failed (non-blocking):", rulesErr);
           } finally {
             delete (window as any).__setup_rules_file;
           }
@@ -154,7 +155,7 @@ const FinishSetupPage = () => {
         throw new Error("Failed to retrieve organization ID from server.");
       }
     } catch (err: any) {
-      console.error("Final setup error:", err);
+      logger.error("Final setup error:", err);
       setError(
         err.message || "An unexpected error occurred during finalization.",
       );

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import ProfileTemplate from "../components/profile/templates/ProfileTemplate";
 import { apiClient } from "../api/client";
+import { logger } from "../utils/logger";
 
 export interface UserProfile {
   firstName: string;
@@ -140,8 +141,8 @@ const ProfilePage: React.FC = () => {
           "/users/me/upload-image",
           formData as any,
         );
-
-        console.log("UPLOAD RESPONSE:", data);
+ 
+        logger.info("UPLOAD RESPONSE:", data);
 
         // STEP 4: Replace preview with real URL
         setProfile((prev) => ({
@@ -153,10 +154,10 @@ const ProfilePage: React.FC = () => {
         URL.revokeObjectURL(previewUrl);
 
         // STEP 5: Success message
-        showToast("Profile image updated successfully ✅", "success");
+         showToast("Profile image updated successfully ✅", "success");
       } catch (error) {
-        console.error(error);
-
+        logger.error("Profile image upload failed:", error);
+ 
         // ❌ RESTORE OLD IMAGE (IMPORTANT UX FIX)
         setProfile((prev) => ({
           ...prev,

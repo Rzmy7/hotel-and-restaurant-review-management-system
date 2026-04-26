@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "../config/api";
+import { logger } from "../utils/logger";
 
 /**
  * A simulated API Client that mimics real-world network latency and Promise-based responses.
@@ -44,8 +45,8 @@ async function handleResponse(response: Response, requestUrl: string) {
     if (isAuthLoginRequest(requestUrl)) {
       throw new Error(backendMessage);
     }
-
-    console.warn("Unauthorized! Clearing session and redirecting to login...");
+ 
+    logger.warn("Unauthorized! Clearing session and redirecting to login...");
     localStorage.removeItem("token");
     localStorage.removeItem("authUser");
     // For protected endpoints, 401 means the current session is no longer valid.
@@ -125,7 +126,7 @@ export const apiClient = {
     customHeaders?: Record<string, string>,
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
-    console.log(`[API GET] ${fullUrl}`, params);
+    logger.api("GET", fullUrl, params);
 
     let queryString = "";
     if (params) {
@@ -158,7 +159,7 @@ export const apiClient = {
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
     const isFormData = body instanceof FormData;
-    console.log(`[API POST] ${fullUrl}`, isFormData ? "[FormData]" : body);
+    logger.api("POST", fullUrl, isFormData ? "[FormData]" : body);
 
     const response = await fetch(fullUrl, {
       method: "POST",
@@ -175,7 +176,7 @@ export const apiClient = {
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
     const isFormData = body instanceof FormData;
-    console.log(`[API PUT] ${fullUrl}`, isFormData ? "[FormData]" : body);
+    logger.api("PUT", fullUrl, isFormData ? "[FormData]" : body);
 
     const response = await fetch(fullUrl, {
       method: "PUT",
@@ -192,7 +193,7 @@ export const apiClient = {
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
     const isFormData = body instanceof FormData;
-    console.log(`[API PATCH] ${fullUrl}`, isFormData ? "[FormData]" : body);
+    logger.api("PATCH", fullUrl, isFormData ? "[FormData]" : body);
 
     const response = await fetch(fullUrl, {
       method: "PATCH",
@@ -207,7 +208,7 @@ export const apiClient = {
     customHeaders?: Record<string, string>,
   ): Promise<T> {
     const fullUrl = getFullUrl(url);
-    console.log(`[API DELETE] ${fullUrl}`);
+    logger.api("DELETE", fullUrl);
     const response = await fetch(fullUrl, {
       method: "DELETE",
       headers: getHeaders(customHeaders),

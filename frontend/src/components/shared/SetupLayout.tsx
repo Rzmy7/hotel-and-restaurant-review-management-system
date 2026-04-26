@@ -4,6 +4,7 @@ import { Button } from "../ui/Button";
 import { LogOut, ChevronRight, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
+import { logger } from "../../utils/logger";
 
 interface SetupLayoutProps {
   currentStep: number;
@@ -49,7 +50,7 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
         `/api/setup/organizations/${pendingOrganizationId}/discard`,
       );
     } catch (error) {
-      console.warn(
+      logger.warn(
         "Failed to discard pending setup organization from backend:",
         error,
       );

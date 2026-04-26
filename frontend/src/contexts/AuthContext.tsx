@@ -61,6 +61,7 @@ const clearSetupTemporaryKeys = () => {
 };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 import { apiClient } from "../api/client";
+import { logger } from "../utils/logger";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -114,16 +115,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // ----------------------------------------------------
   const checkUserOrganizations = async () => {
     try {
-      console.log("Fetching organizations...");
-
+      logger.info("Fetching organizations...");
+ 
       // apiClient automatically handles the base URL, /api prefix, and Authorization headers
       const data = await apiClient.get<any>("/user/organizations");
-
-      console.log("Organizations API response:", data);
-
+ 
+      logger.info("Organizations API response:", data);
+ 
       const orgList = Array.isArray(data) ? data : data.organizations || [];
-
-      console.log("Processed org list:", orgList);
+ 
+      logger.info("Processed org list:", orgList);
 
       // save organizations
       localStorage.setItem("organizations", JSON.stringify(orgList));
@@ -149,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         window.location.href = "/dashboard";
       }
     } catch (err) {
-      console.error("Error checking organizations:", err);
+      logger.error("Error checking organizations:", err);
     }
   };
 
@@ -168,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
     } catch (err) {
-      console.error("Error exchanging token for organization:", err);
+      logger.error("Error exchanging token for organization:", err);
       throw err;
     }
   };
@@ -181,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       email,
       password,
     });
-    console.log("Login response:", data);
+    logger.info("Login response:", data);
 
     if (isLoginChallenge(data)) {
       return data;
@@ -203,8 +204,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Save user + token
     persist(normalizedUser, successData.access_token);
-
-    console.log("Calling checkUserOrganizations...");
+ 
+    logger.info("Calling checkUserOrganizations...");
     // Check organizations after login
     await checkUserOrganizations();
 
@@ -244,8 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       email,
       password,
     });
-
-    console.log("Signup response:", payload);
+ 
+    logger.info("Signup response:", payload);
 
     const backendUser = payload.user || payload;
     const normalizedUser: User = {
