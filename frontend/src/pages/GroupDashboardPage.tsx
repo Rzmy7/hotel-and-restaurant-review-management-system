@@ -450,17 +450,10 @@ const InvitesTab: React.FC<{
   const [invites, setInvites] = useState<GroupInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [generatingLink, setGeneratingLink] = useState(false);
-  const [revokingLink, setRevokingLink] = useState(false);
-  const [linkToken, setLinkToken] = useState<string | null>(group.invite_link_token);
-  const [copied, setCopied] = useState(false);
   const { showToast } = useToast();
 
-  const frontendBase = window.location.origin;
-  const inviteUrl = linkToken ? `${frontendBase}/groups/join/${linkToken}` : null;
-
   const fetchInvites = useCallback(async () => {
-    if (!isOwner) { setLoading(false); return; }
+    if (!isOwner && !group.settings.can_members_invite) { setLoading(false); return; }
     setLoading(true);
     try {
       const res = await groupsService.listGroupInvites(group.group_id);
@@ -470,43 +463,11 @@ const InvitesTab: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [group.group_id, isOwner, showToast]);
+  }, [group.group_id, isOwner, group.settings.can_members_invite, showToast]);
 
   useEffect(() => { fetchInvites(); }, [fetchInvites]);
 
-  const handleGenerateLink = async () => {
-    setGeneratingLink(true);
-    try {
-      const res = await groupsService.generateInviteLink(group.group_id);
-      setLinkToken(res.token);
-      showToast('Invite link generated (valid for 7 days)', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to generate link', 'error');
-    } finally {
-      setGeneratingLink(false);
-    }
-  };
 
-  const handleRevokeLink = async () => {
-    if (!confirm('Revoke invite link? Anyone who had it will no longer be able to join.')) return;
-    setRevokingLink(true);
-    try {
-      await groupsService.revokeInviteLink(group.group_id);
-      setLinkToken(null);
-      showToast('Invite link revoked.', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to revoke link', 'error');
-    } finally {
-      setRevokingLink(false);
-    }
-  };
-
-  const handleCopy = () => {
-    if (!inviteUrl) return;
-    navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleCancelInvite = async (inviteId: string) => {
     try {
@@ -531,56 +492,9 @@ const InvitesTab: React.FC<{
 
   return (
     <div className="space-y-6">
-      {/* Invite link card */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Link2 size={16} className="text-blue-500" />
-          <h3 className="text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">Invite Link</h3>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-          Share this link with anyone you want to invite. Valid for 7 days.
-        </p>
-        {inviteUrl ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-slate-600">
-              <span className="text-xs text-gray-600 dark:text-slate-300 truncate flex-1 font-mono">{inviteUrl}</span>
-              <button
-                onClick={handleCopy}
-                className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors"
-              >
-                {copied ? <Check size={12} /> : <Copy size={12} />}
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            {isOwner && (
-              <button
-                onClick={handleRevokeLink}
-                disabled={revokingLink}
-                className="text-xs text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 disabled:opacity-50"
-              >
-                {revokingLink ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-                Revoke link
-              </button>
-            )}
-          </div>
-        ) : (
-          isOwner ? (
-            <button
-              onClick={handleGenerateLink}
-              disabled={generatingLink}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 disabled:opacity-50 transition-colors"
-            >
-              {generatingLink ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-              Generate Invite Link
-            </button>
-          ) : (
-            <p className="text-sm text-gray-400 dark:text-slate-500">No active invite link</p>
-          )
-        )}
-      </div>
 
       {/* Send invite by org */}
-      {isOwner && (
+      {(isOwner || group.settings.can_members_invite) && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -862,7 +776,7 @@ const SettingsTab: React.FC<{
         onClick={() => onChange(!value)}
         className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-brand' : 'bg-gray-300 dark:bg-slate-600'}`}
       >
-        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${value ? 'translate-x-5' : 'translate-x-1'}`} />
+        <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${value ? 'translate-x-5' : 'translate-x-1'}`} />
       </button>
     </div>
   );
@@ -889,7 +803,7 @@ const SettingsTab: React.FC<{
             <button type="button" onClick={() => setIsPrivate(p => !p)}
               className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${isPrivate ? 'bg-brand' : 'bg-gray-300 dark:bg-slate-600'}`}
             >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
+              <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
             </button>
             <div>
               <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">
@@ -1046,9 +960,8 @@ const GroupDashboardPage: React.FC = () => {
               <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase truncate">
                 {group.group_name}
               </h1>
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                isOwner ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-              }`}>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${isOwner ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                }`}>
                 {isOwner ? <Crown size={10} /> : <Shield size={10} />}
                 {isOwner ? 'Owner' : 'Member'}
               </span>
@@ -1065,6 +978,22 @@ const GroupDashboardPage: React.FC = () => {
             <Users size={14} />
             {group.member_count} {group.member_count === 1 ? 'member' : 'members'}
           </span>
+          {!isOwner && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to leave this group?')) {
+                  groupsService.leaveGroup(group.group_id).then(() => {
+                    showToast('You have left the group', 'success');
+                    navigate('/groups');
+                  }).catch((e: any) => showToast(e.message || 'Failed to leave group', 'error'));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 dark:border-red-800/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-semibold transition-colors"
+            >
+              <UserMinus size={14} />
+              Leave Group
+            </button>
+          )}
         </div>
       </header>
 
@@ -1075,11 +1004,10 @@ const GroupDashboardPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3.5 text-[13px] font-bold border-b-2 whitespace-nowrap transition-colors ${
-                activeTab === tab.id
+              className={`flex items-center gap-2 px-4 py-3.5 text-[13px] font-bold border-b-2 whitespace-nowrap transition-colors ${activeTab === tab.id
                   ? 'border-[#3b82f6] text-[#3b82f6] dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
-              }`}
+                }`}
             >
               {tab.icon}
               {tab.label}

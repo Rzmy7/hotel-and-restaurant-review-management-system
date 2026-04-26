@@ -36,8 +36,7 @@ class Group(Base):
     is_private = Column(Boolean, default=True, nullable=False, server_default="1")
     # JSON string: {"can_members_invite": bool, "show_members_to_members": bool, "show_analytics_to_members": bool}
     settings = Column(Text, nullable=True)
-    invite_link_token = Column(String(64), nullable=True)
-    invite_link_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     created_by = Column(
         UNIQUEIDENTIFIER,
         ForeignKey("user.user_id", ondelete="CASCADE"),
