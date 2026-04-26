@@ -4,7 +4,7 @@ Security utilities — password hashing and JWT token management.
 Merged from services/password_service.py + services/jwt_service.py.
 These are shared infrastructure, not domain-specific.
 """
-
+# used for expiration time
 from datetime import datetime, timedelta
 
 from jose import jwt
@@ -12,8 +12,7 @@ from passlib.context import CryptContext  # type: ignore
 
 from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
-# ── Password hashing ───────────────────────────────────────────────
-
+#  Password hashing 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -34,7 +33,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-# ── JWT tokens ──────────────────────────────────────────────────────
+#  generate JWT tokens 
 
 def create_access_token(user_id: str, role: str, organization_id: str | None = None) -> str:
     """Create a signed JWT access token."""

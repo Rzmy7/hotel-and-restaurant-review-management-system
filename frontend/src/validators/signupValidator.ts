@@ -13,16 +13,16 @@ const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]*$/;
 const SYMBOL_PATTERN = /[!@#$%^&*(),.?":{}|<>\-_]/;
 
-// Only the most common generic TLDs
-const COMMON_TLDS = new Set(['com', 'org', 'net', 'edu']);
+// Only the most common generic TLDs(Top Level Domains)
+const COMMON_TLDS = new Set(['com', 'org', 'net', 'edu', 'lk']);
 
 const isRealisticDomain = (domain: string): boolean => {
-    const parts = domain.toLowerCase().split('.');
+    const parts = domain.toLowerCase().split('.');    //"google.com" → ["google", "com"]
     
     // Must have at least 2 parts (domain + TLD)
     if (parts.length < 2) return false;
     
-    const tld = parts[parts.length - 1];
+    const tld = parts[parts.length - 1];  //extract TLD
     
     // TLD must be in common list and at least 2 chars
     if (tld.length < 2 || !COMMON_TLDS.has(tld)) return false;
@@ -38,8 +38,6 @@ const isRealisticDomain = (domain: string): boolean => {
     for (const label of labels) {
         if (!label || label.length > 63) return false;
         if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i.test(label)) return false;
-        // Domain labels should be at least 4 chars to look realistic on simple domains
-        // (prevents obviously fake domains like 'kaa.com', 'xyz.net')
         // But allow shorter labels in multi-part domains (e.g., co.uk)
         if (label.length < 4 && parts.length === 2) return false;
     }
@@ -52,7 +50,7 @@ export const validateFullName = (value: string): string | null => {
 
     if (!trimmed) return 'Full name is required.';
     if (trimmed.length < 2) return 'Full name must be at least 2 characters.';
-    if (trimmed.length > 100) return 'Full name must be at most 100 characters.';
+    if (trimmed.length > 60) return 'Full name must be at most 60 characters.';
     if (!NAME_PATTERN.test(trimmed)) {
         return "Full name can contain letters, spaces, apostrophes, and hyphens only.";
     }
@@ -99,6 +97,8 @@ export const validateConfirmPassword = (password: string, confirmPassword: strin
     return null;
 };
 
+
+// Validate ALL signup fields at once and return errors
 export const validateSignupForm = (data: SignupFormData): SignupFieldErrors => {
     const errors: SignupFieldErrors = {};
 
@@ -121,11 +121,16 @@ export const validateSignupForm = (data: SignupFormData): SignupFieldErrors => {
     return errors;
 };
 
+// Prepares data before sending to backend
 export const normalizeSignupPayload = (data: SignupFormData) => ({
-    fullName: data.fullName.trim(),
+    fullName: data.fullName.trim(),  //removes extra spaces 
     email: data.email.trim().toLowerCase(),
     password: data.password,
 });
+
+
+/* Prepares data before sending to backend - so if have errors can be displayed next to the relevant inputs,
+ improving user experience and clarity   */
 
 export const mapBackendSignupErrorToField = (message: string): SignupFieldErrors => {
     const lowered = message.toLowerCase();

@@ -11,8 +11,8 @@ class Role(Base):
     __table_args__ = {'extend_existing': True}
 
     role_id = Column(Integer, primary_key=True, autoincrement=True)
-    role_name = Column(String(100), unique=True, nullable=False)
-    description = Column(String(255), nullable=True)
+    role_name = Column(String(20), unique=True, nullable=False)
+    description = Column(String(50), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.sysutcdatetime(),
@@ -81,7 +81,7 @@ class TwoFactorToken(Base):
         ForeignKey("user.user_id", ondelete="CASCADE"),
         nullable=False,
     )
-    code = Column(String(50), nullable=False)
+    code = Column(String(20), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
