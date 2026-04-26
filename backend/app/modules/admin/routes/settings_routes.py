@@ -23,8 +23,11 @@ from app.modules.admin.schemas import (
     ReplyGenerationApiTestResponse,
     ReplyGenerationSettingsPayload,
     ReplyGenerationSettingsResponse,
+    SecuritySettingsPayload,
+    SecuritySettingsResponse,
 )
 from app.modules.admin.services.system_settings_service import (
+    DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
     DEFAULT_CURRENCY,
     DEFAULT_DATE_FORMAT,
     DEFAULT_LANGUAGE,
@@ -32,6 +35,7 @@ from app.modules.admin.services.system_settings_service import (
     DEFAULT_REPLY_SELECTED_MODEL,
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
     DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
+    DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
     ensure_system_settings_table,
     get_setting_bool,
     get_setting_int,
@@ -233,6 +237,61 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to update general settings: {exc}") from exc
+
+
+@router.get("/security", response_model=SecuritySettingsResponse)
+def get_security_settings() -> SecuritySettingsResponse:
+    """Return the current user and admin session timeout settings."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            user_timeout = get_setting_int(
+                cursor,
+                "session_timeout_user_minutes",
+                default=DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
+            )
+            admin_timeout = get_setting_int(
+                cursor,
+                "session_timeout_admin_minutes",
+                default=DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
+            )
+
+            return SecuritySettingsResponse(
+                userSessionTimeoutMinutes=user_timeout,
+                adminSessionTimeoutMinutes=admin_timeout,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load security settings: {exc}") from exc
+
+
+@router.patch("/security", response_model=SecuritySettingsResponse)
+def update_security_settings(payload: SecuritySettingsPayload) -> SecuritySettingsResponse:
+    """Persist user and admin session timeout values."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            set_setting(cursor, "session_timeout_user_minutes", str(payload.userSessionTimeoutMinutes))
+            set_setting(cursor, "session_timeout_admin_minutes", str(payload.adminSessionTimeoutMinutes))
+            connection.commit()
+
+            log_admin_activity(
+                "settings_updated",
+                "Security Settings Updated",
+                f"User timeout: {payload.userSessionTimeoutMinutes}m, Admin timeout: {payload.adminSessionTimeoutMinutes}m",
+            )
+
+            return SecuritySettingsResponse(
+                userSessionTimeoutMinutes=payload.userSessionTimeoutMinutes,
+                adminSessionTimeoutMinutes=payload.adminSessionTimeoutMinutes,
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update security settings: {exc}") from exc
 
 
 @router.get("/admin-profile", response_model=AdminProfileResponse)

@@ -36,13 +36,41 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # ── JWT tokens ──────────────────────────────────────────────────────
 
+def _resolve_token_expiry_minutes(role: str) -> int:
+    """Look up the admin-configured session timeout for *role*.
+
+    Falls back to the static ``JWT_ACCESS_TOKEN_EXPIRE_MINUTES`` config
+    constant when the database is unreachable (cold-start, migration, etc.).
+    """
+    try:
+        import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.system_settings_service import (
+            get_session_timeout_minutes,
+            ensure_system_settings_table,
+        )
+
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            return get_session_timeout_minutes(cursor, role)
+    except Exception:
+        return JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+
+
 def create_access_token(user_id: str, role: str, organization_id: str | None = None) -> str:
-    """Create a signed JWT access token."""
+    """Create a signed JWT access token.
+
+    The token lifetime is determined by the admin-configured session
+    timeout for the given *role* (``Admin`` vs regular user).
+    """
+    expire_minutes = _resolve_token_expiry_minutes(role)
+
     payload = {
         "user_id": user_id,
         "role": role,
         "organization_id": organization_id,
-        "exp": datetime.utcnow() + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
+        "exp": datetime.utcnow() + timedelta(minutes=expire_minutes),
     }
     
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)

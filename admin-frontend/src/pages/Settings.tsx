@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { settingsService } from '../services/settingsService';
+import type { SecuritySettings } from '../services/settingsService';
 import { useTheme } from '../contexts/ThemeContext';
 import type { AdminSettings } from '../types';
 
@@ -72,13 +73,22 @@ export const Settings: React.FC = () => {
     const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
     const [passwordModalSaveState, setPasswordModalSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
+    // Security settings state
+    const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
+        userSessionTimeoutMinutes: 60,
+        adminSessionTimeoutMinutes: 60,
+    });
+    const [securitySaveState, setSecuritySaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [securitySaveError, setSecuritySaveError] = useState<string | null>(null);
+
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             try {
-                const [data, profile] = await Promise.all([
+                const [data, profile, security] = await Promise.all([
                     settingsService.getGeneralSettings(),
                     settingsService.getAdminProfile(),
+                    settingsService.getSecuritySettings(),
                 ]);
                 setSettings({
                     ...defaultSettings,
@@ -88,6 +98,7 @@ export const Settings: React.FC = () => {
                     currency: data.currency,
                 });
                 setAdminProfileName(profile.name || 'System Admin');
+                setSecuritySettings(security);
 
                 const status = await maintenanceService.getStatus();
                 setMaintenanceMode(!!status.maintenanceMode);
@@ -398,25 +409,96 @@ export const Settings: React.FC = () => {
 
                             <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
+                            {/* User Session Timeout */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Session Timeout</label>
-                                <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">Automatically log out users after a period of inactivity</p>
-                                <input
-                                    type="text"
-                                    defaultValue={settings.sessionTimeout}
-                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">User Session Timeout</label>
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">Automatically log out regular users after a period of inactivity</p>
+                                <select
+                                    id="user-session-timeout"
+                                    value={securitySettings.userSessionTimeoutMinutes}
+                                    onChange={(e) => {
+                                        setSecuritySettings(prev => ({ ...prev, userSessionTimeoutMinutes: Number(e.target.value) }));
+                                        setSecuritySaveState('idle');
+                                        setSecuritySaveError(null);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value={15}>15 Minutes</option>
+                                    <option value={30}>30 Minutes</option>
+                                    <option value={60}>1 Hour</option>
+                                    <option value={120}>2 Hours</option>
+                                    <option value={240}>4 Hours</option>
+                                    <option value={480}>8 Hours</option>
+                                    <option value={720}>12 Hours</option>
+                                    <option value={1440}>24 Hours</option>
+                                    <option value={4320}>3 Days</option>
+                                    <option value={10080}>7 Days</option>
+                                </select>
+                            </div>
+
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
+
+                            {/* Admin Session Timeout */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Admin Session Timeout</label>
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">Automatically log out administrators after a period of inactivity</p>
+                                <select
+                                    id="admin-session-timeout"
+                                    value={securitySettings.adminSessionTimeoutMinutes}
+                                    onChange={(e) => {
+                                        setSecuritySettings(prev => ({ ...prev, adminSessionTimeoutMinutes: Number(e.target.value) }));
+                                        setSecuritySaveState('idle');
+                                        setSecuritySaveError(null);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value={15}>15 Minutes</option>
+                                    <option value={30}>30 Minutes</option>
+                                    <option value={60}>1 Hour</option>
+                                    <option value={120}>2 Hours</option>
+                                    <option value={240}>4 Hours</option>
+                                    <option value={480}>8 Hours</option>
+                                    <option value={720}>12 Hours</option>
+                                    <option value={1440}>24 Hours</option>
+                                    <option value={4320}>3 Days</option>
+                                    <option value={10080}>7 Days</option>
+                                </select>
                             </div>
                         </div>
                     </div>
 
+                    {securitySaveState === 'saved' && (
+                        <Alert type="success" message="Security settings saved successfully." />
+                    )}
+                    {(securitySaveState === 'error' && securitySaveError) && (
+                        <Alert type="error" message={securitySaveError} />
+                    )}
+
                     <div className="flex justify-end">
                         <button
-                            onClick={() => alert('Settings saved successfully!')}
+                            onClick={async () => {
+                                if (securitySaveState === 'saving') return;
+                                setSecuritySaveState('saving');
+                                setSecuritySaveError(null);
+                                try {
+                                    const saved = await settingsService.updateSecuritySettings(securitySettings);
+                                    setSecuritySettings(saved);
+                                    setSecuritySaveState('saved');
+                                    window.setTimeout(() => setSecuritySaveState('idle'), 2500);
+                                } catch (error) {
+                                    setSecuritySaveState('error');
+                                    setSecuritySaveError(
+                                        error instanceof Error
+                                            ? error.message
+                                            : 'Failed to save security settings. Please try again.',
+                                    );
+                                }
+                            }}
+                            disabled={securitySaveState === 'saving'}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                         >
                             <Save size={16} />
-                            Save Changes
+                            {securitySaveState === 'saving' ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>
