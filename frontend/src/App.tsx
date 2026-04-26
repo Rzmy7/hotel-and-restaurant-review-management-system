@@ -241,45 +241,47 @@ const AppContent: React.FC = () => {
         <Route
           path="/*"
           element={
-            <div
-              className="flex w-full h-full overflow-hidden"
-              style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
-            >
-              <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
-              <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
-                <Routes>
-                  {/* Default root handling */}
-                  <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-                  
-                  {/* Org-dependent feature pages — all require both auth AND an active organization */}
-                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
+            <RequireAuth>
+              <div
+                className="flex w-full h-full overflow-hidden"
+                style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
+              >
+                <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
+                <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
+                  <Routes>
+                    {/* Default root handling */}
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    
+                    {/* Org-dependent feature pages — all require both auth AND an active organization */}
+                    <Route path="/dashboard" element={<RequireOrganization><DashboardPage /></RequireOrganization>} />
+                    <Route path="/reviews" element={<RequireOrganization><ReviewsPage /></RequireOrganization>} />
+                    <Route path="/sources" element={<RequireOrganization><ReviewSourcesPage /></RequireOrganization>} />
+                    <Route path="/insights" element={<RequireOrganization><InsightsPage /></RequireOrganization>} />
+                    <Route path="/competitors" element={<RequireOrganization><CompetitorsPage /></RequireOrganization>} />
+                    <Route path="/competitors/rankings" element={<RequireOrganization><CompetitorRankingsPage /></RequireOrganization>} />
+                    <Route path="/competitors/compare" element={<RequireOrganization><CompetitorComparison /></RequireOrganization>} />
 
-                  {/* Group routes — no org requirement */}
-                  <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
-                  <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
-                  <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
+                    {/* Group routes — no org requirement */}
+                    <Route path="/groups" element={<GroupsPage />} />
+                    <Route path="/groups/:groupId" element={<GroupDashboardPage />} />
+                    <Route path="/groups/join/:token" element={<GroupInvitePage />} />
 
-                  {/* Pages that don't require an org */}
-                  <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
-                  <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
-                  <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
-                  <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />
-                  <Route path="/subscription" element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
-                  <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-                  <Route path="/no-organization" element={<RequireAuth><NoOrganizationPage /></RequireAuth>} />
+                    {/* Pages that don't require an org */}
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/help" element={<HelpPage />} />
+                    <Route path="/support" element={<SupportPage />} />
+                    <Route path="/subscription" element={<SubscriptionPage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/no-organization" element={<NoOrganizationPage />} />
 
-                  {/* Fallback for undefined routes within the main shell */}
-                  <Route path="*" element={<NotFound />} />
+                    {/* Fallback for undefined routes within the main shell */}
+                    <Route path="*" element={<NotFound />} />
 
-                </Routes>
-              </main>
-            </div>
+                  </Routes>
+                </main>
+              </div>
+            </RequireAuth>
           }
         />
       </Routes>

@@ -92,6 +92,11 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     const headers = new Headers(init?.headers);
     headers.set('Content-Type', 'application/json');
 
+    if (!token && !path.includes('/api/auth/')) {
+        // Silently fail or throw an error that the component can catch
+        throw new ApiRequestError(401, 'No authentication token found');
+    }
+
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
     }

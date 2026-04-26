@@ -26,6 +26,7 @@ def get_engine():
         f"PWD={config.db_pwd};"
         f"Encrypt={config.db_encrypt};"
         f"TrustServerCertificate={config.trust_server_certificate};"
+        "LoginTimeout=30;"
     )
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
     return create_engine(conn_str, echo=False)
