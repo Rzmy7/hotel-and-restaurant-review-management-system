@@ -187,13 +187,23 @@ def fetch_all_reviews_enriched(
 
     results = []
     for rev in db_reviews:
+        # Synthesize text from positive/negative parts if empty (common for Booking.com)
+        full_text = rev.text
+        if not full_text:
+            parts = []
+            if rev.positive_text:
+                parts.append(f"Positive: {rev.positive_text}")
+            if rev.negative_text:
+                parts.append(f"Negative: {rev.negative_text}")
+            full_text = "\n\n".join(parts) if parts else ""
+
         row = {
             "id": str(rev.id),
             "rating": rev.rating,
             "reviewerName": rev.reviewerName,
-            "userName": rev.reviewerName,  # Explicitly set for schema compatibility
-            "text": rev.text,
-            "reviewText": rev.text,  # Explicitly set for schema compatibility
+            "userName": rev.reviewerName,
+            "text": full_text,
+            "reviewText": full_text,
             "summary": rev.summary or "",
             "sentiment": rev.sentiment or "Neutral",
             "language": rev.language or "English",
