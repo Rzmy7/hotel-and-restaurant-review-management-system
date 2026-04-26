@@ -1,106 +1,117 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-#IDE
+# ==========================================
+# IDEs and Editors
+# ==========================================
 .vs/
+.vscode/
+*.vscode/
+.idea/
+*.swp
+*.swo
 
-# dependencies
-/node_modules
-/.pnp
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+.pnp
 .pnp.js
+venv/
+env/
+.Python
+bin/
+lib/
+share/
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-# Backend - Python
+# ==========================================
+# Python - Build and Cache
+# ==========================================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-venv/
-env/
+*.pyz
+.pytest_cache/
+.mypy_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+*.egg
+*.spec
 
-# Backend - Screenshots and outputs
+# ==========================================
+# Web - Build and Production
+# ==========================================
+.next/
+out/
+build/
+dist/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# ==========================================
+# Project Specific - Data and Logs
+# ==========================================
+*.log
+logs/
+*.png
+*.jpg
+*.jpeg
+*.heapsnapshot
+backend/backend_error.log
+scraper_debug.log
+microservices/scraper_engine/booking_modal_error.png
+microservices/scraper_engine/jobs_state.json
+
+# Screenshots and output folders
 **/screenshots/
 **/BookingOutput/
+output/
+tmp/
+backend/tmp/*
+
+# Artifacts and Internal Logs
+PROJECT_LOG.md
+API_CALLS.md
+AGENTS.md
+QWEN.md
+GEMINI.md
+.qwen/
+.opencode/
+opencode.json
+git_status.txt
+merge-temp.sh
+
+# ==========================================
+# Security and Environment
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# ==========================================
+# System Specific
+# ==========================================
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# App Specific Ignores
+# ==========================================
 backend/app/analyzed_data_frontend.json
 backend/app/promptForFrontender.txt
 backend/app/test/services/analyzed_data_frontend.json
 backend/app/test/services/promptForFrontender.txt
-
-.vscode/
-*.vscode/
-.vs/
-
-# temp and status files
-tmp/
-tmp/*
-git_status.txt
-
+System-Launcher.exe
 kimi_mcp.py
 
-
-QWEN.md
-.qwen
-GEMINI.md
-
-.qwen/
-
-# logs
-*.log
-backend/backend_error.log
-logs/
-
-# PyInstaller Outputs
-dist/
-build/
-*.spec
-System-Launcher.exe
-
-
-merge-temp.sh
-
-*.png
-scraper_debug.log
-microservices/scraper_engine/booking_modal_error.png
-microservices/scraper_engine/jobs_state.json
-microservices/scraper_engine/jobs_state.json
-
-
-#debug
-backend/scratch/*
-output/
-
-PROJECT_LOG.md
-API_CALLS.md
-AGENTS.md
-opencode.json
-.opencode
-
+# Internal Scratch
 **/scratch/**
+backend/scratch/*
