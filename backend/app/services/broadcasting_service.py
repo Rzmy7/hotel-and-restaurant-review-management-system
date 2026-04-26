@@ -182,7 +182,7 @@ def _get_recipient_ids(
     active_user_ids = [
         row[0]
         for row in db.query(User.user_id)
-        .filter(User.is_active.is_(True))
+        .filter(User.is_active == True)
         .all()
     ]
 
@@ -205,7 +205,7 @@ def _get_recipient_ids(
         admin_ids = _get_admin_user_ids(db)
         users = (
             db.query(User.user_id, User.is_email_verified, User.is_phone_verified)
-            .filter(User.is_active.is_(True))
+            .filter(User.is_active == True)
             .all()
         )
 

@@ -13,10 +13,9 @@ import { SubscriptionPlans } from './pages/SubscriptionPlans';
 import { Broadcasting } from './pages/Broadcasting';
 import { ReplyGeneration } from './pages/ReplyGeneration';
 import { ReviewProcessing } from './pages/ReviewProcessing';
+import { getFrontendLoginUrl } from './config/frontend';
 
 import { useEffect, useState } from 'react';
-
-const USER_FRONTEND_LOGIN = 'http://localhost:5173/login';
 
 function App() {
   const [ready, setReady] = useState(false);
@@ -46,7 +45,7 @@ function App() {
 
     // --- Auth guard: redirect to user-frontend login if no token ---
     if (!token) {
-      window.location.href = USER_FRONTEND_LOGIN;
+      window.location.href = getFrontendLoginUrl();
       return;
     }
 

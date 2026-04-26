@@ -1,0 +1,16 @@
+venv
+.venv
+__pycache__
+*.pyc
+*.pyo
+.env
+.env.example
+output/
+scraper_debug.log
+*.log
+tests/
+docs/
+jobs_state.json
+.git
+.gitignore
+README.md

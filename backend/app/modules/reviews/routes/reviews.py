@@ -90,6 +90,7 @@ def read_reviews(
     category: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Fetch processed reviews with pagination and filtering."""
@@ -106,7 +107,7 @@ def read_reviews(
             "dateTo": dateTo,
         }
         result = get_all_reviews_from_db(
-            resolved_org_id, page=page, limit=limit, filters=filters
+            resolved_org_id, page=page, limit=limit, filters=filters, db=db
         )
 
         # Calculate total pages
@@ -130,12 +131,13 @@ def read_reviews(
 @router.get("/meta/options")
 def get_options(
     organization_id: Optional[uuid.UUID] = Query(None),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Fetch available filter options (sources, categories)."""
     try:
         resolved_org_id = _resolve_org_id(current_user, organization_id)
-        return get_review_options(resolved_org_id)
+        return get_review_options(resolved_org_id, db=db)
     except HTTPException:
         raise
     except Exception as e:
@@ -154,6 +156,7 @@ def get_stats(
     category: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Fetch aggregated review statistics, respecting all active filters."""
@@ -169,7 +172,7 @@ def get_stats(
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
-        return get_review_stats(resolved_org_id, filters=filters)
+        return get_review_stats(resolved_org_id, filters=filters, db=db)
     except HTTPException:
         raise
     except Exception as e:

@@ -54,6 +54,14 @@ async def lifespan(app: FastAPI):
     # Auto-create any missing tables from ORM models
     if engine:
         Base.metadata.create_all(bind=engine)
+
+    # Run group schema migrations (idempotent — safe every startup)
+    try:
+        from app.modules.groups.migrations import run_group_migrations
+        run_group_migrations(engine)
+    except Exception as _mig_err:
+        logger.warning("Group migrations skipped: %s", _mig_err)
+
     # Startup actions
     from app.modules.admin.services.subscription_service import seed_subscription_data
 
@@ -123,9 +131,10 @@ except ImportError:
 import app.modules.user.models.user_models  # noqa: F401  (User)
 import app.modules.auth.models.auth_models  # noqa: F401  (Role, UserRole, Session, PasswordResetToken)
 import app.modules.auth.models  # noqa: F401  (Notification, UserNotification, BroadcastEvent)
-import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupMemberRole)
+import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupInvite)
 import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
 import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
+import app.modules.organization.models.rules_model  # noqa: F401  (OrganizationRule)
 
 # Hansi UserManagement routers
 from app.modules.user.routes.profile_routes import router as profile_router
@@ -233,6 +242,10 @@ app.include_router(onboarding_router, prefix="/api")
 app.include_router(user_router)  # already declares prefix="/api" internally
 app.include_router(user_org_router)  # already declares prefix="/api" internally
 app.include_router(org_source_router)  # already declares prefix="/api" internally
+
+# User Notifications
+from app.modules.auth.routes.notifications_routes import router as user_notifications_router
+app.include_router(user_notifications_router, prefix="/api")
 
 # ── User-accessible subscription endpoints (not admin-only) ────────
 # These are read-only subscription endpoints needed by the user frontend

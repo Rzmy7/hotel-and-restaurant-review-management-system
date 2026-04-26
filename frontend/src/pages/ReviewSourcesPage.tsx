@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
@@ -17,11 +17,29 @@ import PageHeader from '../components/shared/PageHeader';
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  
+  // UI State - Moved to top to avoid initialization errors
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<'settings' | 'analytics'>('settings');
+  const [activityFilter, setActivityFilter] = useState<{type?: string, important?: boolean, sourceId?: string | number}>({});
+  const [activitySearch, setActivitySearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [lastSyncTriggeredAt, setLastSyncTriggeredAt] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   // Read org ID from the organization store
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const organizationId = currentOrg?.id ?? '';
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(activitySearch), 500);
+    return () => clearTimeout(timer);
+  }, [activitySearch]);
 
   // React Query: Sources
   const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({
@@ -52,8 +70,16 @@ const ReviewSourcesPage = () => {
     isFetchingNextPage,
     isLoading: isLoadingLogs
   } = useInfiniteQuery({
-    queryKey: ['syncLogs', organizationId],
-    queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(organizationId, pageParam as number, 10),
+    queryKey: ['syncLogs', organizationId, activityFilter, debouncedSearch],
+    queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(
+      organizationId, 
+      pageParam as number, 
+      10, 
+      activityFilter.type, 
+      activityFilter.important,
+      debouncedSearch,
+      activityFilter.sourceId
+    ),
     getNextPageParam: (lastPage: SyncLog[], allPages: SyncLog[][]) => lastPage.length === 10 ? allPages.length : undefined,
     initialPageParam: 0,
   });
@@ -126,20 +152,28 @@ const ReviewSourcesPage = () => {
     onError: () => showToast('Failed to clear reviews', 'error'),
   });
 
+  const handleExportLogs = async () => {
+    try {
+      await sourcesService.exportSyncLogs(organizationId);
+      showToast('Activity history exported successfully.', 'success');
+    } catch (error) {
+      showToast('Failed to export activity history.', 'error');
+    }
+  };
+
+  const handleClearLogs = async () => {
+    try {
+      await sourcesService.clearSyncLogs(organizationId);
+      queryClient.invalidateQueries({ queryKey: ['syncLogs', organizationId] });
+      showToast('Activity history cleared.', 'success');
+    } catch (error) {
+      showToast('Failed to clear activity history.', 'error');
+    }
+  };
+
   // Combined Loading States
   const isLoading = isLoadingSources || isLoadingStats || isLoadingLogs;
   const isRefreshing = isRefreshingSources;
-
-  // UI State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeModalTab, setActiveModalTab] = useState<'settings' | 'analytics'>('settings');
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [selectedSource, setSelectedSource] = useState<Source | null>(null);
-
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
 
   // Filtered Sources
   const filteredSources = useMemo(() => {
@@ -184,7 +218,7 @@ const ReviewSourcesPage = () => {
   };
 
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">
+    <div className="min-h-full bg-[#F9FAFB] dark:bg-[#121826] flex flex-col">
       <PageHeader 
         title="Review Sources" 
         subtitle="Manage your review platforms and connections"
@@ -192,15 +226,18 @@ const ReviewSourcesPage = () => {
       >
           <button
             onClick={() => { queryClient.invalidateQueries({ queryKey: ['sources'] }); }}
-            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
+            className={`w-10 h-10 grid place-items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-[#597FE6] dark:hover:border-[#597FE6] hover:text-[#597FE6] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-[#597FE6] dark:border-[#597FE6]' : ''}`}
             title="Refresh System"
           >
             <RefreshCw size={18} />
           </button>
 
           <button
-            onClick={() => setIsHistoryOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-[13px] font-bold text-gray-600 dark:text-gray-300 transition-all duration-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-blue-400 hover:text-[#4e80ee] active:scale-95 shadow-sm"
+            onClick={() => {
+              setIsHistoryOpen(true);
+              queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[13px] font-bold text-slate-600 dark:text-slate-300 transition-all duration-300 hover:bg-[#F9FAFB] dark:hover:bg-slate-700 hover:border-[#597FE6] hover:text-[#597FE6] active:scale-95 shadow-sm"
           >
             <History size={16} />
             Activity
@@ -208,7 +245,7 @@ const ReviewSourcesPage = () => {
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95"
+            className="flex items-center gap-2 bg-[#597FE6] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-[#597FE6]/20 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95"
           >
             <Plus size={18} />
             Add Source
@@ -278,6 +315,14 @@ const ReviewSourcesPage = () => {
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={fetchNextPage}
+        activeSyncSourceId={sources.find(s => s.status === 'Syncing')?.id}
+        onFilterChange={setActivityFilter}
+        currentFilter={activityFilter}
+        onSearchChange={setActivitySearch}
+        currentSearch={activitySearch}
+        sources={sources}
+        onExport={handleExportLogs}
+        onClear={handleClearLogs}
       />
 
       <AddSourceModal

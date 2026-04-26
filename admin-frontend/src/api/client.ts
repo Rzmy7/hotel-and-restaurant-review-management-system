@@ -1,15 +1,8 @@
 /**
  * Centralized API Client for admin-frontend
  */
-const API_BASE_URL =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://localhost:8000';
-
-const getApiBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || API_BASE_URL).replace(/\/$/, '');
-};
+import { getApiBaseUrl } from '../config/api';
+import { getFrontendLoginUrl } from '../config/frontend';
 
 const getFullUrl = (url: string) => {
     if (url.startsWith('http')) return url;
@@ -35,7 +28,7 @@ async function handleResponse(response: Response) {
     if (response.status === 401) {
         console.warn("Unauthorized! Redirecting to login...");
         localStorage.removeItem("token");
-        window.location.href = "http://localhost:5173/login?expired=true";
+        window.location.href = getFrontendLoginUrl('expired=true');
         throw new Error("Session expired.");
     }
 
@@ -70,7 +63,7 @@ const getHeaders = (customHeaders?: Record<string, string>) => {
 };
 
 export const apiClient = {
-    async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
+    async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>, signal?: AbortSignal): Promise<T> {
         const fullUrl = getFullUrl(url);
         let queryString = '';
         if (params) {
@@ -88,7 +81,8 @@ export const apiClient = {
         }
         const response = await fetch(`${fullUrl}${queryString}`, {
             method: 'GET',
-            headers: getHeaders(customHeaders)
+            headers: getHeaders(customHeaders),
+            signal
         });
         return handleResponse(response);
     },

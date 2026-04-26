@@ -255,7 +255,7 @@ export const Settings: React.FC = () => {
         : [{ value: settings.timezone, label: `Custom - ${settings.timezone}` }, ...TIMEZONE_OPTIONS];
 
     return (
-        <div className="pt-4 max-w-5xl space-y-4">
+        <div className="space-y-6 pt-4">
             {/* Tabs */}
             <Tabs
                 tabs={[

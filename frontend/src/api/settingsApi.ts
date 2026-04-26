@@ -1,5 +1,6 @@
 import type { SettingsData } from '../types/settings';
 import axios from 'axios';
+import { getApiBaseUrl } from '../config/api';
 
 // Mocked initial data
 const STORAGE_KEY = 'vite-ui-theme';
@@ -48,6 +49,7 @@ type UserOrganization = {
     logo_url?: string | null;
     city?: string | null;
     country?: string | null;
+    location_url?: string | null;
 };
 
 type OrganizationType = {
@@ -65,15 +67,7 @@ export type PasswordChangePayload = {
     confirmPassword?: string;
 };
 
-const API_BASE_URL =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://localhost:8000';
-
-const getApiBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || API_BASE_URL).replace(/\/$/, '');
-};
+// API base URL is resolved from config/api.ts
 
 const toApiPath = (path: string): string => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -348,5 +342,47 @@ export const settingsApi = {
             toApiPath('/users/me/2fa/disable')
         );
         return response.data;
-    }
+    },
+
+    uploadRulesFile: async (file: File): Promise<{
+        message: string;
+        filename: string;
+        rules_extracted: number;
+        rules: Array<{ rule_id: string; text: string; order: number }>;
+    }> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await settingsAxios.post(
+            toApiPath(`/organizations/${orgId}/upload-rules`),
+            formData,
+        );
+
+        return response.data;
+    },
+
+    fetchOrganizationRules: async (): Promise<Array<{
+        rule_id: string;
+        rule_text: string;
+        rule_order: number;
+        is_embedded: boolean;
+        source_filename: string | null;
+        created_at: string | null;
+    }>> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            return [];
+        }
+
+        const response = await settingsAxios.get(
+            toApiPath(`/organizations/${orgId}/rules`),
+        );
+
+        return Array.isArray(response.data) ? response.data : [];
+    },
 };

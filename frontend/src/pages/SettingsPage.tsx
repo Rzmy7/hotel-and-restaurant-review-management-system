@@ -32,7 +32,7 @@ const TABS = [
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword } = useSettings();
+  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword, uploadRulesFile, fetchOrganizationRules } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -42,7 +42,10 @@ const SettingsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingRules, setIsUploadingRules] = useState(false);
+  const [organizationRules, setOrganizationRules] = useState<Array<{ rule_id: string; rule_text: string; rule_order: number; is_embedded: boolean; source_filename: string | null }>>([]);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const rulesInputRef = useRef<HTMLInputElement | null>(null);
 
   const { setIsDirty, registerBlockHandler, unregisterBlockHandler } = useNavigationBlocker();
 
@@ -71,6 +74,12 @@ const SettingsPage: React.FC = () => {
       setHasUnsavedChanges(false);
     }
   }, [serverData]);
+
+  useEffect(() => {
+    if (activeTab === 'hotelInfo') {
+      fetchOrganizationRules().then(setOrganizationRules).catch(() => {});
+    }
+  }, [activeTab]);
 
   if (loading || !localData) {
     return <DashboardSkeleton />;
@@ -196,6 +205,28 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleRulesUploadClick = () => {
+    rulesInputRef.current?.click();
+  };
+
+  const handleRulesFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setIsUploadingRules(true);
+    try {
+      const result = await uploadRulesFile(file);
+      // Refresh rules list after successful upload
+      const updatedRules = await fetchOrganizationRules();
+      setOrganizationRules(updatedRules);
+    } catch {
+      // Error toast is handled in useSettings.
+    } finally {
+      setIsUploadingRules(false);
+    }
+  };
+
   const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
@@ -206,6 +237,13 @@ const SettingsPage: React.FC = () => {
         accept="image/png,image/jpeg,image/jpg,image/webp"
         className="hidden"
         onChange={handleLogoFileChange}
+      />
+      <input
+        ref={rulesInputRef}
+        type="file"
+        accept=".txt,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        className="hidden"
+        onChange={handleRulesFileChange}
       />
       <UnsavedChangesModal
         isOpen={isModalOpen}
@@ -294,6 +332,9 @@ const SettingsPage: React.FC = () => {
                   onLogoUpload={handleLogoUploadClick}
                   onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
                   isUploadingLogo={isUploadingLogo}
+                  onRulesUpload={handleRulesUploadClick}
+                  isUploadingRules={isUploadingRules}
+                  organizationRules={organizationRules}
                 />
               )}
             </div>

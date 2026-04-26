@@ -63,6 +63,7 @@ def trigger_booking_scrape(request: Request, body: BookingScrapeRequest):
             session.add(source)
         else:
             source.source_url = normalized_url
+            source.platform_name = "booking"
         session.commit()
     except Exception as e:
         session.rollback()

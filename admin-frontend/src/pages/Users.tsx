@@ -58,7 +58,7 @@ export const UsersPage: React.FC = () => {
     const planOptions = useMemo(() => {
         const assignedPlans = users
             .map(user => user.plan?.trim())
-            .filter((plan): plan is string => Boolean(plan) && plan.toLowerCase() !== 'basic');
+            .filter((plan): plan is string => Boolean(plan) && typeof plan === 'string' && plan.toLowerCase() !== 'basic');
 
         return [...new Set([...availablePlans, ...assignedPlans])];
     }, [availablePlans, users]);
@@ -154,7 +154,7 @@ export const UsersPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-8 pt-4">
+        <div className="space-y-6 pt-4">
             {/* Stats Cards */}
             <UserStatsGrid
                 allActiveUsers={allActiveUsers}

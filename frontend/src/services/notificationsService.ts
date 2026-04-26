@@ -1,14 +1,7 @@
 import { isAdminRole } from '../utils/authRole';
+import { getApiBaseUrl } from '../config/api';
 
-const DEFAULT_API_BASE_URL =
-    import.meta.env.VITE_MAIN_BACKEND_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    'http://localhost:8000';
-
-const getBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || DEFAULT_API_BASE_URL).replace(/\/$/, '');
-};
+const getBaseUrl = (): string => getApiBaseUrl();
 
 type JwtPayload = {
     user_id?: string;

@@ -69,7 +69,37 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
   return <div className={`${baseClasses} ${getFallbackStyles()}`}>{platform[0]}</div>;
 };
 
-const StatusBadge = ({ status }: { status: Source['status'] }) => {
+import { useSyncProgress } from '../../hooks/useSyncProgress';
+
+const SyncProgressBar = ({ sourceId }: { sourceId: string | number }) => {
+  const { progress } = useSyncProgress(sourceId, true);
+  
+  if (!progress) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100/50 shadow-sm shadow-blue-50 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800/50 dark:shadow-none">
+        <RefreshCw size={10} className="animate-spin" />
+        Syncing
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1 w-24">
+      <div className="flex items-center justify-between text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+        <span>Syncing</span>
+        <span>{progress.percentage}%</span>
+      </div>
+      <div className="w-full h-1 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-blue-500 rounded-full transition-all duration-500"
+          style={{ width: `${progress.percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const StatusBadge = ({ status, sourceId }: { status: Source['status'], sourceId: string | number }) => {
   switch (status) {
     case 'Active':
       return (
@@ -100,12 +130,7 @@ const StatusBadge = ({ status }: { status: Source['status'] }) => {
         </span>
       );
     case 'Syncing':
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100/50 shadow-sm shadow-blue-50 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800/50 dark:shadow-none">
-          <RefreshCw size={10} className="animate-spin" />
-          Syncing
-        </span>
-      );
+      return <SyncProgressBar sourceId={sourceId} />;
   }
 };
 
@@ -198,6 +223,11 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         >
                           {source.platform}
                         </button>
+                        {source.platformStatus === 'inactive' && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-rose-50 text-rose-500 border border-rose-100/50">
+                            Inactive
+                          </span>
+                        )}
                         <a
                           href={source.propertyUrl}
                           target="_blank"
@@ -212,7 +242,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
 
                   {/* Status */}
                   <td className="px-6 py-5">
-                    <StatusBadge status={source.status} />
+                    <StatusBadge status={source.status} sourceId={source.id} />
                   </td>
 
                   {/* Last Synced */}
@@ -265,9 +295,9 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                     <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleSyncClick(source.id)}
-                        disabled={source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id)}
+                        disabled={source.platformStatus === 'inactive' || source.status === 'Paused' || source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id)}
                         className="p-2 text-[#4e80ee] hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                        title={source.status === 'Paused' ? 'Resume source to sync' : source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
+                        title={source.platformStatus === 'inactive' ? `Platform ${source.platform} is disabled by admin` : source.status === 'Paused' ? 'Resume source to sync' : source.status === 'In Queue' || source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'Sync in progress' : 'Sync Now'}
                       >
                         <RefreshCw size={18} className={source.status === 'Syncing' || localSyncingIds.has(source.id) ? 'animate-spin' : ''} />
                       </button>

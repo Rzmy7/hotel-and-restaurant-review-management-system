@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { ServerStatsGrid } from '../components/ServerStatsGrid';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import { fetchServerStatuses } from '../services/monitoringService';
 import type { ServerStatus } from '../types';
@@ -13,7 +12,6 @@ export const Monitoring: React.FC = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                setLoading(true);
                 setError(null);
                 const serverData = await fetchServerStatuses();
                 setServers(serverData);
@@ -42,12 +40,8 @@ export const Monitoring: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pt-4">
             {/* Error Alert */}
             {error && (
                 <Alert 
@@ -60,7 +54,7 @@ export const Monitoring: React.FC = () => {
             {/* Server Cards */}
             <div>
                 <p className="text-gray-500 mb-4 pt-2">Server status and performance metrics</p>
-                <ServerStatsGrid servers={servers} />
+                <ServerStatsGrid servers={servers} loading={loading} />
             </div>
         </div>
     );

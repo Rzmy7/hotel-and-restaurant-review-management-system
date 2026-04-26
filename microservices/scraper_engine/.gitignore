@@ -43,3 +43,5 @@ tmp/*
 
 *.png
 jobs_state.json
+
+scratch/*

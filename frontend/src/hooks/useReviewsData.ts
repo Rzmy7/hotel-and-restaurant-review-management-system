@@ -1,65 +1,51 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { reviewsService } from '../services/reviewsService';
-import type { Review, ReviewStats, FetchReviewsParams, PaginatedResponse } from '../types/reviews';
+import type { FetchReviewsParams } from '../types/reviews';
 
 export function useReviewsData(organizationId: string, params: FetchReviewsParams) {
-    const [paginatedData, setPaginatedData] = useState<PaginatedResponse<Review>>({
-        data: [],
-        total: 0,
-        page: 0,
-        limit: 15,
-        totalPages: 0
+    const queryClient = useQueryClient();
+
+    // 1. Fetch Reviews with pagination/filters
+    const reviewsQuery = useQuery({
+        queryKey: ['reviews', organizationId, params],
+        queryFn: () => reviewsService.getReviews(organizationId, params),
+        placeholderData: (previousData) => previousData, // keepPreviousData in v5
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 
-    const [stats, setStats] = useState<ReviewStats | null>(null);
-    const [filtersConfig, setFiltersConfig] = useState<{ sources: string[], categories: string[] }>({ sources: [], categories: [] });
+    // 2. Fetch Stats
+    const statsQuery = useQuery({
+        queryKey: ['review-stats', organizationId, params],
+        queryFn: () => reviewsService.getStats(organizationId, params),
+        staleTime: 5 * 60 * 1000,
+    });
 
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchReviews = useCallback(async (silent = false) => {
-        if (!silent) setIsLoading(true);
-        setError(null);
-
-        try {
-            const [fetchedReviews, fetchedStats, fetchedOptions] = await Promise.all([
-                reviewsService.getReviews(organizationId, params),
-                reviewsService.getStats(organizationId),
-                reviewsService.getOptions(organizationId)
-            ]);
-
-            setPaginatedData(fetchedReviews);
-            setStats(fetchedStats);
-            setFiltersConfig(fetchedOptions);
-        } catch (err) {
-            console.error('Failed to fetch reviews:', err);
-            setError('Unable to load reviews data. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [organizationId, JSON.stringify(params)]);
-
-    useEffect(() => {
-        fetchReviews();
-    }, [fetchReviews]);
+    // 3. Fetch Options (sources, categories) - fetch once per organization
+    const optionsQuery = useQuery({
+        queryKey: ['review-options', organizationId],
+        queryFn: () => reviewsService.getOptions(organizationId),
+        staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    });
 
     const refresh = () => {
-        reviewsService.clearCache();
-        fetchReviews(false);
+        queryClient.invalidateQueries({ queryKey: ['reviews', organizationId] });
+        queryClient.invalidateQueries({ queryKey: ['review-stats', organizationId] });
     };
 
+    const paginatedData = reviewsQuery.data;
+
     return {
-        reviews: paginatedData.data,
+        reviews: paginatedData?.data || [],
         pagination: {
-            total: paginatedData.total,
-            page: paginatedData.page,
-            limit: paginatedData.limit,
-            totalPages: paginatedData.totalPages
+            total: paginatedData?.total || 0,
+            page: paginatedData?.page || 0,
+            limit: paginatedData?.limit || 15,
+            totalPages: paginatedData?.totalPages || 0
         },
-        stats,
-        filtersConfig,
-        isLoading,
-        error,
+        stats: statsQuery.data || null,
+        filtersConfig: optionsQuery.data || { sources: [], categories: [] },
+        isLoading: reviewsQuery.isLoading || statsQuery.isLoading,
+        error: reviewsQuery.error ? 'Unable to load reviews.' : null,
         refresh
     };
 }

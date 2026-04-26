@@ -6,6 +6,7 @@ import { AuthLayout } from '../components/shared/AuthLayout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
+import { getApiBaseUrl } from '../config/api';
 import {
   mapBackendSignupErrorToField,
   normalizeSignupPayload,
@@ -130,7 +131,7 @@ const SignUpPage = () => {
 
   const handleGoogleLogin = () => {
     // Open backend Google OAuth flow (backend will redirect to Google)
-    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+    const apiBase = getApiBaseUrl();
     window.location.href = `${apiBase}/api/auth/login/google`;
   };
 

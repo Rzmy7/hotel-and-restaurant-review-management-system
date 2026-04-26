@@ -63,6 +63,7 @@ def trigger_google_scrape(request: Request, body: GoogleScrapeRequest):
             session.add(source)
         else:
             source.source_url = normalized_url
+            source.platform_name = "google"
         session.commit()
     except Exception as e:
         session.rollback()

@@ -6,6 +6,9 @@ import type { Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '.
 import { apiClient } from '../api/client';
 
 class SourcesService {
+    stopSync(id: string | number): Promise<any> {
+      throw new Error('Method not implemented.');
+    }
     async getPlatforms(): Promise<any[]> {
         return apiClient.get<any[]>('/api/source/platforms');
     }
@@ -15,6 +18,7 @@ class SourcesService {
             id: s.source_id,
             platformId: s.platform_id,
             platform: s.platform_name,
+            platformStatus: s.platform_status,
             status: (() => {
                 const lower = (s.source_status || '').toLowerCase();
                 if (lower === 'queued')  return 'In Queue';
@@ -57,9 +61,40 @@ class SourcesService {
         };
     }
 
-    async getSyncLogs(organizationId: string, page: number = 0, limit: number = 10): Promise<SyncLog[]> {
+    async getSyncLogs(
+        organizationId: string, 
+        page: number = 0, 
+        limit: number = 10,
+        activityType?: string,
+        isImportant?: boolean,
+        search?: string,
+        sourceId?: string | number
+    ): Promise<SyncLog[]> {
         const skip = page * limit;
-        return apiClient.get<SyncLog[]>(`/api/source/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`);
+        let url = `/api/source/organizations/${organizationId}/sync-logs?skip=${skip}&limit=${limit}`;
+        if (activityType) url += `&activity_type=${activityType}`;
+        if (isImportant !== undefined) url += `&is_important=${isImportant}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (sourceId) url += `&source_id=${sourceId}`;
+        
+        return apiClient.get<SyncLog[]>(url);
+    }
+
+    async exportSyncLogs(organizationId: string): Promise<void> {
+        const response = await apiClient.get<Blob>(`/api/source/organizations/${organizationId}/sync-logs/export`, {
+            responseType: 'blob'
+        });
+        const url = window.URL.createObjectURL(new Blob([response]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `sync_history_${organizationId}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
+    async clearSyncLogs(organizationId: string): Promise<void> {
+        return apiClient.delete(`/api/source/organizations/${organizationId}/sync-logs/clear`);
     }
 
     async addSource(organizationId: string, sourceData: any): Promise<Source> {

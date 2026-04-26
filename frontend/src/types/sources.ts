@@ -21,6 +21,7 @@ export interface Source {
     id: string | number;
     platformId: number;
     platform: SourcePlatform;
+    platformStatus: 'active' | 'inactive';
     status: SourceStatus;
     lastSyncedAt: string | null;
     syncSchedule: SyncSchedule;
@@ -44,6 +45,9 @@ export interface SyncLog {
     durationMs: number;
     reviewsFetched: number;
     errorMessage?: string;
+    activityType?: string;
+    isImportant?: boolean;
+    activityDetails?: string;
 }
 
 export interface SourceStats {

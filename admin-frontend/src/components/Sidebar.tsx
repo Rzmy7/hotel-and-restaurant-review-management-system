@@ -17,6 +17,7 @@ import {
   Sparkles,
   LogOut,
 } from 'lucide-react';
+import { getFrontendLoginUrl } from '../config/frontend';
 
 export const Sidebar: React.FC = () => {
   const navItems = [
@@ -70,7 +71,7 @@ export const Sidebar: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('authUser');
-    window.location.href = 'http://localhost:5173/login?logout=true';
+    window.location.href = getFrontendLoginUrl('logout=true');
   };
 
   return (

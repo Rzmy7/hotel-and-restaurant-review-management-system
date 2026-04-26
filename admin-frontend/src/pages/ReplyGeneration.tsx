@@ -117,7 +117,7 @@ export const ReplyGeneration: React.FC = () => {
     }
 
     return (
-        <div className="pt-4 max-w-6xl space-y-5">
+        <div className="space-y-6 pt-4">
             <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="absolute inset-0 bg-slate-50/70 pointer-events-none" />
                 <div className="relative p-5 md:p-6">

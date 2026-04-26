@@ -91,5 +91,29 @@ export const settingsService = {
             }
             throw new Error('Failed to disable 2FA');
         }
-    }
+    },
+
+    uploadRulesFile: async (file: File) => {
+        try {
+            return await settingsApi.uploadRulesFile(file);
+        } catch (error) {
+            console.error('Failed to upload rules file:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string' && detail.trim()) {
+                    throw new Error(detail);
+                }
+            }
+            throw new Error('Failed to process rules file');
+        }
+    },
+
+    fetchOrganizationRules: async () => {
+        try {
+            return await settingsApi.fetchOrganizationRules();
+        } catch (error) {
+            console.error('Failed to fetch organization rules:', error);
+            return [];
+        }
+    },
 };

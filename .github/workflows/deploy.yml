@@ -1,0 +1,311 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [dev]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/rzmy7/reviewmate
+  RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════
+  # CHANGE DETECTION — figure out what actually changed
+  # ═══════════════════════════════════════════════════════════════════
+
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      admin-frontend: ${{ steps.filter.outputs.admin-frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      embedding: ${{ steps.filter.outputs.embedding }}
+      scraper: ${{ steps.filter.outputs.scraper }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'deploy/server1-frontends/**'
+            admin-frontend:
+              - 'admin-frontend/**'
+              - 'deploy/server1-frontends/**'
+            backend:
+              - 'backend/**'
+              - 'deploy/server2-backend/**'
+            embedding:
+              - 'microservices/embedding-service/**'
+              - 'deploy/server3-embedding/**'
+            scraper:
+              - 'microservices/scraper_engine/**'
+              - 'deploy/server4-scraper/**'
+
+  # ═══════════════════════════════════════════════════════════════════
+  # BUILD JOBS — only run when their code changes
+  # ═══════════════════════════════════════════════════════════════════
+
+  build-frontend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-frontend:latest
+            ${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.PROD_API_URL }}
+            VITE_MAIN_BACKEND_URL=${{ vars.PROD_API_URL }}
+            VITE_ADMIN_PANEL_URL=${{ vars.PROD_ADMIN_URL }}
+
+  build-admin-frontend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.admin-frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./admin-frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-admin-frontend:latest
+            ${{ env.IMAGE_PREFIX }}-admin-frontend:${{ github.sha }}
+          build-args: |
+            VITE_MAIN_BACKEND_URL=${{ vars.PROD_API_URL }}
+            VITE_SCRAPING_URL=${{ vars.PROD_SCRAPER_URL }}
+            VITE_EMBEDDING_SERVICE_URL=${{ vars.PROD_EMBEDDING_URL }}
+            VITE_FRONTEND_URL=${{ vars.PROD_FRONTEND_URL }}
+
+  build-backend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          no-cache: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-backend:latest
+            ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
+
+  build-embedding:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.embedding == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./microservices/embedding-service
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-embedding:latest
+            ${{ env.IMAGE_PREFIX }}-embedding:${{ github.sha }}
+
+  build-scraper:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.scraper == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./microservices/scraper_engine
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-scraper:latest
+            ${{ env.IMAGE_PREFIX }}-scraper:${{ github.sha }}
+
+  # ═══════════════════════════════════════════════════════════════════
+  # DEPLOY JOBS — sync configs, bootstrap SSL if needed, start stack
+  # ═══════════════════════════════════════════════════════════════════
+
+  deploy-frontends:
+    needs: [detect-changes, build-frontend, build-admin-frontend]
+    if: |
+      always() &&
+      (needs.build-frontend.result == 'success' || needs.build-admin-frontend.result == 'success') &&
+      !(needs.build-frontend.result == 'failure' || needs.build-admin-frontend.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.FRONTEND_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
+          script: |
+            cd /opt/reviewmate
+            # Sync config files from repo
+            curl -sL "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            # Bootstrap SSL if certs don't exist (must run BEFORE docker compose up)
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
+            docker image prune -f
+            echo "Frontends deployed successfully"
+
+  deploy-backend:
+    needs: [build-backend]
+    if: needs.build-backend.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.BACKEND_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
+          script: |
+            cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/api.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
+            docker image prune -f
+            echo "Backend deployed successfully"
+
+  deploy-embedding:
+    needs: [build-embedding]
+    if: needs.build-embedding.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EMBEDDING_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
+          script: |
+            cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/embed.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
+            docker image prune -f
+            echo "Embedding service deployed successfully"
+
+  deploy-scraper:
+    needs: [build-scraper]
+    if: needs.build-scraper.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SCRAPING_HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          command_timeout: 5m
+          envs: RAW_BASE
+          script: |
+            cd /opt/reviewmate
+            curl -sL "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml
+            curl -sL "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf
+            curl -sL "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh
+            chmod +x init-ssl.sh
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/scrape.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
+            if [ "$CERT_EXISTS" = "no" ]; then
+              echo "SSL certs not found, running init-ssl.sh..."
+              bash init-ssl.sh
+            else
+              docker compose up -d --remove-orphans
+            fi
+            docker image prune -f
+            echo "Scraper engine deployed successfully"

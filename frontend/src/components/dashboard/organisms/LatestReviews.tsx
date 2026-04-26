@@ -6,6 +6,7 @@ import type { Review } from '../../../types/dashboard';
 import type { Review as DetailedReview } from '../../../types/reviews';
 import { Card } from '../atoms/Card';
 import { SectionHeader } from '../molecules/SectionHeader';
+import { useReviewsStore } from '../../../stores/useReviewsStore';
 
 export interface LatestReviewsProps {
     reviews: Review[];
@@ -13,28 +14,24 @@ export interface LatestReviewsProps {
 
 export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
     const navigate = useNavigate();
-    const [selectedReview, setSelectedReview] = useState<DetailedReview | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const openReview = useReviewsStore(state => state.openReview);
+    const selectedReview = useReviewsStore(state => state.selectedReview);
+    const isModalOpen = useReviewsStore(state => state.isModalOpen);
+    const closeReview = useReviewsStore(state => state.closeReview);
 
     const handleReviewClick = (review: Review) => {
-        setSelectedReview({
+        openReview({
             id: review.id,
             rating: review.rating,
-            userName: review.reviewerName,
+            userName: review.reviewerName || 'Anonymous',
             reviewText: review.reviewText,
             heading: review.heading,
             sentiment: review.sentiment,
             categories: review.categories || [],
             source: review.source,
             date: review.date,
-            status: 'Pending' // Default fallback status
+            status: 'pending' // Default fallback status
         });
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedReview(null);
     };
 
     return (
@@ -69,10 +66,11 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            {reviews.map((review) => (
+                            {reviews.map((review, index) => (
                                 <div
                                     key={review.id}
-                                    className="p-4 border border-gray-100 dark:border-slate-700 rounded-lg transition-all cursor-pointer hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 bg-white dark:bg-slate-800/80 group/item"
+                                    className="staggered-item p-4 border border-gray-100 dark:border-slate-700 rounded-lg transition-all cursor-pointer hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 bg-white dark:bg-slate-800/80 group/item"
+                                    style={{ animationDelay: `${index * 0.05}s` }}
                                     onClick={() => handleReviewClick(review)}
                                 >
                                     <div className="flex justify-between items-start mb-2">
@@ -103,8 +101,9 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
             {selectedReview && (
                 <ReviewDetailModal
                     isOpen={isModalOpen}
-                    onClose={handleCloseModal}
+                    onClose={closeReview}
                     review={selectedReview}
+                    allReviews={reviews as any}
                 />
             )}
         </>
