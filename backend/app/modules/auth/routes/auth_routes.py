@@ -200,9 +200,13 @@ def switch_organization(
 
 @router.post("/forgot-password")
 def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
+    """
+    Handles forgot password requests by generating a secure token and sending an email.
+    """
     try:
         user = get_user_by_email(db, payload.email.lower())
         if not user:
+            # Silent failure for security
             return {"message": "If the account exists, a reset link has been sent"}
 
         raw_token = secrets.token_urlsafe(32)
@@ -211,28 +215,19 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
             minutes=PASSWORD_RESET_EXPIRE_MINUTES
         )
 
-        db.execute(
-            text("""
-                UPDATE dbo.password_reset_token
-                SET used_at = GETUTCDATE()
-                WHERE user_id = :user_id AND used_at IS NULL
-            """),
-            {"user_id": str(user.user_id)},
-        )
+        # Invalidate existing active tokens for this user using ORM
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.user_id,
+            PasswordResetToken.used_at == None,
+        ).update({"used_at": datetime.now(timezone.utc)}, synchronize_session=False)
 
-        db.execute(
-            text("""
-                INSERT INTO dbo.password_reset_token
-                    (token_id, user_id, token_hash, expires_at, created_at)
-                VALUES
-                    (NEWID(), :user_id, :token_hash, :expires_at, GETUTCDATE())
-            """),
-            {
-                "user_id": str(user.user_id),
-                "token_hash": token_hash,
-                "expires_at": expires_at,
-            },
+        # Create new reset token
+        new_token = PasswordResetToken(
+            user_id=user.user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
         )
+        db.add(new_token)
         db.commit()
 
         reset_link = f"{FRONTEND_URL}/reset-password/{raw_token}"
@@ -247,72 +242,65 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=500, detail=f"Forgot password DB failed: {str(e)}"
+            status_code=500, detail=f"Forgot password processing failed: {str(e)}"
         )
 
 
 @router.post("/reset-password/{token}")
 def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db)):
+    """
+    Validates the reset token and updates the user's password.
+    """
     try:
         token_hash = token_sha256(token)
-        token_row = db.execute(
-            text("""
-                SELECT TOP 1 token_id, user_id, expires_at, used_at
-                FROM dbo.password_reset_token
-                WHERE token_hash = :token_hash
-                ORDER BY created_at DESC
-            """),
-            {"token_hash": token_hash},
-        ).fetchone()
+        
+        # Fetch token using ORM
+        token_record = (
+            db.query(PasswordResetToken)
+            .filter(PasswordResetToken.token_hash == token_hash)
+            .order_by(PasswordResetToken.created_at.desc())
+            .first()
+        )
 
-        if not token_row:
+        if not token_record:
             raise HTTPException(status_code=400, detail="Invalid token")
-        if token_row.used_at is not None:
+        
+        if token_record.used_at is not None:
             raise HTTPException(status_code=400, detail="Token already used")
-        expires_at = as_utc(token_row.expires_at)
+            
+        expires_at = as_utc(token_record.expires_at)
         now_utc = datetime.now(timezone.utc)
 
         if expires_at is None or expires_at < now_utc:
             raise HTTPException(status_code=400, detail="Token expired")
 
-        new_password_hash = hash_password(payload.new_password)
+        # Update user password
+        user = db.query(User).filter(User.user_id == token_record.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        user.password_hash = hash_password(payload.new_password)
+        user.updated_at = datetime.now(timezone.utc)
 
-        db.execute(
-            text("""
-                UPDATE dbo.[user]
-                SET password_hash = :password_hash,
-                    updated_at = GETUTCDATE()
-                WHERE user_id = :user_id
-            """),
-            {
-                "password_hash": new_password_hash,
-                "user_id": str(token_row.user_id),
-            },
-        )
-
-        db.execute(
-            text("""
-                UPDATE dbo.password_reset_token
-                SET used_at = GETUTCDATE()
-                WHERE token_id = :token_id
-            """),
-            {"token_id": str(token_row.token_id)},
-        )
+        # Mark token as used
+        token_record.used_at = datetime.now(timezone.utc)
+        
         db.commit()
-        # ── Send password changed notification ──
+
+        # Send notification
         try:
             from app.services.notification_helpers import notify_password_changed
-
-            notify_password_changed(str(token_row.user_id))
+            notify_password_changed(str(user.user_id))
         except Exception:
-            pass  # Best-effort
+            pass  # Non-blocking best-effort
+
         return {"message": "Password reset successful"}
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=500, detail=f"Reset password DB failed: {str(e)}"
+            status_code=500, detail=f"Reset password processing failed: {str(e)}"
         )
 
 
