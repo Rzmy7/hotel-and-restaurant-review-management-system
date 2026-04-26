@@ -252,19 +252,23 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                     </div>
                 )}
 
-                <ToggleRow
-                    label="Two-Factor Authentication"
-                    description="Require a verification code during login"
-                    checked={data.twoFactorAuth}
-                    onChange={(e) => {
-                        void handleTwoFaToggle(e.target.checked);
-                    }}
-                />
-                {otpError && !is2faModalOpen && (
-                    <p className="mt-2 text-xs text-rose-400">{otpError}</p>
-                )}
-                {isDisabling2fa && (
-                    <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
+                {data.twoFactorFeatureEnabled !== false && (
+                    <>
+                        <ToggleRow
+                            label="Two-Factor Authentication"
+                            description="Require a verification code during login"
+                            checked={data.twoFactorAuth}
+                            onChange={(e) => {
+                                void handleTwoFaToggle(e.target.checked);
+                            }}
+                        />
+                        {otpError && !is2faModalOpen && (
+                            <p className="mt-2 text-xs text-rose-400">{otpError}</p>
+                        )}
+                        {isDisabling2fa && (
+                            <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
+                        )}
+                    </>
                 )}
                 <FormField label="Password" orientation="horizontal">
                     <div className="flex items-center gap-4 w-full">

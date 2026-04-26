@@ -35,6 +35,11 @@ export const featureFlagService = {
         return isFlagEnabled(flags, 'dark_mode');
     },
 
+    async is2faFeatureEnabled(): Promise<boolean> {
+        const flags = await fetchFlags();
+        return isFlagEnabled(flags, 'two_factor_auth');
+    },
+
     async getAllFlags(): Promise<FeatureFlag[]> {
         return fetchFlags();
     },
