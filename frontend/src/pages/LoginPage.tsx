@@ -124,7 +124,13 @@ const LoginPage = () => {
         return;
       }
 
-      const destination = getDashboardPathForRole(result.user.role);
+      const userStr = JSON.stringify({
+        user_id: result.user.user_id,
+        email: result.user.email,
+        full_name: result.user.full_name || result.user.name || result.user.first_name || 'User',
+        role: result.user.role || (result.user.roles && result.user.roles[0])
+      });
+      const destination = getDashboardPathForRole(result.user.role, result.access_token, userStr);
       if (isExternalDestination(destination)) {
         window.location.href = destination;
         return;
@@ -155,8 +161,14 @@ const LoginPage = () => {
     setError(null);
 
     try {
-      const user = await auth.verifyLogin2fa(email, otpCode);
-      const destination = getDashboardPathForRole(user.role);
+      const result = await auth.verifyLogin2fa(email, otpCode);
+      const userStr = JSON.stringify({
+        user_id: result.user.user_id,
+        email: result.user.email,
+        full_name: result.user.full_name || result.user.name || result.user.first_name || 'User',
+        role: result.user.role || (result.user.roles && result.user.roles[0])
+      });
+      const destination = getDashboardPathForRole(result.user.role, result.access_token, userStr);
       if (isExternalDestination(destination)) {
         window.location.href = destination;
         return;
