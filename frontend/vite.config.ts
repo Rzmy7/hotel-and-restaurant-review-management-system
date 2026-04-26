@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
-import { defineConfig, type ViteDevServer } from 'vite'
+import { defineConfig } from 'vitest/config'
+import type { ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from 'tailwindcss'
 import os from 'os'

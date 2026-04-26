@@ -2,7 +2,7 @@
  * Unit tests for admin API client.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 
 describe('admin apiClient', () => {

@@ -9,15 +9,15 @@ import type { Review } from '../../types/reviews';
 
 const makeReview = (id: string, overrides?: Partial<Review>): Review => ({
     id,
-    reviewer_name: `Reviewer ${id}`,
+    userName: `Reviewer ${id}`,
     rating: 4,
-    text: `Review text ${id}`,
+    reviewText: `Review text ${id}`,
     date: '2026-04-15',
     source: 'Google',
-    sentiment: 'positive',
+    sentiment: 'Positive',
     language: 'en',
-    category: 'Service',
-    status: 'published',
+    categories: ['Service'],
+    status: 'processed',
     ...overrides,
 });
 
