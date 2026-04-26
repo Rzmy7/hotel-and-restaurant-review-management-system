@@ -23,6 +23,7 @@ export interface ReplyGenerationSettings {
 export interface SecuritySettings {
     userSessionTimeoutMinutes: number;
     adminSessionTimeoutMinutes: number;
+    requireTwoFactorAuth: boolean;
 }
 
 export interface ReplyGenerationApiTestPayload {

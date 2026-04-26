@@ -77,6 +77,7 @@ export const Settings: React.FC = () => {
     const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
         userSessionTimeoutMinutes: 60,
         adminSessionTimeoutMinutes: 60,
+        requireTwoFactorAuth: false,
     });
     const [securitySaveState, setSecuritySaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [securitySaveError, setSecuritySaveError] = useState<string | null>(null);
@@ -402,8 +403,12 @@ export const Settings: React.FC = () => {
                                     <p className="text-sm text-gray-500 dark:text-slate-400">Require two-factor authentication for all admin accounts</p>
                                 </div>
                                 <ToggleSwitch
-                                    checked={settings.twoFactorAuth}
-                                    onChange={() => {}}
+                                    checked={securitySettings.requireTwoFactorAuth}
+                                    onChange={(checked) => {
+                                        setSecuritySettings(prev => ({ ...prev, requireTwoFactorAuth: checked }));
+                                        setSecuritySaveState('idle');
+                                        setSecuritySaveError(null);
+                                    }}
                                 />
                             </div>
 

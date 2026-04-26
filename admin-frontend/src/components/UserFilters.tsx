@@ -85,13 +85,13 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                 </div>
             </div>
 
-            {/* Add User Button */}
+            {/* Add Admin Button */}
             <button 
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-blue-200 dark:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                 onClick={onAddClick}
             >
                 <Plus size={20} />
-                Add User
+                Add Admin
             </button>
         </div>
     );
