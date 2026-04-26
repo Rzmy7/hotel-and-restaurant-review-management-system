@@ -57,8 +57,8 @@ def find_duplicate_review_ids(
         .filter(Review.source_id == source_id)
     )
 
-    min_ids = {str(r[0]) for r in min_ids_query.all() if r[0] is not None}
-    all_ids = {str(r[0]) for r in all_ids_query.all() if r[0] is not None}
+    min_ids = {r[0] for r in min_ids_query.all() if r[0] is not None}
+    all_ids = {r[0] for r in all_ids_query.all() if r[0] is not None}
 
     duplicate_ids = list(all_ids - min_ids)
     return duplicate_ids

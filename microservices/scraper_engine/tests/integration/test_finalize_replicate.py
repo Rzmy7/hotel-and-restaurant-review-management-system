@@ -16,11 +16,10 @@ def test_finalize_and_replicate_logic(db_session):
     # Prevent session from being closed by the service logic
     db_session.close = MagicMock()
     
-    # Mock backend notification and session factory in all used modules
+    # Mock backend notification and global session
     with patch("services.source_service.notify_backend_sync_status"), \
          patch("services.source_service.get_session", return_value=db_session), \
-         patch("platforms.tripadvisor.models.get_session", return_value=db_session), \
-         patch("core.database.get_session", return_value=db_session):
+         patch("platforms.tripadvisor.models.get_session", return_value=db_session):
         
         url = "https://www.tripadvisor.com/Hotel_Review-g297628-d300581-Reviews-The_Park_Hyderabad-Hyderabad_Hyderabad_District_Telangana.html"
         
@@ -56,21 +55,25 @@ def test_finalize_and_replicate_logic(db_session):
         ]
         
         # 3. Call finalize_and_replicate
+        # We pass sample_reviews as leftovers so they get saved for the primary source
         SourceService.finalize_and_replicate(
             url=url,
             primary_source_id=primary_id,
             reviews=sample_reviews,
             save_db_func=save_reviews_to_db,
             deduplicator_func=clean_tripadvisor_duplicates,
-            leftover_reviews=[]
+            leftover_reviews=sample_reviews
         )
         
+        db_session.commit()
+        
         # 4. Verify primary source has reviews
-        primary_reviews = db_session.query(Review).filter(Review.source_id == primary_id).all()
+        all_reviews = db_session.query(Review).all()
+        primary_reviews = [r for r in all_reviews if str(r.source_id) == primary_id]
         assert len(primary_reviews) == 2
         
         # 5. Verify companion source has reviews (Replication check)
-        companion_reviews = db_session.query(Review).filter(Review.source_id == companion_id).all()
+        companion_reviews = [r for r in all_reviews if str(r.source_id) == companion_id]
         assert len(companion_reviews) == 2
         
         # 6. Verify details are saved
@@ -85,8 +88,7 @@ def test_finalize_and_replicate_with_duplicates(db_session):
     
     with patch("services.source_service.notify_backend_sync_status"), \
          patch("services.source_service.get_session", return_value=db_session), \
-         patch("platforms.tripadvisor.models.get_session", return_value=db_session), \
-         patch("core.database.get_session", return_value=db_session):
+         patch("platforms.tripadvisor.models.get_session", return_value=db_session):
              
         url = "https://www.tripadvisor.com/Duplicate_Test"
         primary_id = str(uuid.uuid4())
@@ -96,9 +98,18 @@ def test_finalize_and_replicate_with_duplicates(db_session):
         db_session.add(Source(source_id=companion_id, source_url=url, platform_name="tripadvisor"))
         db_session.commit()
         
-        # Pre-insert one review for companion
+        # Pre-insert one review for companion WITH DETAIL
         existing_review = Review(source_id=companion_id, platform_review_id="shared_rev")
         db_session.add(existing_review)
+        db_session.flush()
+        
+        detail = TripAdvisorReviewDetail(
+            review_id=existing_review.review_id,
+            author="Dup Author",
+            review_date="2024-01-01",
+            review_text="Duplicate me?"
+        )
+        db_session.add(detail)
         db_session.commit()
         
         sample_reviews = [{
@@ -115,11 +126,17 @@ def test_finalize_and_replicate_with_duplicates(db_session):
             primary_source_id=primary_id,
             reviews=sample_reviews,
             save_db_func=save_reviews_to_db,
-            deduplicator_func=clean_tripadvisor_duplicates
+            deduplicator_func=clean_tripadvisor_duplicates,
+            leftover_reviews=sample_reviews
         )
         
+        db_session.commit()
+        
         # Verify primary got it
-        assert db_session.query(Review).filter(Review.source_id == primary_id).count() == 1
+        all_reviews = db_session.query(Review).all()
+        primary_count = sum(1 for r in all_reviews if str(r.source_id) == primary_id)
+        assert primary_count == 1
         
         # Verify companion still has only 1 (didn't add another)
-        assert db_session.query(Review).filter(Review.source_id == companion_id).count() == 1
+        companion_count = sum(1 for r in all_reviews if str(r.source_id) == companion_id)
+        assert companion_count == 1
