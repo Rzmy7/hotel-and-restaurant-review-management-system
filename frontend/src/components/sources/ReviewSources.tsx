@@ -1,11 +1,9 @@
-
-
 const ReviewSources = () => {
   const sources = [
-    { name: 'Booking', percentage: 42, color: '#3b82f6' },
-    { name: 'TripAdvisor', percentage: 28, color: '#8b5cf6' },
-    { name: 'Google', percentage: 20, color: '#1f2937' },
-    { name: 'Other', percentage: 10, color: '#9ca3af' },
+    { name: "Booking", percentage: 42, color: "#3b82f6" },
+    { name: "TripAdvisor", percentage: 28, color: "#8b5cf6" },
+    { name: "Google", percentage: 20, color: "#1f2937" },
+    { name: "Other", percentage: 10, color: "#9ca3af" },
   ];
 
   // Create SVG path for donut segments
@@ -44,24 +42,23 @@ const ReviewSources = () => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <div className="mb-0">
-        <h3 className="text-base font-bold text-gray-800 m-0">Review Sources</h3>
+        <h3 className="text-base font-bold text-gray-800 m-0">
+          Review Sources
+        </h3>
       </div>
 
       <div className="flex gap-8 items-center mt-5 max-md:flex-col">
         <div className="w-[180px] h-[180px] shrink-0 relative max-md:w-[200px] max-md:h-[200px]">
-          <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-sm [&_circle]:stroke-round">
+          <svg
+            viewBox="0 0 200 200"
+            className="w-full h-full drop-shadow-sm [&_circle]:stroke-round"
+          >
             {sources.map((source) => {
               const path = createDonutPath(source.percentage, currentAngle);
               // const segmentAngle = currentAngle;
               currentAngle += (source.percentage / 100) * 360;
 
-              return (
-                <path
-                  key={source.name}
-                  d={path}
-                  fill={source.color}
-                />
-              );
+              return <path key={source.name} d={path} fill={source.color} />;
             })}
           </svg>
         </div>
@@ -73,8 +70,12 @@ const ReviewSources = () => {
                 className="w-3.5 h-3.5 rounded-full shrink-0"
                 style={{ backgroundColor: source.color }}
               ></span>
-              <span className="flex-1 text-[15px] font-medium text-gray-800">{source.name}</span>
-              <span className="text-[15px] font-semibold text-gray-500">{source.percentage}%</span>
+              <span className="flex-1 text-[15px] font-medium text-gray-800">
+                {source.name}
+              </span>
+              <span className="text-[15px] font-semibold text-gray-500">
+                {source.percentage}%
+              </span>
             </div>
           ))}
         </div>

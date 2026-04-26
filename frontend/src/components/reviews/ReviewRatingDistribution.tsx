@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { Star, BarChart2 } from 'lucide-react';
-import type { RatingDistributionItem } from '../../types/dashboard';
-import ReviewDistributionModal from '../reviews/ReviewDistributionModal';
+import React, { useState } from "react";
+import { Star, BarChart2 } from "lucide-react";
+import type { RatingDistributionItem } from "../../types/dashboard";
+import ReviewDistributionModal from "../reviews/ReviewDistributionModal";
 
 interface ReviewRatingDistributionProps {
   distribution: RatingDistributionItem[];
 }
 
-const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> = ({ distribution = [] }) => {
+const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> = ({
+  distribution = [],
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Ensure we always have 5 to 1 even if not in data
-  const distMap = new Map(distribution.map(d => [d.rating, d]));
-  const fullStats = [5, 4, 3, 2, 1].map(rating => {
+  const distMap = new Map(distribution.map((d) => [d.rating, d]));
+  const fullStats = [5, 4, 3, 2, 1].map((rating) => {
     return distMap.get(rating) || { rating, count: 0, percentage: 0 };
   });
 
@@ -25,8 +27,12 @@ const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> = ({ dis
               <BarChart2 size={18} />
             </div>
             <div>
-              <h3 className="m-0 text-sm font-black text-[#3E4756] dark:text-gray-200 uppercase tracking-widest">Rating Distribution</h3>
-              <p className="m-0 text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">All-time Reviews</p>
+              <h3 className="m-0 text-sm font-black text-[#3E4756] dark:text-gray-200 uppercase tracking-widest">
+                Rating Distribution
+              </h3>
+              <p className="m-0 text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
+                All-time Reviews
+              </p>
             </div>
           </div>
 
@@ -40,10 +46,18 @@ const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> = ({ dis
 
         <div className="flex flex-col gap-3.5">
           {fullStats.map(({ rating, count, percentage }) => (
-            <div key={rating} className="flex items-center gap-3 w-full group cursor-default">
+            <div
+              key={rating}
+              className="flex items-center gap-3 w-full group cursor-default"
+            >
               <span className="flex items-center gap-1 min-w-[32px] justify-end">
-                <span className="text-sm font-bold text-[#3E4756] dark:text-gray-300 group-hover:text-amber-500 transition-colors">{rating}</span>
-                <Star size={14} className="text-amber-400 fill-amber-400 group-hover:text-amber-500 group-hover:fill-amber-500 transition-colors" />
+                <span className="text-sm font-bold text-[#3E4756] dark:text-gray-300 group-hover:text-amber-500 transition-colors">
+                  {rating}
+                </span>
+                <Star
+                  size={14}
+                  className="text-amber-400 fill-amber-400 group-hover:text-amber-500 group-hover:fill-amber-500 transition-colors"
+                />
               </span>
 
               <div className="flex-1 h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden relative">
@@ -54,8 +68,12 @@ const ReviewRatingDistribution: React.FC<ReviewRatingDistributionProps> = ({ dis
               </div>
 
               <div className="flex items-center justify-between min-w-[70px]">
-                <span className="text-xs text-[#3E4756] dark:text-gray-200 font-bold">{percentage}%</span>
-                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">{count.toLocaleString()}</span>
+                <span className="text-xs text-[#3E4756] dark:text-gray-200 font-bold">
+                  {percentage}%
+                </span>
+                <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                  {count.toLocaleString()}
+                </span>
               </div>
             </div>
           ))}

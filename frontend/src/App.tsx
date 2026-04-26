@@ -1,31 +1,35 @@
-import React, { useState, useEffect, Suspense } from 'react';
-import { maintenanceService } from './services/maintenanceService';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, Suspense } from "react";
+import { maintenanceService } from "./services/maintenanceService";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 
 // Providers and Contexts
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ToastProvider } from './contexts/ToastContext';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "./contexts/ToastContext";
 
 const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { ThemeProvider } from './contexts/ThemeContext';
-import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { NavigationBlockerProvider } from "./contexts/NavigationBlockerContext";
 
 // Components
-import Sidebar from './components/shared/SideBar';
-import ScrapeLauncher from './components/shared/ScrapeLauncher';
+import Sidebar from "./components/shared/SideBar";
+import ScrapeLauncher from "./components/shared/ScrapeLauncher";
 
 // Stores
-import { useOrganizationStore } from './stores/useOrganizationStore';
+import { useOrganizationStore } from "./stores/useOrganizationStore";
 
 /**
  * Higher-order component for routes that need an active organization.
  * Redirects to /no-organization if the store has loaded but has no org.
  */
-const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const hasOrganization = useOrganizationStore(state => state.hasOrganization);
-  const loading = useOrganizationStore(state => state.loading);
+const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const hasOrganization = useOrganizationStore(
+    (state) => state.hasOrganization,
+  );
+  const loading = useOrganizationStore((state) => state.loading);
 
   if (loading) return null; // wait for store hydration
 
@@ -37,36 +41,50 @@ const RequireOrganization: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 // Pages - Auth & Setup (Lazy Loaded)
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const SignUpPage = React.lazy(() => import('./pages/SignUpPage'));
-const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
-const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
-const SetupPage = React.lazy(() => import('./pages/SetupPage'));
-const AddSourcesPage = React.lazy(() => import('./pages/AddSourcesPage'));
-const ChooseSchedulePage = React.lazy(() => import('./pages/ChooseSchedulePage'));
-const ChoosePlanPage = React.lazy(() => import('./pages/ChoosePlanPage'));
-const FinishSetupPage = React.lazy(() => import('./pages/FinishSetupPage'));
+const LoginPage = React.lazy(() => import("./pages/LoginPage"));
+const SignUpPage = React.lazy(() => import("./pages/SignUpPage"));
+const ForgotPasswordPage = React.lazy(
+  () => import("./pages/ForgotPasswordPage"),
+);
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
+const SetupPage = React.lazy(() => import("./pages/SetupPage"));
+const AddSourcesPage = React.lazy(() => import("./pages/AddSourcesPage"));
+const ChooseSchedulePage = React.lazy(
+  () => import("./pages/ChooseSchedulePage"),
+);
+const ChoosePlanPage = React.lazy(() => import("./pages/ChoosePlanPage"));
+const FinishSetupPage = React.lazy(() => import("./pages/FinishSetupPage"));
 const OAuthSuccessPage = React.lazy(() => import("./pages/OAuthSuccessPage"));
 
 // Pages - Main Application (Lazy Loaded)
-const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
-const ReviewsPage = React.lazy(() => import('./pages/ReviewsPage'));
-const ReviewSourcesPage = React.lazy(() => import('./pages/ReviewSourcesPage'));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
-const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
-const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage'));
-const InsightsPage = React.lazy(() => import('./pages/InsightsPage'));
-const HelpPage = React.lazy(() => import('./pages/HelpPage'));
-const SupportPage = React.lazy(() => import('./pages/SupportPage'));
-const SubscriptionPage = React.lazy(() => import('./pages/SubscriptionPage'));
-const CompetitorsPage = React.lazy(() => import('./pages/CompetitorsPage'));
-const CompetitorRankingsPage = React.lazy(() => import('./pages/CompetitorRankingsPage'));
-const CompetitorComparison = React.lazy(() => import('./pages/CompetitorComparison'));
-const AdminDashboardPage = React.lazy(() => import("./pages/AdminDashboardPage"));
-const GroupsPage = React.lazy(() => import('./pages/GroupsPage'));
-const GroupDashboardPage = React.lazy(() => import('./pages/GroupDashboardPage'));
-const GroupInvitePage = React.lazy(() => import('./pages/GroupInvitePage'));
-const NoOrganizationPage = React.lazy(() => import("./pages/NoOrganizationPage"));
+const DashboardPage = React.lazy(() => import("./pages/DashboardPage"));
+const ReviewsPage = React.lazy(() => import("./pages/ReviewsPage"));
+const ReviewSourcesPage = React.lazy(() => import("./pages/ReviewSourcesPage"));
+const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
+const ProfilePage = React.lazy(() => import("./pages/ProfilePage"));
+const NotificationsPage = React.lazy(() => import("./pages/NotificationsPage"));
+const InsightsPage = React.lazy(() => import("./pages/InsightsPage"));
+const HelpPage = React.lazy(() => import("./pages/HelpPage"));
+const SupportPage = React.lazy(() => import("./pages/SupportPage"));
+const SubscriptionPage = React.lazy(() => import("./pages/SubscriptionPage"));
+const CompetitorsPage = React.lazy(() => import("./pages/CompetitorsPage"));
+const CompetitorRankingsPage = React.lazy(
+  () => import("./pages/CompetitorRankingsPage"),
+);
+const CompetitorComparison = React.lazy(
+  () => import("./pages/CompetitorComparison"),
+);
+const AdminDashboardPage = React.lazy(
+  () => import("./pages/AdminDashboardPage"),
+);
+const GroupsPage = React.lazy(() => import("./pages/GroupsPage"));
+const GroupDashboardPage = React.lazy(
+  () => import("./pages/GroupDashboardPage"),
+);
+const GroupInvitePage = React.lazy(() => import("./pages/GroupInvitePage"));
+const NoOrganizationPage = React.lazy(
+  () => import("./pages/NoOrganizationPage"),
+);
 
 // Styles
 import "./App.css";
@@ -79,7 +97,12 @@ const NotFound: React.FC = () => {
     <div className="text-center mt-12">
       <h1 className="text-4xl font-bold text-gray-900">404</h1>
       <p className="text-gray-500 mt-2">Page not Found</p>
-      <Link to="/" className="text-blue-500 hover:text-blue-700 mt-4 inline-block">Go Home</Link>
+      <Link
+        to="/"
+        className="text-blue-500 hover:text-blue-700 mt-4 inline-block"
+      >
+        Go Home
+      </Link>
     </div>
   );
 };
@@ -88,9 +111,12 @@ const MaintenancePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center px-6">
       <div className="max-w-xl w-full bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-8 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Platform Under Maintenance</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Platform Under Maintenance
+        </h1>
         <p className="mt-3 text-sm text-gray-600 dark:text-slate-300">
-          The platform is temporarily unavailable while maintenance is in progress.
+          The platform is temporarily unavailable while maintenance is in
+          progress.
         </p>
         <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
           Please check back shortly.
@@ -106,7 +132,7 @@ const MaintenancePage: React.FC = () => {
  */
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) return null; // Wait for auth check
 
   if (user === null) {
@@ -123,7 +149,7 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) return null; // Wait for auth check
 
   if (user) {
@@ -142,7 +168,9 @@ const AppContent: React.FC = () => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceLoaded, setMaintenanceLoaded] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
-  const fetchOrganizations = useOrganizationStore(state => state.fetchOrganizations);
+  const fetchOrganizations = useOrganizationStore(
+    (state) => state.fetchOrganizations,
+  );
 
   useEffect(() => {
     fetchOrganizations();
@@ -158,7 +186,7 @@ const AppContent: React.FC = () => {
           setMaintenanceMode(!!result.maintenanceMode);
         }
       } catch (error) {
-        console.error('Failed to load maintenance status:', error);
+        console.error("Failed to load maintenance status:", error);
         if (mounted) {
           setMaintenanceMode(false);
         }
@@ -190,7 +218,9 @@ const AppContent: React.FC = () => {
     return (
       <div className="h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-500 mb-4"></div>
-        <p className="text-gray-900 dark:text-white text-lg font-medium tracking-wide text-center">Loading application...</p>
+        <p className="text-gray-900 dark:text-white text-lg font-medium tracking-wide text-center">
+          Loading application...
+        </p>
       </div>
     );
   }
@@ -200,36 +230,114 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={
-      <div className="h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-500 mb-4"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-500 mb-4"></div>
+        </div>
+      }
+    >
       <Routes>
         {/* 
           Authentication Routes
           Only accessible when not logged in.
         */}
-        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-        <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
-        <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-        <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PublicRoute>
+              <SignUpPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <ForgotPasswordPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            <PublicRoute>
+              <ResetPasswordPage />
+            </PublicRoute>
+          }
+        />
         <Route path="/oauth-success" element={<OAuthSuccessPage />} />
 
         {/* 
           Initial Setup Workflow
           Standalone pages for the first-time user setup experience.
         */}
-        <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
-        <Route path="/setup/sources" element={<RequireAuth><AddSourcesPage /></RequireAuth>} />
-        <Route path="/setup/schedule" element={<RequireAuth><ChooseSchedulePage /></RequireAuth>} />
-        <Route path="/setup/plan" element={<RequireAuth><ChoosePlanPage /></RequireAuth>} />
-        <Route path="/setup/finish" element={<RequireAuth><FinishSetupPage /></RequireAuth>} />
-
+        <Route
+          path="/setup"
+          element={
+            <RequireAuth>
+              <SetupPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/setup/sources"
+          element={
+            <RequireAuth>
+              <AddSourcesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/setup/schedule"
+          element={
+            <RequireAuth>
+              <ChooseSchedulePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/setup/plan"
+          element={
+            <RequireAuth>
+              <ChoosePlanPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/setup/finish"
+          element={
+            <RequireAuth>
+              <FinishSetupPage />
+            </RequireAuth>
+          }
+        />
 
         {/* Utility/Admin Routes */}
-        <Route path="/scrape" element={<RequireAuth><ScrapeLauncher /></RequireAuth>} />
-        <Route path="/admin-dashboard" element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
+        <Route
+          path="/scrape"
+          element={
+            <RequireAuth>
+              <ScrapeLauncher />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin-dashboard"
+          element={
+            <RequireAuth>
+              <AdminDashboardPage />
+            </RequireAuth>
+          }
+        />
 
         {/* 
           Main Application Shell
@@ -240,40 +348,188 @@ const AppContent: React.FC = () => {
           element={
             <div
               className="flex w-full h-full overflow-hidden"
-              style={{ '--sidebar-width': isSidebarExpanded ? '260px' : '68px' } as React.CSSProperties}
+              style={
+                {
+                  "--sidebar-width": isSidebarExpanded ? "260px" : "68px",
+                } as React.CSSProperties
+              }
             >
-              <Sidebar isExpanded={isSidebarExpanded} onToggle={handleSidebarToggle} />
+              <Sidebar
+                isExpanded={isSidebarExpanded}
+                onToggle={handleSidebarToggle}
+              />
               <main className="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 overflow-y-auto min-w-0">
                 <Routes>
                   {/* Default root handling */}
-                  <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-                  
+                  <Route
+                    path="/"
+                    element={
+                      user ? (
+                        <Navigate to="/dashboard" replace />
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
                   {/* Org-dependent feature pages — all require both auth AND an active organization */}
-                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <DashboardPage />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/reviews"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <ReviewsPage />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/sources"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <ReviewSourcesPage />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/insights"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <InsightsPage />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/competitors"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <CompetitorsPage />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/competitors/rankings"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <CompetitorRankingsPage />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/competitors/compare"
+                    element={
+                      <RequireAuth>
+                        <RequireOrganization>
+                          <CompetitorComparison />
+                        </RequireOrganization>
+                      </RequireAuth>
+                    }
+                  />
 
                   {/* Group routes — no org requirement */}
-                  <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
-                  <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
-                  <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
+                  <Route
+                    path="/groups"
+                    element={
+                      <RequireAuth>
+                        <GroupsPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/groups/:groupId"
+                    element={
+                      <RequireAuth>
+                        <GroupDashboardPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/groups/join/:token"
+                    element={
+                      <RequireAuth>
+                        <GroupInvitePage />
+                      </RequireAuth>
+                    }
+                  />
 
                   {/* Pages that don't require an org */}
-                  <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
-                  <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
-                  <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
-                  <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />
-                  <Route path="/subscription" element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
-                  <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-                  <Route path="/no-organization" element={<RequireAuth><NoOrganizationPage /></RequireAuth>} />
+                  <Route
+                    path="/settings"
+                    element={
+                      <RequireAuth>
+                        <SettingsPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/notifications"
+                    element={
+                      <RequireAuth>
+                        <NotificationsPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/help"
+                    element={
+                      <RequireAuth>
+                        <HelpPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/support"
+                    element={
+                      <RequireAuth>
+                        <SupportPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/subscription"
+                    element={
+                      <RequireAuth>
+                        <SubscriptionPage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <RequireAuth>
+                        <ProfilePage />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/no-organization"
+                    element={
+                      <RequireAuth>
+                        <NoOrganizationPage />
+                      </RequireAuth>
+                    }
+                  />
 
                   {/* Fallback for undefined routes within the main shell */}
                   <Route path="*" element={<NotFound />} />
-
                 </Routes>
               </main>
             </div>

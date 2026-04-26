@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
-import { useDashboardData } from '../hooks/useDashboardData';
-import { useToast } from '../contexts/ToastContext';
-import DashboardSkeleton from '../components/shared/DashboardSkeleton';
-import { DashboardTemplate } from '../components/dashboard/templates/DashboardTemplate';
+import React, { useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { useDashboardData } from "../hooks/useDashboardData";
+import { useToast } from "../contexts/ToastContext";
+import DashboardSkeleton from "../components/shared/DashboardSkeleton";
+import { DashboardTemplate } from "../components/dashboard/templates/DashboardTemplate";
 
 const DashboardPage: React.FC = () => {
   const [period, setPeriod] = useState<number>(0); // 0 = All Time (default)
@@ -20,9 +20,12 @@ const DashboardPage: React.FC = () => {
         <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 mb-6">
           <AlertCircle size={32} />
         </div>
-        <h2 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">System Offline</h2>
+        <h2 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">
+          System Offline
+        </h2>
         <p className="text-gray-500 max-w-md mx-auto mb-8 font-medium">
-          {error || "We're having trouble connecting to the analytics engine. Please check your connection or try again later."}
+          {error ||
+            "We're having trouble connecting to the analytics engine. Please check your connection or try again later."}
         </p>
         <button
           onClick={() => window.location.reload()}
@@ -34,7 +37,9 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  return <DashboardTemplate data={data} period={period} onPeriodChange={setPeriod} />;
+  return (
+    <DashboardTemplate data={data} period={period} onPeriodChange={setPeriod} />
+  );
 };
 
 export default DashboardPage;

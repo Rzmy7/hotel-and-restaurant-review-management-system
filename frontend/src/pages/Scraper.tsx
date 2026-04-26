@@ -1,8 +1,8 @@
-import ScrapeLauncher from '../components/shared/ScrapeLauncher';
+import ScrapeLauncher from "../components/shared/ScrapeLauncher";
 
 const Scraper = () => {
   return (
-    <div> 
+    <div>
       <ScrapeLauncher />
     </div>
   );

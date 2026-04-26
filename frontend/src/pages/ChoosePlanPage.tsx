@@ -1,30 +1,39 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import SetupLayout from '../components/shared/SetupLayout';
-import { PricingCard } from '../components/subscription/molecules/PricingCard';
-import { fetchSubscriptionPlans, type SubscriptionPlan } from '../services/subscriptionPlansService';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import SetupLayout from "../components/shared/SetupLayout";
+import { PricingCard } from "../components/subscription/molecules/PricingCard";
+import {
+  fetchSubscriptionPlans,
+  type SubscriptionPlan,
+} from "../services/subscriptionPlansService";
 
-const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
+const SETUP_DRAFT_CONFIG_KEY = "setup_draft_config";
 
-type PlanTier = 'starter' | 'professional' | 'enterprise';
+type PlanTier = "starter" | "professional" | "enterprise";
 
 const toPlanTier = (plan: SubscriptionPlan, index: number): PlanTier => {
-  if (plan.iconName === 'zap') {
-    return 'starter';
+  if (plan.iconName === "zap") {
+    return "starter";
   }
-  if (plan.iconName === 'crown' || plan.iconName === 'building') {
-    return 'enterprise';
+  if (plan.iconName === "crown" || plan.iconName === "building") {
+    return "enterprise";
   }
-  if (plan.iconName === 'star') {
-    return 'professional';
+  if (plan.iconName === "star") {
+    return "professional";
   }
 
-  return index % 3 === 0 ? 'starter' : index % 3 === 1 ? 'professional' : 'enterprise';
+  return index % 3 === 0
+    ? "starter"
+    : index % 3 === 1
+      ? "professional"
+      : "enterprise";
 };
 
-const formatFeatureText = (feature: SubscriptionPlan['features'][number]): string => {
+const formatFeatureText = (
+  feature: SubscriptionPlan["features"][number],
+): string => {
   if (!feature.enabled) {
-    return '';
+    return "";
   }
   if (feature.limit === null || feature.limit === undefined) {
     return feature.name;
@@ -46,24 +55,25 @@ const ChoosePlanPage = () => {
       try {
         const loadedPlans = await fetchSubscriptionPlans();
         setPlans(loadedPlans);
-        
+
         // Check draft first
         const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
         let draftPlanId = null;
         if (draftStr) {
-            const draft = JSON.parse(draftStr);
-            if (draft.plan) {
-                draftPlanId = draft.plan;
-            }
+          const draft = JSON.parse(draftStr);
+          if (draft.plan) {
+            draftPlanId = draft.plan;
+          }
         }
 
         if (draftPlanId) {
-            setSelectedPlan(draftPlanId);
+          setSelectedPlan(draftPlanId);
         } else if (loadedPlans.length > 0) {
-            setSelectedPlan(loadedPlans[0].id);
+          setSelectedPlan(loadedPlans[0].id);
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load plans';
+        const message =
+          error instanceof Error ? error.message : "Failed to load plans";
         setErrorMessage(message);
       } finally {
         setIsLoading(false);
@@ -80,7 +90,7 @@ const ChoosePlanPage = () => {
         tier: toPlanTier(plan, index),
         title: plan.name,
         price: String(plan.monthlyPrice),
-        period: 'mo',
+        period: "mo",
         description: plan.description,
         isPopular: plan.isPopular,
         features: plan.features
@@ -92,19 +102,22 @@ const ChoosePlanPage = () => {
 
   const handleContinue = () => {
     if (selectedPlan) {
-        const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
-        const draft = draftStr ? JSON.parse(draftStr) : {};
-        
-        localStorage.setItem(SETUP_DRAFT_CONFIG_KEY, JSON.stringify({
-            ...draft,
-            plan: selectedPlan
-        }));
+      const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);
+      const draft = draftStr ? JSON.parse(draftStr) : {};
+
+      localStorage.setItem(
+        SETUP_DRAFT_CONFIG_KEY,
+        JSON.stringify({
+          ...draft,
+          plan: selectedPlan,
+        }),
+      );
     }
-    navigate('/setup/finish');
+    navigate("/setup/finish");
   };
 
   const handleBack = () => {
-    navigate('/setup/schedule');
+    navigate("/setup/schedule");
   };
 
   return (
@@ -116,19 +129,25 @@ const ChoosePlanPage = () => {
     >
       <div className="text-center mb-10">
         <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-3">
-            Select Plan
+          Select Plan
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium">
-            Choose the subscription plan that best fits your needs
+          Choose the subscription plan that best fits your needs
         </p>
       </div>
 
       {isLoading ? (
-        <div className="text-center text-slate-500 dark:text-slate-400 font-medium mb-8">Loading plans...</div>
+        <div className="text-center text-slate-500 dark:text-slate-400 font-medium mb-8">
+          Loading plans...
+        </div>
       ) : errorMessage ? (
-        <div className="text-center text-red-500 font-medium mb-8">{errorMessage}</div>
+        <div className="text-center text-red-500 font-medium mb-8">
+          {errorMessage}
+        </div>
       ) : cardPlans.length === 0 ? (
-        <div className="text-center text-slate-500 dark:text-slate-400 font-medium mb-8">No active plans available.</div>
+        <div className="text-center text-slate-500 dark:text-slate-400 font-medium mb-8">
+          No active plans available.
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {cardPlans.map((plan) => (
@@ -143,15 +162,16 @@ const ChoosePlanPage = () => {
               isPopular={plan.isPopular}
               isSelected={selectedPlan === plan.id}
               onClick={() => setSelectedPlan(plan.id)}
-              buttonText={selectedPlan === plan.id ? 'Selected' : 'Select'}
+              buttonText={selectedPlan === plan.id ? "Selected" : "Select"}
             />
           ))}
         </div>
       )}
-      
+
       <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 text-center">
         <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-            Note: You can easily change your plan or cancel anytime from your organization settings.
+          Note: You can easily change your plan or cancel anytime from your
+          organization settings.
         </p>
       </div>
     </SetupLayout>

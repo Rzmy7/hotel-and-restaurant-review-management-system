@@ -1,310 +1,340 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { normalizeRole } from '../utils/authRole';
+import { normalizeRole } from "../utils/authRole";
 
 type User = {
-    user_id: string;
-    email: string;
-    full_name?: string;
-    role?: string;
+  user_id: string;
+  email: string;
+  full_name?: string;
+  role?: string;
 };
 
 type LoginChallenge = {
-    require_2fa: true;
-    message: string;
-    email: string;
+  require_2fa: true;
+  message: string;
+  email: string;
 };
 
 type LoginSuccess = {
-    require_2fa?: false;
-    access_token: string;
-    token_type: string;
-    user: {
-        user_id: string;
-        email: string;
-        first_name?: string;
-        last_name?: string;
-        full_name?: string;
-        name?: string;
-        role?: string;
-        roles?: string[];
-    };
+  require_2fa?: false;
+  access_token: string;
+  token_type: string;
+  user: {
+    user_id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    name?: string;
+    role?: string;
+    roles?: string[];
+  };
 };
 
 type LoginResponse = LoginChallenge | LoginSuccess;
 
 type AuthContextType = {
-    user: User | null;
-    login: (email: string, password: string) => Promise<LoginResponse>;
-    verifyLogin2fa: (email: string, code: string) => Promise<User>;
-    signup: (name: string, email: string, password: string) => Promise<User>;
-    logout: () => void;
-    forgotPassword: (email: string) => Promise<void>;
-    resetPassword: (token: string, newPassword: string) => Promise<void>;
-    persist: (user: User | null, token?: string) => void;
-    checkUserOrganizations: () => Promise<void>;
-    exchangeTokenForOrganization: (orgId: string) => Promise<void>;
-    isLoading: boolean;
+  user: User | null;
+  login: (email: string, password: string) => Promise<LoginResponse>;
+  verifyLogin2fa: (email: string, code: string) => Promise<User>;
+  signup: (name: string, email: string, password: string) => Promise<User>;
+  logout: () => void;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  persist: (user: User | null, token?: string) => void;
+  checkUserOrganizations: () => Promise<void>;
+  exchangeTokenForOrganization: (orgId: string) => Promise<void>;
+  isLoading: boolean;
 };
 
 const isLoginChallenge = (value: LoginResponse): value is LoginChallenge => {
-    return 'require_2fa' in value && value.require_2fa === true;
+  return "require_2fa" in value && value.require_2fa === true;
 };
 
 const clearSetupTemporaryKeys = () => {
-    localStorage.removeItem("setup_pending_organization_id");
-    localStorage.removeItem("setup_pending_organization_name");
-    localStorage.removeItem("setup_pending_membership_created");
-    localStorage.removeItem("setup_snapshot_current_organization");
-    // Backward compatibility cleanup for older setup snapshot keys.
-    localStorage.removeItem("setup_snapshot_organizations");
-    localStorage.removeItem("setup_snapshot_organization_ids");
+  localStorage.removeItem("setup_pending_organization_id");
+  localStorage.removeItem("setup_pending_organization_name");
+  localStorage.removeItem("setup_pending_membership_created");
+  localStorage.removeItem("setup_snapshot_current_organization");
+  // Backward compatibility cleanup for older setup snapshot keys.
+  localStorage.removeItem("setup_snapshot_organizations");
+  localStorage.removeItem("setup_snapshot_organization_ids");
 };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-import { apiClient } from '../api/client';
+import { apiClient } from "../api/client";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-    children,
+  children,
 }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-    // ----------------------------------------------------
-    // Restore session from localStorage
-    // ----------------------------------------------------
-    useEffect(() => {
-        const storedUser = localStorage.getItem("authUser");
-        const token = localStorage.getItem("token");
-        
-        if (storedUser && token) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch {
-                persist(null);
-            }
-        } else {
-            // Ensure state is null if no login details found
-            setUser(null);
+  // ----------------------------------------------------
+  // Restore session from localStorage
+  // ----------------------------------------------------
+  useEffect(() => {
+    const storedUser = localStorage.getItem("authUser");
+    const token = localStorage.getItem("token");
+
+    if (storedUser && token) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        persist(null);
+      }
+    } else {
+      // Ensure state is null if no login details found
+      setUser(null);
+    }
+    setIsLoading(false);
+  }, []);
+
+  // ----------------------------------------------------
+  // Save user + token
+  // ----------------------------------------------------
+  const persist = (u: User | null, token?: string) => {
+    setUser(u);
+
+    if (u) {
+      localStorage.setItem("authUser", JSON.stringify(u));
+    } else {
+      localStorage.removeItem("authUser");
+      localStorage.removeItem("token");
+      localStorage.removeItem("organizations");
+      localStorage.removeItem("organization_ids");
+      localStorage.removeItem("current_organization");
+    }
+
+    if (token) {
+      localStorage.setItem("token", token);
+    }
+  };
+
+  // ----------------------------------------------------
+  // Get user organizations and store them
+  // ----------------------------------------------------
+  const checkUserOrganizations = async () => {
+    try {
+      console.log("Fetching organizations...");
+
+      // apiClient automatically handles the base URL, /api prefix, and Authorization headers
+      const data = await apiClient.get<any>("/user/organizations");
+
+      console.log("Organizations API response:", data);
+
+      const orgList = Array.isArray(data) ? data : data.organizations || [];
+
+      console.log("Processed org list:", orgList);
+
+      // save organizations
+      localStorage.setItem("organizations", JSON.stringify(orgList));
+
+      //  Extract IDs separately if needed
+      const orgIds = orgList.map((org: any) => org.organization_id);
+      localStorage.setItem("organization_ids", JSON.stringify(orgIds));
+
+      //  Set current organization
+      if (orgList.length > 0) {
+        localStorage.setItem(
+          "current_organization",
+          orgList[0].organization_id,
+        );
+      }
+
+      clearSetupTemporaryKeys();
+
+      // Redirect
+      if (orgList.length === 0) {
+        window.location.href = "/no-organization";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (err) {
+      console.error("Error checking organizations:", err);
+    }
+  };
+
+  // ----------------------------------------------------
+  // Exchange token for organization swap
+  // ----------------------------------------------------
+  const exchangeTokenForOrganization = async (orgId: string) => {
+    try {
+      const data = await apiClient.post<any>("/auth/switch-organization", {
+        organization_id: orgId,
+      });
+      if (data && data.access_token) {
+        // Update the token in localStorage and state (via persist) without logging out
+        if (user) {
+          persist(user, data.access_token);
         }
-        setIsLoading(false);
-    }, []);
+      }
+    } catch (err) {
+      console.error("Error exchanging token for organization:", err);
+      throw err;
+    }
+  };
 
-    // ----------------------------------------------------
+  // ----------------------------------------------------
+  // LOGIN
+  // ----------------------------------------------------
+  const login = async (email: string, password: string) => {
+    const data = await apiClient.post<LoginResponse>("/auth/login", {
+      email,
+      password,
+    });
+    console.log("Login response:", data);
+
+    if (isLoginChallenge(data)) {
+      return data;
+    }
+
+    const successData: LoginSuccess = data;
+    const backendUser = successData.user;
+
+    const normalizedUser: User = {
+      user_id: backendUser.user_id,
+      email: backendUser.email,
+      full_name:
+        backendUser.full_name ||
+        backendUser.name ||
+        `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() ||
+        "User",
+      role: normalizeRole(backendUser.role || backendUser.roles),
+    };
+
     // Save user + token
-    // ----------------------------------------------------
-    const persist = (u: User | null, token?: string) => {
-        setUser(u);
+    persist(normalizedUser, successData.access_token);
 
-        if (u) {
-            localStorage.setItem("authUser", JSON.stringify(u));
-        } else {
-            localStorage.removeItem("authUser");
-            localStorage.removeItem("token");
-            localStorage.removeItem("organizations");
-            localStorage.removeItem("organization_ids");
-            localStorage.removeItem("current_organization");
-        }
+    console.log("Calling checkUserOrganizations...");
+    // Check organizations after login
+    await checkUserOrganizations();
 
-        if (token) {
-            localStorage.setItem("token", token);
-        }
+    return successData;
+  };
+
+  const verifyLogin2fa = async (email: string, code: string) => {
+    const data = await apiClient.post<LoginSuccess>("/auth/login/2fa", {
+      email,
+      code,
+    });
+
+    const backendUser = data.user;
+    const normalizedUser: User = {
+      user_id: backendUser.user_id,
+      email: backendUser.email,
+      full_name:
+        backendUser.full_name ||
+        backendUser.name ||
+        `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() ||
+        "User",
+      role: normalizeRole(backendUser.role),
     };
 
-    // ----------------------------------------------------
-    // Get user organizations and store them
-    // ----------------------------------------------------
-    const checkUserOrganizations = async () => {
-        try {
-            console.log("Fetching organizations...");
-            
-            // apiClient automatically handles the base URL, /api prefix, and Authorization headers
-            const data = await apiClient.get<any>('/user/organizations');
+    persist(normalizedUser, data.access_token);
+    await checkUserOrganizations();
 
-            console.log("Organizations API response:", data);
+    return normalizedUser;
+  };
 
-            const orgList = Array.isArray(data)
-                ? data
-                : data.organizations || [];
+  // ----------------------------------------------------
+  // SIGNUP
+  // ----------------------------------------------------
+  const signup = async (name: string, email: string, password: string) => {
+    const payload = await apiClient.post<any>("/auth/signup", {
+      name,
+      email,
+      password,
+    });
 
-            console.log("Processed org list:", orgList);
-            
-            // save organizations
-            localStorage.setItem("organizations", JSON.stringify(orgList));
+    console.log("Signup response:", payload);
 
-            //  Extract IDs separately if needed
-            const orgIds = orgList.map((org: any) => org.organization_id);
-            localStorage.setItem("organization_ids", JSON.stringify(orgIds));
-
-            //  Set current organization
-            if (orgList.length > 0) {
-                localStorage.setItem(
-                    "current_organization",
-                    orgList[0].organization_id
-                );
-            }
-
-            clearSetupTemporaryKeys();
-
-            // Redirect
-            if (orgList.length === 0) {
-                window.location.href = "/no-organization";
-            } else {
-                window.location.href = "/dashboard";
-            }
-
-        } catch (err) {
-            console.error("Error checking organizations:", err);
-        }
+    const backendUser = payload.user || payload;
+    const normalizedUser: User = {
+      user_id: backendUser.id || backendUser.user_id,
+      email: backendUser.email,
+      full_name:
+        backendUser.full_name ||
+        backendUser.name ||
+        `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() ||
+        "User",
+      role: normalizeRole(backendUser.role || backendUser.roles),
     };
 
-    // ----------------------------------------------------
-    // Exchange token for organization swap
-    // ----------------------------------------------------
-    const exchangeTokenForOrganization = async (orgId: string) => {
-        try {
-            const data = await apiClient.post<any>('/auth/switch-organization', { organization_id: orgId });
-            if (data && data.access_token) {
-                // Update the token in localStorage and state (via persist) without logging out
-                if (user) {
-                    persist(user, data.access_token);
-                }
-            }
-        } catch (err) {
-            console.error("Error exchanging token for organization:", err);
-            throw err;
-        }
-    };
+    if (payload.access_token) {
+      persist(normalizedUser, payload.access_token);
+    } else {
+      // login and persist without organization-based redirect
+      const loginPayload = await apiClient.post<any>("/auth/login", {
+        email,
+        password,
+      });
+      const loginUser = loginPayload.user;
+      const normalizedLoginUser: User = {
+        user_id: loginUser.user_id,
+        email: loginUser.email,
+        full_name:
+          loginUser.full_name ||
+          loginUser.name ||
+          `${loginUser.first_name || ""} ${loginUser.last_name || ""}`.trim() ||
+          "User",
+        role: normalizeRole(loginUser.role || loginUser.roles),
+      };
+      persist(normalizedLoginUser, loginPayload.access_token);
+      await checkUserOrganizations();
+      return normalizedLoginUser;
+    }
 
-    // ----------------------------------------------------
-    // LOGIN
-    // ----------------------------------------------------
-    const login = async (email: string, password: string) => {
-        const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
-        console.log("Login response:", data);
+    await checkUserOrganizations();
+    return normalizedUser;
+  };
 
-        if (isLoginChallenge(data)) {
-            return data;
-        }
+  // ----------------------------------------------------
+  // LOGOUT
+  // ----------------------------------------------------
+  const logout = () => {
+    localStorage.clear();
+    setUser(null);
+    window.location.href = "/login";
+  };
 
-        const successData: LoginSuccess = data;
-        const backendUser = successData.user;
+  // ----------------------------------------------------
+  // FORGOT PASSWORD
+  // ----------------------------------------------------
+  const forgotPassword = async (email: string) => {
+    await apiClient.post<any>("/auth/forgot-password", { email });
+  };
 
-        const normalizedUser: User = {
-            user_id: backendUser.user_id,
-            email: backendUser.email,
-            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
-            role: normalizeRole(backendUser.role || backendUser.roles),
-        };
+  // ----------------------------------------------------
+  // RESET PASSWORD
+  // ----------------------------------------------------
+  const resetPassword = async (token: string, newPassword: string) => {
+    await apiClient.post<any>(`/auth/reset-password/${token}`, {
+      new_password: newPassword,
+    });
+  };
 
-        // Save user + token
-        persist(normalizedUser, successData.access_token);
-
-        console.log("Calling checkUserOrganizations...");
-        // Check organizations after login
-        await checkUserOrganizations();
-
-        return successData;
-    };
-
-    const verifyLogin2fa = async (email: string, code: string) => {
-        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
-
-        const backendUser = data.user;
-        const normalizedUser: User = {
-            user_id: backendUser.user_id,
-            email: backendUser.email,
-            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
-            role: normalizeRole(backendUser.role),
-        };
-
-        persist(normalizedUser, data.access_token);
-        await checkUserOrganizations();
-
-        return normalizedUser;
-    };
-
-    // ----------------------------------------------------
-    // SIGNUP
-    // ----------------------------------------------------
-    const signup = async (name: string, email: string, password: string) => {
-        const payload = await apiClient.post<any>('/auth/signup', { name, email, password });
-        
-        console.log("Signup response:", payload);
-
-        const backendUser = payload.user || payload;
-        const normalizedUser: User = {
-            user_id: backendUser.id || backendUser.user_id,
-            email: backendUser.email,
-            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
-            role: normalizeRole(backendUser.role || backendUser.roles),
-        };
-
-        if (payload.access_token) {
-            persist(normalizedUser, payload.access_token);
-        } else {
-            // login and persist without organization-based redirect
-            const loginPayload = await apiClient.post<any>('/auth/login', { email, password });
-            const loginUser = loginPayload.user;
-            const normalizedLoginUser: User = {
-                user_id: loginUser.user_id,
-                email: loginUser.email,
-                full_name: loginUser.full_name || loginUser.name || `${loginUser.first_name || ""} ${loginUser.last_name || ""}`.trim() || "User",
-                role: normalizeRole(loginUser.role || loginUser.roles),
-            };
-            persist(normalizedLoginUser, loginPayload.access_token);
-            await checkUserOrganizations();
-            return normalizedLoginUser;
-        }
-
-        await checkUserOrganizations();
-        return normalizedUser;
-    };
-
-    // ----------------------------------------------------
-    // LOGOUT
-    // ----------------------------------------------------
-    const logout = () => {
-        localStorage.clear();
-        setUser(null);
-        window.location.href = "/login";
-    };
-
-    // ----------------------------------------------------
-    // FORGOT PASSWORD
-    // ----------------------------------------------------
-    const forgotPassword = async (email: string) => {
-        await apiClient.post<any>('/auth/forgot-password', { email });
-    };
-
-    // ----------------------------------------------------
-    // RESET PASSWORD
-    // ----------------------------------------------------
-    const resetPassword = async (token: string, newPassword: string) => {
-        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
-    };
-
-    return (
-        <AuthContext.Provider
-            value={{
-                user,
-                login,
-                verifyLogin2fa,
-                signup,
-                logout,
-                forgotPassword,
-                resetPassword,
-                persist,
-                checkUserOrganizations,
-                exchangeTokenForOrganization,
-                isLoading,
-            }}
-        >
-            {children}
-        </AuthContext.Provider>
-    );
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        verifyLogin2fa,
+        signup,
+        logout,
+        forgotPassword,
+        resetPassword,
+        persist,
+        checkUserOrganizations,
+        exchangeTokenForOrganization,
+        isLoading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
-    const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-    return ctx;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };

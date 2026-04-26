@@ -1,189 +1,246 @@
-import React, { useEffect, useState } from 'react';
-import { Save, Globe, Loader } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Alert } from '../components/Alert';
-import { setEmbeddingServiceUrl } from '../services/embeddingService';
-import { getApiBaseUrl, normalizeBackendBaseUrl } from '../config/api';
+import React, { useEffect, useState } from "react";
+import { Save, Globe, Loader } from "lucide-react";
+import { LoadingSpinner } from "../components/LoadingSpinner";
+import { Alert } from "../components/Alert";
+import { setEmbeddingServiceUrl } from "../services/embeddingService";
+import { getApiBaseUrl, normalizeBackendBaseUrl } from "../config/api";
 
 export const APIManage: React.FC = () => {
-    const [apiSettings, setApiSettings] = useState({
-        embeddingServiceUrl: import.meta.env.VITE_EMBEDDING_SERVICE_URL || '',
-        mainBackendUrl: getApiBaseUrl(),
-        scrapingBackendUrl: import.meta.env.VITE_SCRAPING_URL || ''
-    });
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+  const [apiSettings, setApiSettings] = useState({
+    embeddingServiceUrl: import.meta.env.VITE_EMBEDDING_SERVICE_URL || "",
+    mainBackendUrl: getApiBaseUrl(),
+    scrapingBackendUrl: import.meta.env.VITE_SCRAPING_URL || "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-    useEffect(() => {
-        const loadAPISettings = async () => {
-            try {
-                setLoading(true);
-                
-                // Get URLs from localStorage (client-side settings)  
-                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
-                const storedMainBackendUrl = getApiBaseUrl();
-                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || '';
-                
-                setApiSettings({
-                    embeddingServiceUrl: storedEmbeddingUrl,
-                    mainBackendUrl: storedMainBackendUrl,
-                    scrapingBackendUrl: storedScrapingBackendUrl
-                });
-                
-                setError(null);
-            } catch (err) {
-                console.error('Failed to load API settings:', err);
-                // Don't show error on initialization - just use defaults
-                const storedEmbeddingUrl = localStorage.getItem('embeddingServiceUrl') || import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
-                const storedMainBackendUrl = getApiBaseUrl();
-                const storedScrapingBackendUrl = localStorage.getItem('scrapingBackendUrl') || import.meta.env.VITE_SCRAPING_URL || '';
-                setApiSettings({
-                    embeddingServiceUrl: storedEmbeddingUrl,
-                    mainBackendUrl: storedMainBackendUrl,
-                    scrapingBackendUrl: storedScrapingBackendUrl
-                });
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadAPISettings();
-    }, []);
+  useEffect(() => {
+    const loadAPISettings = async () => {
+      try {
+        setLoading(true);
 
-    const handleSaveAPISettings = async () => {
-        try {
-            setSaving(true);
-            setError(null);
-            setSuccess(null);
+        // Get URLs from localStorage (client-side settings)
+        const storedEmbeddingUrl =
+          localStorage.getItem("embeddingServiceUrl") ||
+          import.meta.env.VITE_EMBEDDING_SERVICE_URL ||
+          "";
+        const storedMainBackendUrl = getApiBaseUrl();
+        const storedScrapingBackendUrl =
+          localStorage.getItem("scrapingBackendUrl") ||
+          import.meta.env.VITE_SCRAPING_URL ||
+          "";
 
-            const normalizedMainBackendUrl = normalizeBackendBaseUrl(apiSettings.mainBackendUrl, getApiBaseUrl());
-            
-            // Save URLs to localStorage (client-side settings)
-            setEmbeddingServiceUrl(apiSettings.embeddingServiceUrl);
-            localStorage.setItem('mainBackendUrl', normalizedMainBackendUrl);
-            localStorage.setItem('scrapingBackendUrl', apiSettings.scrapingBackendUrl);
+        setApiSettings({
+          embeddingServiceUrl: storedEmbeddingUrl,
+          mainBackendUrl: storedMainBackendUrl,
+          scrapingBackendUrl: storedScrapingBackendUrl,
+        });
 
-            setApiSettings((prev) => ({ ...prev, mainBackendUrl: normalizedMainBackendUrl }));
-            
-            setSuccess('Service URLs saved successfully!');
-            
-            setTimeout(() => setSuccess(null), 3000);
-        } catch (err) {
-            console.error('Failed to save API settings:', err);
-            setError('Failed to save service URLs. Please try again.');
-        } finally {
-            setSaving(false);
-        }
+        setError(null);
+      } catch (err) {
+        console.error("Failed to load API settings:", err);
+        // Don't show error on initialization - just use defaults
+        const storedEmbeddingUrl =
+          localStorage.getItem("embeddingServiceUrl") ||
+          import.meta.env.VITE_EMBEDDING_SERVICE_URL ||
+          "";
+        const storedMainBackendUrl = getApiBaseUrl();
+        const storedScrapingBackendUrl =
+          localStorage.getItem("scrapingBackendUrl") ||
+          import.meta.env.VITE_SCRAPING_URL ||
+          "";
+        setApiSettings({
+          embeddingServiceUrl: storedEmbeddingUrl,
+          mainBackendUrl: storedMainBackendUrl,
+          scrapingBackendUrl: storedScrapingBackendUrl,
+        });
+      } finally {
+        setLoading(false);
+      }
     };
+    loadAPISettings();
+  }, []);
 
-    if (loading) {
-        return <LoadingSpinner size={32} />;
+  const handleSaveAPISettings = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const normalizedMainBackendUrl = normalizeBackendBaseUrl(
+        apiSettings.mainBackendUrl,
+        getApiBaseUrl(),
+      );
+
+      // Save URLs to localStorage (client-side settings)
+      setEmbeddingServiceUrl(apiSettings.embeddingServiceUrl);
+      localStorage.setItem("mainBackendUrl", normalizedMainBackendUrl);
+      localStorage.setItem(
+        "scrapingBackendUrl",
+        apiSettings.scrapingBackendUrl,
+      );
+
+      setApiSettings((prev) => ({
+        ...prev,
+        mainBackendUrl: normalizedMainBackendUrl,
+      }));
+
+      setSuccess("Service URLs saved successfully!");
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to save API settings:", err);
+      setError("Failed to save service URLs. Please try again.");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    return (
-        <div className="space-y-6 pt-4">
-            {/* Success/Error Messages */}
-            {error && <Alert type="error" message={error} className="mb-6" />}
-            {success && <Alert type="success" message={success} className="mb-6" />}
+  if (loading) {
+    return <LoadingSpinner size={32} />;
+  }
 
-            <div className="space-y-6">
-                {/* Embedding Service URL */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Globe size={20} className="text-blue-500" />
-                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Embedding Service URL</h2>
-                    </div>
+  return (
+    <div className="space-y-6 pt-4">
+      {/* Success/Error Messages */}
+      {error && <Alert type="error" message={error} className="mb-6" />}
+      {success && <Alert type="success" message={success} className="mb-6" />}
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                            Service Endpoint
-                        </label>
-                        <input
-                            type="text"
-                            value={apiSettings.embeddingServiceUrl}
-                            onChange={(e) => setApiSettings({...apiSettings, embeddingServiceUrl: e.target.value})}
-                            placeholder="e.g. http://localhost:8002"
-                            className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                            URL where the embedding service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_EMBEDDING_SERVICE_URL</code> in your .env file.
-                        </p>
-                    </div>
-                </div>
+      <div className="space-y-6">
+        {/* Embedding Service URL */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Globe size={20} className="text-blue-500" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              Embedding Service URL
+            </h2>
+          </div>
 
-                {/* Main Backend URL */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Globe size={20} className="text-green-500" />
-                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Main Backend URL</h2>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                            Service Endpoint
-                        </label>
-                        <input
-                            type="text"
-                            value={apiSettings.mainBackendUrl}
-                            onChange={(e) => setApiSettings({...apiSettings, mainBackendUrl: e.target.value})}
-                            placeholder="e.g. http://localhost:8000"
-                            className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                            URL where the main backend service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_MAIN_BACKEND_URL</code> in your .env file.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Scraping Backend URL */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Globe size={20} className="text-purple-500" />
-                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Scraping Backend URL</h2>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                            Service Endpoint
-                        </label>
-                        <input
-                            type="text"
-                            value={apiSettings.scrapingBackendUrl}
-                            onChange={(e) => setApiSettings({...apiSettings, scrapingBackendUrl: e.target.value})}
-                            placeholder="e.g. http://localhost:8001"
-                            className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                            URL where the scraping backend service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_SCRAPING_URL</code> in your .env file.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-500 dark:text-slate-400">
-                        Service URLs are saved locally in your browser.
-                    </p>
-                    <button
-                        onClick={handleSaveAPISettings}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {saving ? (
-                            <>
-                                <Loader size={16} className="animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <Save size={16} />
-                                Save Changes
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+              Service Endpoint
+            </label>
+            <input
+              type="text"
+              value={apiSettings.embeddingServiceUrl}
+              onChange={(e) =>
+                setApiSettings({
+                  ...apiSettings,
+                  embeddingServiceUrl: e.target.value,
+                })
+              }
+              placeholder="e.g. http://localhost:8002"
+              className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
+              URL where the embedding service is running. Saved locally in your
+              browser. Default is read from{" "}
+              <code className="bg-gray-100 px-1 py-0.5 rounded">
+                VITE_EMBEDDING_SERVICE_URL
+              </code>{" "}
+              in your .env file.
+            </p>
+          </div>
         </div>
-    );
+
+        {/* Main Backend URL */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Globe size={20} className="text-green-500" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              Main Backend URL
+            </h2>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+              Service Endpoint
+            </label>
+            <input
+              type="text"
+              value={apiSettings.mainBackendUrl}
+              onChange={(e) =>
+                setApiSettings({
+                  ...apiSettings,
+                  mainBackendUrl: e.target.value,
+                })
+              }
+              placeholder="e.g. http://localhost:8000"
+              className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
+              URL where the main backend service is running. Saved locally in
+              your browser. Default is read from{" "}
+              <code className="bg-gray-100 px-1 py-0.5 rounded">
+                VITE_MAIN_BACKEND_URL
+              </code>{" "}
+              in your .env file.
+            </p>
+          </div>
+        </div>
+
+        {/* Scraping Backend URL */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Globe size={20} className="text-purple-500" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              Scraping Backend URL
+            </h2>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+              Service Endpoint
+            </label>
+            <input
+              type="text"
+              value={apiSettings.scrapingBackendUrl}
+              onChange={(e) =>
+                setApiSettings({
+                  ...apiSettings,
+                  scrapingBackendUrl: e.target.value,
+                })
+              }
+              placeholder="e.g. http://localhost:8001"
+              className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
+              URL where the scraping backend service is running. Saved locally
+              in your browser. Default is read from{" "}
+              <code className="bg-gray-100 px-1 py-0.5 rounded">
+                VITE_SCRAPING_URL
+              </code>{" "}
+              in your .env file.
+            </p>
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Service URLs are saved locally in your browser.
+          </p>
+          <button
+            onClick={handleSaveAPISettings}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? (
+              <>
+                <Loader size={16} className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Save Changes
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };

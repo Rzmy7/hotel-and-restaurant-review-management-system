@@ -1,30 +1,36 @@
-import React from 'react';
-import type { LucideIcon } from 'lucide-react';
+import React from "react";
+import type { LucideIcon } from "lucide-react";
 
 interface OrganizationStatCardProps {
-    label: string;
-    value: number;
-    icon: LucideIcon;
-    iconColor: string;
-    iconBgColor: string;
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  iconColor: string;
+  iconBgColor: string;
 }
 
 export const OrganizationStatCard: React.FC<OrganizationStatCardProps> = ({
-    label,
-    value,
-    icon: Icon,
-    iconColor,
-    iconBgColor
+  label,
+  value,
+  icon: Icon,
+  iconColor,
+  iconBgColor,
 }) => {
-    return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex items-center justify-between">
-            <div>
-                <div className="text-sm text-gray-500 dark:text-slate-400 mb-1">{label}</div>
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</div>
-            </div>
-            <div className={`w-12 h-12 rounded-xl ${iconBgColor} flex items-center justify-center ${iconColor}`}>
-                <Icon size={24} />
-            </div>
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex items-center justify-between">
+      <div>
+        <div className="text-sm text-gray-500 dark:text-slate-400 mb-1">
+          {label}
         </div>
-    );
+        <div className="text-3xl font-bold text-gray-900 dark:text-white">
+          {value.toLocaleString()}
+        </div>
+      </div>
+      <div
+        className={`w-12 h-12 rounded-xl ${iconBgColor} flex items-center justify-center ${iconColor}`}
+      >
+        <Icon size={24} />
+      </div>
+    </div>
+  );
 };

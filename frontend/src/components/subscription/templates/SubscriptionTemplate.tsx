@@ -1,8 +1,8 @@
-import React from 'react';
-import { SubscriptionHeader } from '../organisms/SubscriptionHeader';
-import { PricingGrid } from '../organisms/PricingGrid';
-import { ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { SubscriptionHeader } from "../organisms/SubscriptionHeader";
+import { PricingGrid } from "../organisms/PricingGrid";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * SubscriptionTemplate Component.
@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
  */
 export const SubscriptionTemplate: React.FC = () => {
   const navigate = useNavigate();
-  
+
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-slate-900/50 relative overflow-y-auto">
       {/* Background Decor */}
@@ -21,7 +21,7 @@ export const SubscriptionTemplate: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-20 relative">
         {/* Back Button */}
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="group absolute top-12 left-6 flex items-center gap-2 text-gray-400 hover:text-gray-900 dark:text-slate-500 dark:hover:text-white transition-all font-bold text-sm tracking-tight"
         >
@@ -35,7 +35,13 @@ export const SubscriptionTemplate: React.FC = () => {
         <PricingGrid />
 
         <div className="mt-20 text-center text-gray-400 dark:text-slate-500 text-sm font-medium">
-          Have questions about our plans? <button className="text-[#4e80ee] dark:text-blue-400 font-bold hover:underline" onClick={() => navigate('/support')}>Contact our team</button>
+          Have questions about our plans?{" "}
+          <button
+            className="text-[#4e80ee] dark:text-blue-400 font-bold hover:underline"
+            onClick={() => navigate("/support")}
+          >
+            Contact our team
+          </button>
         </div>
       </div>
     </div>

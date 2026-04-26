@@ -1,22 +1,22 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MainLayout } from './layouts/MainLayout';
-import { Dashboard } from './pages/Dashboard';
-import { Organizations } from './pages/Organizations';
-import { UsersPage } from './pages/Users';
-import { FeatureFlags } from './pages/FeatureFlags';
-import { Settings } from './pages/Settings';
-import { Embeddings } from './pages/Embeddings';
-import { Scraping } from './pages/Scraping';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { MainLayout } from "./layouts/MainLayout";
+import { Dashboard } from "./pages/Dashboard";
+import { Organizations } from "./pages/Organizations";
+import { UsersPage } from "./pages/Users";
+import { FeatureFlags } from "./pages/FeatureFlags";
+import { Settings } from "./pages/Settings";
+import { Embeddings } from "./pages/Embeddings";
+import { Scraping } from "./pages/Scraping";
 
-import { Monitoring } from './pages/Monitoring';
-import { SubscriptionPlans } from './pages/SubscriptionPlans';
-import { Broadcasting } from './pages/Broadcasting';
-import { ReplyGeneration } from './pages/ReplyGeneration';
-import { ReviewProcessing } from './pages/ReviewProcessing';
-import { getFrontendLoginUrl } from './config/frontend';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { Monitoring } from "./pages/Monitoring";
+import { SubscriptionPlans } from "./pages/SubscriptionPlans";
+import { Broadcasting } from "./pages/Broadcasting";
+import { ReplyGeneration } from "./pages/ReplyGeneration";
+import { ReviewProcessing } from "./pages/ReviewProcessing";
+import { getFrontendLoginUrl } from "./config/frontend";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 function App() {
   const [ready, setReady] = useState(false);
@@ -24,24 +24,24 @@ function App() {
   useEffect(() => {
     // --- Token handoff: read token from URL (sent by user-frontend) ---
     const params = new URLSearchParams(window.location.search);
-    let token = params.get('token');
-    let urlUser = params.get('user');
-    
+    let token = params.get("token");
+    let urlUser = params.get("user");
+
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem("token", token);
       if (urlUser) {
-        localStorage.setItem('authUser', urlUser);
+        localStorage.setItem("authUser", urlUser);
       }
-      
+
       // Clean the token and user from the URL without a reload
-      params.delete('token');
-      params.delete('user');
+      params.delete("token");
+      params.delete("user");
       const cleanUrl = params.toString()
         ? `${window.location.pathname}?${params.toString()}`
         : window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
+      window.history.replaceState({}, "", cleanUrl);
     } else {
-      token = localStorage.getItem('token');
+      token = localStorage.getItem("token");
     }
 
     // --- Auth guard: redirect to user-frontend login if no token ---
@@ -55,8 +55,16 @@ function App() {
 
   if (!ready) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f9fafb' }}>
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>Authenticating...</p>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "#f9fafb",
+        }}
+      >
+        <p style={{ color: "#6b7280", fontSize: "14px" }}>Authenticating...</p>
       </div>
     );
   }
@@ -81,12 +89,10 @@ function App() {
             <Route path="review-processing" element={<ReviewProcessing />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
-        </Routes> 
-        
+        </Routes>
       </BrowserRouter>
     </ThemeProvider>
   );
 }
 
 export default App;
-

@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Globe, Link, Key, Calendar, ShieldCheck, RefreshCw } from 'lucide-react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import type { Source, SyncSchedule } from '../../types/sources';
-import { sourcesService } from '../../services/sourcesService';
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Globe,
+  Link,
+  Key,
+  Calendar,
+  ShieldCheck,
+  RefreshCw,
+} from "lucide-react";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
+import type { Source, SyncSchedule } from "../../types/sources";
+import { sourcesService } from "../../services/sourcesService";
 
 interface AddSourceModalProps {
   isOpen: boolean;
@@ -13,25 +20,34 @@ interface AddSourceModalProps {
   existingPlatformIds?: number[];
 }
 
-const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: AddSourceModalProps) => {
+const AddSourceModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  existingPlatformIds = [],
+}: AddSourceModalProps) => {
   const { data: platforms = [], isLoading: isLoadingPlatforms } = useQuery({
-    queryKey: ['platforms'],
+    queryKey: ["platforms"],
     queryFn: () => sourcesService.getPlatforms(),
-    enabled: isOpen
+    enabled: isOpen,
   });
 
-  const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null);
-  const [propertyUrl, setPropertyUrl] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [schedule, setSchedule] = useState<SyncSchedule>('daily');
+  const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(
+    null,
+  );
+  const [propertyUrl, setPropertyUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [schedule, setSchedule] = useState<SyncSchedule>("daily");
   const [sourceStatus, setSourceStatus] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Set default platform once loaded
   useEffect(() => {
     if (isOpen && platforms.length > 0 && !selectedPlatformId) {
-      const firstAvailable = platforms.find((p: any) => !existingPlatformIds.includes(p.platform_id));
+      const firstAvailable = platforms.find(
+        (p: any) => !existingPlatformIds.includes(p.platform_id),
+      );
       if (firstAvailable) {
         setSelectedPlatformId(firstAvailable.platform_id);
       }
@@ -47,14 +63,14 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
       platformId: selectedPlatformId,
       propertyUrl,
       syncSchedule: schedule,
-      status: sourceStatus ? 'Active' : 'Paused',
+      status: sourceStatus ? "Active" : "Paused",
     });
     onClose();
     // Reset form
     setSelectedPlatformId(null);
-    setPropertyUrl('');
-    setApiKey('');
-    setSchedule('daily');
+    setPropertyUrl("");
+    setApiKey("");
+    setSchedule("daily");
   };
 
   const testConnection = () => {
@@ -63,7 +79,7 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
   };
 
   const filteredPlatforms = platforms.filter((p: any) =>
-    p.platform_name.toLowerCase().includes(searchQuery.toLowerCase())
+    p.platform_name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const footer = (
@@ -110,14 +126,19 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <Globe size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+              <Globe
+                size={12}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+              />
             </div>
           </div>
 
           <div className="max-h-[160px] overflow-y-auto pr-2 grid grid-cols-2 gap-3 custom-scrollbar">
             {isLoadingPlatforms ? (
               <div className="col-span-2 py-8 text-center bg-gray-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700">
-                <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest animate-pulse">Loading Platforms...</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest animate-pulse">
+                  Loading Platforms...
+                </p>
               </div>
             ) : filteredPlatforms.length > 0 ? (
               filteredPlatforms.map((p: any) => {
@@ -125,19 +146,24 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
                   <button
                     key={p.platform_id}
                     onClick={() => setSelectedPlatformId(p.platform_id)}
-                    className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between cursor-pointer ${selectedPlatformId === p.platform_id
-                      ? 'border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                      : 'border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600'
-                      }`}
+                    className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                      selectedPlatformId === p.platform_id
+                        ? "border-blue-600 bg-blue-50/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        : "border-gray-100 bg-gray-50/30 text-gray-500 hover:border-gray-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-slate-600"
+                    }`}
                   >
                     {p.platform_name}
-                    {selectedPlatformId === p.platform_id && <ShieldCheck size={16} />}
+                    {selectedPlatformId === p.platform_id && (
+                      <ShieldCheck size={16} />
+                    )}
                   </button>
                 );
               })
             ) : (
               <div className="col-span-2 py-8 text-center bg-gray-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700">
-                <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest">No platforms found</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+                  No platforms found
+                </p>
               </div>
             )}
           </div>
@@ -200,18 +226,24 @@ const AddSourceModal = ({ isOpen, onClose, onSave, existingPlatformIds = [] }: A
               type="button"
               onClick={testConnection}
               disabled={isTesting || !propertyUrl}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border ${isTesting
-                ? 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-[#4e80ee] hover:text-[#4e80ee] hover:shadow-blue-50 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600'
-                }`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border ${
+                isTesting
+                  ? "bg-gray-50 text-gray-400 border-gray-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-[#4e80ee] hover:text-[#4e80ee] hover:shadow-blue-50 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600"
+              }`}
             >
-              <RefreshCw size={14} className={isTesting ? 'animate-spin' : ''} />
-              {isTesting ? 'Checking Link...' : 'Test Connection'}
+              <RefreshCw
+                size={14}
+                className={isTesting ? "animate-spin" : ""}
+              />
+              {isTesting ? "Checking Link..." : "Test Connection"}
             </Button>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Auto-Sync</span>
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+              Auto-Sync
+            </span>
             <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"

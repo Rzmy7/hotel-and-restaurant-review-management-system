@@ -1,8 +1,8 @@
-import React from 'react';
-import HelpHeader from '../organisms/HelpHeader';
-import HelpSearch from '../molecules/HelpSearch';
-import HelpCategoriesGrid from '../organisms/HelpCategoriesGrid';
-import HelpTopArticles from '../organisms/HelpTopArticles';
+import React from "react";
+import HelpHeader from "../organisms/HelpHeader";
+import HelpSearch from "../molecules/HelpSearch";
+import HelpCategoriesGrid from "../organisms/HelpCategoriesGrid";
+import HelpTopArticles from "../organisms/HelpTopArticles";
 
 const HelpTemplate: React.FC = () => {
   return (
@@ -35,12 +35,15 @@ const HelpTemplate: React.FC = () => {
 
           <aside className="order-1 xl:order-2 space-y-8">
             <HelpTopArticles />
-            
+
             <div className="bg-[#4e80ee] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-blue-100 dark:shadow-none">
               <div className="relative z-10">
-                <h4 className="text-xl font-black uppercase tracking-tight mb-2">Can't find it?</h4>
+                <h4 className="text-xl font-black uppercase tracking-tight mb-2">
+                  Can't find it?
+                </h4>
                 <p className="text-sm font-bold text-blue-100 leading-relaxed mb-6">
-                  Our support team is available 24/7 to help you with any issues.
+                  Our support team is available 24/7 to help you with any
+                  issues.
                 </p>
                 <button className="h-12 w-full bg-white text-[#4e80ee] rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg hover:bg-blue-50 transition-all active:scale-[0.98]">
                   Contact Support

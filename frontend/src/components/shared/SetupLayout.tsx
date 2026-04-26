@@ -1,9 +1,9 @@
-import React from 'react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { LogOut, ChevronRight, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../api/client';
+import React from "react";
+import { Card } from "../ui/Card";
+import { Button } from "../ui/Button";
+import { LogOut, ChevronRight, ChevronLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../api/client";
 
 interface SetupLayoutProps {
   currentStep: number;
@@ -26,54 +26,72 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
   showBack = true,
   isContinueLoading = false,
   isContinueDisabled = false,
-  maxWidthClass = 'max-w-3xl',
+  maxWidthClass = "max-w-3xl",
 }) => {
   const navigate = useNavigate();
-    const SETUP_PENDING_ORG_ID_KEY = 'setup_pending_organization_id';
-    const SETUP_PENDING_MEMBERSHIP_CREATED_KEY = 'setup_pending_membership_created';
+  const SETUP_PENDING_ORG_ID_KEY = "setup_pending_organization_id";
+  const SETUP_PENDING_MEMBERSHIP_CREATED_KEY =
+    "setup_pending_membership_created";
 
-    const discardPendingSetupOrganizationIfNeeded = async () => {
-        const pendingOrganizationId = localStorage.getItem(SETUP_PENDING_ORG_ID_KEY);
-        const membershipCreated = localStorage.getItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY) === 'true';
+  const discardPendingSetupOrganizationIfNeeded = async () => {
+    const pendingOrganizationId = localStorage.getItem(
+      SETUP_PENDING_ORG_ID_KEY,
+    );
+    const membershipCreated =
+      localStorage.getItem(SETUP_PENDING_MEMBERSHIP_CREATED_KEY) === "true";
 
-        if (!pendingOrganizationId || !membershipCreated) {
-            return;
-        }
+    if (!pendingOrganizationId || !membershipCreated) {
+      return;
+    }
 
-        try {
-            await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`);
-        } catch (error) {
-            console.warn('Failed to discard pending setup organization from backend:', error);
-        }
-    };
+    try {
+      await apiClient.delete(
+        `/api/setup/organizations/${pendingOrganizationId}/discard`,
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to discard pending setup organization from backend:",
+        error,
+      );
+    }
+  };
 
   const steps = [
-    { number: 1, label: 'Organization' },
-    { number: 2, label: 'Sources' },
-        { number: 3, label: 'Finish' },
+    { number: 1, label: "Organization" },
+    { number: 2, label: "Sources" },
+    { number: 3, label: "Finish" },
   ];
 
-    const handleExit = async () => {
-    if (confirm('Are you sure you want to exit setup? Your progress might not be saved.')) {
-            await discardPendingSetupOrganizationIfNeeded();
+  const handleExit = async () => {
+    if (
+      confirm(
+        "Are you sure you want to exit setup? Your progress might not be saved.",
+      )
+    ) {
+      await discardPendingSetupOrganizationIfNeeded();
 
       // Restore previous organization focus if we were midway through setup
-      const snapshotCurrentOrganization = localStorage.getItem('setup_snapshot_current_organization');
-      if (snapshotCurrentOrganization === '__none__') {
-          localStorage.removeItem('current_organization');
+      const snapshotCurrentOrganization = localStorage.getItem(
+        "setup_snapshot_current_organization",
+      );
+      if (snapshotCurrentOrganization === "__none__") {
+        localStorage.removeItem("current_organization");
       } else if (snapshotCurrentOrganization !== null) {
-          localStorage.setItem('current_organization', snapshotCurrentOrganization);
+        localStorage.setItem(
+          "current_organization",
+          snapshotCurrentOrganization,
+        );
       }
-      
-      // Clear temporary setup state
-      localStorage.removeItem('setup_pending_organization_id');
-      localStorage.removeItem('setup_pending_organization_name');
-            localStorage.removeItem('setup_pending_membership_created');
-      localStorage.removeItem('setup_snapshot_current_organization');
-      localStorage.removeItem('setup_snapshot_organizations');
-      localStorage.removeItem('setup_snapshot_organization_ids');
 
-      navigate('/dashboard');
+      // Clear temporary setup state
+      localStorage.removeItem("setup_pending_organization_id");
+      localStorage.removeItem("setup_pending_organization_name");
+      localStorage.removeItem("setup_pending_membership_created");
+      localStorage.removeItem("setup_snapshot_current_organization");
+      localStorage.removeItem("setup_snapshot_organizations");
+      localStorage.removeItem("setup_snapshot_organization_ids");
+
+      navigate("/dashboard");
     }
   };
 
@@ -82,95 +100,111 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
       <div className="min-h-screen flex flex-col py-12 px-6">
         {/* Header with Exit button */}
         <div className="max-w-5xl mx-auto w-full flex justify-between items-center mb-12">
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-black text-lg">L</span>
-                </div>
-                <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white uppercase">ReviewMate</span>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-black text-lg">L</span>
             </div>
-            <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleExit}
-                className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-2 font-bold uppercase text-[11px] tracking-widest"
-            >
-                <LogOut size={14} />
-                Exit Setup
-            </Button>
+            <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white uppercase">
+              ReviewMate
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExit}
+            className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-2 font-bold uppercase text-[11px] tracking-widest"
+          >
+            <LogOut size={14} />
+            Exit Setup
+          </Button>
         </div>
 
         {/* Steps Header */}
         <div className="max-w-3xl mx-auto w-full mb-12">
           <div className="flex justify-between items-start relative">
-             {/* Progress Line Background */}
+            {/* Progress Line Background */}
             <div className="absolute top-4 left-0 w-full h-[2px] bg-slate-200 dark:bg-slate-800 -z-10" />
-            
+
             {steps.map((step) => {
-                const isActive = currentStep === step.number;
-                const isCompleted = currentStep > step.number;
-                
-                return (
-                    <div key={step.number} className="flex flex-col items-center gap-3 relative px-2">
-                        <div className={`
+              const isActive = currentStep === step.number;
+              const isCompleted = currentStep > step.number;
+
+              return (
+                <div
+                  key={step.number}
+                  className="flex flex-col items-center gap-3 relative px-2"
+                >
+                  <div
+                    className={`
                             w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
-                            ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110' : 
-                              isCompleted ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-400 border-2 border-slate-200 dark:border-slate-800'}
-                        `}>
-                            {isCompleted ? '✓' : step.number}
-                        </div>
-                        <span className={`
+                            ${
+                              isActive
+                                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110"
+                                : isCompleted
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white dark:bg-slate-900 text-slate-400 border-2 border-slate-200 dark:border-slate-800"
+                            }
+                        `}
+                  >
+                    {isCompleted ? "✓" : step.number}
+                  </div>
+                  <span
+                    className={`
                             text-[11px] uppercase tracking-widest font-black whitespace-nowrap transition-colors duration-300
-                            ${isActive ? 'text-blue-600' : 'text-slate-400'}
-                        `}>
-                            {step.label}
-                        </span>
-                    </div>
-                );
+                            ${isActive ? "text-blue-600" : "text-slate-400"}
+                        `}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+              );
             })}
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col items-center">
-            <Card className={`w-full ${maxWidthClass} p-8 md:p-12 shadow-2xl shadow-blue-500/5 animate-in fade-in slide-in-from-bottom-6 duration-700 mb-20 relative overflow-hidden`}>
-                {/* Subtle gradient accent */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50" />
-                
-                <div className="min-h-[300px] flex flex-col">
-                    <div className="flex-1">
-                        {children}
-                    </div>
+          <Card
+            className={`w-full ${maxWidthClass} p-8 md:p-12 shadow-2xl shadow-blue-500/5 animate-in fade-in slide-in-from-bottom-6 duration-700 mb-20 relative overflow-hidden`}
+          >
+            {/* Subtle gradient accent */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50" />
 
-                    <div className="flex items-center justify-between pt-10 mt-10 border-t border-slate-100 dark:border-slate-800">
-                        <div>
-                            {showBack && currentStep > 1 && onBack && (
-                                <Button
-                                    variant="outline"
-                                    onClick={onBack}
-                                    className="gap-2 px-6 font-bold uppercase text-[12px] tracking-widest h-11"
-                                    leftIcon={<ChevronLeft size={16} />}
-                                >
-                                    Back
-                                </Button>
-                            )}
-                        </div>
+            <div className="min-h-[300px] flex flex-col">
+              <div className="flex-1">{children}</div>
 
-                        <div>
-                            {showContinue && onContinue && (
-                                <Button
-                                    onClick={onContinue}
-                                    isLoading={isContinueLoading}
-                                    disabled={isContinueDisabled}
-                                    className="gap-2 px-10 font-black uppercase text-[12px] tracking-widest h-11 shadow-lg shadow-blue-500/20"
-                                    rightIcon={<ChevronRight size={16} />}
-                                >
-                                    {currentStep === steps.length ? 'Complete Setup' : 'Continue'}
-                                </Button>
-                            )}
-                        </div>
-                    </div>
+              <div className="flex items-center justify-between pt-10 mt-10 border-t border-slate-100 dark:border-slate-800">
+                <div>
+                  {showBack && currentStep > 1 && onBack && (
+                    <Button
+                      variant="outline"
+                      onClick={onBack}
+                      className="gap-2 px-6 font-bold uppercase text-[12px] tracking-widest h-11"
+                      leftIcon={<ChevronLeft size={16} />}
+                    >
+                      Back
+                    </Button>
+                  )}
                 </div>
-            </Card>
+
+                <div>
+                  {showContinue && onContinue && (
+                    <Button
+                      onClick={onContinue}
+                      isLoading={isContinueLoading}
+                      disabled={isContinueDisabled}
+                      className="gap-2 px-10 font-black uppercase text-[12px] tracking-widest h-11 shadow-lg shadow-blue-500/20"
+                      rightIcon={<ChevronRight size={16} />}
+                    >
+                      {currentStep === steps.length
+                        ? "Complete Setup"
+                        : "Continue"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

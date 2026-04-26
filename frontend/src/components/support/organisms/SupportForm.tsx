@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Send, AlertCircle } from 'lucide-react';
-import { useToast } from '../../../contexts/ToastContext';
+import React, { useState } from "react";
+import { Send, AlertCircle } from "lucide-react";
+import { useToast } from "../../../contexts/ToastContext";
 
 const SupportForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -9,8 +9,8 @@ const SupportForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    showToast('Support ticket submitted successfully!', 'success');
+    await new Promise((r) => setTimeout(r, 1500));
+    showToast("Support ticket submitted successfully!", "success");
     setIsSubmitting(false);
   };
 
@@ -31,11 +31,11 @@ const SupportForm: React.FC = () => {
             <label className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest ml-1">
               Issue Subject
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="e.g. Scraper connection failure"
               className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#4e80ee]/20 focus:border-[#4e80ee] placeholder:text-gray-300"
-              required 
+              required
             />
           </div>
           <div className="space-y-2">
@@ -55,7 +55,7 @@ const SupportForm: React.FC = () => {
           <label className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest ml-1">
             Detailed Description
           </label>
-          <textarea 
+          <textarea
             rows={6}
             placeholder="Please provide as much detail as possible, including source URLs if applicable..."
             className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#4e80ee]/20 focus:border-[#4e80ee] placeholder:text-gray-300 resize-none"
@@ -64,10 +64,12 @@ const SupportForm: React.FC = () => {
         </div>
 
         <div className="p-4 rounded-2xl bg-[#4e80ee]/5 border border-[#4e80ee]/10 flex items-start gap-4">
-            <AlertCircle size={20} className="text-[#4e80ee] shrink-0 mt-0.5" />
-            <p className="text-[11px] font-medium text-gray-500 dark:text-slate-400 leading-relaxed">
-                Our AI Support Assistant may suggest relevant documentation while you wait for a human agent. Please check your dashboard notifications.
-            </p>
+          <AlertCircle size={20} className="text-[#4e80ee] shrink-0 mt-0.5" />
+          <p className="text-[11px] font-medium text-gray-500 dark:text-slate-400 leading-relaxed">
+            Our AI Support Assistant may suggest relevant documentation while
+            you wait for a human agent. Please check your dashboard
+            notifications.
+          </p>
         </div>
 
         <div className="pt-4">
@@ -77,7 +79,7 @@ const SupportForm: React.FC = () => {
             className="h-12 px-8 bg-[#4e80ee] text-white rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none hover:bg-blue-600 active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {isSubmitting ? 'Submitting Signal...' : 'Send Message'}
+            {isSubmitting ? "Submitting Signal..." : "Send Message"}
           </button>
         </div>
       </form>

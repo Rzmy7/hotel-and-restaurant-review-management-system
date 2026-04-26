@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, Building2, MapPin } from 'lucide-react';
-import { editCompetitor, type Competitor } from '../../services/competitorService';
-import { useOrganizationStore } from '../../stores/useOrganizationStore';
+import React, { useState, useEffect } from "react";
+import { X, Building2, MapPin } from "lucide-react";
+import {
+  editCompetitor,
+  type Competitor,
+} from "../../services/competitorService";
+import { useOrganizationStore } from "../../stores/useOrganizationStore";
 
 interface EditCompetitorModalProps {
   isOpen: boolean;
@@ -10,19 +13,24 @@ interface EditCompetitorModalProps {
   competitor: Competitor | null;
 }
 
-const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClose, onSuccess, competitor }) => {
-  const [name, setName] = useState('');
-  const [locationUrl, setLocationUrl] = useState('');
+const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  competitor,
+}) => {
+  const [name, setName] = useState("");
+  const [locationUrl, setLocationUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const currentOrg = useOrganizationStore(state => state.currentOrg);
+
+  const currentOrg = useOrganizationStore((state) => state.currentOrg);
   const organizationId = currentOrg?.id;
 
   useEffect(() => {
     if (competitor) {
       setName(competitor.name);
-      setLocationUrl(competitor.location_url || '');
+      setLocationUrl(competitor.location_url || "");
       setError(null);
     }
   }, [competitor, isOpen]);
@@ -33,12 +41,12 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
     e.preventDefault();
 
     if (!name.trim()) {
-      setError('Name is required.');
+      setError("Name is required.");
       return;
     }
 
     if (!organizationId) {
-      setError('No active organization selected.');
+      setError("No active organization selected.");
       return;
     }
 
@@ -53,7 +61,7 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message ?? 'Failed to edit competitor.');
+      setError(err.message ?? "Failed to edit competitor.");
     } finally {
       setLoading(false);
     }
@@ -63,12 +71,14 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
     <div className="fixed inset-0 bg-gray-900/50 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
         className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="px-8 py-6 flex items-start justify-between border-b border-gray-100 dark:border-slate-700">
           <div>
-            <h2 className="text-[20px] font-bold text-gray-900 dark:text-white leading-tight">Edit Competitor</h2>
+            <h2 className="text-[20px] font-bold text-gray-900 dark:text-white leading-tight">
+              Edit Competitor
+            </h2>
             <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">
               Update the organization details for this tracked competitor.
             </p>
@@ -83,7 +93,6 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
-
           {/* Name */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -93,7 +102,7 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
             <input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Grand Ocean Hotel"
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
@@ -108,7 +117,7 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
             <input
               type="url"
               value={locationUrl}
-              onChange={e => setLocationUrl(e.target.value)}
+              onChange={(e) => setLocationUrl(e.target.value)}
               placeholder="https://www.google.com/maps/place/..."
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
@@ -135,7 +144,7 @@ const EditCompetitorModal: React.FC<EditCompetitorModalProps> = ({ isOpen, onClo
               disabled={loading}
               className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
             >
-              {loading ? 'Saving…' : 'Save Changes'}
+              {loading ? "Saving…" : "Save Changes"}
             </button>
           </div>
         </form>

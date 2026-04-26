@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Users, Crown, Check, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
-import { groupsService, type JoinLinkInfo } from '../services/groupsService';
-import { useToast } from '../contexts/ToastContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Users,
+  Crown,
+  Check,
+  AlertCircle,
+  Loader2,
+  ArrowLeft,
+} from "lucide-react";
+import { groupsService, type JoinLinkInfo } from "../services/groupsService";
+import { useToast } from "../contexts/ToastContext";
+import { useAuth } from "../contexts/AuthContext";
 
 const GroupInvitePage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -17,8 +24,15 @@ const GroupInvitePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) { setError('Invalid invite link.'); setLoading(false); return; }
-    if (!user) { navigate(`/login?redirect=/groups/join/${token}`); return; }
+    if (!token) {
+      setError("Invalid invite link.");
+      setLoading(false);
+      return;
+    }
+    if (!user) {
+      navigate(`/login?redirect=/groups/join/${token}`);
+      return;
+    }
 
     const fetch = async () => {
       setLoading(true);
@@ -26,7 +40,7 @@ const GroupInvitePage: React.FC = () => {
         const data = await groupsService.getJoinInfo(token);
         setInfo(data);
       } catch (err: any) {
-        setError(err.message || 'This invite link is invalid or has expired.');
+        setError(err.message || "This invite link is invalid or has expired.");
       } finally {
         setLoading(false);
       }
@@ -39,10 +53,10 @@ const GroupInvitePage: React.FC = () => {
     setJoining(true);
     try {
       const res = await groupsService.joinViaLink(token);
-      showToast(res.message, 'success');
+      showToast(res.message, "success");
       navigate(`/groups/${res.group_id}`);
     } catch (err: any) {
-      showToast(err.message || 'Failed to join group', 'error');
+      showToast(err.message || "Failed to join group", "error");
       setJoining(false);
     }
   };
@@ -53,7 +67,7 @@ const GroupInvitePage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <button
-          onClick={() => navigate('/groups')}
+          onClick={() => navigate("/groups")}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -62,18 +76,27 @@ const GroupInvitePage: React.FC = () => {
 
         {loading ? (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-10 text-center">
-            <Loader2 size={32} className="animate-spin text-brand mx-auto mb-3" />
-            <p className="text-sm text-gray-400 dark:text-slate-500">Loading invite details…</p>
+            <Loader2
+              size={32}
+              className="animate-spin text-brand mx-auto mb-3"
+            />
+            <p className="text-sm text-gray-400 dark:text-slate-500">
+              Loading invite details…
+            </p>
           </div>
         ) : error ? (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-red-200 dark:border-red-900/40 shadow-sm p-8 text-center">
             <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={28} className="text-red-500" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Invalid Invite Link</h2>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">{error}</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              Invalid Invite Link
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">
+              {error}
+            </p>
             <button
-              onClick={() => navigate('/groups')}
+              onClick={() => navigate("/groups")}
               className="px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
             >
               Go to Groups
@@ -86,8 +109,12 @@ const GroupInvitePage: React.FC = () => {
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <Crown size={32} className="text-white" />
               </div>
-              <h1 className="text-xl font-black text-white">Group Invitation</h1>
-              <p className="text-blue-100 text-sm mt-1">You've been invited to join a group</p>
+              <h1 className="text-xl font-black text-white">
+                Group Invitation
+              </h1>
+              <p className="text-blue-100 text-sm mt-1">
+                You've been invited to join a group
+              </p>
             </div>
 
             {/* Group info */}
@@ -97,13 +124,18 @@ const GroupInvitePage: React.FC = () => {
                   {info.group_name}
                 </h2>
                 {info.description && (
-                  <p className="text-sm text-gray-500 dark:text-slate-400">{info.description}</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">
+                    {info.description}
+                  </p>
                 )}
               </div>
 
               <div className="flex items-center justify-center gap-2 mb-6 text-sm text-gray-500 dark:text-slate-400">
                 <Users size={15} />
-                <span>{info.member_count} {info.member_count === 1 ? 'member' : 'members'}</span>
+                <span>
+                  {info.member_count}{" "}
+                  {info.member_count === 1 ? "member" : "members"}
+                </span>
               </div>
 
               {info.already_member ? (
@@ -128,11 +160,15 @@ const GroupInvitePage: React.FC = () => {
                     disabled={joining}
                     className="w-full px-4 py-3 rounded-xl bg-brand text-white font-bold text-sm hover:bg-brand/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                   >
-                    {joining ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                    {joining ? 'Joining…' : 'Join Group'}
+                    {joining ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                    {joining ? "Joining…" : "Join Group"}
                   </button>
                   <button
-                    onClick={() => navigate('/groups')}
+                    onClick={() => navigate("/groups")}
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                   >
                     Decline

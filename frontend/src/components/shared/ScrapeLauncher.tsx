@@ -1,54 +1,66 @@
-import { useState } from 'react';
-import { Rocket, Link2, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { getApiBaseUrl } from '../../config/api';
+import { useState } from "react";
+import {
+  Rocket,
+  Link2,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
+import { getApiBaseUrl } from "../../config/api";
 
 const API_BASE = getApiBaseUrl();
 
-type Status = 'idle' | 'running' | 'success' | 'error';
+type Status = "idle" | "running" | "success" | "error";
 
 const ScrapeLauncher: React.FC = () => {
-  const [url, setUrl] = useState('');
-  const [status, setStatus] = useState<Status>('idle');
-  const [message, setMessage] = useState('Provide a Booking.com reviews link and launch the scraper.');
+  const [url, setUrl] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+  const [message, setMessage] = useState(
+    "Provide a Booking.com reviews link and launch the scraper.",
+  );
   const [headless, setHeadless] = useState(true);
 
   const startScrape = async () => {
     const trimmed = url.trim();
-    if (!trimmed.startsWith('http')) {
-      setStatus('error');
-      setMessage('Please paste a full Booking.com reviews URL.');
+    if (!trimmed.startsWith("http")) {
+      setStatus("error");
+      setMessage("Please paste a full Booking.com reviews URL.");
       return;
     }
 
-    setStatus('running');
-    setMessage('Starting scrape…');
+    setStatus("running");
+    setMessage("Starting scrape…");
 
     try {
       const response = await fetch(`${API_BASE}/scrape/booking`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: trimmed, headless }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || 'Failed to start scrape');
+        throw new Error(errorText || "Failed to start scrape");
       }
 
       const data = await response.json();
-      setStatus('success');
-      setMessage(data.message || 'Scrape started. Check backend logs for progress.');
+      setStatus("success");
+      setMessage(
+        data.message || "Scrape started. Check backend logs for progress.",
+      );
     } catch (err) {
-      const fallback = err instanceof Error ? err.message : 'Failed to start scrape';
-      setStatus('error');
+      const fallback =
+        err instanceof Error ? err.message : "Failed to start scrape";
+      setStatus("error");
       setMessage(fallback);
     }
   };
 
   const renderStatusIcon = () => {
-    if (status === 'running') return <Loader2 size={16} className="animate-spin" />;
-    if (status === 'success') return <CheckCircle2 size={16} />;
-    if (status === 'error') return <AlertTriangle size={16} />;
+    if (status === "running")
+      return <Loader2 size={16} className="animate-spin" />;
+    if (status === "success") return <CheckCircle2 size={16} />;
+    if (status === "error") return <AlertTriangle size={16} />;
     return null;
   };
 
@@ -59,20 +71,28 @@ const ScrapeLauncher: React.FC = () => {
           <Rocket size={18} />
           <div>
             <h3 className="m-0 text-base tracking-wide">Booking.com Scraper</h3>
-            <p className="m-0 text-sky-200/80 text-[13px]">Trigger the Playwright scraper directly from the dashboard.</p>
+            <p className="m-0 text-sky-200/80 text-[13px]">
+              Trigger the Playwright scraper directly from the dashboard.
+            </p>
           </div>
         </div>
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border border-white/10 ${status === 'running' ? 'bg-blue-500/10 text-blue-300' :
-          status === 'success' ? 'bg-green-500/15 text-green-300' :
-            status === 'error' ? 'bg-red-500/15 text-red-300' :
-              'bg-white/10 text-sky-100'
-          }`}>
+        <div
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border border-white/10 ${
+            status === "running"
+              ? "bg-blue-500/10 text-blue-300"
+              : status === "success"
+                ? "bg-green-500/15 text-green-300"
+                : status === "error"
+                  ? "bg-red-500/15 text-red-300"
+                  : "bg-white/10 text-sky-100"
+          }`}
+        >
           {renderStatusIcon()}
           <span>
-            {status === 'idle' && 'Idle'}
-            {status === 'running' && 'Running'}
-            {status === 'success' && 'Started'}
-            {status === 'error' && 'Error'}
+            {status === "idle" && "Idle"}
+            {status === "running" && "Running"}
+            {status === "success" && "Started"}
+            {status === "error" && "Error"}
           </span>
         </div>
       </div>
@@ -87,15 +107,15 @@ const ScrapeLauncher: React.FC = () => {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') startScrape();
+            if (e.key === "Enter") startScrape();
           }}
         />
         <button
           className="inline-flex items-center gap-1.5 bg-gradient-to-br from-cyan-400 to-sky-500 text-sky-950 border-none px-3.5 py-2.5 rounded-lg font-semibold cursor-pointer transition hover:-translate-y-px hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
-          disabled={status === 'running'}
+          disabled={status === "running"}
           onClick={startScrape}
         >
-          {status === 'running' ? (
+          {status === "running" ? (
             <>
               <Loader2 size={16} className="animate-spin" />
               <span>Launching…</span>
@@ -119,11 +139,19 @@ const ScrapeLauncher: React.FC = () => {
           />
           <span>Show browser window (debug)</span>
         </label>
-        <p className={`m-0 text-[13px] ${status === 'success' ? 'text-emerald-200' :
-          status === 'error' ? 'text-red-300' :
-            status === 'running' ? 'text-blue-300' :
-              'text-sky-200/90'
-          }`}>{message}</p>
+        <p
+          className={`m-0 text-[13px] ${
+            status === "success"
+              ? "text-emerald-200"
+              : status === "error"
+                ? "text-red-300"
+                : status === "running"
+                  ? "text-blue-300"
+                  : "text-sky-200/90"
+          }`}
+        >
+          {message}
+        </p>
       </div>
     </div>
   );

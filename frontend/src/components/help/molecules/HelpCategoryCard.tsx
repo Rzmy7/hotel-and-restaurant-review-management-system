@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import React from "react";
+import { ChevronRight } from "lucide-react";
 
 interface CategoryCardProps {
   icon: React.ReactNode;
@@ -9,7 +9,13 @@ interface CategoryCardProps {
   onClick: () => void;
 }
 
-const HelpCategoryCard: React.FC<CategoryCardProps> = ({ icon, title, description, count, onClick }) => {
+const HelpCategoryCard: React.FC<CategoryCardProps> = ({
+  icon,
+  title,
+  description,
+  count,
+  onClick,
+}) => {
   return (
     <button
       onClick={onClick}
@@ -19,7 +25,7 @@ const HelpCategoryCard: React.FC<CategoryCardProps> = ({ icon, title, descriptio
         <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-700 shadow-sm border border-gray-100 dark:border-slate-600 flex items-center justify-center text-[#4e80ee] mb-6 group-hover:scale-110 transition-transform duration-300">
           {icon}
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">

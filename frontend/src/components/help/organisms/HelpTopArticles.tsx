@@ -1,12 +1,22 @@
-import React from 'react';
-import TopArticleItem from '../atoms/TopArticleItem';
+import React from "react";
+import TopArticleItem from "../atoms/TopArticleItem";
 
 const topArticles = [
-  { title: "Quick Start: Configuring your first review source", category: "Basics", isNew: true },
-  { title: "Understanding the sentiment analysis algorithm", category: "Analytics" },
+  {
+    title: "Quick Start: Configuring your first review source",
+    category: "Basics",
+    isNew: true,
+  },
+  {
+    title: "Understanding the sentiment analysis algorithm",
+    category: "Analytics",
+  },
   { title: "How to export monthly performance reports", category: "Reports" },
   { title: "Setting up custom notification alerts", category: "System" },
-  { title: "Whitelabeling your client-facing dashboard", category: "Enterprise" },
+  {
+    title: "Whitelabeling your client-facing dashboard",
+    category: "Enterprise",
+  },
 ];
 
 const HelpTopArticles: React.FC = () => {
@@ -14,7 +24,9 @@ const HelpTopArticles: React.FC = () => {
     <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-slate-800 p-8 shadow-sm">
       <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase mb-6 flex items-center justify-between">
         Top Articles
-        <span className="text-[10px] font-black text-[#4e80ee] uppercase tracking-widest">Trending Now</span>
+        <span className="text-[10px] font-black text-[#4e80ee] uppercase tracking-widest">
+          Trending Now
+        </span>
       </h3>
       <div className="space-y-2">
         {topArticles.map((article, i) => (

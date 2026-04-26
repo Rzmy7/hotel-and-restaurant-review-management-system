@@ -1,12 +1,15 @@
-import React from 'react';
-import { Search } from 'lucide-react';
+import React from "react";
+import { Search } from "lucide-react";
 
 interface HelpSearchProps {
   onSearch: (query: string) => void;
   placeholder?: string;
 }
 
-const HelpSearch: React.FC<HelpSearchProps> = ({ onSearch, placeholder = "Search for articles, guides, or keywords..." }) => {
+const HelpSearch: React.FC<HelpSearchProps> = ({
+  onSearch,
+  placeholder = "Search for articles, guides, or keywords...",
+}) => {
   return (
     <div className="relative group max-w-2xl mx-auto">
       <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#4e80ee] transition-colors duration-300">
@@ -19,9 +22,9 @@ const HelpSearch: React.FC<HelpSearchProps> = ({ onSearch, placeholder = "Search
         placeholder={placeholder}
       />
       <div className="absolute inset-y-0 right-4 flex items-center">
-          <span className="hidden md:inline-flex items-center px-2 py-1 rounded-lg border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700 text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-              ESC to clear
-          </span>
+        <span className="hidden md:inline-flex items-center px-2 py-1 rounded-lg border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700 text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+          ESC to clear
+        </span>
       </div>
     </div>
   );

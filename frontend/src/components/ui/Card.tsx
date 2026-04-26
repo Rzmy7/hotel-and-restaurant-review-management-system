@@ -1,31 +1,32 @@
-import React from 'react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import React from "react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs));
 }
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-    hoverEffect?: boolean;
+  hoverEffect?: boolean;
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-    ({ className, hoverEffect = false, children, ...props }, ref) => {
-        return (
-            <div
-                ref={ref}
-                className={cn(
-                    "bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm",
-                    hoverEffect && "transition-all duration-300 hover:shadow-lg hover:border-blue-100 dark:hover:border-slate-600 hover:-translate-y-1",
-                    className
-                )}
-                {...props}
-            >
-                {children}
-            </div>
-        );
-    }
+  ({ className, hoverEffect = false, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm",
+          hoverEffect &&
+            "transition-all duration-300 hover:shadow-lg hover:border-blue-100 dark:hover:border-slate-600 hover:-translate-y-1",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  },
 );
 
-Card.displayName = 'Card';
+Card.displayName = "Card";

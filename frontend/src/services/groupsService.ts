@@ -1,4 +1,4 @@
-import { apiClient } from '../api/client';
+import { apiClient } from "../api/client";
 
 export interface GroupSettings {
   can_members_invite: boolean;
@@ -18,20 +18,20 @@ export interface Group {
   created_by: string;
   created_at: string;
   member_count: number;
-  my_role: 'GROUP_OWNER' | 'GROUP_MEMBER';
+  my_role: "GROUP_OWNER" | "GROUP_MEMBER";
 }
 
 /** A member of a group — the member entity is an Organization, represented here by the org's owner account. */
 export interface GroupMember {
-  user_id: string;            // org owner's user ID (used as the remove key)
+  user_id: string; // org owner's user ID (used as the remove key)
   organization_id?: string;
   organization_name?: string; // display name of the member org
-  first_name: string | null;  // owner first name (fallback display)
+  first_name: string | null; // owner first name (fallback display)
   last_name: string | null;
-  email: string;              // owner email
+  email: string; // owner email
   profile_image_url: string | null;
   job_title: string | null;
-  role: 'GROUP_OWNER' | 'GROUP_MEMBER';
+  role: "GROUP_OWNER" | "GROUP_MEMBER";
   joined_at: string;
 }
 
@@ -39,17 +39,17 @@ export interface GroupMember {
 export interface GroupInvite {
   invite_id: string;
   group_id: string;
-  group_name?: string;                   // populated when received by the invitee
-  invited_by_name: string | null;        // name of the inviting org's owner
-  invited_by_org_name?: string | null;   // name of the inviting organization
+  group_name?: string; // populated when received by the invitee
+  invited_by_name: string | null; // name of the inviting org's owner
+  invited_by_org_name?: string | null; // name of the inviting organization
   // invited organization fields
   invited_org_id?: string | null;
-  invited_org_name?: string | null;      // preferred display field
-  invited_user_id?: string | null;       // kept for legacy compat
+  invited_org_name?: string | null; // preferred display field
+  invited_user_id?: string | null; // kept for legacy compat
   invited_user_name?: string | null;
   invited_user_email?: string | null;
-  invite_type: 'organization' | 'link';
-  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+  invite_type: "organization" | "link";
+  status: "pending" | "accepted" | "rejected" | "expired" | "cancelled";
   message: string | null;
   expires_at: string | null;
   created_at: string;
@@ -109,28 +109,41 @@ export const groupsService = {
   // ── Groups ──────────────────────────────────────────────────────
 
   /** List groups for a specific organization (org-scoped). */
-  async listGroups(organizationId: string): Promise<{ groups: Group[]; count: number }> {
-    return apiClient.get('/groups', { organization_id: organizationId });
+  async listGroups(
+    organizationId: string,
+  ): Promise<{ groups: Group[]; count: number }> {
+    return apiClient.get("/groups", { organization_id: organizationId });
   },
 
-  async createGroup(organizationId: string, data: {
-    group_name: string;
-    description?: string;
-    is_private?: boolean;
-    settings?: Partial<GroupSettings>;
-  }): Promise<{ group_id: string; group_name: string }> {
-    return apiClient.post('/groups', { ...data, organization_id: organizationId });
+  async createGroup(
+    organizationId: string,
+    data: {
+      group_name: string;
+      description?: string;
+      is_private?: boolean;
+      settings?: Partial<GroupSettings>;
+    },
+  ): Promise<{ group_id: string; group_name: string }> {
+    return apiClient.post("/groups", {
+      ...data,
+      organization_id: organizationId,
+    });
   },
 
   async getGroup(groupId: string, organizationId: string): Promise<Group> {
-    return apiClient.get(`/groups/${groupId}`, { organization_id: organizationId });
+    return apiClient.get(`/groups/${groupId}`, {
+      organization_id: organizationId,
+    });
   },
 
-  async updateGroup(groupId: string, data: {
-    group_name?: string;
-    description?: string;
-    is_private?: boolean;
-  }): Promise<{ message: string }> {
+  async updateGroup(
+    groupId: string,
+    data: {
+      group_name?: string;
+      description?: string;
+      is_private?: boolean;
+    },
+  ): Promise<{ message: string }> {
     return apiClient.put(`/groups/${groupId}`, data);
   },
 
@@ -140,12 +153,17 @@ export const groupsService = {
 
   // ── Members ──────────────────────────────────────────────────────
 
-  async listMembers(groupId: string): Promise<{ members: GroupMember[]; count: number }> {
+  async listMembers(
+    groupId: string,
+  ): Promise<{ members: GroupMember[]; count: number }> {
     return apiClient.get(`/groups/${groupId}/members`);
   },
 
   /** Remove a member organization. Pass the organization_id (not user_id). */
-  async removeMember(groupId: string, organizationId: string): Promise<{ message: string }> {
+  async removeMember(
+    groupId: string,
+    organizationId: string,
+  ): Promise<{ message: string }> {
     return apiClient.delete(`/groups/${groupId}/members/${organizationId}`);
   },
 
@@ -155,7 +173,10 @@ export const groupsService = {
     return apiClient.get(`/groups/${groupId}/settings`);
   },
 
-  async updateSettings(groupId: string, settings: GroupSettings): Promise<{ message: string }> {
+  async updateSettings(
+    groupId: string,
+    settings: GroupSettings,
+  ): Promise<{ message: string }> {
     return apiClient.put(`/groups/${groupId}/settings`, settings);
   },
 
@@ -167,25 +188,33 @@ export const groupsService = {
 
   // ── Invites ───────────────────────────────────────────────────────
 
-  async listGroupInvites(groupId: string): Promise<{ invites: GroupInvite[]; count: number }> {
+  async listGroupInvites(
+    groupId: string,
+  ): Promise<{ invites: GroupInvite[]; count: number }> {
     return apiClient.get(`/groups/${groupId}/invites`);
   },
 
-  async sendInvite(groupId: string, data: {
-    organization_id: string;
-    message?: string;
-  }): Promise<{ invite_id: string }> {
+  async sendInvite(
+    groupId: string,
+    data: {
+      organization_id: string;
+      message?: string;
+    },
+  ): Promise<{ invite_id: string }> {
     return apiClient.post(`/groups/${groupId}/invites`, data);
   },
 
-  async cancelInvite(groupId: string, inviteId: string): Promise<{ message: string }> {
+  async cancelInvite(
+    groupId: string,
+    inviteId: string,
+  ): Promise<{ message: string }> {
     return apiClient.delete(`/groups/${groupId}/invites/${inviteId}`);
   },
 
   // ── My invites (as invitee) ───────────────────────────────────────
 
   async getMyInvites(): Promise<{ invites: GroupInvite[]; count: number }> {
-    return apiClient.get('/groups/invites/my');
+    return apiClient.get("/groups/invites/my");
   },
 
   async acceptInvite(inviteId: string): Promise<{ message: string }> {
@@ -198,7 +227,9 @@ export const groupsService = {
 
   // ── Invite link ───────────────────────────────────────────────────
 
-  async generateInviteLink(groupId: string): Promise<{ token: string; expires_in_days: number }> {
+  async generateInviteLink(
+    groupId: string,
+  ): Promise<{ token: string; expires_in_days: number }> {
     return apiClient.post(`/groups/${groupId}/invite-link`);
   },
 
@@ -210,13 +241,17 @@ export const groupsService = {
     return apiClient.get(`/groups/join/${token}`);
   },
 
-  async joinViaLink(token: string): Promise<{ message: string; group_id: string }> {
+  async joinViaLink(
+    token: string,
+  ): Promise<{ message: string; group_id: string }> {
     return apiClient.post(`/groups/join/${token}`);
   },
 
   // ── Organization search ───────────────────────────────────────────
 
-  async searchOrganizations(query: string): Promise<{ organizations: Organization[] }> {
-    return apiClient.get('/groups/search-organizations', { q: query });
+  async searchOrganizations(
+    query: string,
+  ): Promise<{ organizations: Organization[] }> {
+    return apiClient.get("/groups/search-organizations", { q: query });
   },
 };

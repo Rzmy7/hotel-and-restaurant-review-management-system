@@ -1,53 +1,81 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
-import { useToast } from '../contexts/ToastContext';
-import { useSettings } from '../hooks/useSettings';
-import { useTheme } from '../contexts/ThemeContext';
-import DashboardSkeleton from '../components/shared/DashboardSkeleton';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Globe, Lock, Bell, CreditCard, Building } from "lucide-react";
+import { useToast } from "../contexts/ToastContext";
+import { useSettings } from "../hooks/useSettings";
+import { useTheme } from "../contexts/ThemeContext";
+import DashboardSkeleton from "../components/shared/DashboardSkeleton";
 
 // Templates
-import { SettingsTemplate } from '../components/settings/templates/SettingsTemplate';
+import { SettingsTemplate } from "../components/settings/templates/SettingsTemplate";
 
 // Organisms
-import { GeneralSettingsCard } from '../components/settings/organisms/GeneralSettingsCard';
-import { NotificationSettingsCard } from '../components/settings/organisms/NotificationSettingsCard';
-import { SecuritySettingsCard } from '../components/settings/organisms/SecuritySettingsCard';
-import { SubscriptionSettingsCard } from '../components/settings/organisms/SubscriptionSettingsCard';
-import { HotelInfoSettingsCard } from '../components/settings/organisms/HotelInfoSettingsCard';
-import { UnsavedChangesModal, type ChangeDetail } from '../components/settings/organisms/UnsavedChangesModal';
-import { useNavigationBlocker } from '../contexts/NavigationBlockerContext';
-import type { SettingsData } from '../types/settings';
+import { GeneralSettingsCard } from "../components/settings/organisms/GeneralSettingsCard";
+import { NotificationSettingsCard } from "../components/settings/organisms/NotificationSettingsCard";
+import { SecuritySettingsCard } from "../components/settings/organisms/SecuritySettingsCard";
+import { SubscriptionSettingsCard } from "../components/settings/organisms/SubscriptionSettingsCard";
+import { HotelInfoSettingsCard } from "../components/settings/organisms/HotelInfoSettingsCard";
+import {
+  UnsavedChangesModal,
+  type ChangeDetail,
+} from "../components/settings/organisms/UnsavedChangesModal";
+import { useNavigationBlocker } from "../contexts/NavigationBlockerContext";
+import type { SettingsData } from "../types/settings";
 
-type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'hotelInfo';
+type TabID =
+  | "general"
+  | "security"
+  | "notifications"
+  | "subscription"
+  | "hotelInfo";
 
 const TABS = [
-  { id: 'general', label: 'General Properties', icon: Globe },
-  { id: 'security', label: 'Security', icon: Lock },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'subscription', label: 'Subscription', icon: CreditCard },
-  { id: 'hotelInfo', label: 'Hotel Profile', icon: Building }
+  { id: "general", label: "General Properties", icon: Globe },
+  { id: "security", label: "Security", icon: Lock },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "subscription", label: "Subscription", icon: CreditCard },
+  { id: "hotelInfo", label: "Hotel Profile", icon: Building },
 ] as const;
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword, uploadRulesFile, fetchOrganizationRules } = useSettings();
+  const {
+    data: serverData,
+    loading,
+    saving,
+    updateSettings,
+    uploadHotelLogo,
+    changePassword,
+    uploadRulesFile,
+    fetchOrganizationRules,
+  } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
-  const [activeTab, setActiveTab] = useState<TabID>('general');
+  const [activeTab, setActiveTab] = useState<TabID>("general");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null,
+  );
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingRules, setIsUploadingRules] = useState(false);
-  const [organizationRules, setOrganizationRules] = useState<Array<{ rule_id: string; rule_text: string; rule_order: number; is_embedded: boolean; source_filename: string | null }>>([]);
+  const [organizationRules, setOrganizationRules] = useState<
+    Array<{
+      rule_id: string;
+      rule_text: string;
+      rule_order: number;
+      is_embedded: boolean;
+      source_filename: string | null;
+    }>
+  >([]);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const rulesInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { setIsDirty, registerBlockHandler, unregisterBlockHandler } = useNavigationBlocker();
+  const { setIsDirty, registerBlockHandler, unregisterBlockHandler } =
+    useNavigationBlocker();
 
   useEffect(() => {
     setIsDirty(hasUnsavedChanges);
@@ -76,8 +104,10 @@ const SettingsPage: React.FC = () => {
   }, [serverData]);
 
   useEffect(() => {
-    if (activeTab === 'hotelInfo') {
-      fetchOrganizationRules().then(setOrganizationRules).catch(() => {});
+    if (activeTab === "hotelInfo") {
+      fetchOrganizationRules()
+        .then(setOrganizationRules)
+        .catch(() => {});
     }
   }, [activeTab]);
 
@@ -89,33 +119,67 @@ const SettingsPage: React.FC = () => {
     if (!serverData || !localData) return [];
     const changes: ChangeDetail[] = [];
 
-    const compareSection = (tabName: string, serverSection: any, localSection: any, fieldLabels: Record<string, string>) => {
-      Object.keys(serverSection).forEach(key => {
+    const compareSection = (
+      tabName: string,
+      serverSection: any,
+      localSection: any,
+      fieldLabels: Record<string, string>,
+    ) => {
+      Object.keys(serverSection).forEach((key) => {
         if (serverSection[key] !== localSection[key]) {
           changes.push({
             tab: tabName,
             field: fieldLabels[key] || key,
             oldValue: serverSection[key],
-            newValue: localSection[key]
+            newValue: localSection[key],
           });
         }
       });
     };
 
-    compareSection('General Properties', serverData.general, localData.general, {
-      propertyName: 'Owned Organizations', timeZone: 'Time Zone', language: 'Language', themePreference: 'Application Theme'
+    compareSection(
+      "General Properties",
+      serverData.general,
+      localData.general,
+      {
+        propertyName: "Owned Organizations",
+        timeZone: "Time Zone",
+        language: "Language",
+        themePreference: "Application Theme",
+      },
+    );
+    compareSection("Security", serverData.security, localData.security, {
+      twoFactorAuth: "Two-Factor Authentication",
+      sessionTimeout: "Session Timeout",
     });
-    compareSection('Security', serverData.security, localData.security, {
-      twoFactorAuth: 'Two-Factor Authentication', sessionTimeout: 'Session Timeout'
-    });
-    compareSection('Notifications', serverData.notifications, localData.notifications, {
-      emailNotifications: 'Email Notifications', newReviewAlerts: 'New Review Alerts', weeklySummary: 'Weekly Summary'
-    });
-    compareSection('Subscription', serverData.subscription, localData.subscription, {
-      plan: 'Plan', billingEmail: 'Billing Email'
-    });
-    compareSection('Hotel Profile', serverData.hotelInfo, localData.hotelInfo, {
-      hotelName: 'Hotel Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
+    compareSection(
+      "Notifications",
+      serverData.notifications,
+      localData.notifications,
+      {
+        emailNotifications: "Email Notifications",
+        newReviewAlerts: "New Review Alerts",
+        weeklySummary: "Weekly Summary",
+      },
+    );
+    compareSection(
+      "Subscription",
+      serverData.subscription,
+      localData.subscription,
+      {
+        plan: "Plan",
+        billingEmail: "Billing Email",
+      },
+    );
+    compareSection("Hotel Profile", serverData.hotelInfo, localData.hotelInfo, {
+      hotelName: "Hotel Name",
+      websiteUrl: "Website URL",
+      propertyType: "Property Type",
+      primaryEmail: "Primary Email",
+      phoneNumber: "Phone Number",
+      city: "City",
+      country: "Country",
+      logoUrl: "Logo URL",
     });
 
     return changes;
@@ -123,16 +187,16 @@ const SettingsPage: React.FC = () => {
 
   const handleUpdateSection = <K extends keyof SettingsData>(
     section: K,
-    updates: Partial<SettingsData[K]>
+    updates: Partial<SettingsData[K]>,
   ) => {
-    setLocalData(prev => {
+    setLocalData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         [section]: {
           ...prev[section],
-          ...updates
-        }
+          ...updates,
+        },
       };
     });
   };
@@ -188,16 +252,18 @@ const SettingsPage: React.FC = () => {
     logoInputRef.current?.click();
   };
 
-  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
+    event.target.value = "";
 
     if (!file) return;
 
     setIsUploadingLogo(true);
     try {
       const logoUrl = await uploadHotelLogo(file);
-      handleUpdateSection('hotelInfo', { logoUrl });
+      handleUpdateSection("hotelInfo", { logoUrl });
     } catch {
       // Error toast is handled in useSettings.
     } finally {
@@ -209,9 +275,11 @@ const SettingsPage: React.FC = () => {
     rulesInputRef.current?.click();
   };
 
-  const handleRulesFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRulesFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
+    event.target.value = "";
     if (!file) return;
 
     setIsUploadingRules(true);
@@ -227,7 +295,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const activeTabData = TABS.find(t => t.id === activeTab);
+  const activeTabData = TABS.find((t) => t.id === activeTab);
 
   return (
     <>
@@ -273,12 +341,20 @@ const SettingsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${isActive
-                    ? 'bg-blue-50 text-[#4e80ee] shadow-sm dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
-                    }`}
+                  className={`flex items-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
+                    isActive
+                      ? "bg-blue-50 text-[#4e80ee] shadow-sm dark:bg-blue-900/30 dark:text-blue-400"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white"
+                  }`}
                 >
-                  <Icon size={18} className={isActive ? 'text-[#4e80ee] dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'} />
+                  <Icon
+                    size={18}
+                    className={
+                      isActive
+                        ? "text-[#4e80ee] dark:text-blue-400"
+                        : "text-gray-400 dark:text-slate-500"
+                    }
+                  />
                   {tab.label}
                 </button>
               );
@@ -293,44 +369,60 @@ const SettingsPage: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400 flex items-center justify-center">
                   <activeTabData.icon size={20} />
                 </div>
-                <h2 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase m-0">{activeTabData.label}</h2>
+                <h2 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase m-0">
+                  {activeTabData.label}
+                </h2>
               </div>
             )}
 
             {/* Tab Content */}
             <div className="animate-fade-in">
-              {activeTab === 'general' && (
+              {activeTab === "general" && (
                 <GeneralSettingsCard
                   data={localData.general}
-                  onChange={(updates) => handleUpdateSection('general', updates)}
+                  onChange={(updates) =>
+                    handleUpdateSection("general", updates)
+                  }
                 />
               )}
-              {activeTab === 'notifications' && (
+              {activeTab === "notifications" && (
                 <NotificationSettingsCard
                   data={localData.notifications}
-                  onChange={(updates) => handleUpdateSection('notifications', updates)}
+                  onChange={(updates) =>
+                    handleUpdateSection("notifications", updates)
+                  }
                 />
               )}
-              {activeTab === 'security' && (
+              {activeTab === "security" && (
                 <SecuritySettingsCard
                   data={localData.security}
-                  onChange={(updates) => handleUpdateSection('security', updates)}
+                  onChange={(updates) =>
+                    handleUpdateSection("security", updates)
+                  }
                   onPasswordChange={changePassword}
                 />
               )}
-              {activeTab === 'subscription' && (
+              {activeTab === "subscription" && (
                 <SubscriptionSettingsCard
                   data={localData.subscription}
-                  onChange={(updates) => handleUpdateSection('subscription', updates)}
-                  onPaymentEdit={() => showToast('Redirecting to secure payment portal...', 'info')}
+                  onChange={(updates) =>
+                    handleUpdateSection("subscription", updates)
+                  }
+                  onPaymentEdit={() =>
+                    showToast("Redirecting to secure payment portal...", "info")
+                  }
                 />
               )}
-              {activeTab === 'hotelInfo' && (
+              {activeTab === "hotelInfo" && (
                 <HotelInfoSettingsCard
                   data={localData.hotelInfo}
-                  onChange={(updates) => handleUpdateSection('hotelInfo', updates)}
+                  onChange={(updates) =>
+                    handleUpdateSection("hotelInfo", updates)
+                  }
                   onLogoUpload={handleLogoUploadClick}
-                  onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
+                  onLogoRemove={() =>
+                    handleUpdateSection("hotelInfo", { logoUrl: undefined })
+                  }
                   isUploadingLogo={isUploadingLogo}
                   onRulesUpload={handleRulesUploadClick}
                   isUploadingRules={isUploadingRules}

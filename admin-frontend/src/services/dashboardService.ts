@@ -1,12 +1,17 @@
-import { apiClient } from '../api/client';
-import type { DashboardStats, ChartDataPoint, SystemAlert, RecentActivity } from '../types';
+import { apiClient } from "../api/client";
+import type {
+  DashboardStats,
+  ChartDataPoint,
+  SystemAlert,
+  RecentActivity,
+} from "../types";
 
 /**
  * Fetch overall dashboard statistics.
  * Backend: GET /api/admin/dashboard/stats → DashboardStats
  */
 export const fetchDashboardStats = (): Promise<DashboardStats> => {
-    return apiClient.get<DashboardStats>('/admin/dashboard/stats');
+  return apiClient.get<DashboardStats>("/admin/dashboard/stats");
 };
 
 /**
@@ -14,7 +19,7 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
  * Backend: GET /api/admin/dashboard/usage → ChartDataPoint[]
  */
 export const fetchUsageData = (): Promise<ChartDataPoint[]> => {
-    return apiClient.get<ChartDataPoint[]>('/admin/dashboard/usage');
+  return apiClient.get<ChartDataPoint[]>("/admin/dashboard/usage");
 };
 
 /**
@@ -22,7 +27,7 @@ export const fetchUsageData = (): Promise<ChartDataPoint[]> => {
  * Backend: GET /api/admin/dashboard/reviews → ChartDataPoint[]
  */
 export const fetchReviewData = (): Promise<ChartDataPoint[]> => {
-    return apiClient.get<ChartDataPoint[]>('/admin/dashboard/reviews');
+  return apiClient.get<ChartDataPoint[]>("/admin/dashboard/reviews");
 };
 
 /**
@@ -30,7 +35,7 @@ export const fetchReviewData = (): Promise<ChartDataPoint[]> => {
  * Backend: GET /api/admin/dashboard/alerts → SystemAlert[]
  */
 export const fetchSystemAlerts = (): Promise<SystemAlert[]> => {
-    return apiClient.get<SystemAlert[]>('/admin/dashboard/alerts');
+  return apiClient.get<SystemAlert[]>("/admin/dashboard/alerts");
 };
 
 /**
@@ -38,7 +43,7 @@ export const fetchSystemAlerts = (): Promise<SystemAlert[]> => {
  * Backend: GET /api/admin/dashboard/activities → RecentActivity[]
  */
 export const fetchRecentActivity = (): Promise<RecentActivity[]> => {
-    return apiClient.get<RecentActivity[]>('/admin/dashboard/activities');
+  return apiClient.get<RecentActivity[]>("/admin/dashboard/activities");
 };
 
 /**
@@ -46,7 +51,7 @@ export const fetchRecentActivity = (): Promise<RecentActivity[]> => {
  * Backend: POST /api/admin/dashboard/alerts/:id/dismiss
  */
 export const dismissAlert = (alertId: string): Promise<void> => {
-    return apiClient.post<void>(`/admin/dashboard/alerts/${alertId}/dismiss`);
+  return apiClient.post<void>(`/admin/dashboard/alerts/${alertId}/dismiss`);
 };
 
 /**
@@ -54,5 +59,5 @@ export const dismissAlert = (alertId: string): Promise<void> => {
  * Backend: POST /api/admin/dashboard/alerts/dismiss-all
  */
 export const dismissAllAlerts = (): Promise<void> => {
-    return apiClient.post<void>('/admin/dashboard/alerts/dismiss-all');
+  return apiClient.post<void>("/admin/dashboard/alerts/dismiss-all");
 };

@@ -1,39 +1,39 @@
-import { RefreshCw, Download, Calendar } from 'lucide-react';
-import { useState } from 'react';
-import { useReviewsStore } from '../stores/useReviewsStore';
-import { useReviewFilters } from '../hooks/useReviewFilters';
-import { useEffect } from 'react';
-import { useOrganizationStore } from '../stores/useOrganizationStore';
+import { RefreshCw, Download, Calendar } from "lucide-react";
+import { useState } from "react";
+import { useReviewsStore } from "../stores/useReviewsStore";
+import { useReviewFilters } from "../hooks/useReviewFilters";
+import { useEffect } from "react";
+import { useOrganizationStore } from "../stores/useOrganizationStore";
 
 // New Components
-import ReviewStats from '../components/reviews/ReviewStats';
-import ReviewsToolbar from '../components/reviews/ReviewsToolbar';
-import ReviewsTable from '../components/reviews/ReviewsTable';
-import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
-import DateRangeModal from '../components/shared/DateRangeModal';
+import ReviewStats from "../components/reviews/ReviewStats";
+import ReviewsToolbar from "../components/reviews/ReviewsToolbar";
+import ReviewsTable from "../components/reviews/ReviewsTable";
+import ReviewDetailModal from "../components/reviews/ReviewDetailModal";
+import DateRangeModal from "../components/shared/DateRangeModal";
 
-import { useReviewsData } from '../hooks/useReviewsData';
+import { useReviewsData } from "../hooks/useReviewsData";
 
 const ReviewsPageContent = () => {
-  const currentOrg = useOrganizationStore(state => state.currentOrg);
-  const organizationId = currentOrg?.id ?? '';
+  const currentOrg = useOrganizationStore((state) => state.currentOrg);
+  const organizationId = currentOrg?.id ?? "";
 
   const { filters, setDateRange, fetchParams, setPage } = useReviewFilters();
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
 
   // TanStack Query Hook
-  const { 
-    reviews, 
-    pagination, 
-    stats, 
-    isLoading: loading, 
-    refresh 
+  const {
+    reviews,
+    pagination,
+    stats,
+    isLoading: loading,
+    refresh,
   } = useReviewsData(organizationId, fetchParams);
 
   // Modal State from Store
-  const selectedReview = useReviewsStore(state => state.selectedReview);
-  const isModalOpen = useReviewsStore(state => state.isModalOpen);
-  const closeReview = useReviewsStore(state => state.closeReview);
+  const selectedReview = useReviewsStore((state) => state.selectedReview);
+  const isModalOpen = useReviewsStore((state) => state.isModalOpen);
+  const closeReview = useReviewsStore((state) => state.closeReview);
 
   const handleDateRangeApply = (dateFrom: string, dateTo: string) => {
     setDateRange(dateFrom, dateTo);
@@ -67,7 +67,7 @@ const ReviewsPageContent = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={handleRefresh}
-            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${loading ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
+            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${loading ? "animate-spin border-blue-600 dark:border-blue-500" : ""}`}
             title="Refresh System"
           >
             <RefreshCw size={18} />
@@ -75,13 +75,16 @@ const ReviewsPageContent = () => {
 
           <button
             onClick={() => setIsDateRangeOpen(true)}
-            className={`flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border rounded-xl text-[13px] font-bold transition-all duration-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] active:scale-95 shadow-sm ${filters.dateFrom && filters.dateTo
-              ? 'border-blue-400 dark:border-blue-500 text-[#4e80ee] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40'
-              : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300'
-              }`}
+            className={`flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border rounded-xl text-[13px] font-bold transition-all duration-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] active:scale-95 shadow-sm ${
+              filters.dateFrom && filters.dateTo
+                ? "border-blue-400 dark:border-blue-500 text-[#4e80ee] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40"
+                : "border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300"
+            }`}
           >
             <Calendar size={16} />
-            {filters.dateFrom && filters.dateTo ? 'Filtered Result' : 'Date Range'}
+            {filters.dateFrom && filters.dateTo
+              ? "Filtered Result"
+              : "Date Range"}
           </button>
 
           <button className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95">
@@ -99,7 +102,11 @@ const ReviewsPageContent = () => {
         <ReviewsToolbar />
 
         {/* Reviews List */}
-        <ReviewsTable reviews={reviews} pagination={pagination} isLoading={loading} />
+        <ReviewsTable
+          reviews={reviews}
+          pagination={pagination}
+          isLoading={loading}
+        />
       </main>
 
       {/* Modals */}
