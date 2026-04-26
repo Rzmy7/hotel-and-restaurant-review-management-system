@@ -72,7 +72,18 @@ def _resolve_org_id(user, organization_id_param, db: Session):
     raise HTTPException(status_code=400, detail="organization_id is required.")
 
 
-@router.get("/", response_model=PaginatedReviewResponse)
+@router.get(
+    "/",
+    response_model=PaginatedReviewResponse,
+    summary="List processed reviews",
+    description="Fetch a paginated list of processed reviews with advanced filtering by rating, sentiment, source, and AI categories.",
+    status_code=200,
+    responses={
+        401: {"description": "Unauthorized - Missing or invalid token"},
+        403: {"description": "Forbidden - User does not have access to organization"},
+        500: {"description": "Internal Server Error - Database or pipeline failure"}
+    }
+)
 def read_reviews(
     organization_id: Optional[uuid.UUID] = Query(None),
     page: int = Query(0, ge=0),
@@ -122,7 +133,15 @@ def read_reviews(
         raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
-@router.get("/meta/options")
+@router.get(
+    "/meta/options",
+    summary="Get filter options",
+    description="Retrieves unique platform names and review categories available for the specified organization to populate filter menus.",
+    responses={
+        200: {"description": "Successfully retrieved filter options"},
+        403: {"description": "Access denied to organization"}
+    }
+)
 def get_options(
     organization_id: Optional[uuid.UUID] = Query(None),
     db: Session = Depends(get_db),
@@ -139,7 +158,11 @@ def get_options(
         raise HTTPException(status_code=500, detail="Failed to fetch filter options.")
 
 
-@router.get("/meta/stats")
+@router.get(
+    "/meta/stats",
+    summary="Get review statistics",
+    description="Aggregates review counts, average ratings, and sentiment scores based on active filters.",
+)
 def get_stats(
     organization_id: Optional[uuid.UUID] = Query(None),
     search: Optional[str] = Query(None),
@@ -279,7 +302,17 @@ async def trigger_single_review_processing(
         )
 
 
-@router.post("/generate-reply", response_model=ReplyGenerationResponse)
+@router.post(
+    "/generate-reply",
+    response_model=ReplyGenerationResponse,
+    summary="Generate AI Review Reply",
+    description="Uses Gemini AI to draft a professional response based on the review sentiment, rating, and user instructions. Checks subscription limits before execution.",
+    responses={
+        200: {"description": "Reply generated successfully"},
+        403: {"description": "Limit reached or unauthorized access"},
+        500: {"description": "AI service failure"}
+    }
+)
 def generate_reply(
     payload: ReplyGenerationRequest, current_user=Depends(get_current_user)
 ):
@@ -331,7 +364,15 @@ def generate_reply(
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
 
 
-@router.delete("/source/{source_id}")
+@router.delete(
+    "/source/{source_id}",
+    summary="Delete source reviews",
+    description="Permanently deletes all processed reviews and their vector embeddings for a specific source. This action cannot be undone.",
+    responses={
+        200: {"description": "Data purged successfully"},
+        404: {"description": "Source not found"}
+    }
+)
 def delete_reviews_by_source(
     source_id: uuid.UUID,
     db: Session = Depends(get_db),

@@ -7,5 +7,6 @@ from .custom_exceptions import (
     EntityNotFoundException,
     PermissionDeniedException,
     ValidationException,
-    FileValidationException
+    FileValidationException,
+    register_exception_handlers
 )

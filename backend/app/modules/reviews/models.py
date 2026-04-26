@@ -15,6 +15,7 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     func,
+    Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
@@ -24,6 +25,10 @@ from app.database.session import Base
 
 class ProcessedReview(Base):
     __tablename__ = "processed_review"
+    __table_args__ = (
+        Index("idx_review_org_status_date", "source_id", "status", "reviewDate"),
+        Index("idx_review_sentiment", "sentiment"),
+    )
 
     id = Column(UNIQUEIDENTIFIER, primary_key=True)
 

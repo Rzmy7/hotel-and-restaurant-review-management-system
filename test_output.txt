@@ -1,0 +1,601 @@
+RUNNING: backend/app/main.py
+============================= test session starts =============================
+platform win32 -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0 -- E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: E:\L2 Project\hotel-and-restaurant-review-management-system
+plugins: anyio-4.12.1, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+
+backend/tests/modules/reviews/test_api.py::test_read_reviews_unauthorized 2026-04-26 14:38:29,483 - app.modules.groups.migrations - INFO - Dropped old CHECK constraint ck_group_member_role_valid
+2026-04-26 14:38:29,744 - app.modules.groups.migrations - INFO - Added new CHECK constraint on group_member.role
+2026-04-26 14:38:29,829 - app.modules.groups.migrations - INFO - Migrated GROUP_MANAGER rows to GROUP_OWNER
+2026-04-26 14:38:29,994 - app.modules.groups.migrations - INFO - group_member.organization_id already exists — skipping v2 migration
+2026-04-26 14:38:30,878 - app.modules.groups.migrations - INFO - Dropped old invite_type CHECK constraint
+2026-04-26 14:38:31,131 - app.modules.groups.migrations - INFO - Added new invite_type CHECK constraint (organization|link|user)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 93: character maps to <undefined>
+Call stack:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\from_thread.py", line 532, in run_blocking_portal
+    run_eventloop(
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\_core\_eventloop.py", line 77, in run
+    return async_backend.run(func, args, {}, backend_options)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2342, in run
+    return runner.run(wrapper())
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 712, in run_until_complete
+    self.run_forever()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 683, in run_forever
+    self._run_once()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 2061, in _run_once
+    handle._run()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\from_thread.py", line 259, in _call_func
+    retval = await retval_or_awaitable
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\testclient.py", line 704, in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 103, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 103, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\sessions.py", line 40, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 79, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 49, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\routing.py", line 725, in app
+    await self.lifespan(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\main.py", line 62, in lifespan
+    run_group_migrations(engine)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\groups\migrations.py", line 23, in run_group_migrations
+    _migrate_group_invite_to_org(conn)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\groups\migrations.py", line 329, in _migrate_group_invite_to_org
+    logger.info("Migrated 'user' invite_type \u2192 'organization' where org resolved")
+Message: "Migrated 'user' invite_type \u2192 'organization' where org resolved"
+Arguments: ()
+2026-04-26 14:38:31,462 - app.modules.groups.migrations - INFO - Group migrations completed successfully.
+Subscription data seeding complete.
+2026-04-26 14:38:32,809 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:32,809 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:32,809 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:32,810 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:32,810 - apscheduler.scheduler - INFO - Added job "process_pending_syncs" to job store "default"
+2026-04-26 14:38:32,810 - apscheduler.scheduler - INFO - Added job "process_pending_broadcasts" to job store "default"
+2026-04-26 14:38:32,810 - apscheduler.scheduler - INFO - Added job "reconcile_scraper_jobs" to job store "default"
+2026-04-26 14:38:32,810 - apscheduler.scheduler - INFO - Added job "process_pending_reviews" to job store "default"
+2026-04-26 14:38:32,810 - apscheduler.scheduler - INFO - Scheduler started
+2026-04-26 14:38:32,810 - app.modules.scheduler.services.scheduler_service - INFO - APScheduler started successfully.
+2026-04-26 14:38:32,811 - app.main - INFO - Lifespan: Initial background tasks launched.
+2026-04-26 14:38:32,817 - app.modules.reviews.services.processor - INFO - --- Starting Review Analysis Pipeline ---
+2026-04-26 14:38:33,413 - app.modules.reviews.services.processor - WARNING - Review processing is paused due to Gemini API limits. Skipping...
+CRITICAL ERROR:   + Exception Group Traceback (most recent call last):
+  |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\_utils.py", line 81, in collapse_excgroups
+  |     yield
+  |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 192, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 783, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |                                    ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\_utils.py", line 87, in collapse_excgroups
+    |     raise exc
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\main.py", line 194, in add_request_id
+    |     request_id = str(uuid.uuid4())
+    |                      ^^^^
+    | NameError: name 'uuid' is not defined. Did you forget to import 'uuid'?
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\_utils.py", line 87, in collapse_excgroups
+    raise exc
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\main.py", line 194, in add_request_id
+    request_id = str(uuid.uuid4())
+                     ^^^^
+NameError: name 'uuid' is not defined. Did you forget to import 'uuid'?
+
+2026-04-26 14:38:33,468 - httpx - INFO - HTTP Request: GET http://testserver/api/reviews/ "HTTP/1.1 500 Internal Server Error"
+FAILED2026-04-26 14:38:33,772 - app.modules.scheduler.services.scheduler_service - INFO - APScheduler shut down successfully.
+2026-04-26 14:38:33,773 - apscheduler.scheduler - INFO - Scheduler has been shut down
+
+backend/tests/modules/reviews/test_api.py::test_get_options_mocked 2026-04-26 14:38:38,821 - app.modules.groups.migrations - INFO - Dropped old CHECK constraint ck_group_member_role_valid
+2026-04-26 14:38:39,007 - app.modules.groups.migrations - INFO - Added new CHECK constraint on group_member.role
+2026-04-26 14:38:39,086 - app.modules.groups.migrations - INFO - Migrated GROUP_MANAGER rows to GROUP_OWNER
+2026-04-26 14:38:39,208 - app.modules.groups.migrations - INFO - group_member.organization_id already exists — skipping v2 migration
+2026-04-26 14:38:39,739 - app.modules.groups.migrations - INFO - Dropped old invite_type CHECK constraint
+2026-04-26 14:38:39,890 - app.modules.groups.migrations - INFO - Added new invite_type CHECK constraint (organization|link|user)
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 93: character maps to <undefined>
+Call stack:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\from_thread.py", line 532, in run_blocking_portal
+    run_eventloop(
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\_core\_eventloop.py", line 77, in run
+    return async_backend.run(func, args, {}, backend_options)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2342, in run
+    return runner.run(wrapper())
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 712, in run_until_complete
+    self.run_forever()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 683, in run_forever
+    self._run_once()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 2061, in _run_once
+    handle._run()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\from_thread.py", line 259, in _call_func
+    retval = await retval_or_awaitable
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\testclient.py", line 704, in lifespan
+    await self.app(scope, self.stream_receive.receive, self.stream_send.send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 103, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 103, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\sessions.py", line 40, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 79, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 49, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\routing.py", line 725, in app
+    await self.lifespan(scope, receive, send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\fastapi\routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\main.py", line 62, in lifespan
+    run_group_migrations(engine)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\groups\migrations.py", line 23, in run_group_migrations
+    _migrate_group_invite_to_org(conn)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\groups\migrations.py", line 329, in _migrate_group_invite_to_org
+    logger.info("Migrated 'user' invite_type \u2192 'organization' where org resolved")
+Message: "Migrated 'user' invite_type \u2192 'organization' where org resolved"
+Arguments: ()
+2026-04-26 14:38:40,085 - app.modules.groups.migrations - INFO - Group migrations completed successfully.
+Subscription data seeding complete.
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Added job "process_pending_syncs" to job store "default"
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Added job "process_pending_broadcasts" to job store "default"
+2026-04-26 14:38:40,861 - apscheduler.scheduler - INFO - Added job "reconcile_scraper_jobs" to job store "default"
+2026-04-26 14:38:40,862 - apscheduler.scheduler - INFO - Added job "process_pending_reviews" to job store "default"
+2026-04-26 14:38:40,862 - apscheduler.scheduler - INFO - Scheduler started
+2026-04-26 14:38:40,862 - app.modules.scheduler.services.scheduler_service - INFO - APScheduler started successfully.
+2026-04-26 14:38:40,862 - app.main - INFO - Lifespan: Initial background tasks launched.
+2026-04-26 14:38:40,863 - app.modules.reviews.services.processor - INFO - --- Starting Review Analysis Pipeline ---
+2026-04-26 14:38:41,006 - app.modules.reviews.services.processor - WARNING - Review processing is paused due to Gemini API limits. Skipping...
+CRITICAL ERROR:   + Exception Group Traceback (most recent call last):
+  |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\_utils.py", line 81, in collapse_excgroups
+  |     yield
+  |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 192, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 783, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |                                    ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\_utils.py", line 87, in collapse_excgroups
+    |     raise exc
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\main.py", line 194, in add_request_id
+    |     request_id = str(uuid.uuid4())
+    |                      ^^^^
+    | NameError: name 'uuid' is not defined. Did you forget to import 'uuid'?
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\_utils.py", line 87, in collapse_excgroups
+    raise exc
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\main.py", line 194, in add_request_id
+    request_id = str(uuid.uuid4())
+                     ^^^^
+NameError: name 'uuid' is not defined. Did you forget to import 'uuid'?
+
+2026-04-26 14:38:41,059 - httpx - INFO - HTTP Request: GET http://testserver/api/reviews/meta/options?organization_id=ed966105-3ddc-4698-a48f-4486fe61f0d9 "HTTP/1.1 500 Internal Server Error"
+Traceback (most recent call last):
+  File "E:\L2 Project\hotel-and-restaurant-review-management-system\backend\tests\modules\reviews\test_api.py", line 52, in test_get_options_mocked
+    assert response.status_code == 200
+AssertionError: assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+[TEST_ERROR] Status: 500
+[TEST_ERROR] Body: {"status":"error","message":"An unexpected internal error occurred.","error_code":"INTERNAL_SERVER_ERROR"}
+
+[TEST_EXCEPTION] assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED2026-04-26 14:38:41,068 - app.modules.scheduler.services.scheduler_service - INFO - APScheduler shut down successfully.
+2026-04-26 14:38:41,068 - apscheduler.scheduler - INFO - Scheduler has been shut down
+
+
+================================== FAILURES ===================================
+_______________________ test_read_reviews_unauthorized ________________________
+
+client = <starlette.testclient.TestClient object at 0x000002EEC081F770>
+
+    def test_read_reviews_unauthorized(client):
+        """Should return 401 if no user is provided."""
+        response = client.get("/api/reviews/")
+>       assert response.status_code == 401
+E       assert 500 == 401
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+backend\tests\modules\reviews\test_api.py:16: AssertionError
+----------------------------- Captured log setup ------------------------------
+INFO     app.modules.groups.migrations:migrations.py:137 Dropped old CHECK constraint ck_group_member_role_valid\nINFO     app.modules.groups.migrations:migrations.py:150 Added new CHECK constraint on group_member.role\nINFO     app.modules.groups.migrations:migrations.py:162 Migrated GROUP_MANAGER rows to GROUP_OWNER\nINFO     app.modules.groups.migrations:migrations.py:180 group_member.organization_id already exists \u2014 skipping v2 migration\nINFO     app.modules.groups.migrations:migrations.py:308 Dropped old invite_type CHECK constraint\nINFO     app.modules.groups.migrations:migrations.py:318 Added new invite_type CHECK constraint (organization|link|user)\nINFO     app.modules.groups.migrations:migrations.py:329 Migrated 'user' invite_type \u2192 'organization' where org resolved\nINFO     app.modules.groups.migrations:migrations.py:26 Group migrations completed successfully.\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:1090 Added job "process_pending_syncs" to job store "default"\nINFO     apscheduler.scheduler:base.py:1090 Added job "process_pending_broadcasts" to job store "default"\nINFO     apscheduler.scheduler:base.py:1090 Added job "reconcile_scraper_jobs" to job store "default"\nINFO     apscheduler.scheduler:base.py:1090 Added job "process_pending_reviews" to job store "default"\nINFO     apscheduler.scheduler:base.py:214 Scheduler started\nINFO     app.modules.scheduler.services.scheduler_service:scheduler_service.py:13 APScheduler started successfully.\nINFO     app.main:main.py:87 Lifespan: Initial background tasks launched.\nINFO     app.modules.reviews.services.processor:processor.py:33 --- Starting Review Analysis Pipeline ---\nWARNING  app.modules.reviews.services.processor:processor.py:46 Review processing is paused due to Gemini API limits. Skipping...
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/reviews/ "HTTP/1.1 500 Internal Server Error"
+---------------------------- Captured log teardown ----------------------------
+INFO     app.modules.scheduler.services.scheduler_service:scheduler_service.py:19 APScheduler shut down successfully.
+INFO     apscheduler.scheduler:base.py:245 Scheduler has been shut down
+___________________________ test_get_options_mocked ___________________________
+
+client = <starlette.testclient.TestClient object at 0x000002EEC08D8690>
+db_session = <sqlalchemy.orm.session.Session object at 0x000002EEC08DB890>
+
+    def test_get_options_mocked(client, db_session):
+        """Verifies meta/options endpoint with a mocked user and organization."""
+        user_id = uuid.uuid4()
+        org_id = uuid.uuid4()
+    
+        try:
+            # Setup: Create tenant and organization
+            tenant = Tenant(tenant_id=user_id, plan="pro")
+            db_session.add(tenant)
+            db_session.commit()
+    
+            org = Organization(
+                organization_id=org_id,
+                tenant_id=user_id,
+                organization_name="Test Org"
+            )
+            db_session.add(org)
+            db_session.commit()
+    
+            mock_user = {
+                "user_id": str(user_id),
+                "organization_id": str(org_id),
+                "role": "admin"
+            }
+    
+            # Override authentication
+            fastapi_app.dependency_overrides[get_current_user] = lambda: mock_user
+    
+            response = client.get(f"/api/reviews/meta/options?organization_id={org_id}")
+    
+            if response.status_code != 200:
+                print(f"\n[TEST_ERROR] Status: {response.status_code}")
+                print(f"[TEST_ERROR] Body: {response.text}")
+    
+            assert response.status_code == 200
+            data = response.json()
+            assert "sources" in data
+            assert "categories" in data
+        except Exception as e:
+            print(f"\n[TEST_EXCEPTION] {str(e)}")
+            traceback.print_exc()
+>           raise e
+
+backend\tests\modules\reviews\test_api.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = <starlette.testclient.TestClient object at 0x000002EEC08D8690>
+db_session = <sqlalchemy.orm.session.Session object at 0x000002EEC08DB890>
+
+    def test_get_options_mocked(client, db_session):
+        """Verifies meta/options endpoint with a mocked user and organization."""
+        user_id = uuid.uuid4()
+        org_id = uuid.uuid4()
+    
+        try:
+            # Setup: Create tenant and organization
+            tenant = Tenant(tenant_id=user_id, plan="pro")
+            db_session.add(tenant)
+            db_session.commit()
+    
+            org = Organization(
+                organization_id=org_id,
+                tenant_id=user_id,
+                organization_name="Test Org"
+            )
+            db_session.add(org)
+            db_session.commit()
+    
+            mock_user = {
+                "user_id": str(user_id),
+                "organization_id": str(org_id),
+                "role": "admin"
+            }
+    
+            # Override authentication
+            fastapi_app.dependency_overrides[get_current_user] = lambda: mock_user
+    
+            response = client.get(f"/api/reviews/meta/options?organization_id={org_id}")
+    
+            if response.status_code != 200:
+                print(f"\n[TEST_ERROR] Status: {response.status_code}")
+                print(f"[TEST_ERROR] Body: {response.text}")
+    
+>           assert response.status_code == 200
+E           assert 500 == 200
+E            +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+backend\tests\modules\reviews\test_api.py:52: AssertionError
+----------------------------- Captured log setup ------------------------------
+INFO     app.modules.groups.migrations:migrations.py:137 Dropped old CHECK constraint ck_group_member_role_valid\nINFO     app.modules.groups.migrations:migrations.py:150 Added new CHECK constraint on group_member.role\nINFO     app.modules.groups.migrations:migrations.py:162 Migrated GROUP_MANAGER rows to GROUP_OWNER\nINFO     app.modules.groups.migrations:migrations.py:180 group_member.organization_id already exists \u2014 skipping v2 migration\nINFO     app.modules.groups.migrations:migrations.py:308 Dropped old invite_type CHECK constraint\nINFO     app.modules.groups.migrations:migrations.py:318 Added new invite_type CHECK constraint (organization|link|user)\nINFO     app.modules.groups.migrations:migrations.py:329 Migrated 'user' invite_type \u2192 'organization' where org resolved\nINFO     app.modules.groups.migrations:migrations.py:26 Group migrations completed successfully.\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts\nINFO     apscheduler.scheduler:base.py:1090 Added job "process_pending_syncs" to job store "default"\nINFO     apscheduler.scheduler:base.py:1090 Added job "process_pending_broadcasts" to job store "default"\nINFO     apscheduler.scheduler:base.py:1090 Added job "reconcile_scraper_jobs" to job store "default"\nINFO     apscheduler.scheduler:base.py:1090 Added job "process_pending_reviews" to job store "default"\nINFO     apscheduler.scheduler:base.py:214 Scheduler started\nINFO     app.modules.scheduler.services.scheduler_service:scheduler_service.py:13 APScheduler started successfully.\nINFO     app.main:main.py:87 Lifespan: Initial background tasks launched.\nINFO     app.modules.reviews.services.processor:processor.py:33 --- Starting Review Analysis Pipeline ---\nWARNING  app.modules.reviews.services.processor:processor.py:46 Review processing is paused due to Gemini API limits. Skipping...
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/reviews/meta/options?organization_id=ed966105-3ddc-4698-a48f-4486fe61f0d9 "HTTP/1.1 500 Internal Server Error"
+---------------------------- Captured log teardown ----------------------------
+INFO     app.modules.scheduler.services.scheduler_service:scheduler_service.py:19 APScheduler shut down successfully.
+INFO     apscheduler.scheduler:base.py:245 Scheduler has been shut down
+============================== warnings summary ===============================
+backend\venv\Lib\site-packages\pythonjsonlogger\jsonlogger.py:11
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\venv\Lib\site-packages\pythonjsonlogger\jsonlogger.py:11: DeprecationWarning: pythonjsonlogger.jsonlogger has been moved to pythonjsonlogger.json
+    warnings.warn(
+
+backend\app\modules\source\schemas.py:25
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\source\schemas.py:25: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SyncFrequencyRead(BaseModel):
+
+backend\app\modules\source\schemas.py:35
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\source\schemas.py:35: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class PlatformRead(BaseModel):
+
+backend\app\modules\source\schemas.py:69
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\source\schemas.py:69: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SourceRead(BaseModel):
+
+backend\app\modules\source\schemas.py:110
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\source\schemas.py:110: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class OrganizationRead(BaseModel):
+
+backend\app\modules\source\schemas.py:120
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\source\schemas.py:120: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SyncLogRead(BaseModel):
+
+backend\app\modules\organization\schemas\organization_schema.py:18
+  E:\L2 Project\hotel-and-restaurant-review-management-system\backend\app\modules\organization\schemas\organization_schema.py:18: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class OrganizationTypeRead(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED backend/tests/modules/reviews/test_api.py::test_read_reviews_unauthorized - assert 500 == 401
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED backend/tests/modules/reviews/test_api.py::test_get_options_mocked - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+======================= 2 failed, 7 warnings in 19.22s ========================

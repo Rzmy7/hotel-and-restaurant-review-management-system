@@ -4,6 +4,8 @@ Custom application exceptions for standardized error handling.
 
 from typing import Any, Dict, Optional
 from fastapi import HTTPException
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 
 class AppException(Exception):
@@ -57,3 +59,18 @@ class FileValidationException(HTTPException):
     """Legacy exception for file validation."""
     def __init__(self, detail: str):
         super().__init__(status_code=400, detail=detail)
+
+
+def register_exception_handlers(app: FastAPI):
+    """Registers global exception handlers for standardized error responses."""
+    
+    @app.exception_handler(AppException)
+    async def app_exception_handler(request: Request, exc: AppException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error_code": exc.error_code,
+                "message": exc.message,
+                "details": exc.details
+            }
+        )

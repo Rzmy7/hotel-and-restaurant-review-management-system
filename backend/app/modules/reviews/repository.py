@@ -8,6 +8,7 @@ import json
 import logging
 from typing import List, Optional, Dict
 from datetime import datetime
+from app.core.logging import log_execution_time
 
 from sqlalchemy import select, func, and_, or_, case, text, Integer, Boolean
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -164,6 +165,7 @@ def get_pending_batch(db: Session, limit: int = 10) -> List[ProcessedReview]:
     )
 
 
+@log_execution_time(logger)
 def fetch_all_reviews_enriched(
     organization_id: str,
     page: int = 0,
@@ -242,6 +244,7 @@ def fetch_all_reviews_enriched(
     }
 
 
+@log_execution_time(logger)
 def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: Session = None) -> Dict:
     """Calculate aggregated stats using ORM and Case expressions."""
     org_id = uuid.UUID(str(organization_id))

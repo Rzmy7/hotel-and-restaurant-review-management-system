@@ -15,12 +15,15 @@ from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import logging
+import time
+import uuid
 from dotenv import load_dotenv
 
-from app.core.exceptions import AppException
+from app.core.exceptions import AppException, register_exception_handlers
+from app.core.logging import setup_logging
 
-load_dotenv()
-
+# Initialize logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Canonical database imports — single source of truth
@@ -174,6 +177,27 @@ app.add_middleware(
 )
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time = (time.perf_counter() - start_time) * 1000
+    formatted_process_time = "{0:.2f}ms".format(process_time)
+    logger.info(
+        f"RID: {request.state.request_id if hasattr(request.state, 'request_id') else 'N/A'} "
+        f"{request.method} {request.url.path} - {response.status_code} ({formatted_process_time})"
+    )
+    return response
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 # Centralized Exception Handlers
