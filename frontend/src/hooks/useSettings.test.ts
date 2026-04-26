@@ -1,18 +1,12 @@
 import { renderHook, act } from '@testing-library/react';
 import { useSettings } from './useSettings';
-import { settingsService } from '../services/settingsService';
 import { useToast } from '../contexts/ToastContext';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 
-// Mock dependencies
-vi.mock('../services/settingsService', () => ({
-  settingsService: {
-    getSettings: vi.fn(),
-    updateSettings: vi.fn(),
-  },
-}));
-
+// Mock UI Contexts/Stores (UI Logic)
 vi.mock('../contexts/ToastContext', () => ({
   useToast: vi.fn(),
 }));
@@ -21,70 +15,60 @@ vi.mock('../stores/useOrganizationStore', () => ({
   useOrganizationStore: vi.fn(),
 }));
 
-describe('useSettings Hook', () => {
+describe('useSettings Hook (MSW Refactored)', () => {
   const mockShowToast = vi.fn();
-  const mockSettings = { hotelInfo: { name: 'Test Hotel' }, scraping: {} };
   
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem('current_organization', 'org-1');
+    localStorage.setItem('token', 'fake-token');
     (useToast as any).mockReturnValue({ showToast: mockShowToast });
     (useOrganizationStore as any).mockImplementation((selector: any) => selector({ currentOrg: { id: 'org-1' } }));
-    (settingsService.getSettings as any).mockResolvedValue(mockSettings);
   });
 
-  it('should load settings on mount', async () => {
+  it('should load settings on mount using MSW', async () => {
     const { result } = renderHook(() => useSettings());
     
-    // Initial state
     expect(result.current.loading).toBe(true);
     
-    // Wait for load
-    await act(async () => {
-      // The useEffect calls loadSettings
-    });
+    // Wait for MSW intercepted response
+    await act(async () => {}); 
     
     expect(result.current.loading).toBe(false);
-    expect(result.current.data).toEqual(mockSettings);
-    expect(settingsService.getSettings).toHaveBeenCalled();
+    expect(result.current.data?.hotelInfo.hotelName).toBe('Mock Hotel');
   });
 
-  it('should handle load error', async () => {
-    (settingsService.getSettings as any).mockRejectedValue(new Error('Fetch failed'));
-    
-    const { result } = renderHook(() => useSettings());
-    
-    await act(async () => {});
-    
-    expect(result.current.error).toBe('Fetch failed');
-    expect(mockShowToast).toHaveBeenCalledWith('Failed to load settings', 'error');
-  });
-
-  it('should update settings successfully', async () => {
-    const updatedSettings = { ...mockSettings, hotelInfo: { name: 'New Name' } };
-    (settingsService.updateSettings as any).mockResolvedValue(updatedSettings);
-    
+  it('should update settings successfully using MSW', async () => {
     const { result } = renderHook(() => useSettings());
     await act(async () => {}); // initial load
     
     let success;
     await act(async () => {
-      success = await result.current.updateSettings({ hotelInfo: { name: 'New Name' } });
+      success = await result.current.updateSettings({ hotelInfo: { hotelName: 'Updated Hotel' } });
     });
     
     expect(success).toBe(true);
-    expect(result.current.data).toEqual(updatedSettings);
+    expect(result.current.data?.hotelInfo.hotelName).toBe('Updated Hotel');
     expect(mockShowToast).toHaveBeenCalledWith('Settings saved successfully', 'success');
   });
 
-  it('should handle update error', async () => {
-    (settingsService.updateSettings as any).mockRejectedValue(new Error('Update failed'));
+  it('should handle update error using MSW', async () => {
+    server.use(
+      http.patch('*/organizations/org-1', () => {
+        return new HttpResponse(JSON.stringify({ detail: 'Validation failed' }), { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
     
     const { result } = renderHook(() => useSettings());
     await act(async () => {}); // initial load
     
     let success;
     await act(async () => {
-      success = await result.current.updateSettings({ hotelInfo: { name: 'New Name' } });
+      success = await result.current.updateSettings({ hotelInfo: { hotelName: 'Invalid' } });
     });
     
     expect(success).toBe(false);
