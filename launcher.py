@@ -13,7 +13,7 @@ COMPONENTS = [
         "dir": "backend",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
+        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
         "color": "\033[94m",  # Blue
     },
     {
@@ -45,7 +45,7 @@ COMPONENTS = [
         "dir": "microservices/embedding-service",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8002",
+        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8002",
         "color": "\033[96m",  # Cyan
     },
 ]
@@ -92,6 +92,17 @@ def check_and_install_dependencies():
 
     for comp in COMPONENTS:
         cwd = os.path.join(base_dir, comp["dir"])
+        
+        # Ensure .env exists if .env.example is present
+        env_path = os.path.join(cwd, ".env")
+        env_example = os.path.join(cwd, ".env.example")
+        if not os.path.exists(env_path) and os.path.exists(env_example):
+            print_prefixed("SYSTEM", "\033[94m", f"Creating missing .env for {comp['name']}...")
+            try:
+                with open(env_example, 'r', encoding='utf-8') as f_in, open(env_path, 'w', encoding='utf-8') as f_out:
+                    f_out.write(f_in.read())
+            except Exception as e:
+                print_prefixed("SYSTEM", "\033[91m", f"Failed to create .env for {comp['name']}: {e}")
 
         # Calculate target check path dynamically for cross-platform support
         path_str = comp["check_path"]
