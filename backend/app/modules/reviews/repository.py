@@ -192,9 +192,9 @@ def fetch_all_reviews_enriched(
         if not full_text:
             parts = []
             if rev.positive_text:
-                parts.append(f"Positive: {rev.positive_text}")
+                parts.append(rev.positive_text)
             if rev.negative_text:
-                parts.append(f"Negative: {rev.negative_text}")
+                parts.append(rev.negative_text)
             full_text = "\n\n".join(parts) if parts else ""
 
         row = {
