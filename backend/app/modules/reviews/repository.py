@@ -191,6 +191,9 @@ def fetch_all_reviews_enriched(
             "id": str(rev.id),
             "rating": rev.rating,
             "reviewerName": rev.reviewerName,
+            "userName": rev.reviewerName,  # Explicitly set for schema compatibility
+            "text": rev.text,
+            "reviewText": rev.text,  # Explicitly set for schema compatibility
             "summary": rev.summary or "",
             "sentiment": rev.sentiment or "Neutral",
             "language": rev.language or "English",

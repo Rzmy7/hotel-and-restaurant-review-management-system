@@ -179,7 +179,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     import traceback
 
     error_details = traceback.format_exc()
-    print(f"CRITICAL ERROR: {error_details}")
+    print(f"CRITICAL ERROR: {error_details.encode('cp1252', errors='replace').decode('cp1252')}")
 
     # Write error to a temporary log file for AI to read
     with open("backend_error.log", "a", encoding="utf-8") as f:
