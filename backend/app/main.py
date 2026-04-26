@@ -132,6 +132,7 @@ import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupInvite
 import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
 import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
 import app.modules.organization.models.rules_model  # noqa: F401  (OrganizationRule)
+import app.modules.admin.models  # noqa: F401 (SystemSetting, SystemAlertLog)
 
 # Hansi UserManagement routers
 from app.modules.user.routes.profile_routes import router as profile_router

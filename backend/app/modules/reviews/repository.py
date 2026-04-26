@@ -279,6 +279,11 @@ def get_org_sources_and_categories(organization_id: str, db: Session) -> Dict:
     return {"sources": sorted(source_list), "categories": sorted(cat_list)}
 
 
+def get_review_options(organization_id: str, db: Session) -> Dict:
+    """Alias for get_org_sources_and_categories for backward compatibility."""
+    return get_org_sources_and_categories(organization_id, db)
+
+
 def get_review_by_id(db: Session, review_id: uuid.UUID) -> Optional[ProcessedReview]:
     """Fetch a single review by its internal ID."""
     return db.query(ProcessedReview).filter(ProcessedReview.id == review_id).first()
@@ -361,3 +366,8 @@ def get_processing_metrics(db: Session, organization_id: Optional[str] = None) -
             metrics[status_key] = count
         metrics["total"] += count
     return metrics
+
+
+def count_reviews_raw(db: Session) -> int:
+    """Return the total count of processed reviews via ORM."""
+    return db.query(func.count(ProcessedReview.id)).scalar() or 0

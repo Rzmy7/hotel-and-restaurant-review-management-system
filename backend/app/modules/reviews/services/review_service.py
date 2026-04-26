@@ -1,22 +1,23 @@
 """
 Review Service — orchestrates review ingestion, analysis, and retrieval.
+Refactored to align with Phase 2 ORM migration while maintaining compatibility with legacy subscription checks.
 """
 
-from datetime import datetime
 import json
 import logging
-import os
 import uuid
-import httpx
-from typing import List, Optional, Dict
-from dateutil import parser as date_parser
+from datetime import datetime
+from typing import Dict, List, Optional
 
-import pyodbc
-from app.core.pyodbc_connection import get_connection_string
+import httpx
+from dateutil import parser as date_parser
+from sqlalchemy.orm import Session
+
+from app.database.session import SessionLocal
 from app.modules.reviews.repository import (
-    upsert_review_pending,
-    insert_review_media,
     fetch_all_reviews_enriched,
+    insert_review_media,
+    upsert_review_pending,
     count_reviews_raw,
     get_processing_metrics,
 )
@@ -24,9 +25,8 @@ from app.modules.reviews.repository import (
 # Ensure related models are registered in the SQLAlchemy registry
 import app.modules.auth.models  # noqa: F401
 import app.modules.organization.models  # noqa: F401
-import app.modules.source.models  # noqa: F401
 import app.modules.reviews.models  # noqa: F401
-from sqlalchemy.orm import Session
+import app.modules.source.models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +36,25 @@ def get_all_reviews_from_db(
     page: int = 0,
     limit: int = 50,
     filters: Optional[dict] = None,
-    db: Session = None
+    db: Session = None,
 ) -> Dict:
     """Fetch processed reviews with photos for a specific organization, supporting pagination and filtering."""
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+    else:
+        should_close = False
+
     try:
-        from app.modules.reviews.repository import fetch_all_reviews_enriched
-        return fetch_all_reviews_enriched(organization_id, page=page, limit=limit, filters=filters, db=db)
+        return fetch_all_reviews_enriched(
+            organization_id, page=page, limit=limit, filters=filters, db=db
+        )
     except Exception as e:
         logger.error(f"Failed to fetch reviews: {e}")
         raise e
+    finally:
+        if should_close:
+            db.close()
 
 
 async def ingest_from_scraper(
@@ -53,9 +63,10 @@ async def ingest_from_scraper(
     """
     Fetches raw review data from the external Scraper Engine (port 8001)
     and stores them as 'pending' in the database.
-    Respects the user's review_count plan limit — only ingests up to the remaining balance.
+    Respects the user's review_count plan limit.
     """
     from app.core.config import SCRAPER_ENGINE_URL
+
     scraper_base = SCRAPER_ENGINE_URL
     base_scraper_url = f"{scraper_base}/api/reviews/{source_id}"
     all_reviews_data = []
@@ -71,31 +82,38 @@ async def ingest_from_scraper(
                 response = await client.get(current_url, timeout=60.0)
                 response.raise_for_status()
                 page_data = response.json()
-                
+
                 batch = page_data.get("data", [])
                 total_on_server = page_data.get("total", 0)
-                
+
                 if not batch:
                     break
-                    
+
                 all_reviews_data.extend(batch)
-                logger.info(f"Received {len(batch)} reviews. Total so far: {len(all_reviews_data)}/{total_on_server}")
-                
+                logger.info(
+                    f"Received {len(batch)} reviews. Total so far: {len(all_reviews_data)}/{total_on_server}"
+                )
+
                 if len(all_reviews_data) >= total_on_server:
                     break
-                    
+
                 skip += batch_size
             except Exception as e:
-                logger.error(f"!!! Scraper Engine communication FAILED at skip={skip} for source {source_id}: {e}")
-                break # Process what we have so far
+                logger.error(
+                    f"!!! Scraper Engine communication FAILED at skip={skip} for source {source_id}: {e}"
+                )
+                break
 
     if not all_reviews_data:
         return 0
 
     reviews_to_process = all_reviews_data
 
-    # ── Check review_count limit and truncate if needed ──
-    review_balance = None  # None = unlimited
+    # ── Check review_count limit and truncate if needed (Using legacy pyodbc for subscription check) ──
+    import pyodbc
+    from app.core.pyodbc_connection import get_connection_string
+
+    review_balance = None
     tenant_id = None
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -109,69 +127,61 @@ async def ingest_from_scraper(
                 from app.modules.admin.services.subscription_service import (
                     check_feature_limit,
                 )
+
                 limit_info = check_feature_limit(cursor, tenant_id, "review_count")
                 if limit_info["limit"] is not None:
                     review_balance = limit_info["balance"]
                     if review_balance <= 0:
-                        from app.modules.admin.services.subscription_service import send_limit_reached_notification
-                        send_limit_reached_notification(tenant_id, limit_info["feature_name"])
-                        logger.info(f"Review count limit reached for tenant {tenant_id}. Skipping ingestion.")
+                        from app.modules.admin.services.subscription_service import (
+                            send_limit_reached_notification,
+                        )
+
+                        send_limit_reached_notification(
+                            tenant_id, limit_info["feature_name"]
+                        )
+                        logger.info(
+                            f"Review count limit reached for tenant {tenant_id}. Skipping ingestion."
+                        )
                         return 0
                     elif review_balance < len(reviews_to_process):
-                        logger.info(f"Truncating ingestion from {len(reviews_to_process)} to {review_balance} (limit reached).")
+                        logger.info(
+                            f"Truncating ingestion from {len(reviews_to_process)} to {review_balance} (limit reached)."
+                        )
                         reviews_to_process = reviews_to_process[:review_balance]
     except Exception as limit_err:
         logger.warning(f"Review count limit check failed: {limit_err}")
 
     count = 0
-
-    # Defensive log file for ingestion troubleshooting
-    debug_log_path = "ingest_debug.log"
-
-    with pyodbc.connect(get_connection_string()) as conn:
-        cursor = conn.cursor()
+    db = SessionLocal()
+    try:
         for r_data in reviews_to_process:
             try:
-                logger.info(f"RAW R_DATA: {json.dumps(r_data, indent=2)}")
-                # Handle nested detail from Scraper Engine
                 detail = r_data.get("detail", {})
-
-                # Determine if we have split text (Booking.com) or single text
                 pos = detail.get("positive_text")
                 neg = detail.get("negative_text")
                 raw_text = detail.get("review_text")
 
                 # Parse dates robustly
                 r_date = detail.get("review_date")
-                r_date_obj = None
-                if r_date:
-                    try:
-                        r_date_obj = date_parser.parse(str(r_date))
-                    except:
-                        r_date_obj = datetime.now()
-                else:
-                    r_date_obj = datetime.now()
-
+                r_date_obj = (
+                    date_parser.parse(str(r_date)) if r_date else datetime.now()
+                )
                 scraped_at = r_data.get("created_at")
-                scraped_at_obj = None
-                if scraped_at:
-                    try:
-                        scraped_at_obj = date_parser.parse(str(scraped_at))
-                    except:
-                        scraped_at_obj = datetime.now()
-                else:
-                    scraped_at_obj = datetime.now()
+                scraped_at_obj = (
+                    date_parser.parse(str(scraped_at))
+                    if scraped_at
+                    else datetime.now()
+                )
 
-                # Normalize rating (system standard is 1-5)
+                # Normalize rating
                 raw_rating = float(detail.get("rating", 0))
+                normalized_rating = (
+                    round(raw_rating / 2.0, 3)
+                    if int(platform_id) in [2, 3]
+                    else round(raw_rating, 3)
+                )
 
-                # Booking.com (2) and Agoda (3) use a 10-point scale
-                if int(platform_id) in [2, 3]:
-                    normalized_rating = round(raw_rating / 2.0, 3)
-                else:
-                    normalized_rating = round(raw_rating, 3)
-
-                # Map raw scraper data to our internal fields
+                # Map raw scraper data to internal fields
                 mapping = {
                     "id": str(r_data.get("review_id")),
                     "rating": normalized_rating,
@@ -187,71 +197,53 @@ async def ingest_from_scraper(
                     "source_id": source_id,
                 }
 
-                # File-based emergency logging to bypass terminal truncation
-                with open(debug_log_path, "a", encoding="utf-8") as f:
-                    f.write(
-                        f"[{datetime.now()}] MAPPING: {json.dumps(mapping, default=str)}\n"
-                    )
-
-                # Insert as pending
-                internal_id = upsert_review_pending(cursor, mapping)
+                # Insert as pending via ORM repository
+                internal_id = upsert_review_pending(db, mapping)
 
                 # Handle photos
                 photos_raw = r_data.get("media", [])
                 photos = [
-                    {
-                        "media_id": p.get("media_id"),
-                        "src": p.get("url"),
-                        "alt": ""
-                    }
-                    for p in photos_raw if p.get("url")
+                    {"media_id": p.get("media_id"), "src": p.get("url"), "alt": ""}
+                    for p in photos_raw
+                    if p.get("url")
                 ]
                 if photos:
-                    insert_review_media(cursor, internal_id, photos)
+                    insert_review_media(db, internal_id, photos)
 
                 count += 1
             except Exception as ex:
                 logger.error(f"Failed to ingest review {r_data.get('id')}: {ex}")
                 continue
 
-        conn.commit()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Ingestion database error: {e}")
+        raise e
+    finally:
+        db.close()
 
-    # Send notification if we hit the limit during this ingestion
-    if review_balance is not None and tenant_id and count >= review_balance:
-        try:
-            from app.modules.admin.services.subscription_service import send_limit_reached_notification
-            send_limit_reached_notification(tenant_id, "Review Count")
-        except Exception:
-            pass
-
-    # ── Send new reviews ingested notification ──
-    if count > 0 and tenant_id:
+    # Post-ingestion notifications
+    if tenant_id and count > 0:
         try:
             from app.services.notification_helpers import notify_new_reviews_ingested
-            # Resolve platform name and organization name from the source
+
             platform_name = None
             org_name = None
+            db = SessionLocal()
             try:
-                with pyodbc.connect(get_connection_string()) as conn:
-                    cursor = conn.cursor()
-                    info_row = cursor.execute(
-                        """
-                        SELECT p.platform_name, o.organization_name
-                        FROM dbo.source s
-                        INNER JOIN dbo.platform p ON p.platform_id = s.platform_id
-                        INNER JOIN dbo.organization o ON o.organization_id = s.organization_id
-                        WHERE s.source_id = ?
-                        """,
-                        (str(source_id),),
-                    ).fetchone()
-                    if info_row:
-                        platform_name = str(info_row[0]) if info_row[0] else None
-                        org_name = str(info_row[1]) if info_row[1] else None
-            except Exception:
-                pass
+                from app.modules.source.models import Source
+
+                src = db.query(Source).filter(Source.source_id == source_id).first()
+                if src:
+                    platform_name = src.platform.platform_name
+                    org_name = src.organization.organization_name
+            finally:
+                db.close()
+
             notify_new_reviews_ingested(tenant_id, count, platform_name, org_name)
-        except Exception:
-            pass  # Best-effort
+        except Exception as notify_err:
+            logger.warning(f"Failed to send ingestion notification: {notify_err}")
 
     logger.info(
         f"Ingestion SUMMARY: Saved {count} reviews as 'pending' for source {source_id}"
@@ -259,44 +251,45 @@ async def ingest_from_scraper(
     return count
 
 
-async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id: uuid.UUID = None):
+async def start_ingestion_and_processing_flow(
+    source_id: uuid.UUID, sync_log_id: uuid.UUID = None
+):
     """
     Full background flow:
     1. Ingest from Scraper (Raw -> Pending)
     2. Run AI Analysis (Pending -> Processed)
     """
-    from app.modules.source.services.source_service import get_source_by_id, log_activity
     from app.database.session import SessionLocal
     from app.modules.reviews.services.processor import run_analysis_pipeline
+    from app.modules.source.services.source_service import (
+        get_source_by_id,
+        log_activity,
+    )
 
     db = SessionLocal()
     try:
-        logger.info(f"--- Pipeline TRRIGERED for source {source_id} ---")
-        # 1. Get source details to find organization_id
+        logger.info(f"--- Pipeline TRIGGERED for source {source_id} ---")
         source = get_source_by_id(db, source_id)
         if not source:
-            logger.error(
-                f"!!! Pipeline ABORTED: Source {source_id} not found in database."
-            )
+            logger.error(f"!!! Pipeline ABORTED: Source {source_id} not found.")
             return
 
         logger.info(f"Pipeline: Starting INGESTION for source {source_id}...")
-        # 2. Ingest
         ingested_count = await ingest_from_scraper(
             source_id, source.organization_id, source.platform_id
         )
 
-        # Log Ingestion Activity
         log_activity(
-            db, 
-            source_id, 
-            activity_type="INGESTION_COMPLETED", 
+            db,
+            source_id,
+            activity_type="INGESTION_COMPLETED",
             reviews_fetched=ingested_count,
-            activity_details=f"Successfully ingested {ingested_count} reviews from {source.platform_name}."
+            activity_details=f"Successfully ingested {ingested_count} reviews from {source.platform.platform_name}.",
         )
 
         if sync_log_id:
             from app.modules.source.models import SyncLog
+
             sync_log = db.query(SyncLog).filter(SyncLog.log_id == sync_log_id).first()
             if sync_log:
                 sync_log.reviews_fetched = ingested_count
@@ -306,20 +299,23 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
             logger.info(
                 f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews..."
             )
-            
-            # Log AI Analysis Start
-            log_activity(db, source_id, activity_type="AI_ANALYSIS_STARTED", status="In Progress")
-            
-            # 3. Process
-            await run_analysis_pipeline()
-            
-            # Log AI Analysis Completion
-            log_activity(db, source_id, activity_type="AI_ANALYSIS_COMPLETED", status="Success")
-            
-            logger.info(f"--- Pipeline AI ANALYSIS COMPLETED for source {source_id} ---")
+            log_activity(
+                db, source_id, activity_type="AI_ANALYSIS_STARTED", status="In Progress"
+            )
 
-            # 4. Trigger embedding for newly processed reviews
-            from app.modules.source.services.embedding_client import trigger_embedding_for_source
+            await run_analysis_pipeline()
+
+            log_activity(
+                db, source_id, activity_type="AI_ANALYSIS_COMPLETED", status="Success"
+            )
+            logger.info(
+                f"--- Pipeline AI ANALYSIS COMPLETED for source {source_id} ---"
+            )
+
+            from app.modules.source.services.embedding_client import (
+                trigger_embedding_for_source,
+            )
+
             trigger_embedding_for_source(str(source_id))
             logger.info(f"--- Pipeline COMPLETED for source {source_id} ---")
         else:
@@ -333,36 +329,43 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
         db.close()
 
 
-def count_all_reviews() -> int:
+def count_all_reviews(db: Session = None) -> int:
     """Returns the total number of reviews in the database."""
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+    else:
+        should_close = False
+
     try:
-        return count_reviews_raw()
+        return count_reviews_raw(db)
     except Exception as e:
         logger.error(f"Count reviews failed: {e}")
         raise e
+    finally:
+        if should_close:
+            db.close()
 
 
 def get_processing_report(organization_id: str = None) -> dict:
-    """
-    Returns a report on review processing status (pending, processed, failed).
-    """
+    """Returns a report on review processing status (pending, processed, failed)."""
+    db = SessionLocal()
     try:
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            metrics = get_processing_metrics(cursor, organization_id)
+        metrics = get_processing_metrics(db, organization_id)
 
-            # Simple health indicator
-            health = "healthy"
-            if metrics["failed"] > 0:
-                health = "warning"
-            if metrics["pending"] > 200:  # Example threshold
-                health = "congested"
+        health = "healthy"
+        if metrics["failed"] > 0:
+            health = "warning"
+        if metrics["pending"] > 200:
+            health = "congested"
 
-            return {
-                "metrics": metrics,
-                "health": health,
-                "timestamp": datetime.now().isoformat(),
-            }
+        return {
+            "metrics": metrics,
+            "health": health,
+            "timestamp": datetime.now().isoformat(),
+        }
     except Exception as e:
         logger.error(f"Failed to generate processing report: {e}")
         raise e
+    finally:
+        db.close()

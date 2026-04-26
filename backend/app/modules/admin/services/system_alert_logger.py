@@ -250,3 +250,24 @@ def alert_database_error(operation: str, error_msg: str = "") -> None:
         severity="error",
         category="database",
     )
+
+
+def alert_review_processing_batch_failed_orm(db: "Session", batch_size: int, error_msg: str = "") -> None:
+    """ORM-based alert logging for batch failures."""
+    from app.modules.admin.models import SystemAlertLog
+    
+    title = f"Review Processing Failed ({batch_size} reviews)"
+    message = (
+        f"A batch of {batch_size} reviews failed during AI analysis and has been marked for retry."
+        + (f" Error: {error_msg[:400]}" if error_msg else "")
+    )
+    
+    alert = SystemAlertLog(
+        alert_type=ALERT_REVIEW_PROCESSING_FAILED,
+        title=title,
+        message=message,
+        severity="warning",
+        category="api"
+    )
+    db.add(alert)
+    # We don't commit here, the caller (pipeline) should commit

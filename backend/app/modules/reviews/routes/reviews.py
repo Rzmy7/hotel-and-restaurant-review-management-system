@@ -1,17 +1,17 @@
 """
 Review Management Routes — API endpoints for listing, deleting, and AI reply generation.
+Refactored to use SQLAlchemy ORM for all domain operations.
 """
 
 import uuid
 import logging
 from typing import List, Optional
 
-import pyodbc
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.database import get_db
-from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.dependencies import get_optional_user
 from app.modules.admin.services.subscription_service import increment_feature_usage
@@ -38,42 +38,37 @@ from app.modules.reviews.repository import (
 from app.modules.source.services.source_service import get_source_by_id
 from app.modules.source.services.embedding_client import delete_embeddings_for_source
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
+from app.modules.source.models import Organization
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 
-def _resolve_org_id(user, organization_id_param):
-    """Resolve organization_id: prefer JWT, fall back to query param with ownership check."""
+def _resolve_org_id(user, organization_id_param, db: Session):
+    """Resolve organization_id: prefer JWT, fall back to query param with ownership check via ORM."""
     jwt_org_id = user.organization_id if hasattr(user, 'organization_id') else (
         user.get("organization_id") if isinstance(user, dict) else None
     )
     if jwt_org_id:
         return str(jwt_org_id)
+    
     if organization_id_param:
-        # Verify the user owns this organization
         user_id = user.user_id if hasattr(user, 'user_id') else (
             user.get("user_id") if isinstance(user, dict) else None
         )
         if user_id:
-            try:
-                with pyodbc.connect(get_connection_string()) as conn:
-                    cursor = conn.cursor()
-                    row = cursor.execute(
-                        "SELECT TOP 1 1 FROM dbo.organization WHERE organization_id = ? AND tenant_id = ?",
-                        (str(organization_id_param), str(user_id)),
-                    ).fetchone()
-                    if not row:
-                        raise HTTPException(
-                            status_code=403,
-                            detail="You do not have access to this organization.",
-                        )
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.warning(f"Org ownership check failed: {e}")
+            org = db.query(Organization).filter(
+                Organization.organization_id == str(organization_id_param),
+                Organization.tenant_id == str(user_id)
+            ).first()
+            if not org:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You do not have access to this organization.",
+                )
         return str(organization_id_param)
+    
     raise HTTPException(status_code=400, detail="organization_id is required.")
 
 
@@ -95,7 +90,7 @@ def read_reviews(
 ):
     """Fetch processed reviews with pagination and filtering."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = _resolve_org_id(current_user, organization_id, db)
         filters = {
             "search": search,
             "embedding_search": embedding_search,
@@ -110,12 +105,11 @@ def read_reviews(
             resolved_org_id, page=page, limit=limit, filters=filters, db=db
         )
 
-        # Calculate total pages
         total = result["total"]
         total_pages = (total + limit - 1) // limit if limit > 0 else 1
 
         return {
-            "data": result["data"],
+            "data": result["reviews"],
             "total": total,
             "page": page,
             "limit": limit,
@@ -136,7 +130,7 @@ def get_options(
 ):
     """Fetch available filter options (sources, categories)."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = _resolve_org_id(current_user, organization_id, db)
         return get_review_options(resolved_org_id, db=db)
     except HTTPException:
         raise
@@ -161,7 +155,7 @@ def get_stats(
 ):
     """Fetch aggregated review statistics, respecting all active filters."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = _resolve_org_id(current_user, organization_id, db)
         filters = {
             "search": search,
             "embedding_search": embedding_search,
@@ -185,31 +179,18 @@ def get_stats(
 @router.get("/meta/distribution")
 def get_distribution_details(
     organization_id: Optional[uuid.UUID] = Query(None),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Fetch the full rating distribution broken down by source platform."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
-        return get_full_distribution(resolved_org_id)
+        resolved_org_id = _resolve_org_id(current_user, organization_id, db)
+        return get_full_distribution(resolved_org_id, db=db)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to fetch distribution: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch distribution data.")
-
-
-@router.get("/{organization_id}", response_model=List[ReviewModel], deprecated=True)
-def read_reviews_legacy(organization_id: uuid.UUID, current_user=Depends(get_current_user)):
-    """Legacy endpoint for fetching reviews. Use GET / instead."""
-    try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
-        result = get_all_reviews_from_db(resolved_org_id)
-        return result["data"]
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Read reviews error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
 @router.post("/trigger/{source_id}")
@@ -229,10 +210,7 @@ async def trigger_ingest_only(
     db: Session = Depends(get_db),
     current_user=Depends(get_optional_user),
 ):
-    """
-    Triggers only the ingestion of reviews from the scraper engine.
-    Reviews are saved with 'pending' status. AI analysis is NOT triggered.
-    """
+    """Triggers only the ingestion of reviews from the scraper engine."""
     try:
         source = get_source_by_id(db, source_id)
         if not source:
@@ -255,10 +233,10 @@ async def trigger_ingest_only(
 
 
 @router.get("/meta/count")
-def get_total_review_count(current_user=Depends(get_optional_user)):
+def get_total_review_count(db: Session = Depends(get_db), current_user=Depends(get_optional_user)):
     """Returns the total number of reviews across the entire platform."""
     try:
-        count = count_all_reviews()
+        count = count_all_reviews(db)
         return {"total_reviews": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -269,10 +247,7 @@ def get_processing_status(
     organization_id: uuid.UUID = Query(None),
     current_user=Depends(get_optional_user),
 ):
-    """
-    Get the current processing status of reviews.
-    Optional organization_id filter.
-    """
+    """Get the current processing status of reviews."""
     try:
         return get_processing_report(str(organization_id) if organization_id else None)
     except Exception as e:
@@ -287,10 +262,7 @@ async def trigger_single_review_processing(
     review_id: uuid.UUID,
     current_user=Depends(get_optional_user),
 ):
-    """
-    Manually trigger AI analysis for a specific review.
-    This will analyze/re-analyze the review and update its analytical columns.
-    """
+    """Manually trigger AI analysis for a specific review."""
     try:
         result = await process_single_review(review_id)
         return {
@@ -313,12 +285,14 @@ def generate_reply(
 ):
     """Generate an AI reply for a specific review."""
     try:
-        # ── Check reply_generations limit ──
         user_id = (
             str(current_user.user_id)
             if hasattr(current_user, "user_id")
             else str(current_user.id)
         )
+        # Subscription limit check (keeping pyodbc for now for cross-module compatibility)
+        import pyodbc
+        from app.core.pyodbc_connection import get_connection_string
         try:
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()
@@ -331,18 +305,16 @@ def generate_reply(
                     send_limit_reached_notification(user_id, limit_info["feature_name"])
                     raise HTTPException(
                         status_code=403,
-                        detail=f"Reply generation limit reached for your current plan. "
-                               f"You have used {limit_info['used']}/{limit_info['limit']}. "
-                               f"Please upgrade your subscription plan to generate more replies.",
+                        detail=f"Reply generation limit reached. Used {limit_info['used']}/{limit_info['limit']}.",
                     )
         except HTTPException:
             raise
         except Exception as limit_err:
-            logger.warning(f"LIMIT CHECK WARNING (reply_generations): {limit_err}")
+            logger.warning(f"Limit check failed: {limit_err}")
 
         result = generate_review_reply(payload)
 
-        # Increment usage tracker
+        # Increment usage
         try:
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()
@@ -354,8 +326,6 @@ def generate_reply(
         return ReplyGenerationResponse(**result)
     except HTTPException:
         raise
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         logger.error(f"Reply generation failed: {exc}")
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
@@ -367,20 +337,13 @@ def delete_reviews_by_source(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """
-    Delete all reviews associated with a specific source ID.
-    Also clears associated media and embeddings.
-    """
+    """Delete all reviews associated with a specific source ID."""
     try:
-        # 1. Verify existence of source
         source = get_source_by_id(db, source_id)
         if not source:
             raise HTTPException(status_code=404, detail="Source not found.")
 
-        # 2. Delete reviews and media from database
-        deleted_count = delete_reviews_by_source_id(str(source_id))
-
-        # 3. Clear embeddings for this source
+        deleted_count = delete_reviews_by_source_id(db, str(source_id))
         delete_embeddings_for_source(str(source_id))
 
         return {
@@ -391,5 +354,5 @@ def delete_reviews_by_source(
     except HTTPException as e:
         raise e
     except Exception as e:
-        logger.error(f"Failed to delete reviews for source {source_id}: {e}")
+        logger.error(f"Failed to delete reviews: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete reviews.")

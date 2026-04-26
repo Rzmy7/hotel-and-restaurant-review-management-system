@@ -142,3 +142,19 @@ def increment_setting_counter(cursor: pyodbc.Cursor, key: str, delta: int = 1) -
     next_value = max(0, current + delta)
     set_setting(cursor, key, str(next_value))
     return next_value
+
+
+def get_setting_bool_orm(db: "Session", key: str, default: bool = False) -> bool:
+    """ORM-based boolean setting retrieval."""
+    from app.modules.admin.models import SystemSetting
+    
+    setting = db.query(SystemSetting).filter(SystemSetting.setting_key == key).first()
+    if not setting:
+        return default
+    
+    val = setting.setting_value.strip().lower()
+    if val in {"1", "true", "yes", "on", "enabled"}:
+        return True
+    if val in {"0", "false", "no", "off", "disabled"}:
+        return False
+    return default
