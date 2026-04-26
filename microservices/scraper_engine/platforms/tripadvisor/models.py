@@ -110,6 +110,6 @@ def save_reviews_to_db(reviews: list, source_id: str) -> int:
     except Exception as e:
         session.rollback()
         logger.error(f"TripAdvisor DB batch transaction failed: {e}", exc_info=True)
-        return success_count
+        return 0
     finally:
         session.close()

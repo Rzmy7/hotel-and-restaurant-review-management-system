@@ -146,7 +146,17 @@ def scrape_tripadvisor(
 
     try:
         logger.info(f"Navigating to {url}")
-        page.goto(url, wait_until="domcontentloaded", timeout=90000)
+        response = page.goto(url, wait_until="domcontentloaded", timeout=90000)
+        
+        if response and response.status >= 400:
+            content = page.content().lower()
+            if response.status == 403 and ("verification required" in content or "access denied" in content):
+                logger.error("Hit TripAdvisor bot challenge or blocked access!")
+                raise Exception("Bot challenge detected or access blocked by TripAdvisor.")
+            
+            logger.error(f"Failed to load TripAdvisor page: {response.status} {response.status_text}")
+            raise Exception(f"TripAdvisor returned {response.status} {response.status_text}")
+            
         human_delay(5, 10)  # Wait for basic content
         jittery_scroll(page)
 
