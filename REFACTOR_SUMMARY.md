@@ -29,7 +29,8 @@ Previously, API routes handled data fetching, business logic, and error manageme
 
 ### 🔍 Observability & Telemetry
 - **Structured Logging**: Implemented a centralized JSON logger (`app.core.logging`) that persists system events and errors in a machine-readable format.
-- **Performance Profiling**: Added `@log_execution_time` decorators to critical database operations to monitor latency and optimize query performance.
+- **Production Mode Orchestration**: Engineered a dual-mode `launcher.py` that supports `--prod` flag. This mode automatically builds frontends, serves optimized assets via `npm run preview`, and silences non-critical logs for an industry-grade appearance.
+- **Professional Console Logging**: Replaced raw `console.log` with an environment-aware `logger` utility that silences debug noise in production while preserving colored trace information during development.
 - **Request Tracking**: Integrated middleware to inject unique `X-Request-ID` headers into every API response for distributed tracing.
 
 ### 🛡️ Robustness & Error Handling

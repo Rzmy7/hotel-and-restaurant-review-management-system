@@ -4,6 +4,7 @@ import threading
 import sys
 import time
 import webbrowser
+import argparse
 
 # Define the components and their configurations
 # Note: Changing embedding-service to port 8002 to avoid collision with scraper_engine (8001)
@@ -13,7 +14,8 @@ COMPONENTS = [
         "dir": "backend",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
+        "dev_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+        "prod_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log --workers 1",
         "color": "\033[94m",  # Blue
     },
     {
@@ -21,7 +23,9 @@ COMPONENTS = [
         "dir": "frontend",
         "install_cmd": "npm install",
         "check_path": "node_modules/vite",
-        "run_cmd": "npm run dev -- --port 5173",
+        "dev_cmd": "npm run dev -- --port 5173",
+        "prod_cmd": "npm run preview -- --port 5173",
+        "build_cmd": "npm run build",
         "color": "\033[92m",  # Green
     },
     {
@@ -29,7 +33,9 @@ COMPONENTS = [
         "dir": "admin-frontend",
         "install_cmd": "npm install",
         "check_path": "node_modules/vite",
-        "run_cmd": "npm run dev -- --port 5174",
+        "dev_cmd": "npm run dev -- --port 5174",
+        "prod_cmd": "npm run preview -- --port 5174",
+        "build_cmd": "npm run build",
         "color": "\033[93m",  # Yellow
     },
     {
@@ -37,7 +43,8 @@ COMPONENTS = [
         "dir": "microservices/scraper_engine",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt && venv\\Scripts\\python -m playwright install chromium",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python api/main.py",
+        "dev_cmd": "venv\\Scripts\\python api/main.py",
+        "prod_cmd": "venv\\Scripts\\python api/main.py",
         "color": "\033[95m",  # Magenta
     },
     {
@@ -45,7 +52,8 @@ COMPONENTS = [
         "dir": "microservices/embedding-service",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8002",
+        "dev_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload",
+        "prod_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --no-access-log",
         "color": "\033[96m",  # Cyan
     },
 ]
@@ -108,7 +116,7 @@ def check_and_install_dependencies():
         path_str = comp["check_path"]
         if comp["check_path"] == "venv":
             # For Python projects, we verify the presence of key binaries, not just the venv folder
-            if "uvicorn" in comp["run_cmd"]:
+            if "uvicorn" in comp["dev_cmd"] or "uvicorn" in comp["prod_cmd"]:
                 db_path = "Scripts/uvicorn.exe" if os.name == "nt" else "bin/uvicorn"
             elif comp["name"] == "SCRAPER":
                 db_path = (
@@ -181,16 +189,36 @@ def check_and_install_dependencies():
             )
 
 
-def start_services():
+def build_frontends():
+    """Build frontends for production mode."""
+    print(f"\n\033[1m=== Building Frontends (Production Mode) ==={RESET_COLOR}")
+    base_dir = get_base_dir()
+
+    for comp in COMPONENTS:
+        if "build_cmd" in comp:
+            print_prefixed("SYSTEM", comp["color"], f"Building {comp['name']}...")
+            cwd = os.path.join(base_dir, comp["dir"])
+            try:
+                subprocess.run(comp["build_cmd"], shell=True, cwd=cwd, check=True)
+                print_prefixed("SYSTEM", "\033[92m", f"Successfully built {comp['name']}.")
+            except subprocess.CalledProcessError:
+                print_prefixed("SYSTEM", "\033[91m", f"Failed to build {comp['name']}. Exiting...")
+                sys.exit(1)
+
+
+def start_services(is_prod=False):
     """Start all services in parallel threads."""
-    print(f"\n\033[1m=== Starting Services ==={RESET_COLOR}")
+    mode_text = "PRODUCTION" if is_prod else "DEVELOPMENT"
+    print(f"\n\033[1m=== Starting Services ({mode_text} MODE) ==={RESET_COLOR}")
     base_dir = get_base_dir()
 
     for comp in COMPONENTS:
         cwd = os.path.join(base_dir, comp["dir"])
+        run_cmd = comp["prod_cmd"] if is_prod else comp["dev_cmd"]
+        
         # We use shell=True for windows cross-compatibility and complex commands
         process = subprocess.Popen(
-            comp["run_cmd"],
+            run_cmd,
             cwd=cwd,
             shell=True,
             stdout=subprocess.PIPE,
@@ -217,8 +245,8 @@ def open_browsers():
     )
     time.sleep(6)
     urls = [
-        "http://localhost:5173",  # User Frontend
-        "http://localhost:5174",  # Admin Panel
+        "http://127.0.0.1:5173",  # User Frontend (Mapped to 127.0.0.1 for stability)
+        "http://127.0.0.1:5174",  # Admin Panel
         "http://127.0.0.1:8000/docs",  # Backend swagger
         "http://127.0.0.1:8001/docs",  # Scraper swagger
         "http://127.0.0.1:8002/docs",  # Embedding swagger
@@ -231,9 +259,17 @@ def open_browsers():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="ReviewMate System Launcher")
+    parser.add_argument("--prod", action="store_true", help="Run in production mode (requires build)")
+    args = parser.parse_args()
+
     try:
         check_and_install_dependencies()
-        start_services()
+        
+        if args.prod:
+            build_frontends()
+            
+        start_services(is_prod=args.prod)
 
         # Start a thread to open the browsers automatically
         threading.Thread(target=open_browsers, daemon=True).start()
@@ -246,11 +282,14 @@ def main():
         print(f"\n{RESET_COLOR}\033[1m=== Shutting down services ==={RESET_COLOR}")
         for process in processes:
             # Taskkill is more reliable for shell=True processes on Windows
-            subprocess.run(
-                ["taskkill", "/F", "/T", "/PID", str(process.pid)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            try:
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except:
+                process.terminate()
         print("All processes terminated. Goodbye!")
         sys.exit(0)
     except Exception as e:
