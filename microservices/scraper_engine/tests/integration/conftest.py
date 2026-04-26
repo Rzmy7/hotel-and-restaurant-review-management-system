@@ -6,13 +6,14 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import time
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+# Ensure the scraper_engine root is in sys.path
+scraper_engine_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if scraper_engine_root not in sys.path:
+    sys.path.append(scraper_engine_root)
+
 from core.database import Base
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
-
-# Ensure the scraper_engine root is in sys.path
-scraper_engine_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-sys.path.append(scraper_engine_root)
 
 @compiles(UNIQUEIDENTIFIER, "sqlite")
 def compile_uniqueidentifier(type_, compiler, **kw):
