@@ -242,23 +242,34 @@ class BookingExtractor:
             )
             review_id = hashlib.md5(hashable_string.encode()).hexdigest()
 
+            # Combine positive and negative text for the base review_text
+            combined_text = ""
+            if positive_review:
+                combined_text += f"[Positive] {positive_review}\n"
+            if negative_review:
+                combined_text += f"[Negative] {negative_review}"
+            
+            if not combined_text:
+                combined_text = "No review text provided."
+
             reviews.append(
-                BookingReviewData(
-                    id=review_id,
-                    title=review_title,
-                    score=review_score,
-                    positive_txt=positive_review,
-                    negative_txt=negative_review,
-                    posted_date=review_post_date,
-                    reviewer_stay_date=stayed_date,
-                    num_of_nights=num_of_nights,
-                    traveler_type=traveler_type,
-                    room_name=room_name,
-                    author=author,
-                    reviewer_nationality=reviewer_nationality,
-                    reply=reply,
-                    photo=review_pictures,
-                )
+                {
+                    "external_review_id": review_id,
+                    "review_title": review_title,
+                    "rating": review_score,
+                    "positive_text": positive_review,
+                    "negative_text": negative_review,
+                    "review_text": combined_text.strip(),
+                    "review_date": review_post_date or "Unknown Date",
+                    "stay_date": stayed_date,
+                    "num_of_nights": num_of_nights,
+                    "traveler_type": traveler_type,
+                    "room_type": room_name,
+                    "author": author,
+                    "reviewer_nationality": reviewer_nationality,
+                    "reply_text": reply,
+                    "images": [p.src for p in review_pictures],
+                }
             )
 
         return reviews

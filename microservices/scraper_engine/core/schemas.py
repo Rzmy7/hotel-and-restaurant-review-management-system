@@ -66,3 +66,25 @@ class TripAdvisorReviewSchema(BaseReviewSchema):
                 return float(v) / 10.0
             return float(v)
         return v
+
+class GoogleReviewSchema(BaseReviewSchema):
+    """Google specific fields."""
+    author_badge: Optional[str] = None
+
+class BookingReviewSchema(BaseReviewSchema):
+    """Booking.com specific fields."""
+    reviewer_nationality: Optional[str] = None
+    stay_date: Optional[str] = None
+    num_of_nights: Optional[int] = None
+    traveler_type: Optional[str] = None
+    room_type: Optional[str] = None
+    positive_text: Optional[str] = None
+    negative_text: Optional[str] = None
+
+class AgodaReviewSchema(BaseReviewSchema):
+    """Agoda specific fields."""
+    reviewer_nationality: Optional[str] = None
+    stay_date: Optional[str] = None
+    num_of_nights: Optional[int] = None
+    traveler_type: Optional[str] = None
+    room_type: Optional[str] = None

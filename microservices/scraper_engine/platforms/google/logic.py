@@ -12,6 +12,8 @@ from core.audit import audit_logger
 from platforms.google.auth import GoogleAuthManager
 from services.source_service import SourceService
 from core.deduplication.google_deduplicator import clean_google_duplicates
+from core.schemas import GoogleReviewSchema
+from pydantic import ValidationError
 
 load_dotenv()
 logger = setup_logger("google_logic")
@@ -502,11 +504,26 @@ def scrape_google(
         extractor = GoogleExtractor(page)
         extracted = extractor.extract_reviews()
 
-        # Deduplicate and prepare for batch saving
-        current_batch = []
+        # Validate and Normalize via Schema
+        validated_reviews = []
         for r in extracted:
-            if r.id not in seen_ids:
-                seen_ids.add(r.id)
+            try:
+                schema = GoogleReviewSchema(**r)
+                validated_reviews.append(schema.model_dump())
+            except ValidationError as ve:
+                logger.warning(
+                    f"Schema validation failed for Google review {r.get('external_review_id', 'unknown')}: {ve}"
+                )
+                continue
+
+        # Deduplicate and prepare for batch saving
+        all_reviews = []
+        seen_ids = set()
+        current_batch = []
+        for r in validated_reviews:
+            rid = r.get("external_review_id")
+            if rid not in seen_ids:
+                seen_ids.add(rid)
                 all_reviews.append(r)
                 current_batch.append(r)
 

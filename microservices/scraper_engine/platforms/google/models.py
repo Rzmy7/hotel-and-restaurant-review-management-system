@@ -49,7 +49,7 @@ def save_reviews_to_db(reviews, source_id: str) -> int:
                     # Use a sub-transaction (savepoint) for each review
                     with session.begin_nested():
                         # Create a new review entry in the central reviews table
-                        platform_id = getattr(r, "id", None)
+                        platform_id = r.get("external_review_id")
                         review_entry = Review(
                             source_id=source_id, platform_review_id=platform_id
                         )
@@ -59,18 +59,19 @@ def save_reviews_to_db(reviews, source_id: str) -> int:
                         # Create the Google-specific detail row
                         detail = GoogleReviewDetail(
                             review_id=review_entry.review_id,
-                            rating=getattr(r, "rating", None),
-                            author=getattr(r, "author", None),
-                            review_text=getattr(r, "text", None),
-                            review_date=getattr(r, "date", None),
-                            author_badge=getattr(r, "author_badge", None),
-                            reply=getattr(r, "reply", None),
+                            rating=r.get("rating"),
+                            author=r.get("author"),
+                            review_text=r.get("review_text"),
+                            review_date=r.get("review_date"),
+                            author_badge=r.get("author_badge"),
+                            reply=r.get("reply_text"),
                         )
                         session.add(detail)
 
                         # Attach media (photos)
-                        if hasattr(r, "photos") and r.photos:
-                            for photo_url in r.photos:
+                        images = r.get("images", [])
+                        if images:
+                            for photo_url in images:
                                 session.add(
                                     ReviewMedia(
                                         review_id=review_entry.review_id,

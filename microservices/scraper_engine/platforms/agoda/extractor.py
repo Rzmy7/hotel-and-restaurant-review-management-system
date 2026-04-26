@@ -175,21 +175,22 @@ class AgodaExtractor:
                 f"{author_text}_{date_text}_{rating}".encode()
             ).hexdigest()
 
-            review = Review(
-                id=review_id,
-                author=author_text,
-                reviewer_nationality=reviewer_nationality,
-                rating=rating,
-                heading=heading,
-                text=text,
-                date=date_text,
-                stayed_dates=stayed_dates,
-                num_of_nights=num_of_nights,
-                traveler_type=traveler_type,
-                room_type=room_type,
-                images=images,
-                reply=reply_text,
+            reviews.append(
+                {
+                    "external_review_id": review_id,
+                    "author": author_text,
+                    "reviewer_nationality": reviewer_nationality,
+                    "rating": rating,
+                    "review_title": heading,
+                    "review_text": text,
+                    "review_date": date_text,
+                    "stay_date": stayed_dates,
+                    "num_of_nights": num_of_nights,
+                    "traveler_type": traveler_type,
+                    "room_type": room_type,
+                    "images": images,
+                    "reply_text": reply_text,
+                }
             )
-            reviews.append(review)
 
         return reviews

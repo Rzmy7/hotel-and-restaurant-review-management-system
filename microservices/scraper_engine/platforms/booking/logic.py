@@ -10,6 +10,8 @@ from platforms.booking.config import booking_selectors
 from core.audit import audit_logger
 from services.source_service import SourceService
 from core.deduplication.booking_deduplicator import clean_booking_duplicates
+from core.schemas import BookingReviewSchema
+from pydantic import ValidationError
 
 logger = setup_logger("booking_logic")
 
@@ -234,11 +236,25 @@ def scrape_booking(
                 logger.info("No more reviews found on this page. Stopping.")
                 break
 
-            # Loop Prevention Mechanism
-            new_reviews = [r for r in page_reviews if r.id not in seen_ids]
+            # Validate and Normalize via Schema
+            validated_reviews = []
+            for r in page_reviews:
+                try:
+                    schema = BookingReviewSchema(**r)
+                    validated_reviews.append(schema.model_dump())
+                except ValidationError as ve:
+                    logger.warning(
+                        f"Schema validation failed for Booking review {r.get('external_review_id', 'unknown')}: {ve}"
+                    )
+                    continue
 
-            for r in new_reviews:
-                seen_ids.add(r.id)
+            # Loop Prevention Mechanism
+            new_reviews = []
+            for r in validated_reviews:
+                rid = r.get("external_review_id")
+                if rid not in seen_ids:
+                    seen_ids.add(rid)
+                    new_reviews.append(r)
 
             all_reviews.extend(new_reviews)
             cumulative_reviews.extend(new_reviews)

@@ -49,7 +49,7 @@ def save_reviews_to_db(reviews, source_id: str) -> int:
                     # Use a sub-transaction (savepoint) for each review
                     with session.begin_nested():
                         # Create a new review entry in the central reviews table
-                        platform_id = getattr(r, "id", None)
+                        platform_id = r.get("external_review_id")
                         review_entry = Review(
                             source_id=source_id, platform_review_id=platform_id
                         )
@@ -59,30 +59,29 @@ def save_reviews_to_db(reviews, source_id: str) -> int:
                         # Create the Booking-specific detail row
                         detail = BookingReviewDetail(
                             review_id=review_entry.review_id,
-                            rating=getattr(r, "score", None),
-                            review_heading=getattr(r, "title", None),
-                            author=getattr(r, "author", None),
-                            positive_text=getattr(r, "positive_txt", None),
-                            negative_text=getattr(r, "negative_txt", None),
-                            review_date=getattr(r, "posted_date", None),
-                            stay_date=getattr(r, "reviewer_stay_date", None),
-                            num_of_nights=getattr(r, "num_of_nights", None),
-                            traveler_type=getattr(r, "traveler_type", None),
-                            room_type=getattr(r, "room_name", None),
-                            reviewer_nationality=getattr(
-                                r, "reviewer_nationality", None
-                            ),
-                            reply=getattr(r, "reply", None),
+                            rating=r.get("rating"),
+                            review_heading=r.get("review_title"),
+                            author=r.get("author"),
+                            positive_text=r.get("positive_text"),
+                            negative_text=r.get("negative_text"),
+                            review_date=r.get("review_date"),
+                            stay_date=r.get("stay_date"),
+                            num_of_nights=r.get("num_of_nights"),
+                            traveler_type=r.get("traveler_type"),
+                            room_type=r.get("room_type"),
+                            reviewer_nationality=r.get("reviewer_nationality"),
+                            reply=r.get("reply_text"),
                         )
                         session.add(detail)
 
                         # Attach media (photos)
-                        if hasattr(r, "photo") and r.photo:
-                            for img in r.photo:
+                        images = r.get("images", [])
+                        if images:
+                            for img_url in images:
                                 session.add(
                                     ReviewMedia(
                                         review_id=review_entry.review_id,
-                                        media_url=getattr(img, "src", str(img)),
+                                        media_url=img_url,
                                         media_type="image",
                                     )
                                 )

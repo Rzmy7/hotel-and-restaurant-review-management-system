@@ -104,15 +104,11 @@ class GoogleExtractor:
             # --- Owner Reply ---
             try:
                 reply_container = review.locator(config.reply_container)
+                reply = ""
                 if reply_container.count() > 0:
                     reply_text_node = reply_container.locator(config.review_text).first
-                    reply = (
-                        reply_text_node.text_content(timeout=1000).strip()
-                        if reply_text_node.count() > 0
-                        else ""
-                    )
-                else:
-                    reply = ""
+                    if reply_text_node.count() > 0:
+                        reply = reply_text_node.text_content(timeout=1000).strip()
             except Exception:
                 reply = ""
 
@@ -149,16 +145,16 @@ class GoogleExtractor:
                 logger.debug(f"Error extracting photos for review {review_id}: {e}")
 
             reviews.append(
-                GoogleReviewData(
-                    id=review_id,
-                    author=author,
-                    author_badge=author_badge,
-                    rating=rating,
-                    text=review_text,
-                    date=review_date,
-                    reply=reply,
-                    photos=photo_urls,
-                )
+                {
+                    "external_review_id": review_id,
+                    "author": author,
+                    "author_badge": author_badge,
+                    "rating": rating,
+                    "review_text": review_text,
+                    "review_date": review_date,
+                    "reply_text": reply,
+                    "images": photo_urls,
+                }
             )
 
         return reviews

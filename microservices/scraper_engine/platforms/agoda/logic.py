@@ -9,6 +9,8 @@ from core.job_manager import job_manager, JobStatus
 from core.audit import audit_logger
 from services.source_service import SourceService
 from core.deduplication.agoda_deduplicator import clean_agoda_duplicates
+from core.schemas import AgodaReviewSchema
+from pydantic import ValidationError
 
 logger = setup_logger("agoda_logic")
 
@@ -282,16 +284,26 @@ def scrape_agoda(
             time.sleep(2)
             page_reviews = extractor.extract_reviews()
 
-            if not page_reviews:
-                logger.info("No reviews extracted on this sequence check.")
-                time.sleep(3)
-                page_reviews = extractor.extract_reviews()
-                if not page_reviews:
-                    logger.warning("Empty DOM. Breaking sequence.")
-                    break
+            # Validate and Normalize via Schema
+            validated_reviews = []
+            for r in page_reviews:
+                try:
+                    schema = AgodaReviewSchema(**r)
+                    validated_reviews.append(schema.model_dump())
+                except ValidationError as ve:
+                    logger.warning(
+                        f"Schema validation failed for Agoda review {r.get('external_review_id', 'unknown')}: {ve}"
+                    )
+                    continue
 
-            new_reviews = [r for r in page_reviews if r.id not in seen_ids]
-            current_page_ids = {r.id for r in page_reviews}
+            new_reviews = []
+            for r in validated_reviews:
+                rid = r.get("external_review_id")
+                if rid not in seen_ids:
+                    seen_ids.add(rid)
+                    new_reviews.append(r)
+
+            current_page_ids = {r.get("external_review_id") for r in validated_reviews}
 
             if not new_reviews:
                 # Check if pagination is stuck (same reviews as previous page)
