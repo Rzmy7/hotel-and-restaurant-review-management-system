@@ -12,6 +12,8 @@ from platforms.tripadvisor.browser import TripAdvisorBrowser
 from platforms.tripadvisor.extractor import TripAdvisorExtractor
 from platforms.tripadvisor.models import save_reviews_to_db
 from core.database import init_db
+from core.schemas import TripAdvisorReviewSchema
+from pydantic import ValidationError
 from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from core.audit import audit_logger
@@ -295,13 +297,21 @@ def scrape_tripadvisor(
                         "Bot challenge detected or access blocked by TripAdvisor."
                     )
 
+            # Validate and Normalize via Schema
+            validated_reviews = []
+            for r in page_reviews:
+                try:
+                    schema = TripAdvisorReviewSchema(**r)
+                    validated_reviews.append(schema.model_dump())
+                except ValidationError as ve:
+                    logger.warning(f"Schema validation failed for review {r.get('external_review_id', 'unknown')}: {ve}")
+                    # In strict mode we might drop it, for now we log and proceed with valid ones
+                    continue
+
             # Dedup by external_review_id
             new_reviews = []
-            for r in page_reviews:
-                rid = (
-                    r.get("external_review_id")
-                    or f"{r.get('author')}-{r.get('review_date')}"
-                )
+            for r in validated_reviews:
+                rid = r.get("external_review_id")
                 if rid not in seen_ids:
                     seen_ids.add(rid)
                     new_reviews.append(r)
