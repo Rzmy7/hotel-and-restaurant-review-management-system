@@ -10,11 +10,14 @@ import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import logging
 from dotenv import load_dotenv
+
+from app.core.exceptions import AppException
 
 load_dotenv()
 
@@ -173,29 +176,58 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
-# Global Exception Handler to capture 500 errors and include CORS headers
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    import traceback
+# Centralized Exception Handlers
 
-    error_details = traceback.format_exc()
-    print(f"CRITICAL ERROR: {error_details.encode('cp1252', errors='replace').decode('cp1252')}")
-
-    # Write error to a temporary log file for AI to read
-    with open("backend_error.log", "a", encoding="utf-8") as f:
-        f.write(
-            f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
-        )
-        f.write(error_details)
-        f.write("\n" + "=" * 50 + "\n")
-
-    return Response(
-        content=json.dumps({"detail": "Internal Server Error", "traceback": str(exc)}),
-        status_code=500,
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    """Handles custom application exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status": "error",
+            "message": exc.message,
+            "error_code": exc.error_code,
+            "details": exc.details
+        },
         headers={
             "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
             "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Fallback handler for unhandled exceptions (500s)."""
+    import traceback
+    error_details = traceback.format_exc()
+    
+    # Safe console printing for Windows
+    try:
+        print(f"CRITICAL ERROR: {error_details.encode('cp1252', errors='replace').decode('cp1252')}")
+    except:
+        print("CRITICAL ERROR: [Could not encode traceback]")
+
+    # Write error to a temporary log file
+    try:
+        with open("backend_error.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- {type(exc).__name__} ---\n")
+            f.write(error_details)
+            f.write("\n" + "=" * 50 + "\n")
+    except:
+        pass
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "message": "An unexpected internal error occurred.",
+            "error_code": "INTERNAL_SERVER_ERROR"
         },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        }
     )
 
 

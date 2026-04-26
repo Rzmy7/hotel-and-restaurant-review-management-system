@@ -1,30 +1,45 @@
-"""Pydantic schemas for review endpoints."""
+"""
+Pydantic schemas for review endpoints.
+Enhanced with strict academic validation and field-level constraints.
+"""
 
 import datetime
 import uuid
 from typing import List, Optional
-from pydantic import BaseModel, AnyHttpUrl, Field, AliasChoices
+from pydantic import BaseModel, Field, AliasChoices, ConfigDict, field_validator
 
 
 class PhotoModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: Optional[str] = None
-    src: str
+    src: str = Field(..., min_length=5)
     alt: str = ""
 
 
-class ReviewModel(BaseModel):
+class ReviewBase(BaseModel):
+    """Common fields for all review representations."""
+    rating: float = Field(..., ge=0, le=5)
+    heading: Optional[str] = Field(None, max_length=500)
+    sentiment: str = Field("Neutral", pattern="^(Positive|Negative|Neutral)$")
+    language: str = "English"
+    status: str = "pending"
+
+
+class ReviewModel(ReviewBase):
+    """Full detail model for a review, used in detail views."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
-    rating: float
     reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
     userName: str = Field(..., validation_alias=AliasChoices("userName", "reviewerName"))
-    text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
-    reviewText: Optional[str] = Field(..., validation_alias=AliasChoices("reviewText", "text"))
-    heading: Optional[str] = None
+    
+    text: Optional[str] = Field(None, validation_alias=AliasChoices("text", "reviewText"))
+    reviewText: Optional[str] = Field(None, validation_alias=AliasChoices("reviewText", "text"))
+    
     summary: Optional[str] = None
-    sentiment: Optional[str] = "Neutral"
     sentiment_score: Optional[float] = None
-    language: Optional[str] = "English"
-
+    
     categories: List[str] = []
     keyPhrases: List[str] = []
     photos: List[PhotoModel] = []
@@ -33,30 +48,36 @@ class ReviewModel(BaseModel):
     date: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("date", "reviewDate"))
     reviewDate: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("reviewDate", "date"))
 
-    status: str = "pending"
-    source: Optional[str] = "Unknown"
+    source: str = "Unknown"
     
     # AI Processing Metadata
     positive_text: Optional[str] = None
     negative_text: Optional[str] = None
-    error_message: Optional[str] = None
-    retry_count: int = 0
-    last_attempt: Optional[datetime.datetime] = None
     ai_reply: Optional[str] = None
+    
+    @field_validator('rating', mode='before')
+    @classmethod
+    def parse_rating(cls, v):
+        if v is None: return 0.0
+        return float(v)
+
 
 class ReviewSummaryModel(BaseModel):
     """Minimized model for list view to reduce payload size."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
-    rating: float
+    rating: float = Field(..., ge=0, le=5)
     reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
-    text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
+    text: Optional[str] = Field(None, validation_alias=AliasChoices("text", "reviewText"))
     heading: Optional[str] = None
-    sentiment: Optional[str] = "Neutral"
-    source: Optional[str] = "Unknown"
+    sentiment: str = "Neutral"
+    source: str = "Unknown"
     date: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("date", "reviewDate"))
     status: str = "pending"
     photos: List[PhotoModel] = []
     categories: List[str] = []
+
 
 class PaginatedReviewResponse(BaseModel):
     data: List[ReviewModel]
@@ -65,26 +86,14 @@ class PaginatedReviewResponse(BaseModel):
     limit: int
     totalPages: int
 
-class PaginatedReviewSummaryResponse(BaseModel):
-    data: List[ReviewSummaryModel]
-    total: int
-    page: int
-    limit: int
-    totalPages: int
-
-
-class BookingScrapeRequest(BaseModel):
-    url: AnyHttpUrl
-    headless: bool = True
-
 
 class ReplyGenerationRequest(BaseModel):
     reviewId: str | int
-    tone: Optional[str] = "standard"
-    length: Optional[str] = "standard"
+    tone: str = "standard"
+    length: str = "standard"
     reviewText: str = Field(..., min_length=1)
-    userName: str = Field(default="Guest")
-    sentiment: Optional[str] = "Neutral"
+    userName: str = "Guest"
+    sentiment: str = "Neutral"
     source: Optional[str] = None
     language: Optional[str] = None
     sourceId: Optional[str] = None
