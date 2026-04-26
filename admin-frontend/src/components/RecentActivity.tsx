@@ -86,7 +86,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, onVi
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col h-full hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col h-full hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex items-center gap-2.5">
@@ -117,7 +117,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, onVi
                     activities.map((activity) => (
                         <div
                             key={activity.id}
-                            className="px-5 py-3.5 flex items-start gap-3 hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors"
+                            className="px-5 py-3.5 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:hover:bg-slate-700/30 transition-colors"
                         >
                             <div
                                 className={`flex-shrink-0 p-2 rounded-lg ${getActivityBg(activity.type)}`}

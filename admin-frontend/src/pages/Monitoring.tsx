@@ -53,7 +53,7 @@ export const Monitoring: React.FC = () => {
 
             {/* Server Cards */}
             <div>
-                <p className="text-gray-500 mb-4 pt-2">Server status and performance metrics</p>
+                <p className="text-gray-500 dark:text-slate-400 mb-4 pt-2">Server status and performance metrics</p>
                 <ServerStatsGrid servers={servers} loading={loading} />
             </div>
         </div>

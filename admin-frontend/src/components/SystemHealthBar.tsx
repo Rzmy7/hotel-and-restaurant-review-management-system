@@ -104,7 +104,7 @@ export const SystemHealthBar: React.FC<SystemHealthBarProps> = ({ servers, loadi
                         return (
                             <div
                                 key={server.id}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50/70 dark:bg-slate-700/40 border border-gray-100 dark:border-slate-600 hover:border-gray-200 dark:hover:border-slate-500 transition-colors"
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50/70 dark:bg-slate-700/40 border border-gray-100 dark:border-slate-600 hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-500 transition-colors"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                                     <Icon size={16} className="text-blue-500 dark:text-blue-400" />

@@ -52,7 +52,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                         <option>Admin</option>
                         <option>User</option>
                     </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
                 </div>
 
                 {/* Subscription Plan Filter */}
@@ -67,7 +67,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                             <option key={planName} value={planName}>{planName}</option>
                         ))}
                     </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
                 </div>
 
                 {/* Status Filter */}
@@ -81,7 +81,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                         <option>Active</option>
                         <option>Suspended</option>
                     </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
                 </div>
             </div>
 

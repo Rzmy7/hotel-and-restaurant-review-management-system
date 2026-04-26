@@ -7,11 +7,11 @@ interface SystemUptimeCardProps {
 
 export const SystemUptimeCard: React.FC<SystemUptimeCardProps> = ({ systemUptime }) => {
     return (
-        <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-5 shadow-sm">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-gray-500 mb-1">System Uptime</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">System Uptime</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
                         {systemUptime}%
                     </p>
                 </div>
@@ -26,7 +26,7 @@ export const SystemUptimeCard: React.FC<SystemUptimeCardProps> = ({ systemUptime
                         style={{ width: `${systemUptime}%` }}
                     />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Last 30 days</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Last 30 days</p>
             </div>
         </div>
     );

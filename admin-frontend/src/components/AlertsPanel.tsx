@@ -80,7 +80,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
     const unreadCount = alerts.filter((a) => !a.isRead).length;
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col h-full hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col h-full hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex items-center gap-2.5">
@@ -136,7 +136,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                                     {onDismiss && (
                                         <button
                                             onClick={() => onDismiss(alert.id)}
-                                            className="flex-shrink-0 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                            className="flex-shrink-0 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 dark:hover:text-slate-300 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                                             title="Dismiss alert"
                                         >
                                             <X size={14} />

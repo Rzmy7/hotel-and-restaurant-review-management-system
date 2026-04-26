@@ -8,7 +8,7 @@ interface ServerStatsGridProps {
 }
 
 const SkeletonCard: React.FC = () => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 animate-pulse">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 animate-pulse">
         <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gray-200" />

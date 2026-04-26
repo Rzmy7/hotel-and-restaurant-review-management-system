@@ -24,11 +24,11 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-                    <h2 className="text-base font-semibold text-gray-900">Preview Broadcast</h2>
-                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                        <X size={18} className="text-gray-500" />
+            <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-slate-700">
+                    <h2 className="text-base font-semibold text-gray-900 dark:text-white">Preview Broadcast</h2>
+                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded-lg transition-colors">
+                        <X size={18} className="text-gray-500 dark:text-slate-400" />
                     </button>
                 </div>
 
@@ -41,45 +41,45 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
 
                     {/* Subject */}
                     <div>
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Subject</p>
-                        <p className="text-sm font-semibold text-gray-900">{form.subject}</p>
+                        <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">Subject</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{form.subject}</p>
                     </div>
 
                     {/* Body */}
                     <div>
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Message</p>
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{form.body}</p>
+                        <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">Message</p>
+                        <p className="text-sm text-gray-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">{form.body}</p>
                     </div>
 
                     {/* Meta */}
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-slate-700">
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Delivery Channel</p>
-                            <p className="text-sm font-medium text-gray-800">
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Delivery Channel</p>
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
                                 {CHANNELS.find(c => c.value === form.channel)?.label}
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Recipients</p>
-                            <p className="text-sm font-medium text-gray-800">{audienceLabel}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Recipients</p>
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{audienceLabel}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Est. Recipients</p>
-                            <p className="text-sm font-semibold text-gray-900">~{estimatedCount.toLocaleString()} users</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Est. Recipients</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">~{estimatedCount.toLocaleString()} users</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Timing</p>
-                            <p className="text-sm font-medium text-gray-800">
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Timing</p>
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
                                 {form.scheduleType === 'now' ? 'Send immediately' : formatDateTime(form.scheduledAt, timezone)}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/70 rounded-b-2xl">
+                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/70 rounded-b-2xl">
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors"
+                        className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
                     >
                         Back to Edit
                     </button>

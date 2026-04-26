@@ -17,10 +17,10 @@ export const OrganizationStatCard: React.FC<OrganizationStatCardProps> = ({
     iconBgColor
 }) => {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex items-center justify-between">
             <div>
-                <div className="text-sm text-gray-500 mb-1">{label}</div>
-                <div className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</div>
+                <div className="text-sm text-gray-500 dark:text-slate-400 mb-1">{label}</div>
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</div>
             </div>
             <div className={`w-12 h-12 rounded-xl ${iconBgColor} flex items-center justify-center ${iconColor}`}>
                 <Icon size={24} />

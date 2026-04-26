@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, KeyRound, Save, Cpu, Clock } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Alert } from '../components/Alert';
 import {
     fetchReviewProcessingStats,
     fetchReviewProcessingJobs,
@@ -209,7 +210,7 @@ export const ReviewProcessing: React.FC = () => {
             case 'Queued': return 'bg-yellow-100 text-yellow-700';
             case 'Completed': return 'bg-green-100 text-green-700';
             case 'Failed': return 'bg-red-100 text-red-700';
-            default: return 'bg-gray-100 text-gray-700';
+            default: return 'bg-gray-100 text-gray-700 dark:text-slate-200';
         }
     };
 
@@ -220,9 +221,7 @@ export const ReviewProcessing: React.FC = () => {
     return (
         <div className="space-y-6 pt-4">
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
-                </div>
+                <Alert type="error" message={error} onClose={() => setError(null)} />
             )}
 
             {stats.isPaused && (
@@ -252,60 +251,60 @@ export const ReviewProcessing: React.FC = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Active Jobs</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Active Jobs</span>
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                             <Play size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stats.activeJobs}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeJobs}</div>
                     <div className="text-xs text-green-600">+{stats.activeJobsChange} since last hour</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Completed Today</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Completed Today</span>
                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                             <CheckCircle size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stats.completedToday.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500">{stats.successRate}% success rate</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.completedToday.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400">{stats.successRate}% success rate</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Failed Jobs</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Failed Jobs</span>
                         <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
                             <XCircle size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stats.failedJobs}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.failedJobs}</div>
                     <div className="text-xs text-red-600">Requires attention</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Reviews Processed</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Reviews Processed</span>
                         <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                             <Grid3X3 size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{formatNumber(stats.reviewsProcessed)}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats.reviewsProcessed)}</div>
                     <div className="text-xs text-green-600">+{stats.reviewsChange}% vs last week</div>
                 </div>
             </div>
 
             {/* Gemini API Key Configuration */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                 <div className="flex items-start justify-between mb-5">
                     <div>
-                        <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             <KeyRound size={18} className="text-blue-600" />
                             Gemini API Key Configuration
                         </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Configure the Gemini API key used for AI-powered review processing and analysis.</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Configure the Gemini API key used for AI-powered review processing and analysis.</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {geminiConfig.isConfigured ? (
@@ -324,7 +323,7 @@ export const ReviewProcessing: React.FC = () => {
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Gemini API Key</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Gemini API Key</label>
                         <input
                             type="password"
                             value={geminiApiKeyInput}
@@ -336,9 +335,9 @@ export const ReviewProcessing: React.FC = () => {
                                 setGeminiTestMessage(null);
                             }}
                             placeholder="Enter your Gemini API key..."
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-xs text-gray-500 mt-1.5">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">
                             Obtain your API key from{' '}
                             <a
                                 href="https://aistudio.google.com/apikey"
@@ -356,7 +355,7 @@ export const ReviewProcessing: React.FC = () => {
                         <button
                             onClick={handleTestGeminiKey}
                             disabled={geminiTestState === 'testing'}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-60"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors disabled:opacity-60"
                         >
                             <Cpu size={16} />
                             {geminiTestState === 'testing' ? 'Testing...' : 'Test Key'}
@@ -383,7 +382,7 @@ export const ReviewProcessing: React.FC = () => {
                     </div>
 
                     {geminiConfig.lastTestedAt && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
                             <Clock size={12} />
                             Last tested: {geminiConfig.lastTestedAt}
                             {geminiConfig.lastTestResult && (
@@ -401,15 +400,15 @@ export const ReviewProcessing: React.FC = () => {
             </div>
 
             {/* Job Status Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                 <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h2 className="text-base font-semibold text-gray-900">Processing Job Status</h2>
-                        <p className="text-sm text-gray-500">Real-time monitoring of all active and recent review processing jobs.</p>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Processing Job Status</h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">Real-time monitoring of all active and recent review processing jobs.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Search Job ID or Org..."
@@ -418,10 +417,10 @@ export const ReviewProcessing: React.FC = () => {
                                     setSearchQuery(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
                             <Filter size={16} />
                             Filter
                         </button>
@@ -438,21 +437,21 @@ export const ReviewProcessing: React.FC = () => {
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-gray-200">
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Job ID</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Platform</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Start Time</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Processed</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                            <tr className="border-b border-gray-200 dark:border-slate-700">
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Job ID</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Platform</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Organization</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Start Time</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Processed</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedJobs.map(job => (
-                                <tr key={job.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="py-4 px-4 text-sm font-mono text-gray-500">{job.jobId}</td>
+                                <tr key={job.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                    <td className="py-4 px-4 text-sm font-mono text-gray-500 dark:text-slate-400">{job.jobId}</td>
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-2">
                                             <div
@@ -461,22 +460,22 @@ export const ReviewProcessing: React.FC = () => {
                                             >
                                                 {job.platformIcon}
                                             </div>
-                                            <span className="text-sm text-gray-900">{job.platform}</span>
+                                            <span className="text-sm text-gray-900 dark:text-white">{job.platform}</span>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.organization}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.organization}</td>
                                     <td className="py-4 px-4">
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(job.status)}`}>
                                             {job.status === 'Running' && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>}
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.startTime}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.duration}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.startTime}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.duration}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">
                                         {job.reviewsProcessed !== null ? job.reviewsProcessed : '--'}
                                         {job.totalReviews !== null && job.reviewsProcessed !== null && (
-                                            <span className="text-gray-400"> / {job.totalReviews}</span>
+                                            <span className="text-gray-400 dark:text-slate-500"> / {job.totalReviews}</span>
                                         )}
                                     </td>
                                     <td className="py-4 px-4">
@@ -484,13 +483,13 @@ export const ReviewProcessing: React.FC = () => {
                                             {job.status === 'Failed' && (
                                                 <>
                                                     <button className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase">Retry</button>
-                                                    <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                                                    <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
                                                         <RotateCcw size={14} />
                                                     </button>
                                                 </>
                                             )}
                                             {job.status === 'Completed' && (
-                                                <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
                                                     <Eye size={16} />
                                                 </button>
                                             )}
@@ -505,15 +504,15 @@ export const ReviewProcessing: React.FC = () => {
                     </table>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-slate-700">
+                    <span className="text-sm text-gray-500 dark:text-slate-400">
                         Showing {filteredJobs.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
                     </span>
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
-                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50 hover:bg-gray-50"
+                            className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                             Previous
                         </button>
@@ -522,13 +521,13 @@ export const ReviewProcessing: React.FC = () => {
                             .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                             .map((p, i, arr) => (
                                 <React.Fragment key={p}>
-                                    {i > 0 && arr[i - 1] !== p - 1 && <span className="px-2 text-gray-500">...</span>}
+                                    {i > 0 && arr[i - 1] !== p - 1 && <span className="px-2 text-gray-500 dark:text-slate-400">...</span>}
                                     <button
                                         onClick={() => setCurrentPage(p)}
                                         className={`px-3 py-1.5 border rounded-lg text-sm font-medium ${
                                             currentPage === p
                                                 ? 'bg-blue-500 text-white border-blue-500'
-                                                : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
+                                                : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900'
                                         }`}
                                     >
                                         {p}
@@ -539,7 +538,7 @@ export const ReviewProcessing: React.FC = () => {
                         <button
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages || totalPages === 0}
-                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50 hover:bg-gray-50"
+                            className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                             Next
                         </button>

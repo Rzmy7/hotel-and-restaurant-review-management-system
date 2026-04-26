@@ -89,14 +89,14 @@ export const APIManage: React.FC = () => {
 
             <div className="space-y-6">
                 {/* Embedding Service URL */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                     <div className="flex items-center gap-2 mb-6">
                         <Globe size={20} className="text-blue-500" />
-                        <h2 className="text-base font-semibold text-gray-900">Embedding Service URL</h2>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Embedding Service URL</h2>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
                             Service Endpoint
                         </label>
                         <input
@@ -104,23 +104,23 @@ export const APIManage: React.FC = () => {
                             value={apiSettings.embeddingServiceUrl}
                             onChange={(e) => setApiSettings({...apiSettings, embeddingServiceUrl: e.target.value})}
                             placeholder="e.g. http://localhost:8002"
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
                             URL where the embedding service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_EMBEDDING_SERVICE_URL</code> in your .env file.
                         </p>
                     </div>
                 </div>
 
                 {/* Main Backend URL */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                     <div className="flex items-center gap-2 mb-6">
                         <Globe size={20} className="text-green-500" />
-                        <h2 className="text-base font-semibold text-gray-900">Main Backend URL</h2>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Main Backend URL</h2>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
                             Service Endpoint
                         </label>
                         <input
@@ -128,23 +128,23 @@ export const APIManage: React.FC = () => {
                             value={apiSettings.mainBackendUrl}
                             onChange={(e) => setApiSettings({...apiSettings, mainBackendUrl: e.target.value})}
                             placeholder="e.g. http://localhost:8000"
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
                             URL where the main backend service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_MAIN_BACKEND_URL</code> in your .env file.
                         </p>
                     </div>
                 </div>
 
                 {/* Scraping Backend URL */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                     <div className="flex items-center gap-2 mb-6">
                         <Globe size={20} className="text-purple-500" />
-                        <h2 className="text-base font-semibold text-gray-900">Scraping Backend URL</h2>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Scraping Backend URL</h2>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
                             Service Endpoint
                         </label>
                         <input
@@ -152,9 +152,9 @@ export const APIManage: React.FC = () => {
                             value={apiSettings.scrapingBackendUrl}
                             onChange={(e) => setApiSettings({...apiSettings, scrapingBackendUrl: e.target.value})}
                             placeholder="e.g. http://localhost:8001"
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
                             URL where the scraping backend service is running. Saved locally in your browser. Default is read from <code className="bg-gray-100 px-1 py-0.5 rounded">VITE_SCRAPING_URL</code> in your .env file.
                         </p>
                     </div>
@@ -162,7 +162,7 @@ export const APIManage: React.FC = () => {
 
                 {/* Save Button */}
                 <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
                         Service URLs are saved locally in your browser.
                     </p>
                     <button

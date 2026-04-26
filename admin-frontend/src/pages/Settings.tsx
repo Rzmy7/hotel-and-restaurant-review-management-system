@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Save, X, KeyRound, Sun, Moon, Monitor } from 'lucide-react';
+import { Alert } from '../components/Alert';
+import { ToggleSwitch } from '../components/ToggleSwitch';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
@@ -343,29 +345,21 @@ export const Settings: React.FC = () => {
                                 <p className="text-sm text-gray-500 dark:text-slate-400">Enable maintenance mode to prevent users from accessing the platform</p>
                             </div>
                             <div className="flex justify-end">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={maintenanceMode}
-                                            onChange={(event) => handleMaintenanceChange(event.target.checked)}
-                                            disabled={isMaintenanceSaving}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
+                                <ToggleSwitch
+                                    checked={maintenanceMode}
+                                    onChange={handleMaintenanceChange}
+                                    disabled={isMaintenanceSaving}
+                                />
                             </div>
                         </div>
                     </div>
 
                     {maintenanceError && (
-                        <div className="text-sm text-red-600">{maintenanceError}</div>
+                        <Alert type="error" message={maintenanceError} />
                     )}
 
                     {generalSaveError && (
-                        <div className="text-sm text-red-600 dark:text-red-400">{generalSaveError}</div>
+                        <Alert type="error" message={generalSaveError} />
                     )}
 
                     {/* Save Button */}
@@ -396,16 +390,10 @@ export const Settings: React.FC = () => {
                                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Two-Factor Authentication</h3>
                                     <p className="text-sm text-gray-500 dark:text-slate-400">Require two-factor authentication for all admin accounts</p>
                                 </div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
+                                <ToggleSwitch
+                                    checked={settings.twoFactorAuth}
+                                    onChange={() => {}}
+                                />
                             </div>
 
                             <div className="border-t border-gray-100 dark:border-slate-700"></div>
@@ -445,80 +433,52 @@ export const Settings: React.FC = () => {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">API Limit Reaching</h3>
-                                    <p className="text-sm text-gray-500">Get alerted when API usage is close to configured limits</p>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">API Limit Reaching</h3>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">Get alerted when API usage is close to configured limits</p>
                                 </div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            defaultChecked={settings.notifyApiLimitReaching}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
+                                <ToggleSwitch
+                                    checked={settings.notifyApiLimitReaching}
+                                    onChange={() => {}}
+                                />
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Server Overloading</h3>
-                                    <p className="text-sm text-gray-500">Notify when server resource usage stays above safe thresholds</p>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Server Overloading</h3>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">Notify when server resource usage stays above safe thresholds</p>
                                 </div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            defaultChecked={settings.notifyServerOverloading}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
+                                <ToggleSwitch
+                                    checked={settings.notifyServerOverloading}
+                                    onChange={() => {}}
+                                />
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Server Connection Failed</h3>
-                                    <p className="text-sm text-gray-500">Alert when backend services or databases lose connectivity</p>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Server Connection Failed</h3>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">Alert when backend services or databases lose connectivity</p>
                                 </div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            defaultChecked={settings.notifyServerConnectionFailed}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
+                                <ToggleSwitch
+                                    checked={settings.notifyServerConnectionFailed}
+                                    onChange={() => {}}
+                                />
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Scraping Failures</h3>
-                                    <p className="text-sm text-gray-500">Receive notifications when scraping jobs fail or repeatedly error</p>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Scraping Failures</h3>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">Receive notifications when scraping jobs fail or repeatedly error</p>
                                 </div>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            defaultChecked={settings.notifyScrapingFailures}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                    </div>
-                                </label>
+                                <ToggleSwitch
+                                    checked={settings.notifyScrapingFailures}
+                                    onChange={() => {}}
+                                />
                             </div>
                         </div>
                     </div>
@@ -545,7 +505,7 @@ export const Settings: React.FC = () => {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Admin Name</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Admin Name</label>
                                 <input
                                     type="text"
                                     value={adminProfileName}
@@ -554,16 +514,16 @@ export const Settings: React.FC = () => {
                                         setAdminProfileError(null);
                                         setAdminProfileSaveState('idle');
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">Admin Password</h3>
-                                    <p className="text-sm text-gray-500">Change your administrator account password</p>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Admin Password</h3>
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">Change your administrator account password</p>
                                 </div>
                                 <button
                                     type="button"
@@ -578,10 +538,10 @@ export const Settings: React.FC = () => {
                     </div>
 
                     {adminProfileSaveState === 'saved' && (
-                        <div className="text-sm text-green-600">Admin profile saved.</div>
+                        <Alert type="success" message="Admin profile saved." />
                     )}
                     {(adminProfileSaveState === 'error' && adminProfileError) && (
-                        <div className="text-sm text-red-600">{adminProfileError}</div>
+                        <Alert type="error" message={adminProfileError} />
                     )}
 
                     <div className="flex justify-end">
@@ -603,25 +563,21 @@ export const Settings: React.FC = () => {
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Change Password</h3>
                             <button
                                 onClick={() => setIsPasswordModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 transition-colors"
                             >
                                 <X size={20} />
                             </button>
                         </div>
                         <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4">
                             {(passwordModalSaveState === 'error' && passwordModalError) && (
-                                <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-100">
-                                    {passwordModalError}
-                                </div>
+                                <Alert type="error" message={passwordModalError} />
                             )}
                             {passwordModalSaveState === 'saved' && (
-                                <div className="p-3 bg-green-50 text-green-600 text-sm font-medium rounded-lg border border-green-100">
-                                    Password changed successfully!
-                                </div>
+                                <Alert type="success" message="Password changed successfully!" />
                             )}
                             
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Current Password</label>
                                 <input
                                     type="password"
                                     value={currentPassword}
@@ -630,12 +586,12 @@ export const Settings: React.FC = () => {
                                         setPasswordModalError(null);
                                         setPasswordModalSaveState('idle');
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">New Password</label>
                                 <input
                                     type="password"
                                     value={newPassword}
@@ -644,13 +600,13 @@ export const Settings: React.FC = () => {
                                         setPasswordModalError(null);
                                         setPasswordModalSaveState('idle');
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required
                                     placeholder="At least 8 characters"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Confirm New Password</label>
                                 <input
                                     type="password"
                                     value={confirmNewPassword}
@@ -659,7 +615,7 @@ export const Settings: React.FC = () => {
                                         setPasswordModalError(null);
                                         setPasswordModalSaveState('idle');
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required
                                 />
                             </div>
@@ -667,7 +623,7 @@ export const Settings: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setIsPasswordModalOpen(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 rounded-lg transition-colors"
                                 >
                                     Cancel
                                 </button>

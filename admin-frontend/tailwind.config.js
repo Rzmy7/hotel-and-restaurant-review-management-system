@@ -1,3 +1,5 @@
+import plugin from 'tailwindcss/plugin';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -12,6 +14,67 @@ export default {
       },
     },
   },
-  plugins: [],
-}
+  plugins: [
+    plugin(function ({ addBase }) {
+      addBase({
+        /* ── Dark‑mode base styles for elements that can't carry utility classes ── */
 
+        /* Color‑scheme so native controls follow the theme */
+        'html.dark': {
+          colorScheme: 'dark',
+        },
+
+        /* Tables */
+        '.dark th': {
+          color: '#94a3b8',          /* slate‑400 */
+          borderColor: '#334155',    /* slate‑700 */
+        },
+        '.dark td': {
+          borderColor: '#1e293b',    /* slate‑800 */
+        },
+        '.dark thead': {
+          backgroundColor: '#0f172a', /* slate‑900 */
+        },
+        '.dark tbody tr:hover': {
+          backgroundColor: '#1e293b', /* slate‑800 */
+        },
+
+        /* Form controls — global fallback for inputs/selects/textareas */
+        '.dark input:not([type="checkbox"]):not([type="radio"]):not(.sr-only)': {
+          backgroundColor: '#1e293b',
+          color: '#e2e8f0',
+          borderColor: '#475569',
+        },
+        '.dark select': {
+          backgroundColor: '#1e293b',
+          color: '#e2e8f0',
+          borderColor: '#475569',
+        },
+        '.dark textarea': {
+          backgroundColor: '#1e293b',
+          color: '#e2e8f0',
+          borderColor: '#475569',
+        },
+        '.dark input::placeholder, .dark textarea::placeholder': {
+          color: '#64748b',          /* slate‑500 */
+        },
+
+        /* Scrollbars */
+        '.dark ::-webkit-scrollbar': {
+          width: '8px',
+          height: '8px',
+        },
+        '.dark ::-webkit-scrollbar-track': {
+          background: '#1e293b',
+        },
+        '.dark ::-webkit-scrollbar-thumb': {
+          background: '#475569',
+          borderRadius: '4px',
+        },
+        '.dark ::-webkit-scrollbar-thumb:hover': {
+          background: '#64748b',
+        },
+      });
+    }),
+  ],
+}

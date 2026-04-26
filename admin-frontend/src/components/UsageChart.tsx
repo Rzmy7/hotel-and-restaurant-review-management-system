@@ -51,7 +51,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
     const areaPath = `${linePath} L ${chartPoints[chartPoints.length - 1].x},${height - padding} L ${chartPoints[0].x},${height - padding} Z`;
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[350px] group hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[350px] group hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
             <div className="flex items-center gap-2.5 mb-4">
                 <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
                     <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />

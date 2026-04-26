@@ -204,7 +204,7 @@ export const Header: React.FC = () => {
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         maintenanceMode
                             ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 disabled:opacity-50 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                            : 'bg-gray-100 text-gray-700 dark:text-slate-200 hover:bg-gray-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                     }`}
                     title={maintenanceMode ? 'Click to disable maintenance mode' : 'Click to enable maintenance mode'}
                 >
@@ -283,7 +283,7 @@ export const Header: React.FC = () => {
                                             onClick={() => handleMarkSingleRead(notification.notification_id, notification.is_read)}
                                             className={`w-full text-left px-4 py-3 border-b border-gray-100 dark:border-slate-700 last:border-b-0 transition-colors ${
                                                 notification.is_read
-                                                    ? 'bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700'
+                                                    ? 'bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700'
                                                     : 'bg-indigo-50/40 hover:bg-indigo-50/60 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30'
                                             }`}
                                         >

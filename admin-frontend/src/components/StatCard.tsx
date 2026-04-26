@@ -25,7 +25,7 @@ export const StatCard: React.FC<StatCardProps> = ({
     const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full group hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full group hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
             <div className="flex justify-between items-start mb-5">
                 <div className={`w-12 h-12 rounded-xl ${iconBg} dark:bg-opacity-20 flex items-center justify-center ${iconColor} transition-transform duration-200 group-hover:scale-105`}>
                     <Icon size={24} />

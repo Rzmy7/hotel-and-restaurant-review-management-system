@@ -11,11 +11,11 @@ export const ReviewsCollectedCard: React.FC<ReviewsCollectedCardProps> = ({
     reviewsGrowth 
 }) => {
     return (
-        <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-5 shadow-sm">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-gray-500 mb-1">Reviews Collected Today</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">Reviews Collected Today</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
                         {reviewsCollectedToday.toLocaleString()}
                     </p>
                 </div>
@@ -26,7 +26,7 @@ export const ReviewsCollectedCard: React.FC<ReviewsCollectedCardProps> = ({
             <div className="mt-3">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-green-600">+{reviewsGrowth}%</span>
-                    <span className="text-xs text-gray-500">vs last month</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">vs last month</span>
                 </div>
             </div>
         </div>

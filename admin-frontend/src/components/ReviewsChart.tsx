@@ -18,7 +18,7 @@ export const ReviewsChart: React.FC<ReviewsChartProps> = ({ data }) => {
 
     if (sortedData.length === 0) {
         return (
-            <div className="relative overflow-hidden rounded-xl border border-gray-200/80 dark:border-slate-700 bg-gradient-to-br from-white via-slate-50 to-blue-50/60 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 shadow-sm flex flex-col h-full min-h-[350px] transition-colors duration-200">
+            <div className="relative overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700/80 dark:border-slate-700 bg-gradient-to-br from-white via-slate-50 to-blue-50/60 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 shadow-sm flex flex-col h-full min-h-[350px] transition-colors duration-200">
                 <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-blue-200/40 dark:bg-blue-500/10 blur-3xl" />
                 <div className="relative flex-1 flex flex-col">
                     <div className="mb-5">
@@ -34,7 +34,7 @@ export const ReviewsChart: React.FC<ReviewsChartProps> = ({ data }) => {
     }
 
     return (
-        <div className="relative overflow-hidden rounded-xl border border-gray-200/80 dark:border-slate-700 bg-gradient-to-br from-white via-slate-50 to-blue-50/60 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 shadow-sm flex flex-col h-full min-h-[350px] transition-colors duration-200">
+        <div className="relative overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700/80 dark:border-slate-700 bg-gradient-to-br from-white via-slate-50 to-blue-50/60 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 shadow-sm flex flex-col h-full min-h-[350px] transition-colors duration-200">
             <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-blue-200/40 dark:bg-blue-500/10 blur-3xl" />
 
             <div className="relative flex flex-col gap-6 flex-1">
