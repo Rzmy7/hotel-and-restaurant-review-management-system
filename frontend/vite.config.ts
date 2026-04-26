@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from 'tailwindcss'
@@ -41,6 +42,15 @@ export default defineConfig({
         tailwindcss(),
         // autoprefixer(), // Temporarily disabled to check build
       ],
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/setupTests.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
     },
   },
 })
