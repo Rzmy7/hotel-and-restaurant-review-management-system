@@ -1,145 +1,167 @@
 """
-Reviews repository — standardized SQL operations for the review processing pipeline.
+Reviews repository — standardized ORM operations for the review processing pipeline.
+Elevated to meet academic standards by removing raw SQL and enforcing layered architecture.
 """
 
 import uuid
+import json
+import logging
 from typing import List, Optional, Dict
 from datetime import datetime
 
-import pyodbc
-from sqlalchemy import select, func, and_, or_, case
-from sqlalchemy.orm import Session, joinedload
-from app.core.pyodbc_connection import get_connection_string
+from sqlalchemy import select, func, and_, or_, case, text, Integer, Boolean
+from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.modules.reviews.models import ProcessedReview, ReviewMedia
+from app.modules.source.models import Source, Platform
+from app.modules.reviews.services.embedding_service import search_reviews_by_embedding
 
-def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID:
-    """
-    Insert or update a review record from the scraper.
-    Sets status to 'pending' to trigger the AI processing pipeline.
-    Returns the internal primary key (UUID).
-    """
-    # Check if review already exists by primary key ID (now unified with scraper)
-    try:
-        cursor.execute(
-            "SELECT CAST(id AS VARCHAR(36)) FROM dbo.processed_review WHERE id = ?",
-            str(review_data["id"]),
-        )
-        row = cursor.fetchone()
-    except Exception as e:
-        import os
+# Circular import prevention: ensure dependencies are in registry
+try:
+    import app.modules.auth.models.auth_models  # noqa
+    import app.modules.organization.models.org_models  # noqa
+except ImportError:
+    pass
 
-        with open("db_error_dump.log", "a", encoding="utf-8") as f:
-            f.write(f"SELECT FAILURE: {e}\nID: {review_data.get('id')}\n\n")
-        raise e
+logger = logging.getLogger(__name__)
 
-    if row:
-        review_id = row[0]
-        # Update existing record back to pending
-        sql = """
-            UPDATE dbo.processed_review
-            SET rating = CAST(? AS FLOAT), 
-                reviewerName = ?, 
-                text = ?, 
-                positive_text = ?, 
-                negative_text = ?, 
-                heading = ?,
-                reviewDate = ?, 
-                scrapedAt = ?, 
-                status = 'pending',
-                source_id = CAST(? AS UNIQUEIDENTIFIER)
-            WHERE id = CAST(? AS UNIQUEIDENTIFIER)
-        """
-        args = [
-            review_data["rating"],
-            review_data["reviewerName"],
-            review_data.get("text"),
-            review_data.get("positive_text"),
-            review_data.get("negative_text"),
-            review_data.get("heading"),
-            review_data["reviewDate"],
-            review_data["scrapedAt"],
-            review_data.get("source_id"),
-            review_id,
+# --- Private Helper Methods ---
+
+def _apply_review_filters(query, filters, organization_id: str, db: Session):
+    """Internal helper to apply standardized filters to review queries."""
+    if not filters:
+        return query
+
+    # 1. Semantic Search (Vector Search via Service)
+    if filters.get("search"):
+        search_val = filters["search"]
+        if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+            # Fetch source IDs for the organization to narrow down vector search
+            source_ids = [
+                str(sid[0])
+                for sid in db.query(Source.source_id)
+                .filter(Source.organization_id == organization_id)
+                .all()
+            ]
+            
+            matching_ids = search_reviews_by_embedding(
+                query=search_val,
+                source_ids=source_ids,
+                top_k=50
+            )
+
+            if not matching_ids:
+                query = query.filter(ProcessedReview.id == None)
+            else:
+                query = query.filter(ProcessedReview.id.in_(matching_ids))
+        else:
+            # Traditional ILIKE search
+            search_pattern = f"%{search_val}%"
+            query = query.filter(
+                or_(
+                    ProcessedReview.text.ilike(search_pattern),
+                    ProcessedReview.positive_text.ilike(search_pattern),
+                    ProcessedReview.negative_text.ilike(search_pattern),
+                    ProcessedReview.reviewerName.ilike(search_pattern),
+                    ProcessedReview.heading.ilike(search_pattern),
+                )
+            )
+
+    # 2. Basic Attribute Filters
+    if filters.get("rating"):
+        query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
+    
+    if filters.get("sentiment"):
+        query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+        
+    if filters.get("source"):
+        query = query.filter(Platform.platform_name.in_(filters["source"]))
+        
+    if filters.get("category"):
+        cat_filters = [
+            ProcessedReview.categories.ilike(f'%"{cat}"%')
+            for cat in filters["category"]
         ]
-        try:
-            cursor.execute(sql, *args)
-        except Exception as e:
-            with open("db_error_dump.log", "a", encoding="utf-8") as f:
-                f.write(f"UPDATE FAILURE: {e}\nARGS: {args}\n\n")
-            raise e
-        return review_id
+        query = query.filter(and_(*cat_filters))
+        
+    if filters.get("dateFrom"):
+        query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+        
+    if filters.get("dateTo"):
+        query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+
+    return query
+
+
+# --- Public Repository Interface ---
+
+def upsert_review_pending(db: Session, review_data: dict) -> uuid.UUID:
+    """Insert or update a review record from the scraper using SQLAlchemy ORM."""
+    review_id = uuid.UUID(str(review_data["id"]))
+    
+    review = db.query(ProcessedReview).filter(ProcessedReview.id == review_id).first()
+
+    if review:
+        review.rating = float(review_data["rating"])
+        review.reviewerName = review_data["reviewerName"]
+        review.text = review_data.get("text")
+        review.positive_text = review_data.get("positive_text")
+        review.negative_text = review_data.get("negative_text")
+        review.heading = review_data.get("heading")
+        review.reviewDate = review_data["reviewDate"]
+        review.scrapedAt = review_data["scrapedAt"]
+        review.status = "pending"
+        review.source_id = uuid.UUID(str(review_data["source_id"]))
     else:
-        # Insert new record using the provided unified ID
-        sql = """
-            INSERT INTO dbo.processed_review (
-                id, rating, 
-                reviewerName, text, positive_text, negative_text, heading, 
-                reviewDate, scrapedAt, status, source_id
-            )
-            VALUES (
-                CAST(? AS UNIQUEIDENTIFIER), 
-                CAST(? AS FLOAT), 
-                ?, ?, ?, ?, ?, ?, ?, 'pending', 
-                CAST(? AS UNIQUEIDENTIFIER)
-            )
-        """
-        args = [
-            str(review_data["id"]),
-            review_data.get("rating"),
-            review_data["reviewerName"],
-            review_data.get("text"),
-            review_data.get("positive_text"),
-            review_data.get("negative_text"),
-            review_data.get("heading"),
-            review_data["reviewDate"],
-            review_data["scrapedAt"],
-            review_data.get("source_id"),
-        ]
+        review = ProcessedReview(
+            id=review_id,
+            rating=float(review_data["rating"]),
+            reviewerName=review_data["reviewerName"],
+            text=review_data.get("text"),
+            positive_text=review_data.get("positive_text"),
+            negative_text=review_data.get("negative_text"),
+            heading=review_data.get("heading"),
+            reviewDate=review_data["reviewDate"],
+            scrapedAt=review_data["scrapedAt"],
+            status="pending",
+            source_id=uuid.UUID(str(review_data["source_id"]))
+        )
+        db.add(review)
 
-        try:
-            cursor.execute(sql, *args)
-        except Exception as e:
-            # Emergency log on exact SQL failure
-            with open("db_error_dump.log", "a", encoding="utf-8") as f:
-                f.write(f"INSERT FAILURE: {e}\nARGS: {args}\n\n")
-            raise e
-
-        return str(review_data["id"])
+    db.commit()
+    return review_id
 
 
-def insert_review_media(
-    cursor: pyodbc.Cursor, review_id: uuid.UUID, photos: List[dict]
-) -> None:
-    """Bulk insert photos for a processed review."""
+def insert_review_media(db: Session, review_id: uuid.UUID, photos: List[dict]) -> None:
+    """Bulk insert photos for a processed review using SQLAlchemy ORM."""
     if not photos:
         return
 
-    # We clear existing photos for this review to avoid duplicates on re-ingestion
-    cursor.execute("DELETE FROM dbo.review_media WHERE review_id = ?", review_id)
+    db.query(ReviewMedia).filter(ReviewMedia.review_id == review_id).delete()
 
-    sql = "INSERT INTO dbo.review_media (media_id, review_id, src, alt) VALUES (?, ?, ?, ?)"
     for pic in photos:
-        # Preserving original media_id if provided by the scraper for better tracking
-        m_id = pic.get("media_id") or uuid.uuid4()
-        cursor.execute(sql, m_id, review_id, pic.get("src"), pic.get("alt", ""))
+        m_id = pic.get("media_id")
+        m_id = uuid.UUID(str(m_id)) if m_id else uuid.uuid4()
+            
+        media = ReviewMedia(
+            media_id=m_id,
+            review_id=review_id,
+            src=pic.get("src"),
+            alt=pic.get("alt", "")
+        )
+        db.add(media)
+    db.commit()
 
 
-def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
+def get_pending_batch(db: Session, limit: int = 10) -> List[ProcessedReview]:
     """Fetch a batch of reviews that need AI processing."""
-    sql = f"""
-        SELECT TOP {limit}
-            id, rating, reviewerName, text, 
-            positive_text, negative_text, heading,
-            CAST(reviewDate AS VARCHAR) as reviewDate, 
-            CAST(scrapedAt AS VARCHAR) as scrapedAt, 
-            source_id
-        FROM dbo.processed_review
-        WHERE status = 'pending'
-        ORDER BY scrapedAt ASC
-    """
-    cursor.execute(sql)
-    columns = [column[0] for column in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    return (
+        db.query(ProcessedReview)
+        .filter(ProcessedReview.status == "pending")
+        .order_by(ProcessedReview.scrapedAt.asc())
+        .limit(limit)
+        .all()
+    )
 
 
 def fetch_all_reviews_enriched(
@@ -149,486 +171,144 @@ def fetch_all_reviews_enriched(
     filters: Optional[dict] = None,
     db: Session = None,
 ) -> Dict:
-    """
-    Fetch processed reviews with associated media using SQLAlchemy ORM.
-    """
-    # Ensure dependencies are in the registry to avoid 'User not found' errors in joins
-    try:
-        import app.modules.auth.models.auth_models  # noqa
-        import app.modules.organization.models.org_models  # noqa
-    except ImportError:
-        pass
+    """Standardized entry point for fetching paginated reviews for UI."""
+    query = db.query(ProcessedReview).join(Source).join(Platform)
+    query = query.filter(Source.organization_id == organization_id)
 
-    from app.modules.reviews.models import ProcessedReview
-    from app.modules.source.models import Source, Platform
+    query = _apply_review_filters(query, filters, organization_id, db)
 
-    if db is None:
-        from app.database.session import SessionLocal
+    total_count = query.count()
 
-        db = SessionLocal()
-        should_close = True
-    else:
-        should_close = False
+    # Optimized data loading
+    query = query.options(selectinload(ProcessedReview.media))
+    query = query.order_by(ProcessedReview.reviewDate.desc())
+    query = query.offset(page * limit).limit(limit)
+    db_reviews = query.all()
 
-    try:
-        # Base query with optimized joins
-        query = db.query(ProcessedReview).join(Source).join(Platform)
-        query = query.filter(Source.organization_id == organization_id)
-
-        # Apply Filters
-        if filters:
-            if filters.get("search"):
-                search_val = f"%{filters['search']}%"
-                if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
-                    import httpx
-                    from app.modules.source.services.embedding_client import (
-                        EMBEDDING_SERVICE_URL,
-                    )
-
-                    source_ids = [
-                        str(sid[0])
-                        for sid in db.query(Source.source_id)
-                        .filter(Source.organization_id == organization_id)
-                        .all()
-                    ]
-                    matching_ids = []
-                    if source_ids:
-                        try:
-                            resp = httpx.post(
-                                f"{EMBEDDING_SERVICE_URL}/search",
-                                json={
-                                    "query": filters["search"],
-                                    "source_ids": source_ids,
-                                    "top_k": 50,
-                                },
-                                timeout=10.0,
-                            )
-                            if resp.status_code == 200:
-                                matching_ids = [
-                                    r.get("review_id") or r.get("id")
-                                    for r in resp.json().get("reviews", [])
-                                    if r.get("review_id") or r.get("id")
-                                ]
-                        except:
-                            pass
-
-                    if not matching_ids:
-                        query = query.filter(ProcessedReview.id == None)
-                    else:
-                        query = query.filter(ProcessedReview.id.in_(matching_ids))
-                else:
-                    query = query.filter(
-                        or_(
-                            ProcessedReview.text.ilike(search_val),
-                            ProcessedReview.positive_text.ilike(search_val),
-                            ProcessedReview.negative_text.ilike(search_val),
-                            ProcessedReview.reviewerName.ilike(search_val),
-                            ProcessedReview.heading.ilike(search_val),
-                        )
-                    )
-
-            if filters.get("rating"):
-                query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
-            if filters.get("sentiment"):
-                query = query.filter(
-                    ProcessedReview.sentiment.in_(filters["sentiment"])
-                )
-            if filters.get("source"):
-                query = query.filter(Platform.platform_name.in_(filters["source"]))
-            if filters.get("category"):
-                cat_filters = [
-                    ProcessedReview.categories.ilike(f'%"{cat}"%')
-                    for cat in filters["category"]
-                ]
-                query = query.filter(and_(*cat_filters))
-            if filters.get("dateFrom"):
-                query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
-            if filters.get("dateTo"):
-                query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
-
-        total_count = query.count()
-
-        # Fetch Data
-        from sqlalchemy.orm import selectinload
-
-        query = query.options(selectinload(ProcessedReview.media))
-        query = query.order_by(ProcessedReview.reviewDate.desc())
-        query = query.offset(page * limit).limit(limit)
-        db_reviews = query.all()
-
-        import json
-
-        results = []
-        for rev in db_reviews:
-            row = {
-                "id": str(rev.id),
-                "rating": rev.rating,
-                "reviewerName": rev.reviewerName,
-                "summary": rev.summary or "",
-                "sentiment": rev.sentiment or "Neutral",
-                "language": rev.language or "English",
-                "reviewDate": rev.reviewDate,
-                "scrapedAt": rev.scrapedAt,
-                "status": rev.status,
-                "ai_reply": rev.ai_reply,
-                "source_id": str(rev.source_id),
-                "positive_text": rev.positive_text,
-                "negative_text": rev.negative_text,
-                "heading": rev.heading,
-                "source": (
-                    rev.source.platform.platform_name
-                    if rev.source and rev.source.platform
-                    else "Unknown"
-                ),
-                "date": rev.reviewDate,
-                "photos": [
-                    {"id": str(m.media_id), "src": m.src, "alt": m.alt}
-                    for m in rev.media
-                ],
-            }
-
-            for field in ["categories", "keyPhrases"]:
-                val = getattr(rev, field)
-                if val:
-                    try:
-                        parsed = json.loads(val)
-                        row[field] = (
-                            [
-                                (
-                                    str(item["name"])
-                                    if isinstance(item, dict) and "name" in item
-                                    else str(item)
-                                )
-                                for item in parsed
-                            ]
-                            if isinstance(parsed, list)
-                            else []
-                        )
-                    except:
-                        row[field] = []
-                else:
-                    row[field] = []
-
-            text_parts = [rev.text, rev.positive_text, rev.negative_text]
-            row["text"] = (
-                "\n\n".join([p for p in text_parts if p]) if any(text_parts) else ""
-            )
-            results.append(row)
-
-        return {"data": results, "total": total_count}
-    finally:
-        if should_close:
-            db.close()
-
-
-def get_review_options(
-    organization_id: str, db: Session = None
-) -> Dict[str, List[str]]:
-    """Fetch distinct sources and categories for an organization using ORM."""
-    try:
-        import app.modules.auth.models.auth_models  # noqa
-        import app.modules.organization.models.org_models  # noqa
-    except ImportError:
-        pass
-
-    from app.modules.source.models import Source, Platform
-    from app.modules.reviews.models import ProcessedReview
-
-    if db is None:
-        from app.database.session import SessionLocal
-
-        db = SessionLocal()
-        should_close = True
-    else:
-        should_close = False
-
-    try:
-        # 1. Get Sources
-        sources = (
-            db.query(Platform.platform_name)
-            .join(Source)
-            .filter(Source.organization_id == organization_id)
-            .distinct()
-            .all()
-        )
-        source_list = [s[0] for s in sources]
-
-        # 2. Get Categories (Using native OPENJSON for performance)
-        # SQLAlchemy doesn't natively support OPENJSON well, so we use a text query for this specific part
-        from sqlalchemy import text
-
-        cat_sql = text("""
-            SELECT DISTINCT 
-                COALESCE(JSON_VALUE(c.value, '$.name'), c.value) as category_name
-            FROM dbo.processed_review r
-            JOIN dbo.source s ON r.source_id = s.source_id
-            CROSS APPLY OPENJSON(r.categories) AS c
-            WHERE s.organization_id = :org_id AND r.status = 'processed'
-        """)
-        categories = db.execute(cat_sql, {"org_id": organization_id}).fetchall()
-        cat_list = [c[0] for c in categories if c[0]]
-
-        return {"sources": sorted(source_list), "categories": sorted(cat_list)}
-    finally:
-        if should_close:
-            db.close()
-
-
-def get_review_stats(
-    organization_id: str, filters: Optional[dict] = None, db: Session = None
-) -> Dict:
-    """Calculate aggregated stats for an organization's reviews using ORM."""
-    try:
-        import app.modules.auth.models.auth_models  # noqa
-        import app.modules.organization.models.org_models  # noqa
-    except ImportError:
-        pass
-
-    from app.modules.reviews.models import ProcessedReview
-    from app.modules.source.models import Source, Platform
-
-    if db is None:
-        from app.database.session import SessionLocal
-
-        db = SessionLocal()
-        should_close = True
-    else:
-        should_close = False
-
-    try:
-        query = db.query(ProcessedReview).join(Source).join(Platform)
-        query = query.filter(Source.organization_id == organization_id)
-
-        # Apply same filters as fetch (Reuse logic would be better but keeping it contained for now)
-        if filters:
-            if filters.get("search"):
-                search_val = f"%{filters['search']}%"
-                if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
-                    # Simple version for stats check
-                    import httpx
-                    from app.modules.source.services.embedding_client import (
-                        EMBEDDING_SERVICE_URL,
-                    )
-
-                    source_ids = [
-                        str(sid[0])
-                        for sid in db.query(Source.source_id)
-                        .filter(Source.organization_id == organization_id)
-                        .all()
-                    ]
-                    matching_ids = []
-                    if source_ids:
-                        try:
-                            resp = httpx.post(
-                                f"{EMBEDDING_SERVICE_URL}/search",
-                                json={
-                                    "query": filters["search"],
-                                    "source_ids": source_ids,
-                                    "top_k": 50,
-                                },
-                                timeout=10.0,
-                            )
-                            if resp.status_code == 200:
-                                matching_ids = [
-                                    r.get("review_id") or r.get("id")
-                                    for r in resp.json().get("reviews", [])
-                                    if r.get("review_id") or r.get("id")
-                                ]
-                        except:
-                            pass
-                    query = (
-                        query.filter(ProcessedReview.id.in_(matching_ids))
-                        if matching_ids
-                        else query.filter(ProcessedReview.id == None)
-                    )
-                else:
-                    query = query.filter(
-                        or_(
-                            ProcessedReview.text.ilike(search_val),
-                            ProcessedReview.positive_text.ilike(search_val),
-                            ProcessedReview.negative_text.ilike(search_val),
-                            ProcessedReview.reviewerName.ilike(search_val),
-                            ProcessedReview.heading.ilike(search_val),
-                        )
-                    )
-            if filters.get("rating"):
-                query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
-            if filters.get("sentiment"):
-                query = query.filter(
-                    ProcessedReview.sentiment.in_(filters["sentiment"])
-                )
-            if filters.get("source"):
-                query = query.filter(Platform.platform_name.in_(filters["source"]))
-            if filters.get("category"):
-                cat_filters = [
-                    ProcessedReview.categories.ilike(f'%"{cat}"%')
-                    for cat in filters["category"]
-                ]
-                query = query.filter(and_(*cat_filters))
-            if filters.get("dateFrom"):
-                query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
-            if filters.get("dateTo"):
-                query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
-
-        # Aggregations
-        # Apply the same filters to aggregation query by reusing the query object
-        stats_row = query.with_entities(
-            func.count(ProcessedReview.id),
-            func.avg(ProcessedReview.rating),
-            func.sum(
-                case(
-                    (ProcessedReview.sentiment == "Positive", 1),
-                    (ProcessedReview.sentiment == "Negative", -1),
-                    else_=0,
-                )
-            ),
-            func.sum(
-                case(
-                    (
-                        or_(
-                            ProcessedReview.status == "pending",
-                            ProcessedReview.ai_reply.is_(None),
-                        ),
-                        1,
-                    ),
-                    else_=0,
-                )
-            ),
-        ).one()
-
-        total = stats_row[0] or 0
-        avg_rating = round(float(stats_row[1] or 0), 1)
-        sentiment_sum = stats_row[2] or 0
-        pending = stats_row[3] or 0
-
-        sentiment_score = round(((sentiment_sum / total) + 1) * 50) if total > 0 else 50
-
-        return {
-            "totalReviews": total,
-            "averageRating": avg_rating,
-            "pendingReplies": pending,
-            "sentimentScore": sentiment_score,
+    results = []
+    for rev in db_reviews:
+        row = {
+            "id": str(rev.id),
+            "rating": rev.rating,
+            "reviewerName": rev.reviewerName,
+            "summary": rev.summary or "",
+            "sentiment": rev.sentiment or "Neutral",
+            "language": rev.language or "English",
+            "reviewDate": rev.reviewDate,
+            "scrapedAt": rev.scrapedAt,
+            "status": rev.status,
+            "ai_reply": rev.ai_reply,
+            "source_id": str(rev.source_id),
+            "positive_text": rev.positive_text,
+            "negative_text": rev.negative_text,
+            "heading": rev.heading,
+            "source": rev.source.platform.platform_name if rev.source and rev.source.platform else "Unknown",
+            "date": rev.reviewDate,
+            "photos": [{"id": str(m.media_id), "src": m.src, "alt": m.alt} for m in rev.media],
         }
-    finally:
-        if should_close:
-            db.close()
+
+        # Parse JSON fields
+        for field in ["categories", "keyPhrases"]:
+            val = getattr(rev, field)
+            if val:
+                try:
+                    parsed = json.loads(val)
+                    row[field] = [
+                        str(item["name"]) if isinstance(item, dict) and "name" in item else str(item)
+                        for item in parsed
+                    ] if isinstance(parsed, list) else []
+                except:
+                    row[field] = []
+            else:
+                row[field] = []
+        
+        results.append(row)
+
+    return {
+        "reviews": results,
+        "total": total_count,
+        "page": page,
+        "limit": limit
+    }
 
 
-def count_reviews_raw() -> int:
-    """Return the total count of processed reviews."""
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: Session = None) -> Dict:
+    """Calculate aggregated stats using ORM and Case expressions."""
+    query = db.query(ProcessedReview).join(Source).join(Platform)
+    query = query.filter(Source.organization_id == organization_id)
+    
+    query = _apply_review_filters(query, filters, organization_id, db)
+
+    stats = query.with_entities(
+        func.count(ProcessedReview.id),
+        func.avg(ProcessedReview.rating),
+        func.sum(case((ProcessedReview.sentiment == "Positive", 1), (ProcessedReview.sentiment == "Negative", -1), else_=0)),
+        func.sum(case((or_(ProcessedReview.status == "pending", ProcessedReview.ai_reply.is_(None)), 1), else_=0))
+    ).one()
+
+    total = stats[0] or 0
+    avg_rating = round(float(stats[1] or 0), 1)
+    sentiment_sum = stats[2] or 0
+    pending = stats[3] or 0
+    sentiment_score = round(((sentiment_sum / total) + 1) * 50) if total > 0 else 50
+
+    return {
+        "totalReviews": total,
+        "averageRating": avg_rating,
+        "pendingReplies": pending,
+        "sentimentScore": sentiment_score,
+    }
 
 
-def get_processing_metrics(
-    cursor: pyodbc.Cursor, organization_id: Optional[str] = None
-) -> Dict[str, int]:
-    """
-    Returns counts of reviews grouped by status.
-    If organization_id is provided, filters by that organization.
-    """
-    sql = "SELECT r.status, COUNT(*) FROM dbo.processed_review r"
-    params = []
+def get_org_sources_and_categories(organization_id: str, db: Session) -> Dict:
+    """Fetch distinct sources and categories for an organization's filter menu."""
+    sources = db.query(Platform.platform_name).join(Source).filter(Source.organization_id == organization_id).distinct().all()
+    source_list = [s[0] for s in sources]
 
-    if organization_id:
-        sql += " JOIN dbo.source s ON r.source_id = s.source_id"
-        sql += " WHERE s.organization_id = ?"
-        params.append(organization_id)
-
-    sql += " GROUP BY r.status"
-
-    cursor.execute(sql, params)
-    rows = cursor.fetchall()
-
-    # Initialize counts
-    metrics = {"pending": 0, "processed": 0, "failed": 0, "total": 0}
-
-    for status_str, count in rows:
-        status_key = status_str.lower()
-        if status_key in metrics:
-            metrics[status_key] = count
-        metrics["total"] += count
-
-    return metrics
-
-
-def get_review_by_id(cursor: pyodbc.Cursor, review_id: uuid.UUID) -> Optional[dict]:
-    """Fetch a single review by its internal ID for AI processing."""
-    sql = """
-        SELECT
-            id, rating, reviewerName, text, 
-            positive_text, negative_text, heading,
-            CAST(reviewDate AS VARCHAR) as reviewDate, 
-            CAST(scrapedAt AS VARCHAR) as scrapedAt, 
-            source_id, status
-        FROM dbo.processed_review
-        WHERE id = ?
-    """
-    cursor.execute(sql, (review_id,))
-    row = cursor.fetchone()
-    if not row:
-        return None
-
-    columns = [column[0] for column in cursor.description]
-    return dict(zip(columns, row))
-
-
-def get_full_distribution(organization_id: str) -> Dict:
-    """
-    Returns the full rating distribution (1-5 stars) with per-source breakdowns.
-    Used by the "See Details" distribution modal.
-    """
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-
-    # Get distribution grouped by source platform and rounded rating
-    cursor.execute(
-        """
-        SELECT 
-            p.platform_name AS source_name,
-            CAST(ROUND(r.rating, 0) AS INT) AS rounded_rating,
-            COUNT(*) AS cnt
+    # OPENJSON remains a native T-SQL requirement for efficiency with JSON columns
+    cat_sql = text("""
+        SELECT DISTINCT COALESCE(JSON_VALUE(c.value, '$.name'), c.value) as cat
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ? AND r.rating IS NOT NULL
-        GROUP BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT)
-        ORDER BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT) DESC
-    """,
-        organization_id,
-    )
+        CROSS APPLY OPENJSON(r.categories) AS c
+        WHERE s.organization_id = :org_id AND r.status = 'processed'
+    """)
+    categories = db.execute(cat_sql, {"org_id": organization_id}).fetchall()
+    cat_list = [c[0] for c in categories if c[0]]
 
-    rows = cursor.fetchall()
-    conn.close()
+    return {"sources": sorted(source_list), "categories": sorted(cat_list)}
 
-    # Build per-source and global stats
-    source_map: Dict[str, Dict[int, int]] = {}
-    global_dist: Dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+def get_review_by_id(db: Session, review_id: uuid.UUID) -> Optional[ProcessedReview]:
+    """Fetch a single review by its internal ID."""
+    return db.query(ProcessedReview).filter(ProcessedReview.id == review_id).first()
+
+
+def get_full_distribution(organization_id: str, db: Session) -> Dict:
+    """Calculate rating distribution breakdowns per source."""
+    rows = db.query(
+        Platform.platform_name,
+        func.cast(func.round(ProcessedReview.rating, 0), Integer).label("bucket"),
+        func.count(ProcessedReview.id)
+    ).join(Source, ProcessedReview.source_id == Source.source_id)\
+     .join(Platform, Source.platform_id == Platform.platform_id)\
+     .filter(Source.organization_id == organization_id, ProcessedReview.rating != None)\
+     .group_by(Platform.platform_name, text("bucket"))\
+     .all()
+
+    source_map = {}
+    global_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
 
     for row in rows:
-        source_name = row.source_name or "Unknown"
-        bucket = max(1, min(5, row.rounded_rating))
-        count = row.cnt
-
-        if source_name not in source_map:
-            source_map[source_name] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-
-        source_map[source_name][bucket] += count
+        name, bucket, count = row[0], max(1, min(5, row[1])), row[2]
+        if name not in source_map:
+            source_map[name] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        source_map[name][bucket] += count
         global_dist[bucket] += count
 
-    global_total = sum(global_dist.values())
-
-    def build_distribution(dist: Dict[int, int], total: int):
+    def build_dist_list(dist, total):
         return [
-            {
-                "rating": r,
-                "count": dist[r],
-                "percentage": round((dist[r] / total) * 100) if total > 0 else 0,
-            }
+            {"rating": r, "count": dist[r], "percentage": round((dist[r] / total) * 100) if total > 0 else 0}
             for r in [5, 4, 3, 2, 1]
         ]
 
@@ -636,56 +316,48 @@ def get_full_distribution(organization_id: str) -> Dict:
     for name, dist in sorted(source_map.items()):
         total = sum(dist.values())
         avg = sum(r * c for r, c in dist.items()) / total if total > 0 else 0
-        sources.append(
-            {
-                "name": name,
-                "total": total,
-                "average": round(avg, 1),
-                "distribution": build_distribution(dist, total),
-            }
-        )
+        sources.append({
+            "name": name,
+            "total": total,
+            "average": round(avg, 1),
+            "distribution": build_dist_list(dist, total)
+        })
 
+    global_total = sum(global_dist.values())
     return {
         "global": {
             "total": global_total,
-            "average": (
-                round(sum(r * c for r, c in global_dist.items()) / global_total, 1)
-                if global_total > 0
-                else 0
-            ),
-            "distribution": build_distribution(global_dist, global_total),
+            "average": round(sum(r * c for r, c in global_dist.items()) / global_total, 1) if global_total > 0 else 0,
+            "distribution": build_dist_list(global_dist, global_total),
         },
         "sources": sources,
     }
 
 
-def delete_reviews_by_source_id(source_id: str) -> int:
-    """
-    Delete all reviews and associated media for a specific source.
-    Returns the number of reviews deleted.
-    """
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-    try:
-        # 1. Delete associated media
-        # We join with processed_review to find media belonging to this source
-        media_sql = """
-            DELETE rm
-            FROM dbo.review_media rm
-            INNER JOIN dbo.processed_review r ON rm.review_id = r.id
-            WHERE r.source_id = CAST(? AS UNIQUEIDENTIFIER)
-        """
-        cursor.execute(media_sql, source_id)
+def delete_reviews_by_source_id(db: Session, source_id: str) -> int:
+    """Delete all reviews and media for a specific source via ORM."""
+    sid = uuid.UUID(source_id)
+    # Media deletion (cascade usually handles this if configured, but explicit is safer for now)
+    db.query(ReviewMedia).filter(ReviewMedia.review_id.in_(
+        db.query(ProcessedReview.id).filter(ProcessedReview.source_id == sid)
+    )).delete(synchronize_session=False)
+    
+    deleted_count = db.query(ProcessedReview).filter(ProcessedReview.source_id == sid).delete()
+    db.commit()
+    return deleted_count
 
-        # 2. Delete processed reviews
-        reviews_sql = "DELETE FROM dbo.processed_review WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)"
-        cursor.execute(reviews_sql, source_id)
 
-        deleted_count = cursor.rowcount
-        conn.commit()
-        return deleted_count
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+def get_processing_metrics(db: Session, organization_id: Optional[str] = None) -> Dict[str, int]:
+    """Calculate processing pipeline metrics using ORM grouping."""
+    query = db.query(ProcessedReview.status, func.count(ProcessedReview.id))
+    if organization_id:
+        query = query.join(Source).filter(Source.organization_id == organization_id)
+    
+    rows = query.group_by(ProcessedReview.status).all()
+    metrics = {"pending": 0, "processed": 0, "failed": 0, "total": 0}
+    for status, count in rows:
+        status_key = status.lower()
+        if status_key in metrics:
+            metrics[status_key] = count
+        metrics["total"] += count
+    return metrics

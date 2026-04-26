@@ -8,7 +8,9 @@ import type {
   FetchReviewsParams,
   PaginatedResponse,
 } from "../types/reviews";
+import { PAGINATION, UI_DEFAULTS } from "../config/constants";
 import { apiClient } from "../api/client";
+
 
 class ReviewsService {
   /**
@@ -21,7 +23,7 @@ class ReviewsService {
     const response = await apiClient.get<PaginatedResponse<any>>("/reviews/", {
       organization_id: organizationId,
       page: params.page ?? 0,
-      limit: params.limit ?? 15,
+      limit: params.limit ?? PAGINATION.DEFAULT_PAGE_SIZE,
       search: params.search || undefined,
       embedding_search: params.useEmbeddingSearch,
       rating: params.rating?.length ? params.rating : undefined,
@@ -45,7 +47,7 @@ class ReviewsService {
     return {
       id: item.id,
       rating: typeof item.rating === "number" ? item.rating : 0,
-      userName: item.userName || item.reviewerName || "Anonymous",
+      userName: item.userName || item.reviewerName || UI_DEFAULTS.ANONYMOUS_USER,
       reviewText: item.reviewText || item.text || "",
       heading: item.heading || "",
       sentiment: item.sentiment || "Neutral",
@@ -54,7 +56,7 @@ class ReviewsService {
       date:
         item.date || item.reviewDate || new Date().toISOString().split("T")[0],
       status: item.status || "pending",
-      language: item.language || "English",
+      language: item.language || UI_DEFAULTS.DEFAULT_LANGUAGE,
       photos: Array.isArray(item.photos) ? item.photos : [],
       keyPhrases: Array.isArray(item.keyPhrases) ? item.keyPhrases : [],
       summary: item.summary || "",
