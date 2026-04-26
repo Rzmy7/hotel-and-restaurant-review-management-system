@@ -16,8 +16,9 @@ The backend of the **Hotel and Restaurant Review Management System** is a produc
 | **🌐 Scraping Engine** | Orchestrates **Playwright** to extract granular review data from Booking.com, Agoda, Google Maps, and TripAdvisor |
 | **🤖 AI Orchestration** | Integrates with **Google Gemini** for sentiment analysis, categorization, and summarization |
 | **🔐 Auth & RBAC** | Secure user management using **JWT**, **Bcrypt**, and role-based permissions (System & Group levels) |
-| **🗄️ Data Management** | High-performance storage using **SQL Server** via `pyodbc` and **SQLAlchemy 2.0** |
+| **🗄️ Data Management** | Type-safe persistence using **SQLAlchemy 2.0 ORM** with a strict Repository pattern |
 | **🏥 Health Monitoring** | Real-time system diagnostics and database connectivity tracking |
+| **📝 Structured Logging** | JSON-formatted logging with correlation IDs (RID) for enterprise traceability |
 | **⏰ Task Scheduling** | APScheduler for background jobs and automated scraping |
 
 ---

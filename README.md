@@ -23,7 +23,8 @@ This project has undergone a rigorous **Academic Refactor** to achieve instituti
 - **Phased Roadmap**: 6-phase transformation from monolithic scripts to a decoupled, layered architecture.
 - **ORM Transition**: Complete migration from raw SQL strings to **SQLAlchemy 2.0 ORM** with centralized session management.
 - **Robust Validation**: Implementation of **Pydantic V2** schemas for strict request/response validation across all layers.
-- **Performance Profiling**: Centralized JSON-structured logging with automated execution-time decorators for bottleneck identification.
+- **Professional Orchestration**: Optimized `launcher.py` with support for a `--prod` flag that handles automated builds and serves assets via `npm run preview`.
+- **Structured Logging**: Centralized JSON-structured logging (BE) and environment-aware professional logging (FE) that silences debug noise in production.
 - **Standardized Error Handling**: Global exception handlers providing consistent, type-safe API responses.
 - **Verified Testing**: Integration of a `pytest` suite with an automated SQLite compatibility layer for rapid development.
 
@@ -275,7 +276,8 @@ We have a dedicated python tool to launch all 5 services concurrently saving you
 
 You can run it natively using Python:
 ```bash
-python launcher.py
+python launcher.py         # Start in Development Mode (with hot-reload)
+python launcher.py --prod  # Start in Production Mode (built assets, silent logs)
 ```
 
 Or you can use the precompiled standalone executable, located in the dist directory:
