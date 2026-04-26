@@ -60,11 +60,12 @@ EMBEDDING_SERVICE_URL: str = os.getenv(
     "EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002"
 ).rstrip("/")
 
-# ── CORS allowed origins ────────────────────────────────────────────
 # Base origins always allowed (constructed from FRONTEND_URL and ADMIN_FRONTEND_URL)
 _base_origins: list[str] = [
     FRONTEND_URL,
     ADMIN_FRONTEND_URL,
+    FRONTEND_URL.replace("localhost", "127.0.0.1"),
+    ADMIN_FRONTEND_URL.replace("localhost", "127.0.0.1"),
 ]
 
 _cors_from_env = os.getenv("CORS_ORIGINS", "")

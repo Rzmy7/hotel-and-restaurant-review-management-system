@@ -10,7 +10,7 @@ from fastapi import UploadFile
 from uuid import uuid4
 import os
 from app.core.superbase_client import supabase
-from app.core.validators.file_validator import validate_image
+from app.core.validations.file_validator import validate_image
 from app.core.exceptions.custom_exceptions import FileValidationException
 
 

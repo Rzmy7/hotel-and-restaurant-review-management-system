@@ -36,7 +36,13 @@ except ImportError:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
     _frontend = os.getenv("FRONTEND_URL", "http://localhost:5173")
     _admin = os.getenv("ADMIN_FRONTEND_URL", "http://localhost:5174")
-    CORS_ORIGINS = [_frontend, _admin]
+    # Always include 127.0.0.1 for development stability
+    CORS_ORIGINS = [
+        _frontend,
+        _admin,
+        _frontend.replace("localhost", "127.0.0.1"),
+        _admin.replace("localhost", "127.0.0.1"),
+    ]
 
 try:
     from app.modules.scheduler import setup_scheduler, start_scheduler, stop_scheduler
