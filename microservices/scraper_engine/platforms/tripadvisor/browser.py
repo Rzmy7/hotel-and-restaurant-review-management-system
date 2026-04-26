@@ -12,6 +12,7 @@ TA_USER_AGENT = (
     "Chrome/123.0.0.0 Safari/537.36"
 )
 
+
 class TripAdvisorBrowser:
     def __init__(self):
         self._playwright = None
@@ -21,7 +22,7 @@ class TripAdvisorBrowser:
 
     def start(self):
         self._playwright = sync_playwright().start()
-        # Reverting to Chromium per user request. 
+        # Reverting to Chromium per user request.
         # Using stealth arguments to minimize detection.
         self._browser = self._playwright.chromium.launch(
             headless=config.headless,
@@ -30,7 +31,7 @@ class TripAdvisorBrowser:
                 "--disable-setuid-sandbox",
                 "--disable-blink-features=AutomationControlled",
                 "--disable-infobars",
-            ]
+            ],
         )
         self._context = self._browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -39,7 +40,7 @@ class TripAdvisorBrowser:
             timezone_id="America/New_York",
             java_script_enabled=True,
         )
-        
+
         # Enhanced Stealth: Mask webdriver and other automation signals
         self._context.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', {

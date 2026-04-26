@@ -8,7 +8,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-
 # ── Dashboard schemas ───────────────────────────────────────────────
 
 
@@ -184,7 +183,9 @@ class SubscriptionPlanUpsertPayload(BaseModel):
     currency: str = Field(default="USD", min_length=1, max_length=16)
     isPopular: bool = False
     isActive: bool = True
-    color: str = Field(default="from-blue-500 to-blue-600", min_length=1, max_length=100)
+    color: str = Field(
+        default="from-blue-500 to-blue-600", min_length=1, max_length=100
+    )
     iconName: Literal["zap", "star", "crown", "building"] = "star"
     features: list[SubscriptionPlanFeatureUpsertPayload] = Field(default_factory=list)
 
@@ -226,7 +227,9 @@ class ScrapingPlatformCreatePayload(BaseModel):
     baseUrl: str | None = None
     fetchingType: str | None = "SCRAPING"
     enabled: bool = True
-    tableName: str | None = None  # Stored in review_table column; table created in scraper backend
+    tableName: str | None = (
+        None  # Stored in review_table column; table created in scraper backend
+    )
     attributes: list[ScrapingTableAttributePayload] = Field(default_factory=list)
 
 
@@ -235,7 +238,9 @@ class ScrapingPlatformUpdatePayload(BaseModel):
     baseUrl: str | None = None
     fetchingType: str | None = None
     enabled: bool = True
-    tableName: str | None = None  # Updated in review_table column; new table created in scraper backend if changed
+    tableName: str | None = (
+        None  # Updated in review_table column; new table created in scraper backend if changed
+    )
     attributes: list[ScrapingTableAttributePayload] = Field(default_factory=list)
 
 
@@ -285,7 +290,9 @@ class ReplyGenerationSettingsResponse(BaseModel):
 
 class ReplyGenerationSettingsPayload(BaseModel):
     googleApiKey: str = Field(default="", max_length=512)
-    selectedModel: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=128)
+    selectedModel: str = Field(
+        default="gemini-2.5-flash-lite", min_length=1, max_length=128
+    )
     similarReviewsCount: int = Field(default=3, ge=1, le=20)
     useEmbeddingRules: bool = True
     useSimilarReviews: bool = True

@@ -8,6 +8,7 @@ POST  /api/tables/create   — create a new review table
 GET   /api/tables           — list all user-created review tables
 DELETE /api/tables/{name}   — drop a review table
 """
+
 import re
 from typing import Optional
 
@@ -47,9 +48,22 @@ class CreateTableResponse(BaseModel):
 _VALID_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 _SIMPLE_TYPES = {
-    "int", "bigint", "smallint", "tinyint", "bit", "float", "real",
-    "date", "time", "datetime", "datetime2", "smalldatetime",
-    "text", "ntext", "money", "smallmoney",
+    "int",
+    "bigint",
+    "smallint",
+    "tinyint",
+    "bit",
+    "float",
+    "real",
+    "date",
+    "time",
+    "datetime",
+    "datetime2",
+    "smalldatetime",
+    "text",
+    "ntext",
+    "money",
+    "smallmoney",
     "uniqueidentifier",
 }
 
@@ -88,7 +102,7 @@ def _validate_sql_type(raw_type: str) -> str:
     raise HTTPException(
         status_code=400,
         detail=f"Unsupported column type: '{raw_type}'. "
-               f"Allowed: INT, BIGINT, VARCHAR(N), NVARCHAR(N), DECIMAL(P,S), etc.",
+        f"Allowed: INT, BIGINT, VARCHAR(N), NVARCHAR(N), DECIMAL(P,S), etc.",
     )
 
 
@@ -107,7 +121,7 @@ def create_table(payload: CreateTableRequest):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid table name '{table_name}'. "
-                   "Must start with a letter or underscore, and contain only letters, digits, or underscores.",
+            "Must start with a letter or underscore, and contain only letters, digits, or underscores.",
         )
 
     # Validate and build column definitions
@@ -163,7 +177,9 @@ def create_table(payload: CreateTableRequest):
 
             conn.execute(text(create_sql))
             conn.commit()
-            logger.info(f"Created table dbo.[{table_name}] with {len(column_defs)} columns")
+            logger.info(
+                f"Created table dbo.[{table_name}] with {len(column_defs)} columns"
+            )
 
     except HTTPException:
         raise
@@ -185,8 +201,14 @@ def create_table(payload: CreateTableRequest):
 def list_tables():
     """Lists all user-created review tables (excludes system tables)."""
     system_tables = {
-        "sources", "reviews", "review_media", "audit_log",
-        "agoda_reviews", "booking_reviews", "google_reviews", "tripadvisor_reviews",
+        "sources",
+        "reviews",
+        "review_media",
+        "audit_log",
+        "agoda_reviews",
+        "booking_reviews",
+        "google_reviews",
+        "tripadvisor_reviews",
     }
 
     engine = get_engine()
@@ -218,11 +240,13 @@ def list_tables():
                         text(f"SELECT COUNT(*) FROM dbo.[{name}]")
                     ).scalar()
 
-                    tables.append({
-                        "table_name": name,
-                        "column_count": col_count,
-                        "row_count": row_count,
-                    })
+                    tables.append(
+                        {
+                            "table_name": name,
+                            "column_count": col_count,
+                            "row_count": row_count,
+                        }
+                    )
 
             return {"total": len(tables), "tables": tables}
 
@@ -258,8 +282,14 @@ def get_row_counts(table_names: str | None = None):
             else:
                 # Fall back to all non-system tables
                 system_tables = {
-                    "sources", "reviews", "review_media", "audit_log",
-                    "agoda_reviews", "booking_reviews", "google_reviews", "tripadvisor_reviews",
+                    "sources",
+                    "reviews",
+                    "review_media",
+                    "audit_log",
+                    "agoda_reviews",
+                    "booking_reviews",
+                    "google_reviews",
+                    "tripadvisor_reviews",
                 }
                 rows = conn.execute(
                     text(
@@ -269,7 +299,8 @@ def get_row_counts(table_names: str | None = None):
                     )
                 ).fetchall()
                 names_to_count = [
-                    str(row[0]) for row in rows
+                    str(row[0])
+                    for row in rows
                     if str(row[0]).lower() not in system_tables
                 ]
 
@@ -304,15 +335,25 @@ def get_row_counts(table_names: str | None = None):
 def drop_table(table_name: str):
     """Drops a user-created review table from the database."""
     system_tables = {
-        "sources", "reviews", "review_media", "audit_log",
-        "agoda_reviews", "booking_reviews", "google_reviews", "tripadvisor_reviews",
+        "sources",
+        "reviews",
+        "review_media",
+        "audit_log",
+        "agoda_reviews",
+        "booking_reviews",
+        "google_reviews",
+        "tripadvisor_reviews",
     }
 
     if not _is_valid_identifier(table_name):
-        raise HTTPException(status_code=400, detail=f"Invalid table name '{table_name}'")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid table name '{table_name}'"
+        )
 
     if table_name.lower() in system_tables:
-        raise HTTPException(status_code=403, detail=f"Cannot drop system table '{table_name}'")
+        raise HTTPException(
+            status_code=403, detail=f"Cannot drop system table '{table_name}'"
+        )
 
     engine = get_engine()
     try:
@@ -326,7 +367,9 @@ def drop_table(table_name: str):
             ).fetchone()
 
             if not exists:
-                raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Table '{table_name}' not found"
+                )
 
             conn.execute(text(f"DROP TABLE dbo.[{table_name}]"))
             conn.commit()

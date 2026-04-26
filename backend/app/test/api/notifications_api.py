@@ -29,7 +29,9 @@ def _connection_string() -> str:
         if not value
     ]
     if missing:
-        raise HTTPException(status_code=500, detail=f"Missing DB config: {', '.join(missing)}")
+        raise HTTPException(
+            status_code=500, detail=f"Missing DB config: {', '.join(missing)}"
+        )
 
     return (
         f"DRIVER={{{driver}}};"
@@ -42,8 +44,7 @@ def _connection_string() -> str:
 
 
 def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.notifications', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.notifications (
@@ -71,8 +72,7 @@ def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
             CREATE INDEX IX_notifications_user_read_created
                 ON dbo.notifications (user_id, is_read, created_at DESC);
         END;
-        """
-    )
+        """)
 
 
 def _resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
@@ -82,31 +82,29 @@ def _resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid userId")
 
-    admin_row = cursor.execute(
-        """
+    admin_row = cursor.execute("""
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
         FROM dbo.[user]
         WHERE COALESCE(role_id, 0) = 1 AND COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
-        """
-    ).fetchone()
+        """).fetchone()
 
     if admin_row and admin_row.user_id:
         return str(admin_row.user_id)
 
-    fallback_row = cursor.execute(
-        """
+    fallback_row = cursor.execute("""
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
         FROM dbo.[user]
         WHERE COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
-        """
-    ).fetchone()
+        """).fetchone()
 
     if fallback_row and fallback_row.user_id:
         return str(fallback_row.user_id)
 
-    raise HTTPException(status_code=404, detail="No active user available for notifications")
+    raise HTTPException(
+        status_code=404, detail="No active user available for notifications"
+    )
 
 
 @router.get("/admin")
@@ -189,7 +187,9 @@ def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
 
 
 @router.post("/{notification_id}/read")
-def mark_notification_read(notification_id: str, userId: str | None = Query(None)) -> dict:
+def mark_notification_read(
+    notification_id: str, userId: str | None = Query(None)
+) -> dict:
     try:
         parsed_notification_id = str(uuid.UUID(notification_id))
     except ValueError:

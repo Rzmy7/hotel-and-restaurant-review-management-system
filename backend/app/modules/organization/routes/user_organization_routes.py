@@ -10,8 +10,7 @@ router = APIRouter(prefix="/api", tags=["user-organizations"])
 
 @router.get("/user/organizations")
 def get_user_organizations(
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
+    db: Session = Depends(get_db), user=Depends(get_current_user)
 ):
     # In the new schema, user_id == tenant_id
     tenant_id = user.user_id
@@ -35,7 +34,7 @@ def get_user_organizations(
                 ON o.organization_type_id = ot.type_code
             WHERE o.tenant_id = :tenant_id
         """),
-        {"tenant_id": tenant_id}
+        {"tenant_id": tenant_id},
     )
 
     rows = result.fetchall()
@@ -53,7 +52,7 @@ def get_user_organizations(
             "location_url": row[8],
             "latitude": row[9],
             "longitude": row[10],
-            "role": "owner"
+            "role": "owner",
         }
         for row in rows
     ]

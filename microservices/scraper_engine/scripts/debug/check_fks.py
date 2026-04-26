@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_engine():
     params = urllib.parse.quote_plus(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -16,6 +17,7 @@ def get_engine():
     )
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
     return create_engine(conn_str, echo=False)
+
 
 def check_fks():
     engine = get_engine()
@@ -31,6 +33,7 @@ def check_fks():
         result = conn.execute(text(query))
         for row in result:
             print(f"{row[0]} -> {row[2]} ({row[1]})")
+
 
 if __name__ == "__main__":
     check_fks()

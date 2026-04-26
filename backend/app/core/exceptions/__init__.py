@@ -8,5 +8,5 @@ from .custom_exceptions import (
     PermissionDeniedException,
     ValidationException,
     FileValidationException,
-    register_exception_handlers
+    register_exception_handlers,
 )

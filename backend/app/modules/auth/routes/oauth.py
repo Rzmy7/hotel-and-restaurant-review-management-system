@@ -9,7 +9,12 @@ from sqlalchemy.orm import Session
 from app.core.config import FRONTEND_URL
 from app.database import get_db
 from app.core.security import create_access_token
-from app.modules.auth.repository import get_user_by_email, create_user, assign_role_to_user, get_user_role_names
+from app.modules.auth.repository import (
+    get_user_by_email,
+    create_user,
+    assign_role_to_user,
+    get_user_role_names,
+)
 from app.modules.auth.services.oauth_service import oauth
 
 router = APIRouter()
@@ -54,11 +59,14 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
     roles = get_user_role_names(db, user.user_id)
 
     from sqlalchemy import text
+
     org_query = db.execute(
-        text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"),
-        {"tenant_id": str(user.user_id)}
+        text(
+            "SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"
+        ),
+        {"tenant_id": str(user.user_id)},
     ).fetchone()
-    
+
     org_id = str(org_query[0]) if org_query else None
 
     access_token = create_access_token(

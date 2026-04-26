@@ -1,4 +1,5 @@
 """Dashboard routes aggregator."""
+
 from fastapi import APIRouter
 from app.modules.dashboard.routes.stats import router as stats_router
 from app.modules.dashboard.routes.activity import router as activity_router

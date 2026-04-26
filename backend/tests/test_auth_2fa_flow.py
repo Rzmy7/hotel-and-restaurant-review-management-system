@@ -52,23 +52,33 @@ class TestAuth2FAFlow(unittest.TestCase):
         db = FakeDB()
         user = _build_user(is_2fa_enabled=True)
 
-        with patch("app.modules.auth.services.auth_service.get_user_by_email", return_value=user), patch(
+        with patch(
+            "app.modules.auth.services.auth_service.get_user_by_email",
+            return_value=user,
+        ), patch(
             "app.modules.auth.services.auth_service.verify_password", return_value=True
-        ), patch("app.modules.auth.services.auth_service.get_user_primary_role", return_value="Admin"), patch(
+        ), patch(
+            "app.modules.auth.services.auth_service.get_user_primary_role",
+            return_value="Admin",
+        ), patch(
             "app.modules.auth.services.auth_service.random.randint", return_value=123456
         ), patch(
             "app.modules.auth.services.auth_service.send_2fa_email"
         ) as send_2fa_email_mock, patch(
-            "app.modules.auth.services.auth_service._generate_login_response", return_value={"access_token": "ok"}
+            "app.modules.auth.services.auth_service._generate_login_response",
+            return_value={"access_token": "ok"},
         ), patch(
-            "app.modules.user.services.profile_service.get_user_profile", return_value=user
+            "app.modules.user.services.profile_service.get_user_profile",
+            return_value=user,
         ):
             before_disable = login_user(db, user.email, "password123")
             self.assertTrue(before_disable.get("require_2fa"))
             send_2fa_email_mock.assert_called_once_with(user.email, "123456")
 
             disable_result = disable_2fa(db, user.user_id)
-            self.assertEqual(disable_result["message"], "2FA has been successfully disabled")
+            self.assertEqual(
+                disable_result["message"], "2FA has been successfully disabled"
+            )
             self.assertFalse(user.is_2fa_enabled)
 
             after_disable = login_user(db, user.email, "password123")
@@ -80,7 +90,10 @@ class TestAuth2FAFlow(unittest.TestCase):
         db = FakeDB()
         user = _build_user(is_2fa_enabled=True)
 
-        with patch("app.modules.user.services.profile_service.get_user_profile", return_value=user):
+        with patch(
+            "app.modules.user.services.profile_service.get_user_profile",
+            return_value=user,
+        ):
             result = disable_2fa(db, user.user_id)
 
         self.assertEqual(result["message"], "2FA has been successfully disabled")

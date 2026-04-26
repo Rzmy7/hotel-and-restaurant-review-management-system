@@ -5,7 +5,10 @@ from app.core.pyodbc_connection import get_connection_string
 
 
 def _table_exists(cursor, table_name: str) -> bool:
-    cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?", table_name)
+    cursor.execute(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?",
+        table_name,
+    )
     return cursor.fetchone()[0] > 0
 
 
@@ -14,28 +17,31 @@ def get_stats(org_id: str = None) -> dict:
     cursor = conn.cursor()
 
     if org_id:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*) 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ?
-        """, org_id)
+        """,
+            org_id,
+        )
         total_reviews = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT AVG(CAST(r.rating AS FLOAT)) 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ?
-        """, org_id)
+        """,
+            org_id,
+        )
         avg_rating_row = cursor.fetchone()[0]
         average_rating = round(avg_rating_row, 2) if avg_rating_row else 0
 
         conn.close()
-        return {
-            "totalReviews": total_reviews,
-            "averageRating": average_rating
-        }
+        return {"totalReviews": total_reviews, "averageRating": average_rating}
 
     # Global Admin View
     cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
@@ -45,11 +51,17 @@ def get_stats(org_id: str = None) -> dict:
     avg_rating_row = cursor.fetchone()[0]
     average_rating = round(avg_rating_row, 2) if avg_rating_row else 0
 
-    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Replied'")
+    cursor.execute(
+        "SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Replied'"
+    )
     replied_count = cursor.fetchone()[0]
-    response_rate = round((replied_count / total_reviews) * 100, 1) if total_reviews > 0 else 0
+    response_rate = (
+        round((replied_count / total_reviews) * 100, 1) if total_reviews > 0 else 0
+    )
 
-    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'")
+    cursor.execute(
+        "SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'"
+    )
     pending = cursor.fetchone()[0]
 
     # Admin Dashboard Specifics
@@ -89,7 +101,7 @@ def get_stats(org_id: str = None) -> dict:
         "reviewsCollectedToday": 0,
         "systemUptime": 100,
         "aiJobsProcessed": 0,
-        "aiJobsGrowth": 0
+        "aiJobsGrowth": 0,
     }
 
 
@@ -97,15 +109,20 @@ def get_distribution(org_id: str = None) -> dict:
     conn = pyodbc.connect(get_connection_string())
     cursor = conn.cursor()
     if org_id:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT ROUND(r.rating, 0) AS rounded_rating, COUNT(*) as cnt 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ? AND r.rating IS NOT NULL
             GROUP BY ROUND(r.rating, 0) ORDER BY ROUND(r.rating, 0)
-        """, org_id)
+        """,
+            org_id,
+        )
     else:
-        cursor.execute("SELECT ROUND(rating, 0) AS rounded_rating, COUNT(*) as cnt FROM dbo.processed_review WHERE rating IS NOT NULL GROUP BY ROUND(rating, 0) ORDER BY ROUND(rating, 0)")
+        cursor.execute(
+            "SELECT ROUND(rating, 0) AS rounded_rating, COUNT(*) as cnt FROM dbo.processed_review WHERE rating IS NOT NULL GROUP BY ROUND(rating, 0) ORDER BY ROUND(rating, 0)"
+        )
     rows = cursor.fetchall()
     conn.close()
     distribution = {str(i): 0 for i in range(1, 6)}

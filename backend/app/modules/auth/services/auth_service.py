@@ -69,25 +69,21 @@ def login_user(db: Session, email: str, password: str) -> dict:
     # ----------------------------------------------------
     # Intercept for 2FA
     # ----------------------------------------------------
-    if getattr(user, 'is_2fa_enabled', False):
+    if getattr(user, "is_2fa_enabled", False):
         code = f"{random.randint(100000, 999999)}"
         expires_at = datetime.utcnow() + timedelta(minutes=10)
-        
+
         db.query(TwoFactorToken).filter(TwoFactorToken.user_id == user.user_id).delete()
-        token = TwoFactorToken(
-            user_id=user.user_id,
-            code=code,
-            expires_at=expires_at
-        )
+        token = TwoFactorToken(user_id=user.user_id, code=code, expires_at=expires_at)
         db.add(token)
         db.commit()
-        
+
         send_2fa_email(user.email, code)
-        
+
         return {
             "require_2fa": True,
             "message": "A verification code has been sent to your email.",
-            "email": user.email
+            "email": user.email,
         }
 
     return _generate_login_response(db, user, role)
@@ -111,16 +107,16 @@ def _generate_login_response(db: Session, user, role) -> dict:
     # Get user's default organization
     # ----------------------------------------------------
     org_query = db.execute(
-        text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"),
-        {"tenant_id": str(user.user_id)}
+        text(
+            "SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"
+        ),
+        {"tenant_id": str(user.user_id)},
     ).fetchone()
-    
+
     org_id = str(org_query[0]) if org_query else None
 
     access_token = create_access_token(
-        user_id=str(user.user_id),
-        role=role,
-        organization_id=org_id
+        user_id=str(user.user_id), role=role, organization_id=org_id
     )
 
     return {
@@ -136,29 +132,34 @@ def _generate_login_response(db: Session, user, role) -> dict:
         },
     }
 
+
 def verify_login_2fa(db: Session, email: str, code: str) -> dict:
     """Complete a 2FA login request."""
     validate_otp_format(code)
-    
+
     user = get_user_by_email(db, email.lower())
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    token = db.query(TwoFactorToken).filter(
-        TwoFactorToken.user_id == user.user_id,
-        TwoFactorToken.code == code,
-        TwoFactorToken.used_at == None,
-        TwoFactorToken.expires_at > datetime.utcnow()
-    ).first()
-    
+
+    token = (
+        db.query(TwoFactorToken)
+        .filter(
+            TwoFactorToken.user_id == user.user_id,
+            TwoFactorToken.code == code,
+            TwoFactorToken.used_at == None,
+            TwoFactorToken.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
+
     if not token:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Invalid or expired verification code"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code",
         )
-        
+
     token.used_at = datetime.utcnow()
     db.commit()
-    
+
     role = get_user_primary_role(db, user.user_id)
     return _generate_login_response(db, user, role)

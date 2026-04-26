@@ -9,8 +9,12 @@ from datetime import datetime
 
 from app.chroma import save_embedding, collection
 from app.config import (
-    load_config, save_config, get_threshold_by_query, DEFAULT_THRESHOLDS,
-    is_service_paused, set_service_paused
+    load_config,
+    save_config,
+    get_threshold_by_query,
+    DEFAULT_THRESHOLDS,
+    is_service_paused,
+    set_service_paused,
 )
 from app.jobs import add_job, update_job, get_recent_jobs
 from app.embedding import embed_text
@@ -29,13 +33,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Preload models at startup
 @app.on_event("startup")
 async def startup_event():
     """Preload the embedding model to avoid first-request delay"""
     print("Preloading embedding model...")
     from app.embedding import model
+
     print(f"[OK] MiniLM model preloaded successfully")
+
 
 def wait_if_paused():
     """Wait while service is paused, checking every 0.5 seconds"""
@@ -53,27 +60,33 @@ class ReviewItem(BaseModel):
     review_id: str
     text: str
 
+
 class BatchEmbedRequest(BaseModel):
     source_id: str
     reviews: List[ReviewItem]
+
 
 class SearchRequest(BaseModel):
     query: str
     source_ids: List[str]
     top_k: int = 3
 
+
 class Rule(BaseModel):
     rule_id: str
     source_id: str
     text: str
 
+
 class RuleItem(BaseModel):
     rule_id: str
     text: str
 
+
 class BatchRuleEmbedRequest(BaseModel):
     source_id: str
     rules: list[RuleItem]
+
 
 class ThresholdConfig(BaseModel):
     oneWord: float
@@ -90,7 +103,7 @@ def get_threshold(query: str) -> float:
 def embed(review: Review):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Review", "Running", 0)
-    
+
     try:
         start_time = time.time()
         wait_if_paused()  # Wait if service is paused
@@ -99,17 +112,14 @@ def embed(review: Review):
         save_embedding(
             review.review_id,
             vector,
-            {
-                "source_id": review.source_id,
-                "type": "review"
-            },
-            document=review.text
+            {"source_id": review.source_id, "type": "review"},
+            document=review.text,
         )
-        
+
         duration = f"{time.time() - start_time:.1f}s"
         update_job(job_id, "Completed", 100, duration)
         return {"status": "success", "job_id": job_id}
-        
+
     except Exception as e:
         update_job(job_id, "Failed", 0)
         raise HTTPException(status_code=500, detail=str(e))
@@ -119,7 +129,7 @@ def embed(review: Review):
 def embed_batch(data: BatchEmbedRequest):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Review", "Running", 0)
-    
+
     embedded = []
     failed = []
     total = len(data.reviews)
@@ -134,7 +144,7 @@ def embed_batch(data: BatchEmbedRequest):
                 review.review_id,
                 vector,
                 {"source_id": data.source_id, "type": "review"},
-                document=review.text
+                document=review.text,
             )
 
             embedded.append(review.review_id)
@@ -142,11 +152,8 @@ def embed_batch(data: BatchEmbedRequest):
             update_job(job_id, "Running", progress)
 
         except Exception as e:
-            failed.append({
-                "review_id": review.review_id,
-                "error": str(e)
-            })
-    
+            failed.append({"review_id": review.review_id, "error": str(e)})
+
     duration = f"{time.time() - start_time:.1f}s"
     final_status = "Completed" if len(failed) == 0 else "Failed"
     update_job(job_id, final_status, 100, duration)
@@ -155,14 +162,15 @@ def embed_batch(data: BatchEmbedRequest):
         "embedded_count": len(embedded),
         "embedded_ids": embedded,
         "failed": failed,
-        "job_id": job_id
+        "job_id": job_id,
     }
+
 
 @app.post("/embed/rule")
 def embed_rule(rule: Rule):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Regulation", "Running", 0)
-    
+
     try:
         start_time = time.time()
         wait_if_paused()  # Wait if service is paused
@@ -171,30 +179,24 @@ def embed_rule(rule: Rule):
         save_embedding(
             rule.rule_id,
             vector,
-            {
-                "source_id": rule.source_id,
-                "type": "rule"
-            },
-            document=rule.text
+            {"source_id": rule.source_id, "type": "rule"},
+            document=rule.text,
         )
-        
+
         duration = f"{time.time() - start_time:.1f}s"
         update_job(job_id, "Completed", 100, duration)
 
-        return {
-            "status": "success",
-            "rule_id": rule.rule_id,
-            "job_id": job_id
-        }
+        return {"status": "success", "rule_id": rule.rule_id, "job_id": job_id}
     except Exception as e:
         update_job(job_id, "Failed", 0)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/embed/rule/batch")
 def embed_rule_batch(data: BatchRuleEmbedRequest):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Regulation", "Running", 0)
-    
+
     embedded = []
     failed = []
     total = len(data.rules)
@@ -208,11 +210,8 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
             save_embedding(
                 rule.rule_id,
                 vector,
-                {
-                    "source_id": data.source_id,
-                    "type": "rule"
-                },
-                document=rule.text
+                {"source_id": data.source_id, "type": "rule"},
+                document=rule.text,
             )
 
             embedded.append(rule.rule_id)
@@ -220,11 +219,8 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
             update_job(job_id, "Running", progress)
 
         except Exception as e:
-            failed.append({
-                "rule_id": rule.rule_id,
-                "error": str(e)
-            })
-    
+            failed.append({"rule_id": rule.rule_id, "error": str(e)})
+
     duration = f"{time.time() - start_time:.1f}s"
     final_status = "Completed" if len(failed) == 0 else "Failed"
     update_job(job_id, final_status, 100, duration)
@@ -233,9 +229,8 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
         "embedded_count": len(embedded),
         "embedded_ids": embedded,
         "failed": failed,
-        "job_id": job_id
+        "job_id": job_id,
     }
-
 
 
 @app.post("/search")
@@ -254,13 +249,8 @@ def search(data: SearchRequest):
     review_results = collection.query(
         query_embeddings=[vector],
         n_results=data.top_k,
-        where={
-            "$and": [
-                source_filter,
-                {"type": "review"}
-            ]
-        },
-        include=["documents", "metadatas", "distances"]
+        where={"$and": [source_filter, {"type": "review"}]},
+        include=["documents", "metadatas", "distances"],
     )
 
     reviews = [
@@ -268,7 +258,7 @@ def search(data: SearchRequest):
             "id": review_results["ids"][0][i],
             "text": review_results["documents"][0][i],
             "metadata": review_results["metadatas"][0][i],
-            "distance": dist
+            "distance": dist,
         }
         for i, dist in enumerate(review_results["distances"][0])
         if dist < threshold
@@ -278,13 +268,8 @@ def search(data: SearchRequest):
     rule_results = collection.query(
         query_embeddings=[vector],
         n_results=5,
-        where={
-            "$and": [
-                source_filter,
-                {"type": "rule"}
-            ]
-        },
-        include=["documents", "metadatas", "distances"]
+        where={"$and": [source_filter, {"type": "rule"}]},
+        include=["documents", "metadatas", "distances"],
     )
 
     rules = [
@@ -292,17 +277,17 @@ def search(data: SearchRequest):
             "id": rule_results["ids"][0][i],
             "text": rule_results["documents"][0][i],
             "metadata": rule_results["metadatas"][0][i],
-            "distance": dist
+            "distance": dist,
         }
         for i, dist in enumerate(rule_results["distances"][0])
-        if dist < (threshold + 0.2)   # rules are authoritative
+        if dist < (threshold + 0.2)  # rules are authoritative
     ]
 
     return {
         "query": data.query,
         "threshold": threshold,
         "reviews": reviews,
-        "rules": rules
+        "rules": rules,
     }
 
 
@@ -319,21 +304,20 @@ def update_thresholds(config: ThresholdConfig) -> Dict[str, Any]:
     thresholds = {
         "oneWord": config.oneWord,
         "twoWords": config.twoWords,
-        "threeOrMore": config.threeOrMore
+        "threeOrMore": config.threeOrMore,
     }
-    
+
     # Validate thresholds are within reasonable range
     for key, value in thresholds.items():
         if value < 0 or value > 2.0:
             raise HTTPException(
-                status_code=400, 
-                detail=f"Threshold {key} must be between 0 and 2.0"
+                status_code=400, detail=f"Threshold {key} must be between 0 and 2.0"
             )
-    
+
     success = save_config(thresholds)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to save configuration")
-    
+
     return {"status": "success", "thresholds": thresholds}
 
 
@@ -343,7 +327,7 @@ def reset_thresholds() -> Dict[str, Any]:
     success = save_config(DEFAULT_THRESHOLDS)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to reset configuration")
-    
+
     return {"status": "success", "thresholds": DEFAULT_THRESHOLDS}
 
 
@@ -360,7 +344,11 @@ def pause_service() -> Dict[str, Any]:
     success = set_service_paused(True)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to pause service")
-    return {"status": "success", "message": "Embedding service paused", "isPaused": True}
+    return {
+        "status": "success",
+        "message": "Embedding service paused",
+        "isPaused": True,
+    }
 
 
 @app.post("/service/resume")
@@ -369,7 +357,11 @@ def resume_service() -> Dict[str, Any]:
     success = set_service_paused(False)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to resume service")
-    return {"status": "success", "message": "Embedding service resumed", "isPaused": False}
+    return {
+        "status": "success",
+        "message": "Embedding service resumed",
+        "isPaused": False,
+    }
 
 
 @app.get("/service/status")
@@ -377,7 +369,7 @@ def get_service_status() -> Dict[str, Any]:
     """Get embedding service status"""
     return {
         "isPaused": is_service_paused(),
-        "status": "paused" if is_service_paused() else "running"
+        "status": "paused" if is_service_paused() else "running",
     }
 
 
@@ -387,14 +379,14 @@ def get_database_stats() -> Dict[str, Any]:
     try:
         # Get collection information
         count = collection.count()
-        
+
         # Get collection name (namespace)
         namespace = collection.name
-        
+
         # ChromaDB uses HNSW index by default
         # Embedding model uses specific dimensions (MiniLM uses 384)
         dimensions = 384  # Default for MiniLM
-        
+
         # Try to get a sample to determine dimensions
         if count > 0:
             try:
@@ -406,29 +398,31 @@ def get_database_stats() -> Dict[str, Any]:
                         dimensions = len(first_embedding)
             except Exception as e:
                 print(f"Could not determine dimensions from sample: {e}")
-        
+
         # Estimate storage size (rough approximation)
         # Each vector: dimensions * 4 bytes (float32) + metadata overhead
         estimated_bytes = count * (dimensions * 4 + 200)  # +200 for metadata
         storage_mb = estimated_bytes / (1024 * 1024)
         storage_gb = storage_mb / 1024
-        
+
         if storage_gb >= 1:
             storage = f"{storage_gb:.1f} GB"
         else:
             storage = f"{storage_mb:.1f} MB"
-        
+
         return {
             "totalVectors": count,
             "namespace": namespace,
             "dimensions": dimensions,
             "indexType": "HNSW",
             "storage": storage,
-            "isHealthy": True
+            "isHealthy": True,
         }
     except Exception as e:
         print(f"Error getting database stats: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get database stats: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get database stats: {str(e)}"
+        )
 
 
 @app.post("/database/reindex")
@@ -437,28 +431,30 @@ def reindex_database() -> Dict[str, Any]:
     try:
         # Get all existing documents
         all_data = collection.get(include=["documents", "metadatas"])
-        
+
         if not all_data or not all_data.get("ids"):
             return {
                 "status": "success",
                 "message": "No documents to re-index",
-                "vectorsReindexed": 0
+                "vectorsReindexed": 0,
             }
-        
+
         ids = all_data["ids"]
         documents = all_data.get("documents", [])
         metadatas = all_data.get("metadatas", [])
-        
+
         # Track progress
         job_id = f"reindex_{len(ids)}"
         add_job(job_id, "Re-index", "Running", 0)
-        
+
         # Re-generate embeddings for all documents
         total = len(ids)
         reindexed = 0
         new_embeddings = []
-        
-        for i, (doc_id, document, metadata) in enumerate(zip(ids, documents, metadatas)):
+
+        for i, (doc_id, document, metadata) in enumerate(
+            zip(ids, documents, metadatas)
+        ):
             if document:  # Only re-embed if document exists
                 try:
                     wait_if_paused()  # Wait if service is paused before each item
@@ -466,7 +462,7 @@ def reindex_database() -> Dict[str, Any]:
                     new_embedding = embed_text(document)
                     new_embeddings.append(new_embedding)
                     reindexed += 1
-                    
+
                     # Update progress every 10%
                     if i % max(1, total // 10) == 0:
                         progress = int((i / total) * 100)
@@ -474,31 +470,35 @@ def reindex_database() -> Dict[str, Any]:
                 except Exception as e:
                     print(f"Failed to re-embed document {doc_id}: {e}")
                     continue
-        
+
         # Update all embeddings in batch
         if new_embeddings:
             # Delete old entries
-            collection.delete(ids=ids[:len(new_embeddings)])
-            
+            collection.delete(ids=ids[: len(new_embeddings)])
+
             # Add with new embeddings
             collection.add(
-                ids=ids[:len(new_embeddings)],
+                ids=ids[: len(new_embeddings)],
                 embeddings=new_embeddings,
-                metadatas=metadatas[:len(new_embeddings)],
-                documents=documents[:len(new_embeddings)]
+                metadatas=metadatas[: len(new_embeddings)],
+                documents=documents[: len(new_embeddings)],
             )
-        
-        update_job(job_id, "Completed", 100, f"{reindexed / max(0.1, (total / 60)):.1f}s")
-        
+
+        update_job(
+            job_id, "Completed", 100, f"{reindexed / max(0.1, (total / 60)):.1f}s"
+        )
+
         return {
             "status": "success",
             "message": f"Re-indexed {reindexed} vectors using MiniLM model",
             "vectorsReindexed": reindexed,
-            "totalVectors": total
+            "totalVectors": total,
         }
     except Exception as e:
         print(f"Error re-indexing database: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to re-index database: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to re-index database: {str(e)}"
+        )
 
 
 @app.post("/database/clear")
@@ -507,7 +507,7 @@ def clear_database() -> Dict[str, Any]:
     try:
         # Get count before clearing
         count_before = collection.count()
-        
+
         # Delete all items from the collection
         # ChromaDB requires getting all IDs first, then deleting
         if count_before > 0:
@@ -515,19 +515,21 @@ def clear_database() -> Dict[str, Any]:
             all_items = collection.get()
             if all_items and all_items.get("ids"):
                 collection.delete(ids=all_items["ids"])
-        
+
         # Verify it's empty
         count_after = collection.count()
-        
+
         return {
             "status": "success",
             "message": f"Cleared {count_before} vectors from database",
             "vectorsRemoved": count_before,
-            "currentCount": count_after
+            "currentCount": count_after,
         }
     except Exception as e:
         print(f"Error clearing database: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to clear database: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to clear database: {str(e)}"
+        )
 
 
 @app.get("/health")
@@ -539,18 +541,18 @@ def health_check() -> Dict[str, Any]:
     try:
         # Get CPU usage
         cpu_usage = round(psutil.cpu_percent(interval=0.5), 1)
-        
+
         # Get RAM usage
         memory = psutil.virtual_memory()
         ram_usage = round(memory.percent, 1)
-        
+
         # Calculate uptime
         uptime_delta = datetime.now() - SERVICE_START_TIME
         days = uptime_delta.days
         hours, remainder = divmod(uptime_delta.seconds, 3600)
         minutes, _ = divmod(remainder, 60)
         uptime = f"{days}d {hours}h {minutes}m"
-        
+
         # Determine status based on resource usage and service state
         if is_service_paused():
             status = "Warning"
@@ -558,13 +560,13 @@ def health_check() -> Dict[str, Any]:
             status = "Warning"
         else:
             status = "Online"
-        
+
         return {
             "status": status,
             "cpu_usage": cpu_usage,
             "ram_usage": ram_usage,
             "uptime": uptime,
-            "service_paused": is_service_paused()
+            "service_paused": is_service_paused(),
         }
     except Exception as e:
         print(f"Error in health check: {e}")
@@ -574,8 +576,9 @@ def health_check() -> Dict[str, Any]:
             "ram_usage": 0.0,
             "uptime": "Unknown",
             "service_paused": False,
-            "error": str(e)
+            "error": str(e),
         }
+
 
 @app.delete("/delete/source/{source_id}")
 def delete_by_source(source_id: str) -> Dict[str, Any]:
@@ -583,14 +586,14 @@ def delete_by_source(source_id: str) -> Dict[str, Any]:
     try:
         # Get count before deleting (informative)
         # However, ChromaDB delete doesn't return count directly easily without a query
-        
+
         # Delete items matching the source_id metadata
         collection.delete(where={"source_id": source_id})
-        
+
         return {
             "status": "success",
             "message": f"Deleted all embeddings for source_id: {source_id}",
-            "source_id": source_id
+            "source_id": source_id,
         }
     except Exception as e:
         print(f"Error deleting embeddings for source {source_id}: {e}")

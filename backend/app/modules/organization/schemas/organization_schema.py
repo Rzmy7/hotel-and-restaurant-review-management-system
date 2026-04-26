@@ -33,6 +33,7 @@ class OrganizationUpdate(BaseModel):
     logo_url: Optional[str] = None
     location_url: Optional[str] = None
 
+
 class LogoUploadResponse(BaseModel):
     message: str
     logo_url: str

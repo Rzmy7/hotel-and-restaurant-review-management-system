@@ -28,7 +28,9 @@ _genai_client = None
 def _get_genai_client():
     global _genai_client
     if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
+        _genai_client = genai.Client(
+            api_key=GENAI_KEY, http_options={"api_version": "v1"}
+        )
     return _genai_client
 
 
@@ -42,7 +44,8 @@ def _get_review_stats(org_id: str) -> Dict:
     """Generic stats for any organization_id from processed_review."""
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        row = cursor.execute("""
+        row = cursor.execute(
+            """
             SELECT
                 COUNT(*) as cnt,
                 AVG(CAST(pr.rating AS FLOAT)) as avgRating,
@@ -52,7 +55,9 @@ def _get_review_stats(org_id: str) -> Dict:
             FROM dbo.processed_review pr
             JOIN dbo.source s ON s.source_id = pr.source_id
             WHERE s.organization_id = ?
-        """, org_id).fetchone()
+        """,
+            org_id,
+        ).fetchone()
     cnt = row.cnt or 0
     return {
         "reviewCount": cnt,
@@ -72,9 +77,15 @@ def get_my_hotel_stats(my_org_id: str) -> Dict:
 def get_competitor_stats(competitor_id: str) -> Dict:
     competitor = get_competitor_by_id(competitor_id)
     if not competitor or not competitor.get("organization_id"):
-        return {"reviewCount": 0, "avgRating": 0, "positiveCount": 0,
-                "negativeCount": 0, "neutralCount": 0,
-                "positivePercent": 0, "negativePercent": 0}
+        return {
+            "reviewCount": 0,
+            "avgRating": 0,
+            "positiveCount": 0,
+            "negativeCount": 0,
+            "neutralCount": 0,
+            "positivePercent": 0,
+            "negativePercent": 0,
+        }
     return _get_review_stats(competitor["organization_id"])
 
 
@@ -83,26 +94,36 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         # First try the relational ReviewCategory table (populated by new pipeline)
-        rows = cursor.execute("""
+        rows = cursor.execute(
+            """
             SELECT rc.category_name, AVG(CAST(r.rating AS FLOAT)) as avgScore
             FROM dbo.processed_review r
             JOIN dbo.source s ON s.source_id = r.source_id
             JOIN dbo.ReviewCategory rc ON r.id = rc.review_id
             WHERE s.organization_id = ?
             GROUP BY rc.category_name
-        """, org_id).fetchall()
+        """,
+            org_id,
+        ).fetchall()
 
         if rows:
-            return {r.category_name: round(r.avgScore or 0, 2) for r in rows if r.category_name}
+            return {
+                r.category_name: round(r.avgScore or 0, 2)
+                for r in rows
+                if r.category_name
+            }
 
         # Fallback: parse JSON categories column (for existing data)
-        rows = cursor.execute("""
+        rows = cursor.execute(
+            """
             SELECT r.rating, r.categories
             FROM dbo.processed_review r
             JOIN dbo.source s ON s.source_id = r.source_id
             WHERE s.organization_id = ?
               AND r.categories IS NOT NULL
-        """, org_id).fetchall()
+        """,
+            org_id,
+        ).fetchall()
 
     totals: Dict[str, List[float]] = {}
     for r in rows:
@@ -122,7 +143,8 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
 def get_monthly_ratings(org_id: str) -> List[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        rows = cursor.execute("""
+        rows = cursor.execute(
+            """
             SELECT
                 FORMAT(pr.reviewDate, 'yyyy-MM') as month,
                 AVG(CAST(pr.rating AS FLOAT)) as avgRating,
@@ -133,8 +155,13 @@ def get_monthly_ratings(org_id: str) -> List[Dict]:
               AND s.organization_id = ?
             GROUP BY FORMAT(pr.reviewDate, 'yyyy-MM')
             ORDER BY month
-        """, org_id).fetchall()
-    return [{"month": r.month, "avgRating": round(r.avgRating, 2), "count": r.cnt} for r in rows]
+        """,
+            org_id,
+        ).fetchall()
+    return [
+        {"month": r.month, "avgRating": round(r.avgRating, 2), "count": r.cnt}
+        for r in rows
+    ]
 
 
 def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
@@ -163,7 +190,9 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
     my_trend = get_monthly_ratings(my_org_id)
     comp_trend = get_monthly_ratings(comp_org_id)
 
-    trend_months = sorted(set([t["month"] for t in my_trend] + [t["month"] for t in comp_trend]))
+    trend_months = sorted(
+        set([t["month"] for t in my_trend] + [t["month"] for t in comp_trend])
+    )
     my_trend_map = {t["month"]: t["avgRating"] for t in my_trend}
     comp_trend_map = {t["month"]: t["avgRating"] for t in comp_trend}
 
@@ -186,7 +215,8 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         row = cursor.execute(
-            "SELECT organization_name FROM dbo.organization WHERE organization_id = ?", my_org_id
+            "SELECT organization_name FROM dbo.organization WHERE organization_id = ?",
+            my_org_id,
         ).fetchone()
     my_org_name = row.organization_name if row else "My Organization"
 
@@ -194,21 +224,49 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
         "competitor": competitor,
         "myOrganizationName": my_org_name,
         "kpis": {
-            "avgRating": {"myHotel": my_stats["avgRating"], "competitor": comp_stats["avgRating"],
-                          "gap": round(my_stats["avgRating"] - comp_stats["avgRating"], 2)},
-            "reviewCount": {"myHotel": my_stats["reviewCount"], "competitor": comp_stats["reviewCount"],
-                            "gap": my_stats["reviewCount"] - comp_stats["reviewCount"]},
-            "positivePercent": {"myHotel": my_stats["positivePercent"], "competitor": comp_stats["positivePercent"],
-                                "gap": round(my_stats["positivePercent"] - comp_stats["positivePercent"], 1)},
-            "negativePercent": {"myHotel": my_stats["negativePercent"], "competitor": comp_stats["negativePercent"],
-                                "gap": round(my_stats["negativePercent"] - comp_stats["negativePercent"], 1)},
+            "avgRating": {
+                "myHotel": my_stats["avgRating"],
+                "competitor": comp_stats["avgRating"],
+                "gap": round(my_stats["avgRating"] - comp_stats["avgRating"], 2),
+            },
+            "reviewCount": {
+                "myHotel": my_stats["reviewCount"],
+                "competitor": comp_stats["reviewCount"],
+                "gap": my_stats["reviewCount"] - comp_stats["reviewCount"],
+            },
+            "positivePercent": {
+                "myHotel": my_stats["positivePercent"],
+                "competitor": comp_stats["positivePercent"],
+                "gap": round(
+                    my_stats["positivePercent"] - comp_stats["positivePercent"], 1
+                ),
+            },
+            "negativePercent": {
+                "myHotel": my_stats["negativePercent"],
+                "competitor": comp_stats["negativePercent"],
+                "gap": round(
+                    my_stats["negativePercent"] - comp_stats["negativePercent"], 1
+                ),
+            },
         },
         "aspectData": aspect_data,
         "trendData": trend_data,
         "sentimentData": [
-            {"name": "Positive", "myHotel": my_stats["positiveCount"], "competitor": comp_stats["positiveCount"]},
-            {"name": "Neutral", "myHotel": my_stats["neutralCount"], "competitor": comp_stats["neutralCount"]},
-            {"name": "Negative", "myHotel": my_stats["negativeCount"], "competitor": comp_stats["negativeCount"]},
+            {
+                "name": "Positive",
+                "myHotel": my_stats["positiveCount"],
+                "competitor": comp_stats["positiveCount"],
+            },
+            {
+                "name": "Neutral",
+                "myHotel": my_stats["neutralCount"],
+                "competitor": comp_stats["neutralCount"],
+            },
+            {
+                "name": "Negative",
+                "myHotel": my_stats["negativeCount"],
+                "competitor": comp_stats["negativeCount"],
+            },
         ],
     }
 
@@ -222,31 +280,40 @@ def get_rankings_data(my_org_id: str) -> Dict:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         row = cursor.execute(
-            "SELECT organization_name FROM dbo.organization WHERE organization_id = ?", my_org_id
+            "SELECT organization_name FROM dbo.organization WHERE organization_id = ?",
+            my_org_id,
         ).fetchone()
     my_name = row.organization_name if row else "My Hotel"
 
-    entries = [{
-        "name": my_name,
-        "isYou": True,
-        "rating": my_stats["avgRating"],
-        "sentiment": my_stats["positivePercent"],
-        "reviews": my_stats["reviewCount"],
-    }]
+    entries = [
+        {
+            "name": my_name,
+            "isYou": True,
+            "rating": my_stats["avgRating"],
+            "sentiment": my_stats["positivePercent"],
+            "reviews": my_stats["reviewCount"],
+        }
+    ]
 
     for c in tracked:
         if c.get("organization_id"):
             stats = _get_review_stats(c["organization_id"])
         else:
-            stats = {"avgRating": c["avgRating"], "positivePercent": c["sentimentScore"], "reviewCount": c["reviewCount"]}
+            stats = {
+                "avgRating": c["avgRating"],
+                "positivePercent": c["sentimentScore"],
+                "reviewCount": c["reviewCount"],
+            }
 
-        entries.append({
-            "name": c["name"],
-            "isYou": False,
-            "rating": stats["avgRating"],
-            "sentiment": stats["positivePercent"],
-            "reviews": stats["reviewCount"],
-        })
+        entries.append(
+            {
+                "name": c["name"],
+                "isYou": False,
+                "rating": stats["avgRating"],
+                "sentiment": stats["positivePercent"],
+                "reviews": stats["reviewCount"],
+            }
+        )
 
     entries.sort(key=lambda x: x["rating"], reverse=True)
     for i, entry in enumerate(entries):
@@ -273,17 +340,28 @@ def get_ai_comparison_insights(competitor_id: str, my_org_id: str) -> Dict:
 
     prompt = COMPARISON_INSIGHT_PROMPT.format(
         competitor_name=competitor["name"],
-        my_rating=my_stats["avgRating"], my_reviews=my_stats["reviewCount"],
-        my_positive=my_stats["positivePercent"], my_negative=my_stats["negativePercent"],
-        comp_rating=comp_stats["avgRating"], comp_reviews=comp_stats["reviewCount"],
-        comp_positive=comp_stats["positivePercent"], comp_negative=comp_stats["negativePercent"],
-        my_categories=json.dumps(my_cats), comp_categories=json.dumps(comp_cats),
+        my_rating=my_stats["avgRating"],
+        my_reviews=my_stats["reviewCount"],
+        my_positive=my_stats["positivePercent"],
+        my_negative=my_stats["negativePercent"],
+        comp_rating=comp_stats["avgRating"],
+        comp_reviews=comp_stats["reviewCount"],
+        comp_positive=comp_stats["positivePercent"],
+        comp_negative=comp_stats["negativePercent"],
+        my_categories=json.dumps(my_cats),
+        comp_categories=json.dumps(comp_cats),
     )
 
     try:
-        response = _get_genai_client().models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
+        response = _get_genai_client().models.generate_content(
+            model="gemini-2.5-flash-lite", contents=prompt
+        )
         return json.loads(_strip_markdown_fences(response.text))
     except Exception as e:
         print(f"AI Insights Error: {e}")
-        return {"strengths": ["Unable to generate insights at this time."],
-                "weaknesses": [], "recommendations": [], "tags": []}
+        return {
+            "strengths": ["Unable to generate insights at this time."],
+            "weaknesses": [],
+            "recommendations": [],
+            "tags": [],
+        }

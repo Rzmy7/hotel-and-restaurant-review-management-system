@@ -6,7 +6,10 @@ from core.models import Review
 
 logger = setup_logger("core_utils")
 
-def identify_new_reviews(session, source_id: str, scraped_reviews: list) -> tuple[int, list[str]]:
+
+def identify_new_reviews(
+    session, source_id: str, scraped_reviews: list
+) -> tuple[int, list[str]]:
     """
     Compares scraped reviews with existing database records for a given source.
     Returns:
@@ -18,7 +21,8 @@ def identify_new_reviews(session, source_id: str, scraped_reviews: list) -> tupl
     # Get all existing platform_review_ids for this source
     # We use a set for O(1) lookups
     existing_ids = {
-        r[0] for r in session.query(Review.platform_review_id)
+        r[0]
+        for r in session.query(Review.platform_review_id)
         .filter(Review.source_id == source_id)
         .filter(Review.platform_review_id.isnot(None))
         .all()
@@ -28,9 +32,9 @@ def identify_new_reviews(session, source_id: str, scraped_reviews: list) -> tupl
     for r in scraped_reviews:
         # Extract ID based on object type (dict for TripAdvisor, objects for others)
         if isinstance(r, dict):
-            r_id = r.get('id') or r.get('external_review_id')
+            r_id = r.get("id") or r.get("external_review_id")
         else:
-            r_id = getattr(r, 'id', None) or getattr(r, 'external_review_id', None)
+            r_id = getattr(r, "id", None) or getattr(r, "external_review_id", None)
 
         if r_id and str(r_id) not in existing_ids:
             new_review_ids.append(str(r_id))
@@ -38,7 +42,9 @@ def identify_new_reviews(session, source_id: str, scraped_reviews: list) -> tupl
     return len(new_review_ids), new_review_ids
 
 
-def notify_backend_sync_status(source_id: str, status: str, new_review_count: int = 0, error_message: str = None):
+def notify_backend_sync_status(
+    source_id: str, status: str, new_review_count: int = 0, error_message: str = None
+):
     """
     Notifies the backend about the current status of a sync task.
     Statuses: QUEUED, RUNNING, COMPLETED, FAILED
@@ -50,38 +56,50 @@ def notify_backend_sync_status(source_id: str, status: str, new_review_count: in
     try:
         # User changed endpoint from sync-complete to sync-status
         url = f"{config.backend_url}/api/source/tasks/{source_id}/sync-status"
-        logger.info(f"Notifying backend of sync status '{status}' for source {source_id} at {url}")
+        logger.info(
+            f"Notifying backend of sync status '{status}' for source {source_id} at {url}"
+        )
 
         payload = {
             "status": status,
             "new_review_count": new_review_count,
-            "error_message": error_message
+            "error_message": error_message,
         }
         headers = {"X-Internal-API-Key": config.internal_api_key}
         response = httpx.post(url, json=payload, headers=headers, timeout=10)
         response.raise_for_status()
-        logger.info(f"Backend notified successfully for source {source_id} status {status}.")
+        logger.info(
+            f"Backend notified successfully for source {source_id} status {status}."
+        )
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            logger.warning(f"Backend returned 404 for source {source_id}. This source likely no longer exists in the backend. Cleaning up local record...")
+            logger.warning(
+                f"Backend returned 404 for source {source_id}. This source likely no longer exists in the backend. Cleaning up local record..."
+            )
             try:
                 from core.database import get_session
                 from core.models import Source
+
                 session = get_session()
                 source = session.query(Source).filter_by(source_id=source_id).first()
                 if source:
                     session.delete(source)
                     session.commit()
-                    logger.info(f"Successfully deleted orphan source {source_id} from local database.")
+                    logger.info(
+                        f"Successfully deleted orphan source {source_id} from local database."
+                    )
                 session.close()
             except Exception as delete_err:
-                logger.error(f"Failed to delete orphan source {source_id}: {delete_err}")
+                logger.error(
+                    f"Failed to delete orphan source {source_id}: {delete_err}"
+                )
         else:
             logger.error(f"HTTP error notifying backend: {e}")
     except httpx.HTTPError as e:
         logger.error(f"HTTP error notifying backend: {e}")
     except Exception as e:
         logger.error(f"Unexpected error notifying backend: {e}")
+
 
 def normalize_url(url: str) -> str:
     """
@@ -90,18 +108,20 @@ def normalize_url(url: str) -> str:
     """
     if not url:
         return ""
-    
+
     parsed = urlparse(url)
     # Reconstruct without query and fragment
-    normalized = urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path,
-        '',  # params (rarely used in modern URLs, separate from query)
-        '',  # query
-        ''   # fragment
-    ))
-    
+    normalized = urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            "",  # params (rarely used in modern URLs, separate from query)
+            "",  # query
+            "",  # fragment
+        )
+    )
+
     # Ensure trailing slash consistency (optional, but good for deduplication)
     # For now, we'll keep it exactly as path provides.
     return normalized

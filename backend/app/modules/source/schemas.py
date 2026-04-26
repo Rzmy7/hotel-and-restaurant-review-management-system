@@ -4,10 +4,12 @@ from pydantic import BaseModel, HttpUrl, field_validator
 from datetime import datetime
 import uuid
 
+
 class SourceType(str, enum.Enum):
     API = "API"
     SCRAPING = "SCRAPING"
     BOTH = "BOTH"
+
 
 class SourceStatus(str, enum.Enum):
     ACTIVE = "active"
@@ -17,9 +19,11 @@ class SourceStatus(str, enum.Enum):
     RUNNING = "running"
     VERIFY_DUPLICATION = "verify duplication"
 
+
 class PlatformStatus(str, enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
+
 
 # --- Sync Frequency Schemas ---
 class SyncFrequencyRead(BaseModel):
@@ -30,6 +34,7 @@ class SyncFrequencyRead(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 # --- Platform Schemas ---
 class PlatformRead(BaseModel):
@@ -46,12 +51,13 @@ class PlatformRead(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator('platform_status', mode='before')
+    @field_validator("platform_status", mode="before")
     @classmethod
     def lowercase_status(cls, v):
         if isinstance(v, str):
             return v.lower()
         return v
+
 
 # --- Source Schemas ---
 class SourceCreate(BaseModel):
@@ -61,10 +67,12 @@ class SourceCreate(BaseModel):
     source_status: SourceStatus = SourceStatus.ACTIVE
     fetching_frequency: int = 1
 
+
 class SourceUpdate(BaseModel):
     source_url: Optional[str] = None
     source_status: Optional[SourceStatus] = None
     fetching_frequency: Optional[int] = None
+
 
 class SourceRead(BaseModel):
     source_id: uuid.UUID
@@ -87,12 +95,13 @@ class SourceRead(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator('source_status', mode='before')
+    @field_validator("source_status", mode="before")
     @classmethod
     def lowercase_status(cls, v):
         if isinstance(v, str):
             return v.lower()
         return v
+
 
 # --- Stats and Bulk Responses ---
 class SourceStats(BaseModel):
@@ -101,11 +110,13 @@ class SourceStats(BaseModel):
     paused_sources: int
     sync_error_count: int
 
+
 class OrganizationSourceDetails(BaseModel):
     organization_id: uuid.UUID
     organization_name: str
     sources: List[SourceRead]
     stats: SourceStats
+
 
 class OrganizationRead(BaseModel):
     organization_id: uuid.UUID
@@ -115,6 +126,7 @@ class OrganizationRead(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 # --- Sync Log Schemas ---
 class SyncLogRead(BaseModel):
@@ -133,9 +145,11 @@ class SyncLogRead(BaseModel):
     class Config:
         from_attributes = True
 
+
 class SyncLogBulk(BaseModel):
     logs: List[SyncLogRead]
     total: int
+
 
 class SyncStatus(str, enum.Enum):
     QUEUED = "QUEUED"
@@ -144,9 +158,8 @@ class SyncStatus(str, enum.Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
+
 class SyncStatusRequest(BaseModel):
     status: SyncStatus
     new_review_count: int = 0
     error_message: Optional[str] = None
-
-

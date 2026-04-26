@@ -24,11 +24,10 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         return result
     return {"message": "Login successful", **result}
 
+
 @router.post("/login/2fa")
-def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
-    result = verify_login_2fa(
-        db=db,
-        email=payload.email.lower(),
-        code=payload.code
-    )
+def verify_login_two_factor(
+    payload: LoginTwoFactorModel, db: Session = Depends(get_db)
+):
+    result = verify_login_2fa(db=db, email=payload.email.lower(), code=payload.code)
     return {"message": "Login successful", **result}

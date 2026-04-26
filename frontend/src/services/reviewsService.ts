@@ -11,7 +11,6 @@ import type {
 import { PAGINATION, UI_DEFAULTS } from "../config/constants";
 import { apiClient } from "../api/client";
 
-
 class ReviewsService {
   /**
    * Fetch paged and filtered reviews from the server.
@@ -47,7 +46,8 @@ class ReviewsService {
     return {
       id: item.id,
       rating: typeof item.rating === "number" ? item.rating : 0,
-      userName: item.userName || item.reviewerName || UI_DEFAULTS.ANONYMOUS_USER,
+      userName:
+        item.userName || item.reviewerName || UI_DEFAULTS.ANONYMOUS_USER,
       reviewText: item.reviewText || item.text || "",
       heading: item.heading || "",
       sentiment: item.sentiment || "Neutral",

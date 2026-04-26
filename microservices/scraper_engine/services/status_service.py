@@ -1,9 +1,9 @@
-
 from core.database import get_session
 from core.models import Source
 from core.utils import notify_backend_sync_status, setup_logger
 
 logger = setup_logger("status_service")
+
 
 class StatusService:
     """
@@ -31,7 +31,9 @@ class StatusService:
         try:
             sources = session.query(Source).filter_by(source_url=url).all()
             for source in sources:
-                notify_backend_sync_status(source.source_id, "COMPLETED", new_review_count)
+                notify_backend_sync_status(
+                    source.source_id, "COMPLETED", new_review_count
+                )
         except Exception as e:
             logger.error(f"Error broadcasting COMPLETED status for {url}: {e}")
         finally:
@@ -44,13 +46,20 @@ class StatusService:
         try:
             sources = session.query(Source).filter_by(source_url=url).all()
             for source in sources:
-                notify_backend_sync_status(source.source_id, "FAILED", error_message=error_message)
+                notify_backend_sync_status(
+                    source.source_id, "FAILED", error_message=error_message
+                )
         except Exception as e:
             logger.error(f"Error broadcasting FAILED status for {url}: {e}")
         finally:
             session.close()
 
     @staticmethod
-    def notify_single(source_id: str, status: str, new_review_count: int = 0, error_message: str = None):
+    def notify_single(
+        source_id: str,
+        status: str,
+        new_review_count: int = 0,
+        error_message: str = None,
+    ):
         """Helper for single-source status updates (e.g. when attaching)."""
         notify_backend_sync_status(source_id, status, new_review_count, error_message)

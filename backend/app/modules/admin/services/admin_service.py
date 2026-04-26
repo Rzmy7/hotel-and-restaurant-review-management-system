@@ -137,7 +137,9 @@ def _flags_for_role_plan(
     return TENANT_ROLE_ID, current_is_email_verified, current_is_phone_verified
 
 
-def _frontend_user_from_db_row(row, fallback_index: int, plan_name: str | None = None) -> AdminUser:
+def _frontend_user_from_db_row(
+    row, fallback_index: int, plan_name: str | None = None
+) -> AdminUser:
     user_id = str(row[0]) if row[0] is not None else str(fallback_index)
     email = str(row[1] or "").strip()
     full_name = str(row[2]).strip() if row[2] else None
@@ -148,7 +150,11 @@ def _frontend_user_from_db_row(row, fallback_index: int, plan_name: str | None =
     role_id = row[6] if row[6] is not None else None
 
     role = _role_from_user_flags(role_id)
-    inferred_plan = _plan_from_user_flags(is_email_verified, is_phone_verified) if role == "User" else None
+    inferred_plan = (
+        _plan_from_user_flags(is_email_verified, is_phone_verified)
+        if role == "User"
+        else None
+    )
     plan = plan_name if (role == "User" and plan_name) else inferred_plan
 
     return AdminUser(
@@ -163,18 +169,26 @@ def _frontend_user_from_db_row(row, fallback_index: int, plan_name: str | None =
     )
 
 
-
-
-def _build_users_select(columns: set[str], where_clause: str = "", order_clause: str = "") -> str:
+def _build_users_select(
+    columns: set[str], where_clause: str = "", order_clause: str = ""
+) -> str:
     if "first_name" in columns and "last_name" in columns:
-        name_expr = "LTRIM(RTRIM(COALESCE(first_name, '') + ' ' + COALESCE(last_name, '')))"
+        name_expr = (
+            "LTRIM(RTRIM(COALESCE(first_name, '') + ' ' + COALESCE(last_name, '')))"
+        )
     else:
-        name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
+        name_column = pick_existing_column(
+            columns, ["full_name", "name", "username", "display_name"]
+        )
         name_expr = f"[{name_column}]" if name_column else "NULL"
 
     is_active_expr = "is_active" if "is_active" in columns else "CAST(0 AS bit)"
-    is_email_verified_expr = "is_email_verified" if "is_email_verified" in columns else "CAST(0 AS bit)"
-    is_phone_verified_expr = "is_phone_verified" if "is_phone_verified" in columns else "CAST(0 AS bit)"
+    is_email_verified_expr = (
+        "is_email_verified" if "is_email_verified" in columns else "CAST(0 AS bit)"
+    )
+    is_phone_verified_expr = (
+        "is_phone_verified" if "is_phone_verified" in columns else "CAST(0 AS bit)"
+    )
     role_id_expr = "role_id" if "role_id" in columns else "NULL"
 
     return (
@@ -269,7 +283,9 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
         organizations: list[OrganizationSummary] = []
         for index, row in enumerate(rows, start=1):
             organization_id = str(row[0]) if row[0] is not None else str(index)
-            organization_name = str(row[1]).strip() if row[1] else f"Organization {organization_id}"
+            organization_name = (
+                str(row[1]).strip() if row[1] else f"Organization {organization_id}"
+            )
 
             # All organizations are active now
             status = "Active"
@@ -279,7 +295,7 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                     id=organization_id,
                     name=organization_name,
                     owner=owner_emails.get(organization_id, ""),
-                    usersCount=0, # This can be populated via a separate count if needed
+                    usersCount=0,  # This can be populated via a separate count if needed
                 )
             )
 
@@ -332,7 +348,9 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
         else:
             order_clause = "ORDER BY user_id DESC"
 
-        rows = execute_query(cursor, _build_users_select(columns, order_clause=order_clause)).fetchall()
+        rows = execute_query(
+            cursor, _build_users_select(columns, order_clause=order_clause)
+        ).fetchall()
         return [
             _frontend_user_from_db_row(
                 row,
@@ -407,12 +425,17 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
 # ── Create user ─────────────────────────────────────────────────────
 
 
-def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: AdminUserCreatePayload) -> AdminUser:
+def create_user_in_db(
+    cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: AdminUserCreatePayload
+) -> AdminUser:
     if not table_exists(cursor, "user"):
         raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
     if payload.role != "Admin":
-        raise HTTPException(status_code=400, detail="Only admin accounts can be created from this panel.")
+        raise HTTPException(
+            status_code=400,
+            detail="Only admin accounts can be created from this panel.",
+        )
 
     if not payload.password or not payload.password.strip():
         raise HTTPException(status_code=400, detail="Password is required.")
@@ -425,7 +448,10 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
         raise HTTPException(status_code=400, detail="Email is required.")
 
     if "user_id" not in columns or "email" not in columns:
-        raise HTTPException(status_code=400, detail="Table dbo.[user] must include user_id and email columns.")
+        raise HTTPException(
+            status_code=400,
+            detail="Table dbo.[user] must include user_id and email columns.",
+        )
 
     role_id, is_email_verified, is_phone_verified = _flags_for_role_plan(
         payload.role,
@@ -444,7 +470,10 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
         insert_fields.append("password_hash")
         insert_values.append(hash_password(payload.password))
     else:
-        raise HTTPException(status_code=400, detail="Table dbo.users must include password_hash to create admin accounts.")
+        raise HTTPException(
+            status_code=400,
+            detail="Table dbo.users must include password_hash to create admin accounts.",
+        )
 
     # Handle name storage: prefer first_name/last_name split, fall back to single column
     if "first_name" in columns and "last_name" in columns:
@@ -454,7 +483,9 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
         insert_fields.append("last_name")
         insert_values.append(name_parts[1] if len(name_parts) > 1 else None)
     else:
-        name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
+        name_column = pick_existing_column(
+            columns, ["full_name", "name", "username", "display_name"]
+        )
         if name_column:
             insert_fields.append(name_column)
             insert_values.append(name or None)
@@ -498,7 +529,9 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
 
     row = _get_user_row_by_id(cursor, user_id, columns)
     if row is None:
-        raise HTTPException(status_code=500, detail="User was created but could not be loaded.")
+        raise HTTPException(
+            status_code=500, detail="User was created but could not be loaded."
+        )
 
     if payload.role == "User" and payload.plan:
         set_user_subscription_plan(cursor, user_id, payload.plan)
@@ -514,7 +547,12 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
 # ── Update user ─────────────────────────────────────────────────────
 
 
-def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: str, payload: AdminUserUpdatePayload) -> AdminUser:
+def update_user_in_db(
+    cursor: pyodbc.Cursor,
+    conn: pyodbc.Connection,
+    user_id: str,
+    payload: AdminUserUpdatePayload,
+) -> AdminUser:
     if not table_exists(cursor, "user"):
         raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 
@@ -527,8 +565,12 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
     current_email = str(existing_row[1] or "").strip()
     current_name = str(existing_row[2]).strip() if existing_row[2] else None
     current_is_active = bool(existing_row[3]) if existing_row[3] is not None else False
-    current_is_email_verified = bool(existing_row[4]) if existing_row[4] is not None else False
-    current_is_phone_verified = bool(existing_row[5]) if existing_row[5] is not None else False
+    current_is_email_verified = (
+        bool(existing_row[4]) if existing_row[4] is not None else False
+    )
+    current_is_phone_verified = (
+        bool(existing_row[5]) if existing_row[5] is not None else False
+    )
     current_role_id = existing_row[6] if existing_row[6] is not None else TENANT_ROLE_ID
 
     current_role = _role_from_user_flags(current_role_id)
@@ -576,7 +618,9 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
             set_clauses.append("last_name = ?")
             params.append(None)
     else:
-        name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
+        name_column = pick_existing_column(
+            columns, ["full_name", "name", "username", "display_name"]
+        )
         if name_column:
             set_clauses.append(f"[{name_column}] = ?")
             params.append(next_name)
@@ -601,7 +645,9 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
         set_clauses.append("updated_at = SYSUTCDATETIME()")
 
     if not set_clauses:
-        raise HTTPException(status_code=400, detail="Table dbo.[user] has no updatable admin columns.")
+        raise HTTPException(
+            status_code=400, detail="Table dbo.[user] has no updatable admin columns."
+        )
 
     params.append(user_id)
 
@@ -616,6 +662,7 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
         # ── Notify user about admin-initiated plan change ──
         try:
             from app.services.notification_helpers import notify_plan_changed_by_admin
+
             notify_plan_changed_by_admin(user_id, payload.plan)
         except Exception:
             pass  # Best-effort
@@ -623,7 +670,9 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
     updated_row = _get_user_row_by_id(cursor, user_id, columns)
     if updated_row is None:
-        raise HTTPException(status_code=500, detail="User was updated but could not be loaded.")
+        raise HTTPException(
+            status_code=500, detail="User was updated but could not be loaded."
+        )
 
     user_plan_map = get_user_plan_map(cursor)
     plan_name = user_plan_map.get(user_id)
@@ -634,7 +683,9 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 # ── Delete user ─────────────────────────────────────────────────────
 
 
-def delete_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: str) -> DeleteUserResponse:
+def delete_user_in_db(
+    cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: str
+) -> DeleteUserResponse:
     if not table_exists(cursor, "user"):
         raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
 

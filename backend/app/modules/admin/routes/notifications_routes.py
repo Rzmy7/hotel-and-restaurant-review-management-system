@@ -99,7 +99,9 @@ def get_admin_unread_count(userId: str | None = Query(None)) -> dict:
 
 
 @router.post("/{notification_id}/read")
-def mark_notification_read(notification_id: str, userId: str | None = Query(None)) -> dict:
+def mark_notification_read(
+    notification_id: str, userId: str | None = Query(None)
+) -> dict:
     try:
         parsed_notification_id = str(uuid.UUID(notification_id))
     except ValueError:
@@ -210,7 +212,9 @@ def delete_all_read_notifications(userId: str | None = Query(None)) -> dict:
         }
     except Exception as exc:
         connection.rollback()
-        raise HTTPException(status_code=500, detail=f"Error deleting notifications: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Error deleting notifications: {exc}"
+        )
     finally:
         connection.close()
 
@@ -262,6 +266,8 @@ def delete_notification(notification_id: str, userId: str | None = Query(None)) 
         raise
     except Exception as exc:
         connection.rollback()
-        raise HTTPException(status_code=500, detail=f"Error deleting notification: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Error deleting notification: {exc}"
+        )
     finally:
         connection.close()

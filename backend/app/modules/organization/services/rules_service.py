@@ -38,6 +38,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 # ── File Parsing ────────────────────────────────────────────────────
 
+
 def _extract_text_from_txt(file_bytes: bytes) -> str:
     return file_bytes.decode("utf-8", errors="replace")
 
@@ -86,6 +87,7 @@ def _parse_uploaded_file(file_bytes: bytes, filename: str) -> str:
 
 # ── Gemini Rule Extraction ──────────────────────────────────────────
 
+
 def _get_reply_api_key() -> str:
     """Resolve the Gemini API key using the same source as reply generation."""
     with pyodbc.connect(get_connection_string()) as conn:
@@ -132,7 +134,9 @@ def _extract_rules_with_gemini(document_text: str) -> list[str]:
     last_error: Exception | None = None
     for api_version in ("v1", "v1beta"):
         try:
-            client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
+            client = genai.Client(
+                api_key=api_key, http_options={"api_version": api_version}
+            )
             response = client.models.generate_content(
                 model="gemini-2.5-flash-lite",
                 contents=prompt,
@@ -144,7 +148,9 @@ def _extract_rules_with_gemini(document_text: str) -> list[str]:
 
             rules = json.loads(raw_text)
             if not isinstance(rules, list):
-                raise ValueError("Gemini returned non-list output for rules extraction.")
+                raise ValueError(
+                    "Gemini returned non-list output for rules extraction."
+                )
 
             # Ensure all items are strings and non-empty
             cleaned = [str(r).strip() for r in rules if str(r).strip()]
@@ -160,6 +166,7 @@ def _extract_rules_with_gemini(document_text: str) -> list[str]:
 
 # ── Database Operations ─────────────────────────────────────────────
 
+
 def _delete_existing_rules(db: Session, organization_id: str) -> int:
     """Delete all existing rules for an organization. Returns count deleted."""
     result = db.execute(
@@ -169,7 +176,9 @@ def _delete_existing_rules(db: Session, organization_id: str) -> int:
     return result.rowcount
 
 
-def _insert_rules(db: Session, organization_id: str, rules: list[str], filename: str) -> list[dict[str, Any]]:
+def _insert_rules(
+    db: Session, organization_id: str, rules: list[str], filename: str
+) -> list[dict[str, Any]]:
     """Insert extracted rules into the database. Returns list of inserted rule records."""
     inserted = []
     for idx, rule_text in enumerate(rules):
@@ -188,11 +197,13 @@ def _insert_rules(db: Session, organization_id: str, rules: list[str], filename:
                 "filename": filename,
             },
         )
-        inserted.append({
-            "rule_id": str(rule_id),
-            "rule_text": rule_text,
-            "rule_order": idx + 1,
-        })
+        inserted.append(
+            {
+                "rule_id": str(rule_id),
+                "rule_text": rule_text,
+                "rule_order": idx + 1,
+            }
+        )
     return inserted
 
 
@@ -207,17 +218,17 @@ def _get_source_id_for_org(db: Session, organization_id: str) -> str | None:
 
 # ── Embedding Dispatch ──────────────────────────────────────────────
 
-def _send_rules_to_embedding(rules: list[dict[str, Any]], source_id: str) -> dict[str, Any]:
+
+def _send_rules_to_embedding(
+    rules: list[dict[str, Any]], source_id: str
+) -> dict[str, Any]:
     """Send extracted rules to the embedding service for vectorization."""
     if not rules or not source_id:
         return {"embedded_count": 0, "skipped": True}
 
     payload = {
         "source_id": source_id,
-        "rules": [
-            {"rule_id": r["rule_id"], "text": r["rule_text"]}
-            for r in rules
-        ],
+        "rules": [{"rule_id": r["rule_id"], "text": r["rule_text"]} for r in rules],
     }
 
     try:
@@ -239,12 +250,15 @@ def _mark_rules_as_embedded(db: Session, rule_ids: list[str]) -> None:
         return
     for rule_id in rule_ids:
         db.execute(
-            text("UPDATE dbo.organization_rule SET is_embedded = 1 WHERE rule_id = :rule_id"),
+            text(
+                "UPDATE dbo.organization_rule SET is_embedded = 1 WHERE rule_id = :rule_id"
+            ),
             {"rule_id": rule_id},
         )
 
 
 # ── Main Service Function ──────────────────────────────────────────
+
 
 async def process_rules_upload(
     db: Session,
@@ -263,7 +277,9 @@ async def process_rules_upload(
 
     file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
-        raise ValueError(f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
+        raise ValueError(
+            f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB."
+        )
 
     if len(file_bytes) == 0:
         raise ValueError("Uploaded file is empty.")
@@ -304,7 +320,10 @@ async def process_rules_upload(
         "rules_extracted": len(rules),
         "rules_deleted": deleted_count,
         "embedding_result": embed_result,
-        "rules": [{"rule_id": r["rule_id"], "text": r["rule_text"], "order": r["rule_order"]} for r in inserted_rules],
+        "rules": [
+            {"rule_id": r["rule_id"], "text": r["rule_text"], "order": r["rule_order"]}
+            for r in inserted_rules
+        ],
     }
 
 

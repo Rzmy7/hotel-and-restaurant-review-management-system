@@ -27,6 +27,7 @@ router = APIRouter(prefix="/groups", tags=["Groups"])
 
 # ── helpers ──────────────────────────────────────────────────────────
 
+
 def _get_current_org_id(current_user: dict, db: Session) -> str:
     """
     Get the organization_id for the current request context.
@@ -40,7 +41,7 @@ def _get_current_org_id(current_user: dict, db: Session) -> str:
     if not resolved:
         raise HTTPException(
             status_code=400,
-            detail="No organization found for your account. Please create or select an organization first."
+            detail="No organization found for your account. Please create or select an organization first.",
         )
     return resolved
 
@@ -48,14 +49,18 @@ def _get_current_org_id(current_user: dict, db: Session) -> str:
 def _require_owner(group_id: str, organization_id: str, db: Session):
     role = repo.get_org_group_role(db, group_id, organization_id)
     if role != "GROUP_OWNER":
-        raise HTTPException(status_code=403, detail="Only the group owner can perform this action.")
+        raise HTTPException(
+            status_code=403, detail="Only the group owner can perform this action."
+        )
     return role
 
 
 def _require_member(group_id: str, organization_id: str, db: Session):
     role = repo.get_org_group_role(db, group_id, organization_id)
     if role not in ("GROUP_OWNER", "GROUP_MEMBER"):
-        raise HTTPException(status_code=403, detail="You are not a member of this group.")
+        raise HTTPException(
+            status_code=403, detail="You are not a member of this group."
+        )
     return role
 
 
@@ -69,6 +74,7 @@ def _get_group_or_404(group_id: str, db: Session):
 # ══════════════════════════════════════════════════════════════════════
 #  STATIC ROUTES (must be before /{group_id})
 # ══════════════════════════════════════════════════════════════════════
+
 
 @router.get("/invites/my")
 def get_my_invites(
@@ -95,14 +101,22 @@ def accept_invite(
         raise HTTPException(status_code=404, detail="Invite not found.")
 
     if not invite.invited_org_id:
-        raise HTTPException(status_code=400, detail="This invite has no target organization.")
+        raise HTTPException(
+            status_code=400, detail="This invite has no target organization."
+        )
 
     # Verify the current user owns the invited organization (org-agnostic, works with multi-org users)
-    if not repo.is_user_org_owner(db, current_user["user_id"], str(invite.invited_org_id)):
-        raise HTTPException(status_code=403, detail="This invite is not for one of your organizations.")
+    if not repo.is_user_org_owner(
+        db, current_user["user_id"], str(invite.invited_org_id)
+    ):
+        raise HTTPException(
+            status_code=403, detail="This invite is not for one of your organizations."
+        )
 
     if invite.status != "pending":
-        raise HTTPException(status_code=400, detail=f"Invite is already {invite.status}.")
+        raise HTTPException(
+            status_code=400, detail=f"Invite is already {invite.status}."
+        )
 
     target_org_id = str(invite.invited_org_id)
 
@@ -118,8 +132,11 @@ def accept_invite(
     try:
         group = repo.get_group(db, str(invite.group_id))
         from app.services.notification_helpers import notify_group_invite_accepted
+
         org_row = db.execute(
-            text("SELECT organization_name FROM organization WHERE organization_id = :oid"),
+            text(
+                "SELECT organization_name FROM organization WHERE organization_id = :oid"
+            ),
             {"oid": target_org_id},
         ).fetchone()
         org_name = org_row.organization_name if org_row else "An organization"
@@ -148,14 +165,22 @@ def reject_invite(
         raise HTTPException(status_code=404, detail="Invite not found.")
 
     if not invite.invited_org_id:
-        raise HTTPException(status_code=400, detail="This invite has no target organization.")
+        raise HTTPException(
+            status_code=400, detail="This invite has no target organization."
+        )
 
     # Verify ownership — works for multi-org users regardless of JWT org context
-    if not repo.is_user_org_owner(db, current_user["user_id"], str(invite.invited_org_id)):
-        raise HTTPException(status_code=403, detail="This invite is not for one of your organizations.")
+    if not repo.is_user_org_owner(
+        db, current_user["user_id"], str(invite.invited_org_id)
+    ):
+        raise HTTPException(
+            status_code=403, detail="This invite is not for one of your organizations."
+        )
 
     if invite.status != "pending":
-        raise HTTPException(status_code=400, detail=f"Invite is already {invite.status}.")
+        raise HTTPException(
+            status_code=400, detail=f"Invite is already {invite.status}."
+        )
 
     repo.update_invite_status(db, invite, "rejected")
     return {"message": "Invite rejected."}
@@ -171,7 +196,9 @@ def get_join_info(
     org_id = _get_current_org_id(current_user, db)
     group = repo.get_group_by_invite_token(db, token)
     if not group:
-        raise HTTPException(status_code=404, detail="Invite link is invalid or has expired.")
+        raise HTTPException(
+            status_code=404, detail="Invite link is invalid or has expired."
+        )
 
     member_count = db.execute(
         text("SELECT COUNT(*) FROM group_member WHERE group_id = :gid"),
@@ -199,10 +226,15 @@ def join_via_link(
     org_id = _get_current_org_id(current_user, db)
     group = repo.get_group_by_invite_token(db, token)
     if not group:
-        raise HTTPException(status_code=404, detail="Invite link is invalid or has expired.")
+        raise HTTPException(
+            status_code=404, detail="Invite link is invalid or has expired."
+        )
 
     if repo.get_member(db, str(group.group_id), org_id):
-        return {"message": "Your organization is already a member of this group.", "group_id": str(group.group_id)}
+        return {
+            "message": "Your organization is already a member of this group.",
+            "group_id": str(group.group_id),
+        }
 
     repo.add_member(db, str(group.group_id), org_id)
     return {
@@ -227,9 +259,12 @@ def search_organizations(
 #  COLLECTION ROUTES
 # ══════════════════════════════════════════════════════════════════════
 
+
 @router.get("")
 def list_groups(
-    organization_id: Optional[str] = Query(None, description="Organization ID to scope groups to"),
+    organization_id: Optional[str] = Query(
+        None, description="Organization ID to scope groups to"
+    ),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -263,6 +298,7 @@ def create_group(
 
     try:
         from app.services.notification_helpers import notify_group_created
+
         notify_group_created(current_user["user_id"], group.group_name)
     except Exception:
         pass
@@ -278,6 +314,7 @@ def create_group(
 #  GROUP-SPECIFIC ROUTES  /{group_id}
 # ══════════════════════════════════════════════════════════════════════
 
+
 @router.get("/{group_id}")
 def get_group(
     group_id: str,
@@ -289,7 +326,10 @@ def get_group(
     org_id = organization_id or _get_current_org_id(current_user, db)
     detail = repo.get_group_detail(db, group_id, org_id)
     if not detail:
-        raise HTTPException(status_code=404, detail="Group not found or your organization is not a member.")
+        raise HTTPException(
+            status_code=404,
+            detail="Group not found or your organization is not a member.",
+        )
     return detail
 
 
@@ -305,7 +345,8 @@ def update_group(
     _require_owner(group_id, org_id, db)
     group = _get_group_or_404(group_id, db)
     updated = repo.update_group(
-        db, group,
+        db,
+        group,
         group_name=body.group_name,
         description=body.description,
         is_private=body.is_private,
@@ -329,6 +370,7 @@ def delete_group(
 
 # ── Members ──────────────────────────────────────────────────────────
 
+
 @router.get("/{group_id}/members")
 def list_members(
     group_id: str,
@@ -344,9 +386,13 @@ def list_members(
     if role == "GROUP_MEMBER":
         group = _get_group_or_404(group_id, db)
         from app.modules.groups.repository import _parse_settings
+
         settings = _parse_settings(group.settings)
         if not settings.show_members_to_members:
-            raise HTTPException(status_code=403, detail="Member list is not visible to members in this group.")
+            raise HTTPException(
+                status_code=403,
+                detail="Member list is not visible to members in this group.",
+            )
 
     members = repo.list_members(db, group_id)
     return {"members": members, "count": len(members)}
@@ -363,18 +409,24 @@ def remove_member(
     org_id = _get_current_org_id(current_user, db)
     _require_owner(group_id, org_id, db)
     if organization_id == org_id:
-        raise HTTPException(status_code=400, detail="Owner organization cannot remove itself. Delete the group instead.")
+        raise HTTPException(
+            status_code=400,
+            detail="Owner organization cannot remove itself. Delete the group instead.",
+        )
     removed = repo.remove_member(db, group_id, organization_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Member organization not found.")
 
     try:
         from app.services.notification_helpers import notify_group_member_removed
+
         group = repo.get_group(db, group_id)
         # Notify the owner of the removed org
         owner_user_id = repo.get_org_owner_user_id(db, organization_id)
         if owner_user_id:
-            notify_group_member_removed(owner_user_id, group.group_name if group else "a group")
+            notify_group_member_removed(
+                owner_user_id, group.group_name if group else "a group"
+            )
     except Exception:
         pass
 
@@ -382,6 +434,7 @@ def remove_member(
 
 
 # ── Settings ─────────────────────────────────────────────────────────
+
 
 @router.get("/{group_id}/settings")
 def get_settings(
@@ -394,6 +447,7 @@ def get_settings(
     _require_owner(group_id, org_id, db)
     group = _get_group_or_404(group_id, db)
     from app.modules.groups.repository import _parse_settings
+
     return _parse_settings(group.settings).model_dump()
 
 
@@ -414,6 +468,7 @@ def update_settings(
 
 # ── Analytics ────────────────────────────────────────────────────────
 
+
 @router.get("/{group_id}/analytics")
 def get_analytics(
     group_id: str,
@@ -429,14 +484,19 @@ def get_analytics(
     if role == "GROUP_MEMBER":
         group = _get_group_or_404(group_id, db)
         from app.modules.groups.repository import _parse_settings
+
         settings = _parse_settings(group.settings)
         if not settings.show_analytics_to_members:
-            raise HTTPException(status_code=403, detail="Analytics are not visible to members in this group.")
+            raise HTTPException(
+                status_code=403,
+                detail="Analytics are not visible to members in this group.",
+            )
 
     return repo.get_group_analytics(db, group_id)
 
 
 # ── Invites ───────────────────────────────────────────────────────────
+
 
 @router.get("/{group_id}/invites")
 def list_invites(
@@ -469,23 +529,35 @@ def send_invite(
 
     if role == "GROUP_MEMBER":
         from app.modules.groups.repository import _parse_settings
+
         settings = _parse_settings(group.settings)
         if not settings.can_members_invite:
-            raise HTTPException(status_code=403, detail="Members are not allowed to invite in this group.")
+            raise HTTPException(
+                status_code=403,
+                detail="Members are not allowed to invite in this group.",
+            )
 
     target_org_id = body.organization_id
 
     # Prevent self-invite
     if target_org_id == org_id:
-        raise HTTPException(status_code=400, detail="You cannot invite your own organization.")
+        raise HTTPException(
+            status_code=400, detail="You cannot invite your own organization."
+        )
 
     # Check the TARGET ORGANIZATION is not already a member
     if repo.get_member(db, group_id, target_org_id):
-        raise HTTPException(status_code=400, detail="This organization is already a member of the group.")
+        raise HTTPException(
+            status_code=400,
+            detail="This organization is already a member of the group.",
+        )
 
     # Check no active invite for this org already
     if repo.has_pending_invite_for_org(db, group_id, target_org_id):
-        raise HTTPException(status_code=400, detail="There is already a pending invite for this organization.")
+        raise HTTPException(
+            status_code=400,
+            detail="There is already a pending invite for this organization.",
+        )
 
     invite = repo.create_org_invite(
         db,
@@ -499,13 +571,20 @@ def send_invite(
     # Send in-app notification to the target org's owner
     try:
         from app.services.notification_helpers import notify_group_invite
+
         invited_owner_user_id = repo.get_org_owner_user_id(db, target_org_id)
         if invited_owner_user_id:
             inviter_org_row = db.execute(
-                text("SELECT organization_name FROM organization WHERE organization_id = :oid"),
+                text(
+                    "SELECT organization_name FROM organization WHERE organization_id = :oid"
+                ),
                 {"oid": org_id},
             ).fetchone()
-            inviter_org_name = inviter_org_row.organization_name if inviter_org_row else "An organization"
+            inviter_org_name = (
+                inviter_org_row.organization_name
+                if inviter_org_row
+                else "An organization"
+            )
             notify_group_invite(
                 user_id=invited_owner_user_id,
                 inviter_name=inviter_org_name,
@@ -534,12 +613,16 @@ def cancel_invite(
     if not invite or str(invite.group_id) != group_id:
         raise HTTPException(status_code=404, detail="Invite not found.")
     if invite.status != "pending":
-        raise HTTPException(status_code=400, detail=f"Cannot cancel an invite that is already {invite.status}.")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot cancel an invite that is already {invite.status}.",
+        )
     repo.cancel_invite(db, invite)
     return {"message": "Invite cancelled."}
 
 
 # ── Invite link ───────────────────────────────────────────────────────
+
 
 @router.post("/{group_id}/invite-link")
 def generate_invite_link(

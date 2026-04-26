@@ -33,6 +33,7 @@ try:
 except ImportError:
     pass
 
+
 class Notification(Base):
     __tablename__ = "notification"
     __table_args__ = (
@@ -40,7 +41,7 @@ class Notification(Base):
             "notification_type IN ('info', 'success', 'warning', 'error', 'maintenance', 'announcement')",
             name="ck_notification_type_valid",
         ),
-        {'extend_existing': True}
+        {"extend_existing": True},
     )
 
     notification_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
@@ -62,7 +63,7 @@ class Notification(Base):
 
 class UserNotification(Base):
     __tablename__ = "user_notification"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     notification_id = Column(
         UNIQUEIDENTIFIER,
@@ -109,7 +110,7 @@ class BroadcastEvent(Base):
             "status IN ('sent', 'failed', 'pending')",
             name="ck_broadcast_event_status_valid",
         ),
-        {'extend_existing': True}
+        {"extend_existing": True},
     )
 
     broadcast_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)

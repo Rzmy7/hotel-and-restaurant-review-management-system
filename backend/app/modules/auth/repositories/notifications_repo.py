@@ -33,7 +33,10 @@ def create_notification(
 
     return (
         db.query(UserNotification)
-        .join(Notification, UserNotification.notification_id == Notification.notification_id)
+        .join(
+            Notification,
+            UserNotification.notification_id == Notification.notification_id,
+        )
         .filter(
             UserNotification.notification_id == notification.notification_id,
             UserNotification.user_id == user_id,
@@ -51,7 +54,10 @@ def list_notifications_for_user(
 ) -> list[UserNotification]:
     query = (
         db.query(UserNotification)
-        .join(Notification, UserNotification.notification_id == Notification.notification_id)
+        .join(
+            Notification,
+            UserNotification.notification_id == Notification.notification_id,
+        )
         .filter(UserNotification.user_id == user_id)
     )
 
@@ -59,10 +65,7 @@ def list_notifications_for_user(
         query = query.filter(UserNotification.is_read == False)
 
     return (
-        query.order_by(Notification.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
+        query.order_by(Notification.created_at.desc()).offset(offset).limit(limit).all()
     )
 
 

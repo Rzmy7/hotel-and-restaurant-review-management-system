@@ -10,18 +10,22 @@ from platforms.booking.config import booking_selectors as config
 
 logger = setup_logger("booking_extractor")
 
+
 def rand_between(a: int = 500, b: int = 1500) -> int:
     return random.randint(min(a, b), max(a, b))
+
 
 def first_float(text: str) -> Optional[float]:
     if not text:
         return None
-    match = re.search(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)', text)
+    match = re.search(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)", text)
     return float(match.group(0)) if match else None
+
 
 class Picture(BaseModel):
     src: str = ""
     alt: str = ""
+
 
 class BookingReviewData(BaseModel):
     id: str
@@ -38,7 +42,8 @@ class BookingReviewData(BaseModel):
     reviewer_nationality: str = "Unknown"
     reply: str = ""
     photo: List[Picture] = []
-    
+
+
 class BookingExtractor:
     def __init__(self, page: Page):
         self.page = page
@@ -46,7 +51,7 @@ class BookingExtractor:
     def extract_reviews(self) -> List[BookingReviewData]:
         logger.info("Extracting Booking.com reviews from current DOM state.")
         reviews = []
-        
+
         try:
             self.page.wait_for_selector(config.review_card, timeout=5000)
         except Exception:
@@ -59,16 +64,20 @@ class BookingExtractor:
 
         for i in range(count):
             review = review_nodes.nth(i)
-            
+
             # --- Text Nodes ---
             try:
-                author = review.locator(config.review_author).first.text_content(timeout=1000)
+                author = review.locator(config.review_author).first.text_content(
+                    timeout=1000
+                )
                 author = author.strip() if author else "Anonymous"
             except Exception:
                 author = "Anonymous"
 
             try:
-                nationality = review.locator(config.review_nationality).first.text_content(timeout=1000)
+                nationality = review.locator(
+                    config.review_nationality
+                ).first.text_content(timeout=1000)
                 reviewer_nationality = nationality.strip() if nationality else "Unknown"
             except Exception:
                 reviewer_nationality = "Unknown"
@@ -85,55 +94,97 @@ class BookingExtractor:
                 reply = ""
 
             try:
-                review_title = review.locator(config.review_title).first.text_content(timeout=1000).strip()
+                review_title = (
+                    review.locator(config.review_title)
+                    .first.text_content(timeout=1000)
+                    .strip()
+                )
             except Exception:
                 review_title = "No Title"
 
             try:
                 # Format is "Reviewed: 23 February 2026"
-                rev_po_date_raw = review.locator(config.review_date).first.text_content(timeout=1000).strip()
-                clean_date_str = rev_po_date_raw.split(":", 1)[-1].strip() if ":" in rev_po_date_raw else rev_po_date_raw
-                review_post_date = datetime.strptime(clean_date_str, "%d %B %Y").date().isoformat()
+                rev_po_date_raw = (
+                    review.locator(config.review_date)
+                    .first.text_content(timeout=1000)
+                    .strip()
+                )
+                clean_date_str = (
+                    rev_po_date_raw.split(":", 1)[-1].strip()
+                    if ":" in rev_po_date_raw
+                    else rev_po_date_raw
+                )
+                review_post_date = (
+                    datetime.strptime(clean_date_str, "%d %B %Y").date().isoformat()
+                )
             except Exception:
                 review_post_date = None
 
             try:
-                score_text = review.locator(config.review_score).text_content(timeout=1000).strip()
+                score_text = (
+                    review.locator(config.review_score)
+                    .text_content(timeout=1000)
+                    .strip()
+                )
                 review_score = first_float(score_text) or 0.0
             except Exception:
                 review_score = 0.0
 
             try:
                 pos_rev = review.locator(config.review_positive_text)
-                positive_review = pos_rev.text_content(timeout=1000).strip() if pos_rev.count() > 0 else ""
+                positive_review = (
+                    pos_rev.text_content(timeout=1000).strip()
+                    if pos_rev.count() > 0
+                    else ""
+                )
             except Exception:
                 positive_review = ""
 
             try:
                 neg_rev = review.locator(config.review_negative_text)
-                negative_review = neg_rev.text_content(timeout=1000).strip() if neg_rev.count() > 0 else ""
+                negative_review = (
+                    neg_rev.text_content(timeout=1000).strip()
+                    if neg_rev.count() > 0
+                    else ""
+                )
             except Exception:
                 negative_review = ""
 
             try:
-                st_date = review.locator(config.review_stay_date).text_content(timeout=1000).strip()
+                st_date = (
+                    review.locator(config.review_stay_date)
+                    .text_content(timeout=1000)
+                    .strip()
+                )
                 stayed_date = datetime.strptime(st_date, "%B %Y").date().isoformat()
             except Exception:
                 stayed_date = None
 
             try:
-                nights_text = review.locator(config.review_num_nights).text_content(timeout=1000).strip()
+                nights_text = (
+                    review.locator(config.review_num_nights)
+                    .text_content(timeout=1000)
+                    .strip()
+                )
                 num_of_nights = int(first_float(nights_text) or 0)
             except Exception:
                 num_of_nights = 0
 
             try:
-                traveler_type = review.locator(config.review_traveler_type).text_content(timeout=1000).strip()
+                traveler_type = (
+                    review.locator(config.review_traveler_type)
+                    .text_content(timeout=1000)
+                    .strip()
+                )
             except Exception:
                 traveler_type = ""
 
             try:
-                room_name = review.locator(config.review_room_name).text_content(timeout=1000).strip()
+                room_name = (
+                    review.locator(config.review_room_name)
+                    .text_content(timeout=1000)
+                    .strip()
+                )
             except Exception:
                 room_name = ""
 
@@ -153,7 +204,9 @@ class BookingExtractor:
                     gallery.wait_for(state="visible", timeout=5000)
                     self.page.wait_for_timeout(1000)
 
-                    gallery.locator(config.gallery_photo).first.wait_for(state="attached", timeout=5000)
+                    gallery.locator(config.gallery_photo).first.wait_for(
+                        state="attached", timeout=5000
+                    )
                     self.page.wait_for_timeout(rand_between())
 
                     img_elements = gallery.locator(config.gallery_photo).all()
@@ -184,7 +237,9 @@ class BookingExtractor:
                     pass
 
             # Unique ID Generation based on review traits since booking doesnt render flat IDs
-            hashable_string = f"{review_title}_{review_post_date}_{author}_{positive_review[:20]}"
+            hashable_string = (
+                f"{review_title}_{review_post_date}_{author}_{positive_review[:20]}"
+            )
             review_id = hashlib.md5(hashable_string.encode()).hexdigest()
 
             reviews.append(
@@ -202,7 +257,7 @@ class BookingExtractor:
                     author=author,
                     reviewer_nationality=reviewer_nationality,
                     reply=reply,
-                    photo=review_pictures
+                    photo=review_pictures,
                 )
             )
 

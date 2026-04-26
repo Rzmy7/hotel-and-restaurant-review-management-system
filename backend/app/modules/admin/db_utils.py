@@ -56,7 +56,9 @@ def get_connection_string() -> str:
         if not value
     ]
     if missing_vars:
-        raise ValueError(f"Missing required database environment variables: {', '.join(missing_vars)}")
+        raise ValueError(
+            f"Missing required database environment variables: {', '.join(missing_vars)}"
+        )
 
     resolved_driver = _resolve_db_driver()
 
@@ -104,7 +106,9 @@ def inline_query_params(query: str, params: tuple[Any, ...]) -> str:
     return inlined_query
 
 
-def execute_query(cursor: pyodbc.Cursor, query: str, params: tuple[Any, ...] = ()) -> pyodbc.Cursor:
+def execute_query(
+    cursor: pyodbc.Cursor, query: str, params: tuple[Any, ...] = ()
+) -> pyodbc.Cursor:
     """Execute a parameterised query with automatic fallback to inline params."""
     if not params:
         return cursor.execute(query)
@@ -134,7 +138,9 @@ def table_exists(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") ->
     return row is not None
 
 
-def get_table_columns(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -> set[str]:
+def get_table_columns(
+    cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo"
+) -> set[str]:
     """Return a set of lower-cased column names for a table."""
     rows = execute_query(
         cursor,
@@ -148,7 +154,9 @@ def get_table_columns(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo
     return {str(row[0]) for row in rows}
 
 
-def get_table_column_map(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -> dict[str, str]:
+def get_table_column_map(
+    cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo"
+) -> dict[str, str]:
     """Return a mapping of lower-cased column name → original column name."""
     rows = execute_query(
         cursor,
@@ -162,7 +170,9 @@ def get_table_column_map(cursor: pyodbc.Cursor, table_name: str, schema: str = "
     return {str(row[0]).lower(): str(row[0]) for row in rows}
 
 
-def count_scalar(cursor: pyodbc.Cursor, query: str, params: tuple[Any, ...] = ()) -> int:
+def count_scalar(
+    cursor: pyodbc.Cursor, query: str, params: tuple[Any, ...] = ()
+) -> int:
     """Execute a COUNT query and return the scalar integer result."""
     row = execute_query(cursor, query, params).fetchone()
     return int(row[0]) if row and row[0] is not None else 0
@@ -203,7 +213,11 @@ def to_relative_timestamp(value: Any) -> str:
     if isinstance(value, date) and not isinstance(value, datetime):
         value = datetime.combine(value, datetime.min.time())
 
-    now = datetime.now(value.tzinfo) if isinstance(value, datetime) and value.tzinfo else datetime.now()
+    now = (
+        datetime.now(value.tzinfo)
+        if isinstance(value, datetime) and value.tzinfo
+        else datetime.now()
+    )
     delta = now - value
     seconds = int(delta.total_seconds())
 

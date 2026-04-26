@@ -38,7 +38,9 @@ def get_maintenance_status() -> dict:
             connection.commit()
             return {"maintenanceMode": maintenance_mode}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to get maintenance status: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to get maintenance status: {exc}"
+        ) from exc
 
 
 @router.patch("/status")
@@ -62,4 +64,6 @@ def update_maintenance_status(payload: MaintenanceStatusPayload) -> dict:
 
             return {"success": True, "maintenanceMode": payload.maintenanceMode}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to update maintenance status: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update maintenance status: {exc}"
+        ) from exc

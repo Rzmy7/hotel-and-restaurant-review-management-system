@@ -20,9 +20,7 @@ DEFAULT_SETUP_SOURCES = [
 
 
 def _ensure_sources_table(db: Session):
-    db.execute(
-        text(
-            """
+    db.execute(text("""
             IF OBJECT_ID('dbo.organization_review_sources', 'U') IS NULL
             BEGIN
                 CREATE TABLE dbo.organization_review_sources (
@@ -35,21 +33,17 @@ def _ensure_sources_table(db: Session):
                     updated_at DATETIME NOT NULL DEFAULT GETDATE()
                 )
             END
-            """
-        )
-    )
+            """))
 
 
 def _resolve_org_id(db: Session, user_id, organization_id: str | None):
     if organization_id:
         membership = db.execute(
-            text(
-                """
+            text("""
                 SELECT 1
                 FROM dbo.user_organizations
                 WHERE user_id = :user_id AND organization_id = :organization_id
-                """
-            ),
+                """),
             {"user_id": user_id, "organization_id": organization_id},
         ).fetchone()
 
@@ -61,13 +55,11 @@ def _resolve_org_id(db: Session, user_id, organization_id: str | None):
         return organization_id
 
     fallback_org = db.execute(
-        text(
-            """
+        text("""
             SELECT TOP 1 organization_id
             FROM dbo.user_organizations
             WHERE user_id = :user_id
-            """
-        ),
+            """),
         {"user_id": user_id},
     ).fetchone()
 
@@ -91,13 +83,11 @@ def get_setup_sources(
     resolved_org_id = _resolve_org_id(db, user_id, organization_id)
 
     rows = db.execute(
-        text(
-            """
+        text("""
             SELECT source_id, source_name, source_url, is_active
             FROM dbo.organization_review_sources
             WHERE organization_id = :organization_id
-            """
-        ),
+            """),
         {"organization_id": resolved_org_id},
     ).fetchall()
 
@@ -142,15 +132,13 @@ def connect_setup_source(
     resolved_org_id = _resolve_org_id(db, user_id, payload.organization_id)
 
     existing = db.execute(
-        text(
-            """
+        text("""
             SELECT TOP 1 source_id, is_active
             FROM dbo.organization_review_sources
             WHERE organization_id = :organization_id
               AND LOWER(source_name) = LOWER(:source_name)
               AND LOWER(ISNULL(source_url, '')) = LOWER(ISNULL(:source_url, ''))
-            """
-        ),
+            """),
         {
             "organization_id": resolved_org_id,
             "source_name": payload.source_name.strip(),
@@ -167,15 +155,13 @@ def connect_setup_source(
 
     if existing and not bool(existing[1]):
         db.execute(
-            text(
-                """
+            text("""
                 UPDATE dbo.organization_review_sources
                 SET is_active = 1,
                     updated_at = GETDATE(),
                     source_url = :source_url
                 WHERE source_id = :source_id
-                """
-            ),
+                """),
             {"source_id": str(existing[0]), "source_url": payload.source_url},
         )
         db.commit()
@@ -186,8 +172,7 @@ def connect_setup_source(
         }
 
     inserted = db.execute(
-        text(
-            """
+        text("""
             INSERT INTO dbo.organization_review_sources (
                 source_id,
                 organization_id,
@@ -207,8 +192,7 @@ def connect_setup_source(
                 GETDATE(),
                 GETDATE()
             )
-            """
-        ),
+            """),
         {
             "organization_id": resolved_org_id,
             "source_name": payload.source_name.strip(),
@@ -254,15 +238,13 @@ def disconnect_setup_source(
     resolved_org_id = _resolve_org_id(db, user_id, payload.organization_id)
 
     existing = db.execute(
-        text(
-            """
+        text("""
             SELECT TOP 1 source_id, is_active
             FROM dbo.organization_review_sources
             WHERE organization_id = :organization_id
               AND LOWER(source_name) = LOWER(:source_name)
               AND LOWER(ISNULL(source_url, '')) = LOWER(ISNULL(:source_url, ''))
-            """
-        ),
+            """),
         {
             "organization_id": resolved_org_id,
             "source_name": payload.source_name.strip(),
@@ -281,14 +263,12 @@ def disconnect_setup_source(
         }
 
     db.execute(
-        text(
-            """
+        text("""
             UPDATE dbo.organization_review_sources
             SET is_active = 0,
                 updated_at = GETDATE()
             WHERE source_id = :source_id
-            """
-        ),
+            """),
         {"source_id": str(existing[0])},
     )
     db.commit()

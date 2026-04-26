@@ -10,6 +10,7 @@ import websockets
 
 logger = logging.getLogger(__name__)
 
+
 class SyncConnectionManager:
     def __init__(self):
         # Maps source_id to a set of connected frontend WebSockets
@@ -29,11 +30,13 @@ class SyncConnectionManager:
         if source_id not in self.frontend_connections:
             self.frontend_connections[source_id] = set()
         self.frontend_connections[source_id].add(websocket)
-        
+
         # If we don't have a relay task for this source yet, start one
         if source_id not in self.relay_tasks or self.relay_tasks[source_id].done():
-            self.relay_tasks[source_id] = asyncio.create_task(self._relay_scraper_progress(source_id))
-        
+            self.relay_tasks[source_id] = asyncio.create_task(
+                self._relay_scraper_progress(source_id)
+            )
+
         logger.info(f"Frontend client connected to sync trace: {source_id}")
 
     async def disconnect_frontend(self, websocket: WebSocket, source_id: str):
@@ -52,42 +55,56 @@ class SyncConnectionManager:
         """Connects to Scraper Engine and broadcasts updates to all listening frontends."""
         # Use registered job_id, fall back to source_id if none registered (backward compat)
         target_id = self.source_to_job.get(source_id, source_id)
-        
+
         scraper_ws_url = os.getenv("SCRAPER_WS_URL", "")
         if not scraper_ws_url:
             from app.core.config import SCRAPER_ENGINE_URL
-            scraper_ws_url = SCRAPER_ENGINE_URL.replace("https://", "wss://").replace("http://", "ws://") + "/ws/jobs"
+
+            scraper_ws_url = (
+                SCRAPER_ENGINE_URL.replace("https://", "wss://").replace(
+                    "http://", "ws://"
+                )
+                + "/ws/jobs"
+            )
         url = f"{scraper_ws_url}/{target_id}"
-        
+
         retry_count = 0
         max_retries = 5
-        
+
         while retry_count < max_retries:
             try:
                 async with websockets.connect(url) as scraper_ws:
-                    logger.info(f"Connected to Scraper Engine WS for source: {source_id}")
-                    retry_count = 0 # Reset retries on successful connection
-                    
+                    logger.info(
+                        f"Connected to Scraper Engine WS for source: {source_id}"
+                    )
+                    retry_count = 0  # Reset retries on successful connection
+
                     last_broadcast_time = 0
-                    throttle_interval = 0.5 # 500ms
-                    
+                    throttle_interval = 0.5  # 500ms
+
                     async for message in scraper_ws:
                         data = json.loads(message)
                         current_time = asyncio.get_event_loop().time()
-                        
+
                         # Throttling percentage updates, but always send completed/failed status
                         is_terminal = data.get("status") in ["completed", "failed"]
-                        if is_terminal or (current_time - last_broadcast_time >= throttle_interval):
+                        if is_terminal or (
+                            current_time - last_broadcast_time >= throttle_interval
+                        ):
                             # Broadcast to all connected frontends
                             if source_id in self.frontend_connections:
-                                for client in list(self.frontend_connections[source_id]):
+                                for client in list(
+                                    self.frontend_connections[source_id]
+                                ):
                                     try:
                                         await client.send_json(data)
                                     except Exception as e:
-                                        logger.error(f"Failed to relay message to frontend: {e}")
-                            
+                                        logger.error(
+                                            f"Failed to relay message to frontend: {e}"
+                                        )
+
                             last_broadcast_time = current_time
-                        
+
                         # Stop relaying if job is finished
                         if is_terminal:
                             logger.info(f"Job {source_id} finished. Closing relay.")
@@ -99,9 +116,10 @@ class SyncConnectionManager:
             except Exception as e:
                 logger.error(f"Error in scraper relay for {source_id}: {e}")
                 retry_count += 1
-                await asyncio.sleep(2) # Wait before retry
+                await asyncio.sleep(2)  # Wait before retry
 
         logger.warning(f"Exiting relay for {source_id} after {retry_count} failures.")
+
 
 # Global singleton
 sync_socket_manager = SyncConnectionManager()

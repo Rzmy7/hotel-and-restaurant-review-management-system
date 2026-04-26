@@ -8,9 +8,19 @@ platform-specific detail table (agoda, booking, google, tripadvisor).
 Column names are standardized across platforms wherever they store the same
 type of data (e.g. stay_date, reviewer_nationality, traveler_type).
 """
+
 from sqlalchemy import (
-    Column, Integer, String, Float, ForeignKey, Unicode, UnicodeText,
-    DateTime, Index, Numeric, text
+    Column,
+    Integer,
+    String,
+    Float,
+    ForeignKey,
+    Unicode,
+    UnicodeText,
+    DateTime,
+    Index,
+    Numeric,
+    text,
 )
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 import uuid
@@ -27,21 +37,26 @@ class Source(Base):
     Platform-specific URL registry.
     Both source_id and source_url are provided externally by API requests.
     """
-    __tablename__ = 'sources'
 
-    source_id   = Column(String(36), primary_key=True)
-    source_url  = Column(Unicode(1000), nullable=False, unique=False)
-    platform_name = Column(Unicode(100), nullable=False)  # agoda | booking | google | tripadvisor
+    __tablename__ = "sources"
+
+    source_id = Column(String(36), primary_key=True)
+    source_url = Column(Unicode(1000), nullable=False, unique=False)
+    platform_name = Column(
+        Unicode(100), nullable=False
+    )  # agoda | booking | google | tripadvisor
 
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        Index('IX_sources_platform', 'platform_name'),
-        Index('IX_sources_url', 'source_url'),
+        Index("IX_sources_platform", "platform_name"),
+        Index("IX_sources_url", "source_url"),
     )
 
     # Relationships
-    reviews = relationship("Review", back_populates="source", cascade="all, delete-orphan")
+    reviews = relationship(
+        "Review", back_populates="source", cascade="all, delete-orphan"
+    )
 
 
 # =========================================================
@@ -52,26 +67,51 @@ class Review(Base):
     Central review record. Holds the auto-generated review_id and links
     back to the source via source_id (1:M).
     """
-    __tablename__ = 'reviews'
 
-    review_id  = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)
+    __tablename__ = "reviews"
+
+    review_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    source_id = Column(
+        String(36), ForeignKey("sources.source_id", ondelete="CASCADE"), nullable=False
+    )
     platform_review_id = Column(Unicode(255), nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        Index('IX_reviews_source', 'source_id'),
-        Index('IX_reviews_platform_id', 'source_id', 'platform_review_id'),
+        Index("IX_reviews_source", "source_id"),
+        Index("IX_reviews_platform_id", "source_id", "platform_review_id"),
     )
 
     # Relationships
-    source             = relationship("Source", back_populates="reviews")
-    media              = relationship("ReviewMedia", back_populates="review", cascade="all, delete-orphan")
-    agoda_detail       = relationship("AgodaReviewDetail", back_populates="review", uselist=False, cascade="all, delete-orphan")
-    booking_detail     = relationship("BookingReviewDetail", back_populates="review", uselist=False, cascade="all, delete-orphan")
-    google_detail      = relationship("GoogleReviewDetail", back_populates="review", uselist=False, cascade="all, delete-orphan")
-    tripadvisor_detail = relationship("TripAdvisorReviewDetail", back_populates="review", uselist=False, cascade="all, delete-orphan")
+    source = relationship("Source", back_populates="reviews")
+    media = relationship(
+        "ReviewMedia", back_populates="review", cascade="all, delete-orphan"
+    )
+    agoda_detail = relationship(
+        "AgodaReviewDetail",
+        back_populates="review",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    booking_detail = relationship(
+        "BookingReviewDetail",
+        back_populates="review",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    google_detail = relationship(
+        "GoogleReviewDetail",
+        back_populates="review",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    tripadvisor_detail = relationship(
+        "TripAdvisorReviewDetail",
+        back_populates="review",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 # =========================================================
@@ -79,24 +119,29 @@ class Review(Base):
 # =========================================================
 class AgodaReviewDetail(Base):
     """Agoda-specific review columns. PK is FK to reviews."""
-    __tablename__ = 'agoda_reviews'
 
-    review_id            = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
-    rating               = Column(Numeric(4, 2), nullable=True)
-    review_heading       = Column(Unicode(500), nullable=True)
-    author               = Column(Unicode(255), nullable=True)
-    review_text          = Column(UnicodeText, nullable=True)
-    review_date          = Column(Unicode(100), nullable=True)
+    __tablename__ = "agoda_reviews"
+
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("reviews.review_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    rating = Column(Numeric(4, 2), nullable=True)
+    review_heading = Column(Unicode(500), nullable=True)
+    author = Column(Unicode(255), nullable=True)
+    review_text = Column(UnicodeText, nullable=True)
+    review_date = Column(Unicode(100), nullable=True)
     reviewer_nationality = Column(Unicode(100), nullable=True)
-    stay_date            = Column(Unicode(255), nullable=True)
-    num_of_nights        = Column(Integer, nullable=True)
-    traveler_type        = Column(Unicode(255), nullable=True)
-    room_type            = Column(Unicode(255), nullable=True)
-    reply                = Column(UnicodeText, nullable=True)
+    stay_date = Column(Unicode(255), nullable=True)
+    num_of_nights = Column(Integer, nullable=True)
+    traveler_type = Column(Unicode(255), nullable=True)
+    room_type = Column(Unicode(255), nullable=True)
+    reply = Column(UnicodeText, nullable=True)
 
     __table_args__ = (
-        Index('IX_agoda_rating', 'rating'),
-        Index('IX_agoda_review_date', 'review_date'),
+        Index("IX_agoda_rating", "rating"),
+        Index("IX_agoda_review_date", "review_date"),
     )
 
     review = relationship("Review", back_populates="agoda_detail")
@@ -107,25 +152,30 @@ class AgodaReviewDetail(Base):
 # =========================================================
 class BookingReviewDetail(Base):
     """Booking.com-specific review columns. PK is FK to reviews."""
-    __tablename__ = 'booking_reviews'
 
-    review_id            = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
-    rating               = Column(Numeric(4, 2), nullable=True)
-    review_heading       = Column(Unicode(500), nullable=True)
-    author               = Column(Unicode(255), nullable=True)
-    positive_text        = Column(UnicodeText, nullable=True)
-    negative_text        = Column(UnicodeText, nullable=True)
-    review_date          = Column(Unicode(100), nullable=True)
-    stay_date            = Column(Unicode(100), nullable=True)
-    num_of_nights        = Column(Integer, nullable=True)
-    traveler_type        = Column(Unicode(255), nullable=True)
-    room_type            = Column(Unicode(255), nullable=True)
+    __tablename__ = "booking_reviews"
+
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("reviews.review_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    rating = Column(Numeric(4, 2), nullable=True)
+    review_heading = Column(Unicode(500), nullable=True)
+    author = Column(Unicode(255), nullable=True)
+    positive_text = Column(UnicodeText, nullable=True)
+    negative_text = Column(UnicodeText, nullable=True)
+    review_date = Column(Unicode(100), nullable=True)
+    stay_date = Column(Unicode(100), nullable=True)
+    num_of_nights = Column(Integer, nullable=True)
+    traveler_type = Column(Unicode(255), nullable=True)
+    room_type = Column(Unicode(255), nullable=True)
     reviewer_nationality = Column(Unicode(100), nullable=True)
-    reply                = Column(UnicodeText, nullable=True)
+    reply = Column(UnicodeText, nullable=True)
 
     __table_args__ = (
-        Index('IX_booking_rating', 'rating'),
-        Index('IX_booking_review_date', 'review_date'),
+        Index("IX_booking_rating", "rating"),
+        Index("IX_booking_review_date", "review_date"),
     )
 
     review = relationship("Review", back_populates="booking_detail")
@@ -136,19 +186,24 @@ class BookingReviewDetail(Base):
 # =========================================================
 class GoogleReviewDetail(Base):
     """Google Maps review columns. PK is FK to reviews."""
-    __tablename__ = 'google_reviews'
 
-    review_id    = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
-    rating       = Column(Numeric(4, 2), nullable=True)
-    author       = Column(Unicode(255), nullable=True)
-    review_text  = Column(UnicodeText, nullable=True)
-    review_date  = Column(Unicode(100), nullable=True)
+    __tablename__ = "google_reviews"
+
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("reviews.review_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    rating = Column(Numeric(4, 2), nullable=True)
+    author = Column(Unicode(255), nullable=True)
+    review_text = Column(UnicodeText, nullable=True)
+    review_date = Column(Unicode(100), nullable=True)
     author_badge = Column(Unicode(500), nullable=True)
-    reply        = Column(UnicodeText, nullable=True)
+    reply = Column(UnicodeText, nullable=True)
 
     __table_args__ = (
-        Index('IX_google_rating', 'rating'),
-        Index('IX_google_review_date', 'review_date'),
+        Index("IX_google_rating", "rating"),
+        Index("IX_google_review_date", "review_date"),
     )
 
     review = relationship("Review", back_populates="google_detail")
@@ -159,31 +214,36 @@ class GoogleReviewDetail(Base):
 # =========================================================
 class TripAdvisorReviewDetail(Base):
     """TripAdvisor review columns with granular sub-ratings (out of 5)."""
-    __tablename__ = 'tripadvisor_reviews'
 
-    review_id            = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), primary_key=True)
-    rating               = Column(Numeric(4, 2), nullable=True)
-    review_heading       = Column(Unicode(500), nullable=True)
-    author               = Column(Unicode(255), nullable=True)
-    review_text          = Column(UnicodeText, nullable=True)
-    review_date          = Column(Unicode(100), nullable=True)
+    __tablename__ = "tripadvisor_reviews"
+
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("reviews.review_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    rating = Column(Numeric(4, 2), nullable=True)
+    review_heading = Column(Unicode(500), nullable=True)
+    author = Column(Unicode(255), nullable=True)
+    review_text = Column(UnicodeText, nullable=True)
+    review_date = Column(Unicode(100), nullable=True)
     reviewer_nationality = Column(Unicode(255), nullable=True)
-    stay_date            = Column(Unicode(100), nullable=True)
-    traveler_type        = Column(Unicode(255), nullable=True)
-    likes_count          = Column(Integer, nullable=True)
-    reply                = Column(UnicodeText, nullable=True)
+    stay_date = Column(Unicode(100), nullable=True)
+    traveler_type = Column(Unicode(255), nullable=True)
+    likes_count = Column(Integer, nullable=True)
+    reply = Column(UnicodeText, nullable=True)
 
     # Granular Sub-Ratings (out of 5)
-    rating_value         = Column(Numeric(3, 1), nullable=True)
-    rating_rooms         = Column(Numeric(3, 1), nullable=True)
-    rating_location      = Column(Numeric(3, 1), nullable=True)
-    rating_cleanliness   = Column(Numeric(3, 1), nullable=True)
-    rating_service       = Column(Numeric(3, 1), nullable=True)
+    rating_value = Column(Numeric(3, 1), nullable=True)
+    rating_rooms = Column(Numeric(3, 1), nullable=True)
+    rating_location = Column(Numeric(3, 1), nullable=True)
+    rating_cleanliness = Column(Numeric(3, 1), nullable=True)
+    rating_service = Column(Numeric(3, 1), nullable=True)
     rating_sleep_quality = Column(Numeric(3, 1), nullable=True)
 
     __table_args__ = (
-        Index('IX_tripadvisor_rating', 'rating'),
-        Index('IX_tripadvisor_review_date', 'review_date'),
+        Index("IX_tripadvisor_rating", "rating"),
+        Index("IX_tripadvisor_review_date", "review_date"),
     )
 
     review = relationship("Review", back_populates="tripadvisor_detail")
@@ -194,20 +254,23 @@ class TripAdvisorReviewDetail(Base):
 # =========================================================
 class ReviewMedia(Base):
     """Images/videos attached to any review."""
-    __tablename__ = 'review_media'
 
-    media_id  = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    review_id = Column(UNIQUEIDENTIFIER, ForeignKey('reviews.review_id', ondelete='CASCADE'), nullable=False)
+    __tablename__ = "review_media"
 
-    media_url     = Column(Unicode(1000), nullable=False)
+    media_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("reviews.review_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    media_url = Column(Unicode(1000), nullable=False)
     thumbnail_url = Column(Unicode(1000), nullable=True)
-    media_type    = Column(Unicode(20), nullable=True)  # image | video
+    media_type = Column(Unicode(20), nullable=True)  # image | video
 
     created_at = Column(DateTime, server_default=func.now())
 
-    __table_args__ = (
-        Index('IX_media_review', 'review_id'),
-    )
+    __table_args__ = (Index("IX_media_review", "review_id"),)
 
     review = relationship("Review", back_populates="media")
 
@@ -217,24 +280,27 @@ class ReviewMedia(Base):
 # =========================================================
 class AuditLog(Base):
     """Comprehensive system audit log for API calls, scrape events, and errors."""
-    __tablename__ = 'audit_log'
 
-    id          = Column(Integer, primary_key=True, autoincrement=True)
-    level       = Column(Unicode(20), nullable=False, default='INFO')        # INFO | WARNING | ERROR | CRITICAL
-    category    = Column(Unicode(50), nullable=False)                        # API | SCRAPE | DATABASE | SYSTEM
-    action      = Column(Unicode(100), nullable=False)                       # e.g. SCRAPE_START, API_ERROR
-    target_type = Column(Unicode(50), nullable=True)                         # e.g. SOURCE, REVIEW
-    target_id   = Column(Unicode(255), nullable=True)
-    details     = Column(UnicodeText, nullable=True)                         # JSON payload
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    level = Column(
+        Unicode(20), nullable=False, default="INFO"
+    )  # INFO | WARNING | ERROR | CRITICAL
+    category = Column(Unicode(50), nullable=False)  # API | SCRAPE | DATABASE | SYSTEM
+    action = Column(Unicode(100), nullable=False)  # e.g. SCRAPE_START, API_ERROR
+    target_type = Column(Unicode(50), nullable=True)  # e.g. SOURCE, REVIEW
+    target_id = Column(Unicode(255), nullable=True)
+    details = Column(UnicodeText, nullable=True)  # JSON payload
     error_trace = Column(UnicodeText, nullable=True)
-    ip_address  = Column(Unicode(50), nullable=True)
-    user_agent  = Column(Unicode(255), nullable=True)
-    performed_by = Column(Unicode(255), nullable=True, default='system')
-    timestamp   = Column(DateTime, server_default=func.now())
+    ip_address = Column(Unicode(50), nullable=True)
+    user_agent = Column(Unicode(255), nullable=True)
+    performed_by = Column(Unicode(255), nullable=True, default="system")
+    timestamp = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        Index('IX_audit_timestamp', 'timestamp'),
-        Index('IX_audit_category', 'category'),
-        Index('IX_audit_level', 'level'),
-        Index('IX_audit_action', 'action'),
+        Index("IX_audit_timestamp", "timestamp"),
+        Index("IX_audit_category", "category"),
+        Index("IX_audit_level", "level"),
+        Index("IX_audit_action", "action"),
     )

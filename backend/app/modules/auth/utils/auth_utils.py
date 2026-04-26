@@ -12,6 +12,7 @@ from app.core.security import decode_access_token
 # Password Hashing
 # --------------------------------------------------
 
+
 def hash_password(password: str) -> str:
     """
     Hash a plain-text password using bcrypt.
@@ -32,8 +33,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         # bcrypt requires bytes for both plain and hash
         return bcrypt.checkpw(
-            plain_password.encode("utf-8"), 
-            hashed_password.encode("utf-8")
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
         )
     except (ValueError, TypeError, AttributeError):
         # Handle cases where the stored hash might be invalid/incomplete
@@ -96,6 +96,6 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token is invalid or expired. Ensure you use the access_token JWT from /api/auth/login.",
         )
-    
+
 
 # add test

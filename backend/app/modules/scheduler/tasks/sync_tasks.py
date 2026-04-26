@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
-from app.modules.source.models import Source as SourceSource  # alias for backward compat
+from app.modules.source.models import (
+    Source as SourceSource,
+)  # alias for backward compat
 from app.modules.source.services.source_service import update_sync_status
 from app.core.config import SCRAPER_ENGINE_URL
 
@@ -14,23 +16,24 @@ logger = logging.getLogger(__name__)
 # Scraper microservice URL from centralized config
 SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
+
 def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """
     Trigger the scraper microservice for a specific platform.
     Mapping logic handles typical names like 'Google Reviews' -> 'google'.
     """
     platform_key = platform_name.lower().replace(" reviews", "").replace(".com", "")
-    
+
     endpoint = f"{SCRAPER_API_BASE_URL}/api/{platform_key}/scrape"
     payload = {
         "source_id": str(source_id),
         "source_url": url,
         "headless": True,
-        "pages": "*"  # Request full sync for all platforms
+        "pages": "*",  # Request full sync for all platforms
     }
-    
+
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
-    
+
     try:
         with httpx.Client() as client:
             response = client.post(endpoint, json=payload, timeout=20.0)
@@ -38,11 +41,11 @@ def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> boo
             logger.info(f"Scrape triggered successfully: {response.json()}")
             return True
     except httpx.HTTPError as e:
-         logger.error(f"HTTP error triggering scraper for {platform_name}: {e}")
-         return False
+        logger.error(f"HTTP error triggering scraper for {platform_name}: {e}")
+        return False
     except Exception as e:
-         logger.error(f"Unexpected error triggering scraper: {e}")
-         return False
+        logger.error(f"Unexpected error triggering scraper: {e}")
+        return False
 
 
 def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
@@ -57,6 +60,7 @@ def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
             check_feature_limit,
             send_limit_reached_notification,
         )
+
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
@@ -79,7 +83,7 @@ def process_pending_syncs():
     Runs every minute.
     """
     logger.info("Running scheduled sync check...")
-    
+
     try:
         db = SessionLocal()
     except Exception as e:
@@ -88,16 +92,20 @@ def process_pending_syncs():
 
     try:
         now_utc = datetime.now(timezone.utc)
-        
+
         # Find ACTIVE sources where next_synced_at has passed
-        pending_sources = db.query(SourceSource).options(
-            joinedload(SourceSource.platform),
-            joinedload(SourceSource.organization)
-        ).filter(
-            SourceSource.source_status == 'active',
-            SourceSource.next_synced_at <= now_utc
-        ).all()
-        
+        pending_sources = (
+            db.query(SourceSource)
+            .options(
+                joinedload(SourceSource.platform), joinedload(SourceSource.organization)
+            )
+            .filter(
+                SourceSource.source_status == "active",
+                SourceSource.next_synced_at <= now_utc,
+            )
+            .all()
+        )
+
         if not pending_sources:
             logger.info("No pending sync tasks found.")
             return
@@ -109,35 +117,47 @@ def process_pending_syncs():
 
         for source in pending_sources:
             if not source.platform:
-                logger.warning(f"Source {source.source_id} has no linked platform. Skipping.")
+                logger.warning(
+                    f"Source {source.source_id} has no linked platform. Skipping."
+                )
                 continue
 
             # Skip if platform is inactive
-            if source.platform.platform_status == 'inactive':
-                logger.info(f"Skipping source {source.source_id} because platform '{source.platform.platform_name}' is inactive.")
+            if source.platform.platform_status == "inactive":
+                logger.info(
+                    f"Skipping source {source.source_id} because platform '{source.platform.platform_name}' is inactive."
+                )
                 continue
 
             # ── Check scraping_frequency limit for the source's tenant ──
             tenant_id = None
-            if hasattr(source, 'organization') and source.organization and source.organization.tenant_id:
+            if (
+                hasattr(source, "organization")
+                and source.organization
+                and source.organization.tenant_id
+            ):
                 tenant_id = str(source.organization.tenant_id)
 
             if tenant_id:
                 if tenant_id not in tenant_allowed_cache:
-                    tenant_allowed_cache[tenant_id] = _check_scraping_frequency_for_tenant(tenant_id)
+                    tenant_allowed_cache[tenant_id] = (
+                        _check_scraping_frequency_for_tenant(tenant_id)
+                    )
 
                 if not tenant_allowed_cache[tenant_id]:
-                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached.")
+                    logger.info(
+                        f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached."
+                    )
                     continue
 
             # Trigger the microservice
             trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
                 url=source.source_url,
-                source_id=source.source_id
+                source_id=source.source_id,
             )
             # Timestamps will be updated via callback to /source/tasks/{source_id}/sync-complete
-                
+
     except Exception as e:
         # Avoid massive tracebacks on timeout by just logging the error string
         logger.error(f"Error during scheduled sync processing: {e}")

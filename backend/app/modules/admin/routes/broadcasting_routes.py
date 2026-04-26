@@ -32,7 +32,9 @@ from app.modules.admin.services.system_settings_service import get_system_timezo
 router = APIRouter(prefix="/broadcasting", tags=["Admin Broadcasting"])
 
 
-def _parse_scheduled_at_to_system_time(value: str | None, timezone_name: str) -> datetime | None:
+def _parse_scheduled_at_to_system_time(
+    value: str | None, timezone_name: str
+) -> datetime | None:
     if not value:
         return None
 
@@ -61,13 +63,17 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
         ensure_broadcast_events_table(cursor)
         ensure_notifications_schema(cursor)
 
-        recipient_ids = get_recipient_ids(cursor, payload.audienceType, payload.audienceValue)
+        recipient_ids = get_recipient_ids(
+            cursor, payload.audienceType, payload.audienceValue
+        )
         recipient_count = len(recipient_ids)
         audience_label = get_audience_label(payload.audienceType, payload.audienceValue)
 
         timezone_name = get_system_timezone(cursor)
         now_utc = datetime.utcnow()
-        scheduled_at = _parse_scheduled_at_to_system_time(payload.scheduledAt, timezone_name)
+        scheduled_at = _parse_scheduled_at_to_system_time(
+            payload.scheduledAt, timezone_name
+        )
 
         status = "pending" if payload.scheduleType == "scheduled" else "sent"
         sent_at = scheduled_at if status == "pending" else now_utc
@@ -104,7 +110,12 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
 
         if status == "sent" and payload.channel in {"notification", "both"}:
             create_notifications(
-                cursor, recipient_ids, payload.subject, payload.body, payload.messageType, now_utc,
+                cursor,
+                recipient_ids,
+                payload.subject,
+                payload.body,
+                payload.messageType,
+                now_utc,
             )
 
         connection.commit()
@@ -149,16 +160,14 @@ def get_statistics() -> StatisticsResponse:
     try:
         cursor = connection.cursor()
         ensure_broadcast_events_table(cursor)
-        row = cursor.execute(
-            """
+        row = cursor.execute("""
             SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS scheduled,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
             FROM dbo.broadcast_event
-            """
-        ).fetchone()
+            """).fetchone()
 
         return StatisticsResponse(
             total=int(row[0] or 0),
@@ -176,8 +185,7 @@ def get_history() -> list[dict]:
     try:
         cursor = connection.cursor()
         ensure_broadcast_events_table(cursor)
-        rows = cursor.execute(
-            """
+        rows = cursor.execute("""
             SELECT
                 broadcast_id, subject, body, channel,
                 audience_type, audience_value, audience_label,
@@ -189,8 +197,7 @@ def get_history() -> list[dict]:
                 CAST(created_at AS NVARCHAR(50)) AS created_at
             FROM dbo.broadcast_event
             ORDER BY created_at DESC
-            """
-        ).fetchall()
+            """).fetchall()
 
         return [to_record(row) for row in rows]
     finally:
@@ -266,7 +273,12 @@ def resend_broadcast(broadcast_id: str) -> dict:
 
         if str(event.channel) in {"notification", "both"}:
             create_notifications(
-                cursor, recipient_ids, str(event.subject), str(event.body), str(event.message_type), now_utc,
+                cursor,
+                recipient_ids,
+                str(event.subject),
+                str(event.body),
+                str(event.message_type),
+                now_utc,
             )
 
         cursor.execute(
@@ -357,6 +369,8 @@ def cancel_broadcast(broadcast_id: str) -> dict:
         raise
     except Exception as exc:
         connection.rollback()
-        raise HTTPException(status_code=500, detail=f"Error cancelling broadcast: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Error cancelling broadcast: {exc}"
+        )
     finally:
         connection.close()

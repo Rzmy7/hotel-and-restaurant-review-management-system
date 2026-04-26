@@ -42,10 +42,10 @@ async def send_broadcast_endpoint(
     """
     admin_identifier = request.headers.get("x-admin-user", "Admin User")
     result = await send_broadcast(broadcast_data, admin_identifier, db)
-    
+
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("message"))
-    
+
     return result
 
 
@@ -89,7 +89,7 @@ async def get_history(
 ):
     """
     Get broadcast history.
-    
+
     """
     history = await get_broadcast_history(db)
     return history
@@ -102,7 +102,7 @@ async def get_broadcast_detail(
 ):
     """
     Get details of a specific broadcast.
-    
+
     Returns 404 when not found.
     """
     detail = await get_broadcast_by_id(broadcast_id, db)
@@ -118,7 +118,7 @@ async def resend_broadcast(
 ):
     """
     Resend a previously sent broadcast.
-    
+
     Returns 404 when the broadcast does not exist.
     """
     result = await resend_broadcast_service(broadcast_id, db)
@@ -136,7 +136,7 @@ async def cancel_broadcast_endpoint(
 ):
     """
     Cancel a scheduled broadcast.
-    
+
     Cancels only pending broadcasts.
     """
     result = await cancel_broadcast_service(broadcast_id, db)

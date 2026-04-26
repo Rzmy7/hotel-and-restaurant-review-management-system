@@ -2,28 +2,43 @@ import threading
 from collections import deque
 from typing import Dict, Any, List, Optional, Callable
 
+
 class QueuedJob:
     """Represents a job waiting in the queue."""
-    def __init__(self, job_id: str, platform: str, fn: Callable, args: tuple, kwargs: dict):
+
+    def __init__(
+        self, job_id: str, platform: str, fn: Callable, args: tuple, kwargs: dict
+    ):
         self.job_id = job_id
         self.platform = platform
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
 
+
 class JobQueue:
     """
     Thread-safe FCFS Queue for scraping jobs.
     Manages jobs that exceed the scrape pool's max concurrency.
     """
+
     def __init__(self):
         self._queue = deque()
         self._lock = threading.Lock()
 
-    def push(self, _queue_job_id: str, _queue_platform: str, _queue_fn: Callable, *args, **kwargs):
+    def push(
+        self,
+        _queue_job_id: str,
+        _queue_platform: str,
+        _queue_fn: Callable,
+        *args,
+        **kwargs
+    ):
         """Adds a job to the end of the queue."""
         with self._lock:
-            self._queue.append(QueuedJob(_queue_job_id, _queue_platform, _queue_fn, args, kwargs))
+            self._queue.append(
+                QueuedJob(_queue_job_id, _queue_platform, _queue_fn, args, kwargs)
+            )
 
     def pop(self) -> Optional[QueuedJob]:
         """Removes and returns the first job in the queue."""
@@ -77,6 +92,7 @@ class JobQueue:
                     del self._queue[i]
                     return True
         return False
+
 
 # Global singleton
 job_queue = JobQueue()

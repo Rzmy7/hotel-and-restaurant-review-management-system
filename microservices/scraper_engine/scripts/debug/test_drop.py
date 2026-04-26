@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_engine():
     params = urllib.parse.quote_plus(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -17,6 +18,7 @@ def get_engine():
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
     return create_engine(conn_str, echo=False)
 
+
 def test_drop():
     engine = get_engine()
     with engine.begin() as conn:
@@ -26,6 +28,7 @@ def test_drop():
             print("SUCCESS")
         except Exception as e:
             print(f"FAILED: {e}")
+
 
 if __name__ == "__main__":
     test_drop()

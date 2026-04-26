@@ -34,7 +34,6 @@ from app.modules.reviews.services.stats_service import (
     get_usage_trend,
 )
 
-
 # ── Stat aggregators (used by routes) ─────────────────────────────────
 
 
@@ -96,14 +95,12 @@ def build_review_data(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
     # ── Step 1: collect platform → review_table mapping from ReviewMate ──
     platform_map: dict[str, str] = {}  # {review_table: platform_name}
     try:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT platform_name, review_table
             FROM dbo.platform
             WHERE review_table IS NOT NULL AND LTRIM(RTRIM(review_table)) <> ''
             ORDER BY platform_name
-            """
-        )
+            """)
         for row in cursor.fetchall():
             p_name = str(row[0] or "").strip()
             r_table = str(row[1] or "").strip()
@@ -131,13 +128,15 @@ def build_review_data(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         logger.warning(
             "Could not reach Scraper Engine at %s: %s. "
             "Returning empty platform review data.",
-            url, exc,
+            url,
+            exc,
         )
         # Log system alert for admin dashboard
         try:
             from app.modules.admin.services.system_alert_logger import (
                 alert_scraper_engine_unreachable,
             )
+
             alert_scraper_engine_unreachable(endpoint=url)
         except Exception:
             pass

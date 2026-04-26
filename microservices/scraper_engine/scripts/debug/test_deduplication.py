@@ -2,12 +2,13 @@ import sys
 import os
 
 # Add the parent directory to sys.path to allow importing from core
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from core.database import get_session
 from core.models import Source, Review
 from core.utils import identify_new_reviews
 from platforms.google.models import save_reviews_to_db
+
 
 class MockReview:
     def __init__(self, id, author, text, rating=5.0):
@@ -16,15 +17,20 @@ class MockReview:
         self.text = text
         self.rating = rating
 
+
 def test_deduplication():
     session = get_session()
     source_id = "test-dedup-uuid-1234"
-    
+
     try:
         # 1. Ensure source exists
         source = session.query(Source).filter_by(source_id=source_id).first()
         if not source:
-            source = Source(source_id=source_id, source_url="https://test.com/dedup", platform_name="google")
+            source = Source(
+                source_id=source_id,
+                source_url="https://test.com/dedup",
+                platform_name="google",
+            )
             session.add(source)
             session.commit()
             print(f"Created test source: {source_id}")
@@ -58,6 +64,7 @@ def test_deduplication():
     except Exception as e:
         print(f"Test failed: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         # Cleanup test data
@@ -66,6 +73,7 @@ def test_deduplication():
         session.query(Source).filter_by(source_id=source_id).delete()
         session.commit()
         session.close()
+
 
 if __name__ == "__main__":
     test_deduplication()

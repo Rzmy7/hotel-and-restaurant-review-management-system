@@ -1,9 +1,16 @@
 """Dashboard routes — alerts and activity feed."""
+
 from fastapi import APIRouter, Depends, HTTPException
-from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_negative_reviews_for_org, get_sentiment_counts
+from app.modules.dashboard.services.activity_service import (
+    get_alerts,
+    get_activities,
+    get_negative_reviews_for_org,
+    get_sentiment_counts,
+)
 from app.modules.auth.utils.auth_utils import get_current_user
 
 router = APIRouter()
+
 
 @router.get("/dashboard/alerts")
 def alerts(org_id: str = None, user=Depends(get_current_user)):
@@ -12,6 +19,7 @@ def alerts(org_id: str = None, user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/dashboard/activities")
 def activities(org_id: str = None, user=Depends(get_current_user)):
     try:
@@ -19,12 +27,14 @@ def activities(org_id: str = None, user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/dashboard/sentiment-counts")
 def sentiment_counts(org_id: str | None = None, user=Depends(get_current_user)):
     try:
         return get_sentiment_counts(org_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/dashboard/negative-reviews")
 def negative_reviews(org_id: str | None = None, user=Depends(get_current_user)):

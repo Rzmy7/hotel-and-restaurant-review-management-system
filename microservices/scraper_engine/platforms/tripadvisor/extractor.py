@@ -2,6 +2,7 @@
 TripAdvisor DOM extractor.
 Parses a single review card element into a structured dict.
 """
+
 import re
 import json
 from core.config import setup_logger
@@ -63,13 +64,17 @@ class TripAdvisorExtractor:
             if svg:
                 # Try finding <title> inside SVG (most reliable)
                 title_el = svg.query_selector("title")
-                label = title_el.text_content() if title_el else (svg.get_attribute("aria-label") or "")
-                
+                label = (
+                    title_el.text_content()
+                    if title_el
+                    else (svg.get_attribute("aria-label") or "")
+                )
+
                 # Extract "X of 5" or "X.0 of 5"
                 m = re.search(r"(\d(?:\.\d)?)\s+of\s+5", label)
                 if m:
                     return float(m.group(1))
-                
+
                 # Try class-based fallback (e.g. bubble_50)
                 cls = svg.get_attribute("class") or ""
                 m_cls = re.search(r"bubble_(\d+)", cls)
@@ -88,7 +93,7 @@ class TripAdvisorExtractor:
             heading = card.query_selector(config.REVIEW_HEADING)
             if not heading:
                 heading = card.query_selector('a[href*="/ShowUserReviews-"]')
-            
+
             if heading:
                 href = heading.get_attribute("href") or ""
                 m = re.search(r"r(\d+)", href)
@@ -103,10 +108,12 @@ class TripAdvisorExtractor:
         trip_date = None
         try:
             all_text = card.inner_text()
-            m_date = re.search(r"Date of stay:\s*(.*?)(?:\n|$)", all_text, re.IGNORECASE)
+            m_date = re.search(
+                r"Date of stay:\s*(.*?)(?:\n|$)", all_text, re.IGNORECASE
+            )
             if m_date:
                 trip_date = m_date.group(1).strip()
-            
+
             m_type = re.search(r"Trip type:\s*(.*?)(?:\n|$)", all_text, re.IGNORECASE)
             if m_type:
                 trip_type = m_type.group(1).replace("Travelled ", "").strip()
@@ -122,7 +129,7 @@ class TripAdvisorExtractor:
                 btn.click()
                 # Brief wait for dynamic content to load
                 self.page.wait_for_timeout(800)
-            
+
             # 2. Expand management response if present
             reply_container = card.query_selector(config.REPLY_CONTAINER)
             if reply_container:
@@ -139,29 +146,37 @@ class TripAdvisorExtractor:
             if reply_container:
                 # Find the actual text body within the container
                 body = reply_container.query_selector(config.REPLY_TEXT)
-                text = body.inner_text().strip() if body else reply_container.inner_text().strip()
-                
+                text = (
+                    body.inner_text().strip()
+                    if body
+                    else reply_container.inner_text().strip()
+                )
+
                 # 1. Remove "Read more" / "Read less"
                 text = text.replace("Read more", "").replace("Read less", "").strip()
-                
+
                 # 2. Remove "Response from..." header if we grabbed the whole container
                 if "Response from" in text:
                     # Look for the last newline or separator after the header
                     # Usually "Responded 6 Jan 2026" or similar
-                    parts = re.split(r"Responded\s+\d{1,2}\s+\w+\s+\d{4}", text, flags=re.IGNORECASE)
+                    parts = re.split(
+                        r"Responded\s+\d{1,2}\s+\w+\s+\d{4}", text, flags=re.IGNORECASE
+                    )
                     if len(parts) > 1:
                         text = parts[-1].strip()
                     else:
                         # Fallback for different date formats
-                        parts = re.split(r"Responded\s+\w+\s+\d{4}", text, flags=re.IGNORECASE)
+                        parts = re.split(
+                            r"Responded\s+\w+\s+\d{4}", text, flags=re.IGNORECASE
+                        )
                         if len(parts) > 1:
                             text = parts[-1].strip()
-                
+
                 # 3. Remove legal disclaimer
                 disclaimer = "This response is the subjective opinion of the management representative"
                 if disclaimer in text:
                     text = text.split(disclaimer)[0].strip()
-                
+
                 return text
         except Exception:
             pass
@@ -171,7 +186,7 @@ class TripAdvisorExtractor:
         try:
             likes_str = self._safe_text(card, config.LIKES)
             if likes_str:
-                m = re.search(r'(\d+)', likes_str)
+                m = re.search(r"(\d+)", likes_str)
                 if m:
                     return int(m.group(1))
         except Exception:
@@ -231,7 +246,7 @@ class TripAdvisorExtractor:
                     return data;
                 }
             """)
-            
+
             if results:
                 for label, score in results.items():
                     key = f"rating_{label.lower().replace(' ', '_')}"
@@ -260,59 +275,66 @@ class TripAdvisorExtractor:
 
     def _parse_photos(self, card, author_name: str) -> list[str]:
         """
-        Orchestrates photo extraction. 
+        Orchestrates photo extraction.
         Collects card photos first, then enters gallery if a 'See all' button exists.
         """
         photos = self._parse_card_photos(card)
-        
+
         try:
             see_all = card.query_selector(config.SEE_ALL_PHOTOS_BTN)
             if see_all:
                 see_all.scroll_into_view_if_needed()
-                self.page.wait_for_timeout(500) # Wait for animation
-                
+                self.page.wait_for_timeout(500)  # Wait for animation
+
                 if see_all.is_visible():
-                    logger.info(f"Detected 'See all' media button for review by {author_name}. Opening gallery...")
+                    logger.info(
+                        f"Detected 'See all' media button for review by {author_name}. Opening gallery..."
+                    )
                     see_all.click(force=True)
                     self.page.wait_for_selector(config.GALLERY_MODAL, timeout=10000)
-                    
+
                     gallery_photos = []
-                max_gallery_attempts = 20 # Safety limit
-                
+                max_gallery_attempts = 20  # Safety limit
+
                 for _ in range(max_gallery_attempts):
                     # 1. Verify author in gallery
                     gallery_author_el = self.page.query_selector(config.GALLERY_AUTHOR)
                     if gallery_author_el:
                         gallery_author = gallery_author_el.inner_text().strip()
-                        if author_name not in gallery_author and gallery_author not in author_name:
-                            logger.info(f"Gallery author changed to {gallery_author}. Finished this review's media.")
+                        if (
+                            author_name not in gallery_author
+                            and gallery_author not in author_name
+                        ):
+                            logger.info(
+                                f"Gallery author changed to {gallery_author}. Finished this review's media."
+                            )
                             break
-                    
+
                     # 2. Extract current image
                     img_el = self.page.query_selector(config.GALLERY_IMAGE)
                     if img_el:
                         src = img_el.get_attribute("src") or ""
                         if src and src not in gallery_photos:
                             gallery_photos.append(src)
-                    
+
                     # 3. Click next
                     next_btn = self.page.query_selector(config.GALLERY_NEXT_BTN)
                     if next_btn and next_btn.is_enabled():
                         next_btn.click()
-                        self.page.wait_for_timeout(1000) # Small delay for transition
+                        self.page.wait_for_timeout(1000)  # Small delay for transition
                     else:
                         break
-                
+
                 # Merge and close
                 for p in gallery_photos:
                     if p not in photos:
                         photos.append(p)
-                
+
                 close_btn = self.page.query_selector(config.GALLERY_CLOSE_BTN)
                 if close_btn:
                     close_btn.click()
                     self.page.wait_for_timeout(500)
-                    
+
         except Exception as e:
             logger.warning(f"Failed to extract photos from TripAdvisor gallery: {e}")
             # Try to close the modal if we are stuck
@@ -320,42 +342,50 @@ class TripAdvisorExtractor:
                 self.page.keyboard.press("Escape")
             except Exception:
                 pass
-                
+
         return photos
 
     def extract_review(self, card) -> dict | None:
         try:
             self._expand_review(card)
             review_id = self._parse_review_id(card)
-            
+
             # Author & Location
             name = "Anonymous"
             origin = None
             author_area = card.query_selector(config.AUTHOR_AREA)
             if author_area:
                 # Name is usually the first bold span
-                name_el = author_area.query_selector('span.biGQs._P.SewaP.OgHoE, a span')
+                name_el = author_area.query_selector(
+                    "span.biGQs._P.SewaP.OgHoE, a span"
+                )
                 name = name_el.inner_text().strip() if name_el else "Anonymous"
-                
+
                 # Location is usually a span.qVkLn that doesn't say "contributions"
-                spans = author_area.query_selector_all('span.qVkLn')
+                spans = author_area.query_selector_all("span.qVkLn")
                 for s in spans:
                     txt = s.inner_text().strip()
-                    if txt and "contribution" not in txt.lower() and "helpful" not in txt.lower():
+                    if (
+                        txt
+                        and "contribution" not in txt.lower()
+                        and "helpful" not in txt.lower()
+                    ):
                         origin = txt
                         break
 
             rating = self._parse_rating(card)
-            
+
             # Clean Review Date
             raw_date_el = card.query_selector(config.REVIEW_DATE)
             raw_date = raw_date_el.inner_text() if raw_date_el else ""
-            clean_date = re.sub(r".*wrote a review\s*", "", raw_date, flags=re.IGNORECASE).strip()
+            clean_date = re.sub(
+                r".*wrote a review\s*", "", raw_date, flags=re.IGNORECASE
+            ).strip()
             clean_date = clean_date.split("\n")[0].strip()
 
             title = self._safe_text(card, config.REVIEW_HEADING)
             text = self._safe_text(card, config.REVIEW_TEXT)
-            
+
             # Filter Disclaimer
             if text and "subjective opinion" in text:
                 text = text.split("This review is the subjective opinion")[0].strip()
@@ -379,7 +409,7 @@ class TripAdvisorExtractor:
                 "reply_text": reply,
                 "likes_count": likes_count,
                 "images": photos,
-                **sub_ratings
+                **sub_ratings,
             }
         except Exception as e:
             logger.warning(f"Failed to extract review card: {e}")

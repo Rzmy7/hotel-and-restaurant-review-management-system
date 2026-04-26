@@ -5,7 +5,7 @@ payload = {
     "source_id": "123e4567-e89b-12d3-a456-426614174000",
     "source_url": "https://www.agoda.com/example",
     "headless": True,
-    "pages": "1"
+    "pages": "1",
 }
 
 response = requests.post(url, json=payload)

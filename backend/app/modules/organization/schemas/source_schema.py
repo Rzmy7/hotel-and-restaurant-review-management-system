@@ -15,7 +15,9 @@ class SourceConnectRequest(BaseModel):
 class CustomSourceConnectRequest(BaseModel):
     source_url: HttpUrl
     organization_id: Optional[str] = None
-    source_name: Optional[str] = Field(default="Custom Source", min_length=1, max_length=100)
+    source_name: Optional[str] = Field(
+        default="Custom Source", min_length=1, max_length=100
+    )
 
 
 class SourceDisconnectRequest(BaseModel):

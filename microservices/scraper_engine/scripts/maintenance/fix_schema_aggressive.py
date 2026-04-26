@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_engine():
     params = urllib.parse.quote_plus(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -17,22 +18,23 @@ def get_engine():
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
     return create_engine(conn_str, echo=False)
 
+
 def drop_tables():
     engine = get_engine()
     tables_to_drop = [
-        'agoda_reviews', 
-        'booking_reviews', 
-        'google_reviews', 
-        'tripadvisor_reviews',
-        'review_media',
-        'review_embeddings',
-        'reviews', 
-        'organization_sources',
-        'organizations', 
-        'sources', 
-        'audit_log'
+        "agoda_reviews",
+        "booking_reviews",
+        "google_reviews",
+        "tripadvisor_reviews",
+        "review_media",
+        "review_embeddings",
+        "reviews",
+        "organization_sources",
+        "organizations",
+        "sources",
+        "audit_log",
     ]
-    
+
     with engine.begin() as conn:
         print("Starting aggressive table cleanup with engine.begin()...")
         # Disable constraints temporarily if needed, though order should work
@@ -50,6 +52,7 @@ def drop_tables():
                     print(f"Failed to drop dbo.{table}: {e2}")
 
     print("Cleanup phase finished.")
+
 
 if __name__ == "__main__":
     drop_tables()

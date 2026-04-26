@@ -33,7 +33,7 @@ def test_sqlalchemy():
     if SessionLocal is None:
         print("✗ SQLAlchemy: FAILED - SessionLocal is None (DATABASE_URL missing)")
         return False
-    
+
     try:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1 AS ok"))
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     print("=== Database Connectivity Test ===\n")
     raw_ok = test_raw_pyodbc()
     sql_ok = test_sqlalchemy()
-    print("\n" + "="*34)
+    print("\n" + "=" * 34)
     if raw_ok and sql_ok:
         print("OVERALL STATUS: SUCCESS")
         sys.exit(0)

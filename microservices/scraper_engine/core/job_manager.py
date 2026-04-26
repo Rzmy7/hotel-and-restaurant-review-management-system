@@ -5,6 +5,7 @@ import json
 import os
 from typing import Dict, Any, List
 
+
 class JobStatus:
     PENDING = "pending"
     QUEUED = "queued"
@@ -12,10 +13,13 @@ class JobStatus:
     COMPLETED = "completed"
     FAILED = "failed"
 
+
 class JobManager:
     def __init__(self, persistence_file="jobs_state.json"):
         # In-memory dictionary to hold live job states
-        self.persistence_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", persistence_file)
+        self.persistence_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", persistence_file
+        )
         self.jobs: Dict[str, Dict[str, Any]] = {}
         self._load()
 
@@ -26,7 +30,11 @@ class JobManager:
                     data = json.load(f)
                     # Handle jobs that were active when the server died
                     for jid, jdata in data.items():
-                        if jdata.get("status") in [JobStatus.PENDING, JobStatus.QUEUED, JobStatus.RUNNING]:
+                        if jdata.get("status") in [
+                            JobStatus.PENDING,
+                            JobStatus.QUEUED,
+                            JobStatus.RUNNING,
+                        ]:
                             jdata["status"] = JobStatus.FAILED
                             jdata["progress"] = "Job aborted due to engine restart."
                     self.jobs = data
@@ -55,7 +63,7 @@ class JobManager:
             "total_reviews": 0,
             "percentage": 0.0,
             "created_at": datetime.datetime.now().isoformat(),
-            "ended_at": None
+            "ended_at": None,
         }
         self._save()
         return job_id
@@ -68,9 +76,9 @@ class JobManager:
         """
         if job_id not in self.jobs:
             return
-        
+
         job = self.jobs[job_id]
-        
+
         if "status" in kwargs and kwargs["status"]:
             job["status"] = kwargs["status"]
         if "progress" in kwargs and kwargs["progress"]:
@@ -83,10 +91,10 @@ class JobManager:
             job["total_pages"] = kwargs["total_pages"]
         if "total_reviews" in kwargs and kwargs["total_reviews"] is not None:
             job["total_reviews"] = kwargs["total_reviews"]
-        
+
         # Auto-compute percentage from whichever dimension is available
         pct = 0.0
-        
+
         if job["status"] == JobStatus.COMPLETED:
             pct = 100.0
         elif job["total_pages"] > 0:
@@ -96,7 +104,7 @@ class JobManager:
         elif job["total_reviews"] > 0 and job["reviews_extracted"] > 0:
             # Fallback to review-count-based progress
             pct = round((job["reviews_extracted"] / job["total_reviews"]) * 100, 1)
-        
+
         # Give a tiny baseline progress if running so the bar shows up
         if job["status"] == JobStatus.RUNNING and pct < 1.0:
             pct = 1.0
@@ -104,7 +112,9 @@ class JobManager:
         job["percentage"] = min(pct, 100.0)
 
         # Set ended_at when moving to a terminal state
-        if job["status"] in [JobStatus.COMPLETED, JobStatus.FAILED] and not job.get("ended_at"):
+        if job["status"] in [JobStatus.COMPLETED, JobStatus.FAILED] and not job.get(
+            "ended_at"
+        ):
             job["ended_at"] = datetime.datetime.now().isoformat()
         elif job["status"] not in [JobStatus.COMPLETED, JobStatus.FAILED]:
             # Reset ended_at if for some reason a job moves back to non-terminal
@@ -119,14 +129,23 @@ class JobManager:
         return list(self.jobs.values())
 
     def get_active_jobs(self) -> List[Dict[str, Any]]:
-        return [j for j in self.jobs.values() if j["status"] in [JobStatus.QUEUED, JobStatus.PENDING, JobStatus.RUNNING]]
+        return [
+            j
+            for j in self.jobs.values()
+            if j["status"] in [JobStatus.QUEUED, JobStatus.PENDING, JobStatus.RUNNING]
+        ]
 
     def get_active_job_by_url(self, url: str) -> Dict[str, Any]:
         """Returns the first active job matching the target URL, if any."""
         for j in self.jobs.values():
-            if j["url"] == url and j["status"] in [JobStatus.QUEUED, JobStatus.PENDING, JobStatus.RUNNING]:
+            if j["url"] == url and j["status"] in [
+                JobStatus.QUEUED,
+                JobStatus.PENDING,
+                JobStatus.RUNNING,
+            ]:
                 return j
         return None
+
 
 # Global singleton
 job_manager = JobManager()

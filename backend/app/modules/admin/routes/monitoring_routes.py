@@ -81,7 +81,9 @@ def scraping_platforms() -> list[dict[str, object]]:
 
 
 @router.post("/scraping/platforms")
-def create_scraping_platform(payload: ScrapingPlatformCreatePayload) -> dict[str, str | bool]:
+def create_scraping_platform(
+    payload: ScrapingPlatformCreatePayload,
+) -> dict[str, str | bool]:
     """Creates a scraping platform entry in the SQL database sources table."""
     result = create_platform_in_db(payload)
     log_admin_activity(
@@ -99,7 +101,9 @@ def scraping_platform_details(platform_id: str) -> dict[str, object]:
 
 
 @router.put("/scraping/platforms/{platform_id}")
-def update_scraping_platform(platform_id: str, payload: ScrapingPlatformUpdatePayload) -> dict[str, object]:
+def update_scraping_platform(
+    platform_id: str, payload: ScrapingPlatformUpdatePayload
+) -> dict[str, object]:
     """Updates platform metadata and synchronizes its backing review table schema."""
     result = update_platform_in_db(platform_id, payload)
     log_admin_activity(
@@ -118,7 +122,9 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
             cursor = connection.cursor()
 
             if not table_exists(cursor, "platform"):
-                raise HTTPException(status_code=400, detail="platform table does not exist")
+                raise HTTPException(
+                    status_code=400, detail="platform table does not exist"
+                )
 
             try:
                 pid = int(platform_id)
@@ -135,7 +141,9 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
                 ).fetchone()
 
             if row is None:
-                raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Platform '{platform_id}' not found"
+                )
 
             found_id = int(row[0])
             found_name = str(row[1])
@@ -154,7 +162,9 @@ def toggle_scraping_platform(platform_id: str) -> dict[str, str | bool]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to toggle platform: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to toggle platform: {exc}"
+        ) from exc
 
     log_admin_activity(
         "scrape_completed",
@@ -177,13 +187,18 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
             cursor = connection.cursor()
 
             if not table_exists(cursor, "platform"):
-                raise HTTPException(status_code=400, detail="platform table does not exist in the configured database")
+                raise HTTPException(
+                    status_code=400,
+                    detail="platform table does not exist in the configured database",
+                )
 
             select_cols = "platform_id, platform_name"
 
             row = find_platform_row(cursor, platform_id, select_cols)
             if row is None:
-                raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Platform '{platform_id}' not found"
+                )
 
             found_id = int(row[0])
             found_name = str(row[1])
@@ -198,7 +213,9 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to delete platform: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete platform: {exc}"
+        ) from exc
 
     log_admin_activity(
         "scrape_failed",
@@ -228,11 +245,17 @@ def scraping_stats() -> dict[str, int | float | bool]:
             }
         raise
 
-    active_jobs = active_payload.get("jobs", []) if isinstance(active_payload, dict) else []
+    active_jobs = (
+        active_payload.get("jobs", []) if isinstance(active_payload, dict) else []
+    )
     all_jobs = all_payload.get("jobs", []) if isinstance(all_payload, dict) else []
 
-    completed_jobs = [job for job in all_jobs if str(job.get("status", "")).lower() == "completed"]
-    failed_jobs = [job for job in all_jobs if str(job.get("status", "")).lower() == "failed"]
+    completed_jobs = [
+        job for job in all_jobs if str(job.get("status", "")).lower() == "completed"
+    ]
+    failed_jobs = [
+        job for job in all_jobs if str(job.get("status", "")).lower() == "failed"
+    ]
 
     today = date.today()
     completed_today = 0
@@ -247,7 +270,11 @@ def scraping_stats() -> dict[str, int | float | bool]:
             continue
 
     total_terminal = len(completed_jobs) + len(failed_jobs)
-    success_rate = round((len(completed_jobs) / total_terminal) * 100, 1) if total_terminal else 100.0
+    success_rate = (
+        round((len(completed_jobs) / total_terminal) * 100, 1)
+        if total_terminal
+        else 100.0
+    )
 
     reviews_ingested = 0
     try:
@@ -255,7 +282,9 @@ def scraping_stats() -> dict[str, int | float | bool]:
         if isinstance(db_stats, dict):
             reviews_ingested = db_stats.get("total_reviews", 0)
     except HTTPException:
-        reviews_ingested = sum(int(job.get("reviews_extracted", 0) or 0) for job in all_jobs)
+        reviews_ingested = sum(
+            int(job.get("reviews_extracted", 0) or 0) for job in all_jobs
+        )
 
     return {
         "activeJobs": len(active_jobs),
@@ -278,7 +307,7 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
         if exc.status_code == 502:
             return []
         raise
-    
+
     rows = payload.get("jobs", []) if isinstance(payload, dict) else []
     rows = sorted(
         rows,
@@ -305,8 +334,7 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
                 "status": job_status_to_ui(str(row.get("status", ""))),
                 "startTime": format_job_start_time(row.get("created_at")),
                 "duration": format_duration_from_created_at(
-                    row.get("created_at"), 
-                    row.get("ended_at")
+                    row.get("created_at"), row.get("ended_at")
                 ),
                 "reviews": int(reviews_value) if reviews_value is not None else None,
             }
@@ -362,8 +390,13 @@ def review_processing_stats() -> dict:
             if terminal > 0:
                 success_rate = round((processed / terminal) * 100, 1)
 
-            from app.modules.admin.services.system_settings_service import get_setting_bool
-            is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
+            from app.modules.admin.services.system_settings_service import (
+                get_setting_bool,
+            )
+
+            is_paused = get_setting_bool(
+                cursor, "review_processing_paused", default=False
+            )
 
             return {
                 "activeJobs": pending,
@@ -377,13 +410,16 @@ def review_processing_stats() -> dict:
                 "isPaused": is_paused,
             }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch review processing stats: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch review processing stats: {exc}"
+        ) from exc
 
 
 @router.post("/review-processing/resume")
 def resume_review_processing() -> dict:
     """Resumes review processing by unsetting the paused flag."""
     from app.modules.admin.services.system_settings_service import set_setting
+
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
@@ -397,7 +433,9 @@ def resume_review_processing() -> dict:
         )
         return {"status": "success", "message": "Review processing resumed."}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to resume review processing: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to resume review processing: {exc}"
+        ) from exc
 
 
 @router.get("/review-processing/jobs")
@@ -454,7 +492,11 @@ def review_processing_jobs() -> list[dict]:
                 start_time = "--"
                 if earliest:
                     try:
-                        dt = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
+                        dt = (
+                            earliest
+                            if isinstance(earliest, datetime)
+                            else datetime.fromisoformat(str(earliest))
+                        )
                         start_time = dt.strftime("%b %d, %H:%M")
                     except Exception:
                         start_time = str(earliest)[:16]
@@ -463,8 +505,16 @@ def review_processing_jobs() -> list[dict]:
                 duration = "--"
                 if earliest and latest:
                     try:
-                        dt_start = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
-                        dt_end = latest if isinstance(latest, datetime) else datetime.fromisoformat(str(latest))
+                        dt_start = (
+                            earliest
+                            if isinstance(earliest, datetime)
+                            else datetime.fromisoformat(str(earliest))
+                        )
+                        dt_end = (
+                            latest
+                            if isinstance(latest, datetime)
+                            else datetime.fromisoformat(str(latest))
+                        )
                         delta = dt_end - dt_start
                         total_secs = int(delta.total_seconds())
                         if total_secs < 60:
@@ -472,27 +522,33 @@ def review_processing_jobs() -> list[dict]:
                         elif total_secs < 3600:
                             duration = f"{total_secs // 60}m {total_secs % 60}s"
                         else:
-                            duration = f"{total_secs // 3600}h {(total_secs % 3600) // 60}m"
+                            duration = (
+                                f"{total_secs // 3600}h {(total_secs % 3600) // 60}m"
+                            )
                     except Exception:
                         duration = "--"
 
-                jobs.append({
-                    "id": f"{source_id}-{status_raw}",
-                    "jobId": f"#RPJ-{short_id}",
-                    "platform": platform_name.title(),
-                    "platformIcon": icon,
-                    "platformColor": color,
-                    "organization": org_name,
-                    "status": ui_status,
-                    "startTime": start_time,
-                    "duration": duration,
-                    "reviewsProcessed": review_count,
-                    "totalReviews": None,
-                })
+                jobs.append(
+                    {
+                        "id": f"{source_id}-{status_raw}",
+                        "jobId": f"#RPJ-{short_id}",
+                        "platform": platform_name.title(),
+                        "platformIcon": icon,
+                        "platformColor": color,
+                        "organization": org_name,
+                        "status": ui_status,
+                        "startTime": start_time,
+                        "duration": duration,
+                        "reviewsProcessed": review_count,
+                        "totalReviews": None,
+                    }
+                )
 
             return jobs
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch review processing jobs: {exc}"
+        ) from exc
 
 
 @router.get("/review-processing/gemini-config")
@@ -508,9 +564,15 @@ def get_gemini_config() -> dict:
             cursor = conn.cursor()
             ensure_system_settings_table(cursor)
 
-            raw_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
-            last_tested_at = get_setting(cursor, "review_processing_gemini_last_tested_at")
-            last_test_result = get_setting(cursor, "review_processing_gemini_last_test_result")
+            raw_key = (
+                get_setting(cursor, "review_processing_gemini_api_key") or ""
+            ).strip()
+            last_tested_at = get_setting(
+                cursor, "review_processing_gemini_last_tested_at"
+            )
+            last_test_result = get_setting(
+                cursor, "review_processing_gemini_last_test_result"
+            )
 
             # Mask the key for display
             masked_key = ""
@@ -527,7 +589,9 @@ def get_gemini_config() -> dict:
                 "lastTestResult": last_test_result,
             }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to load Gemini config: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load Gemini config: {exc}"
+        ) from exc
 
 
 @router.post("/review-processing/gemini-config")
@@ -564,7 +628,9 @@ def save_gemini_config(payload: GeminiApiKeySavePayload) -> dict:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to save Gemini API key: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save Gemini API key: {exc}"
+        ) from exc
 
 
 @router.post("/review-processing/gemini-config/test")
@@ -587,8 +653,7 @@ def test_gemini_config(payload: GeminiApiKeyTestPayload) -> dict:
     try:
         client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents="Reply with exactly: ok"
+            model="gemini-2.5-flash-lite", contents="Reply with exactly: ok"
         )
         text = (getattr(response, "text", "") or "").strip()
         if text:
@@ -604,11 +669,18 @@ def test_gemini_config(payload: GeminiApiKeyTestPayload) -> dict:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             ensure_system_settings_table(cursor)
-            set_setting(cursor, "review_processing_gemini_last_tested_at", datetime.now().isoformat())
-            set_setting(cursor, "review_processing_gemini_last_test_result", "success" if success else "error")
+            set_setting(
+                cursor,
+                "review_processing_gemini_last_tested_at",
+                datetime.now().isoformat(),
+            )
+            set_setting(
+                cursor,
+                "review_processing_gemini_last_test_result",
+                "success" if success else "error",
+            )
             conn.commit()
     except Exception:
         pass  # Non-critical — don't fail the test response
 
     return {"success": success, "message": message}
-

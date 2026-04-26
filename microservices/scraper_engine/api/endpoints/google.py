@@ -4,6 +4,7 @@ Google Scrape Endpoint
 POST /api/google/scrape — triggers playwright scraper via the thread pool.
 Body: { source_id, source_url, headless?, pages? }
 """
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/google", tags=["Google"])
 # ── Request Schema ──
 class GoogleScrapeRequest(BaseModel):
     """Payload for triggering a Google Maps scrape job."""
+
     source_id: str
     source_url: str
     headless: Optional[bool] = True
@@ -40,12 +42,12 @@ def trigger_google_scrape(request: Request, body: GoogleScrapeRequest):
     """
     if scrape_pool.total_pending >= config.max_queue_size:
         raise HTTPException(
-            status_code=429, 
-            detail=f"Scraper queue depth limit reached ({config.max_queue_size}). Please try again later."
+            status_code=429,
+            detail=f"Scraper queue depth limit reached ({config.max_queue_size}). Please try again later.",
         )
 
     logger.info(f"Scrape request: source_id={body.source_id}, url={body.source_url}")
-    
+
     # Normalize URL to base URL
     normalized_url = normalize_url(body.source_url)
     logger.info(f"Normalized URL: {normalized_url}")
@@ -58,7 +60,7 @@ def trigger_google_scrape(request: Request, body: GoogleScrapeRequest):
             source = Source(
                 source_id=body.source_id,
                 source_url=normalized_url,
-                platform_name="google"
+                platform_name="google",
             )
             session.add(source)
         else:
@@ -76,24 +78,31 @@ def trigger_google_scrape(request: Request, body: GoogleScrapeRequest):
     try:
         active_job = job_manager.get_active_job_by_url(normalized_url)
         if active_job:
-            logger.info(f"Existing job {active_job['id']} found for {normalized_url}. Attaching source {body.source_id}.")
-            
+            logger.info(
+                f"Existing job {active_job['id']} found for {normalized_url}. Attaching source {body.source_id}."
+            )
+
             # Immediately notify backend that this source is now matching the active job's status
             SourceService.notify_single(body.source_id, "RUNNING")
-            
+
             return {
                 "status": "attached",
                 "job_id": active_job["id"],
                 "source_id": body.source_id,
                 "pool": scrape_pool.get_pool_status(),
-                "message": "Attached to existing active scrape job for identical URL (normalized)."
+                "message": "Attached to existing active scrape job for identical URL (normalized).",
             }
 
         job_id = job_manager.create_job(platform="google", url=normalized_url)
         scrape_pool.submit(
-            job_id, scrape_google,
-            url=normalized_url, headless=body.headless, pages=body.pages, 
-            job_id=job_id, source_id=body.source_id, platform="google"
+            job_id,
+            scrape_google,
+            url=normalized_url,
+            headless=body.headless,
+            pages=body.pages,
+            job_id=job_id,
+            source_id=body.source_id,
+            platform="google",
         )
         pool = scrape_pool.get_pool_status()
         return {
@@ -101,7 +110,7 @@ def trigger_google_scrape(request: Request, body: GoogleScrapeRequest):
             "job_id": job_id,
             "source_id": body.source_id,
             "pool": pool,
-            "message": "Google scrape job submitted to pool (normalized)."
+            "message": "Google scrape job submitted to pool (normalized).",
         }
     except Exception as e:
         logger.error(f"Job submission failed: {e}", exc_info=True)

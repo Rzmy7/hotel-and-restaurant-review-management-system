@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
-router = APIRouter(prefix='/api/settings', tags=['settings'])
+router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
 class GeneralSettingsResponse(BaseModel):
@@ -27,24 +27,26 @@ class GeneralSettingsPayload(BaseModel):
 
 
 def _connection_string() -> str:
-    server = os.getenv('DB_SERVER')
-    database = os.getenv('DB_NAME')
-    uid = os.getenv('DB_UID')
-    pwd = os.getenv('DB_PWD')
-    driver = os.getenv('DB_DRIVER', 'ODBC Driver 17 for SQL Server')
+    server = os.getenv("DB_SERVER")
+    database = os.getenv("DB_NAME")
+    uid = os.getenv("DB_UID")
+    pwd = os.getenv("DB_PWD")
+    driver = os.getenv("DB_DRIVER", "ODBC Driver 17 for SQL Server")
 
     missing = [
         name
         for name, value in {
-            'DB_SERVER': server,
-            'DB_NAME': database,
-            'DB_UID': uid,
-            'DB_PWD': pwd,
+            "DB_SERVER": server,
+            "DB_NAME": database,
+            "DB_UID": uid,
+            "DB_PWD": pwd,
         }.items()
         if not value
     ]
     if missing:
-        raise HTTPException(status_code=500, detail=f"Missing DB config: {', '.join(missing)}")
+        raise HTTPException(
+            status_code=500, detail=f"Missing DB config: {', '.join(missing)}"
+        )
 
     return (
         f"DRIVER={{{driver}}};"
@@ -52,13 +54,12 @@ def _connection_string() -> str:
         f"DATABASE={database};"
         f"UID={uid};"
         f"PWD={pwd};"
-        'TrustServerCertificate=yes;'
+        "TrustServerCertificate=yes;"
     )
 
 
 def _ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.system_settings', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.system_settings (
@@ -69,8 +70,7 @@ def _ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
                     CONSTRAINT DF_system_settings_updated_at DEFAULT SYSUTCDATETIME()
             );
         END;
-        """
-    )
+        """)
 
 
 def _get_setting(cursor: pyodbc.Cursor, key: str) -> Optional[str]:
@@ -84,7 +84,7 @@ def _get_setting(cursor: pyodbc.Cursor, key: str) -> Optional[str]:
     ).fetchone()
     if not row:
         return None
-    return str(row[0] or '').strip()
+    return str(row[0] or "").strip()
 
 
 def _set_setting(cursor: pyodbc.Cursor, key: str, value: str) -> None:
@@ -115,20 +115,20 @@ def _is_valid_timezone(value: str) -> bool:
         return False
 
 
-@router.get('/general', response_model=GeneralSettingsResponse)
+@router.get("/general", response_model=GeneralSettingsResponse)
 def get_general_settings() -> GeneralSettingsResponse:
     connection = pyodbc.connect(_connection_string())
     try:
         cursor = connection.cursor()
         _ensure_system_settings_table(cursor)
 
-        timezone_value = _get_setting(cursor, 'timezone') or 'UTC'
+        timezone_value = _get_setting(cursor, "timezone") or "UTC"
         if not _is_valid_timezone(timezone_value):
-            timezone_value = 'UTC'
+            timezone_value = "UTC"
 
-        language = _get_setting(cursor, 'language') or 'en'
-        date_format = _get_setting(cursor, 'date_format') or 'MM/DD/YYYY'
-        currency = _get_setting(cursor, 'currency') or 'USD ($)'
+        language = _get_setting(cursor, "language") or "en"
+        date_format = _get_setting(cursor, "date_format") or "MM/DD/YYYY"
+        currency = _get_setting(cursor, "currency") or "USD ($)"
 
         connection.commit()
         return GeneralSettingsResponse(
@@ -142,16 +142,21 @@ def get_general_settings() -> GeneralSettingsResponse:
         raise
     except Exception as exc:
         connection.rollback()
-        raise HTTPException(status_code=500, detail=f'Unable to load general settings: {exc}')
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load general settings: {exc}"
+        )
     finally:
         connection.close()
 
 
-@router.patch('/general', response_model=GeneralSettingsResponse)
+@router.patch("/general", response_model=GeneralSettingsResponse)
 def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsResponse:
     timezone_value = payload.timezone.strip()
     if not _is_valid_timezone(timezone_value):
-        raise HTTPException(status_code=400, detail='Invalid timezone. Use a valid IANA timezone (e.g. Asia/Colombo).')
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid timezone. Use a valid IANA timezone (e.g. Asia/Colombo).",
+        )
 
     language = payload.language.strip()
     date_format = payload.dateFormat.strip()
@@ -161,10 +166,10 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
     try:
         cursor = connection.cursor()
         _ensure_system_settings_table(cursor)
-        _set_setting(cursor, 'timezone', timezone_value)
-        _set_setting(cursor, 'language', language)
-        _set_setting(cursor, 'date_format', date_format)
-        _set_setting(cursor, 'currency', currency)
+        _set_setting(cursor, "timezone", timezone_value)
+        _set_setting(cursor, "language", language)
+        _set_setting(cursor, "date_format", date_format)
+        _set_setting(cursor, "currency", currency)
         connection.commit()
 
         return GeneralSettingsResponse(
@@ -178,6 +183,8 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
         raise
     except Exception as exc:
         connection.rollback()
-        raise HTTPException(status_code=500, detail=f'Unable to update general settings: {exc}')
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update general settings: {exc}"
+        )
     finally:
         connection.close()

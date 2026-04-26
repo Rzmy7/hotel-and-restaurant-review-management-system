@@ -18,7 +18,9 @@ class NotificationCreate(BaseModel):
     userId: uuid.UUID
     title: str = Field(..., min_length=1, max_length=200)
     message: str = Field(..., min_length=1, max_length=4000)
-    type: Literal["info", "success", "warning", "error", "maintenance", "announcement"] = "info"
+    type: Literal[
+        "info", "success", "warning", "error", "maintenance", "announcement"
+    ] = "info"
 
 
 class NotificationResponse(BaseModel):
@@ -51,11 +53,15 @@ def _to_response(user_notification: UserNotification) -> NotificationResponse:
         type=content.notification_type,
         isRead=user_notification.is_read,
         createdAt=content.created_at.isoformat() if content.created_at else "",
-        readAt=user_notification.read_at.isoformat() if user_notification.read_at else None,
+        readAt=(
+            user_notification.read_at.isoformat() if user_notification.read_at else None
+        ),
     )
 
 
-def create_user_notification(db: Session, payload: NotificationCreate) -> NotificationResponse:
+def create_user_notification(
+    db: Session, payload: NotificationCreate
+) -> NotificationResponse:
     notification = create_notification(
         db=db,
         user_id=payload.userId,
@@ -98,7 +104,9 @@ def mark_user_notification_read(
     return _to_response(notification)
 
 
-def mark_user_notifications_read_all(db: Session, user_id: uuid.UUID) -> MarkAllReadResponse:
+def mark_user_notifications_read_all(
+    db: Session, user_id: uuid.UUID
+) -> MarkAllReadResponse:
     updated = mark_all_notifications_as_read(db, user_id)
     return MarkAllReadResponse(updated=updated)
 

@@ -22,28 +22,26 @@ def resolve_target_user_id(cursor: pyodbc.Cursor, user_id: str | None) -> str:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid userId")
 
-    admin_row = cursor.execute(
-        f"""
+    admin_row = cursor.execute(f"""
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
         FROM dbo.[user]
         WHERE COALESCE(role_id, 0) = {ADMIN_ROLE_ID} AND COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
-        """
-    ).fetchone()
+        """).fetchone()
 
     if admin_row and admin_row.user_id:
         return str(admin_row.user_id)
 
-    fallback_row = cursor.execute(
-        """
+    fallback_row = cursor.execute("""
         SELECT TOP 1 CAST(user_id AS NVARCHAR(36)) AS user_id
         FROM dbo.[user]
         WHERE COALESCE(is_active, 0) = 1
         ORDER BY created_at DESC
-        """
-    ).fetchone()
+        """).fetchone()
 
     if fallback_row and fallback_row.user_id:
         return str(fallback_row.user_id)
 
-    raise HTTPException(status_code=404, detail="No active user available for notifications")
+    raise HTTPException(
+        status_code=404, detail="No active user available for notifications"
+    )

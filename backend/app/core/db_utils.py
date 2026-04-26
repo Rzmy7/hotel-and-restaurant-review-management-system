@@ -27,11 +27,16 @@ load_dotenv()
 
 def _resolve_db_driver() -> str:
     import pyodbc as _pyodbc
+
     preferred = os.getenv("DB_DRIVER", "ODBC Driver 17 for SQL Server")
     available = {d.lower(): d for d in _pyodbc.drivers()}
     if preferred.lower() in available:
         return available[preferred.lower()]
-    for candidate in ["ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server"]:
+    for candidate in [
+        "ODBC Driver 18 for SQL Server",
+        "ODBC Driver 17 for SQL Server",
+        "SQL Server",
+    ]:
         if candidate.lower() in available:
             return available[candidate.lower()]
     return preferred
@@ -44,9 +49,20 @@ def get_connection_string() -> str:
     uid = os.getenv("DB_UID")
     pwd = os.getenv("DB_PWD")
 
-    missing = [k for k, v in {"DB_SERVER": server, "DB_NAME": database, "DB_UID": uid, "DB_PWD": pwd}.items() if not v]
+    missing = [
+        k
+        for k, v in {
+            "DB_SERVER": server,
+            "DB_NAME": database,
+            "DB_UID": uid,
+            "DB_PWD": pwd,
+        }.items()
+        if not v
+    ]
     if missing:
-        raise ValueError(f"Missing required database environment variables: {', '.join(missing)}")
+        raise ValueError(
+            f"Missing required database environment variables: {', '.join(missing)}"
+        )
 
     driver = _resolve_db_driver()
     parts = [
@@ -68,9 +84,12 @@ def get_connection_string() -> str:
 # ── Query helpers ────────────────────────────────────────────────────
 
 
-def execute_query(cursor: "pyodbc.Cursor", query: str, params: tuple[Any, ...] = ()) -> "pyodbc.Cursor":
+def execute_query(
+    cursor: "pyodbc.Cursor", query: str, params: tuple[Any, ...] = ()
+) -> "pyodbc.Cursor":
     """Execute a parameterised query, falling back to inlined params on driver error."""
     import pyodbc as _pyodbc
+
     if not params:
         return cursor.execute(query)
     try:
@@ -99,7 +118,9 @@ def _sql_literal(value: Any) -> str:
     return f"'{str(value).replace(chr(39), chr(39)*2)}'"
 
 
-def count_scalar(cursor: "pyodbc.Cursor", query: str, params: tuple[Any, ...] = ()) -> int:
+def count_scalar(
+    cursor: "pyodbc.Cursor", query: str, params: tuple[Any, ...] = ()
+) -> int:
     row = execute_query(cursor, query, params).fetchone()
     return int(row[0]) if row and row[0] is not None else 0
 
@@ -113,7 +134,9 @@ def table_exists(cursor: "pyodbc.Cursor", table_name: str, schema: str = "dbo") 
     return row is not None
 
 
-def get_table_columns(cursor: "pyodbc.Cursor", table_name: str, schema: str = "dbo") -> set:
+def get_table_columns(
+    cursor: "pyodbc.Cursor", table_name: str, schema: str = "dbo"
+) -> set:
     """Return a set of lower-cased column names for a table."""
     rows = execute_query(
         cursor,
@@ -127,7 +150,9 @@ def get_table_columns(cursor: "pyodbc.Cursor", table_name: str, schema: str = "d
     return {str(row[0]) for row in rows}
 
 
-def get_table_column_map(cursor: "pyodbc.Cursor", table_name: str, schema: str = "dbo") -> dict:
+def get_table_column_map(
+    cursor: "pyodbc.Cursor", table_name: str, schema: str = "dbo"
+) -> dict:
     """Return a mapping of lower-cased column name → original column name."""
     rows = execute_query(
         cursor,
@@ -163,7 +188,6 @@ def to_datetime(value: Any) -> "datetime | None":
     if isinstance(value, date):
         return datetime.combine(value, datetime.min.time())
     return None
-
 
 
 # ── Date helpers ─────────────────────────────────────────────────────

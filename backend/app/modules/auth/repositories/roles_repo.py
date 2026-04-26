@@ -63,10 +63,7 @@ def user_has_role(db: Session, user_id, role_name: str):
     user = (
         db.query(User)
         .join(Role, Role.role_id == User.role_id)
-        .filter(
-            User.user_id == user_id,
-            Role.role_name == role_name
-        )
+        .filter(User.user_id == user_id, Role.role_name == role_name)
         .first()
     )
 

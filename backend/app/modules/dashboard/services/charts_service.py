@@ -6,34 +6,44 @@ from typing import List, Dict, Any
 
 import pyodbc
 
-def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: int = 0) -> Dict[str, Any]:
+
+def get_sentiment_distribution(
+    cursor: pyodbc.Cursor, org_id: str, period_days: int = 0
+) -> Dict[str, Any]:
     """Retrieves sentiment distribution counts and percentages. period_days=0 means all-time."""
     if period_days > 0:
         start_date = (datetime.utcnow() - timedelta(days=period_days)).date()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT r.sentiment, COUNT(*) as cnt 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
             GROUP BY r.sentiment
-        """, org_id, start_date)
+        """,
+            org_id,
+            start_date,
+        )
     else:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT r.sentiment, COUNT(*) as cnt 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ? 
             GROUP BY r.sentiment
-        """, org_id)
-    
+        """,
+            org_id,
+        )
+
     rows = cursor.fetchall()
     counts = {"Positive": 0, "Neutral": 0, "Negative": 0}
     for row in rows:
         if row.sentiment in counts:
             counts[row.sentiment] = row.cnt
-            
+
     total = sum(counts.values())
-            
+
     def get_pct(name):
         cnt = counts[name]
         return round((cnt / total) * 100) if total > 0 else 0
@@ -41,7 +51,7 @@ def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: 
     res = {
         "positive": {"count": counts["Positive"], "percentage": get_pct("Positive")},
         "neutral": {"count": counts["Neutral"], "percentage": get_pct("Neutral")},
-        "negative": {"count": counts["Negative"], "percentage": get_pct("Negative")}
+        "negative": {"count": counts["Negative"], "percentage": get_pct("Negative")},
     }
 
     # Adjust for rounding errors to ensure sum is exactly 100%
@@ -55,19 +65,25 @@ def get_sentiment_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: 
 
     return res
 
-def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -> List[Dict[str, Any]]:
+
+def get_daily_review_trends(
+    cursor: pyodbc.Cursor, org_id: str, days: int = 7
+) -> List[Dict[str, Any]]:
     """
     Retrieves review volume and sentiment trends.
     Automatically caps the number of data points to 10 for any time period.
     """
     if days <= 0:
         # All-time: find the total range first
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT MIN(r.reviewDate), DATEDIFF(day, MIN(r.reviewDate), GETDATE())
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ?
-        """, org_id)
+        """,
+            org_id,
+        )
         row = cursor.fetchone()
         if not row or not row[0]:
             return []
@@ -79,14 +95,14 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
 
     # Target ~10 points (9 intervals)
     bucket_size = max(1, days_span // 9)
-    
+
     # Adaptive Label Format
     if days_span <= 14:
-        label_format = 'ddd'        # "Mon", "Tue"
+        label_format = "ddd"  # "Mon", "Tue"
     elif days_span <= 180:
-        label_format = 'MMM dd'     # "Oct 15"
+        label_format = "MMM dd"  # "Oct 15"
     else:
-        label_format = 'MMM yyyy'   # "Oct 2025"
+        label_format = "MMM yyyy"  # "Oct 2025"
 
     query = f"""
         WITH BucketedData AS (
@@ -110,24 +126,33 @@ def get_daily_review_trends(cursor: pyodbc.Cursor, org_id: str, days: int = 7) -
     cursor.execute(query, start_date, org_id, start_date)
     rows = cursor.fetchall()
 
-    return [{
-        "label": row.label,
-        "volume": row.volume,
-        "sentiment": round(float(row.sentiment_avg or 0))
-    } for row in rows]
+    return [
+        {
+            "label": row.label,
+            "volume": row.volume,
+            "sentiment": round(float(row.sentiment_avg or 0)),
+        }
+        for row in rows
+    ]
 
-def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: int = 30) -> List[Dict[str, Any]]:
+
+def get_weekly_review_trends(
+    cursor: pyodbc.Cursor, org_id: str, period_days: int = 30
+) -> List[Dict[str, Any]]:
     """
     Retrieves weekly review trends relative to the start of the requested period.
     Also caps results to a maximum of 10 standardized buckets.
     """
     if period_days <= 0:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT MIN(r.reviewDate), DATEDIFF(day, MIN(r.reviewDate), GETDATE())
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = ?
-        """, org_id)
+        """,
+            org_id,
+        )
         row = cursor.fetchone()
         if not row or not row[0]:
             return []
@@ -138,8 +163,9 @@ def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: in
         days_span = period_days
 
     bucket_size = max(1, days_span // 9)
-    
-    cursor.execute(f"""
+
+    cursor.execute(
+        f"""
         WITH BucketedData AS (
             SELECT 
                 r.sentiment_score,
@@ -156,11 +182,18 @@ def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: in
         FROM BucketedData
         GROUP BY bucket_index
         ORDER BY bucket_index ASC
-    """, start_date, org_id, start_date)
-    
+    """,
+        start_date,
+        org_id,
+        start_date,
+    )
+
     rows = cursor.fetchall()
-    return [{
-        "label": row.label,
-        "volume": row.volume,
-        "sentiment": round(float(row.sentiment_avg or 0))
-    } for row in rows]
+    return [
+        {
+            "label": row.label,
+            "volume": row.volume,
+            "sentiment": round(float(row.sentiment_avg or 0)),
+        }
+        for row in rows
+    ]

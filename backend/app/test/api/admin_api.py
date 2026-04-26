@@ -62,7 +62,9 @@ def _table_exists(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -
     return row is not None
 
 
-def _get_table_columns(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -> set[str]:
+def _get_table_columns(
+    cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo"
+) -> set[str]:
     rows = cursor.execute(
         """
         SELECT LOWER(COLUMN_NAME)
@@ -164,7 +166,9 @@ def _name_from_user_row(full_name: str | None, email: str, fallback_index: int) 
     return f"User {fallback_index}"
 
 
-def _role_from_user_flags(is_super_admin: bool, is_email_verified: bool, is_phone_verified: bool) -> str:
+def _role_from_user_flags(
+    is_super_admin: bool, is_email_verified: bool, is_phone_verified: bool
+) -> str:
     if is_super_admin:
         return "Admin"
     return "User"
@@ -263,7 +267,9 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
     user_org_columns = _get_table_columns(cursor, "user_organizations")
     org_id_column = _pick_existing_column(user_org_columns, ["organization_id"])
     email_column = _pick_existing_column(user_org_columns, ["email"])
-    created_column = _pick_existing_column(user_org_columns, ["created_at", "updated_at"])
+    created_column = _pick_existing_column(
+        user_org_columns, ["created_at", "updated_at"]
+    )
 
     if org_id_column is None or email_column is None:
         return {}
@@ -274,8 +280,7 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
     order_by_parts.append(f"uo.[{org_id_column}]")
     order_by_sql = ", ".join(order_by_parts)
 
-    rows = cursor.execute(
-        f"""
+    rows = cursor.execute(f"""
         WITH ranked_owners AS (
             SELECT
                 uo.[{org_id_column}] AS organization_id,
@@ -291,8 +296,7 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
         SELECT organization_id, email
         FROM ranked_owners
         WHERE row_number = 1
-        """
-    ).fetchall()
+        """).fetchall()
 
     owner_emails: dict[str, str] = {}
     for row in rows:
@@ -311,8 +315,7 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
 def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
     if _table_exists(cursor, "organizations"):
         owner_emails = _load_organization_owner_emails(cursor)
-        rows = cursor.execute(
-            """
+        rows = cursor.execute("""
             SELECT
                 organization_id,
                 organization_name,
@@ -324,13 +327,14 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
                 deleted_at
             FROM dbo.organizations
             ORDER BY COALESCE(updated_at, created_at) DESC, organization_id DESC
-            """
-        ).fetchall()
+            """).fetchall()
 
         organizations = []
         for index, row in enumerate(rows, start=1):
             organization_id = str(row[0]) if row[0] is not None else str(index)
-            organization_name = str(row[1]).strip() if row[1] else f"Organization {organization_id}"
+            organization_name = (
+                str(row[1]).strip() if row[1] else f"Organization {organization_id}"
+            )
 
             organizations.append(
                 {
@@ -345,8 +349,7 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
         return organizations
 
     if _table_exists(cursor, "ProcessedReviews"):
-        rows = cursor.execute(
-            f"""
+        rows = cursor.execute(f"""
             SELECT
                 COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS orgName,
                 COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), '')) AS usersCount,
@@ -354,8 +357,7 @@ def _load_organizations(cursor: pyodbc.Cursor) -> list[dict]:
             FROM dbo.ProcessedReviews
             GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
             ORDER BY COUNT(*) DESC
-            """
-        ).fetchall()
+            """).fetchall()
 
         organizations = []
         for index, row in enumerate(rows, start=1):
@@ -382,7 +384,9 @@ def get_organizations():
             cursor = conn.cursor()
             return _load_organizations(cursor)
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch organizations: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch organizations: {error}"
+        )
 
 
 @router.get("/organizations/stats")
@@ -394,7 +398,9 @@ def get_organization_stats():
 
             total_count = len(organizations)
             active_count = sum(1 for org in organizations if org["status"] == "Active")
-            pending_count = sum(1 for org in organizations if org["status"] == "Pending")
+            pending_count = sum(
+                1 for org in organizations if org["status"] == "Pending"
+            )
 
             return {
                 "total": total_count,
@@ -402,7 +408,9 @@ def get_organization_stats():
                 "pending": pending_count,
             }
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch organization stats: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch organization stats: {error}"
+        )
 
 
 @router.get("/users")
@@ -412,8 +420,7 @@ def get_users():
             cursor = conn.cursor()
 
             if _table_exists(cursor, "user"):
-                rows = cursor.execute(
-                    """
+                rows = cursor.execute("""
                     SELECT
                         user_id,
                         email,
@@ -424,23 +431,23 @@ def get_users():
                         role_id
                     FROM dbo.[user]
                     ORDER BY COALESCE(updated_at, created_at) DESC
-                    """
-                ).fetchall()
-                return [_frontend_user_from_db_row(row, index) for index, row in enumerate(rows, start=1)]
+                    """).fetchall()
+                return [
+                    _frontend_user_from_db_row(row, index)
+                    for index, row in enumerate(rows, start=1)
+                ]
 
             if not _table_exists(cursor, "ProcessedReviews"):
                 return []
 
-            rows = cursor.execute(
-                f"""
+            rows = cursor.execute(f"""
                 SELECT
                     NULLIF(LTRIM(RTRIM(userName)), '') AS userName,
                     COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') AS source,
                     {PROCESSED_ACTIVITY_EXPR} AS activityDate
                 FROM dbo.ProcessedReviews
                 WHERE NULLIF(LTRIM(RTRIM(userName)), '') IS NOT NULL
-                """
-            ).fetchall()
+                """).fetchall()
 
             user_map: dict[str, dict] = {}
             for row in rows:
@@ -461,7 +468,9 @@ def get_users():
                     user_entry["organizations"].add(source_name)
 
                 last_activity = user_entry["lastActivity"]
-                if activity_date and (last_activity is None or activity_date > last_activity):
+                if activity_date and (
+                    last_activity is None or activity_date > last_activity
+                ):
                     user_entry["lastActivity"] = activity_date
 
             sorted_users = sorted(
@@ -501,7 +510,9 @@ def create_user(payload: AdminUserCreatePayload):
             cursor = conn.cursor()
 
             if not _table_exists(cursor, "user"):
-                raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
+                raise HTTPException(
+                    status_code=400, detail="Table dbo.[user] was not found."
+                )
 
             email = payload.email.strip().lower()
             name = payload.name.strip() if payload.name else ""
@@ -544,7 +555,7 @@ def create_user(payload: AdminUserCreatePayload):
                 email,
                 None,
                 name or None,
-                '',
+                "",
                 None,
                 None,
                 1 if status == "Active" else 0,
@@ -559,7 +570,9 @@ def create_user(payload: AdminUserCreatePayload):
 
             row = _get_user_row_by_id(cursor, user_id)
             if row is None:
-                raise HTTPException(status_code=500, detail="User was created but could not be loaded.")
+                raise HTTPException(
+                    status_code=500, detail="User was created but could not be loaded."
+                )
 
             return _frontend_user_from_db_row(row, 1)
 
@@ -576,7 +589,9 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
             cursor = conn.cursor()
 
             if not _table_exists(cursor, "users"):
-                raise HTTPException(status_code=400, detail="Table dbo.users was not found.")
+                raise HTTPException(
+                    status_code=400, detail="Table dbo.users was not found."
+                )
 
             existing_row = _get_user_row_by_id(cursor, user_id)
             if existing_row is None:
@@ -584,10 +599,18 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
 
             current_email = str(existing_row[1] or "").strip()
             current_name = str(existing_row[2]).strip() if existing_row[2] else None
-            current_is_active = bool(existing_row[3]) if existing_row[3] is not None else False
-            current_is_email_verified = bool(existing_row[4]) if existing_row[4] is not None else False
-            current_is_phone_verified = bool(existing_row[5]) if existing_row[5] is not None else False
-            current_is_super_admin = bool(existing_row[6]) if existing_row[6] is not None else False
+            current_is_active = (
+                bool(existing_row[3]) if existing_row[3] is not None else False
+            )
+            current_is_email_verified = (
+                bool(existing_row[4]) if existing_row[4] is not None else False
+            )
+            current_is_phone_verified = (
+                bool(existing_row[5]) if existing_row[5] is not None else False
+            )
+            current_is_super_admin = (
+                bool(existing_row[6]) if existing_row[6] is not None else False
+            )
 
             current_role = _role_from_user_flags(
                 current_is_super_admin,
@@ -600,7 +623,9 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
             if payload.email is not None:
                 candidate_email = payload.email.strip().lower()
                 if not candidate_email:
-                    raise HTTPException(status_code=400, detail="Email cannot be empty.")
+                    raise HTTPException(
+                        status_code=400, detail="Email cannot be empty."
+                    )
                 next_email = candidate_email
 
             next_name = current_name
@@ -610,11 +635,13 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
 
             next_role = _normalize_role(payload.role, current_role)
             next_status = _normalize_status(payload.status, current_status)
-            next_is_super_admin, next_is_email_verified, next_is_phone_verified = _flags_for_role_plan(
-                next_role,
-                payload.plan,
-                current_is_email_verified=current_is_email_verified,
-                current_is_phone_verified=current_is_phone_verified,
+            next_is_super_admin, next_is_email_verified, next_is_phone_verified = (
+                _flags_for_role_plan(
+                    next_role,
+                    payload.plan,
+                    current_is_email_verified=current_is_email_verified,
+                    current_is_phone_verified=current_is_phone_verified,
+                )
             )
 
             cursor.execute(
@@ -642,7 +669,9 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload):
 
             updated_row = _get_user_row_by_id(cursor, user_id)
             if updated_row is None:
-                raise HTTPException(status_code=500, detail="User was updated but could not be loaded.")
+                raise HTTPException(
+                    status_code=500, detail="User was updated but could not be loaded."
+                )
 
             return _frontend_user_from_db_row(updated_row, 1)
 
@@ -659,7 +688,9 @@ def delete_user(user_id: str):
             cursor = conn.cursor()
 
             if not _table_exists(cursor, "user"):
-                raise HTTPException(status_code=400, detail="Table dbo.[user] was not found.")
+                raise HTTPException(
+                    status_code=400, detail="Table dbo.[user] was not found."
+                )
 
             existing_row = _get_user_row_by_id(cursor, user_id)
             if existing_row is None:
@@ -686,19 +717,19 @@ def get_user_stats():
             cursor = conn.cursor()
 
             if _table_exists(cursor, "user"):
-                row = cursor.execute(
-                    """
+                row = cursor.execute("""
                     SELECT
                         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS allActiveUsers,
                         SUM(CASE WHEN is_active = 1 AND CAST(last_login_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayActiveUsers,
                         SUM(CASE WHEN CAST(created_at AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayRegistered
                     FROM dbo.[user]
-                    """
-                ).fetchone()
+                    """).fetchone()
 
                 return {
                     "allActiveUsers": int(row[0]) if row and row[0] is not None else 0,
-                    "todayActiveUsers": int(row[1]) if row and row[1] is not None else 0,
+                    "todayActiveUsers": (
+                        int(row[1]) if row and row[1] is not None else 0
+                    ),
                     "todayRegistered": int(row[2]) if row and row[2] is not None else 0,
                 }
 
@@ -709,8 +740,7 @@ def get_user_stats():
                     "todayRegistered": 0,
                 }
 
-            row = cursor.execute(
-                f"""
+            row = cursor.execute(f"""
                 WITH user_activity AS (
                     SELECT
                         NULLIF(LTRIM(RTRIM(userName)), '') AS userName,
@@ -725,8 +755,7 @@ def get_user_stats():
                     SUM(CASE WHEN CAST(lastActivity AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayActiveUsers,
                     SUM(CASE WHEN CAST(firstActivity AS date) = CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS todayRegistered
                 FROM user_activity
-                """
-            ).fetchone()
+                """).fetchone()
 
             return {
                 "allActiveUsers": int(row[0]) if row and row[0] is not None else 0,
@@ -735,4 +764,6 @@ def get_user_stats():
             }
 
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch user stats: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch user stats: {error}"
+        )

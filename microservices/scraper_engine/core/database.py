@@ -5,6 +5,7 @@ Provides the SQLAlchemy engine, Base, session factory, and init_db()
 which creates all tables on startup. No seeding needed — sources are
 created organically via API requests.
 """
+
 import urllib.parse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, configure_mappers
@@ -39,6 +40,7 @@ def init_db():
     logger.info("Initializing database tables...")
     try:
         import core.models  # noqa: F401 — triggers model registration
+
         configure_mappers()
         engine = get_engine()
         Base.metadata.create_all(engine)

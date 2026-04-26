@@ -30,6 +30,7 @@ def run_group_migrations(engine) -> None:
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
+
 def _column_exists(conn, table: str, column: str) -> bool:
     result = conn.execute(
         text(
@@ -43,10 +44,7 @@ def _column_exists(conn, table: str, column: str) -> bool:
 
 def _table_exists(conn, table: str) -> bool:
     result = conn.execute(
-        text(
-            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES "
-            "WHERE TABLE_NAME = :t"
-        ),
+        text("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES " "WHERE TABLE_NAME = :t"),
         {"t": table},
     )
     return result.scalar() > 0
@@ -65,15 +63,14 @@ def _constraint_exists(conn, table: str, constraint: str) -> bool:
 
 def _index_exists(conn, index_name: str) -> bool:
     result = conn.execute(
-        text(
-            "SELECT COUNT(*) FROM sys.indexes WHERE name = :n"
-        ),
+        text("SELECT COUNT(*) FROM sys.indexes WHERE name = :n"),
         {"n": index_name},
     )
     return result.scalar() > 0
 
 
 # ── Migration steps ───────────────────────────────────────────────────
+
 
 def _migrate_group_table(conn) -> None:
     """Add new columns to the [group] table."""
@@ -105,8 +102,7 @@ def _migrate_group_member_table(conn) -> None:
     # Step 1 — remove role_id FK and column
     if _column_exists(conn, "group_member", "role_id"):
         try:
-            fk_result = conn.execute(
-                text("""
+            fk_result = conn.execute(text("""
                     SELECT kc.CONSTRAINT_NAME
                     FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kc
                     JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
@@ -114,8 +110,7 @@ def _migrate_group_member_table(conn) -> None:
                     WHERE kc.TABLE_NAME = 'group_member'
                       AND kc.COLUMN_NAME = 'role_id'
                       AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
-                """)
-            )
+                """))
             for row in fk_result:
                 conn.execute(
                     text(f"ALTER TABLE group_member DROP CONSTRAINT [{row[0]}]")
@@ -131,9 +126,7 @@ def _migrate_group_member_table(conn) -> None:
     old_check = "ck_group_member_role_valid"
     if _constraint_exists(conn, "group_member", old_check):
         try:
-            conn.execute(
-                text(f"ALTER TABLE group_member DROP CONSTRAINT {old_check}")
-            )
+            conn.execute(text(f"ALTER TABLE group_member DROP CONSTRAINT {old_check}"))
             logger.info("Dropped old CHECK constraint %s", old_check)
         except Exception as exc:
             logger.warning("Could not drop CHECK constraint %s: %s", old_check, exc)
@@ -177,7 +170,9 @@ def _migrate_group_member_to_org(conn) -> None:
       6. Make organization_id NOT NULL, add FK, add new PK
     """
     if _column_exists(conn, "group_member", "organization_id"):
-        logger.info("group_member.organization_id already exists — skipping v2 migration")
+        logger.info(
+            "group_member.organization_id already exists — skipping v2 migration"
+        )
         return
 
     if not _column_exists(conn, "group_member", "user_id"):
@@ -188,9 +183,9 @@ def _migrate_group_member_to_org(conn) -> None:
 
     try:
         # 1. Add organization_id column (nullable)
-        conn.execute(text(
-            "ALTER TABLE group_member ADD organization_id UNIQUEIDENTIFIER NULL"
-        ))
+        conn.execute(
+            text("ALTER TABLE group_member ADD organization_id UNIQUEIDENTIFIER NULL")
+        )
         logger.info("Added group_member.organization_id (nullable)")
 
         # 2. Populate organization_id from tenant→organization mapping
@@ -203,9 +198,7 @@ def _migrate_group_member_to_org(conn) -> None:
         logger.info("Populated group_member.organization_id from tenant mapping")
 
         # 3. Delete rows where no organization could be resolved
-        conn.execute(text(
-            "DELETE FROM group_member WHERE organization_id IS NULL"
-        ))
+        conn.execute(text("DELETE FROM group_member WHERE organization_id IS NULL"))
         logger.info("Deleted group_member rows with no resolvable organization")
 
         # 4. Drop old PK (group_id + user_id)
@@ -215,9 +208,9 @@ def _migrate_group_member_to_org(conn) -> None:
             WHERE tc.TABLE_NAME = 'group_member' AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
         """)).fetchone()
         if pk_result:
-            conn.execute(text(
-                f"ALTER TABLE group_member DROP CONSTRAINT [{pk_result[0]}]"
-            ))
+            conn.execute(
+                text(f"ALTER TABLE group_member DROP CONSTRAINT [{pk_result[0]}]")
+            )
             logger.info("Dropped old PK constraint %s", pk_result[0])
 
         # 5. Drop FK on user_id and the user_id column
@@ -238,17 +231,23 @@ def _migrate_group_member_to_org(conn) -> None:
         logger.info("Dropped group_member.user_id column")
 
         # 6. Make organization_id NOT NULL, add FK, add new composite PK
-        conn.execute(text(
-            "ALTER TABLE group_member ALTER COLUMN organization_id UNIQUEIDENTIFIER NOT NULL"
-        ))
-        conn.execute(text(
-            "ALTER TABLE group_member ADD CONSTRAINT pk_group_member "
-            "PRIMARY KEY (group_id, organization_id)"
-        ))
-        conn.execute(text(
-            "ALTER TABLE group_member ADD CONSTRAINT fk_group_member_org "
-            "FOREIGN KEY (organization_id) REFERENCES organization(organization_id) ON DELETE CASCADE"
-        ))
+        conn.execute(
+            text(
+                "ALTER TABLE group_member ALTER COLUMN organization_id UNIQUEIDENTIFIER NOT NULL"
+            )
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE group_member ADD CONSTRAINT pk_group_member "
+                "PRIMARY KEY (group_id, organization_id)"
+            )
+        )
+        conn.execute(
+            text(
+                "ALTER TABLE group_member ADD CONSTRAINT fk_group_member_org "
+                "FOREIGN KEY (organization_id) REFERENCES organization(organization_id) ON DELETE CASCADE"
+            )
+        )
         logger.info("group_member v2 migration complete: now uses organization_id PK")
 
     except Exception as exc:
@@ -265,9 +264,11 @@ def _migrate_group_invite_to_org(conn) -> None:
     # Add invited_org_id
     if not _column_exists(conn, "group_invite", "invited_org_id"):
         try:
-            conn.execute(text(
-                "ALTER TABLE group_invite ADD invited_org_id UNIQUEIDENTIFIER NULL"
-            ))
+            conn.execute(
+                text(
+                    "ALTER TABLE group_invite ADD invited_org_id UNIQUEIDENTIFIER NULL"
+                )
+            )
             logger.info("Added group_invite.invited_org_id")
             # Back-fill from old invited_user_id via tenant
             conn.execute(text("""
@@ -284,9 +285,11 @@ def _migrate_group_invite_to_org(conn) -> None:
     # Add invited_by_org_id
     if not _column_exists(conn, "group_invite", "invited_by_org_id"):
         try:
-            conn.execute(text(
-                "ALTER TABLE group_invite ADD invited_by_org_id UNIQUEIDENTIFIER NULL"
-            ))
+            conn.execute(
+                text(
+                    "ALTER TABLE group_invite ADD invited_by_org_id UNIQUEIDENTIFIER NULL"
+                )
+            )
             logger.info("Added group_invite.invited_by_org_id")
             # Back-fill from invited_by user via tenant
             conn.execute(text("""
@@ -304,18 +307,24 @@ def _migrate_group_invite_to_org(conn) -> None:
     old_inv_check = "ck_group_invite_type_valid"
     if _constraint_exists(conn, "group_invite", old_inv_check):
         try:
-            conn.execute(text(f"ALTER TABLE group_invite DROP CONSTRAINT {old_inv_check}"))
+            conn.execute(
+                text(f"ALTER TABLE group_invite DROP CONSTRAINT {old_inv_check}")
+            )
             logger.info("Dropped old invite_type CHECK constraint")
         except Exception as exc:
             logger.warning("Could not drop invite_type constraint: %s", exc)
 
     if not _constraint_exists(conn, "group_invite", old_inv_check):
         try:
-            conn.execute(text(
-                "ALTER TABLE group_invite ADD CONSTRAINT ck_group_invite_type_valid "
-                "CHECK (invite_type IN ('organization', 'link', 'user'))"
-            ))
-            logger.info("Added new invite_type CHECK constraint (organization|link|user)")
+            conn.execute(
+                text(
+                    "ALTER TABLE group_invite ADD CONSTRAINT ck_group_invite_type_valid "
+                    "CHECK (invite_type IN ('organization', 'link', 'user'))"
+                )
+            )
+            logger.info(
+                "Added new invite_type CHECK constraint (organization|link|user)"
+            )
         except Exception as exc:
             logger.warning("Could not add invite_type constraint: %s", exc)
 

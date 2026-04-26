@@ -3,11 +3,13 @@ from sqlalchemy import Column, String, Boolean, DateTime, Text, Integer
 from sqlalchemy.sql import func
 from app.database.session import Base
 
+
 class SystemSetting(Base):
     __tablename__ = "system_settings"
     setting_key = Column(String(100), primary_key=True)
     setting_value = Column(String(255), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
 
 class SystemAlertLog(Base):
     __tablename__ = "system_alert_log"

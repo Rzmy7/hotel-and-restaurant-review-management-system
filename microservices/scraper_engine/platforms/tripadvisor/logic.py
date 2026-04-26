@@ -4,6 +4,7 @@ TripAdvisor Main Scraping Orchestrator.
 Handles navigation, pagination (URL-offset pattern: -or10-, -or20-),
 review extraction, progress tracking, and DB saving.
 """
+
 import re
 import random
 import time
@@ -19,9 +20,11 @@ from core.deduplication.tripadvisor_deduplicator import clean_tripadvisor_duplic
 
 logger = setup_logger("tripadvisor_logic")
 
+
 def human_delay(min_s=2, max_s=5):
     """Wait for a random duration to mimic human behavior."""
     time.sleep(random.uniform(min_s, max_s))
+
 
 def jittery_scroll(page):
     """Perform a series of small, randomized scrolls."""
@@ -32,6 +35,7 @@ def jittery_scroll(page):
             time.sleep(random.uniform(0.5, 1.5))
     except Exception:
         pass
+
 
 REVIEWS_PER_PAGE = 10  # TripAdvisor shows 10 reviews per page
 
@@ -51,9 +55,9 @@ def dismiss_cookie_banner(page):
     """Dismiss consent / cookie banners if present."""
     try:
         selectors = [
-            'button#onetrust-accept-btn-handler',
+            "button#onetrust-accept-btn-handler",
             'button[aria-label="Accept"]',
-            'button.evidon-banner-acceptbutton',
+            "button.evidon-banner-acceptbutton",
             'button:has-text("Accept")',
         ]
         for sel in selectors:
@@ -84,7 +88,13 @@ def parse_pages(pages_str: str) -> tuple[int, int | None]:
     return 0, int(pages_str)
 
 
-def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id: str = None, source_id: str = None):
+def scrape_tripadvisor(
+    url: str,
+    headless: bool = True,
+    pages: str = "1",
+    job_id: str = None,
+    source_id: str = None,
+):
     """
     Main entry point for TripAdvisor scraping.
 
@@ -96,10 +106,16 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         source_id: Source ID provided by the main backend
     """
     config.headless = headless
-    logger.info(f"Starting TripAdvisor scraper: {url} (headless={headless}, pages={pages}, source_id={source_id})")
+    logger.info(
+        f"Starting TripAdvisor scraper: {url} (headless={headless}, pages={pages}, source_id={source_id})"
+    )
 
     if job_id:
-        job_manager.update_job(job_id, status=JobStatus.RUNNING, progress="Initializing database and browser...")
+        job_manager.update_job(
+            job_id,
+            status=JobStatus.RUNNING,
+            progress="Initializing database and browser...",
+        )
 
     # Broadcast RUNNING status for all sources sharing this URL
     SourceService.broadcast_running(url)
@@ -116,7 +132,13 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         action="SCRAPE_START",
         target_type="SOURCE",
         target_id=str(source_id),
-        details={"platform": "tripadvisor", "pages": pages, "headless": headless, "job_id": job_id, "url": url}
+        details={
+            "platform": "tripadvisor",
+            "pages": pages,
+            "headless": headless,
+            "job_id": job_id,
+            "url": url,
+        },
     )
 
     all_reviews = []
@@ -125,7 +147,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
     try:
         logger.info(f"Navigating to {url}")
         page.goto(url, wait_until="domcontentloaded", timeout=90000)
-        human_delay(5, 10) # Wait for basic content
+        human_delay(5, 10)  # Wait for basic content
         jittery_scroll(page)
 
         dismiss_cookie_banner(page)
@@ -134,9 +156,11 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         # Ensure we are in the reviews section
         try:
             from platforms.tripadvisor.config import tripadvisor_selectors as ts
-            
+
             # 1. Try to find and click the 'Reviews' tab/anchor to scroll into view
-            reviews_link = page.locator('a[href*="#REVIEWS"], span:has-text("Reviews")').first
+            reviews_link = page.locator(
+                'a[href*="#REVIEWS"], span:has-text("Reviews")'
+            ).first
             if reviews_link.is_visible():
                 reviews_link.click()
                 logger.info("Clicked 'Reviews' link.")
@@ -147,9 +171,9 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
                 ts.ALL_REVIEWS_BTN,
                 'button:has-text("All reviews")',
                 'button:has-text("Jump to all reviews")',
-                'span:has-text("All reviews")'
+                'span:has-text("All reviews")',
             ]
-            
+
             for sel in all_reviews_selectors:
                 btn = page.query_selector(sel)
                 if btn and btn.is_visible():
@@ -168,12 +192,20 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
         # Total review count & page count
         total_reviews_count = extractor.extract_total_reviews()
         import math
-        total_pages_count = math.ceil(total_reviews_count / REVIEWS_PER_PAGE) if total_reviews_count else 1
-        logger.info(f"Detected {total_reviews_count} total reviews (~{total_pages_count} pages).")
+
+        total_pages_count = (
+            math.ceil(total_reviews_count / REVIEWS_PER_PAGE)
+            if total_reviews_count
+            else 1
+        )
+        logger.info(
+            f"Detected {total_reviews_count} total reviews (~{total_pages_count} pages)."
+        )
 
         if job_id:
             job_manager.update_job(
-                job_id, status=JobStatus.RUNNING,
+                job_id,
+                status=JobStatus.RUNNING,
                 progress=f"Found ~{total_reviews_count} reviews across ~{total_pages_count} pages.",
                 total_pages=total_pages_count,
                 total_reviews=total_reviews_count,
@@ -194,7 +226,9 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
 
         while True:
             current_page_url = page.url
-            logger.info(f"Extracting page {page_num} (offset={current_offset}) — {current_page_url}")
+            logger.info(
+                f"Extracting page {page_num} (offset={current_offset}) — {current_page_url}"
+            )
 
             if job_id:
                 job_manager.update_job(
@@ -209,6 +243,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
 
             # Aggressive scroll to ensure review section is loaded
             from platforms.tripadvisor.config import tripadvisor_selectors
+
             for _ in range(5):
                 page.mouse.wheel(0, 1000)
                 page.wait_for_timeout(1500)
@@ -217,43 +252,64 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
                         break
                 except Exception:
                     pass
-            
+
             try:
-                page.wait_for_selector(tripadvisor_selectors.REVIEW_CARD, state="visible", timeout=15000)
+                page.wait_for_selector(
+                    tripadvisor_selectors.REVIEW_CARD, state="visible", timeout=15000
+                )
                 human_delay(3, 5)
             except Exception:
-                logger.warning(f"Timeout waiting for reviews on page {page_num}. Page content length: {len(page.content())}")
+                logger.warning(
+                    f"Timeout waiting for reviews on page {page_num}. Page content length: {len(page.content())}"
+                )
 
             page_reviews = extractor.extract_all_on_page()
-            
+
             if not page_reviews and page_num == 1:
                 # Capture diagnostic screenshot if page 1 extraction fails
                 diag_path = "tripadvisor_extraction_failure.png"
-                logger.warning(f"No reviews found on page 1. Capturing screenshot for diagnosis: {diag_path}")
+                logger.warning(
+                    f"No reviews found on page 1. Capturing screenshot for diagnosis: {diag_path}"
+                )
                 page.screenshot(path=diag_path)
-                
+
                 # Check for bot challenge
                 content = page.content().lower()
-                if "verification required" in content or "access denied" in content or "enable javascript" in content:
+                if (
+                    "verification required" in content
+                    or "access denied" in content
+                    or "enable javascript" in content
+                ):
                     logger.error("Hit TripAdvisor bot challenge or blocked access!")
-                    raise Exception("Bot challenge detected or access blocked by TripAdvisor.")
+                    raise Exception(
+                        "Bot challenge detected or access blocked by TripAdvisor."
+                    )
 
             # Dedup by external_review_id
             new_reviews = []
             for r in page_reviews:
-                rid = r.get("external_review_id") or f"{r.get('author')}-{r.get('review_date')}"
+                rid = (
+                    r.get("external_review_id")
+                    or f"{r.get('author')}-{r.get('review_date')}"
+                )
                 if rid not in seen_ids:
                     seen_ids.add(rid)
                     new_reviews.append(r)
 
             all_reviews.extend(new_reviews)
-            logger.info(f"Page {page_num}: {len(new_reviews)} new reviews (total so far: {len(all_reviews)})")
+            logger.info(
+                f"Page {page_num}: {len(new_reviews)} new reviews (total so far: {len(all_reviews)})"
+            )
 
             # Save batch immediately per extraction
             if new_reviews:
-                logger.info(f"Saving batch of {len(new_reviews)} reviews to database...")
+                logger.info(
+                    f"Saving batch of {len(new_reviews)} reviews to database..."
+                )
                 verified_count = save_reviews_to_db(new_reviews, source_id)
-                logger.info(f"Verified {verified_count}/{len(new_reviews)} TripAdvisor reviews successfully persisted.")
+                logger.info(
+                    f"Verified {verified_count}/{len(new_reviews)} TripAdvisor reviews successfully persisted."
+                )
 
             # Pagination check
             if effective_end and current_offset + REVIEWS_PER_PAGE >= effective_end:
@@ -268,7 +324,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
 
             current_offset += REVIEWS_PER_PAGE
             page_num += 1
-            
+
             # TripAdvisor often works better if we navigate to the next offset URL directly
             # rather than clicking 'Next' which might trigger AJAX that's harder to track.
             next_url = build_page_url(url, current_offset)
@@ -284,7 +340,7 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
             reviews=all_reviews,
             save_db_func=save_reviews_to_db,
             deduplicator_func=clean_tripadvisor_duplicates,
-            leftover_reviews=[] 
+            leftover_reviews=[],
         )
 
         if job_id:
@@ -302,18 +358,20 @@ def scrape_tripadvisor(url: str, headless: bool = True, pages: str = "1", job_id
     except Exception as e:
         logger.error(f"TripAdvisor scraper error: {e}", exc_info=True)
         if job_id:
-            job_manager.update_job(job_id, status=JobStatus.FAILED, progress=f"Error: {str(e)}")
+            job_manager.update_job(
+                job_id, status=JobStatus.FAILED, progress=f"Error: {str(e)}"
+            )
         audit_logger.error(
             category="SCRAPE",
             action="SCRAPE_FAILED",
             target_type="SOURCE",
             target_id=str(source_id),
             details={"error": str(e), "job_id": job_id, "url": url},
-            error=e
+            error=e,
         )
         # Notify primary and all companions of failure
         SourceService.broadcast_failed(url, error_message=str(e))
-        
+
         return {"status": "error", "message": str(e), "count": 0}
     finally:
         browser_ctrl.stop()

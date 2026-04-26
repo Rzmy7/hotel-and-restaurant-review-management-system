@@ -32,7 +32,9 @@ def _load_reply_generation_settings() -> dict[str, Any]:
         ensure_system_settings_table(cursor)
 
         google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-        selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
+        selected_model = (
+            get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL
+        ).strip() or DEFAULT_REPLY_SELECTED_MODEL
         similar_reviews_count = get_similar_reviews_count(cursor)
         use_embedding_rules = get_setting_bool(
             cursor,
@@ -78,7 +80,9 @@ def _extract_token_usage(value: Any) -> int:
             return _to_int(total, default=0)
 
         prompt = value.get("prompt_token_count") or value.get("input_tokens") or 0
-        completion = value.get("candidates_token_count") or value.get("output_tokens") or 0
+        completion = (
+            value.get("candidates_token_count") or value.get("output_tokens") or 0
+        )
         return _to_int(prompt, default=0) + _to_int(completion, default=0)
 
     total_attr = getattr(value, "total_token_count", None)
@@ -93,7 +97,9 @@ def _extract_token_usage(value: Any) -> int:
     return 0
 
 
-def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _fetch_embedding_context(
+    review_text: str, source_id: str, top_k: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     try:
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
@@ -112,7 +118,9 @@ def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tu
         return [], []
 
 
-def _format_context_lines(title: str, items: list[dict[str, Any]], max_items: int) -> str:
+def _format_context_lines(
+    title: str, items: list[dict[str, Any]], max_items: int
+) -> str:
     if not items:
         return f"{title}: None"
 
@@ -133,7 +141,11 @@ def _format_context_lines(title: str, items: list[dict[str, Any]], max_items: in
     return "\n".join(lines)
 
 
-def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[str, Any]], rules: list[dict[str, Any]]) -> str:
+def _build_prompt(
+    payload: ReplyGenerationRequest,
+    similar_reviews: list[dict[str, Any]],
+    rules: list[dict[str, Any]],
+) -> str:
     tone = (payload.tone or "standard").strip().lower()
     length = (payload.length or "standard").strip().lower()
 
@@ -146,7 +158,9 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
         "casual": "Use a warm and conversational tone.",
     }.get(tone, "Use a balanced, courteous customer-support tone.")
 
-    similar_reviews_section = _format_context_lines("Similar Reviews", similar_reviews, len(similar_reviews))
+    similar_reviews_section = _format_context_lines(
+        "Similar Reviews", similar_reviews, len(similar_reviews)
+    )
     rules_section = _format_context_lines("Relevant Rules", rules, len(rules))
 
     language_hint = (payload.language or "").strip()
@@ -187,7 +201,9 @@ def _generate_with_google(api_key: str, model: str, prompt: str) -> tuple[str, i
     # Some Gemini aliases are only reachable on v1beta; try both.
     for api_version in ("v1", "v1beta"):
         try:
-            client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
+            client = genai.Client(
+                api_key=api_key, http_options={"api_version": api_version}
+            )
             response = client.models.generate_content(model=model, contents=prompt)
             text = getattr(response, "text", None)
             usage = _extract_token_usage(getattr(response, "usage_metadata", None))
@@ -207,7 +223,9 @@ def _increment_provider_usage(tokens_used: int = 0) -> None:
         increment_setting_counter(cursor, "reply_google_request_count", delta=1)
         safe_tokens_used = max(0, _to_int(tokens_used, default=0))
         if safe_tokens_used > 0:
-            increment_setting_counter(cursor, "reply_google_token_usage", delta=safe_tokens_used)
+            increment_setting_counter(
+                cursor, "reply_google_token_usage", delta=safe_tokens_used
+            )
         connection.commit()
 
 
@@ -270,7 +288,9 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
             api_key = str(settings["google_api_key"])
             model = str(settings["google_model"])
             if not api_key:
-                raise ValueError("Google API key is not configured in reply generation settings.")
+                raise ValueError(
+                    "Google API key is not configured in reply generation settings."
+                )
             reply, tokens_used = _generate_with_google(api_key, model, prompt)
             _increment_provider_usage(tokens_used=tokens_used)
         except Exception as provider_exc:

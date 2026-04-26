@@ -11,7 +11,14 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.modules.auth.constants.roles import SYSTEM_ADMIN
-from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification, UserRole
+from app.modules.auth.models import (
+    BroadcastEvent,
+    Notification,
+    Role,
+    User,
+    UserNotification,
+    UserRole,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +60,7 @@ class EstimatedRecipientsResponse(BaseModel):
 
 
 def _ensure_broadcast_events_table(db: Session) -> None:
-    db.execute(
-        text(
-            """
+    db.execute(text("""
             IF OBJECT_ID('dbo.broadcast_events', 'U') IS NULL
             BEGIN
                 CREATE TABLE dbo.broadcast_events (
@@ -93,9 +98,7 @@ def _ensure_broadcast_events_table(db: Session) -> None:
                 CREATE INDEX IX_broadcast_events_created_at
                     ON dbo.broadcast_events (created_at DESC);
             END;
-            """
-        )
-    )
+            """))
     db.commit()
 
 
@@ -115,15 +118,11 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
 
 def _get_system_timezone(db: Session) -> str:
     try:
-        row = db.execute(
-            text(
-                """
+        row = db.execute(text("""
                 SELECT TOP 1 setting_value
                 FROM dbo.system_settings
                 WHERE setting_key = 'timezone'
-                """
-            )
-        ).fetchone()
+                """)).fetchone()
     except Exception:
         return "UTC"
     if not row or not row[0]:
@@ -137,7 +136,9 @@ def _get_system_timezone(db: Session) -> str:
         return "UTC"
 
 
-def _parse_iso_datetime_to_system_time(value: Optional[str], timezone_name: str) -> Optional[datetime]:
+def _parse_iso_datetime_to_system_time(
+    value: Optional[str], timezone_name: str
+) -> Optional[datetime]:
     parsed = _parse_iso_datetime(value)
     if not parsed:
         return None
@@ -154,7 +155,9 @@ def _to_iso(value: Optional[datetime]) -> str:
     return value.isoformat()
 
 
-def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verified: bool) -> str:
+def _derive_plan_bucket(
+    is_admin: bool, is_email_verified: bool, is_phone_verified: bool
+) -> str:
     if is_admin:
         return "enterprise"
     if is_email_verified and is_phone_verified:
@@ -180,10 +183,7 @@ def _get_recipient_ids(
     audience_value: Optional[str] = None,
 ) -> list[uuid.UUID]:
     active_user_ids = [
-        row[0]
-        for row in db.query(User.user_id)
-        .filter(User.is_active == True)
-        .all()
+        row[0] for row in db.query(User.user_id).filter(User.is_active == True).all()
     ]
 
     if audience_type == "all":
@@ -533,7 +533,9 @@ async def get_broadcast_statistics(db: Optional[Session] = None) -> dict:
     _ensure_broadcast_events_table(db)
     total = db.query(BroadcastEvent).count()
     sent = db.query(BroadcastEvent).filter(BroadcastEvent.status == "sent").count()
-    scheduled = db.query(BroadcastEvent).filter(BroadcastEvent.status == "pending").count()
+    scheduled = (
+        db.query(BroadcastEvent).filter(BroadcastEvent.status == "pending").count()
+    )
     failed = db.query(BroadcastEvent).filter(BroadcastEvent.status == "failed").count()
 
     return {

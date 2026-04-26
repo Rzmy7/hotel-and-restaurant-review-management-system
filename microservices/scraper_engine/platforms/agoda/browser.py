@@ -4,6 +4,7 @@ from core.config import config, setup_logger
 
 logger = setup_logger(__name__)
 
+
 class PlaywrightBrowser:
     def __init__(self):
         self.playwright = None

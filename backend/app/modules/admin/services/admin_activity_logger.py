@@ -25,8 +25,7 @@ logger = logging.getLogger("admin_activity_logger")
 
 def ensure_admin_activity_log_table(cursor: pyodbc.Cursor) -> None:
     """Create ``dbo.admin_activity_log`` if it does not already exist."""
-    cursor.execute(
-        """
+    cursor.execute("""
         IF NOT EXISTS (
             SELECT 1 FROM INFORMATION_SCHEMA.TABLES
             WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'admin_activity_log'
@@ -43,8 +42,7 @@ def ensure_admin_activity_log_table(cursor: pyodbc.Cursor) -> None:
             CREATE NONCLUSTERED INDEX IX_admin_activity_log_created
                 ON dbo.admin_activity_log (created_at DESC);
         END
-        """
-    )
+        """)
 
 
 # ── Public API ─────────────────────────────────────────────────────

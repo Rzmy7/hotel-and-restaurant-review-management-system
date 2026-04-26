@@ -6,9 +6,10 @@ from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
 from app.database.session import Base
 
+
 class Role(Base):
     __tablename__ = "role"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     role_id = Column(Integer, primary_key=True, autoincrement=True)
     role_name = Column(String(100), unique=True, nullable=False)
@@ -24,7 +25,7 @@ class Role(Base):
 
 class Session(Base):
     __tablename__ = "session"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     session_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(
@@ -51,7 +52,7 @@ class Session(Base):
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_token"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     token_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(
@@ -73,7 +74,7 @@ class PasswordResetToken(Base):
 
 class TwoFactorToken(Base):
     __tablename__ = "two_factor_token"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     token_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
     user_id = Column(

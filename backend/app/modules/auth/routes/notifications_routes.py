@@ -17,19 +17,22 @@ from app.services.notifications_service import (
     get_unread_count,
 )
 
-
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def _get_current_user_uuid(current_user: dict) -> uuid.UUID:
     user_id = current_user.get("user_id")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing user id")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing user id"
+        )
 
     try:
         return uuid.UUID(str(user_id))
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id format")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id format"
+        )
 
 
 @router.post("", response_model=NotificationResponse)
@@ -79,11 +82,15 @@ def mark_my_notification_read(
     try:
         parsed_id = uuid.UUID(notification_id)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid notification id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid notification id"
+        )
 
     updated = mark_user_notification_read(db, parsed_id, user_id)
     if not updated:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
+        )
 
     return updated
 

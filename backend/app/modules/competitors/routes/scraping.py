@@ -12,7 +12,11 @@ router = APIRouter()
 
 
 @router.post("/{competitor_id}/scrape")
-def scrape_competitor(competitor_id: int, payload: ScrapeCompetitorRequest, background_tasks: BackgroundTasks):
+def scrape_competitor(
+    competitor_id: int,
+    payload: ScrapeCompetitorRequest,
+    background_tasks: BackgroundTasks,
+):
     competitor = get_competitor_by_id(competitor_id)
     if not competitor:
         raise HTTPException(status_code=404, detail="Competitor not found")
@@ -20,6 +24,12 @@ def scrape_competitor(competitor_id: int, payload: ScrapeCompetitorRequest, back
         raise HTTPException(status_code=400, detail="Competitor has no Booking.com URL")
 
     background_tasks.add_task(
-        process_competitor_scrape, competitor_id, competitor["bookingUrl"], payload.headless
+        process_competitor_scrape,
+        competitor_id,
+        competitor["bookingUrl"],
+        payload.headless,
     )
-    return {"message": f"Scraping started for {competitor['name']}", "competitorId": competitor_id}
+    return {
+        "message": f"Scraping started for {competitor['name']}",
+        "competitorId": competitor_id,
+    }

@@ -1,10 +1,11 @@
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 from app.core.db_utils import get_connection_string
 import pyodbc
+
 
 def run():
     connection_string = get_connection_string()
@@ -20,7 +21,9 @@ def run():
     """)
     if not cursor.fetchone():
         print("Adding is_2fa_enabled column to dbo.[user]...")
-        cursor.execute("ALTER TABLE dbo.[user] ADD is_2fa_enabled BIT NOT NULL DEFAULT 0")
+        cursor.execute(
+            "ALTER TABLE dbo.[user] ADD is_2fa_enabled BIT NOT NULL DEFAULT 0"
+        )
     else:
         print("is_2fa_enabled column already exists in dbo.[user].")
 
@@ -49,6 +52,7 @@ def run():
         print("Table dbo.two_factor_token already exists.")
 
     print("Migration completed.")
+
 
 if __name__ == "__main__":
     run()

@@ -31,4 +31,3 @@ class PasswordChangeRequest(BaseModel):
 
 class TwoFactorVerifyRequest(BaseModel):
     code: str
-

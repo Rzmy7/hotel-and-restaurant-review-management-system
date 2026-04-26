@@ -7,6 +7,7 @@ Run with: pytest tests/ -v
 These tests require a running server on http://127.0.0.1:8001.
 Start the server with: uvicorn api.main:app --host 127.0.0.1 --port 8001
 """
+
 import requests
 import sys
 
@@ -17,7 +18,9 @@ passed = 0
 failed = 0
 
 
-def test(method: str, path: str, body: dict = None, expect_status: int = 200) -> dict | None:
+def test(
+    method: str, path: str, body: dict = None, expect_status: int = 200
+) -> dict | None:
     """Fire an HTTP request and validate the status code."""
     global passed, failed
     url = f"{BASE_URL}{path}"
@@ -68,33 +71,49 @@ def run_all_tests():
     # ═══════════════════════════════════════════
     print("\n═══ Scrape Triggers (Source Upsert) ═══")
     # Note: These tests will actually try to scrape, so we just validate the API response
-    agoda_result = test("POST", "/agoda/scrape", {
-        "source_id": 9901,
-        "source_url": "https://www.agoda.com/test-hotel",
-        "headless": True,
-        "pages": "1"
-    })
+    agoda_result = test(
+        "POST",
+        "/agoda/scrape",
+        {
+            "source_id": 9901,
+            "source_url": "https://www.agoda.com/test-hotel",
+            "headless": True,
+            "pages": "1",
+        },
+    )
 
-    booking_result = test("POST", "/booking/scrape", {
-        "source_id": 9902,
-        "source_url": "https://www.booking.com/hotel/test",
-        "headless": True,
-        "pages": "1"
-    })
+    booking_result = test(
+        "POST",
+        "/booking/scrape",
+        {
+            "source_id": 9902,
+            "source_url": "https://www.booking.com/hotel/test",
+            "headless": True,
+            "pages": "1",
+        },
+    )
 
-    google_result = test("POST", "/google/scrape", {
-        "source_id": 9903,
-        "source_url": "https://maps.app.goo.gl/test123",
-        "headless": True,
-        "pages": "1"
-    })
+    google_result = test(
+        "POST",
+        "/google/scrape",
+        {
+            "source_id": 9903,
+            "source_url": "https://maps.app.goo.gl/test123",
+            "headless": True,
+            "pages": "1",
+        },
+    )
 
-    tripadvisor_result = test("POST", "/tripadvisor/scrape", {
-        "source_id": 9904,
-        "source_url": "https://www.tripadvisor.com/Hotel-test",
-        "headless": True,
-        "pages": "1"
-    })
+    tripadvisor_result = test(
+        "POST",
+        "/tripadvisor/scrape",
+        {
+            "source_id": 9904,
+            "source_url": "https://www.tripadvisor.com/Hotel-test",
+            "headless": True,
+            "pages": "1",
+        },
+    )
 
     # ═══════════════════════════════════════════
     # 3. Sources CRUD

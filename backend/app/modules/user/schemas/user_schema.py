@@ -6,7 +6,7 @@ from typing import Optional
 # Signup Request
 # -----------------------------
 class SignupRequest(BaseModel):
-    
+
     name: str
     email: EmailStr
     password: str

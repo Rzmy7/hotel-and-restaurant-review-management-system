@@ -15,16 +15,17 @@ Base = declarative_base()
 # Engine and session factory initialized with settings from app.core.config
 if DATABASE_URL:
     engine = create_engine(
-        DATABASE_URL, 
+        DATABASE_URL,
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
         pool_timeout=30,
-        pool_recycle=1800
+        pool_recycle=1800,
     )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 else:
     import warnings
+
     warnings.warn("DATABASE_URL is not set — SQLAlchemy features will not work.")
     engine = None
     SessionLocal = None

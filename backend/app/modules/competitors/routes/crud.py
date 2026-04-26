@@ -14,10 +14,14 @@ from app.modules.competitors.schemas import (
     EditCompetitorRequest,
 )
 from app.modules.competitors.services.competitor_service import (
-    get_tracked_competitors, get_available_competitors,
-    get_competitor_by_id, register_competitor,
+    get_tracked_competitors,
+    get_available_competitors,
+    get_competitor_by_id,
+    register_competitor,
     register_competitor_from_organization,
-    track_competitor, untrack_competitor, delete_competitor,
+    track_competitor,
+    untrack_competitor,
+    delete_competitor,
     edit_competitor,
     get_competitor_reviews,
 )
@@ -47,7 +51,10 @@ def _get_user_org_id(user, db: Session) -> str | None:
 @router.get("/")
 def list_competitors(organization_id: str, current_user=Depends(get_current_user)):
     try:
-        return {"tracked": get_tracked_competitors(organization_id), "available": get_available_competitors(organization_id)}
+        return {
+            "tracked": get_tracked_competitors(organization_id),
+            "available": get_available_competitors(organization_id),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -59,7 +66,8 @@ def suggested_competitors(
     db: Session = Depends(get_db),
 ):
     """Top 6 organizations within 50km of the user's own org,
-    excluding the user's org and orgs already in dbo.Competitors. Ordered by review count desc."""
+    excluding the user's org and orgs already in dbo.Competitors. Ordered by review count desc.
+    """
     try:
         my_org_id = organization_id
         if not my_org_id:
@@ -142,7 +150,11 @@ def create_competitor(
 ):
     try:
         # ── Check competitors limit ──
-        user_id = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
+        user_id = (
+            current_user["user_id"]
+            if isinstance(current_user, dict)
+            else str(current_user.user_id)
+        )
         try:
             import pyodbc
             from app.core.db_utils import get_connection_string
@@ -150,6 +162,7 @@ def create_competitor(
                 check_feature_limit,
                 send_limit_reached_notification,
             )
+
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()
                 limit_info = check_feature_limit(cursor, user_id, "competitors")
@@ -158,8 +171,8 @@ def create_competitor(
                     raise HTTPException(
                         status_code=403,
                         detail=f"Competitor tracking limit reached for your current plan. "
-                               f"You have used {limit_info['used']}/{limit_info['limit']}. "
-                               f"Please upgrade your subscription plan to track more competitors.",
+                        f"You have used {limit_info['used']}/{limit_info['limit']}. "
+                        f"Please upgrade your subscription plan to track more competitors.",
                     )
         except HTTPException:
             raise
@@ -169,7 +182,9 @@ def create_competitor(
         if not payload.location_url.strip():
             raise HTTPException(status_code=400, detail="Location URL is required")
         if not payload.sources:
-            raise HTTPException(status_code=400, detail="At least one source URL is required")
+            raise HTTPException(
+                status_code=400, detail="At least one source URL is required"
+            )
 
         competitor = register_competitor(
             name=payload.name,
@@ -192,7 +207,9 @@ def add_from_organization(
     current_user=Depends(get_current_user),
 ):
     try:
-        competitor = register_competitor_from_organization(payload.organization_id, organization_id)
+        competitor = register_competitor_from_organization(
+            payload.organization_id, organization_id
+        )
         if not competitor:
             raise HTTPException(status_code=404, detail="Organization not found")
         return {"message": "Competitor added", "competitor": competitor}
@@ -210,8 +227,16 @@ def track_a_competitor(
     db: Session = Depends(get_db),
 ):
     try:
-        user_id = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
-        result = track_competitor(payload.competitorId, tracking_organization_id=organization_id, user_id=user_id)
+        user_id = (
+            current_user["user_id"]
+            if isinstance(current_user, dict)
+            else str(current_user.user_id)
+        )
+        result = track_competitor(
+            payload.competitorId,
+            tracking_organization_id=organization_id,
+            user_id=user_id,
+        )
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor now tracked", "competitor": result}
@@ -228,7 +253,9 @@ def untrack_a_competitor(
     current_user=Depends(get_current_user),
 ):
     try:
-        untrack_competitor(payload.competitorId, tracking_organization_id=organization_id)
+        untrack_competitor(
+            payload.competitorId, tracking_organization_id=organization_id
+        )
         return {"message": "Competitor untracked"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -236,9 +263,7 @@ def untrack_a_competitor(
 
 @router.delete("/{competitor_id}")
 def remove_competitor(
-    competitor_id: str, 
-    organization_id: str,
-    current_user=Depends(get_current_user)
+    competitor_id: str, organization_id: str, current_user=Depends(get_current_user)
 ):
     try:
         delete_competitor(competitor_id, tracking_organization_id=organization_id)
@@ -252,10 +277,12 @@ def update_competitor(
     competitor_id: str,
     payload: EditCompetitorRequest,
     organization_id: str,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     try:
-        result = edit_competitor(competitor_id, organization_id, payload.name, payload.location_url)
+        result = edit_competitor(
+            competitor_id, organization_id, payload.name, payload.location_url
+        )
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor updated", "competitor": result}

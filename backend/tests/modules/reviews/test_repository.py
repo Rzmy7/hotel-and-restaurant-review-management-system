@@ -9,17 +9,18 @@ from app.modules.reviews.repository import upsert_review_pending, get_review_by_
 from app.modules.reviews.models import ProcessedReview
 from app.modules.source.models import Source, Platform
 
+
 def test_upsert_review_pending(db_session):
     # Setup: Create a platform and source
     platform = Platform(platform_name="TestPlatform", fetching_type="SCRAPING")
     db_session.add(platform)
     db_session.commit()
-    
+
     source = Source(
         source_id=uuid.uuid4(),
         organization_id=uuid.uuid4(),
         platform_id=platform.platform_id,
-        source_url="http://example.com"
+        source_url="http://example.com",
     )
     db_session.add(source)
     db_session.commit()
@@ -32,7 +33,7 @@ def test_upsert_review_pending(db_session):
         "text": "Great place!",
         "reviewDate": datetime.now(),
         "scrapedAt": datetime.now(),
-        "source_id": source.source_id
+        "source_id": source.source_id,
     }
 
     # Execute

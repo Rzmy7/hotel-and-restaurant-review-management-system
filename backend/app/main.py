@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI):
     # Run group schema migrations (idempotent — safe every startup)
     try:
         from app.modules.groups.migrations import run_group_migrations
+
         run_group_migrations(engine)
     except Exception as _mig_err:
         logger.warning("Group migrations skipped: %s", _mig_err)
@@ -154,7 +155,6 @@ from app.modules.organization.routes.source_routes import router as org_source_r
 from app.modules.auth.routes.auth_routes import router as auth_router
 from app.modules.auth.routes.oauth_routes import router as oauth_router
 
-
 # to identify
 print("RUNNING: backend/app/main.py")
 
@@ -191,6 +191,7 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
+
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())
@@ -202,6 +203,7 @@ async def add_request_id(request: Request, call_next):
 
 # Centralized Exception Handlers
 
+
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     """Handles custom application exceptions."""
@@ -211,12 +213,12 @@ async def app_exception_handler(request: Request, exc: AppException):
             "status": "error",
             "message": exc.message,
             "error_code": exc.error_code,
-            "details": exc.details
+            "details": exc.details,
         },
         headers={
             "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
             "Access-Control-Allow-Credentials": "true",
-        }
+        },
     )
 
 
@@ -224,11 +226,14 @@ async def app_exception_handler(request: Request, exc: AppException):
 async def global_exception_handler(request: Request, exc: Exception):
     """Fallback handler for unhandled exceptions (500s)."""
     import traceback
+
     error_details = traceback.format_exc()
-    
+
     # Safe console printing for Windows
     try:
-        print(f"CRITICAL ERROR: {error_details.encode('cp1252', errors='replace').decode('cp1252')}")
+        print(
+            f"CRITICAL ERROR: {error_details.encode('cp1252', errors='replace').decode('cp1252')}"
+        )
     except:
         print("CRITICAL ERROR: [Could not encode traceback]")
 
@@ -246,12 +251,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "status": "error",
             "message": "An unexpected internal error occurred.",
-            "error_code": "INTERNAL_SERVER_ERROR"
+            "error_code": "INTERNAL_SERVER_ERROR",
         },
         headers={
             "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
             "Access-Control-Allow-Credentials": "true",
-        }
+        },
     )
 
 
@@ -291,7 +296,10 @@ app.include_router(user_org_router)  # already declares prefix="/api" internally
 app.include_router(org_source_router)  # already declares prefix="/api" internally
 
 # User Notifications
-from app.modules.auth.routes.notifications_routes import router as user_notifications_router
+from app.modules.auth.routes.notifications_routes import (
+    router as user_notifications_router,
+)
+
 app.include_router(user_notifications_router, prefix="/api")
 
 # ── User-accessible subscription endpoints (not admin-only) ────────
@@ -314,7 +322,9 @@ def user_subscription_plans(
             cursor = conn.cursor()
             return get_subscription_plans(cursor)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load subscription plans: {exc}"
+        )
 
 
 @app.get("/api/subscription-usage/{user_id}", tags=["Subscription"])
@@ -325,7 +335,9 @@ def user_subscription_usage(
     """Get subscription usage for the authenticated user."""
     import pyodbc
     from app.core.db_utils import get_connection_string
-    from app.modules.admin.services.subscription_service import get_user_subscription_usage
+    from app.modules.admin.services.subscription_service import (
+        get_user_subscription_usage,
+    )
 
     try:
         normalized_user_id = user_id.strip()
@@ -338,7 +350,9 @@ def user_subscription_usage(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load subscription usage: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load subscription usage: {exc}"
+        )
 
 
 # ----------------------
@@ -380,15 +394,19 @@ def public_feature_flags():
     import pyodbc
     from app.core.db_utils import get_connection_string
     from app.modules.admin.routes.settings_routes import _load_feature_flags
-    from app.modules.admin.services.system_settings_service import ensure_system_settings_table
-    
+    from app.modules.admin.services.system_settings_service import (
+        ensure_system_settings_table,
+    )
+
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             ensure_system_settings_table(cursor)
             return _load_feature_flags(cursor)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load feature flags: {exc}"
+        )
 
 
 @app.get("/which-main", tags=["Debug"])

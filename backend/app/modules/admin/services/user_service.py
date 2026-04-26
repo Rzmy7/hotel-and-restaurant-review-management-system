@@ -25,14 +25,14 @@ def get_admin_users():
         conn.close()
         return [
             {
-                "id": str(r.user_id), 
-                "name": r.full_name or "Unknown", 
-                "email": r.email, 
-                "role": r.role or "No Role", 
-                "status": "Active" if r.is_active else "Inactive", 
-                "lastActive": r.last_login_at, 
-                "joinedAt": r.created_at
-            } 
+                "id": str(r.user_id),
+                "name": r.full_name or "Unknown",
+                "email": r.email,
+                "role": r.role or "No Role",
+                "status": "Active" if r.is_active else "Inactive",
+                "lastActive": r.last_login_at,
+                "joinedAt": r.created_at,
+            }
             for r in rows
         ]
     except Exception as e:
@@ -47,11 +47,18 @@ def create_admin_user(payload: AdminUserCreatePayload):
         if cursor.fetchone()[0] > 0:
             conn.close()
             raise HTTPException(status_code=400, detail="Email already exists")
-        cursor.execute("INSERT INTO dbo.[user] (email, first_name, last_name, is_active, created_at, updated_at) OUTPUT INSERTED.user_id VALUES (?, ?, '', 1, GETUTCDATE(), GETUTCDATE())", payload.email, payload.name)
+        cursor.execute(
+            "INSERT INTO dbo.[user] (email, first_name, last_name, is_active, created_at, updated_at) OUTPUT INSERTED.user_id VALUES (?, ?, '', 1, GETUTCDATE(), GETUTCDATE())",
+            payload.email,
+            payload.name,
+        )
         new_id = cursor.fetchone()[0]
         conn.commit()
         conn.close()
-        return {"message": "User created", "user": {"id": str(new_id), "name": payload.name, "email": payload.email}}
+        return {
+            "message": "User created",
+            "user": {"id": str(new_id), "name": payload.name, "email": payload.email},
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -77,7 +84,9 @@ def update_admin_user(user_id: str, payload: AdminUserUpdatePayload):
             return {"message": "No changes"}
         sets.append("updated_at = GETUTCDATE()")
         params.append(user_id)
-        cursor.execute(f"UPDATE dbo.[user] SET {', '.join(sets)} WHERE user_id = ?", *params)
+        cursor.execute(
+            f"UPDATE dbo.[user] SET {', '.join(sets)} WHERE user_id = ?", *params
+        )
         conn.commit()
         conn.close()
         return {"message": "User updated"}

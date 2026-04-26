@@ -9,13 +9,11 @@ from sqlalchemy import text
 from app.modules.auth.models import User, Role
 from app.modules.auth.constants.roles import TENANT, SYSTEM_ADMIN
 
-
 # ── Users ───────────────────────────────────────────────────────────
 
+
 def _ensure_users_schema_compatibility(db: Session) -> None:
-    db.execute(
-        text(
-            """
+    db.execute(text("""
             IF OBJECT_ID('dbo.[user]', 'U') IS NOT NULL
             BEGIN
                 IF COL_LENGTH('dbo.[user]', 'password_hash') IS NULL
@@ -66,16 +64,12 @@ def _ensure_users_schema_compatibility(db: Session) -> None:
                 IF COL_LENGTH('dbo.[user]', 'role_id') IS NULL
                     ALTER TABLE dbo.[user] ADD role_id INT NULL;
             END
-            """
-        )
-    )
+            """))
     db.commit()
 
 
 def _ensure_roles_schema_compatibility(db: Session) -> None:
-    db.execute(
-        text(
-            """
+    db.execute(text("""
             IF OBJECT_ID('dbo.[role]', 'U') IS NULL
             BEGIN
                 CREATE TABLE dbo.[role] (
@@ -100,13 +94,10 @@ def _ensure_roles_schema_compatibility(db: Session) -> None:
             -- Drop legacy user_role if it exists
             IF OBJECT_ID('dbo.user_role', 'U') IS NOT NULL
                 DROP TABLE dbo.user_role;
-            """
-        )
-    )
+            """))
 
     db.execute(
-        text(
-            """
+        text("""
             IF NOT EXISTS (SELECT 1 FROM dbo.[role] WHERE role_name = :tenant_role)
             BEGIN
                 INSERT INTO dbo.[role] (role_name, description)
@@ -118,8 +109,7 @@ def _ensure_roles_schema_compatibility(db: Session) -> None:
                 INSERT INTO dbo.[role] (role_name, description)
                 VALUES (:system_admin_role, 'System administrator role');
             END
-            """
-        ),
+            """),
         {
             "tenant_role": TENANT,
             "system_admin_role": SYSTEM_ADMIN,
@@ -127,6 +117,7 @@ def _ensure_roles_schema_compatibility(db: Session) -> None:
     )
 
     db.commit()
+
 
 def get_user_by_email(db: Session, email: str):
     _ensure_users_schema_compatibility(db)
@@ -165,6 +156,7 @@ def create_user(
 
 
 # ── Roles ───────────────────────────────────────────────────────────
+
 
 def get_role_by_name(db: Session, role_name: str):
     _ensure_roles_schema_compatibility(db)
@@ -211,10 +203,7 @@ def user_has_role(db: Session, user_id, role_name: str):
     user = (
         db.query(User)
         .join(Role, Role.role_id == User.role_id)
-        .filter(
-            User.user_id == user_id,
-            Role.role_name == role_name
-        )
+        .filter(User.user_id == user_id, Role.role_name == role_name)
         .first()
     )
 

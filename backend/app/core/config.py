@@ -53,8 +53,12 @@ PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 
 # ── Microservices ───────────────────────────────────────────────────
 # All URLs come from the .env file. No auto-detection magic.
-SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
-EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002").rstrip("/")
+SCRAPER_ENGINE_URL: str = os.getenv(
+    "SCRAPER_ENGINE_URL", "http://127.0.0.1:8001"
+).rstrip("/")
+EMBEDDING_SERVICE_URL: str = os.getenv(
+    "EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002"
+).rstrip("/")
 
 # ── CORS allowed origins ────────────────────────────────────────────
 # Base origins always allowed (constructed from FRONTEND_URL and ADMIN_FRONTEND_URL)

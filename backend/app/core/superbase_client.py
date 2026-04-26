@@ -14,7 +14,7 @@ if not SUPABASE_URL.startswith("http"):
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-'''
+"""
 Central place to connect Supabase
 
-Clean architecture (reusable across services)'''
+Clean architecture (reusable across services)"""

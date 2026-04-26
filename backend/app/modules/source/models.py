@@ -95,7 +95,7 @@ class Platform(Base):
         CheckConstraint(
             "platform_status IN ('active', 'inactive')",
             name="ck_platform_platform_status",
-        )
+        ),
     )
 
     platform_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -136,13 +136,12 @@ class Source(Base):
     __tablename__ = "source"
     __table_args__ = (
         UniqueConstraint(
-            "organization_id", "platform_id",
-            name="uq_source_org_platform"
+            "organization_id", "platform_id", name="uq_source_org_platform"
         ),
         CheckConstraint(
             "source_status IN ('active', 'paused', 'error', 'queued', 'running', 'verify duplication')",
             name="ck_source_source_status",
-        )
+        ),
     )
 
     source_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
@@ -160,10 +159,7 @@ class Source(Base):
     source_url = Column(String(1000), nullable=False)
     source_status = Column(String(20), nullable=False, default="active")
     fetching_frequency = Column(
-        Integer, 
-        ForeignKey("sync_frequency.frq_id"), 
-        nullable=False, 
-        default=1
+        Integer, ForeignKey("sync_frequency.frq_id"), nullable=False, default=1
     )
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
     next_synced_at = Column(DateTime(timezone=True), nullable=True)
@@ -175,7 +171,6 @@ class Source(Base):
         server_default=func.sysutcdatetime(),
         nullable=False,
     )
-
 
     organization = relationship("Organization", back_populates="sources")
     platform = relationship("Platform", back_populates="sources")

@@ -51,7 +51,9 @@ def get_organizations() -> list[OrganizationSummary]:
             cursor = conn.cursor()
             return load_organizations(cursor)
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch organizations: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch organizations: {error}"
+        )
 
 
 @router.get("/organizations/stats", response_model=OrganizationStats)
@@ -61,7 +63,9 @@ def get_organization_stats() -> OrganizationStats:
             cursor = conn.cursor()
             return get_organization_stats_data(cursor)
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch organization stats: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch organization stats: {error}"
+        )
 
 
 @router.get("/sources")
@@ -85,7 +89,9 @@ def get_all_sources() -> list[dict]:
                 for row in rows
             ]
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch platforms: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch platforms: {exc}"
+        ) from exc
 
 
 @router.get("/organizations/{org_id}/sources")
@@ -124,7 +130,9 @@ def get_org_sources(org_id: str) -> list[dict]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch org sources: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch org sources: {exc}"
+        ) from exc
 
 
 @router.patch("/organizations/{org_id}")
@@ -138,7 +146,9 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             if not table_exists(cursor, "organization"):
-                raise HTTPException(status_code=400, detail="organization table not found")
+                raise HTTPException(
+                    status_code=400, detail="organization table not found"
+                )
 
             row = execute_query(
                 cursor,
@@ -165,9 +175,13 @@ def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to update organization: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update organization: {exc}"
+        ) from exc
 
-    log_admin_activity("org_created", "Organization Updated", f"Renamed to '{name}' (ID: {org_id})")
+    log_admin_activity(
+        "org_created", "Organization Updated", f"Renamed to '{name}' (ID: {org_id})"
+    )
     return {"id": org_id, "name": name, "status": "updated"}
 
 
@@ -235,7 +249,9 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to update org sources: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update org sources: {exc}"
+        ) from exc
 
 
 @router.delete("/organizations/{org_id}")
@@ -245,7 +261,9 @@ def delete_organization(org_id: str) -> dict:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             if not table_exists(cursor, "organization"):
-                raise HTTPException(status_code=400, detail="organization table not found")
+                raise HTTPException(
+                    status_code=400, detail="organization table not found"
+                )
 
             row = execute_query(
                 cursor,
@@ -286,9 +304,13 @@ def delete_organization(org_id: str) -> dict:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to delete organization: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete organization: {exc}"
+        ) from exc
 
-    log_admin_activity("org_deleted", "Organization Deleted", f"'{found_name}' (ID: {org_id})")
+    log_admin_activity(
+        "org_deleted", "Organization Deleted", f"'{found_name}' (ID: {org_id})"
+    )
     return {"status": "deleted", "id": org_id, "name": found_name}
 
 
@@ -330,13 +352,17 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload) -> AdminUser:
             cursor = conn.cursor()
             result = update_user_in_db(cursor, conn, user_id, payload)
             changes = []
-            if payload.role: changes.append(f"role={payload.role}")
-            if payload.status: changes.append(f"status={payload.status}")
-            if payload.plan: changes.append(f"plan={payload.plan}")
+            if payload.role:
+                changes.append(f"role={payload.role}")
+            if payload.status:
+                changes.append(f"status={payload.status}")
+            if payload.plan:
+                changes.append(f"plan={payload.plan}")
             log_admin_activity(
                 "user_joined",
                 "User Updated",
-                f"User {result.email} updated" + (f" ({', '.join(changes)})" if changes else ""),
+                f"User {result.email} updated"
+                + (f" ({', '.join(changes)})" if changes else ""),
             )
             return result
     except HTTPException:
@@ -370,18 +396,25 @@ def get_user_stats_endpoint() -> UserStatsData:
             cursor = conn.cursor()
             return get_user_stats(cursor)
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch user stats: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch user stats: {error}"
+        )
+
 
 # ── Embeddings endpoints ────────────────────────────────────────────
+
 
 @router.post("/embeddings/trigger-pending")
 def trigger_pending_embeddings() -> dict:
     """Manually triggers embedding for all unembedded, processed reviews."""
     try:
-        from app.modules.source.services.embedding_client import trigger_embedding_for_source
+        from app.modules.source.services.embedding_client import (
+            trigger_embedding_for_source,
+        )
+
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            
+
             # Find all sources that have unembedded processed reviews
             query = """
                 SELECT DISTINCT CAST(source_id AS VARCHAR(36))
@@ -389,9 +422,9 @@ def trigger_pending_embeddings() -> dict:
                 WHERE status = 'processed' AND is_embedded = 0
             """
             rows = execute_query(cursor, query).fetchall()
-            
+
             source_ids = [row[0] for row in rows if row[0]]
-            
+
             for source_id in source_ids:
                 trigger_embedding_for_source(source_id)
 
@@ -400,10 +433,12 @@ def trigger_pending_embeddings() -> dict:
                 "Embeddings Triggered",
                 f"Triggered embedding for {len(source_ids)} source(s)",
             )
-                
+
             return {
                 "triggered_sources_count": len(source_ids),
-                "message": f"Successfully triggered embedding for {len(source_ids)} sources"
+                "message": f"Successfully triggered embedding for {len(source_ids)} sources",
             }
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Failed to trigger embeddings: {error}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to trigger embeddings: {error}"
+        )

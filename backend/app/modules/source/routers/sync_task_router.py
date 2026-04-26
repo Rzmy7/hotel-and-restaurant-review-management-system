@@ -8,12 +8,13 @@ from app.modules.source.schemas import SourceRead, SyncStatusRequest
 
 router = APIRouter()
 
+
 @router.post("/{source_id}/sync-status", response_model=SourceRead)
 def update_sync_status(
-    source_id: uuid.UUID, 
-    request: SyncStatusRequest, 
+    source_id: uuid.UUID,
+    request: SyncStatusRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Endpoint for scraper to notify sync status changes (QUEUED, RUNNING, COMPLETED, FAILED).

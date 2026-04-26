@@ -49,7 +49,9 @@ def send_notification(
         finally:
             db.close()
     except Exception as exc:
-        logger.warning("Failed to send notification [%s] to %s: %s", title, user_id, exc)
+        logger.warning(
+            "Failed to send notification [%s] to %s: %s", title, user_id, exc
+        )
 
 
 # ── Pre-built notification helpers ──────────────────────────────────
@@ -108,7 +110,12 @@ def notify_plan_changed_by_admin(user_id: str, plan_name: str) -> None:
     )
 
 
-def notify_scrape_failed(user_id: str, platform_name: str, error_message: str | None = None, org_name: str | None = None) -> None:
+def notify_scrape_failed(
+    user_id: str,
+    platform_name: str,
+    error_message: str | None = None,
+    org_name: str | None = None,
+) -> None:
     """Notification when a scraping job fails."""
     detail = f" Error: {error_message}" if error_message else ""
     org_info = f" for '{org_name}'" if org_name else ""
@@ -124,7 +131,12 @@ def notify_scrape_failed(user_id: str, platform_name: str, error_message: str | 
     )
 
 
-def notify_new_reviews_ingested(user_id: str, count: int, platform_name: str | None = None, org_name: str | None = None) -> None:
+def notify_new_reviews_ingested(
+    user_id: str,
+    count: int,
+    platform_name: str | None = None,
+    org_name: str | None = None,
+) -> None:
     """Notification when new reviews are ingested from the scraper."""
     source_info = f" from {platform_name}" if platform_name else ""
     org_info = f" for '{org_name}'" if org_name else ""
@@ -181,7 +193,9 @@ def notify_approaching_review_limit(user_id: str, used: int, limit: int) -> None
     )
 
 
-def notify_source_added(user_id: str, platform_name: str, source_url: str, org_name: str | None = None) -> None:
+def notify_source_added(
+    user_id: str, platform_name: str, source_url: str, org_name: str | None = None
+) -> None:
     """Notification when a new review source is connected."""
     org_info = f" to '{org_name}'" if org_name else ""
     send_notification(
@@ -201,7 +215,7 @@ def notify_group_invite(user_id: str, inviter_name: str, group_name: str) -> Non
         user_id=user_id,
         title="You Have a Group Invitation",
         message=(
-            f"{inviter_name} has invited you to join the group \"{group_name}\". "
+            f'{inviter_name} has invited you to join the group "{group_name}". '
             "Visit your Groups page to accept or decline the invitation."
         ),
         notification_type="info",
@@ -220,12 +234,16 @@ def notify_group_invite_accepted(
     if db_for_name and user_id:
         try:
             from sqlalchemy import text as _text
+
             row = db_for_name.execute(
                 _text("SELECT first_name, last_name FROM [user] WHERE user_id = :uid"),
                 {"uid": user_id},
             ).fetchone()
             if row:
-                display_name = f"{row.first_name or ''} {row.last_name or ''}".strip() or member_name
+                display_name = (
+                    f"{row.first_name or ''} {row.last_name or ''}".strip()
+                    or member_name
+                )
         except Exception:
             pass
 
@@ -233,7 +251,7 @@ def notify_group_invite_accepted(
         user_id=owner_id,
         title="Group Invitation Accepted",
         message=(
-            f"{display_name} has accepted your invitation and joined \"{group_name}\"."
+            f'{display_name} has accepted your invitation and joined "{group_name}".'
         ),
         notification_type="success",
     )
@@ -245,13 +263,15 @@ def notify_group_member_removed(user_id: str, group_name: str) -> None:
         user_id=user_id,
         title="Removed from Group",
         message=(
-            f"You have been removed from the group \"{group_name}\" by the group owner."
+            f'You have been removed from the group "{group_name}" by the group owner.'
         ),
         notification_type="warning",
     )
 
 
-def notify_source_removed(user_id: str, platform_name: str, org_name: str | None = None) -> None:
+def notify_source_removed(
+    user_id: str, platform_name: str, org_name: str | None = None
+) -> None:
     """Notification when a review source is removed."""
     org_info = f" from '{org_name}'" if org_name else ""
     send_notification(
@@ -277,7 +297,9 @@ def notify_admin_gemini_quota_exceeded() -> None:
             # Find all users with Admin role
             admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
             if not admins:
-                logger.warning("No administrators found to notify about Gemini quota issue.")
+                logger.warning(
+                    "No administrators found to notify about Gemini quota issue."
+                )
                 return
 
             title = "Gemini API Quota Exceeded"

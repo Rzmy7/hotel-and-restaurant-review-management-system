@@ -18,6 +18,7 @@ class AddCompetitorRequest(BaseModel):
     Otherwise create a new tenant_id=NULL organization with location + type + sources,
     and let the normal scheduler pipeline scrape / process / embed them.
     """
+
     name: str
     organization_type_id: int = 1
     location_url: str

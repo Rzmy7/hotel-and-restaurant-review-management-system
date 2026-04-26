@@ -83,18 +83,18 @@ def _serialize_tripadvisor(detail: TripAdvisorReviewDetail) -> dict:
         "traveler_type": detail.traveler_type,
         "rating_value": float(detail.rating_value) if detail.rating_value else None,
         "rating_rooms": float(detail.rating_rooms) if detail.rating_rooms else None,
-        "rating_location": float(detail.rating_location)
-        if detail.rating_location
-        else None,
-        "rating_cleanliness": float(detail.rating_cleanliness)
-        if detail.rating_cleanliness
-        else None,
-        "rating_service": float(detail.rating_service)
-        if detail.rating_service
-        else None,
-        "rating_sleep_quality": float(detail.rating_sleep_quality)
-        if detail.rating_sleep_quality
-        else None,
+        "rating_location": (
+            float(detail.rating_location) if detail.rating_location else None
+        ),
+        "rating_cleanliness": (
+            float(detail.rating_cleanliness) if detail.rating_cleanliness else None
+        ),
+        "rating_service": (
+            float(detail.rating_service) if detail.rating_service else None
+        ),
+        "rating_sleep_quality": (
+            float(detail.rating_sleep_quality) if detail.rating_sleep_quality else None
+        ),
     }
 
 
@@ -152,17 +152,19 @@ def get_reviews_by_source(source_id: str, limit: int = 1000, skip: int = 0):
                 # Platform-specific detail fields
                 "detail": serializer(detail_obj) if detail_obj and serializer else None,
                 # Attached media
-                "media": [
-                    {
-                        "media_id": m.media_id,
-                        "url": m.media_url,
-                        "thumbnail": m.thumbnail_url,
-                        "type": m.media_type,
-                    }
-                    for m in r.media
-                ]
-                if r.media
-                else [],
+                "media": (
+                    [
+                        {
+                            "media_id": m.media_id,
+                            "url": m.media_url,
+                            "thumbnail": m.thumbnail_url,
+                            "type": m.media_type,
+                        }
+                        for m in r.media
+                    ]
+                    if r.media
+                    else []
+                ),
             }
             results.append(entry)
 
@@ -204,5 +206,3 @@ def delete_review(review_id: str):
     except Exception as e:
         session.rollback()
         logger.error(f"Failed to delete review {review_id}: {e}", exc_info=True)
-
-

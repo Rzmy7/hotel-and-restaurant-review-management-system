@@ -43,7 +43,9 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = _token_sha256(raw_token)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            minutes=PASSWORD_RESET_EXPIRE_MINUTES
+        )
 
         db.execute(
             text("""
@@ -85,7 +87,9 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Forgot password DB failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Forgot password DB failed: {str(e)}"
+        )
 
 
 @router.post("/reset-password/{token}")
@@ -146,4 +150,6 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Reset password DB failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Reset password DB failed: {str(e)}"
+        )

@@ -18,6 +18,7 @@ import json
 import asyncio
 import urllib.request
 
+
 async def test_websocket_stream():
     import websockets
 
@@ -25,20 +26,22 @@ async def test_websocket_stream():
     print("=" * 60)
     print("STEP 1: Triggering background scrape via REST API...")
     print("=" * 60)
-    
-    payload = json.dumps({
-        "url": "https://www.booking.com/hotel/lk/the-villa-in-lavinia.en-gb.html",
-        "headless": True,
-        "pages": "1"
-    }).encode('utf-8')
-    
+
+    payload = json.dumps(
+        {
+            "url": "https://www.booking.com/hotel/lk/the-villa-in-lavinia.en-gb.html",
+            "headless": True,
+            "pages": "1",
+        }
+    ).encode("utf-8")
+
     req = urllib.request.Request(
         "http://127.0.0.1:8000/booking/scrape",
         data=payload,
-        headers={'Content-Type': 'application/json'},
-        method="POST"
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
-    
+
     with urllib.request.urlopen(req) as response:
         data = json.loads(response.read().decode())
         job_id = data["job_id"]
@@ -50,7 +53,7 @@ async def test_websocket_stream():
     print(f"\n{'=' * 60}")
     print(f"STEP 2: Connecting to WebSocket at {ws_url}")
     print(f"{'=' * 60}")
-    
+
     async with websockets.connect(ws_url) as ws:
         print("  Connected! Streaming live updates...\n")
         while True:
@@ -64,13 +67,15 @@ async def test_websocket_stream():
                 cur_page = data.get("current_page", 0)
                 tot_pages = data.get("total_pages", 0)
                 tot_reviews = data.get("total_reviews", 0)
-                
-                print(f"  [{status.upper()}] {pct}% | Page {cur_page}/{tot_pages} | Reviews: {reviews}/{tot_reviews} | {progress}")
-                
+
+                print(
+                    f"  [{status.upper()}] {pct}% | Page {cur_page}/{tot_pages} | Reviews: {reviews}/{tot_reviews} | {progress}"
+                )
+
                 if status in ["completed", "failed"]:
                     print(f"\n  Final state: {json.dumps(data, indent=2)}")
                     break
-                    
+
             except asyncio.TimeoutError:
                 print("  Timed out waiting for updates.")
                 break
@@ -78,6 +83,7 @@ async def test_websocket_stream():
     print(f"\n{'=' * 60}")
     print("TEST COMPLETE")
     print(f"{'=' * 60}")
+
 
 if __name__ == "__main__":
     asyncio.run(test_websocket_stream())

@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 
 import pyodbc
 
-
 DEFAULT_TIMEZONE = "UTC"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_DATE_FORMAT = "MM/DD/YYYY"
@@ -18,8 +17,7 @@ DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
 
 
 def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.system_settings', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.system_settings (
@@ -30,8 +28,7 @@ def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
                     CONSTRAINT DF_system_settings_updated_at DEFAULT SYSUTCDATETIME()
             );
         END;
-        """
-    )
+        """)
 
 
 def get_setting(cursor: pyodbc.Cursor, key: str) -> str | None:
@@ -147,11 +144,11 @@ def increment_setting_counter(cursor: pyodbc.Cursor, key: str, delta: int = 1) -
 def get_setting_bool_orm(db: "Session", key: str, default: bool = False) -> bool:
     """ORM-based boolean setting retrieval."""
     from app.modules.admin.models import SystemSetting
-    
+
     setting = db.query(SystemSetting).filter(SystemSetting.setting_key == key).first()
     if not setting:
         return default
-    
+
     val = setting.setting_value.strip().lower()
     if val in {"1", "true", "yes", "on", "enabled"}:
         return True

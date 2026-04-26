@@ -11,31 +11,37 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 
+
 @compiles(UNIQUEIDENTIFIER, "sqlite")
 def compile_uniqueidentifier_sqlite(type_, compiler, **kw):
     return "CHAR(36)"
 
+
 # Fix for MSSQL specific sysutcdatetime() in SQLite
 from sqlalchemy.sql import functions
+
+
 class sysutcdatetime(functions.GenericFunction):
     type = DateTime()
     name = "sysutcdatetime"
 
+
 @compiles(sysutcdatetime, "sqlite")
 def compile_sysutcdatetime_sqlite(element, compiler, **kw):
     return "CURRENT_TIMESTAMP"
+
 
 from app.main import app as fastapi_app
 from app.database.session import Base
 from app.database import get_db
 
 # Import models to register them with Base
-import app.modules.reviews.models # noqa
-import app.modules.source.models # noqa
-import app.modules.auth.models # noqa
-import app.modules.organization.models # noqa
-import app.modules.user.models # noqa
-import app.modules.admin.models # noqa
+import app.modules.reviews.models  # noqa
+import app.modules.source.models  # noqa
+import app.modules.auth.models  # noqa
+import app.modules.organization.models  # noqa
+import app.modules.user.models  # noqa
+import app.modules.admin.models  # noqa
 
 # Use in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -72,6 +78,7 @@ def db_session(db_engine):
 @pytest.fixture(scope="function")
 def client(db_session):
     """Returns a TestClient that uses the test database session."""
+
     def override_get_db():
         try:
             yield db_session

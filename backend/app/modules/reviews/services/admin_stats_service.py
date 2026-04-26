@@ -34,9 +34,7 @@ from app.core.db_utils import (
 
 # The date expression used across all processed_review queries.
 # Picks the first non-null date column from the table.
-_DATE_EXPR = (
-    "CAST(COALESCE(reviewDate, CONVERT(date, scrapedAt)) AS date)"
-)
+_DATE_EXPR = "CAST(COALESCE(reviewDate, CONVERT(date, scrapedAt)) AS date)"
 
 _ACTIVITY_EXPR = (
     "COALESCE(CAST(r.scrapedAt AS datetime), CAST(r.reviewDate AS datetime))"
@@ -115,7 +113,9 @@ def get_review_metrics(cursor: "pyodbc.Cursor") -> dict[str, Any]:
         ORDER BY cnt DESC
         """,
     ).fetchall()
-    by_platform = [{"label": str(row[0]), "value": int(row[1])} for row in platform_rows[:8]]
+    by_platform = [
+        {"label": str(row[0]), "value": int(row[1])} for row in platform_rows[:8]
+    ]
 
     return {
         "totalReviews": total,
@@ -159,10 +159,12 @@ def get_usage_trend(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
 
     for offset in range(12):
         m = shift_month(start, offset)
-        result.append({
-            "label": m.strftime("%b"),
-            "value": month_map.get((m.year, m.month), 0),
-        })
+        result.append(
+            {
+                "label": m.strftime("%b"),
+                "value": month_map.get((m.year, m.month), 0),
+            }
+        )
 
     return result
 
@@ -171,8 +173,7 @@ def _empty_12_months() -> list[dict[str, Any]]:
     current = month_start(date.today())
     start = shift_month(current, -11)
     return [
-        {"label": shift_month(start, i).strftime("%b"), "value": 0}
-        for i in range(12)
+        {"label": shift_month(start, i).strftime("%b"), "value": 0} for i in range(12)
     ]
 
 
@@ -187,41 +188,47 @@ def get_system_alerts(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
 
     if not table_exists(cursor, "processed_review"):
-        alerts.append({
-            "id": "db-missing-processed",
-            "type": "warning",
-            "title": "Processed Reviews Table Missing",
-            "message": "Table dbo.processed_review was not found — dashboard metrics are limited.",
-            "timestamp": "just now",
-            "isRead": False,
-        })
+        alerts.append(
+            {
+                "id": "db-missing-processed",
+                "type": "warning",
+                "title": "Processed Reviews Table Missing",
+                "message": "Table dbo.processed_review was not found — dashboard metrics are limited.",
+                "timestamp": "just now",
+                "isRead": False,
+            }
+        )
         return alerts
 
     total = count_scalar(cursor, "SELECT COUNT(*) FROM dbo.processed_review")
 
     if total == 0:
-        alerts.append({
-            "id": "no-reviews",
-            "type": "warning",
-            "title": "No Reviews in Database",
-            "message": "No processed reviews are currently stored.",
-            "timestamp": "just now",
-            "isRead": False,
-        })
+        alerts.append(
+            {
+                "id": "no-reviews",
+                "type": "warning",
+                "title": "No Reviews in Database",
+                "message": "No processed reviews are currently stored.",
+                "timestamp": "just now",
+                "isRead": False,
+            }
+        )
 
     pending = count_scalar(
         cursor,
         "SELECT COUNT(*) FROM dbo.processed_review WHERE LOWER(COALESCE(status, '')) = 'pending'",
     )
     if pending > 0:
-        alerts.append({
-            "id": "pending-reviews",
-            "type": "info",
-            "title": "Pending Review Actions",
-            "message": f"{pending} processed reviews are still in Pending status.",
-            "timestamp": "just now",
-            "isRead": False,
-        })
+        alerts.append(
+            {
+                "id": "pending-reviews",
+                "type": "info",
+                "title": "Pending Review Actions",
+                "message": f"{pending} processed reviews are still in Pending status.",
+                "timestamp": "just now",
+                "isRead": False,
+            }
+        )
 
     negative_today = count_scalar(
         cursor,
@@ -233,23 +240,27 @@ def get_system_alerts(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         """,
     )
     if negative_today > 0:
-        alerts.append({
-            "id": "negative-sentiment-today",
-            "type": "warning",
-            "title": "Negative Sentiment Detected",
-            "message": f"{negative_today} negative reviews were recorded today.",
-            "timestamp": "just now",
-            "isRead": False,
-        })
+        alerts.append(
+            {
+                "id": "negative-sentiment-today",
+                "type": "warning",
+                "title": "Negative Sentiment Detected",
+                "message": f"{negative_today} negative reviews were recorded today.",
+                "timestamp": "just now",
+                "isRead": False,
+            }
+        )
 
-    alerts.append({
-        "id": "db-connected",
-        "type": "info",
-        "title": "Database Connected",
-        "message": "Dashboard data is currently sourced from SQL Server.",
-        "timestamp": "just now",
-        "isRead": True,
-    })
+    alerts.append(
+        {
+            "id": "db-connected",
+            "type": "info",
+            "title": "Database Connected",
+            "message": "Dashboard data is currently sourced from SQL Server.",
+            "timestamp": "just now",
+            "isRead": True,
+        }
+    )
 
     return alerts[:5]
 
@@ -294,15 +305,19 @@ def get_recent_activity(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
 
         activity_type = "ai_job" if status == "replied" else "scrape_completed"
         title = "Review Reply Updated" if status == "replied" else "Review Imported"
-        description = f"{source_name} review {review_id} processed with {sentiment} sentiment"
+        description = (
+            f"{source_name} review {review_id} processed with {sentiment} sentiment"
+        )
 
-        activities.append({
-            "id": str(row[0]),
-            "type": activity_type,
-            "title": title,
-            "description": description,
-            "timestamp": activity_time,
-            "user": user_name,
-        })
+        activities.append(
+            {
+                "id": str(row[0]),
+                "type": activity_type,
+                "title": title,
+                "description": description,
+                "timestamp": activity_time,
+                "user": user_name,
+            }
+        )
 
     return activities

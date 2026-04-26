@@ -14,12 +14,17 @@ _genai_client = None
 def _get_genai_client():
     global _genai_client
     if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
+        _genai_client = genai.Client(
+            api_key=GENAI_KEY, http_options={"api_version": "v1"}
+        )
     return _genai_client
 
 
 def _table_exists(cursor, table_name: str) -> bool:
-    cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?", table_name)
+    cursor.execute(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?",
+        table_name,
+    )
     return cursor.fetchone()[0] > 0
 
 
@@ -42,9 +47,16 @@ def get_dashboard_stats():
             cursor.execute("SELECT COUNT(*) FROM dbo.Organizations")
             org_count = cursor.fetchone()[0]
         conn.close()
-        return {"totalUsers": total_users, "activeUsers": active_users, "totalReviews": total_reviews, "totalCompetitors": competitor_count, "totalOrganizations": org_count}
+        return {
+            "totalUsers": total_users,
+            "activeUsers": active_users,
+            "totalReviews": total_reviews,
+            "totalCompetitors": competitor_count,
+            "totalOrganizations": org_count,
+        }
     except Exception as e:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -56,9 +68,13 @@ def generate_ai_insights():
         total_reviews = cursor.fetchone()[0]
         cursor.execute("SELECT AVG(CAST(rating AS FLOAT)) FROM dbo.processed_review")
         avg_rating = cursor.fetchone()[0] or 0
-        cursor.execute("SELECT sentiment, COUNT(*) as cnt FROM dbo.processed_review GROUP BY sentiment")
+        cursor.execute(
+            "SELECT sentiment, COUNT(*) as cnt FROM dbo.processed_review GROUP BY sentiment"
+        )
         sentiment_dist = {r.sentiment: r.cnt for r in cursor.fetchall()}
-        cursor.execute("SELECT TOP 5 categories, COUNT(*) as cnt FROM dbo.processed_review WHERE categories IS NOT NULL GROUP BY categories ORDER BY cnt DESC")
+        cursor.execute(
+            "SELECT TOP 5 categories, COUNT(*) as cnt FROM dbo.processed_review WHERE categories IS NOT NULL GROUP BY categories ORDER BY cnt DESC"
+        )
         top_cats = [(r.categories, r.cnt) for r in cursor.fetchall()]
         conn.close()
 
@@ -80,10 +96,18 @@ Return JSON:
 
 Return ONLY valid JSON. No markdown."""
 
-        response = _get_genai_client().models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
+        response = _get_genai_client().models.generate_content(
+            model="gemini-2.5-flash-lite", contents=prompt
+        )
         pattern = r"^```(?:json)?\s*(.*?)\s*```$"
         match = re.search(pattern, response.text, re.DOTALL | re.MULTILINE)
         clean_text = match.group(1) if match else response.text
         return json.loads(clean_text)
     except Exception as e:
-        return {"summary": "Unable to generate insights at this time.", "strengths": [], "improvements": [], "recommendations": [], "error": str(e)}
+        return {
+            "summary": "Unable to generate insights at this time.",
+            "strengths": [],
+            "improvements": [],
+            "recommendations": [],
+            "error": str(e),
+        }

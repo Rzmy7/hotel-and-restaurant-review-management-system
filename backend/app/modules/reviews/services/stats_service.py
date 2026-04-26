@@ -7,22 +7,22 @@ import pyodbc
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 
+
 def get_review_metrics(cursor: pyodbc.Cursor) -> Dict[str, Any]:
     """Calculate system-wide review KPIs."""
     # Total count
     cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
     total = cursor.fetchone()[0] or 0
-    
+
     # Collected today
-    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE CAST(scrapedAt AS DATE) = CAST(GETUTCDATE() AS DATE)")
+    cursor.execute(
+        "SELECT COUNT(*) FROM dbo.processed_review WHERE CAST(scrapedAt AS DATE) = CAST(GETUTCDATE() AS DATE)"
+    )
     today = cursor.fetchone()[0] or 0
-    
+
     # Growth (Placeholder: in a real app, you'd compare vs previous period)
-    return {
-        "totalReviews": total,
-        "reviewsCollectedToday": today,
-        "reviewsGrowth": 5.2
-    }
+    return {"totalReviews": total, "reviewsCollectedToday": today, "reviewsGrowth": 5.2}
+
 
 def get_usage_trend(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     """Return 12-month review volume trend as list of {label, value}."""
@@ -45,6 +45,7 @@ def get_usage_trend(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     except Exception:
         return []
 
+
 def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     """Return latest admin-panel actions for the activity feed.
 
@@ -54,8 +55,7 @@ def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     """
     # Ensure the table exists before querying
     try:
-        cursor.execute(
-            """
+        cursor.execute("""
             IF NOT EXISTS (
                 SELECT 1 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'admin_activity_log'
@@ -70,8 +70,7 @@ def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
                     created_at  DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME()
                 );
             END
-            """
-        )
+            """)
     except Exception:
         pass
 
@@ -93,6 +92,7 @@ def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     except Exception:
         return []
 
+
 def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     """Return system alerts matching the SystemAlert frontend shape.
 
@@ -111,8 +111,7 @@ def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     # ── 1. Persisted alerts from system_alert_log ──────────────────
     try:
         ensure_system_alert_log_table(cursor)
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT TOP 10
                 id,
                 severity   AS [type],
@@ -123,8 +122,7 @@ def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
             FROM dbo.system_alert_log
             WHERE is_dismissed = 0
             ORDER BY created_at DESC
-            """
-        )
+            """)
         columns = [col[0] for col in cursor.description]
         for row in cursor.fetchall():
             d = dict(zip(columns, row))
@@ -140,8 +138,7 @@ def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
 
     # ── 2. Dynamic: recent scraping sync failures (last 24 h) ──────
     try:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT TOP 5
                 CAST(sl.log_id AS VARCHAR(36))                 AS id,
                 ISNULL(p.platform_name, 'Unknown Platform')    AS platform,
@@ -153,70 +150,72 @@ def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
             WHERE sl.status = 'Failed'
               AND sl.[timestamp] > DATEADD(HOUR, -24, SYSUTCDATETIME())
             ORDER BY sl.[timestamp] DESC
-            """
-        )
+            """)
         for row in cursor.fetchall():
             alert_id = f"sync-{row[0]}"
             # Skip if a persisted alert with the same dedup key exists
             if any(a["id"] == alert_id for a in alerts):
                 continue
-            alerts.append({
-                "id": alert_id,
-                "type": "error",
-                "title": f"Sync Failure — {row[1]}",
-                "message": row[2] or "A data sync job failed. Check the scraping logs for details.",
-                "timestamp": row[3],
-                "isRead": False,
-            })
+            alerts.append(
+                {
+                    "id": alert_id,
+                    "type": "error",
+                    "title": f"Sync Failure — {row[1]}",
+                    "message": row[2]
+                    or "A data sync job failed. Check the scraping logs for details.",
+                    "timestamp": row[3],
+                    "isRead": False,
+                }
+            )
     except Exception:
         pass
 
     # ── 3. Dynamic: unprocessed review backlog ─────────────────────
     try:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT COUNT(*) FROM dbo.processed_review
             WHERE status = 'pending'
-            """
-        )
+            """)
         pending = cursor.fetchone()[0] or 0
         if pending > 50:
-            alerts.append({
-                "id": "dynamic-pending-backlog",
-                "type": "warning",
-                "title": f"Review Processing Backlog ({pending} pending)",
-                "message": (
-                    f"There are {pending} reviews waiting for AI analysis. "
-                    "Ensure the Gemini API key is configured and quota is available."
-                ),
-                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
-                "isRead": False,
-            })
+            alerts.append(
+                {
+                    "id": "dynamic-pending-backlog",
+                    "type": "warning",
+                    "title": f"Review Processing Backlog ({pending} pending)",
+                    "message": (
+                        f"There are {pending} reviews waiting for AI analysis. "
+                        "Ensure the Gemini API key is configured and quota is available."
+                    ),
+                    "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                    "isRead": False,
+                }
+            )
     except Exception:
         pass
 
     # ── 4. Dynamic: failed reviews (retry exhausted) ───────────────
     try:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT COUNT(*) FROM dbo.processed_review
             WHERE status = 'failed'
               AND last_attempt > DATEADD(HOUR, -24, GETUTCDATE())
-            """
-        )
+            """)
         failed = cursor.fetchone()[0] or 0
         if failed > 0:
-            alerts.append({
-                "id": "dynamic-failed-reviews",
-                "type": "error",
-                "title": f"{failed} Reviews Failed Processing",
-                "message": (
-                    f"{failed} reviews exhausted all retry attempts in the last 24 hours. "
-                    "These reviews require manual re-processing or investigation."
-                ),
-                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
-                "isRead": False,
-            })
+            alerts.append(
+                {
+                    "id": "dynamic-failed-reviews",
+                    "type": "error",
+                    "title": f"{failed} Reviews Failed Processing",
+                    "message": (
+                        f"{failed} reviews exhausted all retry attempts in the last 24 hours. "
+                        "These reviews require manual re-processing or investigation."
+                    ),
+                    "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                    "isRead": False,
+                }
+            )
     except Exception:
         pass
 

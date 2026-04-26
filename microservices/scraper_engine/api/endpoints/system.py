@@ -8,6 +8,7 @@ GET  /api/system/pool     — thread pool stats
 PUT  /api/system/pool     — resize the thread pool at runtime
 GET  /api/system/metrics  — python/OS/CPU info
 """
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import time
@@ -27,6 +28,7 @@ START_TIME = time.time()
 
 class PoolConfigRequest(BaseModel):
     """Request body for resizing the scrape thread pool."""
+
     max_workers: int
 
 
@@ -47,14 +49,14 @@ def health_check():
     days = int(uptime // 86400)
     hours = int((uptime % 86400) // 3600)
     minutes = int((uptime % 3600) // 60)
-    
+
     return {
         "status": "online",
         "uptime": f"{days}d {hours}h {minutes}m",
         "uptime_seconds": round(uptime, 2),
         "database_connected": db_ok,
         "active_jobs": len(job_manager.get_active_jobs()),
-        "pool": scrape_pool.get_pool_status()
+        "pool": scrape_pool.get_pool_status(),
     }
 
 
@@ -65,7 +67,7 @@ def admin_health_check():
     days = int(uptime // 86400)
     hours = int((uptime % 86400) // 3600)
     minutes = int((uptime % 3600) // 60)
-    
+
     cpu_usage = round(psutil.cpu_percent(interval=0.1), 1)
     memory = psutil.virtual_memory()
     ram_usage = round(memory.percent, 1)
@@ -79,7 +81,7 @@ def admin_health_check():
         "cpu_usage": cpu_usage,
         "ram_usage": ram_usage,
         "uptime": f"{days}d {hours}h {minutes}m",
-        "service_paused": service_paused
+        "service_paused": service_paused,
     }
 
 
@@ -88,17 +90,14 @@ def list_active_jobs():
     """Returns all currently active background jobs with pool status."""
     return {
         "jobs": job_manager.get_active_jobs(),
-        "pool": scrape_pool.get_pool_status()
+        "pool": scrape_pool.get_pool_status(),
     }
 
 
 @router.get("/jobs/all")
 def list_all_jobs():
     """Returns ALL jobs (including completed and failed)."""
-    return {
-        "jobs": job_manager.get_all_jobs(),
-        "pool": scrape_pool.get_pool_status()
-    }
+    return {"jobs": job_manager.get_all_jobs(), "pool": scrape_pool.get_pool_status()}
 
 
 @router.get("/pool")
@@ -114,12 +113,11 @@ def configure_pool(body: PoolConfigRequest):
     Existing running jobs will finish; new limit applies to subsequent jobs.
     """
     if body.max_workers < 1 or body.max_workers > 50:
-        raise HTTPException(status_code=400, detail="max_workers must be between 1 and 50")
+        raise HTTPException(
+            status_code=400, detail="max_workers must be between 1 and 50"
+        )
     scrape_pool.set_max_workers(body.max_workers)
-    return {
-        "status": "updated",
-        "pool": scrape_pool.get_pool_status()
-    }
+    return {"status": "updated", "pool": scrape_pool.get_pool_status()}
 
 
 @router.get("/queue")
@@ -127,7 +125,7 @@ def get_queue_details():
     """Returns the list of jobs currently waiting in the FCFS queue."""
     return {
         "size": scrape_pool.queued_count,
-        "queue": scrape_pool.get_pool_status()["queue_ids"]
+        "queue": scrape_pool.get_pool_status()["queue_ids"],
     }
 
 
@@ -138,7 +136,7 @@ def system_metrics():
         "python_version": sys.version,
         "platform": sys.platform,
         "cpu_count": os.cpu_count(),
-        "pool_max_workers": scrape_pool.max_workers
+        "pool_max_workers": scrape_pool.max_workers,
     }
 
 
@@ -172,17 +170,24 @@ def cancel_jobs_for_source(source_id: str):
 
     # Also try to cancel any queued jobs for this source
     from core.queue import job_queue
+
     with job_queue._lock:
         for job in list(job_queue._queue):
             if job.kwargs.get("source_id") == source_id:
                 job_queue._queue.remove(job)
-                job_manager.update_job(job.job_id, status="failed", progress="Cancelled by user.")
+                job_manager.update_job(
+                    job.job_id, status="failed", progress="Cancelled by user."
+                )
                 cancelled = True
 
     if cancelled:
         return {"status": "cancelled", "source_id": source_id}
 
-    return {"status": "not_found", "source_id": source_id, "message": "No active jobs found for this source."}
+    return {
+        "status": "not_found",
+        "source_id": source_id,
+        "message": "No active jobs found for this source.",
+    }
 
 
 @router.post("/jobs/cancel/{job_id}")
@@ -196,4 +201,8 @@ def cancel_job_by_id(job_id: str):
     if cancelled:
         return {"status": "cancelled", "job_id": job_id}
 
-    return {"status": "not_found", "job_id": job_id, "message": "Job not found or already completed."}
+    return {
+        "status": "not_found",
+        "job_id": job_id,
+        "message": "Job not found or already completed.",
+    }

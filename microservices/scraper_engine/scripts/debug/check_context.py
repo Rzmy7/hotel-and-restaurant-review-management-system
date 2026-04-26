@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_engine():
     params = urllib.parse.quote_plus(
         # Note: I'm using DATABASE={os.getenv('DB_NAME')} from .env
@@ -18,6 +19,7 @@ def get_engine():
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
     return create_engine(conn_str, echo=False)
 
+
 def check_context():
     engine = get_engine()
     with engine.connect() as conn:
@@ -27,11 +29,16 @@ def check_context():
         print(f"Connected to DB: {db}")
         print(f"Current Schema: {schema}")
         print(f"System User: {user}")
-        
+
         print("\n--- Listing all tables in this DB ---")
-        result = conn.execute(text("SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"))
+        result = conn.execute(
+            text(
+                "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+            )
+        )
         for row in result:
             print(f"{row[0]}.{row[1]}")
+
 
 if __name__ == "__main__":
     check_context()

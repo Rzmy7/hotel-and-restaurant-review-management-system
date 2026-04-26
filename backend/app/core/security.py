@@ -10,7 +10,11 @@ from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext  # type: ignore
 
-from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+from app.core.config import (
+    JWT_SECRET_KEY,
+    JWT_ALGORITHM,
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+)
 
 # ── Password hashing ───────────────────────────────────────────────
 
@@ -36,7 +40,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # ── JWT tokens ──────────────────────────────────────────────────────
 
-def create_access_token(user_id: str, role: str, organization_id: str | None = None) -> str:
+
+def create_access_token(
+    user_id: str, role: str, organization_id: str | None = None
+) -> str:
     """Create a signed JWT access token."""
     payload = {
         "user_id": user_id,
@@ -44,7 +51,7 @@ def create_access_token(user_id: str, role: str, organization_id: str | None = N
         "organization_id": organization_id,
         "exp": datetime.utcnow() + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    
+
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 

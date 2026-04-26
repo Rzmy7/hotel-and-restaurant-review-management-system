@@ -54,7 +54,9 @@ def _connection_string() -> str:
         if not value
     ]
     if missing:
-        raise HTTPException(status_code=500, detail=f"Missing DB config: {', '.join(missing)}")
+        raise HTTPException(
+            status_code=500, detail=f"Missing DB config: {', '.join(missing)}"
+        )
 
     return (
         f"DRIVER={{{driver}}};"
@@ -80,8 +82,7 @@ def _table_exists(cursor: pyodbc.Cursor, table_name: str, schema: str = "dbo") -
 
 
 def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.broadcast_events', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.broadcast_events (
@@ -119,13 +120,11 @@ def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
             CREATE INDEX IX_broadcast_events_created_at
                 ON dbo.broadcast_events (created_at DESC);
         END;
-        """
-    )
+        """)
 
 
 def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.notifications', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.notifications (
@@ -153,8 +152,7 @@ def _ensure_notifications_table(cursor: pyodbc.Cursor) -> None:
             CREATE INDEX IX_notifications_user_read_created
                 ON dbo.notifications (user_id, is_read, created_at DESC);
         END;
-        """
-    )
+        """)
 
 
 def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -170,8 +168,7 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
 
 
 def _ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.system_settings', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.system_settings (
@@ -182,8 +179,7 @@ def _ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
                     CONSTRAINT DF_system_settings_updated_at DEFAULT SYSUTCDATETIME()
             );
         END;
-        """
-    )
+        """)
 
 
 def _is_valid_timezone(value: str) -> bool:
@@ -196,13 +192,11 @@ def _is_valid_timezone(value: str) -> bool:
 
 def _get_system_timezone(cursor: pyodbc.Cursor) -> str:
     _ensure_system_settings_table(cursor)
-    row = cursor.execute(
-        """
+    row = cursor.execute("""
         SELECT setting_value
         FROM dbo.system_settings
         WHERE setting_key = 'timezone'
-        """
-    ).fetchone()
+        """).fetchone()
 
     if not row:
         return "UTC"
@@ -213,7 +207,9 @@ def _get_system_timezone(cursor: pyodbc.Cursor) -> str:
     return "UTC"
 
 
-def _parse_scheduled_at_to_system_time(value: Optional[str], timezone_name: str) -> Optional[datetime]:
+def _parse_scheduled_at_to_system_time(
+    value: Optional[str], timezone_name: str
+) -> Optional[datetime]:
     parsed = _parse_iso_datetime(value)
     if not parsed:
         return None
@@ -224,7 +220,9 @@ def _parse_scheduled_at_to_system_time(value: Optional[str], timezone_name: str)
     return parsed.astimezone(ZoneInfo(timezone_name)).replace(tzinfo=None)
 
 
-def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verified: bool) -> str:
+def _derive_plan_bucket(
+    is_admin: bool, is_email_verified: bool, is_phone_verified: bool
+) -> str:
     if is_admin:
         return "enterprise"
     if is_email_verified and is_phone_verified:
@@ -234,12 +232,13 @@ def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verifi
     return "free"
 
 
-def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, bool]]:
+def _get_active_users(
+    cursor: pyodbc.Cursor,
+) -> list[tuple[str, bool, bool, bool, bool]]:
     if not _table_exists(cursor, "users"):
         return []
 
-    rows = cursor.execute(
-        """
+    rows = cursor.execute("""
         SELECT
             CAST(user_id AS NVARCHAR(36)) AS user_id,
             CAST(COALESCE(is_active, 0) AS BIT) AS is_active,
@@ -247,8 +246,7 @@ def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool
             CAST(COALESCE(is_phone_verified, 0) AS BIT) AS is_phone_verified,
             CAST(COALESCE(is_super_admin, 0) AS BIT) AS is_super_admin
         FROM dbo.users
-        """
-    ).fetchall()
+        """).fetchall()
 
     return [
         (
@@ -276,9 +274,17 @@ def _get_recipient_ids(
     if audience_type == "role":
         role_value = (audience_value or "").lower()
         if role_value == "admin":
-            return [user_id for user_id, _, _, _, is_super_admin in active_users if is_super_admin]
+            return [
+                user_id
+                for user_id, _, _, _, is_super_admin in active_users
+                if is_super_admin
+            ]
         if role_value == "user":
-            return [user_id for user_id, _, _, _, is_super_admin in active_users if not is_super_admin]
+            return [
+                user_id
+                for user_id, _, _, _, is_super_admin in active_users
+                if not is_super_admin
+            ]
         return []
 
     if audience_type == "plan":
@@ -287,7 +293,13 @@ def _get_recipient_ids(
             return []
 
         matched: list[str] = []
-        for user_id, _, is_email_verified, is_phone_verified, is_super_admin in active_users:
+        for (
+            user_id,
+            _,
+            is_email_verified,
+            is_phone_verified,
+            is_super_admin,
+        ) in active_users:
             plan_bucket = _derive_plan_bucket(
                 is_admin=is_super_admin,
                 is_email_verified=is_email_verified,
@@ -387,13 +399,19 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
         _ensure_broadcast_events_table(cursor)
         _ensure_notifications_table(cursor)
 
-        recipient_ids = _get_recipient_ids(cursor, payload.audienceType, payload.audienceValue)
+        recipient_ids = _get_recipient_ids(
+            cursor, payload.audienceType, payload.audienceValue
+        )
         recipient_count = len(recipient_ids)
-        audience_label = _get_audience_label(payload.audienceType, payload.audienceValue)
+        audience_label = _get_audience_label(
+            payload.audienceType, payload.audienceValue
+        )
 
         now_utc = datetime.utcnow()
         timezone_name = _get_system_timezone(cursor)
-        scheduled_at = _parse_scheduled_at_to_system_time(payload.scheduledAt, timezone_name)
+        scheduled_at = _parse_scheduled_at_to_system_time(
+            payload.scheduledAt, timezone_name
+        )
         status = "pending" if payload.scheduleType == "scheduled" else "sent"
         sent_at = scheduled_at if status == "pending" else now_utc
 
@@ -485,16 +503,14 @@ def get_statistics() -> StatisticsResponse:
     try:
         cursor = connection.cursor()
         _ensure_broadcast_events_table(cursor)
-        row = cursor.execute(
-            """
+        row = cursor.execute("""
             SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS scheduled,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
             FROM dbo.broadcast_events
-            """
-        ).fetchone()
+            """).fetchone()
 
         return StatisticsResponse(
             total=int(row[0] or 0),
@@ -512,8 +528,7 @@ def get_history() -> list[dict]:
     try:
         cursor = connection.cursor()
         _ensure_broadcast_events_table(cursor)
-        rows = cursor.execute(
-            """
+        rows = cursor.execute("""
             SELECT
                 broadcast_id,
                 subject,
@@ -532,8 +547,7 @@ def get_history() -> list[dict]:
                 created_at
             FROM dbo.broadcast_events
             ORDER BY created_at DESC
-            """
-        ).fetchall()
+            """).fetchall()
 
         return [_to_record(row) for row in rows]
     finally:
@@ -613,7 +627,11 @@ def resend_broadcast(broadcast_id: str) -> dict:
         if not event:
             raise HTTPException(status_code=404, detail="Broadcast not found")
 
-        recipient_ids = _get_recipient_ids(cursor, str(event.audience_type), str(event.audience_value) if event.audience_value is not None else None)
+        recipient_ids = _get_recipient_ids(
+            cursor,
+            str(event.audience_type),
+            str(event.audience_value) if event.audience_value is not None else None,
+        )
         now_utc = datetime.utcnow()
 
         if str(event.channel) in {"notification", "both"}:
@@ -704,6 +722,8 @@ def cancel_broadcast(broadcast_id: str) -> dict:
         raise
     except Exception as exc:
         connection.rollback()
-        raise HTTPException(status_code=500, detail=f"Error cancelling broadcast: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Error cancelling broadcast: {exc}"
+        )
     finally:
         connection.close()

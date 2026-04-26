@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 sys.path.append(os.getcwd())
 
 from app.database.session import Base
+
 # Import ALL models to ensure they are registered with Base.metadata
 from app.modules.auth.models import Role, Session as UserSession, PasswordResetToken
 from app.modules.user.models.user_models import User
@@ -26,9 +27,10 @@ if not DATABASE_URL:
     print("No DATABASE_URL found in .env file")
     sys.exit(1)
 
+
 def wipe_and_rebuild():
     engine = create_engine(DATABASE_URL, connect_args={"timeout": 30})
-    
+
     print("Connecting to database...")
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         # 1. Drop all Foreign Key constraints first
@@ -75,13 +77,14 @@ def wipe_and_rebuild():
         tenant_role = Role(role_name="tenant", description="Default user role")
         # admin role (ID 2)
         admin_role = Role(role_name="admin", description="System administrator role")
-        
+
         session.add(tenant_role)
         session.add(admin_role)
         session.commit()
         print("Roles seeded successfully.")
 
     print("\n--- DATABASE REBUILD COMPLETE ---")
+
 
 if __name__ == "__main__":
     wipe_and_rebuild()

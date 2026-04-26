@@ -4,6 +4,7 @@ FastAPI Application Entry Point — Scraper Engine
 Mounts all routers with /api prefix. No /api/v1 versioning.
 Initializes the database on startup.
 """
+
 import sys
 import os
 import time
@@ -41,7 +42,7 @@ app = FastAPI(
         "A multi-platform review microservice — scrapes, stores, and serves "
         "reviews from Agoda, Booking, Google Maps, and TripAdvisor."
     ),
-    version="4.0.0"
+    version="4.0.0",
 )
 
 # ── Rate Limiting ──
@@ -65,13 +66,15 @@ def reconcile_stuck_tasks():
     """
     url = f"{config.backend_url}/api/source/stuck-tasks"
     logger.info("Initializing background reconciliation...")
-    
+
     max_retries = 12
     retry_delay = 5.0
-    
+
     for attempt in range(1, max_retries + 1):
         try:
-            logger.info(f"Reconciling stuck tasks from {url} (Attempt {attempt}/{max_retries})...")
+            logger.info(
+                f"Reconciling stuck tasks from {url} (Attempt {attempt}/{max_retries})..."
+            )
             headers = {"X-Internal-API-Key": config.internal_api_key}
             with httpx.Client(timeout=10.0, headers=headers) as client:
                 resp = client.get(url)
@@ -80,41 +83,48 @@ def reconcile_stuck_tasks():
                     if not tasks:
                         logger.info("No stuck tasks found.")
                         return
-                    
-                    logger.info(f"Found {len(tasks)} stuck tasks. Emitting FAILED callbacks...")
+
+                    logger.info(
+                        f"Found {len(tasks)} stuck tasks. Emitting FAILED callbacks..."
+                    )
                     for t in tasks:
                         source_id = t.get("source_id")
-                        if not source_id: continue
-                        
+                        if not source_id:
+                            continue
+
                         status_url = f"{config.backend_url}/api/source/tasks/{source_id}/sync-status"
                         payload = {
                             "status": "FAILED",
-                            "error_message": "Scraper Engine restarted unexpectedly during execution. Job aborted."
+                            "error_message": "Scraper Engine restarted unexpectedly during execution. Job aborted.",
                         }
                         client.post(status_url, json=payload)
                     logger.info("Successfully reconciled all stuck tasks.")
                     return  # Success, exit the thread
                 else:
-                    logger.warning(f"Backend returned {resp.status_code}. Retrying in {retry_delay}s...")
-        
+                    logger.warning(
+                        f"Backend returned {resp.status_code}. Retrying in {retry_delay}s..."
+                    )
+
         except httpx.ConnectError as e:
-            logger.warning(f"Backend not reachable (ConnectError). Retrying in {retry_delay}s...")
+            logger.warning(
+                f"Backend not reachable (ConnectError). Retrying in {retry_delay}s..."
+            )
         except Exception as e:
             logger.error(f"Error during trapped task reconciliation: {e}")
-            
+
         time.sleep(retry_delay)
-        
+
     logger.error("Reconciliation failed: Exceeded maximum retries contacting backend.")
+
 
 # ── Startup ──
 @app.on_event("startup")
 def startup_event():
     """Create all database tables on first run."""
     init_db()
-    
+
     # Spawn background reconciliation thread
     threading.Thread(target=reconcile_stuck_tasks, daemon=True).start()
-
 
 
 # ── Platform Scrape Endpoints ──
@@ -146,6 +156,7 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "api.main:app",
         host="127.0.0.1",

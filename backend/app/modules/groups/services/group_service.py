@@ -29,14 +29,18 @@ def create_group_service(db: Session, group_name: str, current_user):
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            limit_info = check_feature_limit(cursor, str(current_user.user_id), "groups")
+            limit_info = check_feature_limit(
+                cursor, str(current_user.user_id), "groups"
+            )
             if not limit_info["allowed"]:
-                send_limit_reached_notification(str(current_user.user_id), limit_info["feature_name"])
+                send_limit_reached_notification(
+                    str(current_user.user_id), limit_info["feature_name"]
+                )
                 raise HTTPException(
                     status_code=403,
                     detail=f"Group limit reached for your current plan. "
-                           f"You have used {limit_info['used']}/{limit_info['limit']}. "
-                           f"Please upgrade your subscription plan to add more groups.",
+                    f"You have used {limit_info['used']}/{limit_info['limit']}. "
+                    f"Please upgrade your subscription plan to add more groups.",
                 )
     except HTTPException:
         raise
@@ -51,6 +55,7 @@ def create_group_service(db: Session, group_name: str, current_user):
     # ── Send group created notification ──
     try:
         from app.services.notification_helpers import notify_group_created
+
         notify_group_created(str(current_user.user_id), group_name)
     except Exception:
         pass  # Best-effort
@@ -69,7 +74,9 @@ def create_group_service(db: Session, group_name: str, current_user):
     return group
 
 
-def add_group_member_service(db: Session, group_id: uuid.UUID, user_id: uuid.UUID, role: str, current_user):
+def add_group_member_service(
+    db: Session, group_id: uuid.UUID, user_id: uuid.UUID, role: str, current_user
+):
     _get_group_or_404(db, group_id)
     require_group_manager(group_id, current_user, db)
     member = add_member_to_group(db, group_id, user_id, role or GROUP_MEMBER)

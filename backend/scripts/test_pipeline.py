@@ -12,11 +12,14 @@ import logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("test_pipeline")
 
-from app.modules.reviews.services.review_service import start_ingestion_and_processing_flow
+from app.modules.reviews.services.review_service import (
+    start_ingestion_and_processing_flow,
+)
+
 
 async def main():
     if len(sys.argv) < 2:
@@ -39,10 +42,13 @@ async def main():
         print(f"\n{'='*50}")
         print(f"TEST RUN FINISHED")
         print(f"Check the logs above for any ERROR or WARNING messages.")
-        print(f"If successful, you should see 'Pipeline COMPLETED' or 'Saved X reviews' messages.")
+        print(
+            f"If successful, you should see 'Pipeline COMPLETED' or 'Saved X reviews' messages."
+        )
         print(f"{'='*50}\n")
     except Exception as e:
         logger.error(f"Test script failed with unhandled error: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

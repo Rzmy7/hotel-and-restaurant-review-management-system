@@ -12,7 +12,7 @@ logger = setup_logger("google_extractor")
 def first_float(text: str) -> Optional[float]:
     if not text:
         return None
-    match = re.search(r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)', text)
+    match = re.search(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)", text)
     return float(match.group(0)) if match else None
 
 
@@ -45,23 +45,29 @@ class GoogleExtractor:
 
             # --- Review ID ---
             try:
-                review_id = review.get_attribute(config.review_id_attr, timeout=1000) or ""
+                review_id = (
+                    review.get_attribute(config.review_id_attr, timeout=1000) or ""
+                )
             except Exception:
                 review_id = ""
-            
+
             if not review_id:
                 continue  # Skip reviews without an ID
 
             # --- Author ---
             try:
-                author = review.locator(config.reviewer_name).first.text_content(timeout=1000)
+                author = review.locator(config.reviewer_name).first.text_content(
+                    timeout=1000
+                )
                 author = author.strip() if author else "Anonymous"
             except Exception:
                 author = "Anonymous"
 
             # --- Author Badge ---
             try:
-                badge = review.locator(config.reviewer_badge).first.text_content(timeout=1000)
+                badge = review.locator(config.reviewer_badge).first.text_content(
+                    timeout=1000
+                )
                 author_badge = badge.strip() if badge else ""
             except Exception:
                 author_badge = ""
@@ -76,7 +82,9 @@ class GoogleExtractor:
 
             # --- Date ---
             try:
-                date_text = review.locator(config.review_date).first.text_content(timeout=1000)
+                date_text = review.locator(config.review_date).first.text_content(
+                    timeout=1000
+                )
                 review_date = date_text.strip() if date_text else ""
             except Exception:
                 review_date = ""
@@ -98,7 +106,11 @@ class GoogleExtractor:
                 reply_container = review.locator(config.reply_container)
                 if reply_container.count() > 0:
                     reply_text_node = reply_container.locator(config.review_text).first
-                    reply = reply_text_node.text_content(timeout=1000).strip() if reply_text_node.count() > 0 else ""
+                    reply = (
+                        reply_text_node.text_content(timeout=1000).strip()
+                        if reply_text_node.count() > 0
+                        else ""
+                    )
                 else:
                     reply = ""
             except Exception:
@@ -108,7 +120,9 @@ class GoogleExtractor:
             photo_urls = []
             try:
                 # Target elements that likely contain photos (background-images or img tags)
-                photo_containers = review.locator(f"{config.review_photos}, button[aria-label*='Photo'], img[src*='googleusercontent']").all()
+                photo_containers = review.locator(
+                    f"{config.review_photos}, button[aria-label*='Photo'], img[src*='googleusercontent']"
+                ).all()
                 for container in photo_containers:
                     try:
                         # Strategy A: Check background-image style
@@ -119,11 +133,15 @@ class GoogleExtractor:
                             if img_url not in photo_urls:
                                 photo_urls.append(img_url)
                                 continue
-                        
+
                         # Strategy B: Check direct img src
                         if container.evaluate("el => el.tagName === 'IMG'"):
                             img_src = container.get_attribute("src", timeout=300)
-                            if img_src and "googleusercontent" in img_src and img_src not in photo_urls:
+                            if (
+                                img_src
+                                and "googleusercontent" in img_src
+                                and img_src not in photo_urls
+                            ):
                                 photo_urls.append(img_src)
                     except Exception:
                         continue
@@ -139,7 +157,7 @@ class GoogleExtractor:
                     text=review_text,
                     date=review_date,
                     reply=reply,
-                    photos=photo_urls
+                    photos=photo_urls,
                 )
             )
 

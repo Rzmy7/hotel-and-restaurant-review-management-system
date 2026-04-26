@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_engine():
     params = urllib.parse.quote_plus(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -17,15 +18,25 @@ def get_engine():
     conn_str = f"mssql+pyodbc:///?odbc_connect={params}"
     return create_engine(conn_str, echo=False)
 
+
 def final_cleanup():
     engine = get_engine()
     # Comprehensive list of tables to drop
     tables = [
-        'agoda_reviews', 'booking_reviews', 'google_reviews', 'tripadvisor_reviews',
-        'review_media', 'review_embeddings', 'organization_review_stats',
-        'reviews', 'organization_sources', 'organizations', 'sources', 'audit_log'
+        "agoda_reviews",
+        "booking_reviews",
+        "google_reviews",
+        "tripadvisor_reviews",
+        "review_media",
+        "review_embeddings",
+        "organization_review_stats",
+        "reviews",
+        "organization_sources",
+        "organizations",
+        "sources",
+        "audit_log",
     ]
-    
+
     with engine.begin() as conn:
         print("--- Final Cleanup ---")
         for table in tables:
@@ -36,11 +47,16 @@ def final_cleanup():
                 print(f"Cleared {table}")
             except Exception as e:
                 print(f"Error on {table}: {e}")
-        
+
         print("\n--- Remaining Tables ---")
-        result = conn.execute(text("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"))
+        result = conn.execute(
+            text(
+                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+            )
+        )
         for row in result:
             print(f"Still exists: {row[0]}")
+
 
 if __name__ == "__main__":
     final_cleanup()

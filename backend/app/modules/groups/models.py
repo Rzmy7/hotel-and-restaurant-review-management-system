@@ -64,6 +64,7 @@ class GroupMember(Base):
     The primary key is (group_id, organization_id).
     The role (GROUP_OWNER / GROUP_MEMBER) reflects the organization's role in the group.
     """
+
     __tablename__ = "group_member"
     __table_args__ = (
         CheckConstraint(
@@ -102,6 +103,7 @@ class GroupInvite(Base):
     invited_org_id     → the organization being invited
     invited_by         → the user (owner) who triggered the invite (for notifications)
     """
+
     __tablename__ = "group_invite"
     __table_args__ = (
         CheckConstraint(

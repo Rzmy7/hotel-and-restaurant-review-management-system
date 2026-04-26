@@ -8,7 +8,9 @@ into a reusable Playwright user-data-dir at:
 After this, the Google scraper will use this profile automatically.
 Reads credentials from .env (GOOGLE_EMAIL, GOOGLE_PASSWORD).
 """
+
 import sys, os, time
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
@@ -23,8 +25,13 @@ if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
     print("ERROR: GOOGLE_EMAIL and GOOGLE_PASSWORD must be set in .env")
     sys.exit(1)
 
-PROFILE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "..", "platforms", "google", "chrome_profile")
+PROFILE_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..",
+    "platforms",
+    "google",
+    "chrome_profile",
+)
 PROFILE_DIR = os.path.abspath(PROFILE_DIR)
 
 

@@ -31,6 +31,8 @@ def validate_login_otp_code(code: str) -> str:
     if not normalized:
         raise HTTPException(status_code=400, detail="Verification code is required.")
     if not LOGIN_OTP_PATTERN.match(normalized):
-        raise HTTPException(status_code=400, detail="Verification code must be a 6-digit number.")
+        raise HTTPException(
+            status_code=400, detail="Verification code must be a 6-digit number."
+        )
 
     return normalized

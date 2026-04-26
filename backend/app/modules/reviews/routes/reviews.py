@@ -47,28 +47,36 @@ router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 def _resolve_org_id(user, organization_id_param, db: Session):
     """Resolve organization_id: prefer JWT, fall back to query param with ownership check via ORM."""
-    jwt_org_id = user.organization_id if hasattr(user, 'organization_id') else (
-        user.get("organization_id") if isinstance(user, dict) else None
+    jwt_org_id = (
+        user.organization_id
+        if hasattr(user, "organization_id")
+        else (user.get("organization_id") if isinstance(user, dict) else None)
     )
     if jwt_org_id:
         return str(jwt_org_id)
-    
+
     if organization_id_param:
-        user_id = user.user_id if hasattr(user, 'user_id') else (
-            user.get("user_id") if isinstance(user, dict) else None
+        user_id = (
+            user.user_id
+            if hasattr(user, "user_id")
+            else (user.get("user_id") if isinstance(user, dict) else None)
         )
         if user_id:
-            org = db.query(Organization).filter(
-                Organization.organization_id == str(organization_id_param),
-                Organization.tenant_id == str(user_id)
-            ).first()
+            org = (
+                db.query(Organization)
+                .filter(
+                    Organization.organization_id == str(organization_id_param),
+                    Organization.tenant_id == str(user_id),
+                )
+                .first()
+            )
             if not org:
                 raise HTTPException(
                     status_code=403,
                     detail="You do not have access to this organization.",
                 )
         return str(organization_id_param)
-    
+
     raise HTTPException(status_code=400, detail="organization_id is required.")
 
 
@@ -81,8 +89,8 @@ def _resolve_org_id(user, organization_id_param, db: Session):
     responses={
         401: {"description": "Unauthorized - Missing or invalid token"},
         403: {"description": "Forbidden - User does not have access to organization"},
-        500: {"description": "Internal Server Error - Database or pipeline failure"}
-    }
+        500: {"description": "Internal Server Error - Database or pipeline failure"},
+    },
 )
 def read_reviews(
     organization_id: Optional[uuid.UUID] = Query(None),
@@ -139,8 +147,8 @@ def read_reviews(
     description="Retrieves unique platform names and review categories available for the specified organization to populate filter menus.",
     responses={
         200: {"description": "Successfully retrieved filter options"},
-        403: {"description": "Access denied to organization"}
-    }
+        403: {"description": "Access denied to organization"},
+    },
 )
 def get_options(
     organization_id: Optional[uuid.UUID] = Query(None),
@@ -213,7 +221,9 @@ def get_distribution_details(
         raise
     except Exception as e:
         logger.error(f"Failed to fetch distribution: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch distribution data.")
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch distribution data."
+        )
 
 
 @router.post("/trigger/{source_id}")
@@ -256,7 +266,9 @@ async def trigger_ingest_only(
 
 
 @router.get("/meta/count")
-def get_total_review_count(db: Session = Depends(get_db), current_user=Depends(get_optional_user)):
+def get_total_review_count(
+    db: Session = Depends(get_db), current_user=Depends(get_optional_user)
+):
     """Returns the total number of reviews across the entire platform."""
     try:
         count = count_all_reviews(db)
@@ -310,8 +322,8 @@ async def trigger_single_review_processing(
     responses={
         200: {"description": "Reply generated successfully"},
         403: {"description": "Limit reached or unauthorized access"},
-        500: {"description": "AI service failure"}
-    }
+        500: {"description": "AI service failure"},
+    },
 )
 def generate_reply(
     payload: ReplyGenerationRequest, current_user=Depends(get_current_user)
@@ -326,6 +338,7 @@ def generate_reply(
         # Subscription limit check (keeping pyodbc for now for cross-module compatibility)
         import pyodbc
         from app.core.pyodbc_connection import get_connection_string
+
         try:
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()
@@ -333,6 +346,7 @@ def generate_reply(
                     check_feature_limit,
                     send_limit_reached_notification,
                 )
+
                 limit_info = check_feature_limit(cursor, user_id, "reply_generations")
                 if not limit_info["allowed"]:
                     send_limit_reached_notification(user_id, limit_info["feature_name"])
@@ -370,8 +384,8 @@ def generate_reply(
     description="Permanently deletes all processed reviews and their vector embeddings for a specific source. This action cannot be undone.",
     responses={
         200: {"description": "Data purged successfully"},
-        404: {"description": "Source not found"}
-    }
+        404: {"description": "Source not found"},
+    },
 )
 def delete_reviews_by_source(
     source_id: uuid.UUID,

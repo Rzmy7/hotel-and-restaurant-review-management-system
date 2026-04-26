@@ -44,7 +44,9 @@ def _get_ram_usage() -> float:
         return 0.0
 
 
-def _determine_status(cpu: float, ram: float) -> Literal["Online", "Warning", "Offline"]:
+def _determine_status(
+    cpu: float, ram: float
+) -> Literal["Online", "Warning", "Offline"]:
     if cpu >= 90 or ram >= 90:
         return "Warning"
     return "Online"

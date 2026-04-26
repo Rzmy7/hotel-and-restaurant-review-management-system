@@ -36,6 +36,7 @@ def send_reset_email(to_email: str, link: str) -> None:
     finally:
         server.quit()
 
+
 def send_2fa_email(to_email: str, code: str) -> None:
     """Send a 2-factor authentication code email to the given address."""
     if not SMTP_EMAIL or not SMTP_PASSWORD:

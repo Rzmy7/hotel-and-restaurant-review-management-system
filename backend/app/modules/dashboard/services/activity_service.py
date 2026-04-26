@@ -111,14 +111,16 @@ def get_activities(org_id: str = None) -> dict:
         activities.append(
             {
                 "id": str(row.id),
-                "type": "scrape_completed"
-                if row.status == "Replied"
-                else "user_joined",  # Mocking types to match RecentActivity
+                "type": (
+                    "scrape_completed" if row.status == "Replied" else "user_joined"
+                ),  # Mocking types to match RecentActivity
                 "title": "Reply sent" if row.status == "Replied" else "New Review",
                 "description": f"By {row.userName} on {row.platform_id}",
-                "timestamp": row.reviewDate.isoformat()
-                if row.reviewDate
-                else datetime.now().isoformat(),
+                "timestamp": (
+                    row.reviewDate.isoformat()
+                    if row.reviewDate
+                    else datetime.now().isoformat()
+                ),
                 "user": row.userName,
             }
         )

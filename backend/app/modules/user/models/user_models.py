@@ -6,9 +6,10 @@ from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.sql import func
 from app.database.session import Base
 
+
 class User(Base):
     __tablename__ = "user"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     user_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
 
@@ -54,27 +55,19 @@ class User(Base):
     role = relationship("Role", back_populates="users")
 
     sessions = relationship(
-        "Session",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "Session", back_populates="user", cascade="all, delete-orphan"
     )
 
     password_reset_tokens = relationship(
-        "PasswordResetToken",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
     )
 
     two_factor_tokens = relationship(
-        "TwoFactorToken",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "TwoFactorToken", back_populates="user", cascade="all, delete-orphan"
     )
 
     notifications = relationship(
-        "UserNotification",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "UserNotification", back_populates="user", cascade="all, delete-orphan"
     )
 
     @property

@@ -11,11 +11,11 @@ with open(models_path, "r", encoding="utf-8") as f:
 
 models_content = models_content.replace(
     "source_id   = Column(Integer, primary_key=True, autoincrement=False)",
-    "source_id   = Column(String(36), primary_key=True)"
+    "source_id   = Column(String(36), primary_key=True)",
 )
 models_content = models_content.replace(
     "source_id  = Column(Integer, ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)",
-    "source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)"
+    "source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)",
 )
 
 with open(models_path, "w", encoding="utf-8") as f:
@@ -30,11 +30,11 @@ files_to_update.extend(glob.glob(os.path.join(base_dir, "platforms", "*", "model
 for filepath in files_to_update:
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # Replace parameter signatures and basemodel types
-    new_content = re.sub(r'source_id:\s*int', 'source_id: str', content)
+    new_content = re.sub(r"source_id:\s*int", "source_id: str", content)
     # Also replace target_id=int(source_id) or str(source_id) if any in logic files - audit logs are fine if cast to str
-    
+
     if new_content != content:
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(new_content)

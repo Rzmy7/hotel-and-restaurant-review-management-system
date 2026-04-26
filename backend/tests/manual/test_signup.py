@@ -2,8 +2,14 @@ import urllib.request
 import json
 import traceback
 
-data = json.dumps({'name': 'Alice Johnson', 'email': 'alice@example.com', 'password': 'password123'}).encode()
-req = urllib.request.Request('http://localhost:8000/auth/signup', data=data, headers={'Content-Type': 'application/json'})
+data = json.dumps(
+    {"name": "Alice Johnson", "email": "alice@example.com", "password": "password123"}
+).encode()
+req = urllib.request.Request(
+    "http://localhost:8000/auth/signup",
+    data=data,
+    headers={"Content-Type": "application/json"},
+)
 
 try:
     resp = urllib.request.urlopen(req)

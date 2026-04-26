@@ -6,13 +6,17 @@ from app.database.session import get_db
 
 router = APIRouter()
 
+
 @router.post("/onboarding/skip")
 def skip_onboarding(user=Depends(get_current_user), db: Session = Depends(get_db)):
-    db.execute(text("""
+    db.execute(
+        text("""
         UPDATE users
         SET onboarding_completed = 1
         WHERE user_id = :user_id
-    """), {"user_id": user.user_id})
+    """),
+        {"user_id": user.user_id},
+    )
 
     db.commit()
 

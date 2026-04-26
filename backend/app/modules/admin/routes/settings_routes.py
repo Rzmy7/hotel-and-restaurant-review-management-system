@@ -118,8 +118,17 @@ def _fallback_name_from_email(email: str) -> str:
     local = (email or "").split("@")[0].strip()
     if not local:
         return "System Admin"
-    tokens = [token for token in local.replace("_", " ").replace(".", " ").replace("-", " ").split(" ") if token]
-    return " ".join(token.capitalize() for token in tokens) if tokens else "System Admin"
+    tokens = [
+        token
+        for token in local.replace("_", " ")
+        .replace(".", " ")
+        .replace("-", " ")
+        .split(" ")
+        if token
+    ]
+    return (
+        " ".join(token.capitalize() for token in tokens) if tokens else "System Admin"
+    )
 
 
 def _load_primary_admin_row(cursor: pyodbc.Cursor) -> tuple:
@@ -128,7 +137,10 @@ def _load_primary_admin_row(cursor: pyodbc.Cursor) -> tuple:
         raise HTTPException(status_code=400, detail="Table dbo.[user] not found")
 
     if "role_id" not in columns:
-        raise HTTPException(status_code=400, detail="Table dbo.[user] must include role_id for admin profile operations")
+        raise HTTPException(
+            status_code=400,
+            detail="Table dbo.[user] must include role_id for admin profile operations",
+        )
 
     def _col(name: str) -> str:
         return f"[{name}]" if name.lower() in columns else "NULL"
@@ -183,9 +195,15 @@ def get_general_settings() -> GeneralSettingsResponse:
             if not is_valid_timezone(timezone_value):
                 timezone_value = "UTC"
 
-            language = (get_setting(cursor, "language") or DEFAULT_LANGUAGE).strip() or DEFAULT_LANGUAGE
-            date_format = (get_setting(cursor, "date_format") or DEFAULT_DATE_FORMAT).strip() or DEFAULT_DATE_FORMAT
-            currency = (get_setting(cursor, "currency") or DEFAULT_CURRENCY).strip() or DEFAULT_CURRENCY
+            language = (
+                get_setting(cursor, "language") or DEFAULT_LANGUAGE
+            ).strip() or DEFAULT_LANGUAGE
+            date_format = (
+                get_setting(cursor, "date_format") or DEFAULT_DATE_FORMAT
+            ).strip() or DEFAULT_DATE_FORMAT
+            currency = (
+                get_setting(cursor, "currency") or DEFAULT_CURRENCY
+            ).strip() or DEFAULT_CURRENCY
 
             return GeneralSettingsResponse(
                 timezone=timezone_value,
@@ -194,14 +212,19 @@ def get_general_settings() -> GeneralSettingsResponse:
                 currency=currency,
             )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load general settings: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load general settings: {exc}"
+        ) from exc
 
 
 @router.patch("/general", response_model=GeneralSettingsResponse)
 def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsResponse:
     timezone_value = payload.timezone.strip()
     if not is_valid_timezone(timezone_value):
-        raise HTTPException(status_code=400, detail="Invalid timezone. Use a valid IANA timezone (e.g. Asia/Colombo).")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid timezone. Use a valid IANA timezone (e.g. Asia/Colombo).",
+        )
 
     language = payload.language.strip()
     date_format = payload.dateFormat.strip()
@@ -232,7 +255,9 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to update general settings: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update general settings: {exc}"
+        ) from exc
 
 
 @router.get("/admin-profile", response_model=AdminProfileResponse)
@@ -245,7 +270,9 @@ def get_admin_profile() -> AdminProfileResponse:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load admin profile: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load admin profile: {exc}"
+        ) from exc
 
 
 @router.patch("/admin-profile", response_model=AdminProfileResponse)
@@ -283,7 +310,10 @@ def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResp
                 params.append(name_value)
 
             if not set_clauses:
-                raise HTTPException(status_code=400, detail="No supported name column found on dbo.[user]")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No supported name column found on dbo.[user]",
+                )
 
             params.append(user_id)
             execute_query(
@@ -303,30 +333,45 @@ def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResp
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to update admin profile: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update admin profile: {exc}"
+        ) from exc
 
 
 @router.patch("/admin-profile/password", response_model=AdminPasswordChangeResponse)
-def change_admin_password(payload: AdminPasswordChangePayload) -> AdminPasswordChangeResponse:
+def change_admin_password(
+    payload: AdminPasswordChangePayload,
+) -> AdminPasswordChangeResponse:
     if payload.currentPassword == payload.newPassword:
-        raise HTTPException(status_code=400, detail="New password must be different from current password")
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different from current password",
+        )
 
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
             columns = get_table_columns(cursor, "user")
             if "password_hash" not in columns:
-                raise HTTPException(status_code=400, detail="Table dbo.[user] must include password_hash to change password")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Table dbo.[user] must include password_hash to change password",
+                )
 
             row = _load_primary_admin_row(cursor)
             user_id = row[0]
             password_hash = str(row[8] or "").strip()
 
             if not password_hash:
-                raise HTTPException(status_code=400, detail="Password login is not available for this admin account")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Password login is not available for this admin account",
+                )
 
             if not verify_password(payload.currentPassword, password_hash):
-                raise HTTPException(status_code=400, detail="Current password is incorrect")
+                raise HTTPException(
+                    status_code=400, detail="Current password is incorrect"
+                )
 
             next_hash = hash_password(payload.newPassword)
             execute_query(
@@ -346,7 +391,9 @@ def change_admin_password(payload: AdminPasswordChangePayload) -> AdminPasswordC
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to change admin password: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to change admin password: {exc}"
+        ) from exc
 
 
 @router.get("/reply-generation", response_model=ReplyGenerationSettingsResponse)
@@ -357,10 +404,17 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
             ensure_system_settings_table(cursor)
 
             google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-            selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
+            selected_model = (
+                get_setting(cursor, "reply_selected_model")
+                or DEFAULT_REPLY_SELECTED_MODEL
+            ).strip() or DEFAULT_REPLY_SELECTED_MODEL
             similar_reviews_count = get_similar_reviews_count(cursor)
-            google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
-            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            google_request_count = get_setting_int(
+                cursor, "reply_google_request_count", default=0
+            )
+            google_token_usage = get_setting_int(
+                cursor, "reply_google_token_usage", default=0
+            )
             use_embedding_rules = get_setting_bool(
                 cursor,
                 "reply_use_embedding_rules",
@@ -382,11 +436,15 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
                 useSimilarReviews=use_similar_reviews,
             )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load reply generation settings: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load reply generation settings: {exc}"
+        ) from exc
 
 
 @router.patch("/reply-generation", response_model=ReplyGenerationSettingsResponse)
-def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) -> ReplyGenerationSettingsResponse:
+def update_reply_generation_settings(
+    payload: ReplyGenerationSettingsPayload,
+) -> ReplyGenerationSettingsResponse:
     google_api_key = payload.googleApiKey.strip()
     google_api_key = "".join(c for c in google_api_key if ord(c) < 128)
     selected_model = payload.selectedModel.strip()
@@ -398,10 +456,15 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
         raise HTTPException(status_code=400, detail="A model selection is required.")
 
     if not google_api_key:
-        raise HTTPException(status_code=400, detail="Google API key is required for the selected provider.")
+        raise HTTPException(
+            status_code=400,
+            detail="Google API key is required for the selected provider.",
+        )
 
     if similar_reviews_count < 1 or similar_reviews_count > 20:
-        raise HTTPException(status_code=400, detail="similarReviewsCount must be between 1 and 20.")
+        raise HTTPException(
+            status_code=400, detail="similarReviewsCount must be between 1 and 20."
+        )
 
     try:
         with pyodbc.connect(get_connection_string()) as connection:
@@ -410,11 +473,25 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
 
             set_setting(cursor, "reply_google_api_key", google_api_key)
             set_setting(cursor, "reply_selected_model", selected_model)
-            set_setting(cursor, "reply_similar_reviews_count", str(similar_reviews_count))
-            set_setting(cursor, "reply_use_embedding_rules", "true" if use_embedding_rules else "false")
-            set_setting(cursor, "reply_use_similar_reviews", "true" if use_similar_reviews else "false")
-            google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
-            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            set_setting(
+                cursor, "reply_similar_reviews_count", str(similar_reviews_count)
+            )
+            set_setting(
+                cursor,
+                "reply_use_embedding_rules",
+                "true" if use_embedding_rules else "false",
+            )
+            set_setting(
+                cursor,
+                "reply_use_similar_reviews",
+                "true" if use_similar_reviews else "false",
+            )
+            google_request_count = get_setting_int(
+                cursor, "reply_google_request_count", default=0
+            )
+            google_token_usage = get_setting_int(
+                cursor, "reply_google_token_usage", default=0
+            )
             connection.commit()
 
             log_admin_activity(
@@ -435,11 +512,15 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to update reply generation settings: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update reply generation settings: {exc}"
+        ) from exc
 
 
 @router.post("/reply-generation/test", response_model=ReplyGenerationApiTestResponse)
-def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> ReplyGenerationApiTestResponse:
+def test_reply_generation_api_key(
+    payload: ReplyGenerationApiTestPayload,
+) -> ReplyGenerationApiTestResponse:
     provider = payload.provider.strip().lower()
     api_key = payload.apiKey.strip()
     api_key = "".join(c for c in api_key if ord(c) < 128)
@@ -459,8 +540,12 @@ def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> Rep
 
         for api_version in ("v1", "v1beta"):
             try:
-                client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
-                response = client.models.generate_content(model=model, contents="Reply with exactly: ok")
+                client = genai.Client(
+                    api_key=api_key, http_options={"api_version": api_version}
+                )
+                response = client.models.generate_content(
+                    model=model, contents="Reply with exactly: ok"
+                )
                 if not (getattr(response, "text", "") or "").strip():
                     raise ValueError("Google API returned an empty response.")
                 resolved_google_version = api_version
@@ -493,11 +578,15 @@ def get_feature_flags() -> list[FeatureFlagResponse]:
             ensure_system_settings_table(cursor)
             return _load_feature_flags(cursor)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load feature flags: {exc}"
+        ) from exc
 
 
 @router.patch("/feature-flags/{flag_key}", response_model=FeatureFlagResponse)
-def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> FeatureFlagResponse:
+def update_feature_flag(
+    flag_key: str, payload: FeatureFlagUpdatePayload
+) -> FeatureFlagResponse:
     definition = FEATURE_FLAG_DEFINITIONS.get(flag_key)
     if not definition:
         raise HTTPException(status_code=404, detail="Feature flag not found")
@@ -519,7 +608,8 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
             log_admin_activity(
                 "settings_updated",
                 "Feature Flag Updated",
-                f"Flag '{flag_key}' set to {payload.status}" + (f" (limit: {payload.limit})" if payload.limit else ""),
+                f"Flag '{flag_key}' set to {payload.status}"
+                + (f" (limit: {payload.limit})" if payload.limit else ""),
             )
 
             updated_flags = _load_feature_flags(cursor)
@@ -530,6 +620,8 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to update feature flag: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update feature flag: {exc}"
+        ) from exc
 
     raise HTTPException(status_code=500, detail="Feature flag update failed")

@@ -1,6 +1,7 @@
 # app/scripts/seed_roles.py
 
 from sqlalchemy.orm import Session
+
 try:
     from app.core.database import SessionLocal
 except ImportError:

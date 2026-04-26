@@ -78,7 +78,9 @@ async def ingest_from_scraper(
         while True:
             try:
                 current_url = f"{base_scraper_url}?limit={batch_size}&skip={skip}"
-                logger.info(f"Fetching reviews page (skip={skip}) from {current_url}...")
+                logger.info(
+                    f"Fetching reviews page (skip={skip}) from {current_url}..."
+                )
                 response = await client.get(current_url, timeout=60.0)
                 response.raise_for_status()
                 page_data = response.json()
@@ -168,9 +170,7 @@ async def ingest_from_scraper(
                 )
                 scraped_at = r_data.get("created_at")
                 scraped_at_obj = (
-                    date_parser.parse(str(scraped_at))
-                    if scraped_at
-                    else datetime.now()
+                    date_parser.parse(str(scraped_at)) if scraped_at else datetime.now()
                 )
 
                 # Normalize rating
@@ -189,9 +189,11 @@ async def ingest_from_scraper(
                     "text": raw_text if not (pos or neg) else None,
                     "positive_text": str(pos) if pos else None,
                     "negative_text": str(neg) if neg else None,
-                    "heading": str(detail.get("review_heading"))
-                    if detail.get("review_heading")
-                    else None,
+                    "heading": (
+                        str(detail.get("review_heading"))
+                        if detail.get("review_heading")
+                        else None
+                    ),
                     "reviewDate": r_date_obj,
                     "scrapedAt": scraped_at_obj,
                     "source_id": source_id,

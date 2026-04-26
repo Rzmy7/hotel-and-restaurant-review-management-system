@@ -31,7 +31,7 @@ async def run_analysis_pipeline():
     Processes in batches until no pending reviews remain.
     """
     logger.info("--- Starting Review Analysis Pipeline ---")
-    
+
     total_processed = 0
     max_loops = 50  # Safety cap to prevent infinite processing in one task
     loop_count = 0
@@ -41,9 +41,14 @@ async def run_analysis_pipeline():
         db = SessionLocal()
         try:
             # Check if processing is paused
-            from app.modules.admin.services.system_settings_service import get_setting_bool_orm
+            from app.modules.admin.services.system_settings_service import (
+                get_setting_bool_orm,
+            )
+
             if get_setting_bool_orm(db, "review_processing_paused", default=False):
-                logger.warning("Review processing is paused due to Gemini API limits. Skipping...")
+                logger.warning(
+                    "Review processing is paused due to Gemini API limits. Skipping..."
+                )
                 break
 
             # 1. Fetch pending reviews
@@ -51,9 +56,13 @@ async def run_analysis_pipeline():
 
             if not pending_reviews:
                 if loop_count == 1:
-                    logger.info("Pipeline: No pending reviews found in DB. Nothing to analyze.")
+                    logger.info(
+                        "Pipeline: No pending reviews found in DB. Nothing to analyze."
+                    )
                 else:
-                    logger.info(f"Pipeline: Finished processing. Total processed: {total_processed}")
+                    logger.info(
+                        f"Pipeline: Finished processing. Total processed: {total_processed}"
+                    )
                 break
 
             logger.info(
@@ -87,6 +96,7 @@ async def run_analysis_pipeline():
                     from app.modules.admin.services.system_alert_logger import (
                         alert_review_processing_batch_failed_orm,
                     )
+
                     alert_review_processing_batch_failed_orm(
                         db,
                         batch_size=len(pending_reviews),
@@ -127,9 +137,11 @@ async def run_analysis_pipeline():
             break
         finally:
             db.close()
-    
+
     if loop_count >= max_loops:
-        logger.warning(f"Pipeline reached max_loops ({max_loops}). Some pending reviews may remain.")
+        logger.warning(
+            f"Pipeline reached max_loops ({max_loops}). Some pending reviews may remain."
+        )
 
 
 async def process_single_review(review_id: uuid.UUID) -> dict:
@@ -146,22 +158,24 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
             raise ValueError(f"Review with ID {review_id} not found.")
 
         # 2. Analyze with Gemini
-        ai_input = [{
-            "id": str(review.id),
-            "rating": review.rating,
-            "reviewerName": review.reviewerName,
-            "text": review.text,
-            "positive_text": review.positive_text,
-            "negative_text": review.negative_text,
-            "heading": review.heading,
-            "reviewDate": str(review.reviewDate),
-        }]
+        ai_input = [
+            {
+                "id": str(review.id),
+                "rating": review.rating,
+                "reviewerName": review.reviewerName,
+                "text": review.text,
+                "positive_text": review.positive_text,
+                "negative_text": review.negative_text,
+                "heading": review.heading,
+                "reviewDate": str(review.reviewDate),
+            }
+        ]
 
         try:
             ai_results = await asyncio.to_thread(analyze_reviews_batch, ai_input)
             if not ai_results:
                 raise RuntimeError("AI analysis returned no results.")
-            
+
             analysis = ai_results[0]
         except Exception as e:
             logger.error(f"!!! Single review analysis FAILED for {review_id}: {e}")
@@ -173,8 +187,8 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
         try:
             success = _update_review_success(db, review, analysis)
             if not success:
-               raise RuntimeError("Failed to update review record in database.")
-            
+                raise RuntimeError("Failed to update review record in database.")
+
             db.commit()
             logger.info(f"Single review {review_id} PROCESSED successfully.")
             return analysis
@@ -205,19 +219,19 @@ def _update_review_success(
     try:
         # Delete existing categories for this review
         db.query(ReviewCategory).filter(ReviewCategory.review_id == review.id).delete()
-        
+
         raw_list = analysis.get("categories", [])
         if isinstance(raw_list, list):
             for cat_item in raw_list:
                 name = ""
                 score = None
-                
+
                 if isinstance(cat_item, dict):
                     name = str(cat_item.get("name", "")).strip()
                     score = cat_item.get("score") or cat_item.get("value")
                 else:
                     name = str(cat_item).strip()
-                
+
                 if score is None:
                     score = float(review.sentiment_score) * 100
                 else:
@@ -227,14 +241,10 @@ def _update_review_success(
                         score = 50.0
 
                 if name:
-                    db.add(ReviewCategory(
-                        review_id=review.id,
-                        name=name,
-                        score=score
-                    ))
+                    db.add(ReviewCategory(review_id=review.id, name=name, score=score))
     except Exception as e:
         logger.error(f"Failed to sync categories for review {review.id}: {e}")
-        
+
     return True
 
 
@@ -245,7 +255,7 @@ def _update_review_failure(db: Session, review: ProcessedReview, error: str):
         review.status = "failed"
     else:
         review.status = "pending"
-    
+
     review.error_message = error[:500]
     review.last_attempt = datetime.now()
 

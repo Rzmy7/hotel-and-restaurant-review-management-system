@@ -32,7 +32,9 @@ def list_subscription_features() -> list[SubscriptionFeature]:
             cursor = conn.cursor()
             return get_subscription_features(cursor)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load subscription features: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load subscription features: {exc}"
+        ) from exc
 
 
 @router.get("/subscription-plans", response_model=list[SubscriptionPlan])
@@ -42,7 +44,9 @@ def list_subscription_plans() -> list[SubscriptionPlan]:
             cursor = conn.cursor()
             return get_subscription_plans(cursor)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load subscription plans: {exc}"
+        ) from exc
 
 
 @router.get("/subscription-usage/{user_id}", response_model=SubscriptionUsageSummary)
@@ -58,7 +62,9 @@ def get_subscription_usage(user_id: str) -> SubscriptionUsageSummary:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to load subscription usage: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to load subscription usage: {exc}"
+        ) from exc
 
 
 @router.post("/subscription-plans", response_model=SubscriptionPlan)
@@ -77,11 +83,15 @@ def create_plan(payload: SubscriptionPlanUpsertPayload) -> SubscriptionPlan:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to create subscription plan: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to create subscription plan: {exc}"
+        ) from exc
 
 
 @router.patch("/subscription-plans/{plan_id}", response_model=SubscriptionPlan)
-def update_plan(plan_id: str, payload: SubscriptionPlanUpsertPayload) -> SubscriptionPlan:
+def update_plan(
+    plan_id: str, payload: SubscriptionPlanUpsertPayload
+) -> SubscriptionPlan:
     try:
         plan_id_int = int(plan_id)
     except ValueError:
@@ -101,10 +111,14 @@ def update_plan(plan_id: str, payload: SubscriptionPlanUpsertPayload) -> Subscri
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to update subscription plan: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to update subscription plan: {exc}"
+        ) from exc
 
 
-@router.delete("/subscription-plans/{plan_id}", response_model=DeleteSubscriptionPlanResponse)
+@router.delete(
+    "/subscription-plans/{plan_id}", response_model=DeleteSubscriptionPlanResponse
+)
 def delete_plan(plan_id: str) -> DeleteSubscriptionPlanResponse:
     try:
         plan_id_int = int(plan_id)
@@ -125,4 +139,6 @@ def delete_plan(plan_id: str) -> DeleteSubscriptionPlanResponse:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to delete subscription plan: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Unable to delete subscription plan: {exc}"
+        ) from exc

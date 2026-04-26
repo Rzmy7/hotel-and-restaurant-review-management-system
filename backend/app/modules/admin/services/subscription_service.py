@@ -66,7 +66,7 @@ DEFAULT_FEATURES: list[dict[str, object]] = [
         "sortOrder": 7,
     },
 ]
- 
+
 DEFAULT_PLANS: list[dict[str, object]] = [
     {
         "id": 1,
@@ -86,7 +86,7 @@ DEFAULT_PLANS: list[dict[str, object]] = [
             "reply_generations": 10,
             "review_count": 100,
             "competitors": 2,
-        }
+        },
     }
 ]
 
@@ -100,7 +100,7 @@ def _to_float(value: Decimal | float | int | None) -> float:
 def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
     """Returns a mapping of tenant_id to plan_name from the tenant table."""
     from app.core.db_utils import execute_query, table_exists
-    
+
     if not table_exists(cursor, "tenant") or not table_exists(cursor, "plans"):
         return {}
 
@@ -126,10 +126,12 @@ def get_user_plan_map(cursor: pyodbc.Cursor) -> dict[str, str]:
     return result
 
 
-def set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: str) -> None:
+def set_user_subscription_plan(
+    cursor: pyodbc.Cursor, user_id: str, plan_name: str
+) -> None:
     """Sets or updates a user's subscription plan by name."""
     from app.core.db_utils import execute_query, table_exists
-    
+
     normalized_plan_name = plan_name.strip()
     if normalized_plan_name.lower() == "basic":
         normalized_plan_name = "Free"
@@ -148,7 +150,7 @@ def set_user_subscription_plan(cursor: pyodbc.Cursor, user_id: str, plan_name: s
         return
 
     plan_id = int(plan_row[0])
-    
+
     # Update the tenant table directly
     execute_query(
         cursor,
@@ -176,7 +178,9 @@ def initialize_user_usage(cursor: pyodbc.Cursor, user_id: str) -> None:
         )
 
 
-def increment_feature_usage(cursor: pyodbc.Cursor, user_id: str, feature_key: str, amount: int = 1) -> None:
+def increment_feature_usage(
+    cursor: pyodbc.Cursor, user_id: str, feature_key: str, amount: int = 1
+) -> None:
     """Increments the used count for a specific feature for a user."""
     # Try updating existing row
     cursor.execute(
@@ -190,11 +194,13 @@ def increment_feature_usage(cursor: pyodbc.Cursor, user_id: str, feature_key: st
         """,
         (amount, user_id, feature_key),
     )
-    
+
     # If no rows updated, it might be the first usage or the row was missing
     if cursor.rowcount == 0:
         # Get feature ID
-        feat_row = cursor.execute("SELECT feature_id FROM dbo.features WHERE feature_key = ?", (feature_key,)).fetchone()
+        feat_row = cursor.execute(
+            "SELECT feature_id FROM dbo.features WHERE feature_key = ?", (feature_key,)
+        ).fetchone()
         if feat_row:
             cursor.execute(
                 """
@@ -206,8 +212,7 @@ def increment_feature_usage(cursor: pyodbc.Cursor, user_id: str, feature_key: st
 
 
 def ensure_subscription_tables(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.plans', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.plans (
@@ -318,8 +323,7 @@ def ensure_subscription_tables(cursor: pyodbc.Cursor) -> None:
                 CONSTRAINT UQ_user_feature_usage_user_feature UNIQUE (user_id, feature_id)
             );
         END;
-        """
-    )
+        """)
 
 
 def seed_default_features(cursor: pyodbc.Cursor) -> None:
@@ -356,17 +360,19 @@ def seed_default_features(cursor: pyodbc.Cursor) -> None:
                 int(feature["sortOrder"]),
             ),
         )
- 
- 
+
+
 def seed_default_plans(cursor: pyodbc.Cursor) -> None:
     """Ensures at least the default 'Free' plan exists in the plans table."""
     seed_default_features(cursor)
-    
+
     for plan in DEFAULT_PLANS:
         plan_id = int(plan["id"])
-        
+
         # Check if plan exists
-        row = cursor.execute("SELECT 1 FROM dbo.plans WHERE plan_id = ?", (plan_id,)).fetchone()
+        row = cursor.execute(
+            "SELECT 1 FROM dbo.plans WHERE plan_id = ?", (plan_id,)
+        ).fetchone()
         if not row:
             # We use SET IDENTITY_INSERT if we want exactly ID 1
             cursor.execute("SET IDENTITY_INSERT dbo.plans ON")
@@ -386,10 +392,10 @@ def seed_default_plans(cursor: pyodbc.Cursor) -> None:
                     1 if plan["isActive"] else 0,
                     plan["color"],
                     plan["iconName"],
-                )
+                ),
             )
             cursor.execute("SET IDENTITY_INSERT dbo.plans OFF")
-            
+
             # Link default features
             for feat_key, limit in plan["limits"].items():
                 cursor.execute(
@@ -399,14 +405,15 @@ def seed_default_plans(cursor: pyodbc.Cursor) -> None:
                     FROM dbo.features
                     WHERE feature_key = ?
                     """,
-                    (plan_id, limit, feat_key)
+                    (plan_id, limit, feat_key),
                 )
- 
- 
+
+
 def seed_subscription_data() -> None:
     """Convenience function to seed plans and features on startup."""
     from app.core.db_utils import get_connection_string
     import pyodbc
+
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
@@ -418,13 +425,11 @@ def seed_subscription_data() -> None:
 
 
 def get_subscription_features(cursor: pyodbc.Cursor) -> list[SubscriptionFeature]:
-    rows = cursor.execute(
-        """
+    rows = cursor.execute("""
         SELECT feature_id, feature_key, display_name, description, supports_limit
         FROM dbo.features
         ORDER BY sort_order, feature_id
-        """
-    ).fetchall()
+        """).fetchall()
 
     return [
         SubscriptionFeature(
@@ -494,8 +499,7 @@ def _upsert_plan_feature_rows(
 def get_subscription_plans(cursor: pyodbc.Cursor) -> list[SubscriptionPlan]:
     features = get_subscription_features(cursor)
 
-    rows = cursor.execute(
-        """
+    rows = cursor.execute("""
         SELECT
             p.plan_id,
             p.name,
@@ -520,8 +524,7 @@ def get_subscription_plans(cursor: pyodbc.Cursor) -> list[SubscriptionPlan]:
             ON pf.plan_id = p.plan_id
            AND pf.feature_id = f.feature_id
         ORDER BY p.plan_id, f.sort_order, f.feature_id
-        """
-    ).fetchall()
+        """).fetchall()
 
     plan_map: dict[int, SubscriptionPlan] = {}
     for row in rows:
@@ -560,7 +563,9 @@ def get_subscription_plans(cursor: pyodbc.Cursor) -> list[SubscriptionPlan]:
     return list(plan_map.values())
 
 
-def create_subscription_plan(cursor: pyodbc.Cursor, payload: SubscriptionPlanUpsertPayload) -> SubscriptionPlan:
+def create_subscription_plan(
+    cursor: pyodbc.Cursor, payload: SubscriptionPlanUpsertPayload
+) -> SubscriptionPlan:
     features = get_subscription_features(cursor)
     row = cursor.execute(
         """
@@ -668,7 +673,9 @@ def delete_subscription_plan(cursor: pyodbc.Cursor, plan_id: int) -> None:
     cursor.execute("DELETE FROM dbo.plans WHERE plan_id = ?", (plan_id,))
 
 
-def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> SubscriptionUsageSummary:
+def get_user_subscription_usage(
+    cursor: pyodbc.Cursor, user_id: str
+) -> SubscriptionUsageSummary:
     """Returns the usage summary for a user based on the tenant table's plan."""
     features = get_subscription_features(cursor)
 
@@ -718,10 +725,12 @@ def get_user_subscription_usage(cursor: pyodbc.Cursor, user_id: str) -> Subscrip
         is_enabled = bool(row[4])
         feature_limit = int(row[5]) if row[5] is not None else None
         supports_limit = bool(row[3])
-        
+
         # Calculate used_quantity dynamically
         used_quantity = _get_used_quantity(cursor, user_id, feature_key)
-        balance = None if feature_limit is None else max(feature_limit - used_quantity, 0)
+        balance = (
+            None if feature_limit is None else max(feature_limit - used_quantity, 0)
+        )
 
         feature_usages.append(
             SubscriptionFeatureUsage(
@@ -829,9 +838,7 @@ def _get_used_quantity(cursor: pyodbc.Cursor, user_id: str, feature_key: str) ->
         return int(usage_row[0]) if usage_row else 0
 
 
-def check_feature_limit(
-    cursor: pyodbc.Cursor, user_id: str, feature_key: str
-) -> dict:
+def check_feature_limit(cursor: pyodbc.Cursor, user_id: str, feature_key: str) -> dict:
     """
     Check whether a user can still use a feature.
 
@@ -858,7 +865,13 @@ def check_feature_limit(
 
     if not plan_row:
         # No plan = no limits enforced (allow by default)
-        return {"allowed": True, "used": 0, "limit": None, "balance": None, "feature_name": feature_key}
+        return {
+            "allowed": True,
+            "used": 0,
+            "limit": None,
+            "balance": None,
+            "feature_name": feature_key,
+        }
 
     plan_id = int(plan_row[0])
 
@@ -875,7 +888,13 @@ def check_feature_limit(
     ).fetchone()
 
     if not feat_row:
-        return {"allowed": True, "used": 0, "limit": None, "balance": None, "feature_name": feature_key}
+        return {
+            "allowed": True,
+            "used": 0,
+            "limit": None,
+            "balance": None,
+            "feature_name": feature_key,
+        }
 
     feature_name = str(feat_row[1])
     is_enabled = bool(feat_row[2]) if feat_row[2] is not None else False
@@ -901,7 +920,10 @@ def check_feature_limit(
         usage_ratio = used / feature_limit
         if usage_ratio >= 0.8:
             try:
-                from app.services.notification_helpers import notify_approaching_review_limit
+                from app.services.notification_helpers import (
+                    notify_approaching_review_limit,
+                )
+
                 notify_approaching_review_limit(user_id, used, feature_limit)
             except Exception:
                 pass  # Best-effort

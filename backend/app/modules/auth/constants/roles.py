@@ -10,7 +10,7 @@ ADMIN_ROLE_ID = 2
 
 # Group roles
 GROUP_OWNER = "GROUP_OWNER"
-GROUP_MANAGER = "GROUP_MANAGER"   # deprecated alias kept for migration compat
+GROUP_MANAGER = "GROUP_MANAGER"  # deprecated alias kept for migration compat
 GROUP_MEMBER = "GROUP_MEMBER"
 
 VALID_SYSTEM_ROLES = {SYSTEM_ADMIN, TENANT}

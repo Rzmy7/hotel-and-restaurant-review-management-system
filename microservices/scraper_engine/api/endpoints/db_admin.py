@@ -5,6 +5,7 @@ Utility endpoints for DB inspection and maintenance.
 GET  /api/db/stats     — table row counts
 DELETE /api/db/reviews/{platform}  — purge all reviews for a platform
 """
+
 from fastapi import APIRouter, HTTPException
 from core.database import get_session
 from core.models import Source, Review, ReviewMedia
@@ -41,14 +42,14 @@ def get_db_stats():
         for platform, s_count in source_counts.items():
             platform_breakdown[platform] = {
                 "sources": s_count,
-                "reviews": review_counts.get(platform, 0)
+                "reviews": review_counts.get(platform, 0),
             }
 
         return {
             "total_sources": total_sources,
             "total_reviews": total_reviews,
             "total_media": total_media,
-            "by_platform": platform_breakdown
+            "by_platform": platform_breakdown,
         }
     except Exception as e:
         logger.error(f"Stats query failed: {e}", exc_info=True)
@@ -67,7 +68,9 @@ def purge_reviews_by_platform(platform: str):
     try:
         sources = session.query(Source).filter_by(platform_name=platform.lower()).all()
         if not sources:
-            raise HTTPException(status_code=404, detail=f"No sources found for platform: {platform}")
+            raise HTTPException(
+                status_code=404, detail=f"No sources found for platform: {platform}"
+            )
 
         total_deleted = 0
         for source in sources:
@@ -76,7 +79,11 @@ def purge_reviews_by_platform(platform: str):
 
         session.commit()
         logger.info(f"Purged {total_deleted} reviews for platform '{platform}'")
-        return {"status": "purged", "platform": platform, "reviews_deleted": total_deleted}
+        return {
+            "status": "purged",
+            "platform": platform,
+            "reviews_deleted": total_deleted,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -109,7 +116,10 @@ def migrate_add_is_embedded():
         """)
         row = session.execute(check_sql).fetchone()
         if row and row[0] > 0:
-            return {"status": "skipped", "message": "Column 'is_embedded' already exists on 'reviews'."}
+            return {
+                "status": "skipped",
+                "message": "Column 'is_embedded' already exists on 'reviews'.",
+            }
 
         # Add the column with a default of 0
         alter_sql = text("""
@@ -119,8 +129,13 @@ def migrate_add_is_embedded():
         session.execute(alter_sql)
         session.commit()
 
-        logger.info("Migration successful: added 'is_embedded' column to 'reviews' table.")
-        return {"status": "success", "message": "Added 'is_embedded' column to 'reviews' table with default 0."}
+        logger.info(
+            "Migration successful: added 'is_embedded' column to 'reviews' table."
+        )
+        return {
+            "status": "success",
+            "message": "Added 'is_embedded' column to 'reviews' table with default 0.",
+        }
     except Exception as e:
         session.rollback()
         logger.error(f"Migration failed: {e}", exc_info=True)

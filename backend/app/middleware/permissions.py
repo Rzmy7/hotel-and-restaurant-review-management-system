@@ -10,8 +10,8 @@ from app.modules.auth.constants.roles import SYSTEM_ADMIN, TENANT
 from app.core.dependencies import get_current_user
 from app.modules.groups.repository import get_org_group_role, get_user_current_org_id
 
-
 # ── System-level permissions ────────────────────────────────────────
+
 
 def require_admin(current_user=Depends(get_current_user)):
     """Require SYSTEM_ADMIN role."""
@@ -45,6 +45,7 @@ def require_admin_or_tenant(current_user=Depends(get_current_user)):
 
 # ── Group-level permissions ─────────────────────────────────────────
 
+
 def _resolve_org_id(current_user: dict, db) -> str:
     """Resolve the current organization_id from JWT context or DB lookup."""
     org_id = current_user.get("organization_id")
@@ -53,8 +54,7 @@ def _resolve_org_id(current_user: dict, db) -> str:
     resolved = get_user_current_org_id(db, current_user["user_id"])
     if not resolved:
         raise HTTPException(
-            status_code=400,
-            detail="No organization found for your account."
+            status_code=400, detail="No organization found for your account."
         )
     return resolved
 

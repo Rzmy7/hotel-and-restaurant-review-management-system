@@ -50,7 +50,9 @@ def get_dashboard_stats() -> DashboardStats:
         finally:
             conn.close()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch dashboard stats: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch dashboard stats: {exc}"
+        )
 
 
 @router.get("/usage", response_model=list[ChartDataPoint])
@@ -67,7 +69,9 @@ def get_usage_data() -> list[ChartDataPoint]:
         finally:
             conn.close()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch usage data: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch usage data: {exc}"
+        )
 
 
 @router.get("/reviews", response_model=list[ChartDataPoint])
@@ -84,7 +88,9 @@ def get_review_data() -> list[ChartDataPoint]:
         finally:
             conn.close()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch review data: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch review data: {exc}"
+        )
 
 
 @router.get("/alerts", response_model=list[SystemAlert])
@@ -101,7 +107,9 @@ def get_system_alerts() -> list[SystemAlert]:
         finally:
             conn.close()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch system alerts: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch system alerts: {exc}"
+        )
 
 
 @router.get("/activities", response_model=list[RecentActivity])
@@ -118,7 +126,9 @@ def get_recent_activity() -> list[RecentActivity]:
         finally:
             conn.close()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to fetch recent activity: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Unable to fetch recent activity: {exc}"
+        )
 
 
 @router.post("/alerts/{alert_id}/dismiss")
@@ -137,6 +147,7 @@ def dismiss_alert(alert_id: str) -> dict:
             from app.modules.admin.services.system_alert_logger import (
                 ensure_system_alert_log_table,
             )
+
             ensure_system_alert_log_table(cursor)
             cursor.execute(
                 """
@@ -163,14 +174,13 @@ def dismiss_all_alerts() -> dict:
             from app.modules.admin.services.system_alert_logger import (
                 ensure_system_alert_log_table,
             )
+
             ensure_system_alert_log_table(cursor)
-            cursor.execute(
-                """
+            cursor.execute("""
                 UPDATE dbo.system_alert_log
                 SET is_dismissed = 1, is_read = 1
                 WHERE is_dismissed = 0
-                """
-            )
+                """)
             conn.commit()
             return {"status": "ok"}
         finally:

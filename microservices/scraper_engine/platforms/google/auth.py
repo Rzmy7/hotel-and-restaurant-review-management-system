@@ -11,6 +11,7 @@ logger = setup_logger("google_auth")
 # Path to the persistent Chrome profile
 PROFILE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chrome_profile")
 
+
 class GoogleAuthManager:
     """
     Manages Google Account authentication and session status.
@@ -21,7 +22,9 @@ class GoogleAuthManager:
         self.password = os.getenv("GOOGLE_PASSWORD")
         self.profile_dir = PROFILE_DIR
 
-    def _get_page(self, playwright, headless: bool = True) -> tuple[BrowserContext, Page]:
+    def _get_page(
+        self, playwright, headless: bool = True
+    ) -> tuple[BrowserContext, Page]:
         """Launches a persistent browser context and returns the page."""
         os.makedirs(self.profile_dir, exist_ok=True)
         context = playwright.chromium.launch_persistent_context(
@@ -45,7 +48,7 @@ class GoogleAuthManager:
             'button:has-text("Skip")',
             'button:has-text("Done")',
         ]
-        
+
         for selector in popups:
             try:
                 # Use a very short timeout for each check to avoid slowing down significantly
@@ -67,15 +70,17 @@ class GoogleAuthManager:
 
         logger.info(f"Starting Google login for {self.email}...")
         print(f"\n--- Google Login Process: {self.email} ---")
-        
+
         with sync_playwright() as pw:
             context, page = self._get_page(pw, headless=False)
-            
+
             try:
                 # Navigate to Google sign-in
                 logger.info("Navigating to Google sign-in page...")
                 print("Navigating to https://accounts.google.com/signin...")
-                page.goto("https://accounts.google.com/signin", wait_until="domcontentloaded")
+                page.goto(
+                    "https://accounts.google.com/signin", wait_until="domcontentloaded"
+                )
                 time.sleep(2)
 
                 # Check if already logged in
@@ -88,7 +93,7 @@ class GoogleAuthManager:
                     email_input = page.locator('input[type="email"]')
                     email_input.wait_for(state="visible", timeout=10000)
                     email_input.fill(self.email)
-                    
+
                     print("Clicking Next...")
                     page.locator("#identifierNext").click()
                     time.sleep(3)
@@ -99,7 +104,7 @@ class GoogleAuthManager:
                     # Explicitly wait for visibility as password field is on the next card
                     pw_input.wait_for(state="visible", timeout=15000)
                     pw_input.fill(self.password)
-                    
+
                     print("Clicking Next...")
                     page.locator("#passwordNext").click()
                     time.sleep(5)
@@ -115,7 +120,9 @@ class GoogleAuthManager:
                     print("\n!!! ACTION REQUIRED !!!")
                     print(f"Current URL: {current_url}")
                     print("Please complete the login/2FA in the opened browser window.")
-                    print("Press ENTER in THIS TERMINAL once you are fully signed in to Google Maps...")
+                    print(
+                        "Press ENTER in THIS TERMINAL once you are fully signed in to Google Maps..."
+                    )
                     input()
 
                 # Verify login by going to Maps
@@ -123,7 +130,7 @@ class GoogleAuthManager:
                 print("Verifying session on Google Maps...")
                 page.goto("https://www.google.com/maps", wait_until="domcontentloaded")
                 time.sleep(4)
-                
+
                 # Double check for popups on Maps page (e.g. location permission, etc. if any)
                 self._handle_popups(page)
 
@@ -149,27 +156,31 @@ class GoogleAuthManager:
     def check_login_status(self, headless: bool = True):
         """Checks if the browser is currently logged into Google."""
         logger.info("Checking Google login status...")
-        
+
         with sync_playwright() as pw:
             context, page = self._get_page(pw, headless=headless)
             try:
                 # Navigate to a Google page that reflects auth status
-                page.goto("https://myaccount.google.com/", wait_until="domcontentloaded")
+                page.goto(
+                    "https://myaccount.google.com/", wait_until="domcontentloaded"
+                )
                 time.sleep(2)
-                
+
                 # If we are redirected to a sign-in page, we are not logged in
                 if "signin" in page.url or "accounts.google.com/v3/signin" in page.url:
                     logger.info("Status: NOT LOGGED IN")
                     return False
-                
+
                 # Check for profile indicator or account name
                 # Usually there's an 'Account' header or similar
-                if page.locator('text="Welcome,"').is_visible(timeout=5000) or \
-                   page.locator('a[href*="SignOut"]').is_visible(timeout=5000) or \
-                   "myaccount.google.com" in page.url:
+                if (
+                    page.locator('text="Welcome,"').is_visible(timeout=5000)
+                    or page.locator('a[href*="SignOut"]').is_visible(timeout=5000)
+                    or "myaccount.google.com" in page.url
+                ):
                     logger.info("Status: LOGGED IN")
                     return True
-                
+
                 logger.info("Status: COULD NOT DETERMINE (Assuming Not Logged In)")
                 return False
             except Exception as e:
@@ -177,6 +188,7 @@ class GoogleAuthManager:
                 return False
             finally:
                 context.close()
+
 
 if __name__ == "__main__":
     # Example usage

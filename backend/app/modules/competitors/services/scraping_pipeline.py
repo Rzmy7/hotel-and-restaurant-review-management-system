@@ -24,7 +24,9 @@ _genai_client = None
 def _get_genai_client():
     global _genai_client
     if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
+        _genai_client = genai.Client(
+            api_key=GENAI_KEY, http_options={"api_version": "v1"}
+        )
     return _genai_client
 
 
@@ -34,7 +36,9 @@ def _strip_markdown_fences(text: str) -> str:
     return match.group(1) if match else text
 
 
-def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows: List[Dict]) -> None:
+def _insert_competitor_reviews(
+    conn: pyodbc.Connection, competitor_id: str, rows: List[Dict]
+) -> None:
     """Insert AI-processed reviews into CompetitorReviews table and ReviewCategory."""
     sql = """
         INSERT INTO dbo.CompetitorReviews (
@@ -47,6 +51,7 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows
     sql_cats = "INSERT INTO dbo.ReviewCategory (id, competitor_review_id, category_name) VALUES (?, ?, ?)"
     cur = conn.cursor()
     for r in rows:
+
         def parse_date(date_str):
             try:
                 return datetime.strptime(date_str, "%b %d, %Y").date()
@@ -70,7 +75,7 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows
             parse_date(r.get("date")),
             r.get("source", "Booking.com"),
         )
-        
+
         cats = r.get("categories", [])
         if isinstance(cats, list):
             for c in cats:
@@ -82,7 +87,8 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows
 def _update_competitor_stats(competitor_id: str) -> None:
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        row = cursor.execute("""
+        row = cursor.execute(
+            """
             SELECT
                 COUNT(*) as cnt,
                 AVG(CAST(rating AS FLOAT)) as avgRating,
@@ -90,18 +96,28 @@ def _update_competitor_stats(competitor_id: str) -> None:
                     NULLIF(COUNT(*), 0) as sentimentScore
             FROM dbo.CompetitorReviews
             WHERE competitorId = ?
-        """, competitor_id).fetchone()
+        """,
+            competitor_id,
+        ).fetchone()
 
         if row and row.cnt > 0:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE dbo.Competitors
                 SET avgRating = ?, sentimentScore = ?, reviewCount = ?, status = 'Active'
                 WHERE id = ?
-            """, round(row.avgRating or 0, 2), round(row.sentimentScore or 0, 1), row.cnt, competitor_id)
+            """,
+                round(row.avgRating or 0, 2),
+                round(row.sentimentScore or 0, 1),
+                row.cnt,
+                competitor_id,
+            )
             conn.commit()
 
 
-def process_competitor_scrape(competitor_id: str, url: str, headless: bool = True) -> None:
+def process_competitor_scrape(
+    competitor_id: str, url: str, headless: bool = True
+) -> None:
     """Full pipeline: scrape → AI process → save to DB. Runs as a background task."""
     from app.modules.reviews.scraper import scrape_booking_for_competitor
 
@@ -109,7 +125,9 @@ def process_competitor_scrape(competitor_id: str, url: str, headless: bool = Tru
 
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE dbo.Competitors SET status = 'Scraping' WHERE id = ?", competitor_id)
+        cursor.execute(
+            "UPDATE dbo.Competitors SET status = 'Scraping' WHERE id = ?", competitor_id
+        )
         conn.commit()
 
     try:
@@ -119,11 +137,16 @@ def process_competitor_scrape(competitor_id: str, url: str, headless: bool = Tru
             print(f"[Competitor {competitor_id}] No reviews scraped.")
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE dbo.Competitors SET status = 'Active' WHERE id = ?", competitor_id)
+                cursor.execute(
+                    "UPDATE dbo.Competitors SET status = 'Active' WHERE id = ?",
+                    competitor_id,
+                )
                 conn.commit()
             return
 
-        print(f"[Competitor {competitor_id}] Scraped {len(raw_reviews)} raw reviews. AI processing...")
+        print(
+            f"[Competitor {competitor_id}] Scraped {len(raw_reviews)} raw reviews. AI processing..."
+        )
 
         hotel_data = json.dumps([asdict(r) for r in raw_reviews], ensure_ascii=False)
         prompt = COMPETITOR_PROMPT.format(hotel_data=hotel_data)
@@ -136,11 +159,16 @@ def process_competitor_scrape(competitor_id: str, url: str, headless: bool = Tru
         if not isinstance(processed_reviews, list):
             raise ValueError("AI response is not a JSON array")
 
-        print(f"[Competitor {competitor_id}] AI processed {len(processed_reviews)} reviews.")
+        print(
+            f"[Competitor {competitor_id}] AI processed {len(processed_reviews)} reviews."
+        )
 
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM dbo.CompetitorReviews WHERE competitorId = ?", competitor_id)
+            cursor.execute(
+                "DELETE FROM dbo.CompetitorReviews WHERE competitorId = ?",
+                competitor_id,
+            )
             conn.commit()
             _insert_competitor_reviews(conn, competitor_id, processed_reviews)
 
@@ -151,5 +179,8 @@ def process_competitor_scrape(competitor_id: str, url: str, headless: bool = Tru
         print(f"[Competitor {competitor_id}] Error in pipeline: {e}")
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE dbo.Competitors SET status = 'Error' WHERE id = ?", competitor_id)
+            cursor.execute(
+                "UPDATE dbo.Competitors SET status = 'Error' WHERE id = ?",
+                competitor_id,
+            )
             conn.commit()

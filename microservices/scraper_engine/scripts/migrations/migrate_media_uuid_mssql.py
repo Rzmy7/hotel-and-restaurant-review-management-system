@@ -4,13 +4,14 @@ import uuid
 from sqlalchemy import text
 
 # Add the project root to sys.path to import core modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from core.database import get_engine
 
+
 def migrate_media():
     engine = get_engine()
-    table = 'review_media'
+    table = "review_media"
 
     print(f"--- Migrating {table}.media_id to UUID ---")
     sys.stdout.flush()
@@ -57,15 +58,22 @@ def migrate_media():
         # Rename media_uuid to media_id
         conn.execute(text(f"EXEC sp_rename '{table}.media_uuid', 'media_id', 'COLUMN'"))
         # Make the new column UNIQUEIDENTIFIER NOT NULL
-        conn.execute(text(f"ALTER TABLE {table} ALTER COLUMN media_id UNIQUEIDENTIFIER NOT NULL"))
+        conn.execute(
+            text(f"ALTER TABLE {table} ALTER COLUMN media_id UNIQUEIDENTIFIER NOT NULL")
+        )
 
         # Step 5: Re-add Primary Key
         print(f"Re-adding PK to {table}...")
         sys.stdout.flush()
-        conn.execute(text(f"ALTER TABLE {table} ADD CONSTRAINT PK_{table} PRIMARY KEY (media_id)"))
+        conn.execute(
+            text(
+                f"ALTER TABLE {table} ADD CONSTRAINT PK_{table} PRIMARY KEY (media_id)"
+            )
+        )
 
     print("--- Media UUID Migration Successful! ---")
     sys.stdout.flush()
+
 
 if __name__ == "__main__":
     migrate_media()

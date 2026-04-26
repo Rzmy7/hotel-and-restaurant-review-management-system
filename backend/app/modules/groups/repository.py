@@ -19,7 +19,6 @@ from sqlalchemy import text
 from app.modules.groups.models import Group, GroupMember, GroupInvite
 from app.modules.groups.schemas import GroupSettings
 
-
 # ── Default settings ────────────────────────────────────────────────
 
 DEFAULT_SETTINGS = GroupSettings(
@@ -43,6 +42,7 @@ def _dump_settings(s: GroupSettings) -> str:
 
 
 # ── Org lookup helpers ───────────────────────────────────────────────
+
 
 def get_org_owner_user_id(db: Session, organization_id: str) -> Optional[str]:
     """Return the user_id (tenant_id) of an organization's owner."""
@@ -102,6 +102,7 @@ def get_all_user_org_ids(db: Session, user_id: str) -> List[str]:
 
 
 # ── Groups CRUD ──────────────────────────────────────────────────────
+
 
 def create_group(
     db: Session,
@@ -208,7 +209,9 @@ def list_org_groups(db: Session, organization_id: str) -> List[dict]:
     return result
 
 
-def get_group_detail(db: Session, group_id: str, organization_id: str) -> Optional[dict]:
+def get_group_detail(
+    db: Session, group_id: str, organization_id: str
+) -> Optional[dict]:
     """Return group details for a member organization."""
     row = db.execute(
         text("""
@@ -258,7 +261,10 @@ def get_group_detail(db: Session, group_id: str, organization_id: str) -> Option
 
 # ── Members ──────────────────────────────────────────────────────────
 
-def add_member(db: Session, group_id: str, organization_id: str, role: str = "GROUP_MEMBER") -> GroupMember:
+
+def add_member(
+    db: Session, group_id: str, organization_id: str, role: str = "GROUP_MEMBER"
+) -> GroupMember:
     member = GroupMember(group_id=group_id, organization_id=organization_id, role=role)
     db.add(member)
     db.commit()
@@ -269,7 +275,10 @@ def add_member(db: Session, group_id: str, organization_id: str, role: str = "GR
 def remove_member(db: Session, group_id: str, organization_id: str) -> bool:
     member = (
         db.query(GroupMember)
-        .filter(GroupMember.group_id == group_id, GroupMember.organization_id == organization_id)
+        .filter(
+            GroupMember.group_id == group_id,
+            GroupMember.organization_id == organization_id,
+        )
         .first()
     )
     if not member:
@@ -279,15 +288,22 @@ def remove_member(db: Session, group_id: str, organization_id: str) -> bool:
     return True
 
 
-def get_member(db: Session, group_id: str, organization_id: str) -> Optional[GroupMember]:
+def get_member(
+    db: Session, group_id: str, organization_id: str
+) -> Optional[GroupMember]:
     return (
         db.query(GroupMember)
-        .filter(GroupMember.group_id == group_id, GroupMember.organization_id == organization_id)
+        .filter(
+            GroupMember.group_id == group_id,
+            GroupMember.organization_id == organization_id,
+        )
         .first()
     )
 
 
-def get_org_group_role(db: Session, group_id: str, organization_id: str) -> Optional[str]:
+def get_org_group_role(
+    db: Session, group_id: str, organization_id: str
+) -> Optional[str]:
     member = get_member(db, str(group_id), str(organization_id))
     return member.role if member else None
 
@@ -336,6 +352,7 @@ def list_members(db: Session, group_id: str) -> List[dict]:
 
 
 # ── Invites ──────────────────────────────────────────────────────────
+
 
 def create_org_invite(
     db: Session,
@@ -497,7 +514,9 @@ def list_pending_invites_for_user(db: Session, user_id: str) -> List[dict]:
     return result
 
 
-def has_pending_invite_for_org(db: Session, group_id: str, organization_id: str) -> bool:
+def has_pending_invite_for_org(
+    db: Session, group_id: str, organization_id: str
+) -> bool:
     row = db.execute(
         text("""
             SELECT COUNT(*) FROM group_invite
@@ -513,7 +532,8 @@ def _invite_row_to_dict(r) -> dict:
         "invite_id": str(r.invite_id),
         "group_id": str(r.group_id),
         "group_name": getattr(r, "group_name", None),
-        "invited_by_name": f"{r.inviter_first or ''} {r.inviter_last or ''}".strip() or None,
+        "invited_by_name": f"{r.inviter_first or ''} {r.inviter_last or ''}".strip()
+        or None,
         "invited_by_org_name": getattr(r, "inviter_org_name", None),
         "invited_org_id": str(r.invited_org_id) if r.invited_org_id else None,
         "invited_org_name": getattr(r, "invitee_org_name", None),
@@ -531,10 +551,13 @@ def _invite_row_to_dict(r) -> dict:
 
 # ── Invite link ──────────────────────────────────────────────────────
 
+
 def generate_invite_link(db: Session, group: Group, expires_days: int = 7) -> str:
     token = secrets.token_urlsafe(32)
     group.invite_link_token = token
-    group.invite_link_expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+    group.invite_link_expires_at = datetime.now(timezone.utc) + timedelta(
+        days=expires_days
+    )
     db.commit()
     return token
 
@@ -551,7 +574,8 @@ def get_group_by_invite_token(db: Session, token: str) -> Optional[Group]:
         db.query(Group)
         .filter(
             Group.invite_link_token == token,
-            (Group.invite_link_expires_at == None) | (Group.invite_link_expires_at > now),
+            (Group.invite_link_expires_at == None)
+            | (Group.invite_link_expires_at > now),
         )
         .first()
     )
@@ -559,7 +583,10 @@ def get_group_by_invite_token(db: Session, token: str) -> Optional[Group]:
 
 # ── Organization search ───────────────────────────────────────────────
 
-def search_organizations(db: Session, query: str, exclude_org_id: Optional[str] = None, limit: int = 20) -> List[dict]:
+
+def search_organizations(
+    db: Session, query: str, exclude_org_id: Optional[str] = None, limit: int = 20
+) -> List[dict]:
     """Search organizations for the invite modal, optionally excluding one (the caller's own org)."""
     rows = db.execute(
         text("""
@@ -590,7 +617,8 @@ def search_organizations(db: Session, query: str, exclude_org_id: Optional[str] 
             "location_url": r.location_url,
             "type_name": r.type_name,
             "owner_user_id": str(r.owner_user_id),
-            "owner_name": f"{r.owner_first or ''} {r.owner_last or ''}".strip() or r.owner_email,
+            "owner_name": f"{r.owner_first or ''} {r.owner_last or ''}".strip()
+            or r.owner_email,
             "owner_email": r.owner_email,
         }
         for r in rows
@@ -598,6 +626,7 @@ def search_organizations(db: Session, query: str, exclude_org_id: Optional[str] 
 
 
 # ── Analytics ────────────────────────────────────────────────────────
+
 
 def get_group_analytics(db: Session, group_id: str) -> dict:
     """Aggregate review and member statistics for a group (org-based)."""
@@ -699,8 +728,7 @@ def get_group_analytics(db: Session, group_id: str) -> dict:
     ).fetchall()
 
     reviews_over_time = [
-        {"date": str(r.review_date), "count": r.count}
-        for r in time_rows
+        {"date": str(r.review_date), "count": r.count} for r in time_rows
     ]
 
     # Rating distribution (1-5 stars)
@@ -721,25 +749,32 @@ def get_group_analytics(db: Session, group_id: str) -> dict:
         {"gid": group_id},
     ).fetchall()
 
-    rating_distribution = [
-        {"star": int(r.star), "count": r.count}
-        for r in rating_rows
-    ]
+    rating_distribution = [{"star": int(r.star), "count": r.count} for r in rating_rows]
 
     return {
         "member_count": member_count or 0,
         "total_reviews": review_agg.total_reviews or 0 if review_agg else 0,
-        "avg_rating": round(float(review_agg.avg_rating), 2) if (review_agg and review_agg.avg_rating) else None,
+        "avg_rating": (
+            round(float(review_agg.avg_rating), 2)
+            if (review_agg and review_agg.avg_rating)
+            else None
+        ),
         "positive_count": review_agg.positive_count or 0 if review_agg else 0,
         "negative_count": review_agg.negative_count or 0 if review_agg else 0,
         "neutral_count": review_agg.neutral_count or 0 if review_agg else 0,
         "invite_stats": {
             "total_sent": invite_stats_row.total_sent or 0 if invite_stats_row else 0,
-            "pending_count": invite_stats_row.pending_count or 0 if invite_stats_row else 0,
-            "accepted_count": invite_stats_row.accepted_count or 0 if invite_stats_row else 0,
-            "rejected_count": invite_stats_row.rejected_count or 0 if invite_stats_row else 0,
+            "pending_count": (
+                invite_stats_row.pending_count or 0 if invite_stats_row else 0
+            ),
+            "accepted_count": (
+                invite_stats_row.accepted_count or 0 if invite_stats_row else 0
+            ),
+            "rejected_count": (
+                invite_stats_row.rejected_count or 0 if invite_stats_row else 0
+            ),
         },
-        "recent_members": [],   # deprecated — use member_orgs
+        "recent_members": [],  # deprecated — use member_orgs
         "member_orgs": member_orgs,
         "reviews_over_time": reviews_over_time,
         "rating_distribution": rating_distribution,

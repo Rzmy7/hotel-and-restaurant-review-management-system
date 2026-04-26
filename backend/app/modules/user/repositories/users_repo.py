@@ -26,14 +26,16 @@ def create_user(
     google_id: str | None = None,
     is_email_verified: bool = False,
 ):
-    
+
     # ------------------------------------------------
     # Get default role (TENANT)
     # ------------------------------------------------
     role = db.query(Role).filter(Role.role_name == TENANT).first()
     if not role:
         # Fallback case — if roles table isn't seeded correctly
-        raise ValueError(f"CRITICAL: Default role '{TENANT}' not found in Roles table. Please seed the database.")
+        raise ValueError(
+            f"CRITICAL: Default role '{TENANT}' not found in Roles table. Please seed the database."
+        )
 
     # ------------------------------------------------
     # Create user with mandatory role_id
@@ -50,7 +52,7 @@ def create_user(
         profile_image_url=profile_image_url,
         google_id=google_id,
         is_email_verified=is_email_verified,
-        role_id=role.role_id  # Assigned here before commit
+        role_id=role.role_id,  # Assigned here before commit
     )
 
     # Save user to DB
@@ -64,6 +66,7 @@ def create_user(
 def get_user_profile(db: Session, user_id):
     # Get full user profile by ID
     return db.query(User).filter(User.user_id == user_id).first()
+
 
 def update_user_profile(
     db: Session,
@@ -102,6 +105,7 @@ def update_user_profile(
     db.refresh(user)
 
     return user
+
 
 def update_user_password(db: Session, user: User, password_hash: str):
     user.password_hash = password_hash

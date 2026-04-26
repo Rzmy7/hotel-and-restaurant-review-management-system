@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 # --- Private Helper Methods ---
 
+
 def _apply_review_filters(query, filters, organization_id: str, db: Session):
     """Internal helper to apply standardized filters to review queries."""
     if not filters:
@@ -44,11 +45,9 @@ def _apply_review_filters(query, filters, organization_id: str, db: Session):
                 .filter(Source.organization_id == organization_id)
                 .all()
             ]
-            
+
             matching_ids = search_reviews_by_embedding(
-                query=search_val,
-                source_ids=source_ids,
-                top_k=50
+                query=search_val, source_ids=source_ids, top_k=50
             )
 
             if not matching_ids:
@@ -71,23 +70,23 @@ def _apply_review_filters(query, filters, organization_id: str, db: Session):
     # 2. Basic Attribute Filters
     if filters.get("rating"):
         query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
-    
+
     if filters.get("sentiment"):
         query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
-        
+
     if filters.get("source"):
         query = query.filter(Platform.platform_name.in_(filters["source"]))
-        
+
     if filters.get("category"):
         cat_filters = [
             ProcessedReview.categories.ilike(f'%"{cat}"%')
             for cat in filters["category"]
         ]
         query = query.filter(and_(*cat_filters))
-        
+
     if filters.get("dateFrom"):
         query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
-        
+
     if filters.get("dateTo"):
         query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
@@ -96,10 +95,11 @@ def _apply_review_filters(query, filters, organization_id: str, db: Session):
 
 # --- Public Repository Interface ---
 
+
 def upsert_review_pending(db: Session, review_data: dict) -> uuid.UUID:
     """Insert or update a review record from the scraper using SQLAlchemy ORM."""
     review_id = uuid.UUID(str(review_data["id"]))
-    
+
     review = db.query(ProcessedReview).filter(ProcessedReview.id == review_id).first()
 
     if review:
@@ -125,7 +125,7 @@ def upsert_review_pending(db: Session, review_data: dict) -> uuid.UUID:
             reviewDate=review_data["reviewDate"],
             scrapedAt=review_data["scrapedAt"],
             status="pending",
-            source_id=uuid.UUID(str(review_data["source_id"]))
+            source_id=uuid.UUID(str(review_data["source_id"])),
         )
         db.add(review)
 
@@ -143,12 +143,12 @@ def insert_review_media(db: Session, review_id: uuid.UUID, photos: List[dict]) -
     for pic in photos:
         m_id = pic.get("media_id")
         m_id = uuid.UUID(str(m_id)) if m_id else uuid.uuid4()
-            
+
         media = ReviewMedia(
             media_id=m_id,
             review_id=review_id,
             src=pic.get("src"),
-            alt=pic.get("alt", "")
+            alt=pic.get("alt", ""),
         )
         db.add(media)
     db.commit()
@@ -214,9 +214,15 @@ def fetch_all_reviews_enriched(
             "positive_text": rev.positive_text,
             "negative_text": rev.negative_text,
             "heading": rev.heading,
-            "source": rev.source.platform.platform_name if rev.source and rev.source.platform else "Unknown",
+            "source": (
+                rev.source.platform.platform_name
+                if rev.source and rev.source.platform
+                else "Unknown"
+            ),
             "date": rev.reviewDate,
-            "photos": [{"id": str(m.media_id), "src": m.src, "alt": m.alt} for m in rev.media],
+            "photos": [
+                {"id": str(m.media_id), "src": m.src, "alt": m.alt} for m in rev.media
+            ],
         }
 
         # Parse JSON fields
@@ -225,39 +231,61 @@ def fetch_all_reviews_enriched(
             if val:
                 try:
                     parsed = json.loads(val)
-                    row[field] = [
-                        str(item["name"]) if isinstance(item, dict) and "name" in item else str(item)
-                        for item in parsed
-                    ] if isinstance(parsed, list) else []
+                    row[field] = (
+                        [
+                            (
+                                str(item["name"])
+                                if isinstance(item, dict) and "name" in item
+                                else str(item)
+                            )
+                            for item in parsed
+                        ]
+                        if isinstance(parsed, list)
+                        else []
+                    )
                 except:
                     row[field] = []
             else:
                 row[field] = []
-        
+
         results.append(row)
 
-    return {
-        "reviews": results,
-        "total": total_count,
-        "page": page,
-        "limit": limit
-    }
+    return {"reviews": results, "total": total_count, "page": page, "limit": limit}
 
 
 @log_execution_time(logger)
-def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: Session = None) -> Dict:
+def get_review_stats(
+    organization_id: str, filters: Optional[dict] = None, db: Session = None
+) -> Dict:
     """Calculate aggregated stats using ORM and Case expressions."""
     org_id = uuid.UUID(str(organization_id))
     query = db.query(ProcessedReview).join(Source).join(Platform)
     query = query.filter(Source.organization_id == org_id)
-    
+
     query = _apply_review_filters(query, filters, organization_id, db)
 
     stats = query.with_entities(
         func.count(ProcessedReview.id),
         func.avg(ProcessedReview.rating),
-        func.sum(case((ProcessedReview.sentiment == "Positive", 1), (ProcessedReview.sentiment == "Negative", -1), else_=0)),
-        func.sum(case((or_(ProcessedReview.status == "pending", ProcessedReview.ai_reply.is_(None)), 1), else_=0))
+        func.sum(
+            case(
+                (ProcessedReview.sentiment == "Positive", 1),
+                (ProcessedReview.sentiment == "Negative", -1),
+                else_=0,
+            )
+        ),
+        func.sum(
+            case(
+                (
+                    or_(
+                        ProcessedReview.status == "pending",
+                        ProcessedReview.ai_reply.is_(None),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ),
     ).one()
 
     total = stats[0] or 0
@@ -277,7 +305,13 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
 def get_org_sources_and_categories(organization_id: str, db: Session) -> Dict:
     """Fetch distinct sources and categories for an organization's filter menu."""
     org_id = uuid.UUID(str(organization_id))
-    sources = db.query(Platform.platform_name).join(Source).filter(Source.organization_id == org_id).distinct().all()
+    sources = (
+        db.query(Platform.platform_name)
+        .join(Source)
+        .filter(Source.organization_id == org_id)
+        .distinct()
+        .all()
+    )
     source_list = [s[0] for s in sources]
 
     cat_list = []
@@ -314,15 +348,18 @@ def get_review_by_id(db: Session, review_id: uuid.UUID) -> Optional[ProcessedRev
 def get_full_distribution(organization_id: str, db: Session) -> Dict:
     """Calculate rating distribution breakdowns per source."""
     org_id = uuid.UUID(str(organization_id))
-    rows = db.query(
-        Platform.platform_name,
-        func.cast(func.round(ProcessedReview.rating, 0), Integer).label("bucket"),
-        func.count(ProcessedReview.id)
-    ).join(Source, ProcessedReview.source_id == Source.source_id)\
-     .join(Platform, Source.platform_id == Platform.platform_id)\
-     .filter(Source.organization_id == org_id, ProcessedReview.rating != None)\
-     .group_by(Platform.platform_name, text("bucket"))\
-     .all()
+    rows = (
+        db.query(
+            Platform.platform_name,
+            func.cast(func.round(ProcessedReview.rating, 0), Integer).label("bucket"),
+            func.count(ProcessedReview.id),
+        )
+        .join(Source, ProcessedReview.source_id == Source.source_id)
+        .join(Platform, Source.platform_id == Platform.platform_id)
+        .filter(Source.organization_id == org_id, ProcessedReview.rating != None)
+        .group_by(Platform.platform_name, text("bucket"))
+        .all()
+    )
 
     source_map = {}
     global_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
@@ -336,7 +373,11 @@ def get_full_distribution(organization_id: str, db: Session) -> Dict:
 
     def build_dist_list(dist, total):
         return [
-            {"rating": r, "count": dist[r], "percentage": round((dist[r] / total) * 100) if total > 0 else 0}
+            {
+                "rating": r,
+                "count": dist[r],
+                "percentage": round((dist[r] / total) * 100) if total > 0 else 0,
+            }
             for r in [5, 4, 3, 2, 1]
         ]
 
@@ -344,18 +385,24 @@ def get_full_distribution(organization_id: str, db: Session) -> Dict:
     for name, dist in sorted(source_map.items()):
         total = sum(dist.values())
         avg = sum(r * c for r, c in dist.items()) / total if total > 0 else 0
-        sources.append({
-            "name": name,
-            "total": total,
-            "average": round(avg, 1),
-            "distribution": build_dist_list(dist, total)
-        })
+        sources.append(
+            {
+                "name": name,
+                "total": total,
+                "average": round(avg, 1),
+                "distribution": build_dist_list(dist, total),
+            }
+        )
 
     global_total = sum(global_dist.values())
     return {
         "global": {
             "total": global_total,
-            "average": round(sum(r * c for r, c in global_dist.items()) / global_total, 1) if global_total > 0 else 0,
+            "average": (
+                round(sum(r * c for r, c in global_dist.items()) / global_total, 1)
+                if global_total > 0
+                else 0
+            ),
             "distribution": build_dist_list(global_dist, global_total),
         },
         "sources": sources,
@@ -366,22 +413,28 @@ def delete_reviews_by_source_id(db: Session, source_id: str) -> int:
     """Delete all reviews and media for a specific source via ORM."""
     sid = uuid.UUID(source_id)
     # Media deletion (cascade usually handles this if configured, but explicit is safer for now)
-    db.query(ReviewMedia).filter(ReviewMedia.review_id.in_(
-        db.query(ProcessedReview.id).filter(ProcessedReview.source_id == sid)
-    )).delete(synchronize_session=False)
-    
-    deleted_count = db.query(ProcessedReview).filter(ProcessedReview.source_id == sid).delete()
+    db.query(ReviewMedia).filter(
+        ReviewMedia.review_id.in_(
+            db.query(ProcessedReview.id).filter(ProcessedReview.source_id == sid)
+        )
+    ).delete(synchronize_session=False)
+
+    deleted_count = (
+        db.query(ProcessedReview).filter(ProcessedReview.source_id == sid).delete()
+    )
     db.commit()
     return deleted_count
 
 
-def get_processing_metrics(db: Session, organization_id: Optional[str] = None) -> Dict[str, int]:
+def get_processing_metrics(
+    db: Session, organization_id: Optional[str] = None
+) -> Dict[str, int]:
     """Calculate processing pipeline metrics using ORM grouping."""
     query = db.query(ProcessedReview.status, func.count(ProcessedReview.id))
     if organization_id:
         org_id = uuid.UUID(str(organization_id))
         query = query.join(Source).filter(Source.organization_id == org_id)
-    
+
     rows = query.group_by(ProcessedReview.status).all()
     metrics = {"pending": 0, "processed": 0, "failed": 0, "total": 0}
     for status, count in rows:

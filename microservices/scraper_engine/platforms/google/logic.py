@@ -325,9 +325,9 @@ def scroll_reviews(
                 progress=f"Scrolling to load reviews... ({current_count} loaded)",
                 reviews=current_count,
                 current_page=current_count,
-                total_pages=target_count
-                if target_count < float("inf")
-                else total_reviews_count,
+                total_pages=(
+                    target_count if target_count < float("inf") else total_reviews_count
+                ),
                 total_reviews=total_reviews_count,
             )
 
@@ -509,15 +509,21 @@ def scrape_google(
                 seen_ids.add(r.id)
                 all_reviews.append(r)
                 current_batch.append(r)
-                
+
                 # Save in batches of 20 during the processing phase
                 if len(current_batch) >= 20:
-                    logger.info(f"Batch threshold reached. Saving {len(current_batch)} Google reviews to database.")
+                    logger.info(
+                        f"Batch threshold reached. Saving {len(current_batch)} Google reviews to database."
+                    )
                     verified_count = save_reviews_to_db(current_batch, source_id)
-                    logger.info(f"Verified {verified_count}/{len(current_batch)} Google reviews successfully persisted.")
+                    logger.info(
+                        f"Verified {verified_count}/{len(current_batch)} Google reviews successfully persisted."
+                    )
                     current_batch = []
 
-        logger.info(f"Extracted {len(all_reviews)} unique reviews from DOM. Leftovers to finalize: {len(current_batch)}")
+        logger.info(
+            f"Extracted {len(all_reviews)} unique reviews from DOM. Leftovers to finalize: {len(current_batch)}"
+        )
 
         # Centralized Finalization & Replication
         SourceService.finalize_and_replicate(
@@ -526,7 +532,7 @@ def scrape_google(
             reviews=all_reviews,
             save_db_func=save_reviews_to_db,
             deduplicator_func=clean_google_duplicates,
-            leftover_reviews=current_batch
+            leftover_reviews=current_batch,
         )
 
         if job_id:

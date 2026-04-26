@@ -14,13 +14,11 @@ from fastapi import HTTPException
 from app.core.db_utils import get_connection_string, table_exists
 from app.modules.auth.constants.roles import ADMIN_ROLE_ID, TENANT_ROLE_ID
 
-
 # ── Schema helpers ──────────────────────────────────────────────────
 
 
 def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.broadcast_event', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.broadcast_event (
@@ -56,13 +54,11 @@ def _ensure_broadcast_events_table(cursor: pyodbc.Cursor) -> None:
             CREATE INDEX IX_broadcast_events_created_at
                 ON dbo.broadcast_event (created_at DESC);
         END;
-        """
-    )
+        """)
 
 
 def _ensure_notifications_schema(cursor: pyodbc.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         IF OBJECT_ID('dbo.notification', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.notification (
@@ -105,8 +101,7 @@ def _ensure_notifications_schema(cursor: pyodbc.Cursor) -> None:
             CREATE INDEX IX_user_notifications_user_read_notification
                 ON dbo.user_notification (user_id, is_read, notification_id);
         END;
-        """
-    )
+        """)
 
 
 # ── Audience helpers ────────────────────────────────────────────────
@@ -124,7 +119,9 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _derive_plan_bucket(role_id: int, is_email_verified: bool, is_phone_verified: bool) -> str:
+def _derive_plan_bucket(
+    role_id: int, is_email_verified: bool, is_phone_verified: bool
+) -> str:
     if role_id == ADMIN_ROLE_ID:
         return "enterprise"
     if is_email_verified and is_phone_verified:
@@ -148,7 +145,7 @@ def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool
             COALESCE(role_id, ?) AS role_id
         FROM dbo.[user]
         """,
-        (TENANT_ROLE_ID,)
+        (TENANT_ROLE_ID,),
     ).fetchall()
 
     return [
@@ -171,9 +168,17 @@ def get_recipient_ids(
     if audience_type == "role":
         role_value = (audience_value or "").lower()
         if role_value == "admin":
-            return [user_id for user_id, _, _, _, role_id in active_users if role_id == ADMIN_ROLE_ID]
+            return [
+                user_id
+                for user_id, _, _, _, role_id in active_users
+                if role_id == ADMIN_ROLE_ID
+            ]
         if role_value == "user":
-            return [user_id for user_id, _, _, _, role_id in active_users if role_id != ADMIN_ROLE_ID]
+            return [
+                user_id
+                for user_id, _, _, _, role_id in active_users
+                if role_id != ADMIN_ROLE_ID
+            ]
         return []
 
     if audience_type == "plan":
@@ -223,7 +228,11 @@ def to_record(row) -> dict:
         "messageType": row.message_type,
         "recipientCount": int(row.recipient_count or 0),
         "status": row.status,
-        "sentAt": (sent_at if isinstance(sent_at, str) else sent_at.isoformat()) if sent_at else "",
+        "sentAt": (
+            (sent_at if isinstance(sent_at, str) else sent_at.isoformat())
+            if sent_at
+            else ""
+        ),
         "sentBy": row.sent_by or "Admin User",
     }
 
@@ -251,10 +260,7 @@ def create_notifications(
         (notification_id, subject, body, message_type, created_at),
     )
 
-    rows = [
-        (notification_id, recipient_id, 0, None)
-        for recipient_id in recipient_ids
-    ]
+    rows = [(notification_id, recipient_id, 0, None) for recipient_id in recipient_ids]
 
     cursor.executemany(
         """

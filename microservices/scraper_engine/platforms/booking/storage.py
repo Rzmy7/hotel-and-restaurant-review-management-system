@@ -7,6 +7,7 @@ from core.config import setup_logger, config
 
 logger = setup_logger("booking_storage")
 
+
 def save_to_json(reviews: List[BookingReviewData], org_name: str) -> str:
     if not os.path.exists(config.output_dir):
         os.makedirs(config.output_dir)
@@ -16,7 +17,10 @@ def save_to_json(reviews: List[BookingReviewData], org_name: str) -> str:
     filename = f"booking_{clean_org_name}_{timestamp}.json"
     filepath = os.path.join(config.output_dir, filename)
 
-    data = [review.model_dump() if hasattr(review, "model_dump") else review for review in reviews]
+    data = [
+        review.model_dump() if hasattr(review, "model_dump") else review
+        for review in reviews
+    ]
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 

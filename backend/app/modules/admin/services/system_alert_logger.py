@@ -40,8 +40,7 @@ ALERT_SYSTEM_ERROR = "system_error"
 
 def ensure_system_alert_log_table(cursor: pyodbc.Cursor) -> None:
     """Create ``dbo.system_alert_log`` if it does not already exist."""
-    cursor.execute(
-        """
+    cursor.execute("""
         IF NOT EXISTS (
             SELECT 1 FROM INFORMATION_SCHEMA.TABLES
             WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'system_alert_log'
@@ -63,8 +62,7 @@ def ensure_system_alert_log_table(cursor: pyodbc.Cursor) -> None:
             CREATE NONCLUSTERED INDEX IX_system_alert_log_dismissed
                 ON dbo.system_alert_log (is_dismissed, created_at DESC);
         END
-        """
-    )
+        """)
 
 
 # ── Public API ─────────────────────────────────────────────────────
@@ -170,8 +168,9 @@ def alert_gemini_api_error(error_msg: str = "") -> None:
         title="Gemini API Error",
         message=(
             "A Gemini API call failed during review analysis. "
-            f"Error: {error_msg[:500]}" if error_msg else
-            "A Gemini API call failed during review analysis."
+            f"Error: {error_msg[:500]}"
+            if error_msg
+            else "A Gemini API call failed during review analysis."
         ),
         severity="error",
         category="api",
@@ -192,7 +191,9 @@ def alert_gemini_key_missing() -> None:
     )
 
 
-def alert_scraping_failure(platform: str, error_msg: str = "", org_name: str = "") -> None:
+def alert_scraping_failure(
+    platform: str, error_msg: str = "", org_name: str = ""
+) -> None:
     """Log an alert when a scraping job fails."""
     org_info = f" for '{org_name}'" if org_name else ""
     log_system_alert(
@@ -230,8 +231,7 @@ def alert_review_processing_batch_failed(batch_size: int, error_msg: str = "") -
         title=f"Review Processing Failed ({batch_size} reviews)",
         message=(
             f"A batch of {batch_size} reviews failed during AI analysis and has been "
-            "marked for retry."
-            + (f" Error: {error_msg[:400]}" if error_msg else "")
+            "marked for retry." + (f" Error: {error_msg[:400]}" if error_msg else "")
         ),
         severity="warning",
         category="api",
@@ -252,22 +252,24 @@ def alert_database_error(operation: str, error_msg: str = "") -> None:
     )
 
 
-def alert_review_processing_batch_failed_orm(db: "Session", batch_size: int, error_msg: str = "") -> None:
+def alert_review_processing_batch_failed_orm(
+    db: "Session", batch_size: int, error_msg: str = ""
+) -> None:
     """ORM-based alert logging for batch failures."""
     from app.modules.admin.models import SystemAlertLog
-    
+
     title = f"Review Processing Failed ({batch_size} reviews)"
     message = (
         f"A batch of {batch_size} reviews failed during AI analysis and has been marked for retry."
         + (f" Error: {error_msg[:400]}" if error_msg else "")
     )
-    
+
     alert = SystemAlertLog(
         alert_type=ALERT_REVIEW_PROCESSING_FAILED,
         title=title,
         message=message,
         severity="warning",
-        category="api"
+        category="api",
     )
     db.add(alert)
     # We don't commit here, the caller (pipeline) should commit

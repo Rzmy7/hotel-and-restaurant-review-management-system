@@ -4,6 +4,7 @@ Test Suite — Database CRUD Operations
 Validates direct database operations: insert, read, cascade delete.
 Run with: pytest tests/test_db_crud.py -v
 """
+
 import sys
 import os
 
@@ -12,8 +13,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.database import get_session, init_db
 from core.models import (
-    Source, Review, AgodaReviewDetail, BookingReviewDetail,
-    GoogleReviewDetail, ReviewMedia
+    Source,
+    Review,
+    AgodaReviewDetail,
+    BookingReviewDetail,
+    GoogleReviewDetail,
+    ReviewMedia,
 )
 
 
@@ -31,7 +36,9 @@ def test_source_insert_and_read():
         session.commit()
 
         # Insert
-        source = Source(source_id=88888, source_url="https://test.com/hotel", platform_name="agoda")
+        source = Source(
+            source_id=88888, source_url="https://test.com/hotel", platform_name="agoda"
+        )
         session.add(source)
         session.commit()
 
@@ -53,7 +60,9 @@ def test_review_with_detail_insert():
     session = get_session()
     try:
         # Create source
-        source = Source(source_id=88889, source_url="https://test2.com/hotel", platform_name="agoda")
+        source = Source(
+            source_id=88889, source_url="https://test2.com/hotel", platform_name="agoda"
+        )
         session.add(source)
         session.flush()
 
@@ -75,7 +84,7 @@ def test_review_with_detail_insert():
             num_of_nights=3,
             traveler_type="Couple",
             room_type="Deluxe",
-            reply="Thank you!"
+            reply="Thank you!",
         )
         session.add(detail)
 
@@ -83,13 +92,15 @@ def test_review_with_detail_insert():
         media = ReviewMedia(
             review_id=review.review_id,
             media_url="https://example.com/img1.jpg",
-            media_type="image"
+            media_type="image",
         )
         session.add(media)
         session.commit()
 
         # Read back with relationships
-        fetched_review = session.query(Review).filter_by(review_id=review.review_id).first()
+        fetched_review = (
+            session.query(Review).filter_by(review_id=review.review_id).first()
+        )
         assert fetched_review is not None
         assert fetched_review.agoda_detail is not None
         assert float(fetched_review.agoda_detail.rating) == 9.5
@@ -107,7 +118,11 @@ def test_cascade_delete():
     session = get_session()
     try:
         # Create source → review → detail + media
-        source = Source(source_id=88890, source_url="https://cascade-test.com", platform_name="booking")
+        source = Source(
+            source_id=88890,
+            source_url="https://cascade-test.com",
+            platform_name="booking",
+        )
         session.add(source)
         session.flush()
 
@@ -116,16 +131,14 @@ def test_cascade_delete():
         session.flush()
 
         detail = BookingReviewDetail(
-            review_id=review.review_id,
-            rating=8.0,
-            review_heading="Good Stay"
+            review_id=review.review_id, rating=8.0, review_heading="Good Stay"
         )
         session.add(detail)
 
         media = ReviewMedia(
             review_id=review.review_id,
             media_url="https://example.com/cascade.jpg",
-            media_type="image"
+            media_type="image",
         )
         session.add(media)
         session.commit()
@@ -137,9 +150,16 @@ def test_cascade_delete():
         session.commit()
 
         # Verify cascade
-        assert session.query(Review).filter_by(review_id=review_id).first() is None, "Review not cascade deleted"
-        assert session.query(BookingReviewDetail).filter_by(review_id=review_id).first() is None, "Detail not cascade deleted"
-        assert session.query(ReviewMedia).filter_by(review_id=review_id).first() is None, "Media not cascade deleted"
+        assert (
+            session.query(Review).filter_by(review_id=review_id).first() is None
+        ), "Review not cascade deleted"
+        assert (
+            session.query(BookingReviewDetail).filter_by(review_id=review_id).first()
+            is None
+        ), "Detail not cascade deleted"
+        assert (
+            session.query(ReviewMedia).filter_by(review_id=review_id).first() is None
+        ), "Media not cascade deleted"
         print("  ✅ Cascade delete (source → reviews → detail + media)")
     finally:
         # Extra cleanup just in case

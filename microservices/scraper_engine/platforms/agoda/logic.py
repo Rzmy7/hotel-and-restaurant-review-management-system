@@ -116,26 +116,30 @@ def scrape_agoda(
         while nav_attempt < max_nav_retries:
             try:
                 nav_attempt += 1
-                logger.info(f"Navigating to Agoda URL (Attempt {nav_attempt}/{max_nav_retries}): {url}")
-                
+                logger.info(
+                    f"Navigating to Agoda URL (Attempt {nav_attempt}/{max_nav_retries}): {url}"
+                )
+
                 # 1. Load core DOM first (resilient to slow tracking/third-party scripts)
                 page.goto(url, wait_until="domcontentloaded", timeout=config.timeout_ms)
-                
+
                 # 2. Wait for dynamic React hydration/network idle
                 page.wait_for_load_state("networkidle", timeout=config.timeout_ms)
-                
+
                 logger.info("Navigation successful.")
                 break
             except Exception as e:
                 if nav_attempt >= max_nav_retries:
-                    logger.error(f"Failed to navigate after {max_nav_retries} attempts.")
+                    logger.error(
+                        f"Failed to navigate after {max_nav_retries} attempts."
+                    )
                     raise e
-                
+
                 wait_time = 5 * nav_attempt
-                logger.warning(f"Navigation attempt {nav_attempt} timed out or failed: {str(e)}. Retrying in {wait_time}s...")
+                logger.warning(
+                    f"Navigation attempt {nav_attempt} timed out or failed: {str(e)}. Retrying in {wait_time}s..."
+                )
                 time.sleep(wait_time)
-
-
 
         dismiss_popups(page)
 
@@ -324,7 +328,9 @@ def scrape_agoda(
                         f"Batch threshold reached. Saving {len(to_save)} reviews to database."
                     )
                     verified_count = save_reviews_to_db(to_save, source_id)
-                    logger.info(f"Verified {verified_count}/{len(to_save)} Agoda reviews successfully persisted.")
+                    logger.info(
+                        f"Verified {verified_count}/{len(to_save)} Agoda reviews successfully persisted."
+                    )
 
             if current_page < end_page:
                 target_page = current_page + 1
@@ -385,7 +391,7 @@ def scrape_agoda(
             reviews=cumulative_reviews,
             save_db_func=save_reviews_to_db,
             deduplicator_func=clean_agoda_duplicates,
-            leftover_reviews=all_reviews
+            leftover_reviews=all_reviews,
         )
 
         if job_id:
@@ -403,7 +409,6 @@ def scrape_agoda(
             "count": f"Processed {len(cumulative_reviews)} reviews",
             "source_id": source_id,
         }
-
 
     except Exception as e:
         logger.error(f"Error during scraping: {e}", exc_info=True)

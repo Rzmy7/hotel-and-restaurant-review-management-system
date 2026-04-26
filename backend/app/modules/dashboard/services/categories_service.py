@@ -6,7 +6,6 @@ from the processed_review.categories JSON column.
 import json
 import pyodbc
 
-
 _ICON_MAP = {
     "staff": "Users",
     "service": "Users",
