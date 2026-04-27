@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { normalizeRole, isAdminRole } from '../utils/authRole';
+import { apiClient } from "../api/client";
+import { logger } from "../utils/logger";
 
 type User = {
   user_id: string;
@@ -35,7 +37,7 @@ type LoginResponse = LoginChallenge | LoginSuccess;
 type AuthContextType = {
     user: User | null;
     login: (email: string, password: string) => Promise<LoginResponse>;
-    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess>;
+    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess | User>;
     signup: (name: string, email: string, password: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
@@ -55,13 +57,11 @@ const clearSetupTemporaryKeys = () => {
   localStorage.removeItem("setup_pending_organization_name");
   localStorage.removeItem("setup_pending_membership_created");
   localStorage.removeItem("setup_snapshot_current_organization");
-  // Backward compatibility cleanup for older setup snapshot keys.
   localStorage.removeItem("setup_snapshot_organizations");
   localStorage.removeItem("setup_snapshot_organization_ids");
 };
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-import { apiClient } from "../api/client";
-import { logger } from "../utils/logger";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -69,9 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ----------------------------------------------------
   // Restore session from localStorage
-  // ----------------------------------------------------
   useEffect(() => {
     const storedUser = localStorage.getItem("authUser");
     const token = localStorage.getItem("token");
@@ -83,15 +81,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         persist(null);
       }
     } else {
-      // Ensure state is null if no login details found
       setUser(null);
     }
     setIsLoading(false);
   }, []);
 
-  // ----------------------------------------------------
   // Save user + token
-  // ----------------------------------------------------
   const persist = (u: User | null, token?: string) => {
     setUser(u);
 
@@ -110,40 +105,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ----------------------------------------------------
   // Get user organizations and store them
-  // ----------------------------------------------------
   const checkUserOrganizations = async () => {
     try {
       logger.info("Fetching organizations...");
- 
-      // apiClient automatically handles the base URL, /api prefix, and Authorization headers
       const data = await apiClient.get<any>("/user/organizations");
- 
       logger.info("Organizations API response:", data);
- 
+
       const orgList = Array.isArray(data) ? data : data.organizations || [];
- 
       logger.info("Processed org list:", orgList);
 
-      // save organizations
       localStorage.setItem("organizations", JSON.stringify(orgList));
-
-      //  Extract IDs separately if needed
       const orgIds = orgList.map((org: any) => org.organization_id);
       localStorage.setItem("organization_ids", JSON.stringify(orgIds));
 
-      //  Set current organization
       if (orgList.length > 0) {
-        localStorage.setItem(
-          "current_organization",
-          orgList[0].organization_id,
-        );
+        localStorage.setItem("current_organization", orgList[0].organization_id);
       }
 
       clearSetupTemporaryKeys();
 
-      // Redirect
       if (orgList.length === 0) {
         window.location.href = "/no-organization";
       } else {
@@ -154,16 +135,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ----------------------------------------------------
   // Exchange token for organization swap
-  // ----------------------------------------------------
   const exchangeTokenForOrganization = async (orgId: string) => {
     try {
       const data = await apiClient.post<any>("/auth/switch-organization", {
         organization_id: orgId,
       });
       if (data && data.access_token) {
-        // Update the token in localStorage and state (via persist) without logging out
         if (user) {
           persist(user, data.access_token);
         }
@@ -174,9 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ----------------------------------------------------
   // LOGIN
-  // ----------------------------------------------------
   const login = async (email: string, password: string) => {
     const data = await apiClient.post<LoginResponse>("/auth/login", {
       email,
@@ -202,12 +178,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       role: normalizeRole(backendUser.role || backendUser.roles),
     };
 
-    // Save user + token
-    persist(normalizedUser, successData.access_token);
- 
-    logger.info("Calling checkUserOrganizations...");
-    // Check organizations after login
-    await checkUserOrganizations();
+    if (!isAdminRole(normalizedUser.role)) {
+      persist(normalizedUser, successData.access_token);
+      logger.info("Calling checkUserOrganizations...");
+      await checkUserOrganizations();
+    } else {
+      persist(normalizedUser, successData.access_token);
+    }
 
     return successData;
   };
@@ -230,15 +207,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       role: normalizeRole(backendUser.role),
     };
 
-    persist(normalizedUser, data.access_token);
-    await checkUserOrganizations();
+    if (!isAdminRole(normalizedUser.role)) {
+      persist(normalizedUser, data.access_token);
+      await checkUserOrganizations();
+    } else {
+      persist(normalizedUser, data.access_token);
+    }
 
     return normalizedUser;
   };
 
-  // ----------------------------------------------------
   // SIGNUP
-  // ----------------------------------------------------
   const signup = async (name: string, email: string, password: string) => {
     const payload = await apiClient.post<any>("/auth/signup", {
       name,
@@ -261,7 +240,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     if (payload.access_token) {
-      persist(normalizedUser, payload.access_token);
+      if (!isAdminRole(normalizedUser.role)) {
+        persist(normalizedUser, payload.access_token);
+        await checkUserOrganizations();
+      } else {
+        persist(normalizedUser, payload.access_token);
+      }
     } else {
       // login and persist without organization-based redirect
       const loginPayload = await apiClient.post<any>("/auth/login", {
@@ -279,37 +263,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           "User",
         role: normalizeRole(loginUser.role || loginUser.roles),
       };
-      persist(normalizedLoginUser, loginPayload.access_token);
-      await checkUserOrganizations();
+      
+      if (!isAdminRole(normalizedLoginUser.role)) {
+        persist(normalizedLoginUser, loginPayload.access_token);
+        await checkUserOrganizations();
+      } else {
+        persist(normalizedLoginUser, loginPayload.access_token);
+      }
       return normalizedLoginUser;
     }
 
-    await checkUserOrganizations();
     return normalizedUser;
   };
 
-  // ----------------------------------------------------
   // LOGOUT
-  // ----------------------------------------------------
   const logout = () => {
     localStorage.clear();
     setUser(null);
     window.location.href = "/login";
   };
 
-  // ----------------------------------------------------
   // FORGOT PASSWORD
-  // ----------------------------------------------------
   const forgotPassword = async (email: string) => {
     await apiClient.post<any>("/auth/forgot-password", { email });
   };
 
-  // ----------------------------------------------------
   // RESET PASSWORD
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  // RESET PASSWORD
-  // ----------------------------------------------------
   const resetPassword = async (token: string, newPassword: string) => {
     const encodedToken = encodeURIComponent(token);
     await apiClient.post<any>(`/auth/reset-password/${encodedToken}`, {
@@ -317,120 +296,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-        // Save user + token if not admin
-        if (!isAdminRole(normalizedUser.role)) {
-            persist(normalizedUser, successData.access_token);
-            console.log("Calling checkUserOrganizations...");
-            await checkUserOrganizations();
-        }
-
-        return successData;
-    };
-
-    const verifyLogin2fa = async (email: string, code: string) => {
-        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
-
-        const backendUser = data.user;
-        const normalizedUser: User = {
-            user_id: backendUser.user_id,
-            email: backendUser.email,
-            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
-            role: normalizeRole(backendUser.role),
-        };
-
-        if (!isAdminRole(normalizedUser.role)) {
-            persist(normalizedUser, data.access_token);
-            await checkUserOrganizations();
-        }
-
-        return data;
-    };
-
-    // ----------------------------------------------------
-    // SIGNUP
-    // ----------------------------------------------------
-    const signup = async (name: string, email: string, password: string) => {
-        const payload = await apiClient.post<any>('/auth/signup', { name, email, password });
-        
-        console.log("Signup response:", payload);
-
-        const backendUser = payload.user || payload;
-        const normalizedUser: User = {
-            user_id: backendUser.id || backendUser.user_id,
-            email: backendUser.email,
-            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
-            role: normalizeRole(backendUser.role || backendUser.roles),
-        };
-
-        if (payload.access_token) {
-            if (!isAdminRole(normalizedUser.role)) {
-                persist(normalizedUser, payload.access_token);
-            }
-        } else {
-            // login and persist without organization-based redirect
-            const loginPayload = await apiClient.post<any>('/auth/login', { email, password });
-            const loginUser = loginPayload.user;
-            const normalizedLoginUser: User = {
-                user_id: loginUser.user_id,
-                email: loginUser.email,
-                full_name: loginUser.full_name || loginUser.name || `${loginUser.first_name || ""} ${loginUser.last_name || ""}`.trim() || "User",
-                role: normalizeRole(loginUser.role || loginUser.roles),
-            };
-            if (!isAdminRole(normalizedLoginUser.role)) {
-                persist(normalizedLoginUser, loginPayload.access_token);
-                await checkUserOrganizations();
-            }
-            return normalizedLoginUser;
-        }
-
-        if (!isAdminRole(normalizedUser.role)) {
-            await checkUserOrganizations();
-        }
-        return normalizedUser;
-    };
-
-    // ----------------------------------------------------
-    // LOGOUT
-    // ----------------------------------------------------
-    const logout = () => {
-        localStorage.clear();
-        setUser(null);
-        window.location.href = "/login";
-    };
-
-    // ----------------------------------------------------
-    // FORGOT PASSWORD
-    // ----------------------------------------------------
-    const forgotPassword = async (email: string) => {
-        await apiClient.post<any>('/auth/forgot-password', { email });
-    };
-
-    // ----------------------------------------------------
-    // RESET PASSWORD
-    // ----------------------------------------------------
-    const resetPassword = async (token: string, newPassword: string) => {
-        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
-    };
-
-    return (
-        <AuthContext.Provider
-            value={{
-                user,
-                login,
-                verifyLogin2fa,
-                signup,
-                logout,
-                forgotPassword,
-                resetPassword,
-                persist,
-                checkUserOrganizations,
-                exchangeTokenForOrganization,
-                isLoading,
-            }}
-        >
-            {children}
-        </AuthContext.Provider>
-    );
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        verifyLogin2fa,
+        signup,
+        logout,
+        forgotPassword,
+        resetPassword,
+        persist,
+        checkUserOrganizations,
+        exchangeTokenForOrganization,
+        isLoading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

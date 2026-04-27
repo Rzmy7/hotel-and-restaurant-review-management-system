@@ -21,7 +21,16 @@ from app.core.validations.phone_validator import normalize_profile_phone
 from app.modules.auth.models.auth_models import TwoFactorToken
 from app.modules.auth.services.email_service import send_2fa_email
 from app.core.validations.otp_validator import validate_otp_format
-from app.modules.user.schemas.profile_schema import TwoFactorVerifyRequest
+from app.modules.user.schemas.profile_schema import (
+    TwoFactorVerifyRequest,
+    PasswordChangeRequest,
+)
+from app.modules.user.repositories.users_repo import (
+    get_user_profile,
+    update_user_profile,
+    update_user_password,
+)
+from app.core.security import verify_password, hash_password
 import pyodbc
 from app.core.db_utils import get_connection_string
 # Get bucket name from .env

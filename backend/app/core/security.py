@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from jose import jwt
 import bcrypt
+from passlib.context import CryptContext
 
 from app.core.config import (
     JWT_SECRET_KEY,
