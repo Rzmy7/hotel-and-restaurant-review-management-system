@@ -34,6 +34,14 @@ if "pyodbc" not in sys.modules:
     except ImportError:
         _stub = ModuleType("pyodbc")
         _stub.connect = MagicMock()
+        _stub.Cursor = MagicMock
+        _stub.Connection = MagicMock
+        _stub.Row = MagicMock
+        _stub.Error = type("Error", (Exception,), {})
+        _stub.DatabaseError = type("DatabaseError", (_stub.Error,), {})
+        _stub.OperationalError = type("OperationalError", (_stub.DatabaseError,), {})
+        _stub.ProgrammingError = type("ProgrammingError", (_stub.DatabaseError,), {})
+        _stub.InterfaceError = type("InterfaceError", (_stub.Error,), {})
         sys.modules["pyodbc"] = _stub
 
 # ── Constants ───────────────────────────────────────────────────────
