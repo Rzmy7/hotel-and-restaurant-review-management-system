@@ -95,13 +95,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onClick={() => setIsPrivate((p) => !p)}
               className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${isPrivate ? "bg-[#3b82f6]" : "bg-gray-300 dark:bg-slate-600"}`}
             >
-<<<<<<< HEAD
-              <span
-                className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${isPrivate ? "translate-x-5" : "translate-x-1"}`}
-              />
-=======
               <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
->>>>>>> dev
             </button>
             <div>
               <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">

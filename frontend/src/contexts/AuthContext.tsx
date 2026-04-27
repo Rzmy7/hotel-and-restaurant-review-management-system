@@ -1,9 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-<<<<<<< HEAD
-import { normalizeRole } from "../utils/authRole";
-=======
 import { normalizeRole, isAdminRole } from '../utils/authRole';
->>>>>>> dev
 
 type User = {
   user_id: string;
@@ -37,19 +33,6 @@ type LoginSuccess = {
 type LoginResponse = LoginChallenge | LoginSuccess;
 
 type AuthContextType = {
-<<<<<<< HEAD
-  user: User | null;
-  login: (email: string, password: string) => Promise<LoginResponse>;
-  verifyLogin2fa: (email: string, code: string) => Promise<User>;
-  signup: (name: string, email: string, password: string) => Promise<User>;
-  logout: () => void;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-  persist: (user: User | null, token?: string) => void;
-  checkUserOrganizations: () => Promise<void>;
-  exchangeTokenForOrganization: (orgId: string) => Promise<void>;
-  isLoading: boolean;
-=======
     user: User | null;
     login: (email: string, password: string) => Promise<LoginResponse>;
     verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess>;
@@ -61,7 +44,6 @@ type AuthContextType = {
     checkUserOrganizations: () => Promise<void>;
     exchangeTokenForOrganization: (orgId: string) => Promise<void>;
     isLoading: boolean;
->>>>>>> dev
 };
 
 const isLoginChallenge = (value: LoginResponse): value is LoginChallenge => {
