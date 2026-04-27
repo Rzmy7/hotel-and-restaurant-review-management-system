@@ -54,6 +54,9 @@ jobs:
       deploy-embedding: ${{ steps.check.outputs.deploy-embedding }}
       deploy-scraper: ${{ steps.check.outputs.deploy-scraper }}
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
@@ -145,6 +148,9 @@ jobs:
       run:
         working-directory: backend
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - name: Set up Python
@@ -171,6 +177,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -194,6 +203,9 @@ jobs:
       run:
         working-directory: admin-frontend
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -217,6 +229,9 @@ jobs:
       run:
         working-directory: microservices/embedding-service
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - name: Set up Python
@@ -250,6 +265,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - uses: docker/login-action@v3
@@ -281,6 +299,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - uses: docker/login-action@v3
@@ -313,6 +334,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - uses: docker/login-action@v3
@@ -341,6 +365,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - uses: docker/login-action@v3
@@ -365,6 +392,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: sudo chown -R $(whoami):$(id -gn) "$GITHUB_WORKSPACE" || true
+
       - uses: actions/checkout@v4
 
       - uses: docker/login-action@v3
