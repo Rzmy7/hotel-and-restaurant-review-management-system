@@ -42,14 +42,12 @@ def test_find_duplicate_review_ids(db_session):
     dupes = find_duplicate_review_ids(db_session, TripAdvisorReviewDetail, source_id, [TripAdvisorReviewDetail.author])
     
     assert len(dupes) == 1
-    # Check for presence using the same type (UUID or string as returned by SQLAlchemy)
-    # We convert both to string for the assertion to be safe across dialects
-    dupes_str = [str(d) for d in dupes]
-    assert str(rid2) in dupes_str # rid2 is newer, so it should be the dupe
-    assert str(rid1) not in dupes_str
+    assert str(rid2) in dupes # rid2 is newer, so it should be the dupe
+    assert str(rid1) not in dupes
     
-    # Test removal
-    count = remove_duplicate_reviews(db_session, dupes)
+    # Test removal with UUID objects (SQLite/SQLAlchemy fix)
+    dupes_uuid = [uuid.UUID(d) for d in dupes]
+    count = remove_duplicate_reviews(db_session, dupes_uuid)
     assert count == 1
 
 def test_remove_duplicate_reviews(db_session):
