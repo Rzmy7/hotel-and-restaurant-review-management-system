@@ -1,20 +1,18 @@
-"""Groups group management service — create and member management."""
+"""Groups group management service — create and member management.
+
+NOTE: The canonical group CRUD logic now lives in repository.py.
+This service layer only wraps subscription-limit checks and notifications.
+It is used only if you call these helpers directly; the router.py does
+NOT use these — it calls repository.py directly.
+"""
 
 import uuid
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.modules.groups.models import Group, GroupMember
-from app.modules.auth.constants.roles import GROUP_MANAGER, GROUP_MEMBER
-from app.modules.groups.repository import create_group, add_member_to_group
-from app.middleware.permissions import require_group_manager
-from app.modules.admin.services.subscription_service import (
-    increment_feature_usage,
-    check_feature_limit,
-    send_limit_reached_notification,
-)
-from app.core.db_utils import get_connection_string
-import pyodbc
+from app.modules.groups.models import Group
+from app.modules.auth.constants.roles import GROUP_OWNER, GROUP_MEMBER
+from app.modules.groups import repository as repo
 
 
 def _get_group_or_404(db: Session, group_id: uuid.UUID) -> Group:
@@ -24,9 +22,20 @@ def _get_group_or_404(db: Session, group_id: uuid.UUID) -> Group:
     return group
 
 
-def create_group_service(db: Session, group_name: str, current_user):
+def create_group_service(db: Session, group_name: str, organization_id: str, current_user):
+    """
+    Create a group and add the given organization as GROUP_OWNER.
+    Runs subscription limit checks.
+    """
     # ── Check group limit ──
     try:
+        import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.subscription_service import (
+            increment_feature_usage,
+            check_feature_limit,
+            send_limit_reached_notification,
+        )
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             limit_info = check_feature_limit(cursor, str(current_user.user_id), "groups")
@@ -34,19 +43,23 @@ def create_group_service(db: Session, group_name: str, current_user):
                 send_limit_reached_notification(str(current_user.user_id), limit_info["feature_name"])
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Group limit reached for your current plan. "
-                           f"You have used {limit_info['used']}/{limit_info['limit']}. "
-                           f"Please upgrade your subscription plan to add more groups.",
+                    detail=(
+                        f"Group limit reached for your current plan. "
+                        f"You have used {limit_info['used']}/{limit_info['limit']}. "
+                        f"Please upgrade your subscription plan to add more groups."
+                    ),
                 )
     except HTTPException:
         raise
     except Exception as limit_err:
         print(f"LIMIT CHECK WARNING (groups): {limit_err}")
 
-    group = create_group(db, group_name=group_name, created_by=current_user.user_id)
-    add_member_to_group(db, group.group_id, current_user.user_id, GROUP_MANAGER)
-    db.commit()
-    db.refresh(group)
+    group = repo.create_group(
+        db,
+        group_name=group_name,
+        created_by=str(current_user.user_id),
+    )
+    repo.add_member(db, str(group.group_id), organization_id, role=GROUP_OWNER)
 
     # ── Send group created notification ──
     try:
@@ -55,10 +68,11 @@ def create_group_service(db: Session, group_name: str, current_user):
     except Exception:
         pass  # Best-effort
 
-    # ----------------------------------------------------
-    # Increment usage for the user
-    # ----------------------------------------------------
+    # ── Increment usage ──
     try:
+        import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.subscription_service import increment_feature_usage
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             increment_feature_usage(cursor, str(current_user.user_id), "groups")
@@ -69,10 +83,17 @@ def create_group_service(db: Session, group_name: str, current_user):
     return group
 
 
-def add_group_member_service(db: Session, group_id: uuid.UUID, user_id: uuid.UUID, role: str, current_user):
+def add_group_member_service(
+    db: Session,
+    group_id: str,
+    organization_id: str,
+    current_user,
+    role: str = GROUP_MEMBER,
+):
+    """Add an organization to a group. Only the GROUP_OWNER org may call this."""
     _get_group_or_404(db, group_id)
-    require_group_manager(group_id, current_user, db)
-    member = add_member_to_group(db, group_id, user_id, role or GROUP_MEMBER)
-    db.commit()
-    db.refresh(member)
+    caller_role = repo.get_org_group_role(db, group_id, str(current_user.organization_id))
+    if caller_role != GROUP_OWNER:
+        raise HTTPException(status_code=403, detail="Only the group owner can add members.")
+    member = repo.add_member(db, group_id, organization_id, role=role)
     return member
