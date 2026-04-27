@@ -210,6 +210,7 @@ export const ReviewProcessing: React.FC = () => {
             case 'Queued': return 'bg-yellow-100 text-yellow-700';
             case 'Completed': return 'bg-green-100 text-green-700';
             case 'Failed': return 'bg-red-100 text-red-700';
+            case 'Paused': return 'bg-orange-100 text-orange-700';
             default: return 'bg-gray-100 text-gray-700 dark:text-slate-200';
         }
     };
@@ -467,6 +468,7 @@ export const ReviewProcessing: React.FC = () => {
                                     <td className="py-4 px-4">
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(job.status)}`}>
                                             {job.status === 'Running' && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>}
+                                            {job.status === 'Paused' && <span className="w-1.5 h-1.5 rounded-full bg-current"></span>}
                                             {job.status}
                                         </span>
                                     </td>
@@ -495,6 +497,9 @@ export const ReviewProcessing: React.FC = () => {
                                             )}
                                             {job.status === 'Running' && (
                                                 <span className="text-xs text-blue-600 font-medium">Processing...</span>
+                                            )}
+                                            {job.status === 'Paused' && (
+                                                <span className="text-xs text-orange-600 font-medium">Paused</span>
                                             )}
                                         </div>
                                     </td>

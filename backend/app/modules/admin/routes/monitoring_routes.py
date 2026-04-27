@@ -407,6 +407,10 @@ def review_processing_jobs() -> list[dict]:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
 
+            # Check if processing is currently paused (e.g. Gemini API rate limit)
+            from app.modules.admin.services.system_settings_service import get_setting_bool
+            is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
+
             sql = """
                 SELECT 
                     r.source_id,
@@ -446,7 +450,7 @@ def review_processing_jobs() -> list[dict]:
                 elif status_raw == "failed":
                     ui_status = "Failed"
                 elif status_raw == "pending":
-                    ui_status = "Running"
+                    ui_status = "Paused" if is_paused else "Running"
                 else:
                     ui_status = "Queued"
 

@@ -19,7 +19,7 @@ export interface ReviewProcessingJob {
     platformIcon: string;
     platformColor: string;
     organization: string;
-    status: 'Running' | 'Queued' | 'Completed' | 'Failed';
+    status: 'Running' | 'Queued' | 'Completed' | 'Failed' | 'Paused';
     startTime: string;
     duration: string;
     reviewsProcessed: number | null;
