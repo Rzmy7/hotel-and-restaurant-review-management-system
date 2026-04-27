@@ -31,7 +31,7 @@ def _load_reply_generation_settings() -> dict[str, Any]:
         cursor = connection.cursor()
         ensure_system_settings_table(cursor)
 
-        google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
+        google_api_key = (get_setting(cursor, "reply_google_api_key") or os.getenv("GENAI_KEY", "")).strip()
         selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
         similar_reviews_count = get_similar_reviews_count(cursor)
         use_embedding_rules = get_setting_bool(
@@ -137,14 +137,14 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
     tone = (payload.tone or "standard").strip().lower()
     length = (payload.length or "standard").strip().lower()
 
-    length_instruction = "120 to 180 words"
+    length_instruction = "standard: 2-4 sentences"
     if length == "short":
-        length_instruction = "40 to 90 words"
+        length_instruction = "short: 1-2 sentences"
+    elif length == "long":
+        length_instruction = "long: 4-6 sentences"
 
-    tone_instruction = {
-        "professional": "Use a professional and polished tone.",
-        "casual": "Use a warm and conversational tone.",
-    }.get(tone, "Use a balanced, courteous customer-support tone.")
+    hotel_name = (payload.hotelName or "our hotel/restaurant").strip()
+    rating_str = str(payload.rating) if payload.rating is not None else "Not provided"
 
     similar_reviews_section = _format_context_lines("Similar Reviews", similar_reviews, len(similar_reviews))
     rules_section = _format_context_lines("Relevant Rules", rules, len(rules))
@@ -156,29 +156,43 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
         else ""
     )
 
-    return (
-        "You are a customer support expert helping a hotel or restaurant reply to customer reviews. "
-        "Write only the final reply text, with no markdown, labels, or explanation.\n\n"
-        f"Reviewer Name: {payload.userName}\n"
-        f"Sentiment: {payload.sentiment or 'Neutral'}\n"
-        f"Source: {payload.source or 'Unknown'}\n"
-        f"{language_hint_line}"
-        f"Requested Length: {length_instruction}\n"
-        f"Tone Requirement: {tone_instruction}\n\n"
-        "Original Review:\n"
-        f"{payload.reviewText.strip()}\n\n"
-        f"{rules_section}\n\n"
-        f"{similar_reviews_section}\n\n"
-        "Reply requirements:\n"
-        "- The reply language MUST match the language used in the Original Review text.\n"
-        "- Do not translate to English unless the Original Review is in English.\n"
-        "- If the review contains mixed languages, use the dominant language from the review text.\n"
-        "- Thank the reviewer.\n"
-        "- Address key points from the original review.\n"
-        "- Follow all relevant rules exactly when they apply.\n"
-        "- If the review is negative, acknowledge issues and mention concrete improvement intent.\n"
-        "- Do not mention that you used AI, rules, or similar reviews.\n"
-    )
+    return f"""You are a professional hotel customer support assistant.
+
+Your task is to write a high-quality reply to a customer review.
+
+Context:
+Hotel Name: {hotel_name}
+Customer Name: {payload.userName}
+Platform: {payload.source or 'Unknown'}
+Rating: {rating_str}/5
+Sentiment: {payload.sentiment or 'Neutral'}
+Review: "{payload.reviewText.strip()}"
+
+Instructions:
+- Be polite, natural, and human-like (not robotic).
+- Start with the customer name if available.
+- Always thank the customer.
+- Match the tone: {tone} (friendly, professional, empathetic).
+- Keep length: {length_instruction}.
+- {language_hint_line} The reply language MUST match the language used in the Original Review text. Do not translate to English unless the Original Review is in English. If the review contains mixed languages, use the dominant language from the review text.
+
+Guidelines:
+- If positive → appreciate and reinforce experience.
+- If neutral → acknowledge and show improvement.
+- If negative → apologize, take responsibility, and reassure.
+
+Special rules:
+- If review is very short (e.g., "Very good"), expand naturally.
+- Do NOT repeat the review.
+- Do NOT include placeholders or explanations.
+- Follow all relevant rules exactly when they apply. Do not mention that you used AI, rules, or similar reviews.
+
+{similar_reviews_section}
+
+{rules_section}
+
+Output:
+Return ONLY the final response text."""
 
 
 def _generate_with_google(api_key: str, model: str, prompt: str) -> tuple[str, int]:

@@ -65,6 +65,8 @@ class ReplyGenerationRequest(BaseModel):
     source: Optional[str] = None
     language: Optional[str] = None
     sourceId: Optional[str] = None
+    hotelName: Optional[str] = None
+    rating: Optional[float] = None
 
 
 class ReplyGenerationResponse(BaseModel):

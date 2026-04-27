@@ -122,3 +122,12 @@ The backend primarily operates under `/api` for domain-specific interfaces:
 4. **Environment Fallbacks**: Always provide fallbacks if missing environment variables are gracefully bypass-able. Catch `ImportError` gracefully when initializing optional external integrations.
 5. **No Blind Global Mutability**: Never introduce global states outside of controlled singletons like the SQLAlchemy `engine` or `Base`.
 6. **Error Forwarding**: Use `traceback.format_exc()` effectively in error handlers so agents reviewing logs can pinpoint failure lines. Do not mask stack traces.
+
+## 8. AI Prompt Engineering & Guidelines
+The system utilizes strict prompt templates to ensure the AI acts as a professional hotel customer support assistant. The `generate-reply` pipeline strictly enforces:
+- **Tone & Personalization**: Starts with the customer name and adjusts tone dynamically (friendly, professional, empathetic).
+- **Length Constraints**: Hardcoded sentence boundaries (Short: 1-2, Standard: 2-4, Long: 4-6 sentences).
+- **Sentiment-Driven Logic**: Positive = reinforce, Neutral = acknowledge and improve, Negative = apologize and resolve.
+- **Short Review Handling**: Expands naturally on exceptionally brief reviews.
+- **Output Constraints**: Returns only the raw response text without placeholders, repetition, or conversational filler.
+- **Graceful Fallback Mechanism**: If the primary LLM provider (e.g., Google Gemini) fails due to invalid API keys, network errors, or rate limits, the `/api/reviews/generate-reply` endpoint will gracefully return a templated fallback response. The frontend is designed to safely render these fallbacks without throwing UI errors to ensure continuous functionality.

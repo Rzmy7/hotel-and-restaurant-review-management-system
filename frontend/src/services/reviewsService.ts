@@ -89,8 +89,10 @@ class ReviewsService {
         tone: 'professional' | 'casual' | 'standard' = 'standard',
         length: 'short' | 'standard' = 'standard'
     ): Promise<string> {
-        const reviewText = (review.reviewText || review.summary || '').trim();
-        if (!reviewText) throw new Error('Reply generation requires review text.');
+        let reviewText = (review.reviewText || review.heading || review.summary || '').trim();
+        if (!reviewText) {
+            reviewText = 'No detailed review text provided.';
+        }
 
         const result = await apiClient.post<{ reply?: string; provider?: string; providerError?: string }>('/reviews/generate-reply', {
             reviewId: review.id,
@@ -104,7 +106,7 @@ class ReviewsService {
         });
 
         if (result?.provider?.includes('fallback')) {
-            throw new Error(result.providerError || 'Provider call failed.');
+            console.warn('AI Provider failed, using fallback reply:', result.providerError);
         }
         if (result?.reply && typeof result.reply === 'string') return result.reply;
         throw new Error('Reply generation returned an empty response.');
