@@ -69,6 +69,15 @@ def login_user(db: Session, email: str, password: str) -> dict:
     # ----------------------------------------------------
     # Intercept for 2FA
     # ----------------------------------------------------
+    # First check whether the 2FA feature flag is enabled system-wide.
+    two_fa_feature_enabled = True
+    try:
+        two_fa_feature_row = db.execute(text("SELECT setting_value FROM dbo.system_settings WHERE setting_key = 'feature_flag_two_factor_auth'")).fetchone()
+        if two_fa_feature_row and str(two_fa_feature_row[0]).strip().lower() in ("disabled", "false", "0", "off"):
+            two_fa_feature_enabled = False
+    except Exception:
+        pass
+
     require_2fa_for_admins = False
     try:
         query_result = db.execute(text("SELECT setting_value FROM dbo.system_settings WHERE setting_key = 'require_two_factor_auth'")).fetchone()
@@ -78,7 +87,7 @@ def login_user(db: Session, email: str, password: str) -> dict:
         pass
 
     is_2fa_enabled = getattr(user, 'is_2fa_enabled', False)
-    if is_2fa_enabled or (role == "Admin" and require_2fa_for_admins):
+    if two_fa_feature_enabled and (is_2fa_enabled or (role == "Admin" and require_2fa_for_admins)):
         code = f"{random.randint(100000, 999999)}"
         expires_at = datetime.utcnow() + timedelta(minutes=10)
 

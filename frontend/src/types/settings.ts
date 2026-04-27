@@ -12,8 +12,9 @@ export interface NotificationSettings {
 }
 
 export interface SecuritySettings {
-  twoFactorAuth: boolean;
-  sessionTimeout: number; // in minutes
+    twoFactorAuth: boolean;
+    twoFactorFeatureEnabled?: boolean;
+    sessionTimeout: number; // in minutes
 }
 
 export interface SubscriptionSettings {

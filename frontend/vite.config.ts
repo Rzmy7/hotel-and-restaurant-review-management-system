@@ -1,8 +1,10 @@
 /// <reference types="vitest" />
-import { defineConfig, type ViteDevServer } from 'vite'
+import { defineConfig } from 'vitest/config'
+import type { ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from 'tailwindcss'
 import os from 'os'
+import path from 'path'
 import type { ServerResponse, IncomingMessage } from 'http'
 
 const healthCheckPlugin = () => ({
@@ -36,6 +38,11 @@ const healthCheckPlugin = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), healthCheckPlugin()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   css: {
     postcss: {
       plugins: [
@@ -45,12 +52,10 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/setupTests.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-    },
+    environment: 'jsdom',
+    setupFiles: './src/__tests__/setup.ts',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    css: false,
   },
 })

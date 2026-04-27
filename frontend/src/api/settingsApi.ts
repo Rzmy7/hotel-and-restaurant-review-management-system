@@ -60,7 +60,8 @@ type OrganizationType = {
 };
 
 type UserProfile = {
-  is_2fa_enabled?: boolean;
+    is_2fa_enabled?: boolean;
+    is_2fa_feature_enabled?: boolean;
 };
 
 export type PasswordChangePayload = {
@@ -280,14 +281,45 @@ export const settingsApi = {
       // Keep existing local security fallback when profile call fails.
     }
 
-    return { ...currentSettings };
-  },
-  updateSettings: async (
-    updates: Partial<SettingsData>,
-  ): Promise<SettingsData> => {
-    if (updates.hotelInfo) {
-      await patchHotelInfoToBackend(updates.hotelInfo);
-    }
+export const settingsApi = {
+    fetchSettings: async (): Promise<SettingsData> => {
+        try {
+            const organizations = await fetchUserOrganizations();
+            const activeOrgId = getActiveOrganizationId();
+            const activeOrg =
+                organizations.find((org) => org.organization_id === activeOrgId) ||
+                organizations[0];
+
+            if (activeOrg) {
+                currentSettings = {
+                    ...currentSettings,
+                    hotelInfo: mapOrganizationToHotelInfo(activeOrg),
+                };
+            }
+        } catch {
+            // Keep local fallback settings when backend data is unavailable.
+        }
+
+        try {
+            const profileResponse = await settingsAxios.get<UserProfile>(toApiPath('/users/me'));
+            currentSettings = {
+                ...currentSettings,
+                security: {
+                    ...currentSettings.security,
+                    twoFactorAuth: !!profileResponse.data?.is_2fa_enabled,
+                    twoFactorFeatureEnabled: profileResponse.data?.is_2fa_feature_enabled !== false,
+                },
+            };
+        } catch {
+            // Keep existing local security fallback when profile call fails.
+        }
+
+        return { ...currentSettings };
+    },
+    updateSettings: async (updates: Partial<SettingsData>): Promise<SettingsData> => {
+        if (updates.hotelInfo) {
+            await patchHotelInfoToBackend(updates.hotelInfo);
+        }
 
     currentSettings = {
       ...currentSettings,

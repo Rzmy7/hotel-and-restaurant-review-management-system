@@ -1,91 +1,109 @@
 """
-Pytest configuration and global fixtures.
-Sets up an in-memory SQLite database for fast unit and integration tests.
+Shared pytest fixtures for the backend test suite.
+
+Provides mock database sessions, mock users, JWT token factories,
+and a FastAPI TestClient with dependency overrides — so all tests
+can run without a live database connection.
 """
 
+import os
+import uuid
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock
+
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, DateTime
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+
+# ── Patch env vars BEFORE any app code is imported ──────────────────
+os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-unit-tests")
+os.environ.setdefault("SECRET_KEY", "test-session-secret")
+os.environ.setdefault("DB_SERVER", "localhost")
+os.environ.setdefault("DB_NAME", "testdb")
+os.environ.setdefault("DB_UID", "sa")
+os.environ.setdefault("DB_PWD", "testpass")
+
+# ── Constants ───────────────────────────────────────────────────────
+TEST_USER_ID = str(uuid.uuid4())
+TEST_ORG_ID = str(uuid.uuid4())
+TEST_ADMIN_USER_ID = str(uuid.uuid4())
 
 
-@compiles(UNIQUEIDENTIFIER, "sqlite")
-def compile_uniqueidentifier_sqlite(type_, compiler, **kw):
-    return "CHAR(36)"
+# ── Mock database session ──────────────────────────────────────────
+
+@pytest.fixture
+def mock_db():
+    """Return a MagicMock that behaves like a SQLAlchemy Session."""
+    session = MagicMock()
+    session.commit = MagicMock()
+    session.rollback = MagicMock()
+    session.close = MagicMock()
+    session.flush = MagicMock()
+    session.refresh = MagicMock()
+    return session
 
 
-# Fix for MSSQL specific sysutcdatetime() in SQLite
-from sqlalchemy.sql import functions
+# ── Mock users ──────────────────────────────────────────────────────
+
+@pytest.fixture
+def mock_current_user():
+    """A regular Tenant user dict as returned by get_current_user."""
+    return {
+        "user_id": TEST_USER_ID,
+        "role": "Tenant",
+        "organization_id": TEST_ORG_ID,
+    }
 
 
-class sysutcdatetime(functions.GenericFunction):
-    type = DateTime()
-    name = "sysutcdatetime"
+@pytest.fixture
+def mock_admin_user():
+    """An Admin user dict as returned by get_current_user."""
+    return {
+        "user_id": TEST_ADMIN_USER_ID,
+        "role": "Admin",
+        "organization_id": None,
+    }
 
 
-@compiles(sysutcdatetime, "sqlite")
-def compile_sysutcdatetime_sqlite(element, compiler, **kw):
-    return "CURRENT_TIMESTAMP"
+# ── JWT helper ──────────────────────────────────────────────────────
+
+@pytest.fixture
+def jwt_token_factory():
+    """
+    Factory fixture that creates signed JWT tokens for testing.
+    Usage: token = jwt_token_factory(user_id="...", role="Tenant")
+    """
+    from jose import jwt
+
+    secret = os.environ["JWT_SECRET_KEY"]
+    algorithm = "HS256"
+
+    def _create_token(
+        user_id: str = TEST_USER_ID,
+        role: str = "Tenant",
+        organization_id: str | None = TEST_ORG_ID,
+        expire_minutes: int = 60,
+    ) -> str:
+        payload = {
+            "user_id": user_id,
+            "role": role,
+            "organization_id": organization_id,
+            "exp": datetime.utcnow() + timedelta(minutes=expire_minutes),
+        }
+        return jwt.encode(payload, secret, algorithm=algorithm)
+
+    return _create_token
 
 
-from app.main import app as fastapi_app
-from app.database.session import Base
-from app.database import get_db
+@pytest.fixture
+def expired_jwt_token():
+    """A JWT token that has already expired."""
+    from jose import jwt
 
-# Import models to register them with Base
-import app.modules.reviews.models  # noqa
-import app.modules.source.models  # noqa
-import app.modules.auth.models  # noqa
-import app.modules.organization.models  # noqa
-import app.modules.user.models  # noqa
-import app.modules.admin.models  # noqa
-
-# Use in-memory SQLite for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture(scope="session")
-def db_engine():
-    Base.metadata.create_all(bind=engine)
-    yield engine
-    Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture(scope="function")
-def db_session(db_engine):
-    """Returns a clean database session for each test function."""
-    connection = db_engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
-
-    yield session
-
-    session.close()
-    transaction.rollback()
-    connection.close()
-
-
-@pytest.fixture(scope="function")
-def client(db_session):
-    """Returns a TestClient that uses the test database session."""
-
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-
-    fastapi_app.dependency_overrides[get_db] = override_get_db
-    with TestClient(fastapi_app, raise_server_exceptions=False) as c:
-        yield c
-    fastapi_app.dependency_overrides.clear()
+    secret = os.environ["JWT_SECRET_KEY"]
+    payload = {
+        "user_id": TEST_USER_ID,
+        "role": "Tenant",
+        "organization_id": TEST_ORG_ID,
+        "exp": datetime.utcnow() - timedelta(minutes=10),
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
