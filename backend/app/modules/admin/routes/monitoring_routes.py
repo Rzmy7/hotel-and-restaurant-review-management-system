@@ -454,12 +454,12 @@ def review_processing_jobs() -> list[dict]:
                 else:
                     ui_status = "Queued"
 
-                # Format start time
+                # Format start time — return ISO so the frontend applies timezone
                 start_time = "--"
                 if earliest:
                     try:
                         dt = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
-                        start_time = dt.strftime("%b %d, %H:%M")
+                        start_time = dt.isoformat()
                     except Exception:
                         start_time = str(earliest)[:16]
 
