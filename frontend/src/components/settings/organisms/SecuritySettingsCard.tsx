@@ -257,161 +257,80 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
         className={
           isValid ? "text-emerald-300 text-xs" : "text-slate-400 text-xs"
         }
-      >
-        {label}
-      </span>
-    </div>
-  );
 
-  return (
-    <>
-      <div className="flex flex-col">
-        {(twoFaSuccess || passwordSuccess) && (
-          <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 animate-in fade-in duration-300">
-            {twoFaSuccess || passwordSuccess}
-          </div>
-        )}
+        if (!passwordsMatch) {
+            setPasswordError('Confirm password does not match.');
+            return;
+        }
 
-        <ToggleRow
-          label="Two-Factor Authentication"
-          description="Require a verification code during login"
-          checked={data.twoFactorAuth}
-          onChange={(e) => {
-            void handleTwoFaToggle(e.target.checked);
-          }}
-        />
-        {otpError && !is2faModalOpen && (
-          <p className="mt-2 text-xs text-rose-400">{otpError}</p>
-        )}
-        {isDisabling2fa && (
-          <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
-        )}
-        <FormField label="Password" orientation="horizontal">
-          <div className="flex items-center gap-4 w-full">
-            <span className="text-sm text-gray-400 font-medium tracking-[2px] flex-1">
-              ••••••••
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={openPasswordModal}
-              className="text-[#4e80ee]"
-            >
-              Edit
-            </Button>
-          </div>
-        </FormField>
-      </div>
+        try {
+            setIsSavingPassword(true);
+            setPasswordError(null);
 
-      <Modal
-        isOpen={is2faModalOpen}
-        onClose={() => setIs2faModalOpen(false)}
-        title="Two-Factor Authentication"
-        description="Secure your account with email OTP verification"
-        size="md"
-        className="dark:bg-slate-900 bg-slate-900 text-white border border-slate-700"
-      >
-        <div className="p-6 space-y-5">
-          {twoFaStep === "intro" && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Shield className="text-blue-400" size={18} />
-                  <h3 className="text-sm font-bold tracking-wide">Step 1</h3>
-                </div>
-                <p className="text-sm text-slate-300">
-                  A verification code will be sent to your email during login.
-                </p>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setIs2faModalOpen(false)}
-                  className="dark:border-slate-600 dark:text-slate-300"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => setTwoFaStep("confirm")}
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
+            const responseMessage = await onPasswordChange({
+                currentPassword,
+                newPassword,
+                confirmPassword,
+            });
 
-          {twoFaStep === "confirm" && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Lock className="text-blue-400" size={18} />
-                  <h3 className="text-sm font-bold tracking-wide">Step 2</h3>
-                </div>
-                <p className="text-sm text-slate-300">
-                  Confirm enabling Two-Factor Authentication for this account.
-                </p>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setTwoFaStep("intro")}
-                  className="dark:border-slate-600 dark:text-slate-300"
-                >
-                  Back
-                </Button>
-                <Button variant="primary" onClick={handleConfirmEnable2fa}>
-                  Enable 2FA
-                </Button>
-              </div>
-            </div>
-          )}
+            setIsPasswordModalOpen(false);
+            setPasswordSuccess(
+                logoutAllSessions
+                    ? `${responseMessage} All other sessions will be logged out.`
+                    : responseMessage
+            );
+        } catch (error) {
+            setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+        } finally {
+            setIsSavingPassword(false);
+        }
+    };
 
-          {twoFaStep === "otp" && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 space-y-3">
-                <p className="text-sm text-slate-300">
-                  Enter the code sent to your email
-                </p>
-                <Input
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpValue}
-                  onChange={(e) => {
-                    setOtpError(null);
-                    setOtpValue(e.target.value.replace(/\D/g, "").slice(0, 6));
-                  }}
-                  placeholder="123456"
-                  className="tracking-[0.35em] text-center text-lg font-bold bg-slate-900 border-slate-700 text-slate-100"
-                />
-                {/* Dev code removed since backend handles generation and emailing */}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">
-                    Code expires in:{" "}
-                    <span className="text-slate-200 font-bold">
-                      {formatTimer(otpExpiresIn)}
-                    </span>
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleResendOtp}
-                    disabled={resendCooldown > 0 || isIssuingOtp}
-                    className="text-blue-400"
-                  >
-                    {resendCooldown > 0
-                      ? `Resend in ${resendCooldown}s`
-                      : isIssuingOtp
-                        ? "Sending..."
-                        : "Resend Code"}
-                  </Button>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Attempts left: {Math.max(MAX_OTP_ATTEMPTS - otpAttempts, 0)} |
-                  OTP is one-time use.
-                </p>
-                {otpError && (
-                  <p className="text-xs text-rose-400">{otpError}</p>
+    const canSavePassword = !!currentPassword && isPasswordValid && passwordsMatch;
+
+    const RequirementRow = ({
+        isValid,
+        label,
+    }: {
+        isValid: boolean;
+        label: string;
+    }) => (
+        <div className="flex items-center gap-2">
+            {isValid ? (
+                <CheckCircle2 size={16} className="text-emerald-400" />
+            ) : (
+                <XCircle size={16} className="text-slate-500" />
+            )}
+            <span className={isValid ? 'text-emerald-300 text-xs' : 'text-slate-400 text-xs'}>{label}</span>
+        </div>
+    );
+
+    return (
+        <>
+            <div className="flex flex-col">
+                {(twoFaSuccess || passwordSuccess) && (
+                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 animate-in fade-in duration-300">
+                        {twoFaSuccess || passwordSuccess}
+                    </div>
+                )}
+
+                {data.twoFactorFeatureEnabled !== false && (
+                    <>
+                        <ToggleRow
+                            label="Two-Factor Authentication"
+                            description="Require a verification code during login"
+                            checked={data.twoFactorAuth}
+                            onChange={(e) => {
+                                void handleTwoFaToggle(e.target.checked);
+                            }}
+                        />
+                        {otpError && !is2faModalOpen && (
+                            <p className="mt-2 text-xs text-rose-400">{otpError}</p>
+                        )}
+                        {isDisabling2fa && (
+                            <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
+                        )}
+                    </>
                 )}
               </div>
               <div className="flex justify-end gap-3">

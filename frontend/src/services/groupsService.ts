@@ -230,8 +230,15 @@ export const groupsService = {
     return apiClient.post(`/groups/invites/${inviteId}/reject`);
   },
 
+  // ── Invite Links ──────────────────────────────────────────────────
 
+  async getJoinInfo(token: string): Promise<JoinLinkInfo> {
+    return apiClient.get(`/groups/join/${token}`);
+  },
 
+  async joinViaLink(token: string): Promise<{ message: string; group_id: string }> {
+    return apiClient.post(`/groups/join/${token}`);
+  },
   // ── Organization search ───────────────────────────────────────────
 
   async searchOrganizations(
