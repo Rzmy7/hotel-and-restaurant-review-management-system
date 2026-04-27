@@ -342,6 +342,9 @@ const ReviewSourcesPage = () => {
         <SourcesTable
           sources={filteredSources}
           isLoading={isLoading}
+          isDeleting={deleteSourceMutation.isPending}
+          isStoppingSync={stopSyncMutation.isPending}
+          isTogglingStatus={updateSourceMutation.isPending}
           onEdit={(source, tab = "settings") => {
             setSelectedSource(source);
             setActiveModalTab(tab);
@@ -389,6 +392,9 @@ const ReviewSourcesPage = () => {
             setSelectedSource(null);
           }}
           source={selectedSource}
+          isSaving={updateSourceMutation.isPending}
+          isDeleting={deleteSourceMutation.isPending}
+          isClearingReviews={deleteReviewsMutation.isPending}
           onSave={handleUpdateSource}
           onDelete={handleDeleteSource}
           onClearReviews={handleClearReviews}

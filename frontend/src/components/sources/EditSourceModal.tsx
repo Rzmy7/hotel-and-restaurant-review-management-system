@@ -24,6 +24,9 @@ interface EditSourceModalProps {
   onSave: (source: Source) => void;
   onDelete: (sourceId: string | number) => void;
   onClearReviews?: (sourceId: string | number) => void;
+  isSaving?: boolean;
+  isDeleting?: boolean;
+  isClearingReviews?: boolean;
   initialTab?: "settings" | "analytics";
 }
 
@@ -34,6 +37,9 @@ const EditSourceModal = ({
   onSave,
   onDelete,
   onClearReviews,
+  isSaving = false,
+  isDeleting = false,
+  isClearingReviews = false,
   initialTab = "settings",
 }: EditSourceModalProps) => {
   const [activeTab, setActiveTab] = useState<"settings" | "analytics">(
@@ -114,6 +120,16 @@ const EditSourceModal = ({
     }
   };
 
+  const handleDeleteSource = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to remove this source? This will disconnect the platform and archive all associated data.",
+      )
+    ) {
+      onDelete(source.id);
+    }
+  };
+
   const customHeader = (
     <div className="px-8 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white/80 dark:bg-slate-800/80 backdrop-blur-md sticky top-0 z-10 w-full">
       <div className="flex items-center gap-4">
@@ -155,12 +171,15 @@ const EditSourceModal = ({
       <Button
         variant="ghost"
         onClick={onClose}
+        disabled={isSaving || isDeleting || isClearingReviews}
         className="text-[11px] uppercase tracking-widest px-6"
       >
         Close Node
       </Button>
       <Button
         onClick={handleSave}
+        isLoading={isSaving}
+        disabled={isDeleting || isClearingReviews}
         className="px-8 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
       >
         Save Changes
@@ -298,6 +317,8 @@ const EditSourceModal = ({
                     <Button
                       variant="outline"
                       onClick={handleClearReviews}
+                      isLoading={isClearingReviews}
+                      disabled={isSaving || isDeleting}
                       className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-sm border-amber-200 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/40"
                     >
                       Clear Reviews
@@ -321,7 +342,9 @@ const EditSourceModal = ({
                     </div>
                     <Button
                       variant="danger"
-                      onClick={() => onDelete(source.id)}
+                      onClick={handleDeleteSource}
+                      isLoading={isDeleting}
+                      disabled={isSaving || isClearingReviews}
                       className="px-6 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-sm"
                     >
                       Remove Source

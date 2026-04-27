@@ -27,6 +27,9 @@ interface SourcesTableProps {
   onSync: (id: string | number) => Promise<void> | void;
   onStopSync: (id: string | number) => Promise<void> | void;
   isLoading?: boolean;
+  isDeleting?: boolean;
+  isStoppingSync?: boolean;
+  isTogglingStatus?: boolean;
 }
 
 const PAGE_SIZE = 8;
@@ -162,7 +165,10 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   onToggleStatus,
   onSync,
   onStopSync,
-  isLoading,
+  isLoading = false,
+  isDeleting = false,
+  isStoppingSync = false,
+  isTogglingStatus = false,
 }) => {
   const [page, setPage] = useState(0);
   const [localSyncingIds, setLocalSyncingIds] = useState<Set<string | number>>(
@@ -405,16 +411,22 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         /* STOP button — shown when scraping is in progress */
                         <button
                           onClick={() => onStopSync(source.id)}
-                          className="p-2 text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-lg transition-all"
+                          disabled={isStoppingSync}
+                          className="p-2 text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Stop Sync"
                         >
-                          <Square size={18} fill="currentColor" />
+                          {isStoppingSync ? (
+                            <RefreshCw size={18} className="animate-spin" />
+                          ) : (
+                            <Square size={18} fill="currentColor" />
+                          )}
                         </button>
                       ) : (
                         /* PLAY/PAUSE button — toggles scheduled scraping */
                         <button
                           onClick={() => onToggleStatus(source)}
-                          className={`p-2 rounded-lg transition-all ${
+                          disabled={isTogglingStatus}
+                          className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
                             source.status === "Active"
                               ? "text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40"
                               : "text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
@@ -425,7 +437,9 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                               : "Resume scheduled scraping"
                           }
                         >
-                          {source.status === "Active" ? (
+                          {isTogglingStatus ? (
+                            <RefreshCw size={18} className="animate-spin" />
+                          ) : source.status === "Active" ? (
                             <Pause size={18} />
                           ) : (
                             <Play size={18} />
@@ -453,10 +467,15 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                             onDelete(source.id);
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 rounded-lg transition-all"
+                        disabled={isDeleting}
+                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Remove Source"
                       >
-                        <Trash2 size={18} />
+                        {isDeleting ? (
+                          <RefreshCw size={18} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={18} />
+                        )}
                       </button>
                     </div>
                   </td>
