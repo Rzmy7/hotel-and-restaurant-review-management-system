@@ -15,6 +15,8 @@ import type {
     ReviewProcessingJob,
     GeminiApiKeyConfig,
 } from '../services/reviewProcessingService';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
+import { formatDateTime } from '../utils/dateTime';
 
 const defaultStats: ReviewProcessingStats = {
     activeJobs: 0,
@@ -36,6 +38,7 @@ const defaultGeminiConfig: GeminiApiKeyConfig = {
 };
 
 export const ReviewProcessing: React.FC = () => {
+    const systemTimezone = useSystemTimezone();
     const [stats, setStats] = useState<ReviewProcessingStats>(defaultStats);
     const [jobs, setJobs] = useState<ReviewProcessingJob[]>([]);
     const [loading, setLoading] = useState(true);
@@ -385,7 +388,7 @@ export const ReviewProcessing: React.FC = () => {
                     {geminiConfig.lastTestedAt && (
                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
                             <Clock size={12} />
-                            Last tested: {geminiConfig.lastTestedAt}
+                            Last tested: {formatDateTime(geminiConfig.lastTestedAt, systemTimezone)}
                             {geminiConfig.lastTestResult && (
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                                     geminiConfig.lastTestResult === 'success'
@@ -472,7 +475,7 @@ export const ReviewProcessing: React.FC = () => {
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.startTime}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{formatDateTime(job.startTime, systemTimezone)}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.duration}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">
                                         {job.reviewsProcessed !== null ? job.reviewsProcessed : '--'}

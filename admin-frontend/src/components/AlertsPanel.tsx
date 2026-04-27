@@ -1,9 +1,11 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, Info, X, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import type { SystemAlert } from '../types';
+import { formatDateTime } from '../utils/dateTime';
 
 interface AlertsPanelProps {
     alerts: SystemAlert[];
+    timezone: string;
     onDismiss?: (id: string) => void;
     onViewAll?: () => void;
 }
@@ -11,7 +13,7 @@ interface AlertsPanelProps {
 /**
  * Format an ISO timestamp string into a human-friendly relative label.
  */
-function formatRelativeTime(timestamp: string): string {
+function formatRelativeTime(timestamp: string, timezone: string): string {
     try {
         const date = new Date(timestamp);
         const now = new Date();
@@ -25,13 +27,13 @@ function formatRelativeTime(timestamp: string): string {
         if (diffMin < 60) return `${diffMin}m ago`;
         if (diffHour < 24) return `${diffHour}h ago`;
         if (diffDay < 7) return `${diffDay}d ago`;
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return formatDateTime(timestamp, timezone);
     } catch {
         return timestamp;
     }
 }
 
-export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onViewAll }) => {
+export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, timezone, onDismiss, onViewAll }) => {
     const getAlertIcon = (type: SystemAlert['type']) => {
         switch (type) {
             case 'error':
@@ -147,7 +149,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onDismiss, onV
                                     {alert.message}
                                 </p>
                                 <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
-                                    {formatRelativeTime(alert.timestamp)}
+                                    {formatRelativeTime(alert.timestamp, timezone)}
                                 </p>
                             </div>
                         </div>

@@ -21,8 +21,11 @@ import {
 import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
 import { triggerPendingEmbeddings } from '../services/adminDataService';
 import { Alert } from '../components/Alert';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
+import { formatDateTime } from '../utils/dateTime';
 
 export const Embeddings: React.FC = () => {
+    const systemTimezone = useSystemTimezone();
     const [thresholds, setThresholds] = useState<SimilarityThresholds>({
         oneWord: 1.3,
         twoWords: 1.2,
@@ -501,7 +504,7 @@ export const Embeddings: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400">{job.duration}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">{job.timestamp}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">{formatDateTime(job.timestamp, systemTimezone)}</td>
                                 </tr>
                             ))}
                         </tbody>
