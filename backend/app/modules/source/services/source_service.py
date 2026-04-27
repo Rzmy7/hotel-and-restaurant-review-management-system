@@ -387,30 +387,27 @@ def update_source(
 def delete_source(db: Session, source_id: uuid.UUID):
     source = (
         db.query(SourceSource)
-        .options(joinedload(SourceSource.platform))
         .filter(SourceSource.source_id == source_id)
         .first()
     )
+    
     if not source:
-        raise HTTPException(status_code=404, detail="Source not found")
+        # Already deleted or never existed - return success for idempotency
+        return {"message": "Source already removed"}
 
-    # Capture info before deleting
-    platform_name = source.platform.platform_name if source.platform else "Unknown"
-    org_id = source.organization_id
-
-    # Log Activity BEFORE deleting to avoid foreign key violation
-    log_activity(
-        db,
-        source_id,
-        activity_type="SOURCE_REMOVED",
-        activity_details=f"Disconnected {platform_name} source",
-        is_important=True,
-    )
-
-    db.delete(source)
-    db.commit()
-
-    return {"message": "Source deleted successfully"}
+    try:
+        # We don't log SOURCE_REMOVED to the source itself because cascade delete 
+        # would remove the log immediately anyway.
+        
+        db.delete(source)
+        db.commit()
+        return {"message": "Source deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete source: {str(e)}"
+        )
 
 
 def get_tenant_sources(db: Session, tenant_id: uuid.UUID) -> List[SourceRead]:

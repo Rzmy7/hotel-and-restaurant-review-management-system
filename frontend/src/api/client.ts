@@ -38,6 +38,10 @@ const readErrorMessage = async (
 };
 
 async function handleResponse(response: Response, requestUrl: string) {
+  if (response.status === 204) {
+    return {} as any;
+  }
+
   if (response.status === 401) {
     const backendMessage = await readErrorMessage(response, "Unauthorized");
 
