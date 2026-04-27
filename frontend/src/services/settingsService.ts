@@ -14,9 +14,12 @@ export const settingsService = {
     }
   },
 
-  updateSettings: async (
-    updates: Partial<SettingsData>,
-  ): Promise<SettingsData> => {
+  updateSettings: async (updates: {
+    general?: Partial<SettingsData["general"]>;
+    notifications?: Partial<SettingsData["notifications"]>;
+    security?: Partial<SettingsData["security"]>;
+    hotelInfo?: Partial<SettingsData["hotelInfo"]>;
+  }): Promise<SettingsData> => {
     try {
       const updatedData = await settingsApi.updateSettings(updates);
       return updatedData;

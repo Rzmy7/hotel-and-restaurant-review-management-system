@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, KeyRound, Lock, Shield, XCircle } from "lucide-react";
+import { CheckCircle2, KeyRound, Lock, Shield, XCircle, Sun, Moon, Monitor } from "lucide-react";
 import { settingsService } from "../../../services/settingsService";
 import { ToggleRow } from "../molecules/ToggleRow";
 import { FormField } from "../molecules/FormField";
@@ -7,6 +7,7 @@ import type { SecuritySettings } from "../../../types/settings";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { Modal } from "../../ui/Modal";
+import { Toggle } from "../../ui/Toggle";
 
 interface SecuritySettingsCardProps {
   data: SecuritySettings;
@@ -28,11 +29,8 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
   const RESEND_COOLDOWN_SECONDS = 30;
 
   const [is2faModalOpen, setIs2faModalOpen] = useState(false);
-  const [twoFaStep, setTwoFaStep] = useState<"intro" | "confirm" | "otp">(
-    "intro",
-  );
+  const [twoFaStep, setTwoFaStep] = useState<"intro" | "confirm" | "otp">("intro");
   const [otpValue, setOtpValue] = useState("");
-  const [otpCode, setOtpCode] = useState("");
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [otpExpiresIn, setOtpExpiresIn] = useState(OTP_TTL_SECONDS);
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
@@ -57,14 +55,8 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     };
   }, [newPassword]);
 
-  const isPasswordValid =
-    passwordChecks.minLength &&
-    passwordChecks.uppercase &&
-    passwordChecks.number &&
-    passwordChecks.symbol;
-
-  const passwordsMatch =
-    newPassword.length > 0 && newPassword === confirmPassword;
+  const isPasswordValid = Object.values(passwordChecks).every(Boolean);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
 
   const passwordStrength = useMemo(() => {
     const score = Object.values(passwordChecks).filter(Boolean).length;
@@ -75,22 +67,12 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
 
   useEffect(() => {
     if (!is2faModalOpen || twoFaStep !== "otp") return;
-
     const timer = window.setInterval(() => {
       setOtpExpiresIn((prev) => (prev > 0 ? prev - 1 : 0));
       setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-
     return () => window.clearInterval(timer);
   }, [is2faModalOpen, twoFaStep]);
-
-  const formatTimer = (seconds: number) => {
-    const mm = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const ss = (seconds % 60).toString().padStart(2, "0");
-    return `${mm}:${ss}`;
-  };
 
   const [isIssuingOtp, setIsIssuingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
@@ -106,373 +88,150 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
       setOtpError(null);
     } catch (error) {
-      setOtpError(
-        error instanceof Error ? error.message : "Failed to send OTP code.",
-      );
+      setOtpError(error instanceof Error ? error.message : "Failed to send OTP.");
     } finally {
       setIsIssuingOtp(false);
     }
   };
 
-  const open2faFlow = () => {
-    setTwoFaSuccess(null);
-    setTwoFaStep("intro");
-    setIs2faModalOpen(true);
-  };
-
   const handleTwoFaToggle = async (checked: boolean) => {
     if (checked) {
-      open2faFlow();
+      setTwoFaSuccess(null);
+      setTwoFaStep("intro");
+      setIs2faModalOpen(true);
       return;
     }
-
     try {
       setIsDisabling2fa(true);
-      setOtpError(null);
       await settingsService.disable2FA();
       onChange({ twoFactorAuth: false });
       setTwoFaSuccess("2FA disabled successfully.");
     } catch (error) {
-      setOtpError(
-        error instanceof Error ? error.message : "Failed to disable 2FA.",
-      );
+      setOtpError(error instanceof Error ? error.message : "Failed to disable 2FA.");
     } finally {
       setIsDisabling2fa(false);
     }
   };
 
-  const handleConfirmEnable2fa = async () => {
-    setTwoFaStep("otp");
-    await issueNewOtp();
-  };
-
   const handleVerifyOtp = async () => {
-    if (otpExpiresIn <= 0) {
-      setOtpError("Code expired. Please resend a new code.");
-      return;
-    }
-
-    if (otpAttempts >= MAX_OTP_ATTEMPTS) {
-      setOtpError("Maximum attempts reached. Please resend a new code.");
-      return;
-    }
-
     if (otpValue.length !== 6) {
       setOtpError("Enter a valid 6-digit code.");
       return;
     }
-
     try {
       setIsVerifyingOtp(true);
       await settingsService.enable2FA(otpValue);
       onChange({ twoFactorAuth: true });
       setIs2faModalOpen(false);
       setTwoFaSuccess("2FA enabled successfully.");
-      setOtpValue("");
     } catch (error) {
-      setOtpAttempts((prev) => prev + 1);
-      setOtpError(
-        error instanceof Error
-          ? error.message
-          : `Invalid code. ${Math.max(MAX_OTP_ATTEMPTS - (otpAttempts + 1), 0)} attempts left.`,
-      );
+      setOtpAttempts(p => p + 1);
+      setOtpError(error instanceof Error ? error.message : "Invalid code.");
     } finally {
       setIsVerifyingOtp(false);
     }
   };
 
-  const handleResendOtp = () => {
-    if (resendCooldown > 0) return;
-    issueNewOtp();
-  };
-
-  const openPasswordModal = () => {
-    setPasswordError(null);
-    setPasswordSuccess(null);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setLogoutAllSessions(false);
-    setIsPasswordModalOpen(true);
-  };
-
   const handleSavePassword = async () => {
-    if (!currentPassword) {
-      setPasswordError("Current password is required.");
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setPasswordError("Please satisfy all password requirements.");
-      return;
-    }
-
-    if (!passwordsMatch) {
-      setPasswordError("Confirm password does not match.");
-      return;
-    }
-
+    if (!currentPassword || !isPasswordValid || !passwordsMatch) return;
     try {
       setIsSavingPassword(true);
-      setPasswordError(null);
-
-      const responseMessage = await onPasswordChange({
-        currentPassword,
-        newPassword,
-        confirmPassword,
-      });
-
+      const msg = await onPasswordChange({ currentPassword, newPassword, confirmPassword });
       setIsPasswordModalOpen(false);
-      setPasswordSuccess(
-        logoutAllSessions
-          ? `${responseMessage} All other sessions will be logged out.`
-          : responseMessage,
-      );
+      setPasswordSuccess(msg);
     } catch (error) {
-      setPasswordError(
-        error instanceof Error ? error.message : "Failed to update password",
-      );
+      setPasswordError(error instanceof Error ? error.message : "Failed to update password.");
     } finally {
       setIsSavingPassword(false);
     }
   };
 
-  const canSavePassword =
-    !!currentPassword && isPasswordValid && passwordsMatch;
-
-  const RequirementRow = ({
-    isValid,
-    label,
-  }: {
-    isValid: boolean;
-    label: string;
-  }) => (
+  const RequirementRow = ({ isValid, label }: { isValid: boolean; label: string }) => (
     <div className="flex items-center gap-2">
-      {isValid ? (
-        <CheckCircle2 size={16} className="text-emerald-400" />
-      ) : (
-        <XCircle size={16} className="text-slate-500" />
-      )}
-      <span
-        className={
-          isValid ? "text-emerald-300 text-xs" : "text-slate-400 text-xs"
-        }
+      {isValid ? <CheckCircle2 size={14} className="text-emerald-400" /> : <XCircle size={14} className="text-slate-500" />}
+      <span className={`text-[10px] ${isValid ? "text-emerald-300" : "text-slate-400"}`}>{label}</span>
+    </div>
+  );
 
-        if (!passwordsMatch) {
-            setPasswordError('Confirm password does not match.');
-            return;
-        }
-
-        try {
-            setIsSavingPassword(true);
-            setPasswordError(null);
-
-            const responseMessage = await onPasswordChange({
-                currentPassword,
-                newPassword,
-                confirmPassword,
-            });
-
-            setIsPasswordModalOpen(false);
-            setPasswordSuccess(
-                logoutAllSessions
-                    ? `${responseMessage} All other sessions will be logged out.`
-                    : responseMessage
-            );
-        } catch (error) {
-            setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
-        } finally {
-            setIsSavingPassword(false);
-        }
-    };
-
-    const canSavePassword = !!currentPassword && isPasswordValid && passwordsMatch;
-
-    const RequirementRow = ({
-        isValid,
-        label,
-    }: {
-        isValid: boolean;
-        label: string;
-    }) => (
-        <div className="flex items-center gap-2">
-            {isValid ? (
-                <CheckCircle2 size={16} className="text-emerald-400" />
-            ) : (
-                <XCircle size={16} className="text-slate-500" />
-            )}
-            <span className={isValid ? 'text-emerald-300 text-xs' : 'text-slate-400 text-xs'}>{label}</span>
+  return (
+    <div className="space-y-6">
+      {(twoFaSuccess || passwordSuccess) && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300">
+          {twoFaSuccess || passwordSuccess}
         </div>
-    );
+      )}
 
-    return (
-        <>
-            <div className="flex flex-col">
-                {(twoFaSuccess || passwordSuccess) && (
-                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 animate-in fade-in duration-300">
-                        {twoFaSuccess || passwordSuccess}
-                    </div>
-                )}
+      <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Shield size={16} className="text-blue-400" />
+              Two-Factor Authentication
+            </h3>
+            <p className="text-xs text-slate-400">Add an extra layer of security to your account</p>
+          </div>
+          <Toggle checked={data.twoFactorAuth} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleTwoFaToggle(e.target.checked)} disabled={isDisabling2fa} />
+        </div>
 
-                {data.twoFactorFeatureEnabled !== false && (
-                    <>
-                        <ToggleRow
-                            label="Two-Factor Authentication"
-                            description="Require a verification code during login"
-                            checked={data.twoFactorAuth}
-                            onChange={(e) => {
-                                void handleTwoFaToggle(e.target.checked);
-                            }}
-                        />
-                        {otpError && !is2faModalOpen && (
-                            <p className="mt-2 text-xs text-rose-400">{otpError}</p>
-                        )}
-                        {isDisabling2fa && (
-                            <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
-                        )}
-                    </>
-                )}
+        <div className="border-t border-slate-700/50 pt-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Lock size={16} className="text-purple-400" />
+              Account Password
+            </h3>
+            <p className="text-xs text-slate-400">Change your password regularly to stay secure</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setIsPasswordModalOpen(true)} className="border-slate-700 text-slate-300 hover:bg-slate-700/50">
+            Change Password
+          </Button>
+        </div>
+      </div>
+
+      <Modal isOpen={is2faModalOpen} onClose={() => setIs2faModalOpen(false)} title="Two-Factor Authentication" size="md">
+        <div className="p-6 space-y-4">
+          {twoFaStep === "intro" && (
+            <div className="space-y-4 text-center">
+              <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto">
+                <Shield size={32} className="text-blue-400" />
               </div>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setTwoFaStep("confirm")}
-                  className="dark:border-slate-600 dark:text-slate-300"
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleVerifyOtp}
-                  disabled={isVerifyingOtp}
-                  isLoading={isVerifyingOtp}
-                >
-                  Verify & Enable
-                </Button>
-              </div>
+              <h4 className="text-lg font-bold text-white">Secure your account</h4>
+              <p className="text-sm text-slate-400">We'll send a verification code to your email each time you log in.</p>
+              <Button onClick={() => { setTwoFaStep("otp"); issueNewOtp(); }} className="w-full">Get Started</Button>
+            </div>
+          )}
+
+          {twoFaStep === "otp" && (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400">Enter the 6-digit code sent to your email.</p>
+              <Input value={otpValue} onChange={e => setOtpValue(e.target.value)} placeholder="000000" className="text-center text-2xl tracking-widest" maxLength={6} />
+              {otpError && <p className="text-xs text-rose-400 text-center">{otpError}</p>}
+              <Button onClick={handleVerifyOtp} isLoading={isVerifyingOtp} className="w-full">Verify & Enable</Button>
             </div>
           )}
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isPasswordModalOpen}
-        onClose={() => setIsPasswordModalOpen(false)}
-        title="Update Password"
-        description="Keep your account secure by using a strong password"
-        size="md"
-        className="dark:bg-slate-900 bg-slate-900 text-white border border-slate-700"
-        footer={
-          <div className="flex items-center justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setIsPasswordModalOpen(false)}
-              className="dark:border-slate-600 dark:text-slate-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSavePassword}
-              disabled={!canSavePassword || isSavingPassword}
-              isLoading={isSavingPassword}
-            >
-              Save Password
-            </Button>
-          </div>
-        }
-      >
+      <Modal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} title="Update Password" size="md">
         <div className="p-6 space-y-4">
           <FormField label="Current Password">
-            <Input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => {
-                setPasswordError(null);
-                setCurrentPassword(e.target.value);
-              }}
-              placeholder="Enter current password"
-              className="bg-slate-900 border-slate-700 text-slate-100"
-            />
+            <Input type="password" value={currentPassword} onChange={e => { setPasswordError(null); setCurrentPassword(e.target.value); }} />
           </FormField>
-
           <FormField label="New Password">
-            <Input
-              type="password"
-              value={newPassword}
-              onChange={(e) => {
-                setPasswordError(null);
-                setNewPassword(e.target.value);
-              }}
-              placeholder="Enter new password"
-              className="bg-slate-900 border-slate-700 text-slate-100"
-            />
-            <div className="mt-3 rounded-xl border border-slate-700 bg-slate-800/70 p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-300">
-                  Password Requirements
-                </p>
-                <span
-                  className={`text-xs font-semibold ${passwordStrength.className}`}
-                >
-                  {passwordStrength.label}
-                </span>
-              </div>
-              <RequirementRow
-                isValid={passwordChecks.minLength}
-                label="At least 8 characters"
-              />
-              <RequirementRow
-                isValid={passwordChecks.uppercase}
-                label="Includes uppercase letter"
-              />
-              <RequirementRow
-                isValid={passwordChecks.number}
-                label="Includes number"
-              />
-              <RequirementRow
-                isValid={passwordChecks.symbol}
-                label="Includes symbol"
-              />
+            <Input type="password" value={newPassword} onChange={e => { setPasswordError(null); setNewPassword(e.target.value); }} />
+            <div className="mt-3 grid grid-cols-2 gap-2 p-3 bg-slate-900/50 rounded-xl">
+              <RequirementRow isValid={passwordChecks.minLength} label="8+ chars" />
+              <RequirementRow isValid={passwordChecks.uppercase} label="Uppercase" />
+              <RequirementRow isValid={passwordChecks.number} label="Number" />
+              <RequirementRow isValid={passwordChecks.symbol} label="Symbol" />
             </div>
           </FormField>
-
           <FormField label="Confirm Password">
-            <Input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => {
-                setPasswordError(null);
-                setConfirmPassword(e.target.value);
-              }}
-              placeholder="Re-enter new password"
-              className="bg-slate-900 border-slate-700 text-slate-100"
-            />
-            {confirmPassword.length > 0 && !passwordsMatch && (
-              <p className="mt-2 text-xs text-rose-400">
-                Passwords do not match.
-              </p>
-            )}
+            <Input type="password" value={confirmPassword} onChange={e => { setPasswordError(null); setConfirmPassword(e.target.value); }} />
           </FormField>
-
-          <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <KeyRound size={16} className="text-blue-400" />
-              Log out all other active sessions
-            </div>
-            <input
-              type="checkbox"
-              checked={logoutAllSessions}
-              onChange={(e) => setLogoutAllSessions(e.target.checked)}
-              className="h-4 w-4 accent-blue-500"
-            />
-          </div>
-
-          {passwordError && (
-            <p className="text-xs text-rose-400">{passwordError}</p>
-          )}
+          {passwordError && <p className="text-xs text-rose-400">{passwordError}</p>}
+          <Button onClick={handleSavePassword} isLoading={isSavingPassword} disabled={!currentPassword || !isPasswordValid || !passwordsMatch} className="w-full">Save New Password</Button>
         </div>
       </Modal>
-    </>
+    </div>
   );
 };

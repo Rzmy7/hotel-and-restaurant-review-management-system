@@ -35,7 +35,7 @@ export const handlers = [
 
   // Update Organization (Settings)
   http.patch('*/organizations/:orgId', async ({ request }) => {
-    const updates = await request.json();
+    const updates = await request.json() as Record<string, any>;
     return HttpResponse.json({
       success: true,
       ...updates

@@ -85,79 +85,14 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
                 </div>
             </div>
 
-            {/* Add Admin Button */}
+            {/* Add User Button */}
             <button 
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-blue-200 dark:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                 onClick={onAddClick}
             >
                 <Plus size={20} />
-                Add Admin
+                Add User
             </button>
         </div>
-
-        {/* Role Filter */}
-        <div className="relative">
-          <select
-            value={roleFilter}
-            onChange={(e) => onRoleChange(e.target.value)}
-            className="appearance-none bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-10 text-sm text-gray-700 dark:text-slate-200 font-medium cursor-pointer hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-          >
-            <option>All Roles</option>
-            <option>Admin</option>
-            <option>User</option>
-          </select>
-          <ChevronDown
-            size={16}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none"
-          />
-        </div>
-
-        {/* Subscription Plan Filter */}
-        <div className="relative">
-          <select
-            value={planFilter}
-            onChange={(e) => onPlanChange(e.target.value)}
-            className="appearance-none bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-10 text-sm text-gray-700 dark:text-slate-200 font-medium cursor-pointer hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-          >
-            <option>All Plans</option>
-            {planOptions.map((planName) => (
-              <option key={planName} value={planName}>
-                {planName}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={16}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none"
-          />
-        </div>
-
-        {/* Status Filter */}
-        <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={(e) => onStatusChange(e.target.value)}
-            className="appearance-none bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-10 text-sm text-gray-700 dark:text-slate-200 font-medium cursor-pointer hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-          >
-            <option>All Status</option>
-            <option>Active</option>
-            <option>Suspended</option>
-          </select>
-          <ChevronDown
-            size={16}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none"
-          />
-        </div>
-      </div>
-
-      {/* Add User Button */}
-      <button
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-blue-200 dark:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
-        onClick={onAddClick}
-      >
-        <Plus size={20} />
-        Add User
-      </button>
-    </div>
-  );
+    );
 };

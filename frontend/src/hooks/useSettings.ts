@@ -32,7 +32,12 @@ export const useSettings = () => {
     loadSettings();
   }, [loadSettings]);
 
-  const updateSettings = async (updates: Partial<SettingsData>) => {
+  const updateSettings = async (updates: {
+    general?: Partial<SettingsData["general"]>;
+    notifications?: Partial<SettingsData["notifications"]>;
+    security?: Partial<SettingsData["security"]>;
+    hotelInfo?: Partial<SettingsData["hotelInfo"]>;
+  }) => {
     setSaving(true);
     try {
       const newSettings = await settingsService.updateSettings(updates);

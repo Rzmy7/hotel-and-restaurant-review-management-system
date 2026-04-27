@@ -220,8 +220,20 @@ const ReviewSourcesPage = () => {
       const matchesSearch = source.platform
         .toLowerCase()
         .includes(debouncedSourceSearch.toLowerCase());
-      const matchesStatus =
-        statusFilter === "All" || source.status === statusFilter;
+      
+      let matchesStatus = statusFilter === "All";
+      if (!matchesStatus) {
+        if (statusFilter === "Active") {
+          matchesStatus = ([
+            SOURCE_STATUS.ACTIVE,
+            SOURCE_STATUS.SYNCING,
+            SOURCE_STATUS.IN_QUEUE
+          ] as string[]).includes(source.status);
+        } else {
+          matchesStatus = source.status === statusFilter;
+        }
+      }
+      
       return matchesSearch && matchesStatus;
     });
   }, [sources, debouncedSourceSearch, statusFilter]);

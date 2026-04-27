@@ -37,7 +37,7 @@ type LoginResponse = LoginChallenge | LoginSuccess;
 type AuthContextType = {
     user: User | null;
     login: (email: string, password: string) => Promise<LoginResponse>;
-    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess | User>;
+    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess>;
     signup: (name: string, email: string, password: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
@@ -189,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return successData;
   };
 
-  const verifyLogin2fa = async (email: string, code: string) => {
+  const verifyLogin2fa = async (email: string, code: string): Promise<LoginSuccess> => {
     const data = await apiClient.post<LoginSuccess>("/auth/login/2fa", {
       email,
       code,
@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         backendUser.name ||
         `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() ||
         "User",
-      role: normalizeRole(backendUser.role),
+      role: normalizeRole(backendUser.role || (backendUser.roles && backendUser.roles[0])),
     };
 
     if (!isAdminRole(normalizedUser.role)) {
@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       persist(normalizedUser, data.access_token);
     }
 
-    return normalizedUser;
+    return data;
   };
 
   // SIGNUP
