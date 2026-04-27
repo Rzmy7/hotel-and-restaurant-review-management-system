@@ -4,13 +4,14 @@ from app.modules.admin.services.admin_activity_logger import log_admin_activity
 
 import pyodbc
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from google import genai
 
 from app.core.db_utils import get_connection_string
 from app.core.db_utils import execute_query, get_table_columns
 from app.core.security import hash_password, verify_password
 from app.modules.auth.constants.roles import ADMIN_ROLE_ID
+from app.middleware.permissions import require_admin
 from app.modules.admin.schemas import GeneralSettingsPayload, GeneralSettingsResponse
 from app.modules.admin.schemas import (
     AdminPasswordChangePayload,
@@ -23,8 +24,11 @@ from app.modules.admin.schemas import (
     ReplyGenerationApiTestResponse,
     ReplyGenerationSettingsPayload,
     ReplyGenerationSettingsResponse,
+    SecuritySettingsPayload,
+    SecuritySettingsResponse,
 )
 from app.modules.admin.services.system_settings_service import (
+    DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
     DEFAULT_CURRENCY,
     DEFAULT_DATE_FORMAT,
     DEFAULT_LANGUAGE,
@@ -32,6 +36,7 @@ from app.modules.admin.services.system_settings_service import (
     DEFAULT_REPLY_SELECTED_MODEL,
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
     DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
+    DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
     ensure_system_settings_table,
     get_setting_bool,
     get_setting_int,
@@ -131,7 +136,7 @@ def _fallback_name_from_email(email: str) -> str:
     )
 
 
-def _load_primary_admin_row(cursor: pyodbc.Cursor) -> tuple:
+def _load_admin_row(cursor: pyodbc.Cursor, user_id: str) -> tuple:
     columns = get_table_columns(cursor, "user")
     if not columns:
         raise HTTPException(status_code=400, detail="Table dbo.[user] not found")
@@ -146,24 +151,14 @@ def _load_primary_admin_row(cursor: pyodbc.Cursor) -> tuple:
         return f"[{name}]" if name.lower() in columns else "NULL"
 
     select_clause = f"user_id, email, {_col('first_name')}, {_col('last_name')}, {_col('full_name')}, {_col('name')}, {_col('username')}, {_col('display_name')}, {_col('password_hash')}"
-    order_clause = "ORDER BY created_at ASC" if "created_at" in columns else ""
 
-    if "is_active" in columns:
-        query = (
-            f"SELECT TOP 1 {select_clause} "
-            "FROM dbo.[user] "
-            "WHERE role_id = ? AND COALESCE(is_active, 0) = 1 "
-            f"{order_clause}"
-        )
-    else:
-        query = (
-            f"SELECT TOP 1 {select_clause} "
-            "FROM dbo.[user] "
-            "WHERE role_id = ? "
-            f"{order_clause}"
-        )
+    query = (
+        f"SELECT {select_clause} "
+        "FROM dbo.[user] "
+        "WHERE user_id = ? "
+    )
 
-    row = execute_query(cursor, query, (ADMIN_ROLE_ID,)).fetchone()
+    row = execute_query(cursor, query, (user_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="No admin user found")
     return row
@@ -260,12 +255,75 @@ def update_general_settings(payload: GeneralSettingsPayload) -> GeneralSettingsR
         ) from exc
 
 
-@router.get("/admin-profile", response_model=AdminProfileResponse)
-def get_admin_profile() -> AdminProfileResponse:
+@router.get("/security", response_model=SecuritySettingsResponse)
+def get_security_settings() -> SecuritySettingsResponse:
+    """Return the current user and admin session timeout settings."""
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
-            row = _load_primary_admin_row(cursor)
+            ensure_system_settings_table(cursor)
+
+            user_timeout = get_setting_int(
+                cursor,
+                "session_timeout_user_minutes",
+                default=DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
+            )
+            admin_timeout = get_setting_int(
+                cursor,
+                "session_timeout_admin_minutes",
+                default=DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
+            )
+            require_2fa = get_setting_bool(
+                cursor,
+                "require_two_factor_auth",
+                default=False,
+            )
+
+            return SecuritySettingsResponse(
+                userSessionTimeoutMinutes=user_timeout,
+                adminSessionTimeoutMinutes=admin_timeout,
+                requireTwoFactorAuth=require_2fa,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load security settings: {exc}") from exc
+
+
+@router.patch("/security", response_model=SecuritySettingsResponse)
+def update_security_settings(payload: SecuritySettingsPayload) -> SecuritySettingsResponse:
+    """Persist user and admin session timeout values."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            set_setting(cursor, "session_timeout_user_minutes", str(payload.userSessionTimeoutMinutes))
+            set_setting(cursor, "session_timeout_admin_minutes", str(payload.adminSessionTimeoutMinutes))
+            set_setting(cursor, "require_two_factor_auth", "true" if payload.requireTwoFactorAuth else "false")
+            connection.commit()
+
+            log_admin_activity(
+                "settings_updated",
+                "Security Settings Updated",
+                f"User timeout: {payload.userSessionTimeoutMinutes}m, Admin timeout: {payload.adminSessionTimeoutMinutes}m, 2FA Required: {payload.requireTwoFactorAuth}",
+            )
+
+            return SecuritySettingsResponse(
+                userSessionTimeoutMinutes=payload.userSessionTimeoutMinutes,
+                adminSessionTimeoutMinutes=payload.adminSessionTimeoutMinutes,
+                requireTwoFactorAuth=payload.requireTwoFactorAuth,
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update security settings: {exc}") from exc
+
+
+@router.get("/admin-profile", response_model=AdminProfileResponse)
+def get_admin_profile(current_user: dict = Depends(require_admin)) -> AdminProfileResponse:
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            row = _load_admin_row(cursor, current_user["user_id"])
             return AdminProfileResponse(name=_resolve_admin_name(row))
     except HTTPException:
         raise
@@ -276,7 +334,7 @@ def get_admin_profile() -> AdminProfileResponse:
 
 
 @router.patch("/admin-profile", response_model=AdminProfileResponse)
-def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResponse:
+def update_admin_profile(payload: AdminProfileUpdatePayload, current_user: dict = Depends(require_admin)) -> AdminProfileResponse:
     name_value = " ".join(payload.name.strip().split())
     if not name_value:
         raise HTTPException(status_code=400, detail="Name cannot be empty")
@@ -285,7 +343,7 @@ def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResp
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
             columns = get_table_columns(cursor, "user")
-            row = _load_primary_admin_row(cursor)
+            row = _load_admin_row(cursor, current_user["user_id"])
             user_id = row[0]
 
             set_clauses: list[str] = []
@@ -339,9 +397,7 @@ def update_admin_profile(payload: AdminProfileUpdatePayload) -> AdminProfileResp
 
 
 @router.patch("/admin-profile/password", response_model=AdminPasswordChangeResponse)
-def change_admin_password(
-    payload: AdminPasswordChangePayload,
-) -> AdminPasswordChangeResponse:
+def change_admin_password(payload: AdminPasswordChangePayload, current_user: dict = Depends(require_admin)) -> AdminPasswordChangeResponse:
     if payload.currentPassword == payload.newPassword:
         raise HTTPException(
             status_code=400,
@@ -358,7 +414,7 @@ def change_admin_password(
                     detail="Table dbo.[user] must include password_hash to change password",
                 )
 
-            row = _load_primary_admin_row(cursor)
+            row = _load_admin_row(cursor, current_user["user_id"])
             user_id = row[0]
             password_hash = str(row[8] or "").strip()
 

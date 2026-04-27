@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+<<<<<<< HEAD
 import { normalizeRole } from "../utils/authRole";
+=======
+import { normalizeRole, isAdminRole } from '../utils/authRole';
+>>>>>>> dev
 
 type User = {
   user_id: string;
@@ -33,6 +37,7 @@ type LoginSuccess = {
 type LoginResponse = LoginChallenge | LoginSuccess;
 
 type AuthContextType = {
+<<<<<<< HEAD
   user: User | null;
   login: (email: string, password: string) => Promise<LoginResponse>;
   verifyLogin2fa: (email: string, code: string) => Promise<User>;
@@ -44,6 +49,19 @@ type AuthContextType = {
   checkUserOrganizations: () => Promise<void>;
   exchangeTokenForOrganization: (orgId: string) => Promise<void>;
   isLoading: boolean;
+=======
+    user: User | null;
+    login: (email: string, password: string) => Promise<LoginResponse>;
+    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess>;
+    signup: (name: string, email: string, password: string) => Promise<User>;
+    logout: () => void;
+    forgotPassword: (email: string) => Promise<void>;
+    resetPassword: (token: string, newPassword: string) => Promise<void>;
+    persist: (user: User | null, token?: string) => void;
+    checkUserOrganizations: () => Promise<void>;
+    exchangeTokenForOrganization: (orgId: string) => Promise<void>;
+    isLoading: boolean;
+>>>>>>> dev
 };
 
 const isLoginChallenge = (value: LoginResponse): value is LoginChallenge => {
@@ -317,25 +335,120 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        verifyLogin2fa,
-        signup,
-        logout,
-        forgotPassword,
-        resetPassword,
-        persist,
-        checkUserOrganizations,
-        exchangeTokenForOrganization,
-        isLoading,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+        // Save user + token if not admin
+        if (!isAdminRole(normalizedUser.role)) {
+            persist(normalizedUser, successData.access_token);
+            console.log("Calling checkUserOrganizations...");
+            await checkUserOrganizations();
+        }
+
+        return successData;
+    };
+
+    const verifyLogin2fa = async (email: string, code: string) => {
+        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
+
+        const backendUser = data.user;
+        const normalizedUser: User = {
+            user_id: backendUser.user_id,
+            email: backendUser.email,
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            role: normalizeRole(backendUser.role),
+        };
+
+        if (!isAdminRole(normalizedUser.role)) {
+            persist(normalizedUser, data.access_token);
+            await checkUserOrganizations();
+        }
+
+        return data;
+    };
+
+    // ----------------------------------------------------
+    // SIGNUP
+    // ----------------------------------------------------
+    const signup = async (name: string, email: string, password: string) => {
+        const payload = await apiClient.post<any>('/auth/signup', { name, email, password });
+        
+        console.log("Signup response:", payload);
+
+        const backendUser = payload.user || payload;
+        const normalizedUser: User = {
+            user_id: backendUser.id || backendUser.user_id,
+            email: backendUser.email,
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            role: normalizeRole(backendUser.role || backendUser.roles),
+        };
+
+        if (payload.access_token) {
+            if (!isAdminRole(normalizedUser.role)) {
+                persist(normalizedUser, payload.access_token);
+            }
+        } else {
+            // login and persist without organization-based redirect
+            const loginPayload = await apiClient.post<any>('/auth/login', { email, password });
+            const loginUser = loginPayload.user;
+            const normalizedLoginUser: User = {
+                user_id: loginUser.user_id,
+                email: loginUser.email,
+                full_name: loginUser.full_name || loginUser.name || `${loginUser.first_name || ""} ${loginUser.last_name || ""}`.trim() || "User",
+                role: normalizeRole(loginUser.role || loginUser.roles),
+            };
+            if (!isAdminRole(normalizedLoginUser.role)) {
+                persist(normalizedLoginUser, loginPayload.access_token);
+                await checkUserOrganizations();
+            }
+            return normalizedLoginUser;
+        }
+
+        if (!isAdminRole(normalizedUser.role)) {
+            await checkUserOrganizations();
+        }
+        return normalizedUser;
+    };
+
+    // ----------------------------------------------------
+    // LOGOUT
+    // ----------------------------------------------------
+    const logout = () => {
+        localStorage.clear();
+        setUser(null);
+        window.location.href = "/login";
+    };
+
+    // ----------------------------------------------------
+    // FORGOT PASSWORD
+    // ----------------------------------------------------
+    const forgotPassword = async (email: string) => {
+        await apiClient.post<any>('/auth/forgot-password', { email });
+    };
+
+    // ----------------------------------------------------
+    // RESET PASSWORD
+    // ----------------------------------------------------
+    const resetPassword = async (token: string, newPassword: string) => {
+        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
+    };
+
+    return (
+        <AuthContext.Provider
+            value={{
+                user,
+                login,
+                verifyLogin2fa,
+                signup,
+                logout,
+                forgotPassword,
+                resetPassword,
+                persist,
+                checkUserOrganizations,
+                exchangeTokenForOrganization,
+                isLoading,
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 export const useAuth = () => {

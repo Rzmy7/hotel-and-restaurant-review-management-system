@@ -170,8 +170,7 @@ def list_org_groups(db: Session, organization_id: str) -> List[dict]:
                 g.description,
                 g.is_private,
                 g.settings,
-                g.invite_link_token,
-                g.invite_link_expires_at,
+
                 g.created_by,
                 g.created_at,
                 gm.role,
@@ -187,10 +186,6 @@ def list_org_groups(db: Session, organization_id: str) -> List[dict]:
     result = []
     for r in rows:
         settings = _parse_settings(r.settings)
-        has_link = bool(r.invite_link_token) and (
-            r.invite_link_expires_at is None
-            or r.invite_link_expires_at > datetime.now(timezone.utc)
-        )
         result.append(
             {
                 "group_id": str(r.group_id),
@@ -198,8 +193,6 @@ def list_org_groups(db: Session, organization_id: str) -> List[dict]:
                 "description": r.description,
                 "is_private": bool(r.is_private),
                 "settings": settings.model_dump(),
-                "has_invite_link": has_link,
-                "invite_link_token": r.invite_link_token if has_link else None,
                 "created_by": str(r.created_by),
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "member_count": r.member_count,
@@ -222,8 +215,7 @@ def get_group_detail(
                 g.avatar_url,
                 g.is_private,
                 g.settings,
-                g.invite_link_token,
-                g.invite_link_expires_at,
+
                 g.created_by,
                 g.created_at,
                 gm.role,
@@ -239,10 +231,6 @@ def get_group_detail(
         return None
 
     settings = _parse_settings(row.settings)
-    now = datetime.now(timezone.utc)
-    has_link = bool(row.invite_link_token) and (
-        row.invite_link_expires_at is None or row.invite_link_expires_at > now
-    )
     return {
         "group_id": str(row.group_id),
         "group_name": row.group_name,
@@ -250,8 +238,6 @@ def get_group_detail(
         "avatar_url": row.avatar_url,
         "is_private": bool(row.is_private),
         "settings": settings.model_dump(),
-        "has_invite_link": has_link,
-        "invite_link_token": row.invite_link_token if has_link else None,
         "created_by": str(row.created_by),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "member_count": row.member_count,
@@ -363,7 +349,7 @@ def create_org_invite(
     message: Optional[str] = None,
     expires_days: int = 7,
 ) -> GroupInvite:
-    expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+    expires_at = datetime.utcnow() + timedelta(days=expires_days)
     invite = GroupInvite(
         invite_id=uuid.uuid4(),
         group_id=group_id,
@@ -549,7 +535,6 @@ def _invite_row_to_dict(r) -> dict:
     }
 
 
-# ── Invite link ──────────────────────────────────────────────────────
 
 
 def generate_invite_link(db: Session, group: Group, expires_days: int = 7) -> str:
@@ -624,6 +609,38 @@ def search_organizations(
         for r in rows
     ]
 
+
+def search_public_groups(db: Session, query: str, limit: int = 20) -> List[dict]:
+    """Search for public groups by name or description."""
+    q = f"%{query}%"
+    rows = db.execute(
+        text("""
+            SELECT TOP (:lim)
+                g.group_id,
+                g.group_name,
+                g.description,
+                g.avatar_url,
+                g.created_at,
+                (SELECT COUNT(*) FROM group_member gm WHERE gm.group_id = g.group_id) AS member_count
+            FROM [group] g
+            WHERE g.is_private = 0
+              AND (g.group_name LIKE :q OR g.description LIKE :q)
+            ORDER BY g.created_at DESC
+        """),
+        {"q": q, "lim": limit},
+    ).fetchall()
+
+    return [
+        {
+            "group_id": str(r.group_id),
+            "group_name": r.group_name,
+            "description": r.description,
+            "avatar_url": r.avatar_url,
+            "member_count": r.member_count,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
 
 # ── Analytics ────────────────────────────────────────────────────────
 

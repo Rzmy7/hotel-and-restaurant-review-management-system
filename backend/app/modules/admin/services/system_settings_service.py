@@ -14,6 +14,8 @@ DEFAULT_REPLY_GOOGLE_MODEL = "gemini-2.5-flash-lite"
 DEFAULT_REPLY_SELECTED_MODEL = DEFAULT_REPLY_GOOGLE_MODEL
 DEFAULT_REPLY_USE_EMBEDDING_RULES = True
 DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
+DEFAULT_USER_SESSION_TIMEOUT_MINUTES = 60
+DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES = 60
 
 
 def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
@@ -155,3 +157,23 @@ def get_setting_bool_orm(db: "Session", key: str, default: bool = False) -> bool
     if val in {"0", "false", "no", "off", "disabled"}:
         return False
     return default
+
+
+def get_session_timeout_minutes(cursor: pyodbc.Cursor, role: str) -> int:
+    """Return the configured session timeout in minutes for a given role.
+
+    *role* is compared case-insensitively.  ``"admin"`` maps to
+    ``session_timeout_admin_minutes``; everything else maps to
+    ``session_timeout_user_minutes``.
+    """
+    if role.strip().lower() == "admin":
+        return get_setting_int(
+            cursor,
+            "session_timeout_admin_minutes",
+            default=DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
+        )
+    return get_setting_int(
+        cursor,
+        "session_timeout_user_minutes",
+        default=DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
+    )

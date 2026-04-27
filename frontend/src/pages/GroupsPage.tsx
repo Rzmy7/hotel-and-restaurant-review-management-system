@@ -1,27 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Users,
-  Plus,
-  Crown,
-  Shield,
-  Clock,
-  ChevronRight,
-  Check,
-  X,
-  Bell,
-  Lock,
-  Globe,
-  Loader2,
-  Building2,
-} from "lucide-react";
-import {
-  groupsService,
-  type Group,
-  type GroupInvite,
-} from "../services/groupsService";
-import { useToast } from "../contexts/ToastContext";
-import { useOrganizationStore } from "../stores/useOrganizationStore";
+  Users, Plus, Crown, Shield, Clock, ChevronRight, Search,
+  Check, X, Bell, Lock, Globe, Loader2, Building2
+} from 'lucide-react';
+import { groupsService, type Group, type GroupInvite } from '../services/groupsService';
+import { useToast } from '../contexts/ToastContext';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
+import SearchPublicGroupsModal from '../components/groups/SearchPublicGroupsModal';
 
 // ── Create Group Modal ────────────────────────────────────────────────
 
@@ -109,9 +95,13 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onClick={() => setIsPrivate((p) => !p)}
               className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${isPrivate ? "bg-[#3b82f6]" : "bg-gray-300 dark:bg-slate-600"}`}
             >
+<<<<<<< HEAD
               <span
                 className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${isPrivate ? "translate-x-5" : "translate-x-1"}`}
               />
+=======
+              <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${isPrivate ? 'translate-x-5' : 'translate-x-1'}`} />
+>>>>>>> dev
             </button>
             <div>
               <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">
@@ -319,6 +309,7 @@ const GroupsPage: React.FC = () => {
   const [loadingInvites, setLoadingInvites] = useState(true);
   const [inviteActionLoading, setInviteActionLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   const fetchGroups = useCallback(
     async (orgId: string) => {
@@ -413,9 +404,17 @@ const GroupsPage: React.FC = () => {
             </span>
           )}
           <button
+            onClick={() => setShowSearchModal(true)}
+            disabled={!currentOrg?.id}
+            className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-700 px-5 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-sm transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Search size={16} />
+            Search
+          </button>
+          <button
             onClick={() => setShowCreateModal(true)}
             disabled={!currentOrg?.id}
-            className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={16} />
             New Group
@@ -554,6 +553,17 @@ const GroupsPage: React.FC = () => {
           onClose={() => setShowCreateModal(false)}
           onCreated={() => fetchGroups(currentOrg.id!)}
           organizationId={currentOrg.id}
+        />
+      )}
+
+      {showSearchModal && (
+        <SearchPublicGroupsModal
+          onClose={() => setShowSearchModal(false)}
+          onJoinSuccess={() => {
+            if (currentOrg?.id) {
+              fetchGroups(currentOrg.id);
+            }
+          }}
         />
       )}
     </div>

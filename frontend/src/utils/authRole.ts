@@ -16,18 +16,18 @@ export const normalizeRole = (value: unknown): string => {
 
 const ADMIN_ROLES = new Set(["ADMIN", "SYSTEM_ADMIN", "SUPER_ADMIN"]);
 
-const getAdminPanelUrl = (): string => {
-  const base = getAdminPanelBaseUrl();
-  const token = localStorage.getItem("token");
-  const authUser = localStorage.getItem("authUser");
-
-  if (token) {
-    const params = new URLSearchParams();
-    params.set("token", token);
-    if (authUser) params.set("user", authUser);
-    return `${base}?${params.toString()}`;
-  }
-  return base;
+const getAdminPanelUrl = (providedToken?: string, providedUser?: string): string => {
+    const base = getAdminPanelBaseUrl();
+    const token = providedToken || localStorage.getItem('token');
+    const authUser = providedUser || localStorage.getItem('authUser');
+    
+    if (token) {
+        const params = new URLSearchParams();
+        params.set('token', token);
+        if (authUser) params.set('user', authUser);
+        return `${base}?${params.toString()}`;
+    }
+    return base;
 };
 
 export const isAdminRole = (value: unknown): boolean =>
@@ -36,5 +36,5 @@ export const isAdminRole = (value: unknown): boolean =>
 export const isExternalDestination = (value: string): boolean =>
   /^https?:\/\//i.test(value);
 
-export const getDashboardPathForRole = (value: unknown): string =>
-  isAdminRole(value) ? getAdminPanelUrl() : "/dashboard";
+export const getDashboardPathForRole = (value: unknown, token?: string, userStr?: string): string =>
+    isAdminRole(value) ? getAdminPanelUrl(token, userStr) : '/dashboard';

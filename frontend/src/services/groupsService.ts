@@ -13,8 +13,7 @@ export interface Group {
   avatar_url: string | null;
   is_private: boolean;
   settings: GroupSettings;
-  has_invite_link: boolean;
-  invite_link_token: string | null;
+
   created_by: string;
   created_at: string;
   member_count: number;
@@ -115,19 +114,21 @@ export const groupsService = {
     return apiClient.get("/groups", { organization_id: organizationId });
   },
 
-  async createGroup(
-    organizationId: string,
-    data: {
-      group_name: string;
-      description?: string;
-      is_private?: boolean;
-      settings?: Partial<GroupSettings>;
-    },
-  ): Promise<{ group_id: string; group_name: string }> {
-    return apiClient.post("/groups", {
-      ...data,
-      organization_id: organizationId,
-    });
+  async searchPublicGroups(query: string): Promise<{ groups: Group[] }> {
+    return apiClient.get('/groups/search-public', { q: query });
+  },
+
+  async joinPublicGroup(groupId: string): Promise<{ message: string; group_id: string }> {
+    return apiClient.post(`/groups/${groupId}/join`);
+  },
+
+  async createGroup(organizationId: string, data: {
+    group_name: string;
+    description?: string;
+    is_private?: boolean;
+    settings?: Partial<GroupSettings>;
+  }): Promise<{ group_id: string; group_name: string }> {
+    return apiClient.post('/groups', { ...data, organization_id: organizationId });
   },
 
   async getGroup(groupId: string, organizationId: string): Promise<Group> {
@@ -149,6 +150,10 @@ export const groupsService = {
 
   async deleteGroup(groupId: string): Promise<{ message: string }> {
     return apiClient.delete(`/groups/${groupId}`);
+  },
+
+  async leaveGroup(groupId: string): Promise<{ message: string }> {
+    return apiClient.post(`/groups/${groupId}/leave`);
   },
 
   // ── Members ──────────────────────────────────────────────────────
@@ -225,27 +230,7 @@ export const groupsService = {
     return apiClient.post(`/groups/invites/${inviteId}/reject`);
   },
 
-  // ── Invite link ───────────────────────────────────────────────────
 
-  async generateInviteLink(
-    groupId: string,
-  ): Promise<{ token: string; expires_in_days: number }> {
-    return apiClient.post(`/groups/${groupId}/invite-link`);
-  },
-
-  async revokeInviteLink(groupId: string): Promise<{ message: string }> {
-    return apiClient.delete(`/groups/${groupId}/invite-link`);
-  },
-
-  async getJoinInfo(token: string): Promise<JoinLinkInfo> {
-    return apiClient.get(`/groups/join/${token}`);
-  },
-
-  async joinViaLink(
-    token: string,
-  ): Promise<{ message: string; group_id: string }> {
-    return apiClient.post(`/groups/join/${token}`);
-  },
 
   // ── Organization search ───────────────────────────────────────────
 

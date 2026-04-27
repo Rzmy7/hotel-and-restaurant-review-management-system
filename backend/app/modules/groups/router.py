@@ -314,6 +314,39 @@ def create_group(
 #  GROUP-SPECIFIC ROUTES  /{group_id}
 # ══════════════════════════════════════════════════════════════════════
 
+@router.get("/search-public")
+def search_public_groups(
+    q: str = Query(..., min_length=1),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Search public groups by name or description."""
+    results = repo.search_public_groups(db, q)
+    return {"groups": results}
+
+
+@router.post("/{group_id}/join")
+def join_public_group(
+    group_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Join a public group."""
+    org_id = _get_current_org_id(current_user, db)
+    group = _get_group_or_404(group_id, db)
+    
+    if group.is_private:
+        raise HTTPException(status_code=403, detail="Cannot join a private group directly.")
+
+    if repo.get_member(db, group_id, org_id):
+        return {"message": "Your organization is already a member of this group.", "group_id": group_id}
+
+    repo.add_member(db, group_id, org_id)
+    return {
+        "message": f"Your organization has joined '{group.group_name}' successfully.",
+        "group_id": group_id,
+    }
+
 
 @router.get("/{group_id}")
 def get_group(
@@ -366,6 +399,27 @@ def delete_group(
     group = _get_group_or_404(group_id, db)
     repo.delete_group(db, group)
     return {"message": "Group deleted."}
+
+
+@router.post("/{group_id}/leave")
+def leave_group(
+    group_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Leave the group. Members only, owners cannot leave."""
+    org_id = _get_current_org_id(current_user, db)
+    role = repo.get_org_group_role(db, group_id, org_id)
+    if not role:
+        raise HTTPException(status_code=403, detail="You are not a member of this group.")
+    if role == "GROUP_OWNER":
+        raise HTTPException(status_code=400, detail="Group owner cannot leave the group. You must delete it instead.")
+
+    removed = repo.remove_member(db, group_id, org_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Member organization not found.")
+
+    return {"message": "You have left the group."}
 
 
 # ── Members ──────────────────────────────────────────────────────────
@@ -504,9 +558,17 @@ def list_invites(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return all invites for this group. Owner only."""
+    """Return all invites for this group. Owner and permitted members."""
     org_id = _get_current_org_id(current_user, db)
-    _require_owner(group_id, org_id, db)
+    role = _require_member(group_id, org_id, db)
+    group = _get_group_or_404(group_id, db)
+    
+    if role == "GROUP_MEMBER":
+        from app.modules.groups.repository import _parse_settings
+        settings = _parse_settings(group.settings)
+        if not settings.can_members_invite:
+            raise HTTPException(status_code=403, detail="Members are not allowed to view invites in this group.")
+
     invites = repo.list_group_invites(db, group_id)
     return {"invites": invites, "count": len(invites)}
 
@@ -620,39 +682,3 @@ def cancel_invite(
     repo.cancel_invite(db, invite)
     return {"message": "Invite cancelled."}
 
-
-# ── Invite link ───────────────────────────────────────────────────────
-
-
-@router.post("/{group_id}/invite-link")
-def generate_invite_link(
-    group_id: str,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Generate (or regenerate) an invite link for the group. Owner only."""
-    org_id = _get_current_org_id(current_user, db)
-    _require_owner(group_id, org_id, db)
-    group = _get_group_or_404(group_id, db)
-    token = repo.generate_invite_link(db, group)
-    return {
-        "message": "Invite link generated.",
-        "token": token,
-        "expires_in_days": 7,
-    }
-
-
-@router.delete("/{group_id}/invite-link")
-def revoke_invite_link(
-    group_id: str,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Revoke the current invite link for the group. Owner only."""
-    org_id = _get_current_org_id(current_user, db)
-    _require_owner(group_id, org_id, db)
-    group = _get_group_or_404(group_id, db)
-    if not group.invite_link_token:
-        raise HTTPException(status_code=400, detail="No active invite link to revoke.")
-    repo.revoke_invite_link(db, group)
-    return {"message": "Invite link revoked."}
