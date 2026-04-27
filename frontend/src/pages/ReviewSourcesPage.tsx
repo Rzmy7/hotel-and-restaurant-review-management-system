@@ -357,6 +357,7 @@ const ReviewSourcesPage = () => {
         {/* Sources List */}
         <SourcesTable
           sources={filteredSources}
+          hasAnySources={sources.length > 0}
           isLoading={isLoading}
           isDeleting={deleteSourceMutation.isPending}
           isStoppingSync={stopSyncMutation.isPending}

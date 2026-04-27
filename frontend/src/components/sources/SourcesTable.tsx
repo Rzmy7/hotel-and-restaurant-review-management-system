@@ -33,6 +33,7 @@ interface SourcesTableProps {
   isStoppingSync?: boolean;
   isTogglingStatus?: boolean;
   onAddClick?: () => void;
+  hasAnySources?: boolean;
 }
 
 const PAGE_SIZE = 8;
@@ -178,6 +179,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   isStoppingSync = false,
   isTogglingStatus = false,
   onAddClick,
+  hasAnySources = true,
 }) => {
   const [page, setPage] = useState(0);
   const [localSyncingIds, setLocalSyncingIds] = useState<Set<string | number>>(
@@ -267,11 +269,11 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
           No sources found
         </h3>
         <p className="text-sm text-gray-400 dark:text-slate-500 mt-2 max-w-[300px] font-medium">
-          {sources.length === 0
+          {!hasAnySources
             ? "Connect your first review platform to start collecting insights across the web."
             : "No sources match your current filter criteria. Try adjusting your search or filters."}
         </p>
-        {sources.length === 0 && (
+        {!hasAnySources && (
           <button
             onClick={() => onAddClick?.()}
             className="mt-8 flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-8 py-3 rounded-2xl text-[13px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all active:scale-95"
