@@ -19,6 +19,8 @@ jobs:
       backend: ${{ steps.check.outputs.backend }}
       embedding: ${{ steps.check.outputs.embedding }}
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
         with:
           clean: false
@@ -63,6 +65,8 @@ jobs:
       run:
         working-directory: backend
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
         with:
           clean: false
@@ -109,6 +113,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
         with:
           clean: false
@@ -146,6 +152,8 @@ jobs:
       run:
         working-directory: admin-frontend
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
         with:
           clean: false
@@ -183,6 +191,8 @@ jobs:
       run:
         working-directory: microservices/embedding-service
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
         with:
           clean: false
