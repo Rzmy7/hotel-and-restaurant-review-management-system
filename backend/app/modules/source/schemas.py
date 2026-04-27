@@ -90,6 +90,7 @@ class SourceRead(BaseModel):
     platform_num_of_syncs: int
     platform_success_sync_count: int
     success_rate: float
+    last_error_message: Optional[str] = None
     created_at: datetime
 
     class Config:

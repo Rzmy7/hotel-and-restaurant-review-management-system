@@ -76,6 +76,19 @@ def calculate_success_rate(
     return round(((psr + isr) / 2) * 100, 2)
 
 
+def get_last_error_message(db: Session, source_id: uuid.UUID) -> Optional[str]:
+    """Fetch the latest error message from sync logs for a source."""
+    last_error_log = (
+        db.query(SyncLogSource)
+        .filter(
+            SyncLogSource.source_id == source_id, SyncLogSource.status == "Failed"
+        )
+        .order_by(SyncLogSource.timestamp.desc())
+        .first()
+    )
+    return last_error_log.error_message if last_error_log else None
+
+
 def get_platforms(db: Session, include_inactive: bool = False) -> List[PlatformRead]:
     query = db.query(PlatformSource)
     if not include_inactive:
@@ -158,6 +171,11 @@ def get_organization_sources_with_stats(
                     source.num_of_syncs,
                     source.platform.success_sync_count,
                     source.platform.num_of_syncs,
+                ),
+                last_error_message=(
+                    get_last_error_message(db, source.source_id)
+                    if source.source_status == "error"
+                    else None
                 ),
                 created_at=source.created_at,
             )

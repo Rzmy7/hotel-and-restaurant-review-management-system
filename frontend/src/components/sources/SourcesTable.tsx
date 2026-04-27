@@ -9,6 +9,7 @@ import {
   ExternalLink,
   RefreshCw,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import type { Source } from "../../types/sources";
 import { SOURCE_STATUS, SOURCE_PLATFORM } from "../../constants/sources";
@@ -31,6 +32,7 @@ interface SourcesTableProps {
   isDeleting?: boolean;
   isStoppingSync?: boolean;
   isTogglingStatus?: boolean;
+  onAddClick?: () => void;
 }
 
 const PAGE_SIZE = 8;
@@ -121,9 +123,11 @@ const SyncProgressBar = ({ sourceId }: { sourceId: string | number }) => {
 const StatusBadge = ({
   status,
   sourceId,
+  errorMessage,
 }: {
   status: Source["status"];
   sourceId: string | number;
+  errorMessage?: string;
 }) => {
   switch (status) {
     case SOURCE_STATUS.ACTIVE:
@@ -142,7 +146,10 @@ const StatusBadge = ({
       );
     case SOURCE_STATUS.ERROR:
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50 dark:bg-rose-900/40 dark:text-rose-400 dark:border-rose-800/50 dark:shadow-none">
+        <span
+          title={errorMessage || "An unknown error occurred during the last sync"}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50 dark:bg-rose-900/40 dark:text-rose-400 dark:border-rose-800/50 dark:shadow-none cursor-help"
+        >
           <AlertCircle size={10} />
           Error
         </span>
@@ -170,6 +177,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   isDeleting = false,
   isStoppingSync = false,
   isTogglingStatus = false,
+  onAddClick,
 }) => {
   const [page, setPage] = useState(0);
   const [localSyncingIds, setLocalSyncingIds] = useState<Set<string | number>>(
@@ -249,23 +257,33 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                 </tr>
               ))
             ) : currentSources.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-20 text-center">
-                  <div className="flex flex-col items-center">
-                    <div className="p-4 bg-gray-50 dark:bg-slate-700 rounded-full mb-3 text-gray-300 dark:text-slate-500">
-                      <RefreshCw size={32} />
-                    </div>
-                    <p className="text-gray-500 dark:text-slate-300 font-medium">
-                      No sources connected yet
-                    </p>
-                    <p className="text-sm text-gray-400 dark:text-slate-400 mt-1">
-                      Add your first review platform to start collecting
-                      insights
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
+  <tr>
+    <td colSpan={6} className="px-6 py-24 text-center">
+      <div className="flex flex-col items-center">
+        <div className="w-20 h-20 bg-gray-50 dark:bg-slate-900/50 rounded-3xl flex items-center justify-center mb-6 border border-gray-100 dark:border-slate-800 shadow-inner">
+          <RefreshCw size={32} className="text-gray-300 dark:text-slate-600" />
+        </div>
+        <h3 className="text-gray-900 dark:text-white font-black text-lg uppercase tracking-tight">
+          No sources found
+        </h3>
+        <p className="text-sm text-gray-400 dark:text-slate-500 mt-2 max-w-[300px] font-medium">
+          {sources.length === 0
+            ? "Connect your first review platform to start collecting insights across the web."
+            : "No sources match your current filter criteria. Try adjusting your search or filters."}
+        </p>
+        {sources.length === 0 && (
+          <button
+            onClick={() => onAddClick?.()}
+            className="mt-8 flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-8 py-3 rounded-2xl text-[13px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all active:scale-95"
+          >
+            <Plus size={18} />
+            Connect Your First Source
+          </button>
+        )}
+      </div>
+    </td>
+  </tr>
+) : (
               currentSources.map((source) => (
                 <tr
                   key={source.id}
@@ -305,7 +323,11 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
 
                   {/* Status */}
                   <td className="px-6 py-5">
-                    <StatusBadge status={source.status} sourceId={source.id} />
+                    <StatusBadge
+                      status={source.status}
+                      sourceId={source.id}
+                      errorMessage={source.lastErrorMessage}
+                    />
                   </td>
 
                   {/* Last Synced */}

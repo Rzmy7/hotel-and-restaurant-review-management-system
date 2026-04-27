@@ -37,6 +37,7 @@ export interface Source {
   platform_num_of_syncs: number;
   platform_success_sync_count: number;
   errorCount: number;
+  lastErrorMessage?: string;
   nextRunAt: string | null;
   createdAt: string;
 }

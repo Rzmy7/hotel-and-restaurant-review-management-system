@@ -54,6 +54,7 @@ interface SyncHistoryPanelProps {
   onClear?: () => void;
   isExporting?: boolean;
   isClearing?: boolean;
+  onRetry?: (sourceId: string | number) => void;
 }
 
 const getActivityIcon = (type?: string, status?: string) => {
@@ -100,11 +101,29 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
   onClear,
   isExporting = false,
   isClearing = false,
+  onRetry,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { progress } = useSyncProgress(
     activeSyncSourceId || null,
     isOpen && !!activeSyncSourceId,
+  );
+
+  // Group logs by date
+  const groupedLogs = logs.reduce(
+    (groups: { [key: string]: SyncLog[] }, log) => {
+      const date = new Date(log.timestamp).toLocaleDateString([], {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      });
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(log);
+      return groups;
+    },
+    {},
   );
 
   // Infinite scroll listener
@@ -297,55 +316,77 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-8 py-4 space-y-8 scrollbar-hide"
         >
-          {logs.map((log, index) => (
-            <div key={log.id} className="relative flex gap-6 group">
-              {/* Line */}
-              {index !== logs.length - 1 && (
-                <div className="absolute left-[19px] top-10 bottom-[-32px] w-[2px] bg-slate-100 dark:bg-slate-800/50 group-hover:bg-[#597FE6]/20 transition-colors" />
-              )}
-
-              {/* Icon Wrapper */}
-              <div
-                className={cn(
-                  "relative w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border transition-all duration-500",
-                  log.status === "Failed"
-                    ? "bg-rose-50 border-rose-100 dark:bg-rose-900/20 dark:border-rose-800"
-                    : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800 shadow-sm",
-                )}
-              >
-                {getActivityIcon(log.activityType, log.status)}
+          {Object.entries(groupedLogs).map(([date, dateLogs]) => (
+            <div key={date} className="space-y-6">
+              <div className="sticky top-0 z-10 py-2 bg-white/80 dark:bg-[#121826]/80 backdrop-blur-md">
+                <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800/50 pb-2">
+                  {date}
+                </h3>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 pt-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                    {log.activityType?.replace(/_/g, " ") || "Sync Activity"}
-                  </h4>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-                    {new Date(log.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed font-medium">
-                  {log.activityDetails ||
-                    `Sync for ${log.platform} completed with ${log.reviewsFetched} reviews.`}
-                </p>
+              {dateLogs.map((log, index) => (
+                <div key={log.id} className="relative flex gap-6 group">
+                  {/* Line */}
+                  {index !== dateLogs.length - 1 && (
+                    <div className="absolute left-[19px] top-10 bottom-[-32px] w-[2px] bg-slate-100 dark:bg-slate-800/50 group-hover:bg-[#597FE6]/20 transition-colors" />
+                  )}
 
-                {log.status === "Failed" && log.errorMessage && (
-                  <div className="mt-3 p-3 rounded-xl bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100/50 dark:border-rose-800/30 flex items-start gap-2">
-                    <AlertCircle
-                      size={14}
-                      className="text-rose-500 shrink-0 mt-0.5"
-                    />
-                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold leading-tight">
-                      {log.errorMessage}
-                    </p>
+                  {/* Icon Wrapper */}
+                  <div
+                    className={cn(
+                      "relative w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border transition-all duration-500",
+                      log.status === "Failed"
+                        ? "bg-rose-50 border-rose-100 dark:bg-rose-900/20 dark:border-rose-800"
+                        : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800 shadow-sm",
+                    )}
+                  >
+                    {getActivityIcon(log.activityType, log.status)}
                   </div>
-                )}
-              </div>
+
+                  {/* Content */}
+                  <div className="flex-1 pt-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        {log.activityType?.replace(/_/g, " ") || "Sync Activity"}
+                      </h4>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+                        {new Date(log.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed font-medium">
+                      {log.activityDetails ||
+                        `Sync for ${log.platform} completed with ${log.reviewsFetched} reviews.`}
+                    </p>
+
+                    {log.status === "Failed" && log.errorMessage && (
+                      <div className="mt-3 p-3 rounded-xl bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100/50 dark:border-rose-800/30 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle
+                            size={14}
+                            className="text-rose-500 shrink-0 mt-0.5"
+                          />
+                          <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold leading-tight">
+                            {log.errorMessage}
+                          </p>
+                        </div>
+
+                        {onRetry && log.sourceId && (
+                          <button
+                            onClick={() => onRetry(log.sourceId!)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-200 dark:hover:bg-rose-500/30 transition-all active:scale-95"
+                          >
+                            <RefreshIcon size={12} />
+                            Retry Sync
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
 

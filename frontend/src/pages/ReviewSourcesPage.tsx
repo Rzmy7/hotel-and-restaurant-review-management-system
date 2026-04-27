@@ -307,7 +307,14 @@ const ReviewSourcesPage = () => {
 
       <main className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
         {/* Stats Section */}
-        {stats && <SourceStats stats={stats} isLoading={isLoading} />}
+        {stats && (
+          <SourceStats
+            stats={stats}
+            isLoading={isLoading}
+            onFilterClick={setStatusFilter}
+            activeFilter={statusFilter}
+          />
+        )}
 
         {/* Filters Toolbar - Modernized */}
         <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
@@ -363,6 +370,7 @@ const ReviewSourcesPage = () => {
           onToggleStatus={handleToggleStatus}
           onSync={handleSyncNow}
           onStopSync={handleStopSync}
+          onAddClick={() => setIsAddModalOpen(true)}
         />
       </main>
 
@@ -387,6 +395,7 @@ const ReviewSourcesPage = () => {
         sources={sources}
         onExport={handleExportLogs}
         onClear={handleClearLogs}
+        onRetry={handleSyncNow}
       />
 
       <AddSourceModal
