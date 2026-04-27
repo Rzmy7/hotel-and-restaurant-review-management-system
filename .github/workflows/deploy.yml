@@ -141,21 +141,15 @@ jobs:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.backend == 'true'
     runs-on: self-hosted
+    container: python:3.12-slim
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
-
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
+        run: apt-get update && apt-get install -y unixodbc-dev
 
       - name: Install dependencies
         run: |
