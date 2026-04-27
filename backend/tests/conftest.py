@@ -7,8 +7,10 @@ can run without a live database connection.
 """
 
 import os
+import sys
 import uuid
 from datetime import datetime, timedelta
+from types import ModuleType
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +23,18 @@ os.environ.setdefault("DB_SERVER", "localhost")
 os.environ.setdefault("DB_NAME", "testdb")
 os.environ.setdefault("DB_UID", "sa")
 os.environ.setdefault("DB_PWD", "testpass")
+
+# ── Stub pyodbc if the native ODBC driver isn't installed ───────────
+# The test suite never hits a real database, but importing app modules
+# triggers `import pyodbc` which needs libodbc.so.2 at load time.
+# Inject a lightweight stub so tests can run on any CI runner.
+if "pyodbc" not in sys.modules:
+    try:
+        import pyodbc  # noqa: F401 — just check availability
+    except ImportError:
+        _stub = ModuleType("pyodbc")
+        _stub.connect = MagicMock()
+        sys.modules["pyodbc"] = _stub
 
 # ── Constants ───────────────────────────────────────────────────────
 TEST_USER_ID = str(uuid.uuid4())
