@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertsPanel } from './AlertsPanel';
 import { RecentActivity } from './RecentActivity';
 import type { SystemAlert, RecentActivity as RecentActivityType } from '../types';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
 
 interface DashboardSidebarProps {
     alerts: SystemAlert[];
@@ -14,16 +15,19 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     activities, 
     onDismissAlert 
 }) => {
+    const systemTimezone = useSystemTimezone();
+
     return (
         <div className="space-y-6">
             {/* Alerts Panel */}
             <AlertsPanel 
                 alerts={alerts} 
+                timezone={systemTimezone}
                 onDismiss={onDismissAlert}
             />
 
             {/* Recent Activity */}
-            <RecentActivity activities={activities} />
+            <RecentActivity activities={activities} timezone={systemTimezone} />
         </div>
     );
 };
