@@ -117,10 +117,21 @@ def get_review_metrics(cursor: "pyodbc.Cursor") -> dict[str, Any]:
     ).fetchall()
     by_platform = [{"label": str(row[0]), "value": int(row[1])} for row in platform_rows[:8]]
 
+    # Processed reviews count
+    processed_count = count_scalar(
+        cursor,
+        """
+        SELECT COUNT(*)
+        FROM dbo.processed_review
+        WHERE status = 'processed'
+        """,
+    )
+
     return {
         "totalReviews": total,
         "reviewsCollectedToday": today_count,
         "reviewsGrowth": reviews_growth,
+        "processedReviewsCount": processed_count,
         "byPlatform": by_platform,
     }
 

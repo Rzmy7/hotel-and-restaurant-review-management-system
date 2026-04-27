@@ -133,9 +133,9 @@ export const Dashboard: React.FC = () => {
                         iconBg="bg-emerald-50"
                     />
                     <StatCard
-                        label="AI Jobs Processed"
-                        value={stats.aiJobsProcessed.toLocaleString()}
-                        trend={`+${stats.aiJobsGrowth}%`}
+                        label="Processed Reviews"
+                        value={stats.processedReviews.toLocaleString()}
+                        trend={`+${stats.processedReviewsGrowth}%`}
                         icon={Bot}
                         iconColor="text-amber-500"
                         iconBg="bg-amber-50"

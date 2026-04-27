@@ -24,8 +24,8 @@ class DashboardStats(BaseModel):
     reviewsGrowth: float
     activeUsersToday: int
     systemUptime: float
-    aiJobsProcessed: int
-    aiJobsGrowth: float
+    processedReviews: int
+    processedReviewsGrowth: float
 
 
 class ChartDataPoint(BaseModel):
