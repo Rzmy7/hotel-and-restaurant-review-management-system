@@ -52,6 +52,8 @@ interface SyncHistoryPanelProps {
   sources?: Source[];
   onExport?: () => void;
   onClear?: () => void;
+  isExporting?: boolean;
+  isClearing?: boolean;
 }
 
 const getActivityIcon = (type?: string, status?: string) => {
@@ -96,6 +98,8 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
   sources = [],
   onExport,
   onClear,
+  isExporting = false,
+  isClearing = false,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { progress } = useSyncProgress(
@@ -145,10 +149,15 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onExport}
-              className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-[#597FE6] transition-all"
+              disabled={isExporting}
+              className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-[#597FE6] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title="Export to CSV"
             >
-              <ArrowRight className="rotate-[-90deg]" size={18} />
+              {isExporting ? (
+                <RefreshIcon className="animate-spin" size={18} />
+              ) : (
+                <ArrowRight className="rotate-[-90deg]" size={18} />
+              )}
             </button>
             <button
               onClick={() => {
@@ -160,10 +169,15 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                   onClear?.();
                 }
               }}
-              className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-all"
+              disabled={isClearing}
+              className="w-10 h-10 grid place-items-center rounded-xl bg-[#F9FAFB] dark:bg-slate-800 text-slate-500 hover:text-rose-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title="Clear History"
             >
-              <Trash2 size={18} />
+              {isClearing ? (
+                <RefreshIcon className="animate-spin" size={18} />
+              ) : (
+                <Trash2 size={18} />
+              )}
             </button>
             <button
               onClick={onClose}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   useQuery,
   useMutation,
@@ -11,7 +11,6 @@ import { sourcesService } from "../services/sourcesService";
 import type {
   Source,
   SyncLog,
-  SourceStats as SourceStatsType,
 } from "../types/sources";
 import { useOrganizationStore } from "../stores/useOrganizationStore";
 
@@ -22,6 +21,8 @@ import SyncHistoryPanel from "../components/shared/SyncHistoryPanel";
 import AddSourceModal from "../components/sources/AddSourceModal";
 import EditSourceModal from "../components/sources/EditSourceModal";
 import PageHeader from "../components/shared/PageHeader";
+import { useDebounce } from "../hooks/useDebounce";
+import { SOURCE_STATUS } from "../constants/sources";
 
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
@@ -39,7 +40,6 @@ const ReviewSourcesPage = () => {
     sourceId?: string | number;
   }>({});
   const [activitySearch, setActivitySearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [lastSyncTriggeredAt, setLastSyncTriggeredAt] = useState<number | null>(
@@ -53,10 +53,8 @@ const ReviewSourcesPage = () => {
   const organizationId = currentOrg?.id ?? "";
 
   // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(activitySearch), 500);
-    return () => clearTimeout(timer);
-  }, [activitySearch]);
+  const debouncedSearch = useDebounce(activitySearch, 500);
+  const debouncedSourceSearch = useDebounce(searchQuery, 300);
 
   // React Query: Sources
   const {
@@ -69,7 +67,9 @@ const ReviewSourcesPage = () => {
     refetchInterval: (query) => {
       const sources = query.state.data as Source[] | undefined;
       const hasActiveSync = sources?.some(
-        (s) => s.status === "In Queue" || s.status === "Syncing",
+        (s) =>
+          s.status === SOURCE_STATUS.IN_QUEUE ||
+          s.status === SOURCE_STATUS.SYNCING,
       );
 
       // If we just triggered a sync, poll for at least 30 seconds to catch the status change
@@ -185,23 +185,29 @@ const ReviewSourcesPage = () => {
     onError: () => showToast("Failed to clear reviews", "error"),
   });
 
-  const handleExportLogs = async () => {
-    try {
-      await sourcesService.exportSyncLogs(organizationId);
+  const exportLogsMutation = useMutation({
+    mutationFn: () => sourcesService.exportSyncLogs(organizationId),
+    onSuccess: () => {
       showToast("Activity history exported successfully.", "success");
-    } catch (error) {
-      showToast("Failed to export activity history.", "error");
-    }
+    },
+    onError: () => showToast("Failed to export activity history.", "error"),
+  });
+
+  const clearLogsMutation = useMutation({
+    mutationFn: () => sourcesService.clearSyncLogs(organizationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["syncLogs", organizationId] });
+      showToast("Activity history cleared.", "success");
+    },
+    onError: () => showToast("Failed to clear activity history.", "error"),
+  });
+
+  const handleExportLogs = async () => {
+    await exportLogsMutation.mutateAsync();
   };
 
   const handleClearLogs = async () => {
-    try {
-      await sourcesService.clearSyncLogs(organizationId);
-      queryClient.invalidateQueries({ queryKey: ["syncLogs", organizationId] });
-      showToast("Activity history cleared.", "success");
-    } catch (error) {
-      showToast("Failed to clear activity history.", "error");
-    }
+    await clearLogsMutation.mutateAsync();
   };
 
   // Combined Loading States
@@ -213,12 +219,12 @@ const ReviewSourcesPage = () => {
     return sources.filter((source) => {
       const matchesSearch = source.platform
         .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+        .includes(debouncedSourceSearch.toLowerCase());
       const matchesStatus =
         statusFilter === "All" || source.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [sources, searchQuery, statusFilter]);
+  }, [sources, debouncedSourceSearch, statusFilter]);
 
   // Handlers
   const handleAddSource = async (newSourceData: Partial<Source>) => {
@@ -240,7 +246,10 @@ const ReviewSourcesPage = () => {
   };
 
   const handleToggleStatus = async (source: Source) => {
-    const newStatus = source.status === "Active" ? "Paused" : "Active";
+    const newStatus =
+      source.status === SOURCE_STATUS.ACTIVE
+        ? SOURCE_STATUS.PAUSED
+        : SOURCE_STATUS.ACTIVE;
     await updateSourceMutation.mutateAsync({
       id: source.id,
       updates: { status: newStatus },
@@ -363,10 +372,14 @@ const ReviewSourcesPage = () => {
         onClose={() => setIsHistoryOpen(false)}
         logs={logs}
         isLoading={isLoadingLogs}
+        isExporting={exportLogsMutation.isPending}
+        isClearing={clearLogsMutation.isPending}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={fetchNextPage}
-        activeSyncSourceId={sources.find((s) => s.status === "Syncing")?.id}
+        activeSyncSourceId={
+          sources.find((s) => s.status === SOURCE_STATUS.SYNCING)?.id
+        }
         onFilterChange={setActivityFilter}
         currentFilter={activityFilter}
         onSearchChange={setActivitySearch}

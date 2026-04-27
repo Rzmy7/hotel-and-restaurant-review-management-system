@@ -11,6 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { Source } from "../../types/sources";
+import { SOURCE_STATUS, SOURCE_PLATFORM } from "../../constants/sources";
 
 // Brand Logos
 import BookingLogo from "../../assets/source-logo/Booking.jpeg";
@@ -40,15 +41,15 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
 
   const getLogo = () => {
     switch (platform) {
-      case "TripAdvisor":
+      case SOURCE_PLATFORM.TRIPADVISOR:
         return TripAdvisorLogo;
-      case "Booking.com":
+      case SOURCE_PLATFORM.BOOKING:
         return BookingLogo;
-      case "Agoda":
+      case SOURCE_PLATFORM.AGODA:
         return AgodaLogo;
-      case "Airbnb":
+      case SOURCE_PLATFORM.AIRBNB:
         return AirbnbLogo;
-      case "Google Reviews":
+      case SOURCE_PLATFORM.GOOGLE:
         return GoogleLogo;
       default:
         return null;
@@ -57,15 +58,15 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
 
   const getFallbackStyles = () => {
     switch (platform) {
-      case "Expedia":
+      case SOURCE_PLATFORM.EXPEDIA:
         return "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800";
-      case "Yelp":
+      case SOURCE_PLATFORM.YELP:
         return "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/40 dark:text-rose-400 dark:border-rose-800";
-      case "Zomato":
+      case SOURCE_PLATFORM.ZOMATO:
         return "bg-red-50 text-red-600 border-red-100 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800";
-      case "OpenTable":
+      case SOURCE_PLATFORM.OPENTABLE:
         return "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800";
-      case "Hotels.com":
+      case SOURCE_PLATFORM.HOTELS:
         return "bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-400 dark:border-indigo-800";
       default:
         return "bg-gray-50 text-gray-400 border-gray-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600";
@@ -125,35 +126,35 @@ const StatusBadge = ({
   sourceId: string | number;
 }) => {
   switch (status) {
-    case "Active":
+    case SOURCE_STATUS.ACTIVE:
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-sm shadow-emerald-50 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800/50 dark:shadow-none">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
           Active
         </span>
       );
-    case "Paused":
+    case SOURCE_STATUS.PAUSED:
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-gray-50 text-gray-500 border border-gray-100/50 shadow-sm shadow-gray-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50 dark:shadow-none">
           <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
           Paused
         </span>
       );
-    case "Error":
+    case SOURCE_STATUS.ERROR:
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100/50 shadow-sm shadow-rose-50 dark:bg-rose-900/40 dark:text-rose-400 dark:border-rose-800/50 dark:shadow-none">
           <AlertCircle size={10} />
           Error
         </span>
       );
-    case "In Queue":
+    case SOURCE_STATUS.IN_QUEUE:
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100/50 shadow-sm shadow-amber-50 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800/50 dark:shadow-none">
           <Calendar size={10} />
           In Queue
         </span>
       );
-    case "Syncing":
+    case SOURCE_STATUS.SYNCING:
       return <SyncProgressBar sourceId={sourceId} />;
   }
 };
@@ -278,8 +279,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         <button
                           onClick={() => onEdit(source, "analytics")}
                           disabled={
-                            source.status === "In Queue" ||
-                            source.status === "Syncing"
+                            source.status === SOURCE_STATUS.IN_QUEUE ||
+                            source.status === SOURCE_STATUS.SYNCING
                           }
                           className="text-[13px] font-black text-gray-900 dark:text-white hover:text-[#4e80ee] dark:hover:text-blue-400 transition-colors uppercase tracking-tight text-left block disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -387,10 +388,10 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         title={
                           source.platformStatus === "inactive"
                             ? `Platform ${source.platform} is disabled by admin`
-                            : source.status === "Paused"
+                            : source.status === SOURCE_STATUS.PAUSED
                               ? "Resume source to sync"
-                              : source.status === "In Queue" ||
-                                  source.status === "Syncing" ||
+                              : source.status === SOURCE_STATUS.IN_QUEUE ||
+                                  source.status === SOURCE_STATUS.SYNCING ||
                                   localSyncingIds.has(source.id)
                                 ? "Sync in progress"
                                 : "Sync Now"
@@ -399,15 +400,15 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         <RefreshCw
                           size={18}
                           className={
-                            source.status === "Syncing" ||
+                            source.status === SOURCE_STATUS.SYNCING ||
                             localSyncingIds.has(source.id)
                               ? "animate-spin"
                               : ""
                           }
                         />
                       </button>
-                      {source.status === "Syncing" ||
-                      source.status === "In Queue" ? (
+                      {source.status === SOURCE_STATUS.SYNCING ||
+                      source.status === SOURCE_STATUS.IN_QUEUE ? (
                         /* STOP button — shown when scraping is in progress */
                         <button
                           onClick={() => onStopSync(source.id)}
@@ -427,19 +428,19 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                           onClick={() => onToggleStatus(source)}
                           disabled={isTogglingStatus}
                           className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                            source.status === "Active"
+                            source.status === SOURCE_STATUS.ACTIVE
                               ? "text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/40"
                               : "text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
                           }`}
                           title={
-                            source.status === "Active"
+                            source.status === SOURCE_STATUS.ACTIVE
                               ? "Pause scheduled scraping"
                               : "Resume scheduled scraping"
                           }
                         >
                           {isTogglingStatus ? (
                             <RefreshCw size={18} className="animate-spin" />
-                          ) : source.status === "Active" ? (
+                          ) : source.status === SOURCE_STATUS.ACTIVE ? (
                             <Pause size={18} />
                           ) : (
                             <Play size={18} />
@@ -449,8 +450,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       <button
                         onClick={() => onEdit(source)}
                         disabled={
-                          source.status === "In Queue" ||
-                          source.status === "Syncing"
+                          source.status === SOURCE_STATUS.IN_QUEUE ||
+                          source.status === SOURCE_STATUS.SYNCING
                         }
                         className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Edit Settings"

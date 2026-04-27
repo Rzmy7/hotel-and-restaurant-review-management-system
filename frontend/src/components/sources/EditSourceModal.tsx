@@ -9,6 +9,7 @@ import {
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import type { Source, SourceStatus, SyncSchedule } from "../../types/sources";
+import { SOURCE_STATUS, SOURCE_PLATFORM, SYNC_SCHEDULE } from "../../constants/sources";
 
 // Brand Logos
 import BookingLogo from "../../assets/source-logo/Booking.jpeg";
@@ -45,8 +46,8 @@ const EditSourceModal = ({
   const [activeTab, setActiveTab] = useState<"settings" | "analytics">(
     initialTab,
   );
-  const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>("daily");
-  const [status, setStatus] = useState<SourceStatus>("Active");
+  const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>(SYNC_SCHEDULE.DAILY);
+  const [status, setStatus] = useState<SourceStatus>(SOURCE_STATUS.ACTIVE);
   const [propertyUrl, setPropertyUrl] = useState("");
 
   useEffect(() => {
@@ -56,7 +57,11 @@ const EditSourceModal = ({
   useEffect(() => {
     if (source) {
       setSyncSchedule(source.syncSchedule);
-      setStatus(source.status === "Error" ? "Active" : source.status);
+      setStatus(
+        source.status === SOURCE_STATUS.ERROR
+          ? SOURCE_STATUS.ACTIVE
+          : source.status,
+      );
       setPropertyUrl(source.propertyUrl);
     }
   }, [source]);
@@ -65,15 +70,15 @@ const EditSourceModal = ({
 
   const getLogo = () => {
     switch (source.platform) {
-      case "TripAdvisor":
+      case SOURCE_PLATFORM.TRIPADVISOR:
         return TripAdvisorLogo;
-      case "Booking.com":
+      case SOURCE_PLATFORM.BOOKING:
         return BookingLogo;
-      case "Agoda":
+      case SOURCE_PLATFORM.AGODA:
         return AgodaLogo;
-      case "Airbnb":
+      case SOURCE_PLATFORM.AIRBNB:
         return AirbnbLogo;
-      case "Google Reviews":
+      case SOURCE_PLATFORM.GOOGLE:
         return GoogleLogo;
       default:
         return null;
@@ -82,15 +87,15 @@ const EditSourceModal = ({
 
   const getFallbackStyles = () => {
     switch (source.platform) {
-      case "Expedia":
+      case SOURCE_PLATFORM.EXPEDIA:
         return "bg-blue-50 text-blue-600 border-blue-100";
-      case "Yelp":
+      case SOURCE_PLATFORM.YELP:
         return "bg-rose-50 text-rose-600 border-rose-100";
-      case "Zomato":
+      case SOURCE_PLATFORM.ZOMATO:
         return "bg-red-50 text-red-600 border-red-100";
-      case "OpenTable":
+      case SOURCE_PLATFORM.OPENTABLE:
         return "bg-emerald-50 text-emerald-600 border-emerald-100";
-      case "Hotels.com":
+      case SOURCE_PLATFORM.HOTELS:
         return "bg-indigo-50 text-indigo-600 border-indigo-100";
       default:
         return "bg-blue-50 text-[#4e80ee] border-blue-100/50";

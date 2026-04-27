@@ -12,6 +12,7 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import type { Source, SyncSchedule } from "../../types/sources";
 import { sourcesService } from "../../services/sourcesService";
+import { SOURCE_STATUS, SYNC_SCHEDULE } from "../../constants/sources";
 
 interface AddSourceModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ const AddSourceModal = ({
   );
   const [propertyUrl, setPropertyUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [schedule, setSchedule] = useState<SyncSchedule>("daily");
+  const [schedule, setSchedule] = useState<SyncSchedule>(SYNC_SCHEDULE.DAILY);
   const [sourceStatus, setSourceStatus] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,14 +64,14 @@ const AddSourceModal = ({
       platformId: selectedPlatformId,
       propertyUrl,
       syncSchedule: schedule,
-      status: sourceStatus ? "Active" : "Paused",
+      status: sourceStatus ? SOURCE_STATUS.ACTIVE : SOURCE_STATUS.PAUSED,
     });
     onClose();
     // Reset form
     setSelectedPlatformId(null);
     setPropertyUrl("");
     setApiKey("");
-    setSchedule("daily");
+    setSchedule(SYNC_SCHEDULE.DAILY);
   };
 
   const testConnection = () => {
@@ -196,9 +197,9 @@ const AddSourceModal = ({
               value={schedule}
               onChange={(e) => setSchedule(e.target.value as any)}
             >
-              <option value="daily">Once Daily</option>
-              <option value="three_days">Every 3 Days</option>
-              <option value="weekly">Once Weekly</option>
+              <option value={SYNC_SCHEDULE.DAILY}>Once Daily</option>
+              <option value={SYNC_SCHEDULE.THREE_DAYS}>Every 3 Days</option>
+              <option value={SYNC_SCHEDULE.WEEKLY}>Once Weekly</option>
             </select>
           </div>
 
