@@ -52,38 +52,6 @@ export const FeatureFlags: React.FC = () => {
         }
     };
 
-    const updateLimit = async (id: string, inputValue: string) => {
-        const currentFlag = flags.find((flag) => flag.id === id);
-        if (!currentFlag) return;
-
-        const parsedValue = Number.parseInt(inputValue, 10);
-        const nextLimit = Number.isNaN(parsedValue) ? undefined : Math.max(1, parsedValue);
-
-        setFlags(prevFlags => prevFlags.map(flag =>
-            flag.id === id
-                ? {
-                    ...flag,
-                    limit: nextLimit
-                }
-                : flag
-        ));
-
-        if (nextLimit === undefined) {
-            return;
-        }
-
-        try {
-            const updated = await featureFlagsService.updateFeatureFlag(currentFlag.key, {
-                status: currentFlag.status,
-                limit: nextLimit,
-            });
-
-            setFlags(prevFlags => prevFlags.map(flag => (flag.id === id ? updated : flag)));
-        } catch {
-            // Keep local value for now; next successful update syncs backend.
-        }
-    };
-
     if (loading) {
         return <LoadingSpinner size={32} />;
     }
@@ -94,7 +62,7 @@ export const FeatureFlags: React.FC = () => {
     );
 
     return (
-        <div className="max-w-5xl pt-4 space-y-4">
+        <div className="space-y-6 pt-4">
             {/* Search */}
             <SearchBar
                 value={searchQuery}
@@ -107,11 +75,11 @@ export const FeatureFlags: React.FC = () => {
                 {filteredFlags.map((flag) => (
                     <div 
                         key={flag.id} 
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center justify-between hover:shadow-md transition-shadow"
+                        className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 flex items-center justify-between hover:shadow-md transition-shadow"
                     >
                         <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 mb-1">{flag.name}</h3>
-                            <p className="text-sm text-gray-600">{flag.description}</p>
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{flag.name}</h3>
+                            <p className="text-sm text-gray-600 dark:text-slate-400">{flag.description}</p>
                         </div>
                         <div className="flex items-center gap-4 ml-4">
                             {/* Toggle Switch */}
@@ -121,7 +89,7 @@ export const FeatureFlags: React.FC = () => {
                                     onChange={() => toggleStatus(flag.id)}
                                 />
                                 <span className={`text-sm font-medium min-w-[60px] transition-colors ${
-                                    flag.status === 'Enabled' ? 'text-blue-600' : 'text-gray-500'
+                                    flag.status === 'Enabled' ? 'text-blue-600' : 'text-gray-500 dark:text-slate-400'
                                 }`}>
                                     {flag.status}
                                 </span>

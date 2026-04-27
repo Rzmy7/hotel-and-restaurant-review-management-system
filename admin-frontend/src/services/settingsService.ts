@@ -20,6 +20,12 @@ export interface ReplyGenerationSettings {
     useSimilarReviews: boolean;
 }
 
+export interface SecuritySettings {
+    userSessionTimeoutMinutes: number;
+    adminSessionTimeoutMinutes: number;
+    requireTwoFactorAuth: boolean;
+}
+
 export interface ReplyGenerationApiTestPayload {
     provider: 'google';
     apiKey: string;
@@ -102,5 +108,13 @@ export const settingsService = {
 
     async changeAdminPassword(payload: AdminPasswordChangePayload): Promise<AdminPasswordChangeResponse> {
         return apiClient.patch<AdminPasswordChangeResponse>('/admin/settings/admin-profile/password', payload);
+    },
+
+    async getSecuritySettings(): Promise<SecuritySettings> {
+        return apiClient.get<SecuritySettings>('/admin/settings/security');
+    },
+
+    async updateSecuritySettings(payload: SecuritySettings): Promise<SecuritySettings> {
+        return apiClient.patch<SecuritySettings>('/admin/settings/security', payload);
     },
 };

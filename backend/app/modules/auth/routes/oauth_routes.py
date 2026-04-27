@@ -3,6 +3,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import os
 
+from app.core.config import FRONTEND_URL
+
 from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
 from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_user_role_names
@@ -98,7 +100,7 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
         # Send 2FA verification email
         send_2fa_email(user.email, code)
         
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        frontend_url = FRONTEND_URL
         # Redirect to the frontend login view with oauth_2fa query string
         return RedirectResponse(
             url=f"{frontend_url}/login?oauth_2fa=true&email={user.email}",
@@ -122,7 +124,7 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
         organization_id=org_id
     )
 
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    frontend_url = FRONTEND_URL
 
     return RedirectResponse(
         url=f"{frontend_url}/oauth-success?token={access_token}",

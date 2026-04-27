@@ -1,16 +1,11 @@
 
 
+import { getApiBaseUrl } from '../config/api';
+
 /**
  * A simulated API Client that mimics real-world network latency and Promise-based responses.
  * In a real application, this would wrap fetch() or axios().
  */
-
-const API_BASE_URL = 'http://localhost:8000';
-
-const getApiBaseUrl = (): string => {
-    const stored = localStorage.getItem('mainBackendUrl');
-    return (stored || API_BASE_URL).replace(/\/$/, '');
-};
 
 const getFullUrl = (url: string) => {
     if (url.startsWith('http')) return url;
@@ -89,6 +84,9 @@ async function handleResponse(response: Response, requestUrl: string) {
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.indexOf("application/json") !== -1) {
         return response.json();
+    }
+    if (contentType && (contentType.indexOf("text/csv") !== -1 || contentType.indexOf("application/octet-stream") !== -1)) {
+        return response.blob() as any;
     }
     return {};
 }

@@ -66,8 +66,8 @@ const quickActions: QuickAction[] = [
         description: 'Global platform configuration',
         icon: Settings,
         path: '/settings',
-        color: 'text-gray-600',
-        bgColor: 'bg-gray-100'
+        color: 'text-gray-600 dark:text-slate-400',
+        bgColor: 'bg-gray-100 dark:bg-slate-700'
     }
 ];
 
@@ -75,10 +75,10 @@ export const QuickActions: React.FC = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100 dark:border-slate-700">
                 <Zap size={20} className="text-amber-500" />
-                <h3 className="font-semibold text-gray-900">Quick Actions</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
             </div>
             <div className="p-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -88,22 +88,22 @@ export const QuickActions: React.FC = () => {
                             <button
                                 key={action.label}
                                 onClick={() => navigate(action.path)}
-                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left group"
+                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors text-left group"
                             >
                                 <div className={`p-2 rounded-lg ${action.bgColor}`}>
                                     <Icon size={18} className={action.color} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                         {action.label}
                                     </p>
-                                    <p className="text-xs text-gray-500 truncate">
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                                         {action.description}
                                     </p>
                                 </div>
                                 <ChevronRight 
                                     size={16} 
-                                    className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                    className="text-gray-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" 
                                 />
                             </button>
                         );

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
+import { Alert } from '../components/Alert';
 
 import {
     AudienceSelector,
@@ -134,19 +135,13 @@ export const Broadcasting: React.FC = () => {
     };
 
     return (
-        <div className="pt-4 space-y-5 max-w-6xl">
+        <div className="space-y-6 pt-4">
             {successMessage && (
-                <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
-                    <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />
-                    <span>{successMessage}</span>
-                </div>
+                <Alert type="success" message={successMessage} onClose={() => setSuccessMessage(null)} />
             )}
 
             {errorMessage && (
-                <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
-                    <AlertCircle size={16} className="text-red-600 flex-shrink-0" />
-                    <span>{errorMessage}</span>
-                </div>
+                <Alert type="error" message={errorMessage} onClose={() => setErrorMessage(null)} />
             )}
 
             <div className="grid grid-cols-4 gap-4">
@@ -156,9 +151,9 @@ export const Broadcasting: React.FC = () => {
                     { label: 'Scheduled', value: stats.scheduled },
                     { label: 'Failed', value: stats.failed },
                 ].map(stat => (
-                    <div key={stat.label} className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3.5">
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</div>
-                        <div className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</div>
+                    <div key={stat.label} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm px-4 py-3.5">
+                        <div className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{stat.label}</div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</div>
                     </div>
                 ))}
             </div>
@@ -169,7 +164,7 @@ export const Broadcasting: React.FC = () => {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-5 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-                            activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            activeTab === tab ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200'
                         }`}
                     >
                         {tab === 'compose' ? 'Compose Message' : 'Broadcast History'}
@@ -180,14 +175,14 @@ export const Broadcasting: React.FC = () => {
             {activeTab === 'compose' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                     <div className="lg:col-span-2 space-y-4">
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                             <MessageTypeSelector
                                 value={form.messageType}
                                 onChange={messageType => updateForm({ messageType })}
                             />
                         </div>
 
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                             <ContentEditor
                                 subject={form.subject}
                                 body={form.body}
@@ -196,7 +191,7 @@ export const Broadcasting: React.FC = () => {
                             />
                         </div>
 
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                             <SchedulingOptions
                                 scheduleType={form.scheduleType}
                                 scheduledAt={form.scheduledAt}
@@ -208,14 +203,14 @@ export const Broadcasting: React.FC = () => {
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                             <ChannelSelector
                                 value={form.channel}
                                 onChange={channel => updateForm({ channel })}
                             />
                         </div>
 
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
                             <AudienceSelector
                                 audienceType={form.audienceType}
                                 audienceValue={form.audienceValue}
@@ -243,7 +238,7 @@ export const Broadcasting: React.FC = () => {
                         </button>
 
                         {!isFormValid && (
-                            <p className="text-xs text-gray-400 text-center -mt-2">
+                            <p className="text-xs text-gray-400 dark:text-slate-500 text-center -mt-2">
                                 Fill in all required fields to continue
                             </p>
                         )}
@@ -252,23 +247,23 @@ export const Broadcasting: React.FC = () => {
             )}
 
             {activeTab === 'history' && (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
                         <div>
-                            <h2 className="text-sm font-semibold text-gray-700">Broadcast History</h2>
-                            <p className="text-xs text-gray-400 mt-0.5">{history.length} broadcasts total</p>
+                            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Broadcast History</h2>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{history.length} broadcasts total</p>
                         </div>
                     </div>
 
                     {loading ? (
-                        <div className="flex items-center justify-center py-12 text-sm text-gray-500">Loading history…</div>
+                        <div className="flex items-center justify-center py-12 text-sm text-gray-500 dark:text-slate-400">Loading history…</div>
                     ) : history.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
                             <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
-                                <Send size={22} className="text-gray-400" />
+                                <Send size={22} className="text-gray-400 dark:text-slate-500" />
                             </div>
-                            <p className="text-sm font-medium text-gray-700">No broadcasts yet</p>
-                            <p className="text-sm text-gray-400 mt-1">Switch to Compose Message to send your first broadcast.</p>
+                            <p className="text-sm font-medium text-gray-700 dark:text-slate-200">No broadcasts yet</p>
+                            <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Switch to Compose Message to send your first broadcast.</p>
                         </div>
                     ) : (
                         <div>

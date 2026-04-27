@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Float,
+    Boolean,
     CheckConstraint,
     UniqueConstraint,
 )
@@ -210,5 +211,10 @@ class SyncLog(Base):
     duration_ms = Column(Integer, nullable=False, default=0)
     reviews_fetched = Column(Integer, nullable=False, default=0)
     error_message = Column(String(1000), nullable=True)
+
+    # New Activity Log Fields
+    activity_type = Column(String(50), nullable=True, index=True)
+    is_important = Column(Boolean, nullable=False, default=False)
+    activity_details = Column(String(1000), nullable=True)
 
     source = relationship("Source", back_populates="sync_logs")

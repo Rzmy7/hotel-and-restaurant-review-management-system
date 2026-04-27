@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { normalizeRole } from '../utils/authRole';
+import { normalizeRole, isAdminRole } from '../utils/authRole';
 
 type User = {
     user_id: string;
@@ -35,7 +35,7 @@ type LoginResponse = LoginChallenge | LoginSuccess;
 type AuthContextType = {
     user: User | null;
     login: (email: string, password: string) => Promise<LoginResponse>;
-    verifyLogin2fa: (email: string, code: string) => Promise<User>;
+    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess>;
     signup: (name: string, email: string, password: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
@@ -195,12 +195,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             role: normalizeRole(backendUser.role || backendUser.roles),
         };
 
-        // Save user + token
-        persist(normalizedUser, successData.access_token);
-
-        console.log("Calling checkUserOrganizations...");
-        // Check organizations after login
-        await checkUserOrganizations();
+        // Save user + token if not admin
+        if (!isAdminRole(normalizedUser.role)) {
+            persist(normalizedUser, successData.access_token);
+            console.log("Calling checkUserOrganizations...");
+            await checkUserOrganizations();
+        }
 
         return successData;
     };
@@ -216,10 +216,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             role: normalizeRole(backendUser.role),
         };
 
-        persist(normalizedUser, data.access_token);
-        await checkUserOrganizations();
+        if (!isAdminRole(normalizedUser.role)) {
+            persist(normalizedUser, data.access_token);
+            await checkUserOrganizations();
+        }
 
-        return normalizedUser;
+        return data;
     };
 
     // ----------------------------------------------------
@@ -239,7 +241,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
 
         if (payload.access_token) {
-            persist(normalizedUser, payload.access_token);
+            if (!isAdminRole(normalizedUser.role)) {
+                persist(normalizedUser, payload.access_token);
+            }
         } else {
             // login and persist without organization-based redirect
             const loginPayload = await apiClient.post<any>('/auth/login', { email, password });
@@ -250,12 +254,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 full_name: loginUser.full_name || loginUser.name || `${loginUser.first_name || ""} ${loginUser.last_name || ""}`.trim() || "User",
                 role: normalizeRole(loginUser.role || loginUser.roles),
             };
-            persist(normalizedLoginUser, loginPayload.access_token);
-            await checkUserOrganizations();
+            if (!isAdminRole(normalizedLoginUser.role)) {
+                persist(normalizedLoginUser, loginPayload.access_token);
+                await checkUserOrganizations();
+            }
             return normalizedLoginUser;
         }
 
-        await checkUserOrganizations();
+        if (!isAdminRole(normalizedUser.role)) {
+            await checkUserOrganizations();
+        }
         return normalizedUser;
     };
 

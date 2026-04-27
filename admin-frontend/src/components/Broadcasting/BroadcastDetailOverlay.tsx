@@ -33,11 +33,11 @@ export const BroadcastDetailOverlay: React.FC<DetailOverlayProps> = ({ record, t
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end">
             <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-            <div className="relative bg-white w-full sm:w-[420px] h-full sm:h-auto sm:max-h-[90vh] sm:rounded-l-2xl shadow-2xl flex flex-col">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <h3 className="text-base font-semibold text-gray-900">Broadcast Detail</h3>
-                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                        <X size={18} className="text-gray-500" />
+            <div className="relative bg-white dark:bg-slate-800 w-full sm:w-[420px] h-full sm:h-auto sm:max-h-[90vh] sm:rounded-l-2xl shadow-2xl flex flex-col">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-700">
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">Broadcast Detail</h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded-lg transition-colors">
+                        <X size={18} className="text-gray-500 dark:text-slate-400" />
                     </button>
                 </div>
 
@@ -52,37 +52,37 @@ export const BroadcastDetailOverlay: React.FC<DetailOverlayProps> = ({ record, t
                     </div>
 
                     <div>
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Subject</p>
-                        <p className="text-sm font-semibold text-gray-900">{record.subject}</p>
+                        <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">Subject</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{record.subject}</p>
                     </div>
 
                     <div>
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Message</p>
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{record.body}</p>
+                        <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">Message</p>
+                        <p className="text-sm text-gray-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">{record.body}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700">
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Channel</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Channel</p>
                             <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${ch.color}`}>
                                 {ch.icon} {ch.label}
                             </span>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Audience</p>
-                            <p className="text-sm text-gray-800 font-medium">{record.audienceLabel}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Audience</p>
+                            <p className="text-sm text-gray-800 dark:text-slate-100 font-medium">{record.audienceLabel}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Recipients</p>
-                            <p className="text-sm font-semibold text-gray-900">{record.recipientCount.toLocaleString()}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Recipients</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{record.recipientCount.toLocaleString()}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Sent by</p>
-                            <p className="text-sm text-gray-800">{record.sentBy}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Sent by</p>
+                            <p className="text-sm text-gray-800 dark:text-slate-100">{record.sentBy}</p>
                         </div>
                         <div className="col-span-2">
-                            <p className="text-xs text-gray-400 mb-0.5">Sent at</p>
-                            <p className="text-sm text-gray-800">{formatDateTime(record.sentAt, timezone)}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Sent at</p>
+                            <p className="text-sm text-gray-800 dark:text-slate-100">{formatDateTime(record.sentAt, timezone)}</p>
                         </div>
                     </div>
                 </div>

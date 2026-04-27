@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil, Square } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Alert } from '../components/Alert';
+import { ToggleSwitch } from '../components/ToggleSwitch';
 import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform, stopScrapingJob } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 
@@ -386,7 +388,7 @@ export const Scraping: React.FC = () => {
             case 'Queued': return 'bg-yellow-100 text-yellow-700';
             case 'Completed': return 'bg-green-100 text-green-700';
             case 'Failed': return 'bg-red-100 text-red-700';
-            default: return 'bg-gray-100 text-gray-700';
+            default: return 'bg-gray-100 text-gray-700 dark:text-slate-200';
         }
     };
 
@@ -418,70 +420,68 @@ export const Scraping: React.FC = () => {
     return (
         <div className="space-y-6 pt-4">
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
-                </div>
+                <Alert type="error" message={error} onClose={() => setError(null)} />
             )}
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Active Jobs</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Active Jobs</span>
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                             <Play size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stats?.activeJobs}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.activeJobs}</div>
                     <div className="text-xs text-green-600">+{stats?.activeJobsChange} since last hour</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Completed Today</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Completed Today</span>
                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                             <CheckCircle size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stats?.completedToday.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500">{stats?.successRate}% success rate</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.completedToday.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400">{stats?.successRate}% success rate</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Failed Jobs</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Failed Jobs</span>
                         <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
                             <XCircle size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stats?.failedJobs}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.failedJobs}</div>
                     <div className="text-xs text-red-600">Requires attention</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">Reviews Ingested</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Reviews Ingested</span>
                         <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                             <Grid3X3 size={16} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{formatNumber(stats?.reviewsIngested || 0)}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats?.reviewsIngested || 0)}</div>
                     <div className="text-xs text-green-600">+{stats?.reviewsChange}% vs last week</div>
                 </div>
             </div>
 
             {/* Platform Configuration */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                 <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h2 className="text-base font-semibold text-gray-900">Platform Configuration</h2>
-                        <p className="text-sm text-gray-500">Configure scraper status and frequency settings for supported platforms.</p>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Platform Configuration</h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">Configure scraper status and frequency settings for supported platforms.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-500">Global Frequency:</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Global Frequency:</span>
                         <button
                             onClick={() => setIsAddPlatformOpen(true)}
-                            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50"
+                            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                             <Plus size={16} />
                             Add Platform
@@ -489,7 +489,7 @@ export const Scraping: React.FC = () => {
                         <select 
                             value={globalFrequency} 
                             onChange={(e) => setGlobalFrequency(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option>Daily (24h)</option>
                             <option>Hourly</option>
@@ -504,7 +504,7 @@ export const Scraping: React.FC = () => {
                     {platforms.map(platform => (
                         <div 
                             key={platform.id} 
-                            className={`flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl min-w-[200px] ${platform.status === 'maintenance' ? 'opacity-70' : ''}`}
+                            className={`flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-slate-900 rounded-xl min-w-[200px] ${platform.status === 'maintenance' ? 'opacity-70' : ''}`}
                         >
                             <div 
                                 className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
@@ -513,33 +513,27 @@ export const Scraping: React.FC = () => {
                                 {platform.icon}
                             </div>
                             <div className="flex flex-col flex-1 min-w-0">
-                                <span className="font-medium text-sm text-gray-900">{platform.name}</span>
-                                <span className="text-xs text-gray-500">
+                                <span className="font-medium text-sm text-gray-900 dark:text-white">{platform.name}</span>
+                                <span className="text-xs text-gray-500 dark:text-slate-400">
                                     {platform.status === 'maintenance' ? 'Maintenance Mode' : `Last run: ${platform.lastRun}`}
                                 </span>
                             </div>
-                            <label className="relative cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={platform.enabled}
-                                    onChange={() => togglePlatform(platform.id)}
-                                />
-                                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 transition-colors"></div>
-                                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                            </label>
+                            <ToggleSwitch
+                                checked={platform.enabled}
+                                onChange={() => togglePlatform(platform.id)}
+                            />
                             <button
                                 onClick={() => openEditPlatformModal(platform)}
                                 title="Edit platform"
                                 aria-label="Edit platform"
-                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                             >
                                 <Pencil size={16} />
                             </button>
                             <button
                                 onClick={() => handleDeletePlatform(platform.id, platform.name)}
                                 title="Remove platform"
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                             >
                                 <Trash2 size={16} />
                             </button>
@@ -551,10 +545,10 @@ export const Scraping: React.FC = () => {
             {isAddPlatformOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setIsAddPlatformOpen(false)} />
-                    <div className="relative w-full max-w-md rounded-xl bg-white shadow-xl mx-4">
-                        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                            <h3 className="text-base font-semibold text-gray-900">Add New Platform</h3>
-                            <button onClick={() => setIsAddPlatformOpen(false)} className="p-1 rounded hover:bg-gray-100 text-gray-500">
+                    <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-xl mx-4">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-slate-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Add New Platform</h3>
+                            <button onClick={() => setIsAddPlatformOpen(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-600 text-gray-500 dark:text-slate-400">
                                 <X size={18} />
                             </button>
                         </div>
@@ -567,45 +561,45 @@ export const Scraping: React.FC = () => {
                             )}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Platform Name</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Platform Name</label>
                                 <input
                                     type="text"
                                     required
                                     value={platformForm.name}
                                     onChange={(e) => setPlatformForm(prev => ({ ...prev, name: e.target.value }))}
                                     placeholder="e.g. Expedia"
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Base URL</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Base URL</label>
                                 <input
                                     type="url"
                                     value={platformForm.baseUrl}
                                     onChange={(e) => setPlatformForm(prev => ({ ...prev, baseUrl: e.target.value }))}
                                     placeholder="https://www.example.com"
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Optional, but useful for organization-source linking.</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Optional, but useful for organization-source linking.</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Table Name</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Table Name</label>
                                 <input
                                     type="text"
                                     required
                                     value={platformForm.tableName}
                                     onChange={(e) => setPlatformForm(prev => ({ ...prev, tableName: e.target.value }))}
                                     placeholder="e.g. expedia_reviews"
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Use letters, numbers, and underscores only.</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Use letters, numbers, and underscores only.</p>
                             </div>
 
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <label className="block text-sm font-medium text-gray-700">Table Attributes</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">Table Attributes</label>
                                     <button
                                         type="button"
                                         onClick={() => setPlatformForm(prev => ({
@@ -631,7 +625,7 @@ export const Scraping: React.FC = () => {
                                                 )),
                                             }))}
                                             placeholder="column_name"
-                                            className="col-span-5 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="col-span-5 px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                         <input
                                             type="text"
@@ -643,9 +637,9 @@ export const Scraping: React.FC = () => {
                                                 )),
                                             }))}
                                             placeholder="NVARCHAR(255)"
-                                            className="col-span-4 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="col-span-4 px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
-                                        <label className="col-span-2 inline-flex items-center justify-center gap-1 text-xs text-gray-600">
+                                        <label className="col-span-2 inline-flex items-center justify-center gap-1 text-xs text-gray-600 dark:text-slate-400">
                                             <input
                                                 type="checkbox"
                                                 checked={attr.nullable}
@@ -666,7 +660,7 @@ export const Scraping: React.FC = () => {
                                                 attributes: prev.attributes.filter((_, rowIndex) => rowIndex !== index),
                                             }))}
                                             disabled={platformForm.attributes.length <= 1}
-                                            className="col-span-1 inline-flex justify-center text-gray-400 hover:text-red-600 disabled:opacity-30"
+                                            className="col-span-1 inline-flex justify-center text-gray-400 dark:text-slate-500 hover:text-red-600 disabled:opacity-30"
                                             title="Remove attribute"
                                         >
                                             <Trash2 size={14} />
@@ -674,10 +668,10 @@ export const Scraping: React.FC = () => {
                                     </div>
                                 ))}
 
-                                <p className="text-xs text-gray-500">Examples: INT, BIGINT, BIT, DATE, DATETIME, DECIMAL(10,2), VARCHAR(255), NVARCHAR(255)</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400">Examples: INT, BIGINT, BIT, DATE, DATETIME, DECIMAL(10,2), VARCHAR(255), NVARCHAR(255)</p>
                             </div>
 
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200">
                                 <input
                                     type="checkbox"
                                     checked={platformForm.enabled}
@@ -688,10 +682,10 @@ export const Scraping: React.FC = () => {
                             </label>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    Scraping Script <span className="font-normal text-gray-400">(optional)</span>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">
+                                    Scraping Script <span className="font-normal text-gray-400 dark:text-slate-500">(optional)</span>
                                 </label>
-                                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
+                                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
                                     <input
                                         type="file"
                                         className="hidden"
@@ -709,7 +703,7 @@ export const Scraping: React.FC = () => {
                                     type="button"
                                     disabled={addPlatformSubmitting}
                                     onClick={() => setIsAddPlatformOpen(false)}
-                                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                                 >
                                     Cancel
                                 </button>
@@ -729,13 +723,13 @@ export const Scraping: React.FC = () => {
             {isEditPlatformOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/50" onClick={() => !editPlatformSubmitting && setIsEditPlatformOpen(false)} />
-                    <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-xl mx-4">
-                        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                            <h3 className="text-base font-semibold text-gray-900">Edit Platform</h3>
+                    <div className="relative w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 shadow-xl mx-4">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-slate-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Edit Platform</h3>
                             <button
                                 disabled={editPlatformSubmitting}
                                 onClick={() => setIsEditPlatformOpen(false)}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-40"
+                                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-600 text-gray-500 dark:text-slate-400 disabled:opacity-40"
                             >
                                 <X size={18} />
                             </button>
@@ -754,44 +748,44 @@ export const Scraping: React.FC = () => {
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Platform Name</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Platform Name</label>
                                     <input
                                         type="text"
                                         required
                                         value={editPlatformForm.name}
                                         onChange={(e) => setEditPlatformForm(prev => ({ ...prev, name: e.target.value }))}
                                         placeholder="e.g. Expedia"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Base URL</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Base URL</label>
                                     <input
                                         type="url"
                                         value={editPlatformForm.baseUrl}
                                         onChange={(e) => setEditPlatformForm(prev => ({ ...prev, baseUrl: e.target.value }))}
                                         placeholder="https://www.example.com"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Table Name</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Table Name</label>
                                     <input
                                         type="text"
                                         required
                                         value={editPlatformForm.tableName}
                                         onChange={(e) => setEditPlatformForm(prev => ({ ...prev, tableName: e.target.value }))}
                                         placeholder="e.g. expedia_reviews"
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Use letters, numbers, and underscores only.</p>
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Use letters, numbers, and underscores only.</p>
                                 </div>
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <label className="block text-sm font-medium text-gray-700">Table Attributes</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">Table Attributes</label>
                                         <button
                                             type="button"
                                             onClick={() => setEditPlatformForm(prev => ({
@@ -817,7 +811,7 @@ export const Scraping: React.FC = () => {
                                                     )),
                                                 }))}
                                                 placeholder="column_name"
-                                                className="col-span-5 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="col-span-5 px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                             <input
                                                 type="text"
@@ -829,9 +823,9 @@ export const Scraping: React.FC = () => {
                                                     )),
                                                 }))}
                                                 placeholder="NVARCHAR(255)"
-                                                className="col-span-4 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="col-span-4 px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
-                                            <label className="col-span-2 inline-flex items-center justify-center gap-1 text-xs text-gray-600">
+                                            <label className="col-span-2 inline-flex items-center justify-center gap-1 text-xs text-gray-600 dark:text-slate-400">
                                                 <input
                                                     type="checkbox"
                                                     checked={attr.nullable}
@@ -852,7 +846,7 @@ export const Scraping: React.FC = () => {
                                                     attributes: prev.attributes.filter((_, rowIndex) => rowIndex !== index),
                                                 }))}
                                                 disabled={editPlatformForm.attributes.length <= 1}
-                                                className="col-span-1 inline-flex justify-center text-gray-400 hover:text-red-600 disabled:opacity-30"
+                                                className="col-span-1 inline-flex justify-center text-gray-400 dark:text-slate-500 hover:text-red-600 disabled:opacity-30"
                                                 title="Remove attribute"
                                             >
                                                 <Trash2 size={14} />
@@ -860,10 +854,10 @@ export const Scraping: React.FC = () => {
                                         </div>
                                     ))}
 
-                                    <p className="text-xs text-gray-500">Examples: INT, BIGINT, BIT, DATE, DATETIME, DECIMAL(10,2), VARCHAR(255), NVARCHAR(255)</p>
+                                    <p className="text-xs text-gray-500 dark:text-slate-400">Examples: INT, BIGINT, BIT, DATE, DATETIME, DECIMAL(10,2), VARCHAR(255), NVARCHAR(255)</p>
                                 </div>
 
-                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200">
                                     <input
                                         type="checkbox"
                                         checked={editPlatformForm.enabled}
@@ -874,10 +868,10 @@ export const Scraping: React.FC = () => {
                                 </label>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                        Upload New Scraping File <span className="font-normal text-gray-400">(optional)</span>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">
+                                        Upload New Scraping File <span className="font-normal text-gray-400 dark:text-slate-500">(optional)</span>
                                     </label>
-                                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
+                                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition-colors">
                                         <input
                                             type="file"
                                             className="hidden"
@@ -895,7 +889,7 @@ export const Scraping: React.FC = () => {
                                         type="button"
                                         disabled={editPlatformSubmitting}
                                         onClick={() => setIsEditPlatformOpen(false)}
-                                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                        className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                                     >
                                         Cancel
                                     </button>
@@ -914,24 +908,24 @@ export const Scraping: React.FC = () => {
             )}
 
             {/* Job Status Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                 <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h2 className="text-base font-semibold text-gray-900">Job Status Table</h2>
-                        <p className="text-sm text-gray-500">Real-time monitoring of all active and recent scraping jobs.</p>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Job Status Table</h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">Real-time monitoring of all active and recent scraping jobs.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Search Job ID or Org..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
                             <Filter size={16} />
                             Filter
                         </button>
@@ -948,21 +942,21 @@ export const Scraping: React.FC = () => {
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-gray-200">
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Job ID</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Platform</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Start Time</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reviews</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                            <tr className="border-b border-gray-200 dark:border-slate-700">
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Job ID</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Platform</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Organization</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Start Time</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Reviews</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedJobs.map(job => (
-                                <tr key={job.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="py-4 px-4 text-sm font-mono text-gray-500">{job.jobId}</td>
+                                <tr key={job.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                    <td className="py-4 px-4 text-sm font-mono text-gray-500 dark:text-slate-400">{job.jobId}</td>
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-2">
                                             <div 
@@ -971,19 +965,19 @@ export const Scraping: React.FC = () => {
                                             >
                                                 {job.platformIcon}
                                             </div>
-                                            <span className="text-sm text-gray-900">{job.platform}</span>
+                                            <span className="text-sm text-gray-900 dark:text-white">{job.platform}</span>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.organization}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.organization}</td>
                                     <td className="py-4 px-4">
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(job.status)}`}>
                                             {job.status === 'Running' && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>}
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.startTime}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.duration}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-900">{job.reviews !== null ? job.reviews : '--'}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.startTime}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.duration}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.reviews !== null ? job.reviews : '--'}</td>
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-2">
                                             {(job.status === 'Running' || job.status === 'Queued') && (
@@ -1000,13 +994,13 @@ export const Scraping: React.FC = () => {
                                             {job.status === 'Failed' && (
                                                 <>
                                                     <button className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase">Retry</button>
-                                                    <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                                                    <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
                                                         <RotateCcw size={14} />
                                                     </button>
                                                 </>
                                             )}
                                             {job.status === 'Completed' && (
-                                                <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
                                                     <Eye size={16} />
                                                 </button>
                                             )}
@@ -1018,15 +1012,15 @@ export const Scraping: React.FC = () => {
                     </table>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-slate-700">
+                    <span className="text-sm text-gray-500 dark:text-slate-400">
                         Showing {filteredJobs.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
                     </span>
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
-                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50 hover:bg-gray-50"
+                            className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                             Previous
                         </button>
@@ -1035,13 +1029,13 @@ export const Scraping: React.FC = () => {
                             .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                             .map((p, i, arr) => (
                                 <React.Fragment key={p}>
-                                    {i > 0 && arr[i - 1] !== p - 1 && <span className="px-2 text-gray-500">...</span>}
+                                    {i > 0 && arr[i - 1] !== p - 1 && <span className="px-2 text-gray-500 dark:text-slate-400">...</span>}
                                     <button
                                         onClick={() => setCurrentPage(p)}
                                         className={`px-3 py-1.5 border rounded-lg text-sm font-medium ${
                                             currentPage === p
                                                 ? 'bg-blue-500 text-white border-blue-500'
-                                                : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
+                                                : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900'
                                         }`}
                                     >
                                         {p}
@@ -1052,7 +1046,7 @@ export const Scraping: React.FC = () => {
                         <button
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages || totalPages === 0}
-                            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-white disabled:opacity-50 hover:bg-gray-50"
+                            className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
                         >
                             Next
                         </button>

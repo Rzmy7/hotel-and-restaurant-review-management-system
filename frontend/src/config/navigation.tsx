@@ -4,7 +4,6 @@ import {
     BarChart3,
     Target,
     Plug,
-    Building2,
     Users,
     Settings,
     Bell,
@@ -58,15 +57,9 @@ export const navigationConfig: NavigationConfig = {
             items: [
                 {
                     id: 'groups',
-                    label: 'Groups & Branches',
-                    icon: <Building2 size={20} />,
-                    path: '/groups'
-                },
-                {
-                    id: 'subgroups',
-                    label: 'Subgroups',
+                    label: 'Groups',
                     icon: <Users size={20} />,
-                    path: '/subgroups'
+                    path: '/groups'
                 }
             ]
         },

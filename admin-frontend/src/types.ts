@@ -12,6 +12,8 @@ export interface DashboardStats {
     systemUptime: number;
     aiJobsProcessed: number;
     aiJobsGrowth: number;
+    activeHotels?: number;
+    hotelsGrowth?: number;
 }
 
 export interface ChartDataPoint {
@@ -73,6 +75,7 @@ export interface Organization {
     owner: string;
     usersCount: number;
     iconUrl?: string;
+    status?: string;
 }
 
 export interface OrgSource {
@@ -92,6 +95,8 @@ export interface AvailableSource {
 export interface OrganizationStats {
     total: number;
     addedToday: number;
+    active?: number;
+    pending?: number;
 }
 
 export interface FeatureFlag {
@@ -138,6 +143,9 @@ export interface ScrapingPlatform {
     enabled: boolean;
     lastRun: string;
     status: 'active' | 'maintenance';
+    tableName?: string;
+    attributes?: any[];
+    baseUrl?: string;
 }
 
 export interface ScrapingJob {

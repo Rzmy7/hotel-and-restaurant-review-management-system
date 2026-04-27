@@ -7,6 +7,10 @@ interface SourceComparisonProps {
     sources: SourceData[];
 }
 
+const CHART_COLORS = ['#4e80ee', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+const CHART_BG_COLORS = ['bg-blue-50/50', 'bg-emerald-50/50', 'bg-amber-50/50', 'bg-pink-50/50', 'bg-violet-50/50'];
+const CHART_BORDER_COLORS = ['border-blue-100', 'border-emerald-100', 'border-amber-100', 'border-pink-100', 'border-violet-100'];
+
 const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
     const cx = 100, cy = 100;
     
@@ -56,19 +60,24 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
 
     const processedSources = useMemo(() => {
         const sorted = [...rawSources].sort((a, b) => b.reviews - a.reviews);
-        if (sorted.length <= 6) return sorted;
+        if (sorted.length <= 6) return sorted.map((s, i) => ({
+            ...s,
+            pct: Math.round((s.reviews / totalReviews) * 100),
+            color: CHART_COLORS[i % CHART_COLORS.length],
+            bgColor: CHART_BG_COLORS[i % CHART_BG_COLORS.length],
+            borderColor: CHART_BORDER_COLORS[i % CHART_BORDER_COLORS.length],
+            isOthers: false
+        }));
 
         const top = sorted.slice(0, 5);
         const others = sorted.slice(5);
         
-        const totalTopPct = top.reduce((s, x) => s + x.pct, 0);
+        const totalTopPct = top.reduce((s, x) => s + (x.reviews / totalReviews) * 100, 0);
         const totalOtherReviews = others.reduce((s, x) => s + x.reviews, 0);
-        
-        // Ensure perfect mathematical consistency for the "Others" share
         const normalizedOtherPct = Math.max(0, 100 - totalTopPct);
         
+        // Aggregate rating and sentiment for "Others"
         const avgRating = others.reduce((s, x) => s + (x.rating * x.reviews), 0) / totalOtherReviews;
-
         const otherSentiment = others.reduce((acc, x) => {
             acc.pos += (x.sentiment.pos * x.reviews);
             acc.neu += (x.sentiment.neu * x.reviews);
@@ -76,30 +85,43 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
             return acc;
         }, { pos: 0, neu: 0, neg: 0 });
 
-        otherSentiment.pos /= totalOtherReviews;
-        otherSentiment.neu /= totalOtherReviews;
-        otherSentiment.neg /= totalOtherReviews;
+        return [
+            ...top.map((s, i) => ({
+                ...s,
+                pct: Math.round((s.reviews / totalReviews) * 100),
+                color: CHART_COLORS[i % CHART_COLORS.length],
+                bgColor: CHART_BG_COLORS[i % CHART_BG_COLORS.length],
+                borderColor: CHART_BORDER_COLORS[i % CHART_BORDER_COLORS.length],
+                isOthers: false
+            })),
+            {
+                name: 'Others',
+                reviews: totalOtherReviews,
+                pct: Math.round(normalizedOtherPct),
+                rating: parseFloat(avgRating.toFixed(1)),
+                sentiment: {
+                    pos: Math.round(otherSentiment.pos / totalOtherReviews),
+                    neu: Math.round(otherSentiment.neu / totalOtherReviews),
+                    neg: Math.round(otherSentiment.neg / totalOtherReviews)
+                },
+                trend: 'stable',
+                trendType: 'neutral' as const,
+                lastSync: 'Varies',
+                color: '#94a3b8',
+                bgColor: 'bg-slate-50/50',
+                borderColor: 'border-slate-200',
+                isOthers: true
+            }
+        ];
+    }, [rawSources, totalReviews]);
 
-        return [...top, {
-            name: 'Others',
-            rating: parseFloat(avgRating.toFixed(1)),
-            trend: '...',
-            trendType: 'neutral' as const,
-            reviews: totalOtherReviews,
-            pct: normalizedOtherPct,
-            color: '#64748b',
-            bgColor: 'bg-slate-50/60',
-            borderColor: 'border-slate-100',
-            sentiment: {
-                pos: Math.round(otherSentiment.pos),
-                neu: Math.round(otherSentiment.neu),
-                neg: Math.round(otherSentiment.neg)
-            },
-            lastSync: 'Varies',
-            isOthers: true
-        }];
+    const activeSource = useMemo(() => 
+        hoveredSource ? processedSources.find(s => s.name === hoveredSource) : null
+    , [hoveredSource, processedSources]);
 
-    }, [rawSources]);
+    const displayCount = activeSource ? activeSource.reviews : totalReviews;
+    const displayLabel = activeSource ? activeSource.name : "Total";
+
 
     let angle = -90;
 
@@ -150,9 +172,19 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
                                 );
                             })}
                         </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-transform duration-300">
-                            <span className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{totalReviews}</span>
-                            <span className="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-2">Total</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-all duration-500">
+                            <span 
+                                key={displayCount}
+                                className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter leading-none animate-in fade-in zoom-in duration-300"
+                            >
+                                {displayCount.toLocaleString()}
+                            </span>
+                            <span 
+                                key={displayLabel}
+                                className="text-[10px] font-extrabold text-gray-400 dark:text-slate-500 uppercase tracking-[0.25em] mt-2.5 animate-in slide-in-from-bottom-1 duration-500"
+                            >
+                                {displayLabel}
+                            </span>
                         </div>
                     </div>
                 </div>

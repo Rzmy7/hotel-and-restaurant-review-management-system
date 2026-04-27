@@ -77,53 +77,53 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
             />
             
             {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md mx-4">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-900">Edit User Information</h2>
+                <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit User Information</h2>
                     <button 
                         onClick={onClose}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                     >
-                        <X size={20} className="text-gray-500" />
+                        <X size={20} className="text-gray-500 dark:text-slate-400" />
                     </button>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Full Name</label>
                         <input
                             type="text"
                             required
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             placeholder="Enter full name"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Email Address</label>
                         <input
                             type="email"
                             required
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             placeholder="Enter email address"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     {/* Subscription Plan - Only for regular users */}
                     {user.role === 'User' && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Subscription Plan</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Subscription Plan</label>
                             <div className="relative">
                                 <select
                                     value={formData.plan}
                                     onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
-                                    className="w-full appearance-none px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                                    className="w-full appearance-none px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                                 >
                                     {availablePlans.length > 0 ? (
                                         availablePlans.map((planName) => (
@@ -133,7 +133,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                                         <option value={formData.plan}>{formData.plan}</option>
                                     )}
                                 </select>
-                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
                             </div>
                         </div>
                     )}
@@ -144,7 +144,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                             type="button"
                             onClick={onClose}
                             disabled={saving}
-                            className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                            className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                         >
                             Cancel
                         </button>

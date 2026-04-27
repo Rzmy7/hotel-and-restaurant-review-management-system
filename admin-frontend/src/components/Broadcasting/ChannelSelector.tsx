@@ -17,7 +17,7 @@ const getChannelIcon = (channel: Channel) => {
 export const ChannelSelector: React.FC<ChannelSelectorProps> = ({ value, onChange }) => {
     return (
         <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">Delivery Channel *</label>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">Delivery Channel *</label>
             <div className="space-y-2">
                 {CHANNELS.map(channel => (
                     <label key={channel.value} className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all" style={{ borderColor: value === channel.value ? '#2563eb' : '#e5e7eb' }}>
@@ -31,8 +31,8 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({ value, onChang
                         />
                         <span className="text-blue-600">{getChannelIcon(channel.value)}</span>
                         <div>
-                            <p className="text-sm font-medium text-gray-900">{channel.label}</p>
-                            <p className="text-xs text-gray-500">{channel.description}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{channel.label}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400">{channel.description}</p>
                         </div>
                     </label>
                 ))}

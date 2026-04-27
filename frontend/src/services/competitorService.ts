@@ -10,12 +10,14 @@ export interface Competitor {
     id: string;
     name: string;
     location: string;
+    location_url?: string | null;
     organization_id: string | null;
     avgRating: number;
     sentimentScore: number;
     reviewCount: number;
     isTracked: boolean;
     createdAt: string | null;
+    status?: string;
 }
 
 export interface CompetitorListResponse {

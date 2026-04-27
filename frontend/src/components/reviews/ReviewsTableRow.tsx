@@ -5,9 +5,10 @@ interface ReviewsTableRowProps {
     review: Review;
     isLastRows: boolean;
     onClick: (review: Review) => void;
+    index: number;
 }
 
-const ReviewsTableRow = ({ review, isLastRows, onClick }: ReviewsTableRowProps) => {
+const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRowProps) => {
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -50,7 +51,8 @@ const ReviewsTableRow = ({ review, isLastRows, onClick }: ReviewsTableRowProps) 
     return (
         <tr
             onClick={() => onClick(review)}
-            className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors cursor-pointer relative hover:z-50"
+            className="staggered-item premium-row group hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors cursor-pointer relative hover:z-50"
+            style={{ animationDelay: `${index * 0.05}s` }}
         >
             {/* Rating */}
             <td className="px-6 py-5">

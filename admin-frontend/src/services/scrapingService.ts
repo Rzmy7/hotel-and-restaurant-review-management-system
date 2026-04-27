@@ -120,7 +120,7 @@ export const stopScrapingJob = (jobId: string): Promise<{ status: string; job_id
 
 // ── File upload goes directly to the scraping backend (not admin-backend) ──
 
-const DEFAULT_SCRAPING_BACKEND_URL = import.meta.env.VITE_SCRAPING_URL || 'http://localhost:8002';
+const DEFAULT_SCRAPING_BACKEND_URL = import.meta.env.VITE_SCRAPING_URL || '';
 
 const getScrapingBackendUrl = (): string => {
     const stored = localStorage.getItem('scrapingBackendUrl');

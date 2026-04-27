@@ -22,6 +22,7 @@ class ReviewModel(BaseModel):
     heading: Optional[str] = None
     summary: Optional[str] = None
     sentiment: Optional[str] = "Neutral"
+    sentiment_score: Optional[float] = None
     language: Optional[str] = "English"
 
     categories: List[str] = []
@@ -41,9 +42,31 @@ class ReviewModel(BaseModel):
     error_message: Optional[str] = None
     retry_count: int = 0
     last_attempt: Optional[datetime.datetime] = None
+    ai_reply: Optional[str] = None
+
+class ReviewSummaryModel(BaseModel):
+    """Minimized model for list view to reduce payload size."""
+    id: str
+    rating: float
+    reviewerName: str = Field(..., validation_alias=AliasChoices("reviewerName", "userName"))
+    text: Optional[str] = Field(..., validation_alias=AliasChoices("text", "reviewText"))
+    heading: Optional[str] = None
+    sentiment: Optional[str] = "Neutral"
+    source: Optional[str] = "Unknown"
+    date: Optional[datetime.date] = Field(None, validation_alias=AliasChoices("date", "reviewDate"))
+    status: str = "pending"
+    photos: List[PhotoModel] = []
+    categories: List[str] = []
 
 class PaginatedReviewResponse(BaseModel):
     data: List[ReviewModel]
+    total: int
+    page: int
+    limit: int
+    totalPages: int
+
+class PaginatedReviewSummaryResponse(BaseModel):
+    data: List[ReviewSummaryModel]
     total: int
     page: int
     limit: int

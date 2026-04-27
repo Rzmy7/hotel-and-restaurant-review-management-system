@@ -12,39 +12,41 @@ import ReviewsTable from '../components/reviews/ReviewsTable';
 import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
 
-const ReviewsPageContent = () => {
+import { useReviewsData } from '../hooks/useReviewsData';
 
+const ReviewsPageContent = () => {
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const organizationId = currentOrg?.id ?? '';
-
-  const stats = useReviewsStore(state => state.stats);
-  const loading = useReviewsStore(state => state.loading);
-  const pagination = useReviewsStore(state => state.pagination);
-  const selectedReview = useReviewsStore(state => state.selectedReview);
-  const isModalOpen = useReviewsStore(state => state.isModalOpen);
-  const closeReview = useReviewsStore(state => state.closeReview);
-  const fetchReviews = useReviewsStore(state => state.fetchReviews);
-  const refreshDataStore = useReviewsStore(state => state.refreshData);
 
   const { filters, setDateRange, fetchParams, setPage } = useReviewFilters();
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
 
-  useEffect(() => {
-    fetchReviews(organizationId, fetchParams);
-  }, [organizationId, fetchParams, fetchReviews]);
+  // TanStack Query Hook
+  const { 
+    reviews, 
+    pagination, 
+    stats, 
+    isLoading: loading, 
+    refresh 
+  } = useReviewsData(organizationId, fetchParams);
 
-  const refreshData = () => {
-    setPage(0);
-    refreshDataStore(organizationId, fetchParams);
-  };
+  // Modal State from Store
+  const selectedReview = useReviewsStore(state => state.selectedReview);
+  const isModalOpen = useReviewsStore(state => state.isModalOpen);
+  const closeReview = useReviewsStore(state => state.closeReview);
 
   const handleDateRangeApply = (dateFrom: string, dateTo: string) => {
     setDateRange(dateFrom, dateTo);
   };
 
+  const handleRefresh = () => {
+    setPage(0);
+    refresh();
+  };
+
   return (
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">
-      {/* Redesigned Header - Sophisticated & Consistent */}
+      {/* Header */}
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
@@ -64,7 +66,7 @@ const ReviewsPageContent = () => {
 
         <div className="flex items-center gap-4">
           <button
-            onClick={refreshData}
+            onClick={handleRefresh}
             className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${loading ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
             title="Refresh System"
           >
@@ -97,7 +99,7 @@ const ReviewsPageContent = () => {
         <ReviewsToolbar />
 
         {/* Reviews List */}
-        <ReviewsTable />
+        <ReviewsTable reviews={reviews} pagination={pagination} isLoading={loading} />
       </main>
 
       {/* Modals */}
@@ -106,6 +108,7 @@ const ReviewsPageContent = () => {
           isOpen={isModalOpen}
           onClose={closeReview}
           review={selectedReview as any}
+          allReviews={reviews as any}
         />
       )}
 

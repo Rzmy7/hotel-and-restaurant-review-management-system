@@ -32,7 +32,7 @@ export const BroadcastHistoryRow: React.FC<HistoryRowProps> = ({ record, timezon
     const mt = msgTypeMeta(record.messageType);
 
     return (
-        <div className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+        <div className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors border-b border-gray-100 dark:border-slate-700 last:border-0">
             {/* Type indicator */}
             <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border ${mt.bg} ${mt.color}`}>
                 {mt.icon}
@@ -40,13 +40,13 @@ export const BroadcastHistoryRow: React.FC<HistoryRowProps> = ({ record, timezon
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{record.subject}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{record.subject}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-400">{formatDateTime(record.sentAt, timezone)}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{formatDateTime(record.sentAt, timezone)}</span>
                     <span className="text-gray-200">·</span>
-                    <span className="text-xs text-gray-500">{record.audienceLabel}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">{record.audienceLabel}</span>
                     <span className="text-gray-200">·</span>
-                    <span className="text-xs text-gray-500">{record.recipientCount.toLocaleString()} recipients</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">{record.recipientCount.toLocaleString()} recipients</span>
                 </div>
             </div>
 
@@ -65,7 +65,7 @@ export const BroadcastHistoryRow: React.FC<HistoryRowProps> = ({ record, timezon
             {/* View detail */}
             <button
                 onClick={() => onViewDetail(record)}
-                className="flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex-shrink-0 p-1.5 text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600 rounded-lg transition-colors"
                 title="View details"
             >
                 <Eye size={15} />

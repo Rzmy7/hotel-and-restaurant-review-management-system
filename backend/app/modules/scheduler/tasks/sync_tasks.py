@@ -7,11 +7,12 @@ from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
 from app.modules.source.services.source_service import update_sync_status
+from app.core.config import SCRAPER_ENGINE_URL
 
 logger = logging.getLogger(__name__)
 
-# Scraper microservice URL, default to 8001 if backend is on 8000
-SCRAPER_API_BASE_URL = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001")
+# Scraper microservice URL from centralized config
+SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
 def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """
@@ -109,6 +110,11 @@ def process_pending_syncs():
         for source in pending_sources:
             if not source.platform:
                 logger.warning(f"Source {source.source_id} has no linked platform. Skipping.")
+                continue
+
+            # Skip if platform is inactive
+            if source.platform.platform_status == 'inactive':
+                logger.info(f"Skipping source {source.source_id} because platform '{source.platform.platform_name}' is inactive.")
                 continue
 
             # ── Check scraping_frequency limit for the source's tenant ──

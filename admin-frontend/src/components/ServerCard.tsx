@@ -39,7 +39,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 hover:shadow-md transition-shadow duration-200">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -47,9 +47,9 @@ export const ServerCard: React.FC<ServerCardProps> = ({
                         <Icon size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{name}</h3>
                         {uptime && (
-                            <p className="text-xs text-gray-500 mt-0.5">Uptime: {uptime}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Uptime: {uptime}</p>
                         )}
                     </div>
                 </div>
@@ -60,8 +60,8 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <Cpu size={16} className="text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">CPU Usage</span>
+                        <Cpu size={16} className="text-gray-400 dark:text-slate-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-slate-200">CPU Usage</span>
                     </div>
                     <span className={`text-sm font-bold px-2 py-1 rounded ${getCpuColor(cpuUsage)}`}>
                         {cpuUsage}%
@@ -79,8 +79,8 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             <div>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <HardDrive size={16} className="text-gray-400" />
-                        <span className="text-sm font-medium text-gray-700">RAM Usage</span>
+                        <HardDrive size={16} className="text-gray-400 dark:text-slate-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-slate-200">RAM Usage</span>
                     </div>
                     <span className={`text-sm font-bold px-2 py-1 rounded ${getRamColor(ramUsage)}`}>
                         {ramUsage}%

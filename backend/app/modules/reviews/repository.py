@@ -7,6 +7,8 @@ from typing import List, Optional, Dict
 from datetime import datetime
 
 import pyodbc
+from sqlalchemy import select, func, and_, or_, case
+from sqlalchemy.orm import Session, joinedload
 from app.core.pyodbc_connection import get_connection_string
 
 
@@ -146,348 +148,255 @@ def fetch_all_reviews_enriched(
     organization_id: str,
     page: int = 0,
     limit: int = 50,
-    filters: Optional[dict] = None
+    filters: Optional[dict] = None,
+    db: Session = None
 ) -> Dict:
     """
-    Fetch processed reviews with associated media, supporting pagination and filtering.
-    Returns: { "data": List[dict], "total": int }
+    Fetch processed reviews with associated media using SQLAlchemy ORM.
     """
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
+    # Ensure dependencies are in the registry to avoid 'User not found' errors in joins
+    try:
+        import app.modules.auth.models.auth_models  # noqa
+        import app.modules.organization.models.org_models  # noqa
+    except ImportError:
+        pass
 
-    # Base WHERE clause (we show all reviews regardless of AI processing status so users can see failed/pending ones)
-    where_clauses = ["s.organization_id = ?"]
-    params = [organization_id]
+    from app.modules.reviews.models import ProcessedReview
+    from app.modules.source.models import Source, Platform
 
-    if filters:
-        if filters.get("search"):
-            if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
-                import httpx
-                from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
-                
-                cursor.execute("SELECT CAST(source_id AS VARCHAR(36)) FROM dbo.source WHERE organization_id = ?", organization_id)
-                source_ids = [row[0] for row in cursor.fetchall()]
-                
-                matching_review_ids = []
-                if source_ids:
-                    try:
-                        resp = httpx.post(
-                            f"{EMBEDDING_SERVICE_URL}/search", 
-                            json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, 
-                            timeout=10.0
-                        )
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            for review in data.get("reviews", []):
-                                r_id = review.get("review_id") or review.get("id")
-                                if r_id:
-                                    matching_review_ids.append(r_id)
-                    except Exception as e:
-                        print(f"Embedding search error: {e}")
-                
-                if not matching_review_ids:
-                    where_clauses.append("1 = 0")
-                else:
-                    placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(matching_review_ids))
-                    where_clauses.append(f"r.id IN ({placeholders})")
-                    params.extend(matching_review_ids)
-            else:
-                where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+    if db is None:
+        from app.database.session import SessionLocal
+        db = SessionLocal()
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        # Base query with optimized joins
+        query = db.query(ProcessedReview).join(Source).join(Platform)
+        query = query.filter(Source.organization_id == organization_id)
+
+        # Apply Filters
+        if filters:
+            if filters.get("search"):
                 search_val = f"%{filters['search']}%"
-                params.extend([search_val, search_val, search_val, search_val, search_val])
-        
-        if filters.get("rating"):
-            ratings = filters["rating"]
-            if isinstance(ratings, list) and len(ratings) > 0:
-                placeholders = ",".join(["?"] * len(ratings))
-                where_clauses.append(f"r.rating IN ({placeholders})")
-                params.extend(ratings)
-        
-        if filters.get("sentiment"):
-            sentiments = filters["sentiment"]
-            if isinstance(sentiments, list) and len(sentiments) > 0:
-                placeholders = ",".join(["?"] * len(sentiments))
-                where_clauses.append(f"r.sentiment IN ({placeholders})")
-                params.extend(sentiments)
-        
-        if filters.get("source"):
-            sources = filters["source"]
-            if isinstance(sources, list) and len(sources) > 0:
-                placeholders = ",".join(["?"] * len(sources))
-                where_clauses.append(f"p.platform_name IN ({placeholders})")
-                params.extend(sources)
-
-        if filters.get("category"):
-            categories = filters["category"]
-            if isinstance(categories, list) and len(categories) > 0:
-                cat_clauses = []
-                for cat in categories:
-                    # Categories are stored as JSON arrays, e.g., ["Food", "Service"]
-                    cat_clauses.append("r.categories LIKE ?")
-                    params.append(f'%"{cat}"%')
-                where_clauses.append(f"({' AND '.join(cat_clauses)})")
-
-        # Date range
-        if filters.get("dateFrom"):
-            where_clauses.append("r.reviewDate >= ?")
-            params.append(filters["dateFrom"])
-        if filters.get("dateTo"):
-            where_clauses.append("r.reviewDate <= ?")
-            params.append(filters["dateTo"])
-
-    where_sql = " AND ".join(where_clauses)
-
-    # 1. Get Total Count
-    count_sql = f"""
-        SELECT COUNT(*)
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE {where_sql}
-    """
-    cursor.execute(count_sql, params)
-    total_count = cursor.fetchone()[0]
-
-    # 2. Fetch Paged Data
-    # Adding platform join for source name filtering if needed
-    fetch_sql = f"""
-        SELECT
-            r.id, r.rating, r.reviewerName,
-            r.text, r.summary, r.sentiment, r.language, r.categories,
-            r.keyPhrases, r.reviewDate, r.scrapedAt, r.status, r.ai_reply,
-            r.source_id, r.positive_text, r.negative_text, r.heading,
-            p.platform_name as source
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE {where_sql}
-        ORDER BY r.reviewDate DESC
-        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
-    """
-    
-    # Add pagination params
-    fetch_params = params + [page * limit, limit]
-    
-    cursor.execute(fetch_sql, fetch_params)
-    columns = [column[0] for column in cursor.description]
-    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    # Fetch photos for all results
-    results = []
-    import json
-
-    for row in rows:
-        rev_id = row["id"]
-
-        # Parse JSON fields stored in DB as strings
-        for field in ["categories", "keyPhrases"]:
-            if row.get(field):
-                try:
-                    parsed = json.loads(row[field])
-                    if isinstance(parsed, list):
-                        sanitized = []
-                        for item in parsed:
-                            if isinstance(item, dict) and "name" in item:
-                                sanitized.append(str(item["name"]))
-                            elif isinstance(item, str):
-                                sanitized.append(item)
-                        row[field] = sanitized
+                if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+                    import httpx
+                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                    
+                    source_ids = [str(sid[0]) for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
+                    matching_ids = []
+                    if source_ids:
+                        try:
+                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
+                            if resp.status_code == 200:
+                                matching_ids = [r.get("review_id") or r.get("id") for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
+                        except: pass
+                    
+                    if not matching_ids:
+                        query = query.filter(ProcessedReview.id == None)
                     else:
-                        row[field] = []
-                except Exception:
-                    row[field] = []
-            else:
-                row[field] = []
-
-        # Map reviewDate to date for frontend compatibility
-        row["date"] = row["reviewDate"]
-
-        # Combine text fields for display if positive/negative texts are present
-        text_parts = []
-        if row.get("text"): text_parts.append(row["text"])
-        if row.get("positive_text"): text_parts.append(row["positive_text"])
-        if row.get("negative_text"): text_parts.append(row["negative_text"])
-        if text_parts:
-            row["text"] = "\n\n".join(text_parts)
-
-        # Ensure sentiment/language/summary are never None for the Pydantic model
-        if row.get("sentiment") is None:
-            row["sentiment"] = "Neutral"
-        if row.get("language") is None:
-            row["language"] = "English"
-        if row.get("summary") is None:
-            row["summary"] = ""
-
-        cursor.execute(
-            "SELECT CAST(media_id AS VARCHAR(36)), src, alt FROM dbo.review_media WHERE review_id = ?", rev_id
-        )
-        row["photos"] = [{"id": p[0], "src": p[1], "alt": p[2]} for p in cursor.fetchall()]
-        results.append(row)
-
-    conn.close()
-    return {"data": results, "total": total_count}
-
-
-def get_review_options(organization_id: str) -> Dict[str, List[str]]:
-    """Fetch distinct sources and categories for an organization."""
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-
-    # Get sources
-    cursor.execute("""
-        SELECT DISTINCT p.platform_name
-        FROM dbo.source s
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ?
-    """, organization_id)
-    sources = [row[0] for row in cursor.fetchall()]
-
-    # Get categories (requires parsing JSON from all reviews)
-    cursor.execute("""
-        SELECT categories
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.status = 'processed'
-    """, organization_id)
-    
-    all_categories = set()
-    import json
-    for row in cursor.fetchall():
-        if row[0]:
-            try:
-                cats = json.loads(row[0])
-                if isinstance(cats, list):
-                    for c in cats:
-                        if isinstance(c, dict) and "name" in c:
-                            all_categories.add(str(c["name"]))
-                        elif isinstance(c, str):
-                            all_categories.add(c)
-            except:
-                pass
-
-    conn.close()
-    return {
-        "sources": sorted(list(sources)),
-        "categories": sorted(list(all_categories))
-    }
-
-
-def get_review_stats(organization_id: str, filters: Optional[dict] = None) -> Dict:
-    """Calculate aggregated stats for an organization's reviews, respecting all active filters."""
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-
-    # Include all reviews so stats reflect the raw data even if AI processing is pending or failed
-    where_clauses = ["s.organization_id = ?"]
-    params = [organization_id]
-
-    if filters:
-        if filters.get("search"):
-            if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
-                import httpx
-                from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
-                
-                cursor.execute("SELECT CAST(source_id AS VARCHAR(36)) FROM dbo.source WHERE organization_id = ?", organization_id)
-                source_ids = [row[0] for row in cursor.fetchall()]
-                
-                matching_review_ids = []
-                if source_ids:
-                    try:
-                        resp = httpx.post(
-                            f"{EMBEDDING_SERVICE_URL}/search", 
-                            json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, 
-                            timeout=10.0
-                        )
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            for review in data.get("reviews", []):
-                                r_id = review.get("review_id") or review.get("id")
-                                if r_id:
-                                    matching_review_ids.append(r_id)
-                    except Exception as e:
-                        print(f"Embedding search error: {e}")
-                
-                if not matching_review_ids:
-                    where_clauses.append("1 = 0")
+                        query = query.filter(ProcessedReview.id.in_(matching_ids))
                 else:
-                    placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(matching_review_ids))
-                    where_clauses.append(f"r.id IN ({placeholders})")
-                    params.extend(matching_review_ids)
-            else:
-                where_clauses.append("(r.text LIKE ? OR r.positive_text LIKE ? OR r.negative_text LIKE ? OR r.reviewerName LIKE ? OR r.heading LIKE ?)")
+                    query = query.filter(or_(
+                        ProcessedReview.text.ilike(search_val),
+                        ProcessedReview.positive_text.ilike(search_val),
+                        ProcessedReview.negative_text.ilike(search_val),
+                        ProcessedReview.reviewerName.ilike(search_val),
+                        ProcessedReview.heading.ilike(search_val)
+                    ))
+            
+            if filters.get("rating"):
+                query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
+            if filters.get("sentiment"):
+                query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+            if filters.get("source"):
+                query = query.filter(Platform.platform_name.in_(filters["source"]))
+            if filters.get("category"):
+                cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
+                query = query.filter(and_(*cat_filters))
+            if filters.get("dateFrom"):
+                query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+            if filters.get("dateTo"):
+                query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+
+        total_count = query.count()
+
+        # Fetch Data
+        from sqlalchemy.orm import selectinload
+        query = query.options(selectinload(ProcessedReview.media))
+        query = query.order_by(ProcessedReview.reviewDate.desc())
+        query = query.offset(page * limit).limit(limit)
+        db_reviews = query.all()
+
+        import json
+        results = []
+        for rev in db_reviews:
+            row = {
+                "id": str(rev.id),
+                "rating": rev.rating,
+                "reviewerName": rev.reviewerName,
+                "summary": rev.summary or "",
+                "sentiment": rev.sentiment or "Neutral",
+                "language": rev.language or "English",
+                "reviewDate": rev.reviewDate,
+                "scrapedAt": rev.scrapedAt,
+                "status": rev.status,
+                "ai_reply": rev.ai_reply,
+                "source_id": str(rev.source_id),
+                "positive_text": rev.positive_text,
+                "negative_text": rev.negative_text,
+                "heading": rev.heading,
+                "source": rev.source.platform.platform_name if rev.source and rev.source.platform else "Unknown",
+                "date": rev.reviewDate,
+                "photos": [{"id": str(m.media_id), "src": m.src, "alt": m.alt} for m in rev.media]
+            }
+
+            for field in ["categories", "keyPhrases"]:
+                val = getattr(rev, field)
+                if val:
+                    try:
+                        parsed = json.loads(val)
+                        row[field] = [str(item["name"]) if isinstance(item, dict) and "name" in item else str(item) for item in parsed] if isinstance(parsed, list) else []
+                    except: row[field] = []
+                else: row[field] = []
+
+            text_parts = [rev.text, rev.positive_text, rev.negative_text]
+            row["text"] = "\n\n".join([p for p in text_parts if p]) if any(text_parts) else ""
+            results.append(row)
+
+        return {"data": results, "total": total_count}
+    finally:
+        if should_close: db.close()
+
+
+def get_review_options(organization_id: str, db: Session = None) -> Dict[str, List[str]]:
+    """Fetch distinct sources and categories for an organization using ORM."""
+    try:
+        import app.modules.auth.models.auth_models  # noqa
+        import app.modules.organization.models.org_models  # noqa
+    except ImportError:
+        pass
+
+    from app.modules.source.models import Source, Platform
+    from app.modules.reviews.models import ProcessedReview
+
+    if db is None:
+        from app.database.session import SessionLocal
+        db = SessionLocal()
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        # 1. Get Sources
+        sources = db.query(Platform.platform_name).join(Source).filter(
+            Source.organization_id == organization_id
+        ).distinct().all()
+        source_list = [s[0] for s in sources]
+
+        # 2. Get Categories (Using native OPENJSON for performance)
+        # SQLAlchemy doesn't natively support OPENJSON well, so we use a text query for this specific part
+        from sqlalchemy import text
+        cat_sql = text("""
+            SELECT DISTINCT 
+                COALESCE(JSON_VALUE(c.value, '$.name'), c.value) as category_name
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            CROSS APPLY OPENJSON(r.categories) AS c
+            WHERE s.organization_id = :org_id AND r.status = 'processed'
+        """)
+        categories = db.execute(cat_sql, {"org_id": organization_id}).fetchall()
+        cat_list = [c[0] for c in categories if c[0]]
+
+        return {
+            "sources": sorted(source_list),
+            "categories": sorted(cat_list)
+        }
+    finally:
+        if should_close: db.close()
+
+
+def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: Session = None) -> Dict:
+    """Calculate aggregated stats for an organization's reviews using ORM."""
+    try:
+        import app.modules.auth.models.auth_models  # noqa
+        import app.modules.organization.models.org_models  # noqa
+    except ImportError:
+        pass
+
+    from app.modules.reviews.models import ProcessedReview
+    from app.modules.source.models import Source, Platform
+
+    if db is None:
+        from app.database.session import SessionLocal
+        db = SessionLocal()
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        query = db.query(ProcessedReview).join(Source).join(Platform)
+        query = query.filter(Source.organization_id == organization_id)
+
+        # Apply same filters as fetch (Reuse logic would be better but keeping it contained for now)
+        if filters:
+            if filters.get("search"):
                 search_val = f"%{filters['search']}%"
-                params.extend([search_val, search_val, search_val, search_val, search_val])
+                if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
+                    # Simple version for stats check
+                    import httpx
+                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                    source_ids = [str(sid[0]) for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
+                    matching_ids = []
+                    if source_ids:
+                        try:
+                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
+                            if resp.status_code == 200:
+                                matching_ids = [r.get("review_id") or r.get("id") for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
+                        except: pass
+                    query = query.filter(ProcessedReview.id.in_(matching_ids)) if matching_ids else query.filter(ProcessedReview.id == None)
+                else:
+                    query = query.filter(or_(
+                        ProcessedReview.text.ilike(search_val),
+                        ProcessedReview.positive_text.ilike(search_val),
+                        ProcessedReview.negative_text.ilike(search_val),
+                        ProcessedReview.reviewerName.ilike(search_val),
+                        ProcessedReview.heading.ilike(search_val)
+                    ))
+            if filters.get("rating"): query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
+            if filters.get("sentiment"): query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+            if filters.get("source"): query = query.filter(Platform.platform_name.in_(filters["source"]))
+            if filters.get("category"):
+                cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
+                query = query.filter(and_(*cat_filters))
+            if filters.get("dateFrom"): query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+            if filters.get("dateTo"): query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
-        if filters.get("rating"):
-            ratings = filters["rating"]
-            if isinstance(ratings, list) and len(ratings) > 0:
-                placeholders = ",".join(["?"] * len(ratings))
-                where_clauses.append(f"r.rating IN ({placeholders})")
-                params.extend(ratings)
+        # Aggregations
+        # Apply the same filters to aggregation query by reusing the query object
+        stats_row = query.with_entities(
+            func.count(ProcessedReview.id),
+            func.avg(ProcessedReview.rating),
+            func.sum(case((ProcessedReview.sentiment == 'Positive', 1), (ProcessedReview.sentiment == 'Negative', -1), else_=0)),
+            func.sum(case((or_(ProcessedReview.status == 'pending', ProcessedReview.ai_reply.is_(None)), 1), else_=0))
+        ).one()
 
-        if filters.get("sentiment"):
-            sentiments = filters["sentiment"]
-            if isinstance(sentiments, list) and len(sentiments) > 0:
-                placeholders = ",".join(["?"] * len(sentiments))
-                where_clauses.append(f"r.sentiment IN ({placeholders})")
-                params.extend(sentiments)
+        total = stats_row[0] or 0
+        avg_rating = round(float(stats_row[1] or 0), 1)
+        sentiment_sum = stats_row[2] or 0
+        pending = stats_row[3] or 0
+        
+        sentiment_score = round(((sentiment_sum / total) + 1) * 50) if total > 0 else 50
 
-        if filters.get("source"):
-            sources = filters["source"]
-            if isinstance(sources, list) and len(sources) > 0:
-                placeholders = ",".join(["?"] * len(sources))
-                where_clauses.append(f"p.platform_name IN ({placeholders})")
-                params.extend(sources)
-
-        if filters.get("category"):
-            categories = filters["category"]
-            if isinstance(categories, list) and len(categories) > 0:
-                cat_clauses = []
-                for cat in categories:
-                    cat_clauses.append("r.categories LIKE ?")
-                    params.append(f'%"{cat}"%')
-                where_clauses.append(f"({' AND '.join(cat_clauses)})")
-
-        if filters.get("dateFrom"):
-            where_clauses.append("r.reviewDate >= ?")
-            params.append(filters["dateFrom"])
-        if filters.get("dateTo"):
-            where_clauses.append("r.reviewDate <= ?")
-            params.append(filters["dateTo"])
-
-    where_sql = " AND ".join(where_clauses)
-
-    sql = f"""
-        SELECT
-            COUNT(*) as totalReviews,
-            AVG(CAST(rating AS FLOAT)) as averageRating,
-            SUM(CASE WHEN sentiment = 'Positive' THEN 1 WHEN sentiment = 'Negative' THEN -1 ELSE 0 END) as sentimentSum,
-            SUM(CASE WHEN r.status = 'pending' OR ai_reply IS NULL THEN 1 ELSE 0 END) as pendingReplies
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE {where_sql}
-    """
-    cursor.execute(sql, params)
-    row = cursor.fetchone()
-    
-    total = row[0] or 0
-    avg_rating = round(float(row[1] or 0), 1)
-    sentiment_sum = row[2] or 0
-    pending = row[3] or 0
-
-    # Normalized sentiment score (0-100)
-    sentiment_score = 50
-    if total > 0:
-        sentiment_score = round(((sentiment_sum / total) + 1) * 50)
-
-    conn.close()
-    return {
-        "totalReviews": total,
-        "averageRating": avg_rating,
-        "pendingReplies": pending,
-        "sentimentScore": sentiment_score
-    }
+        return {
+            "totalReviews": total,
+            "averageRating": avg_rating,
+            "pendingReplies": pending,
+            "sentimentScore": sentiment_score
+        }
+    finally:
+        if should_close: db.close()
 
 
 def count_reviews_raw() -> int:

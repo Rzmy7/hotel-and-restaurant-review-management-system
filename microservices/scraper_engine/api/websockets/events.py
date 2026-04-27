@@ -44,16 +44,37 @@ async def websocket_job_endpoint(websocket: WebSocket, job_id: str):
     WebSocket endpoint for web-frontends to attach to an actively running background scrape hook 
     and instantly stream execution traces instead of constantly HTTP-polling for process status.
     """
-    await manager.connect(websocket, job_id)
+    # Check if this is a direct job_id or if we need to resolve it from a source_id
+    current_job_id = job_id
+    job_data = job_manager.get_job(current_job_id)
+    
+    if not job_data:
+        # Fallback: check if job_id is actually a source_id
+        from core.database import get_session
+        from core.models import Source
+        session = get_session()
+        try:
+            source = session.query(Source).filter_by(source_id=job_id).first()
+            if source:
+                active_job = job_manager.get_active_job_by_url(source.source_url)
+                if active_job:
+                    current_job_id = active_job["id"]
+                    logger.info(f"Resolved source_id {job_id} to active job {current_job_id}")
+        except Exception as e:
+            logger.error(f"Fallback resolution failed: {e}")
+        finally:
+            session.close()
+
+    await manager.connect(websocket, current_job_id)
     try:
         while True:
-            job_data = job_manager.get_job(job_id)
+            job_data = job_manager.get_job(current_job_id)
             if job_data:
                 await websocket.send_json(job_data)
                 if job_data["status"] in ["completed", "failed"]:
                     break
             else:
-                await websocket.send_json({"error": "Job not found"})
+                await websocket.send_json({"error": "Job not found", "id": current_job_id})
                 break
             await asyncio.sleep(1)
     except WebSocketDisconnect:

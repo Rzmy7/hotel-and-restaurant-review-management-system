@@ -1,3 +1,5 @@
+import { getAdminPanelUrl as getAdminPanelBaseUrl } from '../config/api';
+
 export const normalizeRole = (value: unknown): string => {
     if (Array.isArray(value)) {
         return String(value[0] || '').trim().toUpperCase();
@@ -12,11 +14,10 @@ export const normalizeRole = (value: unknown): string => {
 
 const ADMIN_ROLES = new Set(['ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN']);
 
-const getAdminPanelUrl = (): string => {
-    const configured = localStorage.getItem('adminPanelUrl') || 'http://localhost:5174';
-    const base = configured.replace(/\/$/, '');
-    const token = localStorage.getItem('token');
-    const authUser = localStorage.getItem('authUser');
+const getAdminPanelUrl = (providedToken?: string, providedUser?: string): string => {
+    const base = getAdminPanelBaseUrl();
+    const token = providedToken || localStorage.getItem('token');
+    const authUser = providedUser || localStorage.getItem('authUser');
     
     if (token) {
         const params = new URLSearchParams();
@@ -31,5 +32,5 @@ export const isAdminRole = (value: unknown): boolean => ADMIN_ROLES.has(normaliz
 
 export const isExternalDestination = (value: string): boolean => /^https?:\/\//i.test(value);
 
-export const getDashboardPathForRole = (value: unknown): string =>
-    isAdminRole(value) ? getAdminPanelUrl() : '/dashboard';
+export const getDashboardPathForRole = (value: unknown, token?: string, userStr?: string): string =>
+    isAdminRole(value) ? getAdminPanelUrl(token, userStr) : '/dashboard';

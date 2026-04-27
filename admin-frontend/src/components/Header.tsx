@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, AlertCircle } from 'lucide-react';
+import { Bell, AlertCircle, Moon, Sun } from 'lucide-react';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { notificationsService } from '../services/notificationsService';
 import type { AdminNotification } from '../services/notificationsService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const Header: React.FC = () => {
     const location = useLocation();
+    const { setTheme, resolvedTheme } = useTheme();
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -149,6 +151,12 @@ export const Header: React.FC = () => {
         }
     };
 
+    const handleThemeToggle = () => {
+        // Simple toggle: if currently dark, go light; if light, go dark
+        // System preference is only settable from Settings page
+        setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    };
+
     const getHeaderContent = () => {
         switch (location.pathname) {
             case '/':
@@ -165,8 +173,7 @@ export const Header: React.FC = () => {
                 return { title: 'AI Configuration & Embeddings', subtitle: 'Manage embedding models, thresholds, and vector database connections.' };
             case '/scraping':
                 return { title: 'Scraping Management', subtitle: '' };
-            case '/api-manage':
-                return { title: 'API Management', subtitle: 'Manage API credentials and service endpoints' };
+
             case '/monitoring':
                 return { title: 'System Monitoring', subtitle: 'Real-time server status and performance metrics' };
             case '/subscription-plans':
@@ -183,10 +190,10 @@ export const Header: React.FC = () => {
     const { title, subtitle } = getHeaderContent();
 
     return (
-        <header className="fixed top-0 left-64 right-0 h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
+        <header className="fixed top-0 left-64 right-0 h-20 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-8 z-10 transition-colors duration-200">
             <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-                {subtitle && <p className="text-sm text-gray-500 hidden">{subtitle}</p>}
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{title}</h1>
+                {subtitle && <p className="text-sm text-gray-500 dark:text-slate-400 hidden">{subtitle}</p>}
             </div>
 
             <div className="flex items-center gap-4">
@@ -196,8 +203,8 @@ export const Header: React.FC = () => {
                     disabled={isLoading}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         maintenanceMode
-                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 disabled:opacity-50'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 disabled:opacity-50 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50'
+                            : 'bg-gray-100 text-gray-700 dark:text-slate-200 hover:bg-gray-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                     }`}
                     title={maintenanceMode ? 'Click to disable maintenance mode' : 'Click to enable maintenance mode'}
                 >
@@ -208,16 +215,41 @@ export const Header: React.FC = () => {
 
                 {/* Error indicator */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded px-2 py-1 text-xs text-red-700">
+                    <div className="bg-red-50 border border-red-200 rounded px-2 py-1 text-xs text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300">
                         {error}
                     </div>
                 )}
+
+                {/* Dark Mode Toggle Button */}
+                <button
+                    onClick={handleThemeToggle}
+                    className="relative w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-all duration-300 text-gray-600 dark:text-slate-300"
+                    title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    aria-label="Toggle dark mode"
+                >
+                    <Sun
+                        size={18}
+                        className={`absolute transition-all duration-300 ${
+                            resolvedTheme === 'dark'
+                                ? 'opacity-0 rotate-90 scale-0'
+                                : 'opacity-100 rotate-0 scale-100'
+                        }`}
+                    />
+                    <Moon
+                        size={18}
+                        className={`absolute transition-all duration-300 ${
+                            resolvedTheme === 'dark'
+                                ? 'opacity-100 rotate-0 scale-100'
+                                : 'opacity-0 -rotate-90 scale-0'
+                        }`}
+                    />
+                </button>
 
                 {/* Bell notification */}
                 <div className="relative" ref={notificationsPanelRef}>
                     <button
                         onClick={handleBellClick}
-                        className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+                        className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-gray-600 dark:text-slate-300"
                     >
                         <Bell size={20} />
                         {unreadCount > 0 && (
@@ -228,12 +260,12 @@ export const Header: React.FC = () => {
                     </button>
 
                     {isNotificationsOpen && (
-                        <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
-                            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                        <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-20">
+                            <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
                                 <button
                                     onClick={handleMarkAllRead}
-                                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                    className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
                                 >
                                     Mark all read
                                 </button>
@@ -241,28 +273,30 @@ export const Header: React.FC = () => {
 
                             <div className="max-h-96 overflow-y-auto">
                                 {isNotificationsLoading ? (
-                                    <div className="px-4 py-6 text-sm text-gray-500">Loading notifications...</div>
+                                    <div className="px-4 py-6 text-sm text-gray-500 dark:text-slate-400">Loading notifications...</div>
                                 ) : notifications.length === 0 ? (
-                                    <div className="px-4 py-6 text-sm text-gray-500">No notifications yet.</div>
+                                    <div className="px-4 py-6 text-sm text-gray-500 dark:text-slate-400">No notifications yet.</div>
                                 ) : (
                                     notifications.map(notification => (
                                         <button
                                             key={notification.notification_id}
                                             onClick={() => handleMarkSingleRead(notification.notification_id, notification.is_read)}
-                                            className={`w-full text-left px-4 py-3 border-b border-gray-100 last:border-b-0 transition-colors ${
-                                                notification.is_read ? 'bg-white hover:bg-gray-50' : 'bg-indigo-50/40 hover:bg-indigo-50/60'
+                                            className={`w-full text-left px-4 py-3 border-b border-gray-100 dark:border-slate-700 last:border-b-0 transition-colors ${
+                                                notification.is_read
+                                                    ? 'bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700'
+                                                    : 'bg-indigo-50/40 hover:bg-indigo-50/60 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30'
                                             }`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{notification.message}</p>
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
+                                                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 line-clamp-2">{notification.message}</p>
                                                 </div>
                                                 {!notification.is_read && (
                                                     <span className="mt-1 w-2 h-2 rounded-full bg-indigo-500" />
                                                 )}
                                             </div>
-                                            <p className="text-[11px] text-gray-400 mt-2">
+                                            <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-2">
                                                 {formatNotificationTime(notification.created_at)}
                                             </p>
                                         </button>

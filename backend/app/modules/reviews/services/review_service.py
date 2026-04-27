@@ -5,6 +5,7 @@ Review Service — orchestrates review ingestion, analysis, and retrieval.
 from datetime import datetime
 import json
 import logging
+import os
 import uuid
 import httpx
 from typing import List, Optional, Dict
@@ -25,6 +26,7 @@ import app.modules.auth.models  # noqa: F401
 import app.modules.organization.models  # noqa: F401
 import app.modules.source.models  # noqa: F401
 import app.modules.reviews.models  # noqa: F401
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +35,13 @@ def get_all_reviews_from_db(
     organization_id: str,
     page: int = 0,
     limit: int = 50,
-    filters: Optional[dict] = None
+    filters: Optional[dict] = None,
+    db: Session = None
 ) -> Dict:
     """Fetch processed reviews with photos for a specific organization, supporting pagination and filtering."""
     try:
         from app.modules.reviews.repository import fetch_all_reviews_enriched
-        return fetch_all_reviews_enriched(organization_id, page=page, limit=limit, filters=filters)
+        return fetch_all_reviews_enriched(organization_id, page=page, limit=limit, filters=filters, db=db)
     except Exception as e:
         logger.error(f"Failed to fetch reviews: {e}")
         raise e
@@ -52,7 +55,9 @@ async def ingest_from_scraper(
     and stores them as 'pending' in the database.
     Respects the user's review_count plan limit — only ingests up to the remaining balance.
     """
-    base_scraper_url = f"http://127.0.0.1:8001/api/reviews/{source_id}"
+    from app.core.config import SCRAPER_ENGINE_URL
+    scraper_base = SCRAPER_ENGINE_URL
+    base_scraper_url = f"{scraper_base}/api/reviews/{source_id}"
     all_reviews_data = []
     skip = 0
     batch_size = 1000
@@ -260,7 +265,7 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
     1. Ingest from Scraper (Raw -> Pending)
     2. Run AI Analysis (Pending -> Processed)
     """
-    from app.modules.source.services.source_service import get_source_by_id
+    from app.modules.source.services.source_service import get_source_by_id, log_activity
     from app.database.session import SessionLocal
     from app.modules.reviews.services.processor import run_analysis_pipeline
 
@@ -281,6 +286,15 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
             source_id, source.organization_id, source.platform_id
         )
 
+        # Log Ingestion Activity
+        log_activity(
+            db, 
+            source_id, 
+            activity_type="INGESTION_COMPLETED", 
+            reviews_fetched=ingested_count,
+            activity_details=f"Successfully ingested {ingested_count} reviews from {source.platform_name}."
+        )
+
         if sync_log_id:
             from app.modules.source.models import SyncLog
             sync_log = db.query(SyncLog).filter(SyncLog.log_id == sync_log_id).first()
@@ -292,8 +306,16 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
             logger.info(
                 f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews..."
             )
+            
+            # Log AI Analysis Start
+            log_activity(db, source_id, activity_type="AI_ANALYSIS_STARTED", status="In Progress")
+            
             # 3. Process
             await run_analysis_pipeline()
+            
+            # Log AI Analysis Completion
+            log_activity(db, source_id, activity_type="AI_ANALYSIS_COMPLETED", status="Success")
+            
             logger.info(f"--- Pipeline AI ANALYSIS COMPLETED for source {source_id} ---")
 
             # 4. Trigger embedding for newly processed reviews

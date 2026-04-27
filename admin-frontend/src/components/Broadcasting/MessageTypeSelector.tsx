@@ -10,7 +10,7 @@ interface MessageTypeSelectorProps {
 export const MessageTypeSelector: React.FC<MessageTypeSelectorProps> = ({ value, onChange }) => {
     return (
         <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">Message Type *</label>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">Message Type *</label>
             <div className="flex gap-2">
                 {MESSAGE_TYPES.map(type => (
                     <button
@@ -19,7 +19,7 @@ export const MessageTypeSelector: React.FC<MessageTypeSelectorProps> = ({ value,
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
                             value === type.value
                                 ? `${type.bg} ${type.color} border-current`
-                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600'
                         }`}
                     >
                         {type.icon}

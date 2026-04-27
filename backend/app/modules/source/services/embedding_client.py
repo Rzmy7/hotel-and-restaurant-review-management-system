@@ -23,7 +23,7 @@ from app.core.pyodbc_connection import get_connection_string
 logger = logging.getLogger(__name__)
 
 # ── Service URLs ─────────────────────────────────────────────────────────────
-EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002")
+from app.core.config import EMBEDDING_SERVICE_URL
 
 
 

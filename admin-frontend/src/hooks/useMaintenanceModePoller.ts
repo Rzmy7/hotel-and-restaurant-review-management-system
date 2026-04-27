@@ -12,7 +12,7 @@ const POLLING_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export const useMaintenanceModePoller = () => {
     useEffect(() => {
-        let pollInterval: NodeJS.Timeout | null = null;
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
         let lastKnownStatus: boolean | null = null;
 
         const checkMaintenanceStatus = async () => {

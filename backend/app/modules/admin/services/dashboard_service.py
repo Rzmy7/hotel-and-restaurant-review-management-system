@@ -14,6 +14,7 @@ the right order and assembles the final response shapes.
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
+from app.core.config import SCRAPER_ENGINE_URL
 
 if TYPE_CHECKING:
     import pyodbc
@@ -116,7 +117,7 @@ def build_review_data(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         return []
 
     # ── Step 2: call Scraper Engine row-counts endpoint ──
-    scraper_base = os.getenv("SCRAPER_API_URL", "http://127.0.0.1:8001").rstrip("/")
+    scraper_base = SCRAPER_ENGINE_URL
     table_csv = urllib.parse.quote(",".join(platform_map.keys()))
     url = f"{scraper_base}/api/tables/row-counts?table_names={table_csv}"
 

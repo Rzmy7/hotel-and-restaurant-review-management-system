@@ -7,7 +7,6 @@ import {
     Play,
     Loader
 } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import {
     getThresholds,
     updateThresholds,
@@ -21,6 +20,7 @@ import {
 } from '../services/embeddingService';
 import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
 import { triggerPendingEmbeddings } from '../services/adminDataService';
+import { Alert } from '../components/Alert';
 
 export const Embeddings: React.FC = () => {
     const [thresholds, setThresholds] = useState<SimilarityThresholds>({
@@ -214,13 +214,11 @@ export const Embeddings: React.FC = () => {
         <div className="space-y-6 pt-4">
             {/* Error Banner */}
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-sm text-red-600">{error}</p>
-                </div>
+                <Alert type="error" message={error} onClose={() => setError(null)} />
             )}
 
             {/* Service Status & Control */}
-            <div className={`rounded-xl shadow-sm border p-6 ${isPaused ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'}`}>
+            <div className={`rounded-xl shadow-sm border p-6 ${isPaused ? 'bg-yellow-50 border-yellow-200' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${isPaused ? 'bg-yellow-100' : 'bg-green-100'}`}>
@@ -231,8 +229,8 @@ export const Embeddings: React.FC = () => {
                             )}
                         </div>
                         <div>
-                            <h3 className="text-base font-semibold text-gray-900">Embedding Service Control</h3>
-                            <p className="text-sm text-gray-500 mt-1">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Embedding Service Control</h3>
+                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                                 {isPaused
                                     ? 'Service is paused. All embedding operations are on hold and will resume from where they stopped.'
                                     : 'Service is running. Embedding operations are being processed normally.'}
@@ -280,11 +278,11 @@ export const Embeddings: React.FC = () => {
             {/* Vector Database & Similarity Thresholds Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/* Vector Database */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <Database size={20} className="text-blue-500" />
-                            <h3 className="text-base font-semibold text-gray-900">Vector Database</h3>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Vector Database</h3>
                         </div>
                         {vectorDb && (
                             <div className="flex items-center gap-1.5">
@@ -299,35 +297,35 @@ export const Embeddings: React.FC = () => {
                     {vectorDb ? (
                         <>
                             {/* Stats */}
-                            <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 dark:bg-slate-900 rounded-lg">
                                 <div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Vectors</div>
-                                    <div className="text-xl font-bold text-gray-900">{vectorDb.totalVectors.toLocaleString()}</div>
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Total Vectors</div>
+                                    <div className="text-xl font-bold text-gray-900 dark:text-white">{vectorDb.totalVectors.toLocaleString()}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Namespace</div>
-                                    <div className="text-xl font-bold text-gray-900">{vectorDb.namespace}</div>
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Namespace</div>
+                                    <div className="text-xl font-bold text-gray-900 dark:text-white">{vectorDb.namespace}</div>
                                 </div>
                             </div>
 
                             {/* Additional Stats */}
                             <div className="grid grid-cols-3 gap-4 mb-4">
-                                <div className="p-3 bg-gray-50 rounded-lg">
-                                    <div className="text-xs text-gray-500 mb-1">Dimensions</div>
-                                    <div className="text-sm font-semibold text-gray-900">{vectorDb.dimensions}</div>
+                                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-lg">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">Dimensions</div>
+                                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{vectorDb.dimensions}</div>
                                 </div>
-                                <div className="p-3 bg-gray-50 rounded-lg">
-                                    <div className="text-xs text-gray-500 mb-1">Index Type</div>
-                                    <div className="text-sm font-semibold text-gray-900">{vectorDb.indexType}</div>
+                                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-lg">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">Index Type</div>
+                                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{vectorDb.indexType}</div>
                                 </div>
-                                <div className="p-3 bg-gray-50 rounded-lg">
-                                    <div className="text-xs text-gray-500 mb-1">Storage</div>
-                                    <div className="text-sm font-semibold text-gray-900">{vectorDb.storage}</div>
+                                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-lg">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">Storage</div>
+                                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{vectorDb.storage}</div>
                                 </div>
                             </div>
 
                             {/* Re-index & Force Embed Action buttons */}
-                            <div className="flex items-center justify-end gap-4 mt-6 pt-4 border-t border-gray-100">
+                            <div className="flex items-center justify-end gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-slate-700">
                                 <button
                                     onClick={handleTriggerPending}
                                     disabled={triggering || !vectorDb}
@@ -344,7 +342,7 @@ export const Embeddings: React.FC = () => {
                                 <button
                                     onClick={handleReindex}
                                     disabled={saving || !vectorDb}
-                                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Re-generate embeddings for all documents. This is a heavy operation."
                                 >
                                     <RefreshCw size={16} className={saving ? 'animate-spin' : ''} />
@@ -354,17 +352,17 @@ export const Embeddings: React.FC = () => {
                         </>
                     ) : (
                         <div className="flex items-center justify-center h-32">
-                            <Loader size={24} className="animate-spin text-gray-400" />
+                            <Loader size={24} className="animate-spin text-gray-400 dark:text-slate-500" />
                         </div>
                     )}
                 </div>
 
                 {/* Similarity Thresholds */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <Settings2 size={20} className="text-blue-500" />
-                            <h3 className="text-base font-semibold text-gray-900">Similarity Thresholds</h3>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Similarity Thresholds</h3>
                             {saving && (
                                 <Loader size={16} className="animate-spin text-blue-500" />
                             )}
@@ -372,7 +370,7 @@ export const Embeddings: React.FC = () => {
                         <button
                             onClick={handleResetThresholds}
                             disabled={saving || loading}
-                            className="text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+                            className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200 transition-colors disabled:opacity-50"
                         >
                             Reset to Default
                         </button>
@@ -386,7 +384,7 @@ export const Embeddings: React.FC = () => {
                         <div className="space-y-4">
                             {/* 1 Word Match */}
                             <div>
-                                <label className="text-sm font-medium text-gray-700">1 Word Match</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200">1 Word Match</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -395,14 +393,14 @@ export const Embeddings: React.FC = () => {
                                     value={thresholds.oneWord}
                                     onChange={(e) => handleThresholdChange({ ...thresholds, oneWord: parseFloat(e.target.value) || 0 })}
                                     disabled={saving}
-                                    className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                    className="w-full mt-1 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Distance threshold for single word matches. Lower is stricter.</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Distance threshold for single word matches. Lower is stricter.</p>
                             </div>
 
                             {/* 2 Words Match */}
                             <div>
-                                <label className="text-sm font-medium text-gray-700">2-3 Words Match</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200">2-3 Words Match</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -411,14 +409,14 @@ export const Embeddings: React.FC = () => {
                                     value={thresholds.twoWords}
                                     onChange={(e) => handleThresholdChange({ ...thresholds, twoWords: parseFloat(e.target.value) || 0 })}
                                     disabled={saving}
-                                    className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                    className="w-full mt-1 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Distance threshold for two-three word phrase matches.</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Distance threshold for two-three word phrase matches.</p>
                             </div>
 
                             {/* 3+ Words Match */}
                             <div>
-                                <label className="text-sm font-medium text-gray-700">3+ Words Match</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200">3+ Words Match</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -427,9 +425,9 @@ export const Embeddings: React.FC = () => {
                                     value={thresholds.threeOrMore}
                                     onChange={(e) => handleThresholdChange({ ...thresholds, threeOrMore: parseFloat(e.target.value) || 0 })}
                                     disabled={saving}
-                                    className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                    className="w-full mt-1 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Distance threshold for longer phrase matches.</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Distance threshold for longer phrase matches.</p>
                             </div>
                         </div>
                     )}
@@ -437,9 +435,9 @@ export const Embeddings: React.FC = () => {
             </div>
 
             {/* Recent Embedding Jobs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <div className="flex items-center justify-between p-6 pb-4">
-                    <h3 className="text-base font-semibold text-gray-900">Recent Embedding Jobs</h3>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">Recent Embedding Jobs</h3>
                     <button
                         onClick={handleRefreshJobs}
                         disabled={jobsLoading}
@@ -451,25 +449,25 @@ export const Embeddings: React.FC = () => {
                 </div>
 
                 {jobs.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500">
+                    <div className="p-12 text-center text-gray-500 dark:text-slate-400">
                         <p>No embedding jobs yet. Jobs will appear here when you start embedding reviews or regulations.</p>
                     </div>
                 ) : (
                     <table className="w-full">
                         <thead>
-                            <tr className="border-y border-gray-100">
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                            <tr className="border-y border-gray-100 dark:border-slate-700">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Job ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Progress</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Timestamp</th>
                             </tr>
                         </thead>
                         <tbody>
                             {jobs.map((job) => (
-                                <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 text-sm font-mono text-gray-600">{job.jobId}</td>
+                                <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors">
+                                    <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-slate-400">{job.jobId}</td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${job.type === 'Review'
                                                 ? 'bg-purple-100 text-purple-600'
@@ -499,11 +497,11 @@ export const Embeddings: React.FC = () => {
                                                     style={{ width: `${job.progress}%` }}
                                                 />
                                             </div>
-                                            <span className="text-sm text-gray-600">{job.progress}%</span>
+                                            <span className="text-sm text-gray-600 dark:text-slate-400">{job.progress}%</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">{job.duration}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">{job.timestamp}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400">{job.duration}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">{job.timestamp}</td>
                                 </tr>
                             ))}
                         </tbody>

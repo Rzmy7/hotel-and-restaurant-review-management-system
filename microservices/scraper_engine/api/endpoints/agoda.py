@@ -63,6 +63,7 @@ def trigger_agoda_scrape(request: Request, body: AgodaScrapeRequest):
             session.add(source)
         else:
             source.source_url = normalized_url
+            source.platform_name = "agoda"
         session.commit()
     except Exception as e:
         session.rollback()

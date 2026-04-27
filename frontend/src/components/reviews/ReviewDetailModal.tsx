@@ -12,11 +12,13 @@ interface ReviewDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   review: Review;
+  allReviews?: Review[];
 }
 
-const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) => {
+const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewDetailModalProps) => {
   const navigateReview = useReviewsStore(state => state.navigateReview);
-  const reviews = useReviewsStore(state => state.reviews);
+  const storeReviews = useReviewsStore(state => state.reviews);
+  const reviews = allReviews.length > 0 ? allReviews : storeReviews;
   const refreshDataStore = useReviewsStore(state => state.refreshData);
   const { fetchParams } = useReviewFilters();
   const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
@@ -130,10 +132,10 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
     <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 sticky top-0 z-10 backdrop-blur-md w-full">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800 flex items-center justify-center flex-shrink-0 text-lg font-black text-[#4e80ee] dark:text-blue-400 uppercase">
-          {review.userName.charAt(0)}
+          {review.userName ? review.userName.charAt(0) : 'U'}
         </div>
         <div>
-          <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{review.userName}</h2>
+          <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{review.userName || 'User'}</h2>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -160,7 +162,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
       <div className="flex items-center gap-2 mr-12">
         <button
           className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm ${isFirst ? 'text-gray-200 bg-gray-50 dark:text-slate-600 dark:bg-slate-800/50 cursor-not-allowed opacity-50' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-[#4e80ee] dark:hover:text-blue-400'}`}
-          onClick={() => navigateReview('prev')}
+          onClick={() => navigateReview('prev', reviews)}
           title="Previous Review"
           disabled={isFirst}
         >
@@ -168,7 +170,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review }: ReviewDetailModalProps) 
         </button>
         <button
           className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm ${isLast ? 'text-gray-200 bg-gray-50 dark:text-slate-600 dark:bg-slate-800/50 cursor-not-allowed opacity-50' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-[#4e80ee] dark:hover:text-blue-400'}`}
-          onClick={() => navigateReview('next')}
+          onClick={() => navigateReview('next', reviews)}
           title="Next Review"
           disabled={isLast}
         >

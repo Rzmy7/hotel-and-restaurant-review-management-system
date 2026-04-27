@@ -54,6 +54,18 @@ def admin_backend_status() -> dict[str, float | str]:
     }
 
 
+@router.get("/frontend-status")
+def frontend_status() -> dict[str, float | str]:
+    """Returns status and resource usage for the frontend server."""
+    cpu_percent, ram_percent = server_usage()
+    return {
+        "service": "frontend",
+        "status": "healthy",
+        "cpu": cpu_percent,
+        "ram": ram_percent,
+    }
+
+
 @router.get("/admin-backend-usage")
 @router.get("/main-backend-usage")
 def admin_backend_usage() -> dict[str, float]:
@@ -199,8 +211,22 @@ def delete_scraping_platform(platform_id: str) -> dict[str, str]:
 @router.get("/scraping/stats")
 def scraping_stats() -> dict[str, int | float | bool]:
     """Returns scraping stats derived from the scraping backend runtime APIs."""
-    active_payload = scraping_backend_get("/api/system/jobs")
-    all_payload = scraping_backend_get("/api/system/jobs/all")
+    try:
+        active_payload = scraping_backend_get("/api/system/jobs")
+        all_payload = scraping_backend_get("/api/system/jobs/all")
+    except HTTPException as exc:
+        if exc.status_code == 502:
+            return {
+                "activeJobs": 0,
+                "activeJobsChange": 0,
+                "completedToday": 0,
+                "successRate": 0.0,
+                "failedJobs": 0,
+                "requiresAttention": False,
+                "reviewsIngested": 0,
+                "reviewsChange": 0,
+            }
+        raise
 
     active_jobs = active_payload.get("jobs", []) if isinstance(active_payload, dict) else []
     all_jobs = all_payload.get("jobs", []) if isinstance(all_payload, dict) else []
@@ -246,7 +272,13 @@ def scraping_stats() -> dict[str, int | float | bool]:
 @router.get("/scraping/jobs")
 def scraping_jobs() -> list[dict[str, str | int | None]]:
     """Returns recent scraping jobs from the scraping backend."""
-    payload = scraping_backend_get("/api/system/jobs/all")
+    try:
+        payload = scraping_backend_get("/api/system/jobs/all")
+    except HTTPException as exc:
+        if exc.status_code == 502:
+            return []
+        raise
+    
     rows = payload.get("jobs", []) if isinstance(payload, dict) else []
     rows = sorted(
         rows,

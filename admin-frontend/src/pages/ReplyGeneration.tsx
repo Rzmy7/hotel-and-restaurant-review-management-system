@@ -117,24 +117,24 @@ export const ReplyGeneration: React.FC = () => {
     }
 
     return (
-        <div className="pt-4 max-w-6xl space-y-5">
-            <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="absolute inset-0 bg-slate-50/70 pointer-events-none" />
+        <div className="space-y-6 pt-4">
+            <section className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+                <div className="absolute inset-0 bg-slate-50/70 dark:bg-slate-900/50 pointer-events-none" />
                 <div className="relative p-5 md:p-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                                <Sparkles size={18} className="text-sky-600" />
+                            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Sparkles size={18} className="text-sky-600 dark:text-sky-400" />
                                 Reply Generation Console
                             </h2>
-                            <p className="text-sm text-slate-600 mt-1 max-w-2xl">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
                                 Organize model behavior, prompt context depth, and provider credentials from one place.
                             </p>
                         </div>
-                        <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold w-fit bg-white/80 backdrop-blur-sm">
-                            <Wand2 size={14} className="text-slate-600" />
+                        <div className="inline-flex items-center gap-2 rounded-full border dark:border-slate-600 px-3 py-1.5 text-xs font-semibold w-fit bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm dark:text-slate-300">
+                            <Wand2 size={14} className="text-slate-600 dark:text-slate-400" />
                             Active Provider
-                            <span className="rounded-full border px-2 py-0.5 bg-blue-100 text-blue-700 border-blue-200">
+                            <span className="rounded-full border px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50">
                                 Google
                             </span>
                         </div>
@@ -144,87 +144,87 @@ export const ReplyGeneration: React.FC = () => {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 <section className="xl:col-span-2 space-y-5">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm space-y-5">
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-5">
                         <div className="flex items-center gap-2">
-                            <Sparkles size={16} className="text-sky-600" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700">Model Settings</h3>
+                            <Sparkles size={16} className="text-sky-600 dark:text-sky-400" />
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Model Settings</h3>
                         </div>
 
                         <div className="grid grid-cols-1 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Reply Model</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Reply Model</label>
                                 <select
                                     value={settings.selectedModel}
                                     onChange={(event) => updateField('selectedModel', event.target.value)}
-                                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                                 >
                                     {GOOGLE_MODELS.map((model) => (
                                         <option key={model} value={model}>{model}</option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-slate-500 mt-1.5">Select a Google Gemini model for reply generation.</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Select a Google Gemini model for reply generation.</p>
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                            <h4 className="text-sm font-semibold text-slate-700">Embedding Context Controls</h4>
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Embedding Context Controls</h4>
                             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
                                     <ToggleSwitch
                                         checked={settings.useEmbeddingRules}
                                         onChange={(checked) => updateField('useEmbeddingRules', checked)}
                                         label="Use embedding search rules"
                                     />
-                                    <p className="mt-2 text-xs text-slate-500">Include matched rule context in generated replies.</p>
+                                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Include matched rule context in generated replies.</p>
                                 </div>
-                                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
                                     <ToggleSwitch
                                         checked={settings.useSimilarReviews}
                                         onChange={(checked) => updateField('useSimilarReviews', checked)}
                                         label="Use similar reviews"
                                     />
-                                    <p className="mt-2 text-xs text-slate-500">Include embedding-matched reviews in the prompt.</p>
+                                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Include embedding-matched reviews in the prompt.</p>
                                 </div>
                             </div>
-                            <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Similar Reviews Count</label>
+                            <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Similar Reviews Count</label>
                                 <input
                                     type="number"
                                     min={1}
                                     max={20}
                                     value={settings.similarReviewsCount}
                                     onChange={(event) => updateField('similarReviewsCount', Number(event.target.value || 1))}
-                                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                                 />
-                                <p className="text-xs text-slate-500 mt-1.5">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                                     Controls how many embedding-matched reviews are injected when similar reviews are enabled.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm space-y-4">
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-4">
                         <div className="flex items-center gap-2">
-                            <KeyRound size={16} className="text-sky-600" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700">Provider API Key</h3>
+                            <KeyRound size={16} className="text-sky-600 dark:text-sky-400" />
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Provider API Key</h3>
                         </div>
 
-                        <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 space-y-3">
+                        <div className="rounded-xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/50 dark:bg-sky-900/20 p-4 space-y-3">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Google API Key</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Google API Key</label>
                                 <input
                                     type="password"
                                     value={settings.googleApiKey}
                                     onChange={(event) => updateField('googleApiKey', event.target.value)}
                                     placeholder="Enter Google API key"
-                                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                                 />
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                                 <button
                                     onClick={handleTestGoogleApiKey}
                                     disabled={googleTestState === 'testing'}
-                                    className="px-4 py-2 bg-white border border-sky-200 rounded-lg text-sm font-semibold text-slate-700 hover:text-sky-700 hover:border-sky-300 hover:bg-sky-100 transition-colors disabled:opacity-70"
+                                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-sky-200 dark:border-sky-800 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-sky-700 dark:hover:text-sky-400 hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors disabled:opacity-70"
                                 >
                                     {googleTestState === 'testing' ? 'Testing Google...' : 'Test Google Key'}
                                 </button>
@@ -239,32 +239,32 @@ export const ReplyGeneration: React.FC = () => {
                 </section>
 
                 <aside className="space-y-5">
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                    <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm space-y-4">
                         <div className="flex items-center gap-2">
-                            <BarChart3 size={16} className="text-sky-600" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700">Usage Snapshot</h3>
+                            <BarChart3 size={16} className="text-sky-600 dark:text-sky-400" />
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Usage Snapshot</h3>
                         </div>
 
                         <div className="space-y-3">
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider">Google Requests</div>
-                                <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.googleRequestCount}</div>
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
+                                <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Google Requests</div>
+                                <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{settings.googleRequestCount}</div>
                             </div>
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider">Google Token Usage</div>
-                                <div className="mt-1 text-2xl font-semibold text-slate-900">{settings.googleTokenUsage}</div>
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
+                                <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Google Token Usage</div>
+                                <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{settings.googleTokenUsage}</div>
                             </div>
                         </div>
                     </section>
                 </aside>
             </div>
 
-            <section className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                    {saveState === 'saved' && <p className="text-sm text-emerald-600">Reply generation settings saved.</p>}
-                    {(saveState === 'error' || errorMessage) && <p className="text-sm text-rose-600">{errorMessage}</p>}
+                    {saveState === 'saved' && <p className="text-sm text-emerald-600 dark:text-emerald-400">Reply generation settings saved.</p>}
+                    {(saveState === 'error' || errorMessage) && <p className="text-sm text-rose-600 dark:text-rose-400">{errorMessage}</p>}
                     {saveState === 'idle' && !errorMessage && (
-                        <p className="text-sm text-slate-500">Save after changing model, context depth, or provider credentials.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Save after changing model, context depth, or provider credentials.</p>
                     )}
                 </div>
                 <button

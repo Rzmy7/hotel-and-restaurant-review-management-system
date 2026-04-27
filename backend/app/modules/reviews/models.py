@@ -37,6 +37,7 @@ class ProcessedReview(Base):
     rating = Column(Float, nullable=True)
     reviewerName = Column("reviewerName", String(255), nullable=True)
     text = Column(String, nullable=True)
+    heading = Column(String, nullable=True)
     summary = Column(String, nullable=True)
 
     # AI analysis
@@ -73,6 +74,7 @@ class ProcessedReview(Base):
     category_scores = relationship(
         "ReviewCategory", back_populates="review", cascade="all, delete-orphan"
     )
+    source = relationship("Source")
 
 
 class ReviewMedia(Base):

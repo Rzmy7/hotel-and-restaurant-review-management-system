@@ -21,3 +21,5 @@ passlib
 protobuf
 python-multipart
 email-validator
+python-docx
+PyPDF2

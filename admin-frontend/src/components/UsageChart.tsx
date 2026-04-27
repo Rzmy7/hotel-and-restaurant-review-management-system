@@ -13,17 +13,17 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
 
     if (data.length === 0) {
         return (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full min-h-[350px]">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[350px] transition-colors duration-200">
                 <div className="flex items-center gap-2.5 mb-4">
-                    <div className="p-2 rounded-lg bg-blue-50">
-                        <BarChart3 size={18} className="text-blue-500" />
+                    <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                        <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-900">Platform Usage Over Time</h3>
-                        <p className="text-xs text-gray-500">Active users per month</p>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Usage Over Time</h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">Active users per month</p>
                     </div>
                 </div>
-                <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/50 text-sm text-gray-400">
+                <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 dark:border-slate-600 bg-gray-50/50 dark:bg-slate-700/30 text-sm text-gray-400 dark:text-slate-500">
                     No usage data available.
                 </div>
             </div>
@@ -51,14 +51,14 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
     const areaPath = `${linePath} L ${chartPoints[chartPoints.length - 1].x},${height - padding} L ${chartPoints[0].x},${height - padding} Z`;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full min-h-[350px] group hover:shadow-md hover:border-gray-200 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[350px] group hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
             <div className="flex items-center gap-2.5 mb-4">
-                <div className="p-2 rounded-lg bg-blue-50">
-                    <BarChart3 size={18} className="text-blue-500" />
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                    <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />
                 </div>
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Platform Usage Over Time</h3>
-                    <p className="text-xs text-gray-500">Active users per month</p>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Usage Over Time</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Active users per month</p>
                 </div>
             </div>
             <div className="flex-1 relative">
@@ -80,7 +80,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                                 x={padding - 10}
                                 y={y + 4}
                                 textAnchor="end"
-                                className="text-xs fill-gray-400"
+                                className="text-xs fill-gray-400 dark:fill-slate-500"
                             >
                                 {val.toLocaleString()}
                             </text>
@@ -97,7 +97,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                                 y1={y}
                                 x2={width - padding}
                                 y2={y}
-                                stroke="#f3f4f6"
+                                className="stroke-gray-100 dark:stroke-slate-700"
                                 strokeWidth="1"
                             />
                         );
@@ -120,7 +120,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                     {chartPoints.map((p, i) => (
                         <g key={i}>
                             <circle cx={p.x} cy={p.y} r="5" fill="#3b82f6" opacity="0.15" />
-                            <circle cx={p.x} cy={p.y} r="3" fill="white" stroke="#3b82f6" strokeWidth="2" />
+                            <circle cx={p.x} cy={p.y} r="3" className="fill-white dark:fill-slate-800" stroke="#3b82f6" strokeWidth="2" />
                         </g>
                     ))}
 
@@ -131,7 +131,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                             x={p.x}
                             y={height - 10}
                             textAnchor="middle"
-                            className="text-xs fill-gray-400"
+                            className="text-xs fill-gray-400 dark:fill-slate-500"
                         >
                             {p.label}
                         </text>

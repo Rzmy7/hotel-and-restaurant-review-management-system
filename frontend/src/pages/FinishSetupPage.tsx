@@ -5,6 +5,7 @@ import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
+import { getApiBaseUrl } from '../config/api';
 
 const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
@@ -84,6 +85,28 @@ const FinishSetupPage = () => {
         if (accessToken) {
           persist(user, accessToken);
         }
+
+        // Upload rules file if one was selected during setup
+        const rulesFile = (window as any).__setup_rules_file as File | undefined;
+        if (rulesFile) {
+          try {
+            const formData = new FormData();
+            formData.append('file', rulesFile);
+
+            const token = localStorage.getItem('token') || accessToken;
+            const baseUrl = getApiBaseUrl();
+            await fetch(`${baseUrl.replace(/\/$/, '')}/api/organizations/${organizationId}/upload-rules`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            });
+          } catch (rulesErr) {
+            console.warn('Rules file upload failed (non-blocking):', rulesErr);
+          } finally {
+            delete (window as any).__setup_rules_file;
+          }
+        }
+
         // Update local organizations list
         const organizations = parseJsonArray(localStorage.getItem('organizations'));
         const alreadyExists = organizations.some((org: any) => org?.organization_id === organizationId);
@@ -211,7 +234,7 @@ const FinishSetupPage = () => {
                 <span className="text-[11px] font-black uppercase tracking-widest">Ready to Launch</span>
             </div>
             <p className="text-[13px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                Click the button below to finalize and head to your dashboard. Welcome to the L2 Project family.
+                Click the button below to finalize and head to your dashboard. Welcome to the ReviewMate family.
             </p>
         </div>
       </div>

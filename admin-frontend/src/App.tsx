@@ -7,16 +7,16 @@ import { FeatureFlags } from './pages/FeatureFlags';
 import { Settings } from './pages/Settings';
 import { Embeddings } from './pages/Embeddings';
 import { Scraping } from './pages/Scraping';
-import { APIManage } from './pages/APIManage';
+
 import { Monitoring } from './pages/Monitoring';
 import { SubscriptionPlans } from './pages/SubscriptionPlans';
 import { Broadcasting } from './pages/Broadcasting';
 import { ReplyGeneration } from './pages/ReplyGeneration';
 import { ReviewProcessing } from './pages/ReviewProcessing';
+import { getFrontendLoginUrl } from './config/frontend';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 import { useEffect, useState } from 'react';
-
-const USER_FRONTEND_LOGIN = 'http://localhost:5173/login';
 
 function App() {
   const [ready, setReady] = useState(false);
@@ -46,7 +46,7 @@ function App() {
 
     // --- Auth guard: redirect to user-frontend login if no token ---
     if (!token) {
-      window.location.href = USER_FRONTEND_LOGIN;
+      window.location.href = getFrontendLoginUrl();
       return;
     }
 
@@ -62,28 +62,31 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="organizations" element={<Organizations />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="feature-flags" element={<FeatureFlags />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="embeddings" element={<Embeddings />} />
-          <Route path="scraping" element={<Scraping />} />
-          <Route path="api-manage" element={<APIManage />} />
-          <Route path="monitoring" element={<Monitoring />} />
-          <Route path="subscription-plans" element={<SubscriptionPlans />} />
-          <Route path="broadcasting" element={<Broadcasting />} />
-          <Route path="reply-generation" element={<ReplyGeneration />} />
-          <Route path="review-processing" element={<ReviewProcessing />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes> 
-      
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="organizations" element={<Organizations />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="feature-flags" element={<FeatureFlags />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="embeddings" element={<Embeddings />} />
+            <Route path="scraping" element={<Scraping />} />
+
+            <Route path="monitoring" element={<Monitoring />} />
+            <Route path="subscription-plans" element={<SubscriptionPlans />} />
+            <Route path="broadcasting" element={<Broadcasting />} />
+            <Route path="reply-generation" element={<ReplyGeneration />} />
+            <Route path="review-processing" element={<ReviewProcessing />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes> 
+        
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
 export default App;
+

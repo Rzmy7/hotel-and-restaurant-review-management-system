@@ -58,57 +58,57 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
             />
             
             {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md mx-4">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-900">Add New Admin</h2>
+                <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add New Admin</h2>
                     <button 
                         onClick={onClose}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                     >
-                        <X size={20} className="text-gray-500" />
+                        <X size={20} className="text-gray-500 dark:text-slate-400" />
                     </button>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Full Name</label>
                         <input
                             type="text"
                             required
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             placeholder="Enter full name"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Email Address</label>
                         <input
                             type="email"
                             required
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             placeholder="Enter email address"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Role</label>
                         <input
                             type="text"
                             value="Admin"
                             disabled
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Only admin accounts can be created from this action</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Only admin accounts can be created from this action</p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Password</label>
                         <input
                             type="password"
                             required
@@ -116,12 +116,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                             placeholder="Set admin password"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Confirm Password</label>
                         <input
                             type="password"
                             required
@@ -129,11 +129,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                             placeholder="Re-enter password"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
-                    {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+                    {errorMessage && <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>}
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-4">
@@ -141,7 +141,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onA
                             type="button"
                             onClick={onClose}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                            className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                         >
                             Cancel
                         </button>

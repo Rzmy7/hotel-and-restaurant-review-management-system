@@ -58,28 +58,40 @@ class TripAdvisorExtractor:
         return {}
 
     def _parse_rating(self, card, json_data=None) -> float | None:
-        # Priority 1: JSON-LD
-        if json_data and "reviewRating" in json_data:
-            return float(json_data["reviewRating"].get("ratingValue", 0))
-
-        # Priority 2: DOM
         try:
             svg = card.query_selector(config.RATING)
             if svg:
-                label = svg.get_attribute("aria-label") or ""
+                # Try finding <title> inside SVG (most reliable)
+                title_el = svg.query_selector("title")
+                label = title_el.text_content() if title_el else (svg.get_attribute("aria-label") or "")
+                
+                # Extract "X of 5" or "X.0 of 5"
                 m = re.search(r"(\d(?:\.\d)?)\s+of\s+5", label)
                 if m:
                     return float(m.group(1))
+                
+                # Try class-based fallback (e.g. bubble_50)
+                cls = svg.get_attribute("class") or ""
+                m_cls = re.search(r"bubble_(\d+)", cls)
+                if m_cls:
+                    return float(m_cls.group(1)) / 10.0
         except Exception:
             pass
+
+        if json_data and "reviewRating" in json_data:
+            return float(json_data["reviewRating"].get("ratingValue", 0))
+
         return None
 
     def _parse_review_id(self, card) -> str | None:
         try:
-            anchors = card.query_selector_all("a[href*='-r']")
-            for a in anchors:
-                href = a.get_attribute("href") or ""
-                m = re.search(r"-r(\d+)-", href)
+            heading = card.query_selector(config.REVIEW_HEADING)
+            if not heading:
+                heading = card.query_selector('a[href*="/ShowUserReviews-"]')
+            
+            if heading:
+                href = heading.get_attribute("href") or ""
+                m = re.search(r"r(\d+)", href)
                 if m:
                     return m.group(1)
         except Exception:
@@ -90,32 +102,67 @@ class TripAdvisorExtractor:
         trip_type = None
         trip_date = None
         try:
-            raw_text = self._safe_text(card, config.STAYED_DATE)
-            if raw_text:
-                if "•" in raw_text:
-                    parts = [p.strip() for p in raw_text.split("•")]
-                    trip_date = parts[0] if len(parts) > 0 else None
-                    trip_type = parts[1] if len(parts) > 1 else None
-                else:
-                    trip_date = raw_text
+            all_text = card.inner_text()
+            m_date = re.search(r"Date of stay:\s*(.*?)(?:\n|$)", all_text, re.IGNORECASE)
+            if m_date:
+                trip_date = m_date.group(1).strip()
+            
+            m_type = re.search(r"Trip type:\s*(.*?)(?:\n|$)", all_text, re.IGNORECASE)
+            if m_type:
+                trip_type = m_type.group(1).replace("Travelled ", "").strip()
         except Exception:
             pass
         return trip_type, trip_date
 
     def _expand_review(self, card):
         try:
+            # 1. Expand the main review
             btn = card.query_selector(config.READ_MORE_BTN)
-            if btn:
+            if btn and btn.is_visible():
                 btn.click()
-                self.page.wait_for_timeout(400)
+                # Brief wait for dynamic content to load
+                self.page.wait_for_timeout(800)
+            
+            # 2. Expand management response if present
+            reply_container = card.query_selector(config.REPLY_CONTAINER)
+            if reply_container:
+                reply_btn = reply_container.query_selector(config.READ_MORE_BTN)
+                if reply_btn and reply_btn.is_visible():
+                    reply_btn.click()
+                    self.page.wait_for_timeout(500)
         except Exception:
             pass
 
     def _parse_reply(self, card) -> str | None:
         try:
-            reply_el = card.query_selector(config.REPLY)
-            if reply_el:
-                return reply_el.inner_text().strip()
+            reply_container = card.query_selector(config.REPLY_CONTAINER)
+            if reply_container:
+                # Find the actual text body within the container
+                body = reply_container.query_selector(config.REPLY_TEXT)
+                text = body.inner_text().strip() if body else reply_container.inner_text().strip()
+                
+                # 1. Remove "Read more" / "Read less"
+                text = text.replace("Read more", "").replace("Read less", "").strip()
+                
+                # 2. Remove "Response from..." header if we grabbed the whole container
+                if "Response from" in text:
+                    # Look for the last newline or separator after the header
+                    # Usually "Responded 6 Jan 2026" or similar
+                    parts = re.split(r"Responded\s+\d{1,2}\s+\w+\s+\d{4}", text, flags=re.IGNORECASE)
+                    if len(parts) > 1:
+                        text = parts[-1].strip()
+                    else:
+                        # Fallback for different date formats
+                        parts = re.split(r"Responded\s+\w+\s+\d{4}", text, flags=re.IGNORECASE)
+                        if len(parts) > 1:
+                            text = parts[-1].strip()
+                
+                # 3. Remove legal disclaimer
+                disclaimer = "This response is the subjective opinion of the management representative"
+                if disclaimer in text:
+                    text = text.split(disclaimer)[0].strip()
+                
+                return text
         except Exception:
             pass
         return None
@@ -141,94 +188,192 @@ class TripAdvisorExtractor:
             "rating_sleep_quality": None,
         }
         try:
-            script = """
-            (card) => {
-                let results = {};
-                let subRatingDiv = card.querySelector('div[data-automation="reviewSubRating"]');
-                let svgs = subRatingDiv ? subRatingDiv.querySelectorAll('svg[aria-label*="of 5"]') : card.querySelectorAll('svg[aria-label*="of 5"]');
-                svgs.forEach(svg => {
-                    let aria = svg.getAttribute('aria-label');
-                    let match = aria ? aria.match(/([\d\.]+) of 5/) : null;
-                    if (match && svg.closest) {
-                        let score = parseFloat(match[1]);
-                        let container = svg.closest("div")?.parentElement;
-                        let text = container ? container.innerText.toLowerCase() : "";
+            # Refined JS evaluation to find SVGs strictly relative to their labels
+            results = card.evaluate(r"""
+                (card) => {
+                    const data = {};
+                    const labels = ["Value", "Rooms", "Location", "Cleanliness", "Service", "Sleep Quality"];
+                    
+                    labels.forEach(label => {
+                        // Find the deepest element containing exactly this label text
+                        const allElements = Array.from(card.querySelectorAll('*'));
+                        const labelEl = allElements.find(el => 
+                            el.children.length === 0 && 
+                            el.textContent && 
+                            el.textContent.trim() === label
+                        );
                         
-                        // Exclude the main review rating which lacks specific text
-                        if (text.includes("value")) results["rating_value"] = score;
-                        else if (text.includes("service")) results["rating_service"] = score;
-                        else if (text.includes("location")) results["rating_location"] = score;
-                        else if (text.includes("clean")) results["rating_cleanliness"] = score;
-                        else if (text.includes("room")) results["rating_rooms"] = score;
-                        else if (text.includes("sleep")) results["rating_sleep_quality"] = score;
-                    }
-                });
-                return results;
-            }
-            """
-            extracted = card.evaluate(script)
-            subs.update(extracted)
+                        if (labelEl) {
+                            // Search up through parents for the nearest SVG
+                            let current = labelEl;
+                            let svg = null;
+                            for (let i = 0; i < 3; i++) {
+                                if (!current || current === card) break;
+                                
+                                // Check if the parent contains an SVG with a title
+                                svg = current.parentElement.querySelector('svg');
+                                if (svg && svg.querySelector('title')) break;
+                                
+                                current = current.parentElement;
+                            }
+                            
+                            if (svg) {
+                                const title = svg.querySelector('title');
+                                if (title) {
+                                    const m = title.textContent.match(/(\d(?:\.\d)?)\s+of\s+5/);
+                                    if (m) {
+                                        data[label] = parseFloat(m[1]);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    return data;
+                }
+            """)
+            
+            if results:
+                for label, score in results.items():
+                    key = f"rating_{label.lower().replace(' ', '_')}"
+                    if key in subs:
+                        subs[key] = score
         except Exception as e:
-            logger.debug(f"Error extracting sub-ratings: {e}")
+            logger.debug(f"Sub-rating JS extraction failed: {e}")
         return subs
 
-    def _parse_photos(self, card) -> list[str]:
+    def _parse_card_photos(self, card) -> list[str]:
+        """Extract images visible directly on the review card."""
         photos = []
         try:
             imgs = card.query_selector_all(config.IMAGES)
             for img in imgs:
-                src = img.get_attribute("src") or ""
-                if src and src not in photos:
-                    photos.append(src)
+                media_id = img.get_attribute("data-mediaid")
+                if media_id:
+                    src = img.get_attribute("src") or img.get_attribute("srcset") or ""
+                    if " " in src:
+                        src = src.split(",")[-1].split(" ")[0].strip()
+                    if src and src not in photos:
+                        photos.append(src)
         except Exception:
             pass
+        return photos
+
+    def _parse_photos(self, card, author_name: str) -> list[str]:
+        """
+        Orchestrates photo extraction. 
+        Collects card photos first, then enters gallery if a 'See all' button exists.
+        """
+        photos = self._parse_card_photos(card)
+        
+        try:
+            see_all = card.query_selector(config.SEE_ALL_PHOTOS_BTN)
+            if see_all:
+                see_all.scroll_into_view_if_needed()
+                self.page.wait_for_timeout(500) # Wait for animation
+                
+                if see_all.is_visible():
+                    logger.info(f"Detected 'See all' media button for review by {author_name}. Opening gallery...")
+                    see_all.click(force=True)
+                    self.page.wait_for_selector(config.GALLERY_MODAL, timeout=10000)
+                    
+                    gallery_photos = []
+                max_gallery_attempts = 20 # Safety limit
+                
+                for _ in range(max_gallery_attempts):
+                    # 1. Verify author in gallery
+                    gallery_author_el = self.page.query_selector(config.GALLERY_AUTHOR)
+                    if gallery_author_el:
+                        gallery_author = gallery_author_el.inner_text().strip()
+                        if author_name not in gallery_author and gallery_author not in author_name:
+                            logger.info(f"Gallery author changed to {gallery_author}. Finished this review's media.")
+                            break
+                    
+                    # 2. Extract current image
+                    img_el = self.page.query_selector(config.GALLERY_IMAGE)
+                    if img_el:
+                        src = img_el.get_attribute("src") or ""
+                        if src and src not in gallery_photos:
+                            gallery_photos.append(src)
+                    
+                    # 3. Click next
+                    next_btn = self.page.query_selector(config.GALLERY_NEXT_BTN)
+                    if next_btn and next_btn.is_enabled():
+                        next_btn.click()
+                        self.page.wait_for_timeout(1000) # Small delay for transition
+                    else:
+                        break
+                
+                # Merge and close
+                for p in gallery_photos:
+                    if p not in photos:
+                        photos.append(p)
+                
+                close_btn = self.page.query_selector(config.GALLERY_CLOSE_BTN)
+                if close_btn:
+                    close_btn.click()
+                    self.page.wait_for_timeout(500)
+                    
+        except Exception as e:
+            logger.warning(f"Failed to extract photos from TripAdvisor gallery: {e}")
+            # Try to close the modal if we are stuck
+            try:
+                self.page.keyboard.press("Escape")
+            except Exception:
+                pass
+                
         return photos
 
     def extract_review(self, card) -> dict | None:
         try:
             self._expand_review(card)
-            
             review_id = self._parse_review_id(card)
-            json_data = self._get_json_ld_review(review_id) if review_id else {}
+            
+            # Author & Location
+            name = "Anonymous"
+            origin = None
+            author_area = card.query_selector(config.AUTHOR_AREA)
+            if author_area:
+                # Name is usually the first bold span
+                name_el = author_area.query_selector('span.biGQs._P.SewaP.OgHoE, a span')
+                name = name_el.inner_text().strip() if name_el else "Anonymous"
+                
+                # Location is usually a span.qVkLn that doesn't say "contributions"
+                spans = author_area.query_selector_all('span.qVkLn')
+                for s in spans:
+                    txt = s.inner_text().strip()
+                    if txt and "contribution" not in txt.lower() and "helpful" not in txt.lower():
+                        origin = txt
+                        break
 
-            name = self._safe_text(card, config.AUTHOR_NAME)
-            if not name:
-                name = json_data.get("author", {}).get("name") if json_data else "Anonymous"
-            if not name:
-                name = "Anonymous"
-
-            origin = self._safe_text(card, config.AUTHOR_NATIONALITY)
-            rating = self._parse_rating(card, json_data)
-
-            raw_date = self._safe_text(card, config.REVIEW_DATE)
-            review_date = raw_date.replace("Reviewed", "").replace("Written", "").strip() if raw_date else None
-            if not review_date and json_data:
-                review_date = json_data.get("datePublished")
+            rating = self._parse_rating(card)
+            
+            # Clean Review Date
+            raw_date_el = card.query_selector(config.REVIEW_DATE)
+            raw_date = raw_date_el.inner_text() if raw_date_el else ""
+            clean_date = re.sub(r".*wrote a review\s*", "", raw_date, flags=re.IGNORECASE).strip()
+            clean_date = clean_date.split("\n")[0].strip()
 
             title = self._safe_text(card, config.REVIEW_HEADING)
-            if not title and json_data:
-                title = json_data.get("name")
-
             text = self._safe_text(card, config.REVIEW_TEXT)
-            if not text and json_data:
-                text = json_data.get("description") or json_data.get("reviewBody")
+            
+            # Filter Disclaimer
+            if text and "subjective opinion" in text:
+                text = text.split("This review is the subjective opinion")[0].strip()
 
             trip_type, trip_date = self._parse_trip_info(card)
-
             reply = self._parse_reply(card)
             likes_count = self._parse_likes(card)
-            photos = self._parse_photos(card)
-
+            photos = self._parse_photos(card, name)
             sub_ratings = self._parse_sub_ratings(card)
 
             return {
                 "external_review_id": review_id,
                 "author": name,
-                "reviewer_origin": origin or None,
+                "reviewer_origin": origin,
                 "rating": rating,
-                "review_date": review_date,
-                "review_title": title or None,
-                "review_text": text or None,
+                "review_date": clean_date,
+                "review_title": title,
+                "review_text": text,
                 "traveler_type": trip_type,
                 "trip_date": trip_date,
                 "reply_text": reply,

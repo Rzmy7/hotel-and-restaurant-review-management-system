@@ -5,7 +5,9 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
         setTimeout(() => {
             resolve({
                 totalOrganizations: 2847,
+                organizationsAddedToday: 15,
                 organizationsGrowth: 12.5,
+                addedTodayGrowth: 2.1,
                 totalUsers: 18392,
                 usersGrowth: 8.2,
                 activeHotels: 1245,
@@ -81,6 +83,7 @@ export const fetchOrgStats = (): Promise<OrganizationStats> => {
                 total: 2847,
                 active: 2634,
                 pending: 213,
+                addedToday: 15,
             });
         }, 500);
     });

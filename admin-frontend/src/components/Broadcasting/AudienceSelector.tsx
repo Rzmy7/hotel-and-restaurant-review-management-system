@@ -23,7 +23,7 @@ export const AudienceSelector: React.FC<AudienceSelectorProps> = ({
 }) => {
     return (
         <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">Target Audience *</label>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">Target Audience *</label>
             <div className="space-y-3">
                 {AUDIENCE_OPTIONS.map(opt => (
                     <div key={opt.value}>
@@ -37,13 +37,13 @@ export const AudienceSelector: React.FC<AudienceSelectorProps> = ({
                                 className="w-4 h-4"
                             />
                             <span className="text-blue-600">{getAudienceIcon(opt.value)}</span>
-                            <p className="text-sm font-medium text-gray-900">{opt.label}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{opt.label}</p>
                         </label>
 
                         {audienceType === opt.value && opt.subOptions && (
                             <div className="ml-8 mt-2 space-y-1.5">
                                 {opt.subOptions.map(sub => (
-                                    <label key={sub.value} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                    <label key={sub.value} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 rounded cursor-pointer">
                                         <input
                                             type="radio"
                                             name={`${opt.value}_sub`}
@@ -52,7 +52,7 @@ export const AudienceSelector: React.FC<AudienceSelectorProps> = ({
                                             onChange={() => onAudienceValueChange(sub.value)}
                                             className="w-3 h-3"
                                         />
-                                        <span className="text-sm text-gray-700">{sub.label}</span>
+                                        <span className="text-sm text-gray-700 dark:text-slate-200">{sub.label}</span>
                                     </label>
                                 ))}
                             </div>

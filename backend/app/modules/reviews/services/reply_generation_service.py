@@ -23,7 +23,7 @@ from app.modules.admin.services.system_settings_service import (
 )
 from app.modules.reviews.schemas import ReplyGenerationRequest
 
-EMBEDDING_SERVICE_URL = os.getenv("EMBEDDING_SERVICE_URL", "http://localhost:8001").rstrip("/")
+from app.core.config import EMBEDDING_SERVICE_URL
 
 
 def _load_reply_generation_settings() -> dict[str, Any]:

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getDashboardPathForRole, isExternalDestination, normalizeRole } from '../utils/authRole';
+import { getDashboardPathForRole, isExternalDestination, normalizeRole, isAdminRole } from '../utils/authRole';
 
 export default function OAuthSuccessPage() {
 
@@ -37,17 +37,18 @@ export default function OAuthSuccessPage() {
                 role: normalizeRole(payload.role || payload.roles)
             };
 
-            // Save user + token using AuthContext
-            persist(user, token);
-
-            if (user.role === 'ADMIN') {
-                const destination = getDashboardPathForRole(user.role);
+            // Check if admin
+            if (isAdminRole(user.role)) {
+                const userStr = JSON.stringify(user);
+                const destination = getDashboardPathForRole(user.role, token, userStr);
                 if (isExternalDestination(destination)) {
                     window.location.href = destination;
                     return;
                 }
                 navigate(destination);
             } else {
+                // Save user + token using AuthContext
+                persist(user, token);
                 await checkUserOrganizations();
             }
 

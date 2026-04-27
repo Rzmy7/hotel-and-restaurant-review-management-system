@@ -256,6 +256,18 @@ class GeneralSettingsPayload(BaseModel):
     currency: str = Field(..., min_length=1, max_length=64)
 
 
+class SecuritySettingsResponse(BaseModel):
+    userSessionTimeoutMinutes: int
+    adminSessionTimeoutMinutes: int
+    requireTwoFactorAuth: bool
+
+
+class SecuritySettingsPayload(BaseModel):
+    userSessionTimeoutMinutes: int = Field(..., ge=5, le=10080)  # 5 min to 7 days
+    adminSessionTimeoutMinutes: int = Field(..., ge=5, le=10080)
+    requireTwoFactorAuth: bool = False
+
+
 class AdminProfileResponse(BaseModel):
     name: str
 

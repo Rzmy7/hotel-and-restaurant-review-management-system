@@ -195,6 +195,62 @@ def notify_source_added(user_id: str, platform_name: str, source_url: str, org_n
     )
 
 
+def notify_group_invite(user_id: str, inviter_name: str, group_name: str) -> None:
+    """Notification sent to a user when they receive a group invite."""
+    send_notification(
+        user_id=user_id,
+        title="You Have a Group Invitation",
+        message=(
+            f"{inviter_name} has invited you to join the group \"{group_name}\". "
+            "Visit your Groups page to accept or decline the invitation."
+        ),
+        notification_type="info",
+    )
+
+
+def notify_group_invite_accepted(
+    owner_id: str,
+    member_name: str,
+    group_name: str,
+    db_for_name=None,
+    user_id: str = None,
+) -> None:
+    """Notification sent to the group owner when someone accepts their invite."""
+    display_name = member_name
+    if db_for_name and user_id:
+        try:
+            from sqlalchemy import text as _text
+            row = db_for_name.execute(
+                _text("SELECT first_name, last_name FROM [user] WHERE user_id = :uid"),
+                {"uid": user_id},
+            ).fetchone()
+            if row:
+                display_name = f"{row.first_name or ''} {row.last_name or ''}".strip() or member_name
+        except Exception:
+            pass
+
+    send_notification(
+        user_id=owner_id,
+        title="Group Invitation Accepted",
+        message=(
+            f"{display_name} has accepted your invitation and joined \"{group_name}\"."
+        ),
+        notification_type="success",
+    )
+
+
+def notify_group_member_removed(user_id: str, group_name: str) -> None:
+    """Notification sent to a user when they are removed from a group."""
+    send_notification(
+        user_id=user_id,
+        title="Removed from Group",
+        message=(
+            f"You have been removed from the group \"{group_name}\" by the group owner."
+        ),
+        notification_type="warning",
+    )
+
+
 def notify_source_removed(user_id: str, platform_name: str, org_name: str | None = None) -> None:
     """Notification when a review source is removed."""
     org_info = f" from '{org_name}'" if org_name else ""
