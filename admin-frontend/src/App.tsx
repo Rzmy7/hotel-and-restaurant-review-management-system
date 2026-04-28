@@ -13,6 +13,7 @@ import { SubscriptionPlans } from './pages/SubscriptionPlans';
 import { Broadcasting } from './pages/Broadcasting';
 import { ReplyGeneration } from './pages/ReplyGeneration';
 import { ReviewProcessing } from './pages/ReviewProcessing';
+import { LLMModels } from './pages/LLMModels';
 import { getFrontendLoginUrl } from './config/frontend';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -77,6 +78,7 @@ function App() {
             <Route path="monitoring" element={<Monitoring />} />
             <Route path="subscription-plans" element={<SubscriptionPlans />} />
             <Route path="broadcasting" element={<Broadcasting />} />
+            <Route path="llm-models" element={<LLMModels />} />
             <Route path="reply-generation" element={<ReplyGeneration />} />
             <Route path="review-processing" element={<ReviewProcessing />} />
             <Route path="*" element={<Navigate to="/" replace />} />

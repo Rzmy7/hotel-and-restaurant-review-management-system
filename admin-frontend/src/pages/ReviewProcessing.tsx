@@ -9,6 +9,7 @@ import {
     saveGeminiApiKey,
     testGeminiApiKey,
     resumeReviewProcessing,
+    retryFailedReviews,
 } from '../services/reviewProcessingService';
 import type {
     ReviewProcessingStats,
@@ -47,6 +48,7 @@ export const ReviewProcessing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
 
     // Gemini API Key state
     const [geminiConfig, setGeminiConfig] = useState<GeminiApiKeyConfig>(defaultGeminiConfig);
@@ -132,6 +134,28 @@ export const ReviewProcessing: React.FC = () => {
         } catch (err) {
             console.error('Failed to resume review processing:', err);
             setError('Failed to resume review processing.');
+        }
+    };
+
+    const handleRetryJob = async (jobId: string) => {
+        // Extract source_id from composite job ID (format: "{source_id}-failed")
+        const sourceId = jobId.replace(/-failed$/, '');
+        if (!sourceId || sourceId === jobId) {
+            setError('Unable to determine source ID for retry.');
+            return;
+        }
+
+        try {
+            setRetryingJobId(jobId);
+            setError(null);
+            const result = await retryFailedReviews(sourceId);
+            // Show success briefly then refresh
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to retry failed reviews:', err);
+            setError(err instanceof Error ? err.message : 'Failed to retry failed reviews.');
+        } finally {
+            setRetryingJobId(null);
         }
     };
 
@@ -487,9 +511,19 @@ export const ReviewProcessing: React.FC = () => {
                                         <div className="flex items-center gap-2">
                                             {job.status === 'Failed' && (
                                                 <>
-                                                    <button className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase">Retry</button>
-                                                    <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
-                                                        <RotateCcw size={14} />
+                                                    <button
+                                                        onClick={() => handleRetryJob(job.id)}
+                                                        disabled={retryingJobId === job.id}
+                                                        className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {retryingJobId === job.id ? 'Retrying...' : 'Retry'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRetryJob(job.id)}
+                                                        disabled={retryingJobId === job.id}
+                                                        className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <RotateCcw size={14} className={retryingJobId === job.id ? 'animate-spin' : ''} />
                                                     </button>
                                                 </>
                                             )}

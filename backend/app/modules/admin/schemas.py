@@ -378,6 +378,51 @@ class GeminiApiKeyTestResponse(BaseModel):
     message: str
 
 
+# ── LLM Gateway schemas ────────────────────────────────────────────
+
+
+class LLMModelCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    endpoint: str = Field(..., min_length=1, max_length=500)
+    model_name: str = Field(..., min_length=1, max_length=200)
+    api_key: str = Field(..., min_length=1, max_length=2048)
+
+
+class LLMModelUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    endpoint: str | None = Field(default=None, min_length=1, max_length=500)
+    model_name: str | None = Field(default=None, min_length=1, max_length=200)
+    api_key: str | None = Field(default=None, min_length=1, max_length=2048)
+
+
+class LLMModelResponse(BaseModel):
+    id: str
+    name: str
+    endpoint: str
+    model_name: str
+    api_key_masked: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+class LLMModelTestResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class LLMAssignmentsResponse(BaseModel):
+    review_processing_model_id: str | None = None
+    reply_generation_model_id: str | None = None
+    review_processing_model_name: str | None = None
+    reply_generation_model_name: str | None = None
+
+
+class LLMAssignmentsUpdate(BaseModel):
+    review_processing_model_id: str | None = None
+    reply_generation_model_id: str | None = None
+
+
 # ── Broadcasting schemas ────────────────────────────────────────────
 
 

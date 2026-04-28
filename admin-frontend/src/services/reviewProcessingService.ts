@@ -56,3 +56,9 @@ export const saveGeminiApiKey = (apiKey: string): Promise<{ status: string; mess
 export const testGeminiApiKey = (apiKey: string): Promise<{ success: boolean; message: string }> => {
     return apiClient.post<{ success: boolean; message: string }>('/admin/monitoring/review-processing/gemini-config/test', { apiKey });
 };
+
+export const retryFailedReviews = (sourceId: string): Promise<{ status: string; message: string; count: number }> => {
+    return apiClient.post<{ status: string; message: string; count: number }>(
+        `/admin/monitoring/review-processing/retry/${sourceId}`
+    );
+};
