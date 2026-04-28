@@ -2,11 +2,31 @@ name: Build & Deploy
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, main]
   workflow_dispatch:
     inputs:
       deploy_all:
         description: 'Force deploy everything'
+        required: false
+        type: boolean
+        default: false
+      deploy_frontends:
+        description: 'Force deploy frontends (user + admin)'
+        required: false
+        type: boolean
+        default: false
+      deploy_backend:
+        description: 'Force deploy backend'
+        required: false
+        type: boolean
+        default: false
+      deploy_embedding:
+        description: 'Force deploy embedding service'
+        required: false
+        type: boolean
+        default: false
+      deploy_scraper:
+        description: 'Force deploy scraper engine'
         required: false
         type: boolean
         default: false
@@ -34,13 +54,17 @@ jobs:
       deploy-embedding: ${{ steps.check.outputs.deploy-embedding }}
       deploy-scraper: ${{ steps.check.outputs.deploy-scraper }}
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
         with:
+          clean: false
           fetch-depth: 2
 
       - name: Detect changed paths
         id: check
         run: |
+          # Force deploy everything
           if [ "${{ github.event.inputs.deploy_all }}" == "true" ]; then
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "admin-frontend=true" >> $GITHUB_OUTPUT
@@ -53,6 +77,12 @@ jobs:
             echo "deploy-scraper=true" >> $GITHUB_OUTPUT
             exit 0
           fi
+
+          # Per-component force deploy overrides
+          FORCE_FRONTENDS="${{ github.event.inputs.deploy_frontends }}"
+          FORCE_BACKEND="${{ github.event.inputs.deploy_backend }}"
+          FORCE_EMBEDDING="${{ github.event.inputs.deploy_embedding }}"
+          FORCE_SCRAPER="${{ github.event.inputs.deploy_scraper }}"
 
           CHANGED=$(git diff --name-only HEAD~1 HEAD)
           echo "Changed files:"
@@ -68,15 +98,43 @@ jobs:
             fi
           }
 
-          check_path "frontend" "frontend/"
-          check_path "admin-frontend" "admin-frontend/"
-          check_path "backend" "backend/"
-          check_path "embedding" "microservices/embedding-service/"
-          check_path "scraper" "microservices/scraper_engine/"
-          check_path "deploy-frontends" "deploy/server1-frontends/"
-          check_path "deploy-backend" "deploy/server2-backend/"
-          check_path "deploy-embedding" "deploy/server3-embedding/"
-          check_path "deploy-scraper" "deploy/server4-scraper/"
+          # Frontends — use force override or detect from diff
+          if [ "$FORCE_FRONTENDS" == "true" ]; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "admin-frontend=true" >> $GITHUB_OUTPUT
+            echo "deploy-frontends=true" >> $GITHUB_OUTPUT
+          else
+            check_path "frontend" "frontend/"
+            check_path "admin-frontend" "admin-frontend/"
+            check_path "deploy-frontends" "deploy/server1-frontends/"
+          fi
+
+          # Backend
+          if [ "$FORCE_BACKEND" == "true" ]; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "deploy-backend=true" >> $GITHUB_OUTPUT
+          else
+            check_path "backend" "backend/"
+            check_path "deploy-backend" "deploy/server2-backend/"
+          fi
+
+          # Embedding service
+          if [ "$FORCE_EMBEDDING" == "true" ]; then
+            echo "embedding=true" >> $GITHUB_OUTPUT
+            echo "deploy-embedding=true" >> $GITHUB_OUTPUT
+          else
+            check_path "embedding" "microservices/embedding-service/"
+            check_path "deploy-embedding" "deploy/server3-embedding/"
+          fi
+
+          # Scraper engine
+          if [ "$FORCE_SCRAPER" == "true" ]; then
+            echo "scraper=true" >> $GITHUB_OUTPUT
+            echo "deploy-scraper=true" >> $GITHUB_OUTPUT
+          else
+            check_path "scraper" "microservices/scraper_engine/"
+            check_path "deploy-scraper" "deploy/server4-scraper/"
+          fi
 
   # ═══════════════════════════════════════════════════════════════════
   # TEST GATES — run tests before building (only for changed components)
@@ -90,7 +148,11 @@ jobs:
       run:
         working-directory: backend
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -116,7 +178,11 @@ jobs:
       run:
         working-directory: frontend
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -139,7 +205,11 @@ jobs:
       run:
         working-directory: admin-frontend
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -162,7 +232,11 @@ jobs:
       run:
         working-directory: microservices/embedding-service
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -195,7 +269,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - uses: docker/login-action@v3
         with:
@@ -226,7 +304,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - uses: docker/login-action@v3
         with:
@@ -258,7 +340,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - uses: docker/login-action@v3
         with:
@@ -286,7 +372,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - uses: docker/login-action@v3
         with:
@@ -310,7 +400,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - uses: docker/login-action@v3
         with:

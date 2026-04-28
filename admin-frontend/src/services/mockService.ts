@@ -17,8 +17,8 @@ export const fetchDashboardStats = (): Promise<DashboardStats> => {
                 reviewsGrowth: 15.3,
                 activeUsersToday: 1247,
                 systemUptime: 99.9,
-                aiJobsProcessed: 45832,
-                aiJobsGrowth: 22.8,
+                processedReviews: 45832,
+                processedReviewsGrowth: 22.8,
             });
         }, 600);
     });

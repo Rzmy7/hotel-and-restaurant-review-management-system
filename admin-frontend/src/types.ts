@@ -10,8 +10,8 @@ export interface DashboardStats {
     activeUsersToday: number;
     reviewsCollectedToday: number;
     systemUptime: number;
-    aiJobsProcessed: number;
-    aiJobsGrowth: number;
+    processedReviews: number;
+    processedReviewsGrowth: number;
     activeHotels?: number;
     hotelsGrowth?: number;
 }

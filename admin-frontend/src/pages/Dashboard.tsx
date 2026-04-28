@@ -23,8 +23,10 @@ import type {
     RecentActivity as RecentActivityType,
     ServerStatus,
 } from '../types';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
 
 export const Dashboard: React.FC = () => {
+    const systemTimezone = useSystemTimezone();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [usageData, setUsageData] = useState<ChartDataPoint[]>([]);
     const [reviewData, setReviewData] = useState<ChartDataPoint[]>([]);
@@ -131,9 +133,9 @@ export const Dashboard: React.FC = () => {
                         iconBg="bg-emerald-50"
                     />
                     <StatCard
-                        label="AI Jobs Processed"
-                        value={stats.aiJobsProcessed.toLocaleString()}
-                        trend={`+${stats.aiJobsGrowth}%`}
+                        label="Processed Reviews"
+                        value={stats.processedReviews.toLocaleString()}
+                        trend={`+${stats.processedReviewsGrowth}%`}
                         icon={Bot}
                         iconColor="text-amber-500"
                         iconBg="bg-amber-50"
@@ -152,8 +154,8 @@ export const Dashboard: React.FC = () => {
 
             {/* ─── Activity + Alerts Grid ─── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RecentActivity activities={activities} />
-                <AlertsPanel alerts={alerts} onDismiss={handleDismissAlert} />
+                <RecentActivity activities={activities} timezone={systemTimezone} />
+                <AlertsPanel alerts={alerts} timezone={systemTimezone} onDismiss={handleDismissAlert} />
             </div>
         </div>
     );
