@@ -42,6 +42,7 @@ const fetchServerHealth = async (url: string, healthPath: string = '/health', ti
             signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
+                'X-Internal-API-Key': import.meta.env.VITE_INTERNAL_API_KEY || 'dev-internal-secret',
             },
         });
 

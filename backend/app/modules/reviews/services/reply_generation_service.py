@@ -96,11 +96,13 @@ def _extract_token_usage(value: Any) -> int:
 def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     import logging
     _logger = logging.getLogger(__name__)
+    _api_key = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
     try:
         # Uppercase source_id to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
             json={"query": review_text, "source_ids": [source_id.upper()], "top_k": top_k},
+            headers={"X-Internal-API-Key": _api_key},
             timeout=12,
         )
         response.raise_for_status()

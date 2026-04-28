@@ -183,7 +183,7 @@ def fetch_all_reviews_enriched(
                 if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
                     import httpx
                     import logging
-                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL, _AUTH_HEADERS
                     _logger = logging.getLogger(__name__)
                     
                     # Uppercase source_ids to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
@@ -191,7 +191,7 @@ def fetch_all_reviews_enriched(
                     matching_ids = []
                     if source_ids:
                         try:
-                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
+                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, headers=_AUTH_HEADERS, timeout=10.0)
                             if resp.status_code == 200:
                                 data = resp.json()
                                 _logger.info(f"Embedding search returned {len(data.get('reviews', []))} results for query '{filters['search']}'")
@@ -354,14 +354,14 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
                 if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
                     import httpx
                     import logging
-                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL, _AUTH_HEADERS
                     _logger = logging.getLogger(__name__)
                     # Uppercase source_ids to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
                     source_ids = [str(sid[0]).upper() for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
                     matching_ids = []
                     if source_ids:
                         try:
-                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
+                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, headers=_AUTH_HEADERS, timeout=10.0)
                             if resp.status_code == 200:
                                 matching_ids = [(r.get("review_id") or r.get("id")).upper() for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
                             else:
