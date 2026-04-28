@@ -11,7 +11,7 @@ import os
 JOBS_FILE = os.path.join(os.path.dirname(__file__), "..", "jobs.json")
 
 # In-memory job storage (persist to file)
-jobs_queue = deque(maxlen=100)  # Keep last 100 jobs
+jobs_queue = deque(maxlen=500)  # Keep last 500 jobs
 
 def _load_jobs():
     """Load jobs from file on startup"""
@@ -20,7 +20,7 @@ def _load_jobs():
         try:
             with open(JOBS_FILE, 'r') as f:
                 jobs_data = json.load(f)
-                jobs_queue = deque(jobs_data, maxlen=100)
+                jobs_queue = deque(jobs_data, maxlen=500)
                 print(f"Loaded {len(jobs_queue)} jobs from {JOBS_FILE}")
         except Exception as e:
             print(f"Failed to load jobs: {e}")
@@ -66,19 +66,30 @@ def update_job(job_id: str, status: str, progress: int = 100, duration: str = No
             break
     _save_jobs()  # Persist to file
 
-def get_recent_jobs(limit: int = 10) -> List[Dict]:
-    """Get recent jobs, limited to specified number"""
+def get_recent_jobs(page: int = 1, page_size: int = 10) -> Dict:
+    """Get jobs with pagination. Returns {jobs, total, page, page_size, total_pages}."""
     from app.config import is_service_paused
     
     jobs_list = list(jobs_queue)
     jobs_list.reverse()  # Most recent first
+    
+    total = len(jobs_list)
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    
+    # Clamp page
+    page = max(1, min(page, total_pages))
+    
+    # Slice for current page
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_jobs = jobs_list[start:end]
     
     # Check if service is paused
     service_paused = is_service_paused()
     
     # Create formatted copies for frontend (don't mutate originals)
     formatted_jobs = []
-    for job in jobs_list[:limit]:  # Ensure we only return 'limit' number of jobs
+    for job in page_jobs:
         job_copy = job.copy()
         
         # If service is paused and job is running, show as paused
@@ -103,4 +114,10 @@ def get_recent_jobs(limit: int = 10) -> List[Dict]:
         
         formatted_jobs.append(job_copy)
     
-    return formatted_jobs
+    return {
+        "jobs": formatted_jobs,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }

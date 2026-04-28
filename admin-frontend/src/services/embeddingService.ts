@@ -111,17 +111,24 @@ export const resetThresholds = async (): Promise<SimilarityThresholds> => {
     }
 };
 
+export interface PaginatedJobs {
+    jobs: EmbeddingJob[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+}
+
 /**
- * Get recent embedding jobs
+ * Get embedding jobs with pagination
  */
-export const getRecentJobs = async (limit: number = 10): Promise<EmbeddingJob[]> => {
+export const getRecentJobs = async (page: number = 1, pageSize: number = 10): Promise<PaginatedJobs> => {
     try {
-        const response = await fetch(`${getBaseUrl()}/jobs/recent?limit=${limit}`);
+        const response = await fetch(`${getBaseUrl()}/jobs/recent?page=${page}&page_size=${pageSize}`);
         if (!response.ok) {
             throw new Error('Failed to fetch jobs');
         }
-        const data = await response.json();
-        return data.jobs;
+        return await response.json();
     } catch (error) {
         console.error('Error fetching jobs:', error);
         throw error;

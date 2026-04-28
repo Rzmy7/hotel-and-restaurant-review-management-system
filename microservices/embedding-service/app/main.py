@@ -276,10 +276,9 @@ def reset_thresholds() -> Dict[str, Any]:
 
 
 @app.get("/jobs/recent")
-def get_jobs(limit: int = 10) -> Dict[str, Any]:
-    """Get recent embedding jobs"""
-    jobs = get_recent_jobs(limit)
-    return {"jobs": jobs}
+def get_jobs(page: int = 1, page_size: int = 10) -> Dict[str, Any]:
+    """Get embedding jobs with pagination"""
+    return get_recent_jobs(page, page_size)
 
 
 @app.post("/service/pause")
