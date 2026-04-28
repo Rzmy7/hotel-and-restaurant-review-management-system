@@ -645,6 +645,56 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
             detail=f"Synchronization is disabled for the inactive platform '{source.platform.platform_name}'."
         )
 
+    # ── Check Feature Limits (scraping_frequency and review_count) ──
+    try:
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.subscription_service import check_feature_limit, send_limit_reached_notification
+        
+        tenant_id = None
+        # We need the tenant_id, so we query it via the organization
+        org = db.query(Organization).filter(Organization.organization_id == source.organization_id).first()
+        if org and org.tenant_id:
+            tenant_id = str(org.tenant_id)
+            
+        if tenant_id:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                
+                # Check scraping frequency limit
+                scrape_limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
+                if not scrape_limit_info["allowed"]:
+                    send_limit_reached_notification(tenant_id, scrape_limit_info["feature_name"])
+                    
+                    if source.source_status != "paused":
+                        source.source_status = "paused"
+                        db.commit()
+                        log_activity(db, source.source_id, "SOURCE_AUTO_PAUSED", "Success", activity_details="Source auto-paused due to reaching the weekly scraping frequency limit.", is_important=True)
+                        
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Weekly scraping limit reached. Please upgrade your plan."
+                    )
+                
+                # Check review count limit
+                review_limit_info = check_feature_limit(cursor, tenant_id, "review_count")
+                if review_limit_info["limit"] is not None and review_limit_info["balance"] <= 0:
+                    send_limit_reached_notification(tenant_id, review_limit_info["feature_name"])
+                    
+                    if source.source_status != "paused":
+                        source.source_status = "paused"
+                        db.commit()
+                        log_activity(db, source.source_id, "SOURCE_AUTO_PAUSED", "Success", activity_details="Source auto-paused due to reaching the maximum review count limit.", is_important=True)
+                        
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Maximum review count limit reached. Please upgrade your plan."
+                    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Limit check failed during manual sync trigger: {e}")
+
     # Check if already syncing
     if source.source_status in ["running", "queued", "verify_duplication"]:
         return {"message": "Sync already in progress", "status": source.source_status}
