@@ -477,6 +477,18 @@ def get_sync_logs(
             query = query.filter(SyncLogSource.activity_type.in_(types))
         else:
             query = query.filter(SyncLogSource.activity_type == activity_type)
+    else:
+        # Exclude internal non-sync logs by default if no specific type is requested
+        query = query.filter(
+            or_(
+                SyncLogSource.activity_type.is_(None),
+                SyncLogSource.activity_type.notin_([
+                    "AI_ANALYSIS_STARTED",
+                    "AI_ANALYSIS_COMPLETED",
+                    "INGESTION_COMPLETED"
+                ])
+            )
+        )
 
     if is_important is not None:
         query = query.filter(SyncLogSource.is_important == is_important)

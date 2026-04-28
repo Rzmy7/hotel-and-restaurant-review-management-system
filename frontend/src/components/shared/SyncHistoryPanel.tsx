@@ -129,11 +129,13 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
   // Infinite scroll listener
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container || !hasNextPage || isFetchingNextPage) return;
+    if (!container) return;
 
     const handleScroll = () => {
+      if (!hasNextPage || isFetchingNextPage) return;
       const { scrollTop, scrollHeight, clientHeight } = container;
-      if (scrollHeight - scrollTop <= clientHeight + 50) {
+      // Use Math.ceil for fractional scrollTop on high-DPI screens and increase threshold to 100px
+      if (scrollHeight - Math.ceil(scrollTop) <= clientHeight + 100) {
         onLoadMore?.();
       }
     };
