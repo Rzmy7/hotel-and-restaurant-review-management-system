@@ -1,14 +1,14 @@
 """
 Embedding Client
 ================
-Triggered by the main backend after the AI analysis pipeline completes.
+Triggered by the main backend after reviews are stored in processed_review.
 
 Flow:
-  1. Fetch processed reviews from [ReviewMate].[dbo].[processed_review]
-     that are status='processed' AND is_embedded=0 for the given source_id
+  1. Fetch reviews from [ReviewMate].[dbo].[processed_review]
+     that have is_embedded=0 for the given source_id
   2. Use the source_id UUID for ChromaDB namespacing
   3. POST them in one batch to the Embedding Service
-     (POST {EMBEDDING_SERVICE_URL}/embed/batch)
+     (POST {EMBEDDING_SERVICE_URL}/embed)
   4. On success, mark those review IDs as is_embedded=1 directly in processed_review
 """
 
@@ -51,7 +51,6 @@ def _embed_source_reviews(source_id: str) -> None:
                 negative_text
             FROM dbo.processed_review
             WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
-              AND status = 'processed'
               AND is_embedded = 0
             ORDER BY scrapedAt ASC
         """, source_id)
@@ -105,7 +104,7 @@ def _embed_source_reviews(source_id: str) -> None:
     }
 
     try:
-        embed_url = f"{EMBEDDING_SERVICE_URL}/embed/batch"
+        embed_url = f"{EMBEDDING_SERVICE_URL}/embed"
         embed_response = httpx.post(embed_url, json=embed_payload, timeout=120.0)
         embed_response.raise_for_status()
         embed_result = embed_response.json()

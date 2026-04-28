@@ -42,53 +42,10 @@ def client(mock_collection, temp_config_file, temp_jobs_file):
 
 
 class TestEmbedEndpoint:
-    """Tests for POST /embed (single review embedding)."""
+    """Tests for POST /embed (batch review embedding)."""
 
     def test_embed_success(self, client):
         response = client.post("/embed", json={
-            "review_id": "rev-1",
-            "text": "Great hotel with amazing pool!",
-            "source_id": "src-1",
-        })
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert "job_id" in data
-
-    def test_embed_missing_text_returns_422(self, client):
-        response = client.post("/embed", json={
-            "review_id": "rev-1",
-            "source_id": "src-1",
-        })
-        assert response.status_code == 422
-
-    def test_embed_missing_review_id_returns_422(self, client):
-        response = client.post("/embed", json={
-            "text": "Hello",
-            "source_id": "src-1",
-        })
-        assert response.status_code == 422
-
-    def test_embed_missing_source_id_returns_422(self, client):
-        response = client.post("/embed", json={
-            "review_id": "rev-1",
-            "text": "Hello",
-        })
-        assert response.status_code == 422
-
-    def test_embed_empty_body_returns_422(self, client):
-        response = client.post("/embed", json={})
-        assert response.status_code == 422
-
-
-# ── POST /embed/batch ────────────────────────────────────────────────
-
-
-class TestBatchEmbedEndpoint:
-    """Tests for POST /embed/batch (batch review embedding)."""
-
-    def test_batch_embed_success(self, client):
-        response = client.post("/embed/batch", json={
             "source_id": "src-1",
             "reviews": [
                 {"review_id": "r1", "text": "Great!"},
@@ -102,8 +59,20 @@ class TestBatchEmbedEndpoint:
         assert data["failed"] == []
         assert "job_id" in data
 
-    def test_batch_embed_empty_reviews(self, client):
-        response = client.post("/embed/batch", json={
+    def test_embed_single_review(self, client):
+        response = client.post("/embed", json={
+            "source_id": "src-1",
+            "reviews": [
+                {"review_id": "rev-1", "text": "Great hotel with amazing pool!"},
+            ],
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["embedded_count"] == 1
+        assert data["embedded_ids"] == ["rev-1"]
+
+    def test_embed_empty_reviews(self, client):
+        response = client.post("/embed", json={
             "source_id": "src-1",
             "reviews": [],
         })
@@ -111,8 +80,8 @@ class TestBatchEmbedEndpoint:
         data = response.json()
         assert data["embedded_count"] == 0
 
-    def test_batch_embed_missing_source_id_returns_422(self, client):
-        response = client.post("/embed/batch", json={
+    def test_embed_missing_source_id_returns_422(self, client):
+        response = client.post("/embed", json={
             "reviews": [{"review_id": "r1", "text": "Hello"}],
         })
         assert response.status_code == 422
@@ -122,35 +91,10 @@ class TestBatchEmbedEndpoint:
 
 
 class TestEmbedRuleEndpoint:
-    """Tests for POST /embed/rule (single rule embedding)."""
+    """Tests for POST /embed/rule (batch rule embedding)."""
 
     def test_embed_rule_success(self, client):
         response = client.post("/embed/rule", json={
-            "rule_id": "rule-1",
-            "source_id": "src-1",
-            "text": "Always apologize for inconvenience",
-        })
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert data["rule_id"] == "rule-1"
-
-    def test_embed_rule_missing_text_returns_422(self, client):
-        response = client.post("/embed/rule", json={
-            "rule_id": "rule-1",
-            "source_id": "src-1",
-        })
-        assert response.status_code == 422
-
-
-# ── POST /embed/rule/batch ───────────────────────────────────────────
-
-
-class TestBatchRuleEmbedEndpoint:
-    """Tests for POST /embed/rule/batch."""
-
-    def test_batch_rule_embed_success(self, client):
-        response = client.post("/embed/rule/batch", json={
             "source_id": "src-1",
             "rules": [
                 {"rule_id": "r1", "text": "Be polite"},
@@ -162,8 +106,19 @@ class TestBatchRuleEmbedEndpoint:
         assert data["embedded_count"] == 2
         assert data["failed"] == []
 
-    def test_batch_rule_embed_empty_rules(self, client):
-        response = client.post("/embed/rule/batch", json={
+    def test_embed_rule_single(self, client):
+        response = client.post("/embed/rule", json={
+            "source_id": "src-1",
+            "rules": [
+                {"rule_id": "rule-1", "text": "Always apologize for inconvenience"},
+            ],
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["embedded_count"] == 1
+
+    def test_embed_rule_empty_rules(self, client):
+        response = client.post("/embed/rule", json={
             "source_id": "src-1",
             "rules": [],
         })
@@ -300,9 +255,10 @@ class TestJobsEndpoint:
     def test_jobs_after_embed(self, client):
         """After embedding a review, a job should appear."""
         client.post("/embed", json={
-            "review_id": "rev-1",
-            "text": "Great hotel!",
             "source_id": "src-1",
+            "reviews": [
+                {"review_id": "rev-1", "text": "Great hotel!"},
+            ],
         })
         response = client.get("/jobs/recent")
         data = response.json()

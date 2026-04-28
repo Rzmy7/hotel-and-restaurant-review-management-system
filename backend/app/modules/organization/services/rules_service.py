@@ -222,7 +222,7 @@ def _send_rules_to_embedding(rules: list[dict[str, Any]], source_id: str) -> dic
 
     try:
         response = requests.post(
-            f"{EMBEDDING_SERVICE_URL}/embed/rule/batch",
+            f"{EMBEDDING_SERVICE_URL}/embed/rule",
             json=payload,
             timeout=60,
         )
