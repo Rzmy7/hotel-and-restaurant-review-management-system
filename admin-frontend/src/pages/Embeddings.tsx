@@ -20,7 +20,7 @@ import {
     resumeService,
     getServiceStatus
 } from '../services/embeddingService';
-import type { SimilarityThresholds, EmbeddingJob, VectorDbStats, PaginatedJobs } from '../services/embeddingService';
+import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
 import { triggerPendingEmbeddings } from '../services/adminDataService';
 import { Alert } from '../components/Alert';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
