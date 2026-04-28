@@ -4,6 +4,12 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - frontend-net
 
@@ -12,6 +18,12 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - frontend-net
 
@@ -26,8 +38,10 @@ services:
       - certbot_www:/var/www/certbot:ro
       - certbot_conf:/etc/letsencrypt:ro
     depends_on:
-      - frontend
-      - admin-frontend
+      frontend:
+        condition: service_healthy
+      admin-frontend:
+        condition: service_healthy
     networks:
       - frontend-net
 
@@ -44,4 +58,8 @@ networks:
 
 volumes:
   certbot_www:
+    external: true
+    name: reviewmate_certbot_www
   certbot_conf:
+    external: true
+    name: reviewmate_certbot_conf
