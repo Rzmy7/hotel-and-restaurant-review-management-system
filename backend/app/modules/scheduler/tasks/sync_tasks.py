@@ -127,7 +127,22 @@ def process_pending_syncs():
                     tenant_allowed_cache[tenant_id] = _check_scraping_frequency_for_tenant(tenant_id)
 
                 if not tenant_allowed_cache[tenant_id]:
-                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached.")
+                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached. Auto-pausing source.")
+                    # Auto-pause the source since limit is reached
+                    if source.source_status != 'paused':
+                        source.source_status = 'paused'
+                        db.commit()
+                        
+                        # Log the activity
+                        from app.modules.source.services.source_service import log_activity
+                        log_activity(
+                            db, 
+                            source.source_id, 
+                            activity_type="SOURCE_AUTO_PAUSED", 
+                            status="Success",
+                            activity_details="Source auto-paused due to reaching the weekly scraping frequency limit.",
+                            is_important=True
+                        )
                     continue
 
             # Trigger the microservice
