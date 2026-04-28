@@ -17,8 +17,8 @@ def get_review_metrics(cursor: pyodbc.Cursor) -> Dict[str, Any]:
     cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE CAST(scrapedAt AS DATE) = CAST(GETUTCDATE() AS DATE)")
     today = cursor.fetchone()[0] or 0
     
-    # Processed reviews (those that have been through AI analysis)
-    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Replied'")
+    # Processed reviews (User requested to count all reviews regardless of status)
+    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
     processed = cursor.fetchone()[0] or 0
 
     # Growth (Placeholder: in a real app, you'd compare vs previous period)

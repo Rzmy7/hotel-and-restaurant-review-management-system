@@ -68,7 +68,7 @@ def get_my_unread_count(
     return get_unread_count(db, user_id)
 
 
-@router.patch("/{notification_id}/read", response_model=NotificationResponse)
+@router.post("/{notification_id}/read", response_model=NotificationResponse)
 def mark_my_notification_read(
     notification_id: str,
     db: Session = Depends(get_db),
@@ -88,10 +88,58 @@ def mark_my_notification_read(
     return updated
 
 
-@router.patch("/me/read-all", response_model=MarkAllReadResponse)
+@router.post("/read-all", response_model=MarkAllReadResponse)
 def mark_my_notifications_read_all(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_admin_or_tenant),
 ):
     user_id = _get_current_user_uuid(current_user)
     return mark_user_notifications_read_all(db, user_id)
+
+
+@router.delete("/read-all")
+def delete_my_read_notifications(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin_or_tenant),
+):
+    """Delete all read notifications for the current user."""
+    user_id = _get_current_user_uuid(current_user)
+    from app.modules.auth.models import UserNotification
+    deleted = (
+        db.query(UserNotification)
+        .filter(
+            UserNotification.user_id == user_id,
+            UserNotification.is_read == True,
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.commit()
+    return {"success": True, "deleted": deleted, "message": "Read notifications cleared"}
+
+
+@router.delete("/{notification_id}")
+def delete_my_notification(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin_or_tenant),
+):
+    """Delete a specific notification for the current user."""
+    user_id = _get_current_user_uuid(current_user)
+    try:
+        parsed_id = uuid.UUID(notification_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid notification id")
+
+    from app.modules.auth.models import UserNotification
+    deleted = (
+        db.query(UserNotification)
+        .filter(
+            UserNotification.notification_id == parsed_id,
+            UserNotification.user_id == user_id,
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.commit()
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    return {"success": True, "message": "Notification deleted"}
