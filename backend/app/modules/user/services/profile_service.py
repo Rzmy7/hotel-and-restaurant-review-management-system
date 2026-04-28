@@ -17,8 +17,29 @@ from app.modules.auth.models.auth_models import TwoFactorToken
 from app.modules.auth.services.email_service import send_2fa_email
 from app.core.validations.otp_validator import validate_otp_format
 from app.modules.user.schemas.profile_schema import TwoFactorVerifyRequest
+import pyodbc
+from app.core.db_utils import get_connection_string
 # Get bucket name from .env
 BUCKET_NAME = os.getenv("SUPABASE_BUCKET")
+
+
+def _is_2fa_feature_enabled() -> bool:
+    """Check whether the admin 2FA feature flag is enabled."""
+    try:
+        from app.modules.admin.services.system_settings_service import (
+            ensure_system_settings_table,
+            get_setting,
+        )
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            raw = (get_setting(cursor, "feature_flag_two_factor_auth") or "").strip().lower()
+            if raw in {"disabled", "false", "0", "off"}:
+                return False
+    except Exception:
+        pass
+    # Default to enabled (flag not yet set = feature available)
+    return True
 
 def get_profile(db: Session, user_id):
 
@@ -36,6 +57,7 @@ def get_profile(db: Session, user_id):
         "location": user.location,
         "avatar": user.profile_image_url,
         "is_2fa_enabled": bool(user.is_2fa_enabled),
+        "is_2fa_feature_enabled": _is_2fa_feature_enabled(),
         "joinedDate": str(user.created_at),
     }
 
@@ -126,6 +148,8 @@ def change_password(db: Session, user_id: str, data: PasswordChangeRequest) -> d
 
 
 def request_2fa(db: Session, user_id: str) -> dict[str, str]:
+    if not _is_2fa_feature_enabled():
+        raise HTTPException(status_code=403, detail="Two-factor authentication is currently disabled by the administrator")
     user = get_user_profile(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -149,6 +173,8 @@ def request_2fa(db: Session, user_id: str) -> dict[str, str]:
     return {"message": "Verification code sent to your email"}
 
 def enable_2fa(db: Session, user_id: str, data: TwoFactorVerifyRequest) -> dict[str, str]:
+    if not _is_2fa_feature_enabled():
+        raise HTTPException(status_code=403, detail="Two-factor authentication is currently disabled by the administrator")
     validate_otp_format(data.code)
     
     user = get_user_profile(db, user_id)

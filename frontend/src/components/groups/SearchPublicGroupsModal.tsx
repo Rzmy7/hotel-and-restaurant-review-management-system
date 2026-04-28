@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Loader2, Globe, Users, Plus } from 'lucide-react';
-import { groupsService, Group } from '../../services/groupsService';
+import { groupsService, type Group } from '../../services/groupsService';
 import { useToast } from '../../contexts/ToastContext';
 
 interface SearchPublicGroupsModalProps {

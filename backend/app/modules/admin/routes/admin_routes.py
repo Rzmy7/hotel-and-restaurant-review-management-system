@@ -382,11 +382,11 @@ def trigger_pending_embeddings() -> dict:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             
-            # Find all sources that have unembedded processed reviews
+            # Find all sources that have unembedded reviews
             query = """
                 SELECT DISTINCT CAST(source_id AS VARCHAR(36))
                 FROM dbo.processed_review
-                WHERE status = 'processed' AND is_embedded = 0
+                WHERE is_embedded = 0
             """
             rows = execute_query(cursor, query).fetchall()
             

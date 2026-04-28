@@ -1,0 +1,298 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════
+  # CHANGE DETECTION — only test what changed
+  # ═══════════════════════════════════════════════════════════════════
+
+  detect-changes:
+    runs-on: self-hosted
+    outputs:
+      frontend: ${{ steps.check.outputs.frontend }}
+      admin-frontend: ${{ steps.check.outputs.admin-frontend }}
+      backend: ${{ steps.check.outputs.backend }}
+      embedding: ${{ steps.check.outputs.embedding }}
+    steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+          fetch-depth: 2
+
+      - name: Detect changed paths
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          check_path() {
+            local name=$1
+            local pattern=$2
+            if echo "$CHANGED" | grep -q "^${pattern}"; then
+              echo "${name}=true" >> $GITHUB_OUTPUT
+            else
+              echo "${name}=false" >> $GITHUB_OUTPUT
+            fi
+          }
+
+          check_path "frontend" "frontend/"
+          check_path "admin-frontend" "admin-frontend/"
+          check_path "backend" "backend/"
+          check_path "embedding" "microservices/embedding-service/"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # BACKEND TESTS — Python pytest (328 tests)
+  # ═══════════════════════════════════════════════════════════════════
+
+  test-backend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Run unit tests
+        run: python -m pytest tests/unit/ -v --tb=short --junitxml=results/unit.xml
+
+      - name: Run integration tests
+        run: python -m pytest tests/integration/ -v --tb=short --junitxml=results/integration.xml
+
+      - name: Run schema validation tests
+        run: python -m pytest tests/schema_validation/ -v --tb=short --junitxml=results/schema.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/results/
+          retention-days: 30
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf ${{ github.workspace }}/.pytest_cache || true
+          rm -rf /tmp/pip-* /tmp/npm-* || true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # FRONTEND TESTS — Vitest (175 tests)
+  # ═══════════════════════════════════════════════════════════════════
+
+  test-frontend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npx vitest run --reporter=verbose --reporter=junit --outputFile=results/vitest.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: frontend/results/
+          retention-days: 30
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          npm cache clean --force || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf /tmp/npm-* || true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # ADMIN FRONTEND TESTS — Vitest (79 tests)
+  # ═══════════════════════════════════════════════════════════════════
+
+  test-admin-frontend:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs['admin-frontend'] == 'true'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: admin-frontend
+    steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: admin-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npx vitest run --reporter=verbose --reporter=junit --outputFile=results/vitest.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-frontend-test-results
+          path: admin-frontend/results/
+          retention-days: 30
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          npm cache clean --force || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf /tmp/npm-* || true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # EMBEDDING SERVICE TESTS — Python pytest (142 tests)
+  # ═══════════════════════════════════════════════════════════════════
+
+  test-embedding:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.embedding == 'true'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: microservices/embedding-service
+    steps:
+      - name: Fix workspace permissions
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: microservices/embedding-service/requirements.txt
+
+      - name: Free disk space
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir pytest httpx
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short --junitxml=results/embedding.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-test-results
+          path: microservices/embedding-service/results/
+          retention-days: 30
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf ${{ github.workspace }}/.pytest_cache || true
+          rm -rf /tmp/pip-* /tmp/npm-* || true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # STATUS CHECK — single gate that deploy.yml can reference
+  # ═══════════════════════════════════════════════════════════════════
+
+  tests-passed:
+    needs: [test-backend, test-frontend, test-admin-frontend, test-embedding]
+    if: always()
+    runs-on: self-hosted
+    steps:
+      - name: Check test results
+        run: |
+          echo "Backend:         ${{ needs.test-backend.result }}"
+          echo "Frontend:        ${{ needs.test-frontend.result }}"
+          echo "Admin Frontend:  ${{ needs.test-admin-frontend.result }}"
+          echo "Embedding:       ${{ needs.test-embedding.result }}"
+
+          # Fail if any test job actually failed (skipped is OK — means no changes)
+          if [ "${{ needs.test-backend.result }}" == "failure" ]; then
+            echo "❌ Backend tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.test-frontend.result }}" == "failure" ]; then
+            echo "❌ Frontend tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.test-admin-frontend.result }}" == "failure" ]; then
+            echo "❌ Admin frontend tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.test-embedding.result }}" == "failure" ]; then
+            echo "❌ Embedding tests failed"
+            exit 1
+          fi
+
+          echo "✅ All tests passed (or skipped for unchanged components)"

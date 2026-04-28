@@ -16,13 +16,15 @@ import {
     Database,
 } from 'lucide-react';
 import type { RecentActivity as RecentActivityType } from '../types';
+import { formatDateTime } from '../utils/dateTime';
 
 interface RecentActivityProps {
     activities: RecentActivityType[];
+    timezone: string;
     onViewAll?: () => void;
 }
 
-export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, onViewAll }) => {
+export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, timezone, onViewAll }) => {
     const getActivityIcon = (type: RecentActivityType['type']) => {
         switch (type) {
             case 'user_joined':
@@ -132,7 +134,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ activities, onVi
                                 <div className="flex items-center gap-2 mt-1.5">
                                     <Clock size={10} className="text-gray-400 dark:text-slate-500" />
                                     <span className="text-[11px] text-gray-400 dark:text-slate-500">
-                                        {activity.timestamp}
+                                        {formatDateTime(activity.timestamp, timezone)}
                                     </span>
                                     {activity.user && (
                                         <>

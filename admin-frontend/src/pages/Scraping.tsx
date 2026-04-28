@@ -5,6 +5,8 @@ import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
 import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform, stopScrapingJob } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
+import { useSystemTimezone } from '../hooks/useSystemTimezone';
+import { formatDateTime } from '../utils/dateTime';
 
 type TableAttributeFormRow = {
     name: string;
@@ -21,6 +23,7 @@ const defaultPlatformForm = {
 };
 
 export const Scraping: React.FC = () => {
+    const systemTimezone = useSystemTimezone();
     const [stats, setStats] = useState<ScrapingStats | null>(null);
     const [platforms, setPlatforms] = useState<ScrapingPlatform[]>([]);
     const [jobs, setJobs] = useState<ScrapingJob[]>([]);
@@ -515,7 +518,7 @@ export const Scraping: React.FC = () => {
                             <div className="flex flex-col flex-1 min-w-0">
                                 <span className="font-medium text-sm text-gray-900 dark:text-white">{platform.name}</span>
                                 <span className="text-xs text-gray-500 dark:text-slate-400">
-                                    {platform.status === 'maintenance' ? 'Maintenance Mode' : `Last run: ${platform.lastRun}`}
+                                    {platform.status === 'maintenance' ? 'Maintenance Mode' : `Last run: ${formatDateTime(platform.lastRun, systemTimezone)}`}
                                 </span>
                             </div>
                             <ToggleSwitch
@@ -975,7 +978,7 @@ export const Scraping: React.FC = () => {
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.startTime}</td>
+                                    <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{formatDateTime(job.startTime, systemTimezone)}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.duration}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.reviews !== null ? job.reviews : '--'}</td>
                                     <td className="py-4 px-4">

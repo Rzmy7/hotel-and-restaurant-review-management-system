@@ -61,8 +61,8 @@ def build_dashboard_stats(cursor: "pyodbc.Cursor") -> dict[str, Any]:
         "reviewsGrowth": review_data["reviewsGrowth"],
         "activeUsersToday": active_today,
         "systemUptime": 99.9,
-        "aiJobsProcessed": review_data["totalReviews"],
-        "aiJobsGrowth": review_data["reviewsGrowth"],
+        "processedReviews": review_data.get("processedReviewsCount", 0),
+        "processedReviewsGrowth": review_data["reviewsGrowth"],
     }
 
 

@@ -13,6 +13,7 @@ export interface NotificationSettings {
 
 export interface SecuritySettings {
     twoFactorAuth: boolean;
+    twoFactorFeatureEnabled?: boolean;
     sessionTimeout: number; // in minutes
 }
 

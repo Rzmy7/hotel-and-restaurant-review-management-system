@@ -59,6 +59,7 @@ type OrganizationType = {
 
 type UserProfile = {
     is_2fa_enabled?: boolean;
+    is_2fa_feature_enabled?: boolean;
 };
 
 export type PasswordChangePayload = {
@@ -250,6 +251,7 @@ export const settingsApi = {
                 security: {
                     ...currentSettings.security,
                     twoFactorAuth: !!profileResponse.data?.is_2fa_enabled,
+                    twoFactorFeatureEnabled: profileResponse.data?.is_2fa_feature_enabled !== false,
                 },
             };
         } catch {

@@ -62,6 +62,12 @@ FEATURE_FLAG_DEFINITIONS = {
         "description": "Allow users to switch between light, dark, and system themes in their settings",
         "status_key": "feature_flag_dark_mode",
     },
+    "two_factor_auth": {
+        "id": "3",
+        "name": "Two-Factor Authentication",
+        "description": "Allow users to enable two-factor authentication for their accounts",
+        "status_key": "feature_flag_two_factor_auth",
+    },
 }
 
 
@@ -571,6 +577,16 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
             if limit_key:
                 next_limit = payload.limit if payload.limit is not None else 3
                 set_setting(cursor, limit_key, str(next_limit))
+
+            # When the 2FA feature flag is disabled, bulk-disable 2FA for
+            # all users and revoke outstanding OTP tokens so that no user
+            # is left in a half-enabled state.
+            if flag_key == "two_factor_auth" and payload.status == "Disabled":
+                try:
+                    cursor.execute("UPDATE dbo.[user] SET is_2fa_enabled = 0 WHERE is_2fa_enabled = 1")
+                    cursor.execute("DELETE FROM dbo.two_factor_token")
+                except Exception:
+                    pass  # columns/table may not exist yet
 
             connection.commit()
 

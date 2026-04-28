@@ -780,13 +780,14 @@ def job_status_to_ui(raw_status: str) -> str:
 
 
 def format_job_start_time(value: str | None) -> str:
+    """Return the raw ISO-8601 timestamp so the frontend can apply timezone formatting."""
     if not value:
         return "--"
     try:
         dt_value = datetime.fromisoformat(value)
     except ValueError:
         return value
-    return dt_value.strftime("%b %d, %Y %I:%M %p")
+    return dt_value.isoformat()
 
 
 def format_duration_from_created_at(created_at_str: str | None, ended_at_str: str | None = None) -> str:

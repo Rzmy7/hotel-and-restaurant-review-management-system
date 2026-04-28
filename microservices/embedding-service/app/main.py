@@ -43,12 +43,6 @@ def wait_if_paused():
         time.sleep(0.5)
 
 
-class Review(BaseModel):
-    review_id: str
-    text: str
-    source_id: str
-
-
 class ReviewItem(BaseModel):
     review_id: str
     text: str
@@ -61,11 +55,6 @@ class SearchRequest(BaseModel):
     query: str
     source_ids: List[str]
     top_k: int = 3
-
-class Rule(BaseModel):
-    rule_id: str
-    source_id: str
-    text: str
 
 class RuleItem(BaseModel):
     rule_id: str
@@ -87,35 +76,6 @@ def get_threshold(query: str) -> float:
 
 
 @app.post("/embed")
-def embed(review: Review):
-    job_id = str(uuid.uuid4())[:8]
-    add_job(job_id, "Review", "Running", 0)
-    
-    try:
-        start_time = time.time()
-        wait_if_paused()  # Wait if service is paused
-        vector = embed_text(review.text)
-
-        save_embedding(
-            review.review_id,
-            vector,
-            {
-                "source_id": review.source_id,
-                "type": "review"
-            },
-            document=review.text
-        )
-        
-        duration = f"{time.time() - start_time:.1f}s"
-        update_job(job_id, "Completed", 100, duration)
-        return {"status": "success", "job_id": job_id}
-        
-    except Exception as e:
-        update_job(job_id, "Failed", 0)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/embed/batch")
 def embed_batch(data: BatchEmbedRequest):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Review", "Running", 0)
@@ -159,38 +119,6 @@ def embed_batch(data: BatchEmbedRequest):
     }
 
 @app.post("/embed/rule")
-def embed_rule(rule: Rule):
-    job_id = str(uuid.uuid4())[:8]
-    add_job(job_id, "Regulation", "Running", 0)
-    
-    try:
-        start_time = time.time()
-        wait_if_paused()  # Wait if service is paused
-        vector = embed_text(rule.text)
-
-        save_embedding(
-            rule.rule_id,
-            vector,
-            {
-                "source_id": rule.source_id,
-                "type": "rule"
-            },
-            document=rule.text
-        )
-        
-        duration = f"{time.time() - start_time:.1f}s"
-        update_job(job_id, "Completed", 100, duration)
-
-        return {
-            "status": "success",
-            "rule_id": rule.rule_id,
-            "job_id": job_id
-        }
-    except Exception as e:
-        update_job(job_id, "Failed", 0)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/embed/rule/batch")
 def embed_rule_batch(data: BatchRuleEmbedRequest):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Regulation", "Running", 0)
