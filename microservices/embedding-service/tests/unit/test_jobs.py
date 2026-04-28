@@ -136,7 +136,9 @@ class TestGetRecentJobs:
     def test_empty_queue_returns_empty(self, temp_jobs_file):
         with patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
             result = get_recent_jobs()
-            assert result == []
+            assert result["jobs"] == []
+            assert result["total"] == 0
+            assert result["total_pages"] == 1
 
     def test_returns_most_recent_first(self, temp_jobs_file):
         with patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
@@ -144,22 +146,24 @@ class TestGetRecentJobs:
             add_job("second", "Regulation")
             add_job("third", "Re-index")
             result = get_recent_jobs()
-            assert result[0]["id"] == "third"
-            assert result[-1]["id"] == "first"
+            assert result["jobs"][0]["id"] == "third"
+            assert result["jobs"][-1]["id"] == "first"
 
-    def test_respects_limit(self, temp_jobs_file):
+    def test_respects_page_size(self, temp_jobs_file):
         with patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
             for i in range(10):
                 add_job(f"j{i}", "Review")
-            result = get_recent_jobs(limit=3)
-            assert len(result) == 3
+            result = get_recent_jobs(page=1, page_size=3)
+            assert len(result["jobs"]) == 3
+            assert result["total"] == 10
+            assert result["total_pages"] == 4
 
     def test_formats_timestamp_just_now(self, temp_jobs_file):
         """Recent jobs should show 'Just now'."""
         with patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
             add_job("recent", "Review")
             result = get_recent_jobs()
-            assert result[0]["timestamp"] == "Just now"
+            assert result["jobs"][0]["timestamp"] == "Just now"
 
     def test_paused_service_shows_paused_status(self, temp_jobs_file, temp_config_file):
         """Running jobs should show 'Paused' when service is paused."""
@@ -169,7 +173,7 @@ class TestGetRecentJobs:
             add_job("running_job", "Review", "Running", 50)
             set_service_paused(True)
             result = get_recent_jobs()
-            assert result[0]["status"] == "Paused"
+            assert result["jobs"][0]["status"] == "Paused"
 
     def test_completed_jobs_not_affected_by_pause(self, temp_jobs_file, temp_config_file):
         """Completed jobs should stay Completed even when paused."""
@@ -180,7 +184,7 @@ class TestGetRecentJobs:
             update_job("done_job", "Completed", 100, "1.0s")
             set_service_paused(True)
             result = get_recent_jobs()
-            assert result[0]["status"] == "Completed"
+            assert result["jobs"][0]["status"] == "Completed"
 
     def test_does_not_mutate_originals(self, temp_jobs_file):
         """get_recent_jobs should return copies, not mutate originals."""
@@ -189,3 +193,12 @@ class TestGetRecentJobs:
             original_timestamp = list(jobs_queue)[-1]["timestamp"]
             get_recent_jobs()  # This formats timestamps
             assert list(jobs_queue)[-1]["timestamp"] == original_timestamp
+
+    def test_pagination_second_page(self, temp_jobs_file):
+        """Page 2 should return the correct slice of jobs."""
+        with patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
+            for i in range(5):
+                add_job(f"j{i}", "Review")
+            result = get_recent_jobs(page=2, page_size=2)
+            assert len(result["jobs"]) == 2
+            assert result["page"] == 2
