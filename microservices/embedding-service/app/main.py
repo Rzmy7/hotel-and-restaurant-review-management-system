@@ -522,3 +522,24 @@ def delete_by_source(source_id: str) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error deleting embeddings for source {source_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/delete/source/{source_id}/rules")
+def delete_rules_by_source(source_id: str) -> Dict[str, Any]:
+    """Delete only rule-type embeddings for a source, preserving review embeddings."""
+    try:
+        collection.delete(where={
+            "$and": [
+                {"source_id": source_id},
+                {"type": "rule"}
+            ]
+        })
+        
+        return {
+            "status": "success",
+            "message": f"Deleted rule embeddings for source_id: {source_id}",
+            "source_id": source_id
+        }
+    except Exception as e:
+        print(f"Error deleting rule embeddings for source {source_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

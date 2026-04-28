@@ -290,6 +290,17 @@ async def process_rules_upload(
     embed_result = {"embedded_count": 0, "skipped": True, "reason": "no_source"}
 
     if source_id:
+        # 6a. Delete old rule embeddings from ChromaDB before re-embedding
+        try:
+            requests.delete(
+                f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}/rules",
+                timeout=30,
+            )
+            logger.info(f"Cleared old rule embeddings for source_id={source_id}")
+        except Exception as e:
+            logger.warning(f"Failed to clear old rule embeddings: {e}")
+
+        # 6b. Embed new rules
         embed_result = _send_rules_to_embedding(inserted_rules, source_id)
 
         # 7. Mark successfully embedded rules
