@@ -182,16 +182,24 @@ def fetch_all_reviews_enriched(
                 search_val = f"%{filters['search']}%"
                 if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
                     import httpx
+                    import logging
                     from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                    _logger = logging.getLogger(__name__)
                     
-                    source_ids = [str(sid[0]) for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
+                    # Uppercase source_ids to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+                    source_ids = [str(sid[0]).upper() for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
                     matching_ids = []
                     if source_ids:
                         try:
                             resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
                             if resp.status_code == 200:
-                                matching_ids = [r.get("review_id") or r.get("id") for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
-                        except: pass
+                                data = resp.json()
+                                _logger.info(f"Embedding search returned {len(data.get('reviews', []))} results for query '{filters['search']}'")
+                                matching_ids = [(r.get("review_id") or r.get("id")).upper() for r in data.get("reviews", []) if r.get("review_id") or r.get("id")]
+                            else:
+                                _logger.warning(f"Embedding search returned status {resp.status_code}: {resp.text[:200]}")
+                        except Exception as emb_err:
+                            _logger.error(f"Embedding search failed: {emb_err}")
                     
                     if not matching_ids:
                         query = query.filter(ProcessedReview.id == None)
@@ -344,17 +352,22 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
             if filters.get("search"):
                 search_val = f"%{filters['search']}%"
                 if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
-                    # Simple version for stats check
                     import httpx
+                    import logging
                     from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
-                    source_ids = [str(sid[0]) for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
+                    _logger = logging.getLogger(__name__)
+                    # Uppercase source_ids to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+                    source_ids = [str(sid[0]).upper() for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
                     matching_ids = []
                     if source_ids:
                         try:
                             resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
                             if resp.status_code == 200:
-                                matching_ids = [r.get("review_id") or r.get("id") for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
-                        except: pass
+                                matching_ids = [(r.get("review_id") or r.get("id")).upper() for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
+                            else:
+                                _logger.warning(f"Embedding stats search returned status {resp.status_code}")
+                        except Exception as emb_err:
+                            _logger.error(f"Embedding stats search failed: {emb_err}")
                     query = query.filter(ProcessedReview.id.in_(matching_ids)) if matching_ids else query.filter(ProcessedReview.id == None)
                 else:
                     query = query.filter(or_(

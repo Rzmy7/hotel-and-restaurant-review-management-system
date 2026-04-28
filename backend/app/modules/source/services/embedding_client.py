@@ -157,7 +157,7 @@ def trigger_embedding_for_source(source_id: str) -> None:
     """
     thread = threading.Thread(
         target=_embed_source_reviews,
-        args=(str(source_id),),
+        args=(str(source_id).upper(),),
         daemon=True,
         name=f"embed-{str(source_id)[:8]}"
     )
@@ -171,7 +171,8 @@ def delete_embeddings_for_source(source_id: str) -> None:
     """
     logger.info(f"[EmbeddingClient] Requesting embedding deletion for source_id={source_id}")
     try:
-        url = f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}"
+        # Uppercase to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+        url = f"{EMBEDDING_SERVICE_URL}/delete/source/{str(source_id).upper()}"
         resp = httpx.delete(url, timeout=30.0)
         resp.raise_for_status()
         logger.info(f"[EmbeddingClient] Successfully cleared embeddings for source {source_id}")

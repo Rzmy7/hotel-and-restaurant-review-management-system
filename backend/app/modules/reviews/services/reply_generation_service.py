@@ -94,10 +94,13 @@ def _extract_token_usage(value: Any) -> int:
 
 
 def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    import logging
+    _logger = logging.getLogger(__name__)
     try:
+        # Uppercase source_id to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
-            json={"query": review_text, "source_ids": [source_id], "top_k": top_k},
+            json={"query": review_text, "source_ids": [source_id.upper()], "top_k": top_k},
             timeout=12,
         )
         response.raise_for_status()
@@ -108,7 +111,8 @@ def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tu
         safe_reviews = reviews if isinstance(reviews, list) else []
         safe_rules = rules if isinstance(rules, list) else []
         return safe_reviews[:top_k], safe_rules
-    except Exception:
+    except Exception as e:
+        _logger.error(f"Embedding context fetch failed for source_id={source_id}: {e}")
         return [], []
 
 
