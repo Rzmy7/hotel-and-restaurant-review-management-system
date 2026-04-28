@@ -170,6 +170,15 @@ jobs:
       - name: Run backend tests (328 tests)
         run: python -m pytest tests/unit/ tests/integration/ tests/schema_validation/ -v --tb=short
 
+      - name: Cleanup disk
+        if: always()
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf ${{ github.workspace }}/.pytest_cache || true
+          rm -rf /tmp/pip-* /tmp/npm-* || true
+
   test-frontend:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.frontend == 'true'
@@ -196,6 +205,14 @@ jobs:
 
       - name: Run frontend tests (175 tests)
         run: npx vitest run --reporter=verbose
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          npm cache clean --force || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf /tmp/npm-* || true
 
   test-admin-frontend:
     needs: [detect-changes]
@@ -224,6 +241,14 @@ jobs:
       - name: Run admin frontend tests (79 tests)
         run: npx vitest run --reporter=verbose
 
+      - name: Cleanup disk
+        if: always()
+        run: |
+          npm cache clean --force || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf /tmp/npm-* || true
+
   test-embedding:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.embedding == 'true'
@@ -245,15 +270,29 @@ jobs:
           cache: 'pip'
           cache-dependency-path: microservices/embedding-service/requirements.txt
 
+      - name: Free disk space
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements.txt
-          pip install pytest httpx
+          pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir pytest httpx
 
       - name: Run embedding service tests (142 tests)
         run: python -m pytest tests/ -v --tb=short
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf ${{ github.workspace }}/.pytest_cache || true
+          rm -rf /tmp/pip-* /tmp/npm-* || true
 
   # ═══════════════════════════════════════════════════════════════════
   # BUILD JOBS — only run AFTER tests pass for each component
