@@ -195,6 +195,10 @@ const InsightsPage: React.FC = () => {
 
     const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
 
+    const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    };
+
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900">
@@ -210,7 +214,10 @@ const InsightsPage: React.FC = () => {
                         { icon: <Star size={20} />, label: 'Avg Rating', value: d.avgRating, change: d.avgRatingChange, bg: 'bg-amber-50 dark:bg-amber-900/40', fg: 'text-amber-500 dark:text-amber-400' },
                         { icon: <Clock size={20} />, label: 'Response Rate', value: d.responseRate, change: d.responseRateChange, bg: 'bg-emerald-50 dark:bg-emerald-900/40', fg: 'text-emerald-500 dark:text-emerald-400' },
                     ].map((m) => (
-                        <div key={m.label} className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+                        <div
+                            key={m.label}
+                            className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl cursor-pointer hover:scale-105 transition-all"
+                        >
                             <div className={`w-11 h-11 grid place-items-center ${m.bg} ${m.fg} rounded-[10px]`}>{m.icon}</div>
                             <div className="flex-1">
                                 <p className="mb-1.5 text-[13px] text-gray-500 dark:text-gray-400 font-medium m-0">{m.label}</p>
@@ -265,102 +272,115 @@ const InsightsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ═══ 3 + 4. RATING DISTRIBUTION + CATEGORY PERFORMANCE ═════ */}
-                <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
-
-                    {/* Rating Distribution */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+                {/* ═══ RATING DISTRIBUTION ═══ */}
+                <div
+                id="total-reviews-section"
+                className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5"
+                >
+                <div id="rating-section">
                     <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">
-                        Rating Distribution
+                    Rating Distribution
                     </h3>
 
+                    {/* Bars */}
                     <div className="flex flex-col gap-3">
-                        {d.ratingDistribution.map((r) => (
+                    {d.ratingDistribution.map((r) => (
                         <div
-                            key={r.rating}
-                            className="grid grid-cols-[60px_1fr_70px] items-center gap-3"
+                        key={r.rating}
+                        className="grid grid-cols-[60px_1fr_70px] items-center gap-3"
                         >
-                            {/* ⭐ Star */}
-                            <div className="flex items-center gap-1">
+                        {/* ⭐ Star */}
+                        <div className="flex items-center gap-1">
                             <Star size={14} className="text-amber-400" fill="#fbbf24" />
                             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                {r.rating}
+                            {r.rating}
                             </span>
-                            </div>
+                        </div>
 
-                            {/* 🔴 Bar */}
-                            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded h-2">
+                        {/* 🔴 Bar */}
+                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded h-2">
                             <div
-                                className="bg-red-500 h-2 rounded transition-all duration-700 ease-in-out"
-                                style={{
+                            className="bg-red-500 h-2 rounded transition-all duration-700 ease-in-out"
+                            style={{
                                 width: `${(r.count / max) * 100}%`,
-                                }}
+                            }}
                             />
-                            </div>
+                        </div>
 
-                            {/* 🔢 Count */}
-                            <div className="text-right">
+                        {/* 🔢 Count */}
+                        <div className="text-right">
                             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                {r.count}
+                            {r.count}
                             </span>
                             <span className="text-xs text-gray-400 ml-1">
-                                ({r.pct}%)
+                            ({r.pct}%)
                             </span>
-                            </div>
                         </div>
-                        ))}
+                        </div>
+                    ))}
                     </div>
 
                     {/* Satisfaction */}
                     <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                         Satisfaction Rate
-                        </span>
-                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    </span>
+                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                         {satisfactionRate}%
-                        </span>
+                    </span>
                     </div>
-                    </div>
+                </div>
+                </div>
+
+                {/* ═══ CATEGORY + SOURCE (SAME ROW) ═══ */}
+                <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
 
                     {/* Category Performance */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Category Performance</h3>
-                        <div className="flex flex-col gap-3.5">
-                            {d.categories.map((c) => {
-                                const delta = c.score - c.prev;
-                                return (
-                                    <div key={c.name} className="grid grid-cols-[100px_1fr_80px] items-center gap-3">
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
-                                        <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: `${c.score}%`,
-                                                    backgroundColor: c.score >= 80 ? '#3b82f6' : c.score >= 60 ? '#f59e0b' : '#ef4444',
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-1.5 justify-end">
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.score}%</span>
-                                            <span className={`text-[11px] font-semibold ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                                                {delta > 0 ? `↑${delta}` : delta < 0 ? `↓${Math.abs(delta)}` : '—'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Top Category</span>
-                            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                {d.categories.reduce((best, c) => (c.score > best.score ? c : best)).name} ({d.categories.reduce((best, c) => (c.score > best.score ? c : best)).score}%)
-                            </span>
-                        </div>
-                    </div>
-                </div>
+                        <h3 className="mb-5 font-bold text-gray-800 dark:text-white">Category Performance</h3>
 
-                {/* ═══ 5. SOURCE BREAKDOWN ══════════════════════════ */}
-                <SourceBreakdown timeRange={timeRange} />
+                    <div className="flex flex-col gap-3">
+                    {d.categories.map((c) => (
+                        <div
+                        key={c.name}
+                        className="grid grid-cols-[80px_1fr_70px] items-center gap-3"
+                        >
+                        {/* 📌 Category Name */}
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            {c.name}
+                        </span>
+
+                        {/* 📊 Bar */}
+                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded h-2">
+                            <div
+                            className="h-2 rounded transition-all duration-700"
+                            style={{
+                                width: `${c.score}%`,
+                                backgroundColor:
+                                c.score >= 80
+                                    ? "#3b82f6"   // Blue
+                                    : c.score >= 60
+                                    ? "#f59e0b"   // Orange
+                                    : "#ef4444",  // Red
+                            }}
+                            />
+                        </div>
+
+                        {/* 🔢 Percentage */}
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            {c.score}%
+                        </span>
+                        </div>
+                    ))}
+                    </div>
+                    </div>
+
+                    {/* Source Breakdown */}
+                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+                        <SourceBreakdown timeRange={timeRange} />
+                    </div>
+
+                </div>
 
                 {/* ═══ 6. TOP KEYWORDS ═══════════════════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
@@ -425,6 +445,7 @@ const InsightsPage: React.FC = () => {
                                     <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">{m.label}</span>
                                 </div>
                             ))}
+
                         </div>
                         <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700">
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 m-0 leading-relaxed">
@@ -517,6 +538,7 @@ const InsightsPage: React.FC = () => {
 
             </div>
         </div>
+
     );
 };
 
