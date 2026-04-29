@@ -101,6 +101,15 @@ jobs:
           path: backend/results/
           retention-days: 30
 
+      - name: Cleanup disk
+        if: always()
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf ${{ github.workspace }}/.pytest_cache || true
+          rm -rf /tmp/pip-* /tmp/npm-* || true
+
   # ═══════════════════════════════════════════════════════════════════
   # FRONTEND TESTS — Vitest (175 tests)
   # ═══════════════════════════════════════════════════════════════════
@@ -139,6 +148,14 @@ jobs:
           name: frontend-test-results
           path: frontend/results/
           retention-days: 30
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          npm cache clean --force || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf /tmp/npm-* || true
 
   # ═══════════════════════════════════════════════════════════════════
   # ADMIN FRONTEND TESTS — Vitest (79 tests)
@@ -179,6 +196,14 @@ jobs:
           path: admin-frontend/results/
           retention-days: 30
 
+      - name: Cleanup disk
+        if: always()
+        run: |
+          npm cache clean --force || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf /tmp/npm-* || true
+
   # ═══════════════════════════════════════════════════════════════════
   # EMBEDDING SERVICE TESTS — Python pytest (142 tests)
   # ═══════════════════════════════════════════════════════════════════
@@ -204,11 +229,17 @@ jobs:
           cache: 'pip'
           cache-dependency-path: microservices/embedding-service/requirements.txt
 
+      - name: Free disk space
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest httpx
+          pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir pytest httpx
 
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short --junitxml=results/embedding.xml
@@ -220,6 +251,15 @@ jobs:
           name: embedding-test-results
           path: microservices/embedding-service/results/
           retention-days: 30
+
+      - name: Cleanup disk
+        if: always()
+        run: |
+          pip cache purge || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          rm -rf ${{ github.workspace }}/.pytest_cache || true
+          rm -rf /tmp/pip-* /tmp/npm-* || true
 
   # ═══════════════════════════════════════════════════════════════════
   # STATUS CHECK — single gate that deploy.yml can reference

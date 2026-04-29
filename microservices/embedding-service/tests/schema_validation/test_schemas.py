@@ -1,58 +1,22 @@
 """
 Schema validation tests for Pydantic request models in app.main.
 
-Tests accept/reject boundaries for Review, BatchEmbedRequest,
-SearchRequest, Rule, BatchRuleEmbedRequest, and ThresholdConfig.
+Tests accept/reject boundaries for ReviewItem, BatchEmbedRequest,
+SearchRequest, RuleItem, BatchRuleEmbedRequest, and ThresholdConfig.
 """
 
 import pytest
 from pydantic import ValidationError
 
 from app.main import (
-    Review,
     ReviewItem,
     BatchEmbedRequest,
     SearchRequest,
-    Rule,
     RuleItem,
     BatchRuleEmbedRequest,
     ThresholdConfig,
 )
 
-
-# ── Review ───────────────────────────────────────────────────────────
-
-
-class TestReviewSchema:
-    """Tests for Review model."""
-
-    def test_valid_review(self):
-        r = Review(review_id="rev-1", text="Great hotel!", source_id="src-1")
-        assert r.review_id == "rev-1"
-        assert r.text == "Great hotel!"
-        assert r.source_id == "src-1"
-
-    def test_rejects_missing_review_id(self):
-        with pytest.raises(ValidationError):
-            Review(text="Great hotel!", source_id="src-1")
-
-    def test_rejects_missing_text(self):
-        with pytest.raises(ValidationError):
-            Review(review_id="rev-1", source_id="src-1")
-
-    def test_rejects_missing_source_id(self):
-        with pytest.raises(ValidationError):
-            Review(review_id="rev-1", text="Great hotel!")
-
-    def test_empty_text_accepted(self):
-        """Empty string is valid (model handles it)."""
-        r = Review(review_id="rev-1", text="", source_id="src-1")
-        assert r.text == ""
-
-    def test_long_text_accepted(self):
-        long_text = "Amazing hotel! " * 1000
-        r = Review(review_id="rev-1", text=long_text, source_id="src-1")
-        assert len(r.text) > 10000
 
 
 # ── ReviewItem ───────────────────────────────────────────────────────
@@ -146,28 +110,6 @@ class TestSearchRequestSchema:
         sr = SearchRequest(query="pool", source_ids=[])
         assert len(sr.source_ids) == 0
 
-
-# ── Rule ─────────────────────────────────────────────────────────────
-
-
-class TestRuleSchema:
-    """Tests for Rule model."""
-
-    def test_valid_rule(self):
-        r = Rule(rule_id="rule-1", source_id="src-1", text="Always greet by name")
-        assert r.rule_id == "rule-1"
-
-    def test_rejects_missing_rule_id(self):
-        with pytest.raises(ValidationError):
-            Rule(source_id="src-1", text="Rule text")
-
-    def test_rejects_missing_source_id(self):
-        with pytest.raises(ValidationError):
-            Rule(rule_id="rule-1", text="Rule text")
-
-    def test_rejects_missing_text(self):
-        with pytest.raises(ValidationError):
-            Rule(rule_id="rule-1", source_id="src-1")
 
 
 # ── RuleItem ─────────────────────────────────────────────────────────

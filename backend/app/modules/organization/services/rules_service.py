@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 from app.core.config import EMBEDDING_SERVICE_URL
 
+# ── Internal API Key (shared secret for service-to-service auth) ─────────────
+import os as _os
+_INTERNAL_API_KEY = _os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+_AUTH_HEADERS = {"X-Internal-API-Key": _INTERNAL_API_KEY}
+
 ALLOWED_EXTENSIONS = {".txt", ".docx", ".pdf"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
@@ -189,7 +194,7 @@ def _insert_rules(db: Session, organization_id: str, rules: list[str], filename:
             },
         )
         inserted.append({
-            "rule_id": str(rule_id),
+            "rule_id": str(rule_id).upper(),  # Uppercase for ChromaDB consistency
             "rule_text": rule_text,
             "rule_order": idx + 1,
         })
@@ -202,7 +207,7 @@ def _get_source_id_for_org(db: Session, organization_id: str) -> str | None:
         text("SELECT TOP 1 source_id FROM dbo.source WHERE organization_id = :org_id"),
         {"org_id": organization_id},
     ).fetchone()
-    return str(row[0]) if row else None
+    return str(row[0]).upper() if row else None  # Uppercase for ChromaDB consistency
 
 
 # ── Embedding Dispatch ──────────────────────────────────────────────
@@ -213,7 +218,7 @@ def _send_rules_to_embedding(rules: list[dict[str, Any]], source_id: str) -> dic
         return {"embedded_count": 0, "skipped": True}
 
     payload = {
-        "source_id": source_id,
+        "source_id": source_id.upper(),  # Uppercase for ChromaDB consistency
         "rules": [
             {"rule_id": r["rule_id"], "text": r["rule_text"]}
             for r in rules
@@ -222,8 +227,9 @@ def _send_rules_to_embedding(rules: list[dict[str, Any]], source_id: str) -> dic
 
     try:
         response = requests.post(
-            f"{EMBEDDING_SERVICE_URL}/embed/rule/batch",
+            f"{EMBEDDING_SERVICE_URL}/embed/rule",
             json=payload,
+            headers=_AUTH_HEADERS,
             timeout=60,
         )
         response.raise_for_status()
@@ -290,6 +296,18 @@ async def process_rules_upload(
     embed_result = {"embedded_count": 0, "skipped": True, "reason": "no_source"}
 
     if source_id:
+        # 6a. Delete old rule embeddings from ChromaDB before re-embedding
+        try:
+            requests.delete(
+                f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}/rules",
+                headers=_AUTH_HEADERS,
+                timeout=30,
+            )
+            logger.info(f"Cleared old rule embeddings for source_id={source_id}")
+        except Exception as e:
+            logger.warning(f"Failed to clear old rule embeddings: {e}")
+
+        # 6b. Embed new rules
         embed_result = _send_rules_to_embedding(inserted_rules, source_id)
 
         # 7. Mark successfully embedded rules

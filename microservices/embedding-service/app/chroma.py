@@ -14,7 +14,8 @@ client = chromadb.PersistentClient(
 collection = client.get_or_create_collection("hotel_reviews")
 
 def save_embedding(review_id, embedding, metadata, document=None):
-    collection.add(
+    """Upsert so re-embedding the same processed_review.id never duplicates."""
+    collection.upsert(
         ids=[review_id],
         embeddings=[embedding],
         metadatas=[metadata],

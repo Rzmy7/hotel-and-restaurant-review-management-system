@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
-from app.modules.source.services.source_service import update_sync_status
+from app.modules.source.services.source_service import update_sync_status, log_activity
 from app.core.config import SCRAPER_ENGINE_URL
 
 logger = logging.getLogger(__name__)
@@ -135,7 +135,21 @@ async def process_pending_syncs():
                     )
 
                 if not tenant_allowed_cache[tenant_id]:
-                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached.")
+                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached. Auto-pausing source.")
+                    # Auto-pause the source since limit is reached
+                    if source.source_status != 'paused':
+                        source.source_status = 'paused'
+                        db.commit()
+                        
+                        # Log the activity
+                        log_activity(
+                            db, 
+                            source.source_id, 
+                            activity_type="SOURCE_AUTO_PAUSED", 
+                            status="Success",
+                            activity_details="Source auto-paused due to reaching the weekly scraping frequency limit.",
+                            is_important=True
+                        )
                     continue
 
             # Trigger the microservice (now awaited)
@@ -144,7 +158,20 @@ async def process_pending_syncs():
                 url=source.source_url,
                 source_id=source.source_id
             )
-            # Timestamps will be updated via callback to /source/tasks/{source_id}/sync-complete
+
+            if success:
+                # Update status to queued to prevent redundant triggers before scraper callback arrives
+                source.source_status = 'queued'
+                db.commit()
+                
+                log_activity(
+                    db,
+                    source.source_id,
+                    activity_type="SYNC_QUEUED",
+                    status="In Progress",
+                    activity_details=f"Scheduled synchronization initiated for {source.platform.platform_name}."
+                )
+            # Timestamps will be updated via callback to /api/source/{source_id}/sync-status
                 
     except Exception as e:
         # Avoid massive tracebacks on timeout by just logging the error string

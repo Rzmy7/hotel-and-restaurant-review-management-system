@@ -1,14 +1,14 @@
 """
 Embedding Client
 ================
-Triggered by the main backend after the AI analysis pipeline completes.
+Triggered by the main backend after reviews are stored in processed_review.
 
 Flow:
-  1. Fetch processed reviews from [ReviewMate].[dbo].[processed_review]
-     that are status='processed' AND is_embedded=0 for the given source_id
+  1. Fetch reviews from [ReviewMate].[dbo].[processed_review]
+     that have is_embedded=0 for the given source_id
   2. Use the source_id UUID for ChromaDB namespacing
   3. POST them in one batch to the Embedding Service
-     (POST {EMBEDDING_SERVICE_URL}/embed/batch)
+     (POST {EMBEDDING_SERVICE_URL}/embed)
   4. On success, mark those review IDs as is_embedded=1 directly in processed_review
 """
 
@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 # ── Service URLs ─────────────────────────────────────────────────────────────
 from app.core.config import EMBEDDING_SERVICE_URL
+
+# ── Internal API Key (shared secret for service-to-service auth) ─────────────
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+_AUTH_HEADERS = {"X-Internal-API-Key": INTERNAL_API_KEY}
 
 
 
@@ -51,7 +55,6 @@ def _embed_source_reviews(source_id: str) -> None:
                 negative_text
             FROM dbo.processed_review
             WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
-              AND status = 'processed'
               AND is_embedded = 0
             ORDER BY scrapedAt ASC
         """, source_id)
@@ -105,8 +108,8 @@ def _embed_source_reviews(source_id: str) -> None:
     }
 
     try:
-        embed_url = f"{EMBEDDING_SERVICE_URL}/embed/batch"
-        embed_response = httpx.post(embed_url, json=embed_payload, timeout=120.0)
+        embed_url = f"{EMBEDDING_SERVICE_URL}/embed"
+        embed_response = httpx.post(embed_url, json=embed_payload, headers=_AUTH_HEADERS, timeout=120.0)
         embed_response.raise_for_status()
         embed_result = embed_response.json()
     except httpx.HTTPError as e:
@@ -158,7 +161,7 @@ def trigger_embedding_for_source(source_id: str) -> None:
     """
     thread = threading.Thread(
         target=_embed_source_reviews,
-        args=(str(source_id),),
+        args=(str(source_id).upper(),),
         daemon=True,
         name=f"embed-{str(source_id)[:8]}"
     )
@@ -172,8 +175,9 @@ def delete_embeddings_for_source(source_id: str) -> None:
     """
     logger.info(f"[EmbeddingClient] Requesting embedding deletion for source_id={source_id}")
     try:
-        url = f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}"
-        resp = httpx.delete(url, timeout=30.0)
+        # Uppercase to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+        url = f"{EMBEDDING_SERVICE_URL}/delete/source/{str(source_id).upper()}"
+        resp = httpx.delete(url, headers=_AUTH_HEADERS, timeout=30.0)
         resp.raise_for_status()
         logger.info(f"[EmbeddingClient] Successfully cleared embeddings for source {source_id}")
     except Exception as e:

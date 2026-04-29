@@ -88,7 +88,7 @@ def get_stats(org_id: str = None) -> dict:
         "activeUsersToday": 0,
         "reviewsCollectedToday": 0,
         "systemUptime": 100,
-        "processedReviews": 0,
+        "processedReviews": replied_count,
         "processedReviewsGrowth": 0
     }
 

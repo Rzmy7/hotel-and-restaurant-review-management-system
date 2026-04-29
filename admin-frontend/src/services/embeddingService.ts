@@ -4,6 +4,7 @@
 
 const DEFAULT_EMBEDDING_SERVICE_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
 const STORAGE_KEY = 'embeddingServiceUrl';
+const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY || 'dev-internal-secret';
 
 /**
  * Get the current embedding service URL (from localStorage or default)
@@ -12,6 +13,14 @@ const getBaseUrl = (): string => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored || DEFAULT_EMBEDDING_SERVICE_URL;
 };
+
+/**
+ * Get auth headers for embedding service requests
+ */
+const getAuthHeaders = (): Record<string, string> => ({
+    'X-Internal-API-Key': INTERNAL_API_KEY,
+    'Content-Type': 'application/json',
+});
 
 /**
  * Set the embedding service URL
@@ -57,7 +66,9 @@ export interface VectorDbStats {
  */
 export const getThresholds = async (): Promise<SimilarityThresholds> => {
     try {
-        const response = await fetch(`${getBaseUrl()}/thresholds`);
+        const response = await fetch(`${getBaseUrl()}/thresholds`, {
+            headers: getAuthHeaders(),
+        });
         if (!response.ok) {
             throw new Error('Failed to fetch thresholds');
         }
@@ -75,9 +86,7 @@ export const updateThresholds = async (thresholds: SimilarityThresholds): Promis
     try {
         const response = await fetch(`${getBaseUrl()}/thresholds`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(thresholds),
         });
 
@@ -97,6 +106,7 @@ export const resetThresholds = async (): Promise<SimilarityThresholds> => {
     try {
         const response = await fetch(`${getBaseUrl()}/thresholds/reset`, {
             method: 'POST',
+            headers: getAuthHeaders(),
         });
 
         if (!response.ok) {
@@ -111,17 +121,26 @@ export const resetThresholds = async (): Promise<SimilarityThresholds> => {
     }
 };
 
+export interface PaginatedJobs {
+    jobs: EmbeddingJob[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+}
+
 /**
- * Get recent embedding jobs
+ * Get embedding jobs with pagination
  */
-export const getRecentJobs = async (limit: number = 10): Promise<EmbeddingJob[]> => {
+export const getRecentJobs = async (page: number = 1, pageSize: number = 10): Promise<PaginatedJobs> => {
     try {
-        const response = await fetch(`${getBaseUrl()}/jobs/recent?limit=${limit}`);
+        const response = await fetch(`${getBaseUrl()}/jobs/recent?page=${page}&page_size=${pageSize}`, {
+            headers: getAuthHeaders(),
+        });
         if (!response.ok) {
             throw new Error('Failed to fetch jobs');
         }
-        const data = await response.json();
-        return data.jobs;
+        return await response.json();
     } catch (error) {
         console.error('Error fetching jobs:', error);
         throw error;
@@ -133,7 +152,9 @@ export const getRecentJobs = async (limit: number = 10): Promise<EmbeddingJob[]>
  */
 export const getDatabaseStats = async (): Promise<VectorDbStats> => {
     try {
-        const response = await fetch(`${getBaseUrl()}/database/stats`);
+        const response = await fetch(`${getBaseUrl()}/database/stats`, {
+            headers: getAuthHeaders(),
+        });
         if (!response.ok) {
             throw new Error('Failed to fetch database stats');
         }
@@ -151,6 +172,7 @@ export const reindexDatabase = async (): Promise<{ vectorsReindexed: number; mes
     try {
         const response = await fetch(`${getBaseUrl()}/database/reindex`, {
             method: 'POST',
+            headers: getAuthHeaders(),
         });
         if (!response.ok) {
             throw new Error('Failed to re-index database');
@@ -169,6 +191,7 @@ export const clearDatabase = async (): Promise<{ vectorsRemoved: number; message
     try {
         const response = await fetch(`${getBaseUrl()}/database/clear`, {
             method: 'POST',
+            headers: getAuthHeaders(),
         });
         if (!response.ok) {
             throw new Error('Failed to clear database');
@@ -187,6 +210,7 @@ export const pauseService = async (): Promise<void> => {
     try {
         const response = await fetch(`${getBaseUrl()}/service/pause`, {
             method: 'POST',
+            headers: getAuthHeaders(),
         });
         if (!response.ok) {
             throw new Error('Failed to pause service');
@@ -204,6 +228,7 @@ export const resumeService = async (): Promise<void> => {
     try {
         const response = await fetch(`${getBaseUrl()}/service/resume`, {
             method: 'POST',
+            headers: getAuthHeaders(),
         });
         if (!response.ok) {
             throw new Error('Failed to resume service');
@@ -219,7 +244,9 @@ export const resumeService = async (): Promise<void> => {
  */
 export const getServiceStatus = async (): Promise<{ isPaused: boolean; status: string }> => {
     try {
-        const response = await fetch(`${getBaseUrl()}/service/status`);
+        const response = await fetch(`${getBaseUrl()}/service/status`, {
+            headers: getAuthHeaders(),
+        });
         if (!response.ok) {
             throw new Error('Failed to get service status');
         }
