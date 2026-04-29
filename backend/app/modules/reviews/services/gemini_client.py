@@ -23,7 +23,7 @@ Task: Analyze a batch of raw guest reviews and transform them into structured, e
 Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, positive_text, negative_text, reviewDate].
 
 Rules:
-1. Output MUST be ONLY a valid JSON object in the format: {"reviews": [review1, review2, ...]}.
+1. Output MUST be ONLY a valid JSON object in the format: {{"reviews": [review1, review2, ...]}}.
 2. IMPORTANT: All string values must be properly escaped for JSON. Specifically, double quotes inside a string MUST be escaped as \\".
 3. For each review, provide:
    - "sentiment": "Positive", "Neutral", "Negative".
@@ -91,10 +91,13 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     batch_json = json.dumps(reviews, ensure_ascii=False)
 
     try:
+        # Use .replace instead of .format to avoid KeyError with braces in review text
+        prompt = SYSTEM_PROMPT.replace("{batch_json}", batch_json)
+        
         text = gateway_call(
             "review_processing",
-            SYSTEM_PROMPT.format(batch_json=batch_json),
-            json_mode=True,
+            prompt,
+            json_mode=False, # Disabled: provider expects 'json_schema' which we haven't implemented yet
         )
         
         # Clean up response
@@ -104,8 +107,14 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         text = re.sub(r'\s*```$', '', text)
         
         # Attempt to find the first { and last } to isolate the object
+        # We still ask for the object structure in the prompt as it's more stable
         start_idx = text.find('{')
         end_idx = text.rfind('}')
+        if start_idx == -1:
+            # Fallback to array if it didn't follow the "object" rule
+            start_idx = text.find('[')
+            end_idx = text.rfind(']')
+            
         if start_idx != -1 and end_idx != -1:
             text = text[start_idx:end_idx+1]
 
