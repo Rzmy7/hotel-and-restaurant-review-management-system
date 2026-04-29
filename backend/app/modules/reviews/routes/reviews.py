@@ -88,6 +88,7 @@ def read_reviews(
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
     category: List[str] = Query(None),
+    status: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -103,6 +104,7 @@ def read_reviews(
             "sentiment": sentiment,
             "source": source,
             "category": category,
+            "status": status,
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
@@ -154,6 +156,7 @@ def get_stats(
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
     category: List[str] = Query(None),
+    status: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -169,6 +172,7 @@ def get_stats(
             "sentiment": sentiment,
             "source": source,
             "category": category,
+            "status": status,
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }

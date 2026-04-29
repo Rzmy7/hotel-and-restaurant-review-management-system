@@ -8,6 +8,7 @@ import json
 import uuid
 import logging
 import os
+import time
 from datetime import datetime
 
 import pyodbc
@@ -18,15 +19,17 @@ from app.modules.reviews.services.gemini_client import analyze_reviews_batch
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = int(os.getenv("MAX_RETRY_ATTEMPTS", 3))
+MAX_RUN_TIME = 45  # Max seconds to process in one scheduled run
 
 
 async def run_analysis_pipeline():
     """
     Main entry point for the AI processing background task.
     Fetches pending reviews, analyzes with Gemini, and updates the database.
-    Processes in batches until no pending reviews remain.
+    Processes in batches until no pending reviews remain or time limit is reached.
     """
     logger.info("--- Starting Review Analysis Pipeline ---")
+    start_time = time.time()
 
     # Read batch size from DB so admin panel changes take effect each run.
     batch_size = 5  # safe fallback if DB read fails
@@ -43,6 +46,11 @@ async def run_analysis_pipeline():
     loop_count = 0
 
     while loop_count < max_loops:
+        # Check if we have exceeded the time limit for this run
+        if time.time() - start_time > MAX_RUN_TIME:
+            logger.info(f"Pipeline: Reached time limit ({MAX_RUN_TIME}s). Exiting current run.")
+            break
+
         loop_count += 1
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()

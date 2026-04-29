@@ -207,18 +207,50 @@ def fetch_all_reviews_enriched(
                     ))
             
             if filters.get("rating"):
-                query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
+                rating_filters = []
+                for r in filters["rating"]:
+                    # Handle integer ratings as ranges to include floats (e.g. 4.0 matches 3.5 to 4.49)
+                    # Standard rounding: r=5 matches >=4.5, r=4 matches 3.5-4.5, etc.
+                    rating_filters.append(and_(ProcessedReview.rating >= r - 0.5, ProcessedReview.rating < r + 0.5))
+                query = query.filter(or_(*rating_filters))
+
             if filters.get("sentiment"):
                 query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+
             if filters.get("source"):
                 query = query.filter(Platform.platform_name.in_(filters["source"]))
+
             if filters.get("category"):
                 cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
-                query = query.filter(and_(*cat_filters))
+                query = query.filter(or_(*cat_filters))
+
+            if filters.get("status"):
+                status_filters = []
+                for s in filters["status"]:
+                    if s == "Pending":
+                        status_filters.append(ProcessedReview.status == 'pending')
+                    elif s == "Replied":
+                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
+                    elif s == "AI Draft":
+                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                if status_filters:
+                    query = query.filter(or_(*status_filters))
+
             if filters.get("dateFrom"):
-                query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+                try:
+                    from dateutil import parser as date_parser
+                    df = date_parser.parse(filters["dateFrom"])
+                    query = query.filter(ProcessedReview.reviewDate >= df)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+
             if filters.get("dateTo"):
-                query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+                try:
+                    from dateutil import parser as date_parser
+                    dt = date_parser.parse(filters["dateTo"])
+                    query = query.filter(ProcessedReview.reviewDate <= dt)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         total_count = query.count()
 
@@ -364,14 +396,49 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
                         ProcessedReview.reviewerName.ilike(search_val),
                         ProcessedReview.heading.ilike(search_val)
                     ))
-            if filters.get("rating"): query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
-            if filters.get("sentiment"): query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
-            if filters.get("source"): query = query.filter(Platform.platform_name.in_(filters["source"]))
+            if filters.get("rating"):
+                rating_filters = []
+                for r in filters["rating"]:
+                    rating_filters.append(and_(ProcessedReview.rating >= r - 0.5, ProcessedReview.rating < r + 0.5))
+                query = query.filter(or_(*rating_filters))
+
+            if filters.get("sentiment"):
+                query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+
+            if filters.get("source"):
+                query = query.filter(Platform.platform_name.in_(filters["source"]))
+
             if filters.get("category"):
                 cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
-                query = query.filter(and_(*cat_filters))
-            if filters.get("dateFrom"): query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
-            if filters.get("dateTo"): query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+                query = query.filter(or_(*cat_filters))
+
+            if filters.get("status"):
+                status_filters = []
+                for s in filters["status"]:
+                    if s == "Pending":
+                        status_filters.append(ProcessedReview.status == 'pending')
+                    elif s == "Replied":
+                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
+                    elif s == "AI Draft":
+                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                if status_filters:
+                    query = query.filter(or_(*status_filters))
+
+            if filters.get("dateFrom"):
+                try:
+                    from dateutil import parser as date_parser
+                    df = date_parser.parse(filters["dateFrom"])
+                    query = query.filter(ProcessedReview.reviewDate >= df)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+
+            if filters.get("dateTo"):
+                try:
+                    from dateutil import parser as date_parser
+                    dt = date_parser.parse(filters["dateTo"])
+                    query = query.filter(ProcessedReview.reviewDate <= dt)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         # Aggregations
         # Apply the same filters to aggregation query by reusing the query object

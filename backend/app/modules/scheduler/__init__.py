@@ -37,5 +37,7 @@ def setup_scheduler():
         'interval',
         minutes=1,
         id='process_reviews_job',
-        replace_existing=True
+        replace_existing=True,
+        misfire_grace_time=30,
+        coalesce=True
     )
