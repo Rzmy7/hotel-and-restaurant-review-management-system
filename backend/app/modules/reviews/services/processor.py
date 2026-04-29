@@ -19,7 +19,7 @@ from app.modules.reviews.services.gemini_client import analyze_reviews_batch
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = int(os.getenv("MAX_RETRY_ATTEMPTS", 3))
-MAX_RUN_TIME = 45  # Max seconds to process in one scheduled run
+MAX_RUN_TIME = 35  # Reduced from 45 to allow more buffer for individual batch overhead
 
 
 async def run_analysis_pipeline():
@@ -47,8 +47,9 @@ async def run_analysis_pipeline():
 
     while loop_count < max_loops:
         # Check if we have exceeded the time limit for this run
-        if time.time() - start_time > MAX_RUN_TIME:
-            logger.info(f"Pipeline: Reached time limit ({MAX_RUN_TIME}s). Exiting current run.")
+        elapsed = time.time() - start_time
+        if elapsed > MAX_RUN_TIME:
+            logger.info(f"Pipeline: Reached time limit ({elapsed:.1f}s / {MAX_RUN_TIME}s). Exiting current run.")
             break
 
         loop_count += 1
@@ -119,9 +120,17 @@ async def run_analysis_pipeline():
                 # Stop processing this run if API fails
                 break
 
+            # Check time again after heavy AI analysis
+            if time.time() - start_time > MAX_RUN_TIME + 10:
+                logger.info("Pipeline: Batch analysis took significant time. Saving results and exiting run.")
+                _save_batch_results(cursor, pending_reviews, ai_results)
+                conn.commit()
+                total_processed += len(ai_results)
+                break
+
             # 3. Process results and update DB
             results_map = {str(res["id"]): res for res in ai_results if "id" in res}
-
+            
             batch_success_count = 0
             for review in pending_reviews:
                 r_id_str = str(review["id"])
@@ -288,6 +297,22 @@ def _update_review_success(
         # We don't fail the whole update if only the category sync fails
         
     return cursor.rowcount > 0
+
+
+def _save_batch_results(cursor: pyodbc.Cursor, pending_reviews: list, ai_results: list):
+    """Helper to save results for a whole batch. Used when exiting early due to time."""
+    results_map = {str(res["id"]): res for res in ai_results if "id" in res}
+    for review in pending_reviews:
+        r_id_str = str(review["id"])
+        analysis = results_map.get(r_id_str)
+        if analysis:
+            try:
+                _update_review_success(cursor, review, analysis)
+            except Exception as e:
+                logger.error(f"Failed to update review {r_id_str} during early exit: {e}")
+                _update_review_failure(cursor, review["id"], f"Update failed: {e}")
+        else:
+            _update_review_failure(cursor, review["id"], "AI skipped this record during early exit.")
 
 
 def _update_review_failure(cursor: pyodbc.Cursor, review_id: Any, error: str):

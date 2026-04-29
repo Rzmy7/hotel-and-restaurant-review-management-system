@@ -70,10 +70,32 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
             "review_processing",
             SYSTEM_PROMPT.format(batch_json=batch_json),
         )
+        
+        # Clean up response
+        text = text.strip()
+        # Remove markdown blocks
         text = re.sub(r'^```(?:json)?\s*', '', text)
         text = re.sub(r'\s*```$', '', text)
+        
+        # Attempt to find the first [ and last ] to isolate the array
+        start_idx = text.find('[')
+        end_idx = text.rfind(']')
+        if start_idx != -1 and end_idx != -1:
+            text = text[start_idx:end_idx+1]
 
-        results = json.loads(text)
+        try:
+            results = json.loads(text)
+        except json.JSONDecodeError as jde:
+            # If it fails, try a desperate cleanup of trailing commas which often cause issues
+            cleaned_text = re.sub(r',\s*([\]}])', r'\1', text)
+            try:
+                results = json.loads(cleaned_text)
+            except json.JSONDecodeError:
+                # Still failing, raise original with more context
+                logger.error(f"JSON Decode Error at line {jde.lineno}, col {jde.colno}: {jde.msg}")
+                logger.error(f"Raw text snippet: {text[:200]}...{text[-200:]}")
+                raise
+
         if not isinstance(results, list):
             raise ValueError("LLM returned non-list output.")
         return results
