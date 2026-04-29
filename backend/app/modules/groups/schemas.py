@@ -31,13 +31,15 @@ class InviteCreate(BaseModel):
 
 
 class MemberResponse(BaseModel):
+    organization_id: str
+    organization_name: str
     user_id: str
     first_name: Optional[str]
     last_name: Optional[str]
     email: str
     profile_image_url: Optional[str]
     role: str
-    joined_at: str
+    joined_at: Optional[str]
 
 
 class InviteResponse(BaseModel):

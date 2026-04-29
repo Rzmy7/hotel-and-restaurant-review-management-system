@@ -17,6 +17,8 @@ from app.core.db_utils import (
     table_exists,
 )
 from app.modules.admin.schemas import (
+    BatchConfigResponse,
+    BatchConfigUpdatePayload,
     ScrapingPlatformCreatePayload,
     ScrapingPlatformUpdatePayload,
 )
@@ -527,4 +529,59 @@ def review_processing_jobs() -> list[dict]:
 
 
 # Gemini-specific config endpoints removed — use /api/admin/llm-models instead.
+
+
+# ── Batch size configuration ────────────────────────────────────────
+
+@router.get("/review-processing/batch-config", response_model=BatchConfigResponse)
+def get_batch_config() -> BatchConfigResponse:
+    """Return the current review-processing batch size and its allowed range."""
+    from app.modules.admin.services.system_settings_service import (
+        get_review_batch_size,
+        REVIEW_BATCH_SIZE_DEFAULT,
+        REVIEW_BATCH_SIZE_MIN,
+        REVIEW_BATCH_SIZE_MAX,
+    )
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            batch_size = get_review_batch_size(cursor)
+        return BatchConfigResponse(
+            batch_size=batch_size,
+            min=REVIEW_BATCH_SIZE_MIN,
+            max=REVIEW_BATCH_SIZE_MAX,
+            default=REVIEW_BATCH_SIZE_DEFAULT,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch batch config: {exc}") from exc
+
+
+@router.patch("/review-processing/batch-config", response_model=BatchConfigResponse)
+def update_batch_config(payload: BatchConfigUpdatePayload) -> BatchConfigResponse:
+    """Persist a new review-processing batch size (1–20)."""
+    from app.modules.admin.services.system_settings_service import (
+        set_review_batch_size,
+        REVIEW_BATCH_SIZE_DEFAULT,
+        REVIEW_BATCH_SIZE_MIN,
+        REVIEW_BATCH_SIZE_MAX,
+    )
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            saved = set_review_batch_size(cursor, payload.batch_size)
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "Batch Size Updated",
+            f"Review processing batch size set to {saved}",
+        )
+        return BatchConfigResponse(
+            batch_size=saved,
+            min=REVIEW_BATCH_SIZE_MIN,
+            max=REVIEW_BATCH_SIZE_MAX,
+            default=REVIEW_BATCH_SIZE_DEFAULT,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to update batch config: {exc}") from exc
 

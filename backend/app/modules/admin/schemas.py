@@ -378,6 +378,20 @@ class GeminiApiKeyTestResponse(BaseModel):
     message: str
 
 
+# ── Batch config schemas ───────────────────────────────────────────
+
+
+class BatchConfigResponse(BaseModel):
+    batch_size: int
+    min: int
+    max: int
+    default: int
+
+
+class BatchConfigUpdatePayload(BaseModel):
+    batch_size: int = Field(..., ge=1, le=20, description="Number of reviews per LLM batch (1–20)")
+
+
 # ── LLM Gateway schemas ────────────────────────────────────────────
 
 

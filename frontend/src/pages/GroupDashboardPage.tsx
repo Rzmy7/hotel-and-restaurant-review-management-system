@@ -940,6 +940,15 @@ const GroupDashboardPage: React.FC = () => {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [analyticsRestricted, setAnalyticsRestricted] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const prevOrgId = useRef<string | undefined>(organizationId);
+
+  // Navigate away silently when the user switches organization
+  useEffect(() => {
+    if (prevOrgId.current !== undefined && prevOrgId.current !== organizationId) {
+      navigate('/groups', { replace: true });
+    }
+    prevOrgId.current = organizationId;
+  }, [organizationId, navigate]);
 
   const fetchGroup = useCallback(async () => {
     if (!groupId || !organizationId) return;

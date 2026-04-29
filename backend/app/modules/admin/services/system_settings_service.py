@@ -18,6 +18,12 @@ DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
 DEFAULT_USER_SESSION_TIMEOUT_MINUTES = 60
 DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES = 60
 
+# Review processing batch size — how many reviews are sent to the LLM per API call.
+# Smaller = safer (less truncation risk), larger = faster (fewer API calls).
+REVIEW_BATCH_SIZE_DEFAULT = 5
+REVIEW_BATCH_SIZE_MIN = 1
+REVIEW_BATCH_SIZE_MAX = 20
+
 
 def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
     cursor.execute(
@@ -144,6 +150,25 @@ def increment_setting_counter(cursor: pyodbc.Cursor, key: str, delta: int = 1) -
     next_value = max(0, current + delta)
     set_setting(cursor, key, str(next_value))
     return next_value
+
+
+def get_review_batch_size(cursor: pyodbc.Cursor) -> int:
+    """Return the configured review processing batch size, clamped to [min, max]."""
+    value = (get_setting(cursor, "review_batch_size") or "").strip()
+    if not value:
+        return REVIEW_BATCH_SIZE_DEFAULT
+    try:
+        parsed = int(value)
+    except ValueError:
+        return REVIEW_BATCH_SIZE_DEFAULT
+    return max(REVIEW_BATCH_SIZE_MIN, min(REVIEW_BATCH_SIZE_MAX, parsed))
+
+
+def set_review_batch_size(cursor: pyodbc.Cursor, size: int) -> int:
+    """Persist a validated batch size. Returns the clamped value that was saved."""
+    clamped = max(REVIEW_BATCH_SIZE_MIN, min(REVIEW_BATCH_SIZE_MAX, int(size)))
+    set_setting(cursor, "review_batch_size", str(clamped))
+    return clamped
 
 
 def get_session_timeout_minutes(cursor: pyodbc.Cursor, role: str) -> int:

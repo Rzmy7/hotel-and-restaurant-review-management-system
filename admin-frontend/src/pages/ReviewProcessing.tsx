@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, KeyRound, Save, Cpu, Clock } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import {
     fetchReviewProcessingStats,
     fetchReviewProcessingJobs,
-    getGeminiApiKeyConfig,
-    saveGeminiApiKey,
-    testGeminiApiKey,
+    getBatchConfig,
+    updateBatchConfig,
     resumeReviewProcessing,
     retryFailedReviews,
 } from '../services/reviewProcessingService';
 import type {
     ReviewProcessingStats,
     ReviewProcessingJob,
-    GeminiApiKeyConfig,
+    BatchConfig,
 } from '../services/reviewProcessingService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
@@ -31,13 +30,6 @@ const defaultStats: ReviewProcessingStats = {
     isPaused: false,
 };
 
-const defaultGeminiConfig: GeminiApiKeyConfig = {
-    apiKey: '',
-    isConfigured: false,
-    lastTestedAt: null,
-    lastTestResult: null,
-};
-
 export const ReviewProcessing: React.FC = () => {
     const systemTimezone = useSystemTimezone();
     const [stats, setStats] = useState<ReviewProcessingStats>(defaultStats);
@@ -50,13 +42,11 @@ export const ReviewProcessing: React.FC = () => {
     const itemsPerPage = 10;
     const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
 
-    // Gemini API Key state
-    const [geminiConfig, setGeminiConfig] = useState<GeminiApiKeyConfig>(defaultGeminiConfig);
-    const [geminiApiKeyInput, setGeminiApiKeyInput] = useState('');
-    const [geminiSaveState, setGeminiSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const [geminiSaveMessage, setGeminiSaveMessage] = useState<string | null>(null);
-    const [geminiTestState, setGeminiTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-    const [geminiTestMessage, setGeminiTestMessage] = useState<string | null>(null);
+    // Batch size config state
+    const [batchConfig, setBatchConfig] = useState<BatchConfig | null>(null);
+    const [batchInput, setBatchInput] = useState<number>(5);
+    const [batchSaveState, setBatchSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [batchSaveMessage, setBatchSaveMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const loadData = async (isRefresh = false) => {
@@ -68,28 +58,22 @@ export const ReviewProcessing: React.FC = () => {
                 }
                 setError(null);
 
-                const [statsResult, jobsResult, geminiResult] = await Promise.allSettled([
+                const [statsResult, jobsResult, batchResult] = await Promise.allSettled([
                     fetchReviewProcessingStats(),
                     fetchReviewProcessingJobs(),
-                    getGeminiApiKeyConfig(),
+                    getBatchConfig(),
                 ]);
 
                 if (statsResult.status === 'fulfilled') setStats(statsResult.value);
                 if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
-                if (geminiResult.status === 'fulfilled') {
-                    setGeminiConfig(geminiResult.value);
-                    if (!isRefresh && geminiResult.value.apiKey) {
-                        setGeminiApiKeyInput(geminiResult.value.apiKey);
-                    }
+                if (batchResult.status === 'fulfilled') {
+                    setBatchConfig(batchResult.value);
+                    if (!isRefresh) setBatchInput(batchResult.value.batch_size);
                 }
 
                 const errors: string[] = [];
-                if (statsResult.status === 'rejected') {
-                    errors.push('Failed to load review statistics.');
-                }
-                if (jobsResult.status === 'rejected') {
-                    errors.push('Failed to load processing jobs.');
-                }
+                if (statsResult.status === 'rejected') errors.push('Failed to load review statistics.');
+                if (jobsResult.status === 'rejected') errors.push('Failed to load processing jobs.');
                 if (errors.length > 0) setError(errors.join(' | '));
             } catch (err) {
                 console.error('Failed to load review processing data:', err);
@@ -101,11 +85,7 @@ export const ReviewProcessing: React.FC = () => {
         };
 
         loadData();
-
-        const interval = setInterval(() => {
-            loadData(true);
-        }, 15000);
-
+        const interval = setInterval(() => loadData(true), 15000);
         return () => clearInterval(interval);
     }, []);
 
@@ -138,18 +118,15 @@ export const ReviewProcessing: React.FC = () => {
     };
 
     const handleRetryJob = async (jobId: string) => {
-        // Extract source_id from composite job ID (format: "{source_id}-failed")
         const sourceId = jobId.replace(/-failed$/, '');
         if (!sourceId || sourceId === jobId) {
             setError('Unable to determine source ID for retry.');
             return;
         }
-
         try {
             setRetryingJobId(jobId);
             setError(null);
-            const result = await retryFailedReviews(sourceId);
-            // Show success briefly then refresh
+            await retryFailedReviews(sourceId);
             await handleRefresh();
         } catch (err) {
             console.error('Failed to retry failed reviews:', err);
@@ -159,57 +136,25 @@ export const ReviewProcessing: React.FC = () => {
         }
     };
 
-    const handleSaveGeminiKey = async () => {
-        if (geminiSaveState === 'saving') return;
-
-        const key = geminiApiKeyInput.trim();
-        if (!key) {
-            setGeminiSaveState('error');
-            setGeminiSaveMessage('Please enter a Gemini API key.');
-            return;
-        }
-
-        setGeminiSaveState('saving');
-        setGeminiSaveMessage(null);
-
+    const handleSaveBatchSize = async () => {
+        if (batchSaveState === 'saving') return;
+        setBatchSaveState('saving');
+        setBatchSaveMessage(null);
         try {
-            await saveGeminiApiKey(key);
-            setGeminiConfig(prev => ({ ...prev, apiKey: key, isConfigured: true }));
-            setGeminiSaveState('saved');
-            setGeminiSaveMessage('Gemini API key saved successfully.');
-            window.setTimeout(() => {
-                setGeminiSaveState('idle');
-                setGeminiSaveMessage(null);
-            }, 3000);
+            const saved = await updateBatchConfig(batchInput);
+            setBatchConfig(saved);
+            setBatchInput(saved.batch_size);
+            setBatchSaveState('saved');
+            setBatchSaveMessage(`Batch size saved: ${saved.batch_size} reviews per batch.`);
+            setTimeout(() => { setBatchSaveState('idle'); setBatchSaveMessage(null); }, 3000);
         } catch (err) {
-            console.error('Failed to save Gemini API key:', err);
-            setGeminiSaveState('error');
-            setGeminiSaveMessage(err instanceof Error ? err.message : 'Failed to save Gemini API key.');
+            setBatchSaveState('error');
+            setBatchSaveMessage(err instanceof Error ? err.message : 'Failed to save batch size.');
         }
     };
 
-    const handleTestGeminiKey = async () => {
-        if (geminiTestState === 'testing') return;
-
-        const key = geminiApiKeyInput.trim();
-        if (!key) {
-            setGeminiTestState('error');
-            setGeminiTestMessage('Please enter a Gemini API key to test.');
-            return;
-        }
-
-        setGeminiTestState('testing');
-        setGeminiTestMessage(null);
-
-        try {
-            const result = await testGeminiApiKey(key);
-            setGeminiTestState(result.success ? 'success' : 'error');
-            setGeminiTestMessage(result.message);
-        } catch (err) {
-            setGeminiTestState('error');
-            setGeminiTestMessage(err instanceof Error ? err.message : 'Failed to test Gemini API key.');
-        }
-    };
+    const clamp = (v: number) =>
+        Math.max(batchConfig?.min ?? 1, Math.min(batchConfig?.max ?? 20, v));
 
     const filteredJobs = jobs.filter(job => {
         const query = searchQuery.trim().toLowerCase();
@@ -224,46 +169,39 @@ export const ReviewProcessing: React.FC = () => {
     const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
     const paginatedJobs = filteredJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    const formatNumber = (num: number): string => {
-        if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'k';
-        }
-        return num.toLocaleString();
-    };
+    const formatNumber = (num: number): string =>
+        num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toLocaleString();
 
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
-            case 'Running': return 'bg-blue-100 text-blue-700';
-            case 'Queued': return 'bg-yellow-100 text-yellow-700';
+            case 'Running':   return 'bg-blue-100 text-blue-700';
+            case 'Queued':    return 'bg-yellow-100 text-yellow-700';
             case 'Completed': return 'bg-green-100 text-green-700';
-            case 'Failed': return 'bg-red-100 text-red-700';
-            case 'Paused': return 'bg-orange-100 text-orange-700';
-            default: return 'bg-gray-100 text-gray-700 dark:text-slate-200';
+            case 'Failed':    return 'bg-red-100 text-red-700';
+            case 'Paused':    return 'bg-orange-100 text-orange-700';
+            default:          return 'bg-gray-100 text-gray-700 dark:text-slate-200';
         }
     };
 
-    if (loading) {
-        return <LoadingSpinner size={32} />;
-    }
+    if (loading) return <LoadingSpinner size={32} />;
+
+    const batchMin = batchConfig?.min ?? 1;
+    const batchMax = batchConfig?.max ?? 20;
+    const isDirty = batchConfig !== null && batchInput !== batchConfig.batch_size;
 
     return (
         <div className="space-y-6 pt-4">
-            {error && (
-                <Alert type="error" message={error} onClose={() => setError(null)} />
-            )}
+            {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
             {stats.isPaused && (
                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-4 flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                        <div className="text-yellow-600 mt-0.5">
-                            <XCircle size={20} />
-                        </div>
+                        <div className="text-yellow-600 mt-0.5"><XCircle size={20} /></div>
                         <div>
                             <h3 className="text-sm font-medium text-yellow-800">Review Processing Paused</h3>
                             <p className="text-sm text-yellow-700 mt-1">
-                                The system detected that the Gemini API has reached its usage limit or quota.
-                                Review processing has been automatically paused to prevent further errors.
-                                Please update your API key or quota settings, then click below to restart.
+                                The system paused review processing due to an API rate limit or quota error.
+                                Please check your LLM model configuration, then click below to restart.
                             </p>
                         </div>
                     </div>
@@ -282,148 +220,124 @@ export const ReviewProcessing: React.FC = () => {
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-500 dark:text-slate-400">Active Jobs</span>
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            <Play size={16} />
-                        </div>
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Play size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeJobs}</div>
                     <div className="text-xs text-green-600">+{stats.activeJobsChange} since last hour</div>
                 </div>
-
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-500 dark:text-slate-400">Completed Today</span>
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                            <CheckCircle size={16} />
-                        </div>
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600"><CheckCircle size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.completedToday.toLocaleString()}</div>
                     <div className="text-xs text-gray-500 dark:text-slate-400">{stats.successRate}% success rate</div>
                 </div>
-
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-500 dark:text-slate-400">Failed Jobs</span>
-                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                            <XCircle size={16} />
-                        </div>
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600"><XCircle size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.failedJobs}</div>
                     <div className="text-xs text-red-600">Requires attention</div>
                 </div>
-
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-500 dark:text-slate-400">Reviews Processed</span>
-                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
-                            <Grid3X3 size={16} />
-                        </div>
+                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Grid3X3 size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats.reviewsProcessed)}</div>
                     <div className="text-xs text-green-600">+{stats.reviewsChange}% vs last week</div>
                 </div>
             </div>
 
-            {/* Gemini API Key Configuration */}
+            {/* Batch Size Configuration */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
                 <div className="flex items-start justify-between mb-5">
                     <div>
                         <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                            <KeyRound size={18} className="text-blue-600" />
-                            Gemini API Key Configuration
+                            <Layers size={18} className="text-blue-600" />
+                            Processing Batch Size
                         </h2>
-                        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Configure the Gemini API key used for AI-powered review processing and analysis.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {geminiConfig.isConfigured ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                Configured
-                            </span>
-                        ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
-                                Not Configured
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Gemini API Key</label>
-                        <input
-                            type="password"
-                            value={geminiApiKeyInput}
-                            onChange={(e) => {
-                                setGeminiApiKeyInput(e.target.value);
-                                setGeminiSaveState('idle');
-                                setGeminiSaveMessage(null);
-                                setGeminiTestState('idle');
-                                setGeminiTestMessage(null);
-                            }}
-                            placeholder="Enter your Gemini API key..."
-                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">
-                            Obtain your API key from{' '}
-                            <a
-                                href="https://aistudio.google.com/apikey"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-700 underline"
-                            >
-                                Google AI Studio
-                            </a>.
-                            This key is used for sentiment analysis, categorization, and review processing tasks.
+                        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
+                            Controls how many reviews are sent to the AI model in a single API call.
+                            Smaller batches reduce truncation risk; larger batches are faster.
                         </p>
                     </div>
+                    {batchConfig && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 shrink-0">
+                            Current: {batchConfig.batch_size}
+                        </span>
+                    )}
+                </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <button
-                            onClick={handleTestGeminiKey}
-                            disabled={geminiTestState === 'testing'}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors disabled:opacity-60"
-                        >
-                            <Cpu size={16} />
-                            {geminiTestState === 'testing' ? 'Testing...' : 'Test Key'}
-                        </button>
-                        <button
-                            onClick={handleSaveGeminiKey}
-                            disabled={geminiSaveState === 'saving'}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-60"
-                        >
-                            <Save size={16} />
-                            {geminiSaveState === 'saving' ? 'Saving...' : 'Save Key'}
-                        </button>
+                <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+                    {/* Stepper */}
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
+                            Batch Size
+                            <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
+                                ({batchMin}–{batchMax} reviews per batch)
+                            </span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setBatchInput(v => clamp(v - 1))}
+                                disabled={batchInput <= batchMin}
+                                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <Minus size={15} />
+                            </button>
+                            <input
+                                type="number"
+                                min={batchMin}
+                                max={batchMax}
+                                value={batchInput}
+                                onChange={e => setBatchInput(clamp(parseInt(e.target.value, 10) || batchMin))}
+                                className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button
+                                onClick={() => setBatchInput(v => clamp(v + 1))}
+                                disabled={batchInput >= batchMax}
+                                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <Plus size={15} />
+                            </button>
 
-                        {geminiTestMessage && (
-                            <span className={`text-sm ${geminiTestState === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                                {geminiTestMessage}
-                            </span>
-                        )}
-                        {geminiSaveMessage && (
-                            <span className={`text-sm ${geminiSaveState === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
-                                {geminiSaveMessage}
-                            </span>
-                        )}
+                            {/* Slider */}
+                            <input
+                                type="range"
+                                min={batchMin}
+                                max={batchMax}
+                                value={batchInput}
+                                onChange={e => setBatchInput(parseInt(e.target.value, 10))}
+                                className="flex-1 accent-blue-500"
+                            />
+                        </div>
+
+                        {/* Guidance labels */}
+                        <div className="flex justify-between mt-1.5 text-xs text-gray-400 dark:text-slate-500">
+                            <span>1 — Safest (no truncation)</span>
+                            <span>20 — Fastest (higher risk)</span>
+                        </div>
                     </div>
 
-                    {geminiConfig.lastTestedAt && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-                            <Clock size={12} />
-                            Last tested: {formatDateTime(geminiConfig.lastTestedAt, systemTimezone)}
-                            {geminiConfig.lastTestResult && (
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    geminiConfig.lastTestResult === 'success'
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-red-100 text-red-700'
-                                }`}>
-                                    {geminiConfig.lastTestResult === 'success' ? 'Passed' : 'Failed'}
-                                </span>
-                            )}
-                        </div>
-                    )}
+                    {/* Save button */}
+                    <div className="flex flex-col gap-1.5">
+                        <button
+                            onClick={handleSaveBatchSize}
+                            disabled={batchSaveState === 'saving' || !isDirty}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Save size={15} />
+                            {batchSaveState === 'saving' ? 'Saving…' : 'Save'}
+                        </button>
+                        {batchSaveMessage && (
+                            <p className={`text-xs ${batchSaveState === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
+                                {batchSaveMessage}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -441,10 +355,7 @@ export const ReviewProcessing: React.FC = () => {
                                 type="text"
                                 placeholder="Search Job ID or Org..."
                                 value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setCurrentPage(1);
-                                }}
+                                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                                 className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -495,7 +406,7 @@ export const ReviewProcessing: React.FC = () => {
                                     <td className="py-4 px-4">
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(job.status)}`}>
                                             {job.status === 'Running' && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>}
-                                            {job.status === 'Paused' && <span className="w-1.5 h-1.5 rounded-full bg-current"></span>}
+                                            {job.status === 'Paused'  && <span className="w-1.5 h-1.5 rounded-full bg-current"></span>}
                                             {job.status}
                                         </span>
                                     </td>
@@ -528,7 +439,7 @@ export const ReviewProcessing: React.FC = () => {
                                                 </>
                                             )}
                                             {job.status === 'Completed' && (
-                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
+                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded">
                                                     <Eye size={16} />
                                                 </button>
                                             )}
@@ -558,7 +469,7 @@ export const ReviewProcessing: React.FC = () => {
                         >
                             Previous
                         </button>
-                        
+
                         {Array.from({ length: totalPages }, (_, i) => i + 1)
                             .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                             .map((p, i, arr) => (
@@ -569,7 +480,7 @@ export const ReviewProcessing: React.FC = () => {
                                         className={`px-3 py-1.5 border rounded-lg text-sm font-medium ${
                                             currentPage === p
                                                 ? 'bg-blue-500 text-white border-blue-500'
-                                                : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900'
+                                                : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700'
                                         }`}
                                     >
                                         {p}

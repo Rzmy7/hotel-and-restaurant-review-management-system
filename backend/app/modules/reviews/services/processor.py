@@ -17,8 +17,6 @@ from app.modules.reviews.services.gemini_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
 
-# Configuration from environment
-BATCH_SIZE = int(os.getenv("GEMINI_BATCH_SIZE", 10))
 MAX_RETRIES = int(os.getenv("MAX_RETRY_ATTEMPTS", 3))
 
 
@@ -29,7 +27,17 @@ async def run_analysis_pipeline():
     Processes in batches until no pending reviews remain.
     """
     logger.info("--- Starting Review Analysis Pipeline ---")
-    
+
+    # Read batch size from DB so admin panel changes take effect each run.
+    batch_size = 5  # safe fallback if DB read fails
+    try:
+        from app.modules.admin.services.system_settings_service import get_review_batch_size
+        with pyodbc.connect(get_connection_string()) as _conf_conn:
+            batch_size = get_review_batch_size(_conf_conn.cursor())
+    except Exception as _e:
+        logger.warning(f"Could not read review_batch_size from DB, using default {batch_size}: {_e}")
+    logger.info(f"Pipeline: batch_size={batch_size}")
+
     total_processed = 0
     max_loops = 50  # Safety cap to prevent infinite processing in one task
     loop_count = 0
@@ -42,14 +50,14 @@ async def run_analysis_pipeline():
             try:
                 from app.modules.admin.services.system_settings_service import get_setting_bool
                 if get_setting_bool(cursor, "review_processing_paused", default=False):
-                    logger.warning("Review processing is paused due to Gemini API limits. Skipping...")
+                    logger.warning("Review processing is paused due to API limits. Skipping...")
                     break
             except Exception as e:
                 logger.error(f"Failed to check paused setting: {e}")
 
             # 1. Fetch pending reviews
             try:
-                pending_reviews = get_pending_batch(cursor, limit=BATCH_SIZE)
+                pending_reviews = get_pending_batch(cursor, limit=batch_size)
             except Exception as e:
                 logger.error(f"Failed to fetch pending reviews: {e}")
                 break
