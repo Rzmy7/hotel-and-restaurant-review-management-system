@@ -400,6 +400,7 @@ class LLMModelCreate(BaseModel):
     endpoint: str = Field(..., min_length=1, max_length=500)
     model_name: str = Field(..., min_length=1, max_length=200)
     api_key: str = Field(..., min_length=1, max_length=2048)
+    max_tokens: int = Field(default=4096, ge=1, le=128000)
 
 
 class LLMModelUpdate(BaseModel):
@@ -407,6 +408,7 @@ class LLMModelUpdate(BaseModel):
     endpoint: str | None = Field(default=None, min_length=1, max_length=500)
     model_name: str | None = Field(default=None, min_length=1, max_length=200)
     api_key: str | None = Field(default=None, min_length=1, max_length=2048)
+    max_tokens: int | None = Field(default=None, ge=1, le=128000)
 
 
 class LLMModelResponse(BaseModel):
@@ -415,9 +417,18 @@ class LLMModelResponse(BaseModel):
     endpoint: str
     model_name: str
     api_key_masked: str
+    max_tokens: int
     is_active: bool
     created_at: str
     updated_at: str
+
+
+class LLMModelTestPayload(BaseModel):
+    endpoint: str = Field(..., min_length=1, max_length=500)
+    model_name: str = Field(..., min_length=1, max_length=200)
+    api_key: str | None = Field(default=None, max_length=2048)
+    max_tokens: int = Field(default=4096, ge=1, le=128000)
+    model_id: str | None = None
 
 
 class LLMModelTestResponse(BaseModel):

@@ -45,6 +45,7 @@ def _ensure_table(cursor) -> None:
                 endpoint    NVARCHAR(500)    NOT NULL,
                 model_name  NVARCHAR(200)    NOT NULL,
                 api_key_enc NVARCHAR(MAX)    NOT NULL,
+                max_tokens  INT              NOT NULL DEFAULT 4096,
                 is_active   BIT              NOT NULL DEFAULT 1,
                 created_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME(),
                 updated_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME()
@@ -59,7 +60,7 @@ def load_model_by_id(model_id: str) -> dict:
         cursor = conn.cursor()
         _ensure_table(cursor)
         row = cursor.execute(
-            "SELECT id, name, endpoint, model_name, api_key_enc "
+            "SELECT id, name, endpoint, model_name, api_key_enc, max_tokens "
             "FROM dbo.llm_model WHERE id = ? AND is_active = 1",
             (model_id,),
         ).fetchone()
@@ -71,6 +72,7 @@ def load_model_by_id(model_id: str) -> dict:
         "endpoint":   row[2],
         "model_name": row[3],
         "api_key":    decrypt_value(row[4]),
+        "max_tokens": row[5],
     }
 
 
@@ -103,6 +105,7 @@ def call(
     api_key: str | None = None,
     endpoint: str | None = None,
     model_name: str | None = None,
+    max_tokens: int | None = None,
 ) -> str:
     """
     Call an LLM and return the text response.
@@ -115,9 +118,16 @@ def call(
     if model_id:
         model = load_model_by_id(model_id)
     elif api_key and endpoint and model_name:
-        model = {"api_key": api_key, "endpoint": endpoint, "model_name": model_name}
+        model = {
+            "api_key": api_key,
+            "endpoint": endpoint,
+            "model_name": model_name,
+            "max_tokens": max_tokens or 4096
+        }
     else:
         model = get_assigned_model(purpose)
+        if max_tokens is not None:
+            model["max_tokens"] = max_tokens
 
     messages: list[dict] = []
     if system_prompt:
@@ -128,6 +138,6 @@ def call(
     resp = client.chat.completions.create(
         model=model["model_name"],
         messages=messages,
-        max_tokens=8192,
+        max_tokens=model["max_tokens"],
     )
     return resp.choices[0].message.content or ""
