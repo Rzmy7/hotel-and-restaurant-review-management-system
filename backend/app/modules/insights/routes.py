@@ -4,6 +4,7 @@ from app.database import get_db
 from app.modules.reviews.models import ProcessedReview
 from collections import Counter, defaultdict
 from app.services.gemini_client import generate_insights
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -12,7 +13,23 @@ router = APIRouter()
 def get_insights(range: str = "30d", db: Session = Depends(get_db)):
 
     # 🟢 STEP 1 — Get reviews
-    reviews = db.query(ProcessedReview).all()
+    now = datetime.utcnow()
+
+    # Determine date range
+    if range == "7d":
+        start_date = now - timedelta(days=7)
+    elif range == "30d":
+        start_date = now - timedelta(days=30)
+    elif range == "90d":
+        start_date = now - timedelta(days=90)
+    else:
+        start_date = now - timedelta(days=30)
+
+    # Filter reviews by date
+    reviews = db.query(ProcessedReview).filter(
+        ProcessedReview.reviewDate >= start_date
+    ).all()
+    
     total_reviews = len(reviews)
 
     # 🟢 Handle empty case

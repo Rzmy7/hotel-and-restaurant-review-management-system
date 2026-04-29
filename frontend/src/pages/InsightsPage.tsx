@@ -30,7 +30,7 @@ interface RangeData {
     sentimentPositive: number[];
     sentimentNeutral: number[];
     sentimentNegative: number[];
-    ratingDistribution: { stars: number; count: number; pct: number }[];
+    ratingDistribution: { rating: number; count: number; pct: number }[];
     categories: { name: string; score: number; prev: number }[];
     sources: { name: string; rating: number; reviews: number; pct: number; color: string }[];
     positiveKeywords: { word: string; count: number }[];
@@ -39,7 +39,6 @@ interface RangeData {
     heatmapWeeks: number[][];
     aiActions: { severity: 'critical' | 'warning' | 'info'; title: string; body: string }[];
 }
-
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -62,6 +61,7 @@ const ChangeBadge = ({ value }: { value: string }) => {
         </span>
     );
 };
+
 
 // ═══════════════════════════════════════════════════════════════════
 //  HELPER: Heatmap cell color
@@ -131,6 +131,8 @@ const InsightsPage: React.FC = () => {
     }, [timeRange]);
 
 
+    
+
 
 
     // ✅ 1. Loading
@@ -161,6 +163,19 @@ const InsightsPage: React.FC = () => {
 
     // ✅ 4. SAFE AREA (ONLY HERE)
     const d = insightData;
+
+    const total = d.ratingDistribution.reduce((sum, r) => sum + r.count, 0);
+
+    const positive = d.ratingDistribution
+    .filter((r) => r.rating >= 4)
+    .reduce((sum, r) => sum + r.count, 0);
+
+    const satisfactionRate =
+    total > 0 ? Math.round((positive / total) * 100) : 0;
+
+    const max = Math.max(
+    ...(d.ratingDistribution.map(r => r.count) || [1])
+    );
 
     // calculations
     const sentLen = d.sentimentMonths.length;
@@ -255,36 +270,56 @@ const InsightsPage: React.FC = () => {
 
                     {/* Rating Distribution */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Rating Distribution</h3>
-                        <div className="flex flex-col gap-3">
-                            {d.ratingDistribution.map((r) => (
-                                <div key={r.stars} className="grid grid-cols-[60px_1fr_70px] items-center gap-3">
-                                    <div className="flex items-center gap-1">
-                                        <Star size={14} className="text-amber-400" fill="#fbbf24" />
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.stars}</span>
-                                    </div>
-                                    <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full transition-all duration-500"
-                                            style={{
-                                                width: `${r.pct}%`,
-                                                backgroundColor: r.stars >= 4 ? '#3b82f6' : r.stars === 3 ? '#94a3b8' : '#ef4444',
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.count}</span>
-                                        <span className="text-xs text-gray-400 ml-1">({r.pct}%)</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Satisfaction Rate</span>
-                            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                {d.ratingDistribution.filter((r) => r.stars >= 4).reduce((a, r) => a + r.pct, 0)}%
+                    <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">
+                        Rating Distribution
+                    </h3>
+
+                    <div className="flex flex-col gap-3">
+                        {d.ratingDistribution.map((r) => (
+                        <div
+                            key={r.rating}
+                            className="grid grid-cols-[60px_1fr_70px] items-center gap-3"
+                        >
+                            {/* ⭐ Star */}
+                            <div className="flex items-center gap-1">
+                            <Star size={14} className="text-amber-400" fill="#fbbf24" />
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                {r.rating}
                             </span>
+                            </div>
+
+                            {/* 🔴 Bar */}
+                            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded h-2">
+                            <div
+                                className="bg-red-500 h-2 rounded transition-all duration-700 ease-in-out"
+                                style={{
+                                width: `${(r.count / max) * 100}%`,
+                                }}
+                            />
+                            </div>
+
+                            {/* 🔢 Count */}
+                            <div className="text-right">
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                {r.count}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-1">
+                                ({r.pct}%)
+                            </span>
+                            </div>
                         </div>
+                        ))}
+                    </div>
+
+                    {/* Satisfaction */}
+                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Satisfaction Rate
+                        </span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {satisfactionRate}%
+                        </span>
+                    </div>
                     </div>
 
                     {/* Category Performance */}
