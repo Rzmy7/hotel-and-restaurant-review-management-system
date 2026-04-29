@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
-from app.modules.source.services.source_service import update_sync_status
+from app.modules.source.services.source_service import update_sync_status, log_activity
 from app.core.config import SCRAPER_ENGINE_URL
 
 logger = logging.getLogger(__name__)
@@ -134,7 +134,6 @@ def process_pending_syncs():
                         db.commit()
                         
                         # Log the activity
-                        from app.modules.source.services.source_service import log_activity
                         log_activity(
                             db, 
                             source.source_id, 
@@ -146,12 +145,25 @@ def process_pending_syncs():
                     continue
 
             # Trigger the microservice
-            trigger_platform_scrape(
+            success = trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
                 url=source.source_url,
                 source_id=source.source_id
             )
-            # Timestamps will be updated via callback to /source/tasks/{source_id}/sync-complete
+
+            if success:
+                # Update status to queued to prevent redundant triggers before scraper callback arrives
+                source.source_status = 'queued'
+                db.commit()
+                
+                log_activity(
+                    db,
+                    source.source_id,
+                    activity_type="SYNC_QUEUED",
+                    status="In Progress",
+                    activity_details=f"Scheduled synchronization initiated for {source.platform.platform_name}."
+                )
+            # Timestamps will be updated via callback to /api/source/{source_id}/sync-status
                 
     except Exception as e:
         # Avoid massive tracebacks on timeout by just logging the error string

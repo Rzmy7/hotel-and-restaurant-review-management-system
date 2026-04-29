@@ -181,7 +181,7 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
         source_url=source_data.source_url,
         source_status=source_data.source_status,
         fetching_frequency=source_data.fetching_frequency,
-        next_synced_at=calculate_next_sync_time(now, source_data.fetching_frequency)
+        next_synced_at=now  # Set to now to trigger initial sync immediately
     )
     
     db.add(new_source)
@@ -435,7 +435,7 @@ def update_sync_status(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
     
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     
     # Handle status-specific logic
     if request.status == SyncStatus.COMPLETED:
@@ -794,7 +794,7 @@ def log_activity(
     is_important: bool = False
 ) -> SyncLogSource:
     """Create a new activity log and prune old ones."""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     
     new_log = SyncLogSource(
         source_id=source_id,

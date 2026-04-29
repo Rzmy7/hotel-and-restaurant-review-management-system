@@ -3,6 +3,7 @@ from app.modules.scheduler.tasks.sync_tasks import process_pending_syncs
 from app.modules.scheduler.tasks.broadcasting_tasks import process_pending_broadcasts
 from app.modules.scheduler.tasks.reconciliation_tasks import reconcile_scraper_jobs
 from app.modules.reviews.tasks import process_pending_reviews
+from app.modules.scheduler.tasks.resume_tasks import auto_resume_sources
 
 def setup_scheduler():
     """
@@ -37,5 +38,13 @@ def setup_scheduler():
         'interval',
         minutes=1,
         id='process_reviews_job',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        auto_resume_sources,
+        'interval',
+        minutes=30,
+        id='auto_resume_sources_job',
         replace_existing=True
     )
