@@ -40,213 +40,6 @@ interface RangeData {
     aiActions: { severity: 'critical' | 'warning' | 'info'; title: string; body: string }[];
 }
 
-const dataByRange: Record<string, RangeData> = {
-    '7d': {
-        overallScore: 82,
-        overallScoreChange: '+3',
-        totalReviews: '47',
-        totalReviewsChange: '+8',
-        avgRating: '4.2',
-        avgRatingChange: '+0.1',
-        responseRate: '94%',
-        responseRateChange: '+2%',
-        sentimentMonths: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        sentimentPositive: [65, 70, 68, 72, 75, 80, 78],
-        sentimentNeutral: [20, 18, 19, 17, 15, 12, 14],
-        sentimentNegative: [15, 12, 13, 11, 10, 8, 8],
-        ratingDistribution: [
-            { stars: 5, count: 19, pct: 40 },
-            { stars: 4, count: 14, pct: 30 },
-            { stars: 3, count: 8, pct: 17 },
-            { stars: 2, count: 4, pct: 9 },
-            { stars: 1, count: 2, pct: 4 },
-        ],
-        categories: [
-            { name: 'Staff', score: 88, prev: 85 },
-            { name: 'Cleanliness', score: 80, prev: 78 },
-            { name: 'Location', score: 93, prev: 93 },
-            { name: 'Value', score: 74, prev: 72 },
-            { name: 'Food', score: 71, prev: 73 },
-            { name: 'Amenities', score: 82, prev: 80 },
-        ],
-        sources: [
-            { name: 'Booking.com', rating: 4.3, reviews: 18, pct: 38, color: '#3b82f6' },
-            { name: 'TripAdvisor', rating: 4.1, reviews: 14, pct: 30, color: '#8b5cf6' },
-            { name: 'Google', rating: 4.4, reviews: 10, pct: 21, color: '#10b981' },
-            { name: 'Expedia', rating: 3.9, reviews: 5, pct: 11, color: '#f59e0b' },
-        ],
-        positiveKeywords: [
-            { word: 'Friendly staff', count: 18 },
-            { word: 'Great location', count: 15 },
-            { word: 'Clean rooms', count: 13 },
-            { word: 'Delicious breakfast', count: 11 },
-            { word: 'Comfortable beds', count: 9 },
-            { word: 'Beautiful view', count: 8 },
-        ],
-        negativeKeywords: [
-            { word: 'Slow Wi-Fi', count: 12 },
-            { word: 'Noisy rooms', count: 8 },
-            { word: 'Small bathroom', count: 6 },
-            { word: 'Expensive parking', count: 5 },
-            { word: 'Limited menu', count: 4 },
-        ],
-        responseMetrics: { avgTime: '1.8h', rate: '94%', ratingImpact: '+0.3' },
-        heatmapWeeks: [
-            [2, 4, 1, 3, 5, 8, 6],
-        ],
-        aiActions: [
-            { severity: 'critical', title: 'Wi-Fi complaints surging', body: '34% of negative reviews this week mention slow Wi-Fi. Upgrade network infrastructure in floors 3-5.' },
-            { severity: 'warning', title: 'Food rating declining', body: 'Restaurant rating dropped from 73% to 71%. Consider rotating menu items and improving breakfast variety.' },
-            { severity: 'info', title: 'Staff performance excels', body: 'Staff mentions are up 12% with 92% positive sentiment. Consider employee recognition program.' },
-        ],
-    },
-    '30d': {
-        overallScore: 79,
-        overallScoreChange: '+5',
-        totalReviews: '189',
-        totalReviewsChange: '+23',
-        avgRating: '4.3',
-        avgRatingChange: '+0.2',
-        responseRate: '91%',
-        responseRateChange: '+4%',
-        sentimentMonths: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        sentimentPositive: [62, 67, 70, 74],
-        sentimentNeutral: [22, 20, 18, 16],
-        sentimentNegative: [16, 13, 12, 10],
-        ratingDistribution: [
-            { stars: 5, count: 72, pct: 38 },
-            { stars: 4, count: 55, pct: 29 },
-            { stars: 3, count: 34, pct: 18 },
-            { stars: 2, count: 18, pct: 10 },
-            { stars: 1, count: 10, pct: 5 },
-        ],
-        categories: [
-            { name: 'Staff', score: 85, prev: 80 },
-            { name: 'Cleanliness', score: 78, prev: 75 },
-            { name: 'Location', score: 92, prev: 92 },
-            { name: 'Value', score: 72, prev: 68 },
-            { name: 'Food', score: 69, prev: 71 },
-            { name: 'Amenities', score: 80, prev: 77 },
-        ],
-        sources: [
-            { name: 'Booking.com', rating: 4.4, reviews: 79, pct: 42, color: '#3b82f6' },
-            { name: 'TripAdvisor', rating: 4.2, reviews: 53, pct: 28, color: '#8b5cf6' },
-            { name: 'Google', rating: 4.5, reviews: 38, pct: 20, color: '#10b981' },
-            { name: 'Expedia', rating: 4.0, reviews: 19, pct: 10, color: '#f59e0b' },
-        ],
-        positiveKeywords: [
-            { word: 'Friendly staff', count: 64 },
-            { word: 'Great location', count: 52 },
-            { word: 'Clean rooms', count: 47 },
-            { word: 'Delicious breakfast', count: 38 },
-            { word: 'Comfortable beds', count: 31 },
-            { word: 'Beautiful view', count: 28 },
-            { word: 'Helpful concierge', count: 22 },
-            { word: 'Spacious suite', count: 18 },
-        ],
-        negativeKeywords: [
-            { word: 'Slow Wi-Fi', count: 41 },
-            { word: 'Noisy rooms', count: 29 },
-            { word: 'Small bathroom', count: 22 },
-            { word: 'Expensive parking', count: 18 },
-            { word: 'Limited menu', count: 14 },
-            { word: 'Old furniture', count: 11 },
-        ],
-        responseMetrics: { avgTime: '2.4h', rate: '91%', ratingImpact: '+0.4' },
-        heatmapWeeks: [
-            [3, 5, 2, 4, 6, 9, 7],
-            [4, 3, 5, 6, 7, 8, 5],
-            [2, 6, 4, 5, 8, 10, 6],
-            [5, 4, 3, 7, 6, 9, 8],
-        ],
-        aiActions: [
-            { severity: 'critical', title: 'Wi-Fi is #1 complaint', body: '34% of negative reviews mention slow Wi-Fi. Upgrade network infrastructure — estimated 0.3-star rating impact.' },
-            { severity: 'critical', title: 'Noise complaints escalating', body: 'Room noise mentions increased 40% month-over-month. Investigate soundproofing in east-wing rooms (201-215).' },
-            { severity: 'warning', title: 'Food quality declining', body: 'Restaurant category dropped from 71% to 69%. Breakfast variety is the top complaint — consider menu refresh.' },
-            { severity: 'warning', title: 'Bathroom size repeatedly cited', body: '22 reviews mention small bathrooms. Consider renovating compact rooms or adding storage solutions.' },
-            { severity: 'info', title: 'Staff excellence recognized', body: 'Staff score rose 5 points to 85%. Top-mentioned employees: Maria (front desk), James (concierge).' },
-            { severity: 'info', title: 'Google rating climbing', body: 'Google Reviews average increased to 4.5 — your highest-rated platform. Consider directing more guests to review on Google.' },
-        ],
-    },
-    '90d': {
-        overallScore: 76,
-        overallScoreChange: '+8',
-        totalReviews: '542',
-        totalReviewsChange: '+67',
-        avgRating: '4.1',
-        avgRatingChange: '+0.3',
-        responseRate: '87%',
-        responseRateChange: '+9%',
-        sentimentMonths: ['Dec', 'Jan', 'Feb'],
-        sentimentPositive: [58, 65, 72],
-        sentimentNeutral: [24, 20, 17],
-        sentimentNegative: [18, 15, 11],
-        ratingDistribution: [
-            { stars: 5, count: 195, pct: 36 },
-            { stars: 4, count: 163, pct: 30 },
-            { stars: 3, count: 98, pct: 18 },
-            { stars: 2, count: 54, pct: 10 },
-            { stars: 1, count: 32, pct: 6 },
-        ],
-        categories: [
-            { name: 'Staff', score: 83, prev: 76 },
-            { name: 'Cleanliness', score: 76, prev: 70 },
-            { name: 'Location', score: 91, prev: 90 },
-            { name: 'Value', score: 70, prev: 64 },
-            { name: 'Food', score: 67, prev: 65 },
-            { name: 'Amenities', score: 78, prev: 73 },
-        ],
-        sources: [
-            { name: 'Booking.com', rating: 4.2, reviews: 228, pct: 42, color: '#3b82f6' },
-            { name: 'TripAdvisor', rating: 4.0, reviews: 152, pct: 28, color: '#8b5cf6' },
-            { name: 'Google', rating: 4.3, reviews: 108, pct: 20, color: '#10b981' },
-            { name: 'Expedia', rating: 3.8, reviews: 54, pct: 10, color: '#f59e0b' },
-        ],
-        positiveKeywords: [
-            { word: 'Friendly staff', count: 187 },
-            { word: 'Great location', count: 149 },
-            { word: 'Clean rooms', count: 132 },
-            { word: 'Delicious breakfast', count: 98 },
-            { word: 'Comfortable beds', count: 85 },
-            { word: 'Beautiful view', count: 72 },
-            { word: 'Helpful concierge', count: 61 },
-            { word: 'Spacious suite', count: 48 },
-        ],
-        negativeKeywords: [
-            { word: 'Slow Wi-Fi', count: 118 },
-            { word: 'Noisy rooms', count: 82 },
-            { word: 'Small bathroom', count: 63 },
-            { word: 'Expensive parking', count: 51 },
-            { word: 'Limited menu', count: 39 },
-            { word: 'Old furniture', count: 32 },
-        ],
-        responseMetrics: { avgTime: '3.1h', rate: '87%', ratingImpact: '+0.5' },
-        heatmapWeeks: [
-            [3, 5, 2, 4, 6, 9, 7],
-            [4, 3, 5, 6, 7, 8, 5],
-            [2, 6, 4, 5, 8, 10, 6],
-            [5, 4, 3, 7, 6, 9, 8],
-            [3, 7, 5, 4, 9, 11, 7],
-            [6, 4, 3, 8, 7, 10, 9],
-            [4, 5, 6, 3, 8, 12, 8],
-            [5, 3, 4, 6, 7, 9, 6],
-            [3, 6, 5, 7, 8, 11, 7],
-            [4, 5, 3, 6, 9, 10, 8],
-            [5, 4, 6, 5, 7, 8, 6],
-            [3, 5, 4, 7, 8, 12, 9],
-            [6, 4, 5, 3, 7, 10, 7],
-        ],
-        aiActions: [
-            { severity: 'critical', title: 'Wi-Fi infrastructure overhaul needed', body: '22% of all reviews mention connectivity. Projected 0.5-star improvement if resolved. ROI on network upgrade: 7 months.' },
-            { severity: 'critical', title: 'Noise insulation project recommended', body: 'East-wing rooms generate 3× more noise complaints. Soundproofing 15 rooms would reduce negative reviews by ~15%.' },
-            { severity: 'warning', title: 'Restaurant needs menu refresh', body: 'Food category is your weakest at 67%. "Limited menu" appears in 39 reviews. A/B test new breakfast options.' },
-            { severity: 'warning', title: 'Parking pricing competitiveness', body: 'Competitors average $18/day vs your $28/day. 51 reviews mention expensive parking — consider loyalty discounts.' },
-            { severity: 'info', title: 'Staff training ROI confirmed', body: 'Staff score improved 7 points (76→83) since Q4 training program. Continue quarterly training investment.' },
-            { severity: 'info', title: 'Response rate driving results', body: 'Properties responding to 90%+ of reviews average 0.4 stars higher. Your rate improved from 78% to 87% this quarter.' },
-        ],
-    },
-};
-
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -287,11 +80,14 @@ const heatColor = (v: number, max: number) => {
 // ═══════════════════════════════════════════════════════════════════
 const InsightsPage: React.FC = () => {
     const [timeRange, setTimeRange] = useState('30d');
+    const [insightData, setInsightData] = useState<RangeData | null>(null);
+    const [loading, setLoading] = useState(true);
     const [hasAccess, setHasAccess] = useState<boolean | null>(null);
     const { user } = useAuth();
     const navigate = useNavigate();
     const currentOrg = useOrganizationStore(state => state.currentOrg);
     const organizationId = currentOrg?.id;
+    
 
     useEffect(() => {
         if (!user?.user_id) return;
@@ -311,57 +107,79 @@ const InsightsPage: React.FC = () => {
         checkAccess();
     }, [user?.user_id, organizationId]);
 
-    const d = dataByRange[timeRange];
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
 
-    // ── Sentiment chart coordinates ─────────────────────────────
-    const sentLen = d.sentimentMonths.length;
-    const chartW = 600;
-    const chartH = 180;
-    const gapX = chartW / (sentLen - 1 || 1);
-    const toY = (v: number) => chartH - (v / 100) * chartH;
-    const linePoints = (vals: number[]) =>
-        vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' ');
-    const areaPath = (vals: number[]) => {
-        const pts = vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' L');
-        return `M0,${chartH} L${pts} L${(vals.length - 1) * gapX},${chartH} Z`;
-    };
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/api/insights?range=${timeRange}`);
 
-    // ── Heatmap max ─────────────────────────────────────────────
-    const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
+                const data = await res.json();
 
+                console.log("INSIGHT DATA:", data); // 👈 ADD THIS
+
+                setInsightData(data);
+
+            } catch (err) {
+                console.error("Error fetching insights:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [timeRange]);
+
+
+
+
+    // ✅ 1. Loading
+    if (loading || !insightData) {
+        return <div>Loading insights...</div>;
+    }
+
+    // ✅ 2. Access checking
     if (hasAccess === null) {
         return (
-            <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+            <div className="flex items-center justify-center h-screen">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
+    // ✅ 3. No access
     if (hasAccess === false) {
         return (
             <div className="min-h-full bg-gray-50 dark:bg-slate-900">
                 <InsightsHeader timeRange={timeRange} onTimeRangeChange={setTimeRange} />
-                <div className="flex-1 flex flex-col items-center justify-center p-8 mt-20">
-                    <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-slate-700 p-8 text-center">
-                        <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Lock size={32} className="text-blue-500" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Upgrade to Premium</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                            Your current plan does not include access to AI-powered insights and advanced analytics. Upgrade your plan to unlock these features.
-                        </p>
-                        <Button
-                            className="w-full"
-                            size="lg"
-                            onClick={() => navigate('/subscription')}
-                        >
-                            View Upgrade Options
-                        </Button>
-                    </div>
+                <div className="flex items-center justify-center h-[80vh]">
+                    <p>Upgrade to access insights</p>
                 </div>
             </div>
         );
     }
+
+    // ✅ 4. SAFE AREA (ONLY HERE)
+    const d = insightData;
+
+    // calculations
+    const sentLen = d.sentimentMonths.length;
+    const chartW = 600;
+    const chartH = 180;
+    const gapX = chartW / (sentLen - 1 || 1);
+
+    const toY = (v: number) => chartH - (v / 100) * chartH;
+
+    const linePoints = (vals: number[]) =>
+        vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' ');
+
+    const areaPath = (vals: number[]) => {
+        const pts = vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' L');
+        return `M0,${chartH} L${pts} L${(vals.length - 1) * gapX},${chartH} Z`;
+    };
+
+    const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
+
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900">

@@ -15,6 +15,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import logging
 from dotenv import load_dotenv
+from app.database import get_db
+from app.modules.reviews.models import ProcessedReview
+
+
+
+
 
 load_dotenv()
 
@@ -158,6 +164,8 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
 )
+from app.modules.insights.routes import router as insights_router
+app.include_router(insights_router, prefix="/api")
 
 # ── Middleware ──────────────────────────────────────────────────────
 
@@ -353,3 +361,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
