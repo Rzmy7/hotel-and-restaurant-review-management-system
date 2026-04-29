@@ -101,6 +101,37 @@ async def run_analysis_pipeline():
                 ai_results = await asyncio.to_thread(analyze_reviews_batch, ai_input)
 
             except Exception as e:
+                err_msg = str(e)
+                # Phase 2 Fallback: If it's a JSON error or Retry error, try single-review processing for this batch
+                if "JSON" in err_msg or "Retry" in err_msg:
+                    logger.warning(f"Batch failed ({err_msg}). Falling back to single-review processing for this batch...")
+                    fallback_success = 0
+                    for r in pending_reviews:
+                        try:
+                            single_input = [{
+                                "id": str(r["id"]),
+                                "rating": r["rating"],
+                                "reviewerName": r["reviewerName"],
+                                "text": r.get("text"),
+                                "positive_text": r.get("positive_text"),
+                                "negative_text": r.get("negative_text"),
+                                "heading": r.get("heading"),
+                                "reviewDate": str(r["reviewDate"]),
+                            }]
+                            # Use a slightly longer timeout/wait for single if needed, but here we reuse
+                            single_res = await asyncio.to_thread(analyze_reviews_batch, single_input)
+                            if single_res and len(single_res) > 0:
+                                if _update_review_success(cursor, r, single_res[0]):
+                                    fallback_success += 1
+                        except Exception as se:
+                            logger.error(f"Fallback failed for review {r['id']}: {se}")
+                            _update_review_failure(cursor, r["id"], f"Fallback failed: {se}")
+                    
+                    conn.commit()
+                    total_processed += fallback_success
+                    logger.info(f"Fallback completed: {fallback_success}/{len(pending_reviews)} recovered.")
+                    continue  # Move to next batch instead of breaking the run
+
                 logger.error(f"!!! Gemini batch analysis FAILED: {e}", exc_info=True)
                 _mark_batch_as_failed(cursor, pending_reviews, str(e))
                 conn.commit()
@@ -117,7 +148,7 @@ async def run_analysis_pipeline():
                 except Exception:
                     pass
 
-                # Stop processing this run if API fails
+                # Stop processing this run if API fails (and not a JSON/Retry error)
                 break
 
             # Check time again after heavy AI analysis
