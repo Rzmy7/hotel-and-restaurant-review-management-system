@@ -47,11 +47,23 @@ def repair_json(text: str) -> str:
     1. Truncated arrays (missing closing brackets).
     2. Trailing commas.
     3. Unbalanced braces.
+    4. Unclosed strings (if truncated mid-sentence).
     """
-    # 1. Trailing commas before closing brackets/braces
+    text = text.strip()
+    
+    # 1. Handle unclosed strings (heuristic: odd number of non-escaped quotes)
+    # This is a basic check. If the text ends while a string is open, close it.
+    quotes = re.findall(r'(?<!\\)"', text)
+    if len(quotes) % 2 != 0:
+        # If it ends with a backslash, remove it to avoid escaping our new quote
+        if text.endswith('\\'):
+            text = text[:-1]
+        text += '"'
+
+    # 2. Trailing commas before closing brackets/braces
     text = re.sub(r',\s*([\]}])', r'\1', text)
     
-    # 2. Balance brackets if truncated (basic approach)
+    # 3. Balance brackets if truncated (basic approach)
     open_brackets = text.count('[')
     close_brackets = text.count(']')
     if open_brackets > close_brackets:
