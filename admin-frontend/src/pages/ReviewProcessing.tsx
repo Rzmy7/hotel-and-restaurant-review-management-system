@@ -9,6 +9,7 @@ import {
     updateBatchConfig,
     resumeReviewProcessing,
     retryFailedReviews,
+    retryAllFailedReviews,
 } from '../services/reviewProcessingService';
 import type {
     ReviewProcessingStats,
@@ -41,6 +42,7 @@ export const ReviewProcessing: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+    const [isRetryingAll, setIsRetryingAll] = useState(false);
 
     // Batch size config state
     const [batchConfig, setBatchConfig] = useState<BatchConfig | null>(null);
@@ -133,6 +135,21 @@ export const ReviewProcessing: React.FC = () => {
             setError(err instanceof Error ? err.message : 'Failed to retry failed reviews.');
         } finally {
             setRetryingJobId(null);
+        }
+    };
+
+    const handleRetryAllFailed = async () => {
+        if (!window.confirm(`Are you sure you want to retry all ${stats.failedJobs} failed reviews?`)) return;
+        try {
+            setIsRetryingAll(true);
+            setError(null);
+            await retryAllFailedReviews();
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to retry all failed reviews:', err);
+            setError(err instanceof Error ? err.message : 'Failed to retry all failed reviews.');
+        } finally {
+            setIsRetryingAll(false);
         }
     };
 
@@ -239,7 +256,19 @@ export const ReviewProcessing: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600"><XCircle size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.failedJobs}</div>
-                    <div className="text-xs text-red-600">Requires attention</div>
+                    <div className="flex items-center justify-between mt-1">
+                        <div className="text-xs text-red-600">Requires attention</div>
+                        {stats.failedJobs > 0 && (
+                            <button
+                                onClick={handleRetryAllFailed}
+                                disabled={isRetryingAll}
+                                className="text-[10px] uppercase font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 disabled:opacity-50 transition-colors"
+                            >
+                                <RotateCcw size={10} className={isRetryingAll ? 'animate-spin' : ''} />
+                                Retry All
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">

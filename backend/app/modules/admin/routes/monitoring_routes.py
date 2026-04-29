@@ -429,6 +429,34 @@ def retry_failed_reviews(source_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to retry reviews: {exc}") from exc
 
 
+@router.post("/review-processing/retry-all")
+def retry_all_failed_reviews() -> dict:
+    """Reset ALL failed reviews across all sources back to 'pending' for reprocessing."""
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            sql = """
+                UPDATE dbo.processed_review
+                SET status = 'pending',
+                    retry_count = 0,
+                    error_message = NULL,
+                    last_attempt = NULL
+                WHERE status = 'failed'
+            """
+            cursor.execute(sql)
+            affected = cursor.rowcount
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "All Failed Reviews Retried",
+            f"Reset {affected} failed reviews across all sources to pending",
+        )
+        return {"status": "success", "message": f"{affected} reviews reset to pending.", "count": affected}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retry all reviews: {exc}") from exc
+
+
 @router.get("/review-processing/jobs")
 def review_processing_jobs() -> list[dict]:
     """Returns recent review processing activity grouped by source as job-like rows."""

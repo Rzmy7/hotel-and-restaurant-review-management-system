@@ -58,3 +58,9 @@ export const retryFailedReviews = (sourceId: string): Promise<{ status: string; 
         `/admin/monitoring/review-processing/retry/${sourceId}`
     );
 };
+
+export const retryAllFailedReviews = (): Promise<{ status: string; message: string; count: number }> => {
+    return apiClient.post<{ status: string; message: string; count: number }>(
+        '/admin/monitoring/review-processing/retry-all'
+    );
+};
