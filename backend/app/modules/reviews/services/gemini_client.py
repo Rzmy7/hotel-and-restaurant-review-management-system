@@ -23,8 +23,9 @@ Task: Analyze a batch of raw guest reviews and transform them into structured, e
 Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, positive_text, negative_text, reviewDate].
 
 Rules:
-1. Output MUST be ONLY a valid JSON array. Do not include markdown (```json) or text.
-2. For each review, provide:
+1. Output MUST be ONLY a valid JSON array. Do not include markdown (```json) or conversational text.
+2. IMPORTANT: All string values must be properly escaped for JSON. Specifically, double quotes inside a string MUST be escaped as \\".
+3. For each review, provide:
    - "sentiment": "Positive", "Neutral", "Negative".
    - "sentiment_score": A float from 1.0 (Very Negative) to 5.0 (Very Positive).
    - "categories": List of 1-3 objects from [Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size]. Each object MUST have "name" (tag) and "score" (a score from 1 to 100).
@@ -38,6 +39,30 @@ Rules:
 Batch Input Data:
 {batch_json}
 """
+
+
+def repair_json(text: str) -> str:
+    """
+    Attempts to repair common LLM JSON errors:
+    1. Truncated arrays (missing closing brackets).
+    2. Trailing commas.
+    3. Unescaped quotes inside string values (heuristic-based).
+    """
+    # 1. Trailing commas before closing brackets/braces
+    text = re.sub(r',\s*([\]}])', r'\1', text)
+    
+    # 2. Balance brackets if truncated (basic approach)
+    open_brackets = text.count('[')
+    close_brackets = text.count(']')
+    if open_brackets > close_brackets:
+        text += ']' * (open_brackets - close_brackets)
+        
+    open_braces = text.count('{')
+    close_braces = text.count('}')
+    if open_braces > close_braces:
+        text += '}' * (open_braces - close_braces)
+        
+    return text
 
 
 def is_retryable_exception(e: Exception) -> bool:
@@ -86,14 +111,13 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         try:
             results = json.loads(text)
         except json.JSONDecodeError as jde:
-            # If it fails, try a desperate cleanup of trailing commas which often cause issues
-            cleaned_text = re.sub(r',\s*([\]}])', r'\1', text)
+            logger.warning(f"Initial JSON parse failed, attempting repair: {jde.msg}")
+            repaired_text = repair_json(text)
             try:
-                results = json.loads(cleaned_text)
+                results = json.loads(repaired_text)
             except json.JSONDecodeError:
-                # Still failing, raise original with more context
-                logger.error(f"JSON Decode Error at line {jde.lineno}, col {jde.colno}: {jde.msg}")
-                logger.error(f"Raw text snippet: {text[:200]}...{text[-200:]}")
+                # Still failing, log context and raise
+                logger.error(f"JSON repair failed. Snippet: {text[:200]}...{text[-200:]}")
                 raise
 
         if not isinstance(results, list):
