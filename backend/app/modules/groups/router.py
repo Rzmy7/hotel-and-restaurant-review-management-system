@@ -226,7 +226,7 @@ def create_group(
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  GROUP-SPECIFIC ROUTES  /{group_id}
+#  STATIC ROUTES that must be before /{group_id} (continued)
 # ══════════════════════════════════════════════════════════════════════
 
 @router.get("/search-public")
@@ -239,6 +239,10 @@ def search_public_groups(
     results = repo.search_public_groups(db, q)
     return {"groups": results}
 
+
+# ══════════════════════════════════════════════════════════════════════
+#  GROUP-SPECIFIC ROUTES  /{group_id}
+# ══════════════════════════════════════════════════════════════════════
 
 @router.post("/{group_id}/join")
 def join_public_group(

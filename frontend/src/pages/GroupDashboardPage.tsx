@@ -589,19 +589,9 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
     </div>
   );
 
-  const sentimentData = [
-    { name: 'Positive', value: analytics.positive_count, color: SENTIMENT_COLORS.positive },
-    { name: 'Negative', value: analytics.negative_count, color: SENTIMENT_COLORS.negative },
-    { name: 'Neutral', value: analytics.neutral_count, color: SENTIMENT_COLORS.neutral },
-  ].filter(d => d.value > 0);
-
   const allStars = [1, 2, 3, 4, 5];
   const ratingMap = Object.fromEntries(analytics.rating_distribution.map(r => [r.star, r.count]));
   const ratingData = allStars.map(s => ({ star: `${s}★`, count: ratingMap[s] || 0 }));
-
-  const acceptanceRate = analytics.invite_stats.total_sent > 0
-    ? Math.round((analytics.invite_stats.accepted_count / analytics.invite_stats.total_sent) * 100)
-    : 0;
 
   return (
     <div className="space-y-6">
@@ -610,8 +600,13 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
         <StatCard label="Total Reviews" value={analytics.total_reviews.toLocaleString()} icon={<Star size={16} />} />
         <StatCard label="Avg Rating" value={analytics.avg_rating ? `${analytics.avg_rating} ★` : '—'} icon={<TrendingUp size={16} />} />
         <StatCard label="Positive Reviews" value={analytics.positive_count.toLocaleString()} icon={<Check size={16} />} />
-        <StatCard label="Invite Acceptance" value={`${acceptanceRate}%`} icon={<Users size={16} />}
-          sub={`${analytics.invite_stats.accepted_count}/${analytics.invite_stats.total_sent} accepted`}
+        <StatCard
+          label="Negative Reviews"
+          value={analytics.total_reviews > 0 ? `${Math.round((analytics.negative_count / analytics.total_reviews) * 100)}%` : '—'}
+          icon={<AlertCircle size={16} />}
+          sub={`${analytics.negative_count.toLocaleString()} negative reviews`}
+          iconBg="bg-red-50 dark:bg-red-900/30"
+          iconFg="text-red-500 dark:text-red-400"
         />
       </div>
 
@@ -638,19 +633,29 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
       )}
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Sentiment breakdown */}
-        {sentimentData.length > 0 && (
+        {/* Reviews by Hotel — pie chart */}
+        {analytics.member_orgs.length > 0 && analytics.member_orgs.some(o => o.review_count > 0) && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
-            <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-4">Sentiment Distribution</h3>
+            <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-4">Reviews by Hotel</h3>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={sentimentData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                  {sentimentData.map((entry, idx) => (
-                    <Cell key={idx} fill={entry.color} />
+                <Pie
+                  data={analytics.member_orgs.filter(o => o.review_count > 0).map(o => ({
+                    name: o.organization_name,
+                    value: o.review_count,
+                  }))}
+                  cx="50%" cy="50%"
+                  innerRadius={50} outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                  strokeWidth={0}
+                >
+                  {analytics.member_orgs.filter(o => o.review_count > 0).map((_, i) => (
+                    <Cell key={i} fill={['#4e80ee','#22c55e','#f59e0b','#ef4444','#a855f7','#06b6d4','#ec4899','#84cc16'][i % 8]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px' }} />
-                <Legend iconType="circle" iconSize={10} />
+                <Tooltip contentStyle={{ borderRadius: '12px' }} formatter={(v: number) => [`${v} reviews`]} />
+                <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -672,6 +677,45 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
           </div>
         )}
       </div>
+
+      {/* Sentiment per Hotel — one donut per org */}
+      {analytics.member_orgs.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-4">Sentiment by Hotel</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {analytics.member_orgs.map(org => {
+              const slices = [
+                { name: 'Positive', value: org.positive_count, color: SENTIMENT_COLORS.positive },
+                { name: 'Neutral',  value: org.neutral_count,  color: SENTIMENT_COLORS.neutral  },
+                { name: 'Negative', value: org.negative_count, color: SENTIMENT_COLORS.negative },
+              ].filter(s => s.value > 0);
+              const total = org.positive_count + org.neutral_count + org.negative_count;
+              return (
+                <div key={org.organization_id} className="flex flex-col items-center gap-1 p-3 rounded-xl bg-gray-50 dark:bg-slate-700/40 border border-gray-100 dark:border-slate-700">
+                  <p className="text-[11px] font-bold text-gray-600 dark:text-slate-300 text-center truncate w-full" title={org.organization_name}>
+                    {org.organization_name.length > 18 ? org.organization_name.slice(0, 18) + '…' : org.organization_name}
+                  </p>
+                  {total === 0 ? (
+                    <div className="h-[100px] flex items-center justify-center text-xs text-gray-400 dark:text-slate-500">No data</div>
+                  ) : (
+                    <PieChart width={120} height={100}>
+                      <Pie data={slices} cx={60} cy={50} innerRadius={28} outerRadius={44} paddingAngle={2} dataKey="value" strokeWidth={0}>
+                        {slices.map((s, i) => <Cell key={i} fill={s.color} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '11px' }} formatter={(v: number, name: string) => [`${v} (${Math.round((v / total) * 100)}%)`, name]} />
+                    </PieChart>
+                  )}
+                  <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5">
+                    <span className="text-[10px] text-green-600 dark:text-green-400 font-semibold">● {org.positive_count}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">● {org.neutral_count}</span>
+                    <span className="text-[10px] text-red-500 dark:text-red-400 font-semibold">● {org.negative_count}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Member organizations */}
       {analytics.member_orgs.length > 0 && (
