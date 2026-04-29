@@ -12,10 +12,11 @@ import {
   EyeOff,
   ChevronDown,
   Save,
-  ExternalLink,
 } from 'lucide-react';
 import {
   llmModelService,
+} from '../services/llmModelService';
+import type {
   LLMModel,
   LLMAssignments,
 } from '../services/llmModelService';
@@ -59,12 +60,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ active }) => (
 
 export const LLMModels: React.FC = () => {
   const [models, setModels] = useState<LLMModel[]>([]);
-  const [assignments, setAssignments] = useState<LLMAssignments>({
-    review_processing_model_id: null,
-    reply_generation_model_id: null,
-    review_processing_model_name: null,
-    reply_generation_model_name: null,
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +94,6 @@ export const LLMModels: React.FC = () => {
         llmModelService.getAssignments(),
       ]);
       setModels(modelList);
-      setAssignments(assignData);
       setAssignDraft({
         review_processing: assignData.review_processing_model_id || '',
         reply_generation: assignData.reply_generation_model_id || '',
