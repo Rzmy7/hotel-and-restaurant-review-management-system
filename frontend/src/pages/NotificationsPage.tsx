@@ -172,8 +172,13 @@ const NotificationsPage: React.FC = () => {
      * Removes a notification from the list.
      * @param {number} id - The unique identifier of the notification.
      */
-    const handleDismiss = useCallback((id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+    const handleDismiss = useCallback(async (id: string) => {
+        try {
+            await notificationsService.deleteNotification(id);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+        }
     }, []);
 
     /**
