@@ -18,7 +18,6 @@ import {
 } from '../services/llmModelService';
 import type {
   LLMModel,
-  LLMAssignments,
 } from '../services/llmModelService';
 
 // ── helpers ──────────────────────────────────────────────────────────
