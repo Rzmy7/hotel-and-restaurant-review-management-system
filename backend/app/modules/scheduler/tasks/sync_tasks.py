@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Scraper microservice URL from centralized config
 SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
-def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
+async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
     """
     Trigger the scraper microservice for a specific platform.
     Mapping logic handles typical names like 'Google Reviews' -> 'google'.
@@ -32,8 +32,8 @@ def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> boo
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
     
     try:
-        with httpx.Client() as client:
-            response = client.post(endpoint, json=payload, timeout=20.0)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, json=payload, timeout=20.0)
             response.raise_for_status()
             logger.info(f"Scrape triggered successfully: {response.json()}")
             return True
@@ -73,7 +73,9 @@ def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
         return True  # Fail-open
 
 
-def process_pending_syncs():
+import asyncio
+
+async def process_pending_syncs():
     """
     Scheduled task to find pending sources and trigger their sync.
     Runs every minute.
@@ -81,6 +83,9 @@ def process_pending_syncs():
     logger.info("Running scheduled sync check...")
     
     try:
+        # DB operations are synchronous, but since this is a background task,
+        # we can run the query in the main thread if it's fast, 
+        # or use to_thread if we want to be strictly non-blocking.
         db = SessionLocal()
     except Exception as e:
         logger.error(f"Database unavailable for sync check: {e}")
@@ -124,14 +129,17 @@ def process_pending_syncs():
 
             if tenant_id:
                 if tenant_id not in tenant_allowed_cache:
-                    tenant_allowed_cache[tenant_id] = _check_scraping_frequency_for_tenant(tenant_id)
+                    # Run DB-heavy check in thread to avoid blocking loop
+                    tenant_allowed_cache[tenant_id] = await asyncio.to_thread(
+                        _check_scraping_frequency_for_tenant, tenant_id
+                    )
 
                 if not tenant_allowed_cache[tenant_id]:
                     logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached.")
                     continue
 
-            # Trigger the microservice
-            trigger_platform_scrape(
+            # Trigger the microservice (now awaited)
+            await trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
                 url=source.source_url,
                 source_id=source.source_id

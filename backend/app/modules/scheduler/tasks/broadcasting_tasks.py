@@ -42,19 +42,27 @@ def _get_timezone_offset(tz_name: str, utc_dt: datetime) -> object:
         return timedelta(0)
 
 
-def process_pending_broadcasts():
+import asyncio
+
+async def process_pending_broadcasts():
     """
     Scheduled task to find pending broadcasts and send them.
     Runs every minute to check for broadcasts with scheduled_at <= now (in system timezone).
     
-    For each pending broadcast:
-    1. Check if scheduled_at has passed (comparing in system timezone)
-    2. Get recipient IDs based on audience configuration
-    3. Create notifications for all recipients
-    4. Update broadcast status to 'sent' and set sent_at timestamp
+    This function is now async and delegates the blocking DB work to a thread pool.
     """
     logger.info("Running broadcast scheduler check...")
     
+    try:
+        # Wrap the entire synchronous logic in a thread to avoid blocking the main loop
+        await asyncio.to_thread(_process_broadcasts_sync_worker)
+        logger.info("Broadcast processing worker completed successfully.")
+    except Exception as e:
+        logger.error(f"Error during broadcast scheduler processing: {e}")
+
+
+def _process_broadcasts_sync_worker():
+    """Synchronous worker that performs the actual DB transactions."""
     connection = None
     try:
         connection = pyodbc.connect(get_connection_string())
@@ -63,17 +71,11 @@ def process_pending_broadcasts():
         ensure_broadcast_events_table(cursor)
         ensure_notifications_schema(cursor)
         
-        # Get system timezone to compare scheduled times correctly
         tz_name = get_system_timezone(cursor)
-        
-        # Get current time in system timezone (as naive datetime)
-        # scheduled_at is stored as naive datetime in system timezone,
-        # so we need to compare using the same timezone reference
         now_utc = datetime.utcnow()
         tz_offset = _get_timezone_offset(tz_name, now_utc)
         now_in_system_tz = now_utc + tz_offset
         
-        # Query for pending broadcasts where scheduled_at <= now (in system timezone)
         pending_rows = cursor.execute(
             """
             SELECT
@@ -91,10 +93,9 @@ def process_pending_broadcasts():
         ).fetchall()
         
         if not pending_rows:
-            logger.info("No pending broadcasts ready to send.")
             return
         
-        logger.info(f"Found {len(pending_rows)} broadcasts ready to send.")
+        logger.info(f"Worker: Found {len(pending_rows)} broadcasts ready to send.")
         
         sent_count = 0
         failed_count = 0
@@ -109,10 +110,8 @@ def process_pending_broadcasts():
                 audience_value = row[5]
                 message_type = row[7]
                 
-                # Get recipient IDs for this broadcast
                 recipient_ids = get_recipient_ids(cursor, audience_type, audience_value)
                 
-                # Send notification only if channel is 'notification' or 'both'
                 if channel in {"notification", "both"} and recipient_ids:
                     create_notifications(
                         cursor,
@@ -123,47 +122,27 @@ def process_pending_broadcasts():
                         now_utc,
                     )
                 
-                # Update broadcast status to 'sent'
                 cursor.execute(
-                    """
-                    UPDATE dbo.broadcast_event
-                    SET status = 'sent', sent_at = ?
-                    WHERE broadcast_id = ?
-                    """,
+                    "UPDATE dbo.broadcast_event SET status = 'sent', sent_at = ? WHERE broadcast_id = ?",
                     now_utc,
                     broadcast_id,
                 )
-                
                 sent_count += 1
-                logger.info(f"Broadcast {broadcast_id} sent to {len(recipient_ids)} recipients.")
-                
             except Exception as e:
                 failed_count += 1
-                logger.error(f"Error processing broadcast {row[0]}: {e}")
+                logger.error(f"Worker: Error processing broadcast {row[0]}: {e}")
                 try:
-                    # Update status to 'failed' on error
                     cursor.execute(
-                        """
-                        UPDATE dbo.broadcast_event
-                        SET status = 'failed', sent_at = ?
-                        WHERE broadcast_id = ?
-                        """,
+                        "UPDATE dbo.broadcast_event SET status = 'failed', sent_at = ? WHERE broadcast_id = ?",
                         now_utc,
                         row[0],
                     )
-                except Exception as update_err:
-                    logger.error(f"Failed to update broadcast status to failed: {update_err}")
+                except Exception:
+                    pass
         
         connection.commit()
-        logger.info(f"Broadcast processing complete: {sent_count} sent, {failed_count} failed.")
+        logger.info(f"Worker: Broadcast processing complete: {sent_count} sent, {failed_count} failed.")
         
-    except Exception as e:
-        logger.error(f"Error during broadcast scheduler processing: {e}")
-        if connection:
-            try:
-                connection.rollback()
-            except Exception:
-                pass
     finally:
         if connection:
             try:
