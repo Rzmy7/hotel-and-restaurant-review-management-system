@@ -180,6 +180,15 @@ app.add_middleware(
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
+# ── Proxy Headers (Production HTTPS support) ──────────────────────
+# When running behind a reverse proxy (Nginx, Cloudflare), this allows
+# FastAPI to recognize HTTPS and use correct protocol in url_for().
+try:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+except ImportError:
+    pass
+
 
 # Global Exception Handler to capture 500 errors and include CORS headers
 @app.exception_handler(Exception)
