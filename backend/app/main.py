@@ -84,8 +84,8 @@ async def lifespan(app: FastAPI):
         )
         from app.modules.reviews.services.processor import run_analysis_pipeline
 
-        # reconcile_scraper_jobs is sync, run it in a thread pool via to_thread
-        asyncio.create_task(asyncio.to_thread(reconcile_scraper_jobs))
+        # reconcile_scraper_jobs is async, run it directly via create_task
+        asyncio.create_task(reconcile_scraper_jobs())
         # run_analysis_pipeline is async, run it directly via create_task
         asyncio.create_task(run_analysis_pipeline())
 
@@ -190,12 +190,15 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(f"CRITICAL ERROR: {error_details}")
 
     # Write error to a temporary log file for AI to read
-    with open("backend_error.log", "a", encoding="utf-8") as f:
-        f.write(
-            f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
-        )
-        f.write(error_details)
-        f.write("\n" + "=" * 50 + "\n")
+    try:
+        with open("backend_error.log", "a", encoding="utf-8") as f:
+            f.write(
+                f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
+            )
+            f.write(error_details)
+            f.write("\n" + "=" * 50 + "\n")
+    except Exception as log_err:
+        print(f"FAILED TO WRITE TO backend_error.log: {log_err}")
 
     return Response(
         content=json.dumps({"detail": "Internal Server Error", "traceback": str(exc)}),

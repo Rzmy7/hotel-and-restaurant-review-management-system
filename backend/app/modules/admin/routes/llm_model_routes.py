@@ -270,9 +270,8 @@ def delete_model(model_id: str):
 
 @router.post("/{model_id}/test", response_model=LLMModelTestResponse)
 def test_model(model_id: str):
-    from app.services.llm_gateway import call as gateway_call
-
     try:
+        from app.services.llm_gateway import call as gateway_call
         text = (gateway_call("review_processing", "Reply with exactly: ok", model_id=model_id) or "").strip()
         if text:
             return LLMModelTestResponse(success=True, message="Model is reachable and responded successfully.")
@@ -284,7 +283,6 @@ def test_model(model_id: str):
 @router.post("/test-connectivity", response_model=LLMModelTestResponse)
 def test_connectivity(payload: LLMModelTestPayload):
     """Test LLM parameters before saving."""
-    from app.services.llm_gateway import call as gateway_call
 
     api_key = payload.api_key.strip() if payload.api_key else None
     
@@ -306,6 +304,7 @@ def test_connectivity(payload: LLMModelTestPayload):
         return LLMModelTestResponse(success=False, message="API key is required.")
 
     try:
+        from app.services.llm_gateway import call as gateway_call
         text = (gateway_call(
             "review_processing",
             "Reply with exactly: ok",
