@@ -18,7 +18,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+# Configure logging for production mode
+if os.getenv("PROD_MODE", "false").lower() == "true":
+    logging.basicConfig(level=logging.WARNING)
+    # Suppress uvicorn access logs explicitly if uvicorn is used internally or via CLI
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.WARNING)
+else:
+    logger = logging.getLogger(__name__)
 
 # Canonical database imports — single source of truth
 from app.database.session import Base, engine, get_db

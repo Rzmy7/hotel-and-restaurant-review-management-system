@@ -35,11 +35,14 @@ class BaseScraperConfig(BaseModel):
     
 def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    is_prod = os.getenv("PROD_MODE", "false").lower() == "true"
+    level = logging.WARNING if is_prod else logging.INFO
+    logger.setLevel(level)
     fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     ch = logging.StreamHandler()
     ch.setFormatter(fmt)
+    ch.setLevel(level)
     logger.addHandler(ch)
 
     fh = logging.FileHandler('scraper_debug.log', mode='a', encoding='utf-8')

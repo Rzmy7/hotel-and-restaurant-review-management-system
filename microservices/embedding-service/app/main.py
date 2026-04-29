@@ -7,6 +7,17 @@ import time
 import uuid
 import psutil
 from datetime import datetime
+import logging
+
+# Configure logging for production mode
+IS_PROD = os.getenv("PROD_MODE", "false").lower() == "true"
+if IS_PROD:
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    # Patch print to do nothing in prod
+    def print(*args, **kwargs):
+        pass
 
 from app.chroma import save_embedding, collection
 from app.config import (
