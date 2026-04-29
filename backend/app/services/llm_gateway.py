@@ -106,6 +106,7 @@ def call(
     endpoint: str | None = None,
     model_name: str | None = None,
     max_tokens: int | None = None,
+    json_mode: bool = False,
 ) -> str:
     """
     Call an LLM and return the text response.
@@ -136,11 +137,17 @@ def call(
 
     try:
         client = OpenAI(api_key=model["api_key"], base_url=model["endpoint"])
-        resp = client.chat.completions.create(
-            model=model["model_name"],
-            messages=messages,
-            max_tokens=model["max_tokens"],
-        )
+        
+        # Build completion args
+        completion_args = {
+            "model": model["model_name"],
+            "messages": messages,
+            "max_tokens": model["max_tokens"],
+        }
+        if json_mode:
+            completion_args["response_format"] = {"type": "json_object"}
+
+        resp = client.chat.completions.create(**completion_args)
         return resp.choices[0].message.content or ""
     except Exception as exc:
         msg = str(exc)

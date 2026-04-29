@@ -23,7 +23,7 @@ Task: Analyze a batch of raw guest reviews and transform them into structured, e
 Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, positive_text, negative_text, reviewDate].
 
 Rules:
-1. Output MUST be ONLY a valid JSON array. Do not include markdown (```json) or conversational text.
+1. Output MUST be ONLY a valid JSON object in the format: {"reviews": [review1, review2, ...]}.
 2. IMPORTANT: All string values must be properly escaped for JSON. Specifically, double quotes inside a string MUST be escaped as \\".
 3. For each review, provide:
    - "sentiment": "Positive", "Neutral", "Negative".
@@ -46,7 +46,7 @@ def repair_json(text: str) -> str:
     Attempts to repair common LLM JSON errors:
     1. Truncated arrays (missing closing brackets).
     2. Trailing commas.
-    3. Unescaped quotes inside string values (heuristic-based).
+    3. Unbalanced braces.
     """
     # 1. Trailing commas before closing brackets/braces
     text = re.sub(r',\s*([\]}])', r'\1', text)
@@ -94,6 +94,7 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         text = gateway_call(
             "review_processing",
             SYSTEM_PROMPT.format(batch_json=batch_json),
+            json_mode=True,
         )
         
         # Clean up response
@@ -102,9 +103,9 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         text = re.sub(r'^```(?:json)?\s*', '', text)
         text = re.sub(r'\s*```$', '', text)
         
-        # Attempt to find the first [ and last ] to isolate the array
-        start_idx = text.find('[')
-        end_idx = text.rfind(']')
+        # Attempt to find the first { and last } to isolate the object
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
         if start_idx != -1 and end_idx != -1:
             text = text[start_idx:end_idx+1]
 
@@ -120,8 +121,17 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 logger.error(f"JSON repair failed. Snippet: {text[:200]}...{text[-200:]}")
                 raise
 
+        # If it's a dict with "reviews" key, extract it (JSON Mode standard)
+        if isinstance(results, dict) and "reviews" in results:
+            results = results["reviews"]
+
         if not isinstance(results, list):
-            raise ValueError("LLM returned non-list output.")
+            # Fallback: if it's a dict but NOT with "reviews" key, maybe it's a single review or weird format
+            if isinstance(results, dict):
+                 results = [results]
+            else:
+                raise ValueError("LLM returned non-list/non-dict output.")
+        
         return results
 
     except Exception as e:
