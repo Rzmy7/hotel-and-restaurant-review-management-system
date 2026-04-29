@@ -702,7 +702,7 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
                       <Pie data={slices} cx={60} cy={50} innerRadius={28} outerRadius={44} paddingAngle={2} dataKey="value" strokeWidth={0}>
                         {slices.map((s, i) => <Cell key={i} fill={s.color} />)}
                       </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '11px' }} formatter={(v: any, name: string) => [`${v ?? 0} (${total > 0 ? Math.round(((v ?? 0) / total) * 100) : 0}%)`, name]} />
+                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '11px' }} formatter={(v: any, name: any) => [`${v ?? 0} (${total > 0 ? Math.round(((v ?? 0) / total) * 100) : 0}%)`, name ?? '']} />
                     </PieChart>
                   )}
                   <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5">
