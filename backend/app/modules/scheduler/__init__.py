@@ -13,7 +13,8 @@ def setup_scheduler():
         'interval', 
         minutes=1, 
         id='sync_sources_job', 
-        replace_existing=True
+        replace_existing=True,
+        jitter=5
     )
     
     scheduler.add_job(
@@ -21,7 +22,8 @@ def setup_scheduler():
         'interval',
         minutes=1,
         id='process_broadcasts_job',
-        replace_existing=True
+        replace_existing=True,
+        jitter=5
     )
 
     scheduler.add_job(
@@ -29,7 +31,8 @@ def setup_scheduler():
         'interval',
         minutes=30,
         id='reconcile_scraper_jobs',
-        replace_existing=True
+        replace_existing=True,
+        jitter=30
     )
 
     scheduler.add_job(
@@ -39,5 +42,6 @@ def setup_scheduler():
         id='process_reviews_job',
         replace_existing=True,
         misfire_grace_time=30,
-        coalesce=True
+        coalesce=True,
+        jitter=5
     )
