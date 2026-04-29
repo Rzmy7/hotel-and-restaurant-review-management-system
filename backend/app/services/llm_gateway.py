@@ -134,10 +134,37 @@ def call(
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    client = OpenAI(api_key=model["api_key"], base_url=model["endpoint"])
-    resp = client.chat.completions.create(
-        model=model["model_name"],
-        messages=messages,
-        max_tokens=model["max_tokens"],
-    )
-    return resp.choices[0].message.content or ""
+    try:
+        client = OpenAI(api_key=model["api_key"], base_url=model["endpoint"])
+        resp = client.chat.completions.create(
+            model=model["model_name"],
+            messages=messages,
+            max_tokens=model["max_tokens"],
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as exc:
+        msg = str(exc)
+        
+        # Try to extract the specific message if it's an OpenAI-style JSON error
+        try:
+            import json
+            # OpenAI errors sometimes look like "Error code: 402 - {'error': {...}}"
+            if " - {" in msg:
+                json_part = msg.split(" - ", 1)[1].replace("'", '"')
+                data = json.loads(json_part)
+                if "error" in data and "message" in data["error"]:
+                    msg = data["error"]["message"]
+        except:
+            pass
+
+        # Handle OpenRouter/OpenAI specific credit/token errors
+        lower_msg = msg.lower()
+        if "402" in msg or "insufficient_quota" in lower_msg or "credits" in lower_msg:
+            if "max_tokens" in lower_msg:
+                raise ValueError(f"Provider limit reached: {msg}. Try reducing Max Tokens or checking your credits.")
+            raise ValueError(f"Provider reported insufficient credits/quota: {msg}")
+        
+        if "error code:" in msg.lower():
+             raise ValueError(f"LLM Provider Error: {msg}")
+        
+        raise ValueError(msg)

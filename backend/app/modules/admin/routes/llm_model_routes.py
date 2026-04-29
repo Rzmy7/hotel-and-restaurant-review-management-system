@@ -319,4 +319,4 @@ def test_connectivity(payload: LLMModelTestPayload):
             return LLMModelTestResponse(success=True, message="Parameters are valid. Model responded successfully.")
         return LLMModelTestResponse(success=False, message="Model responded but returned an empty response.")
     except Exception as exc:
-        return LLMModelTestResponse(success=False, message=f"Validation failed: {exc}")
+        return LLMModelTestResponse(success=False, message=str(exc))
