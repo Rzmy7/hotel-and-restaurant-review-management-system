@@ -88,6 +88,10 @@ export const useSettings = () => {
         return await settingsService.fetchOrganizationRules();
     };
 
+    const fetchOrganizationTypes = async () => {
+        return await settingsService.fetchOrganizationTypes();
+    };
+
     return {
         data,
         loading,
@@ -99,5 +103,6 @@ export const useSettings = () => {
         changePassword,
         uploadRulesFile,
         fetchOrganizationRules,
+        fetchOrganizationTypes,
     };
 };

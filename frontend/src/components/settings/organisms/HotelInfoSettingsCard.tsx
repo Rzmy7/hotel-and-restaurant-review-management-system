@@ -3,7 +3,9 @@ import { Upload, FileText, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
+import { Select } from '../../ui/Select';
 import type { HotelInfoSettings } from '../../../types/settings';
+import type { OrganizationType } from '../../../api/settingsApi';
 
 interface OrganizationRule {
     rule_id: string;
@@ -22,6 +24,7 @@ interface HotelInfoSettingsCardProps {
     onRulesUpload?: () => void;
     isUploadingRules?: boolean;
     organizationRules?: OrganizationRule[];
+    organizationTypes?: OrganizationType[];
 }
 
 export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
@@ -33,8 +36,17 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
     onRulesUpload,
     isUploadingRules = false,
     organizationRules = [],
+    organizationTypes = [],
 }) => {
     const rulesFilename = organizationRules.length > 0 ? organizationRules[0]?.source_filename : null;
+
+    const propertyTypeOptions = [
+        { label: 'Select Property Type', value: '' },
+        ...organizationTypes.map(type => ({
+            label: type.type_name,
+            value: type.type_name
+        }))
+    ];
 
     return (
         <div className="flex flex-col">
@@ -49,7 +61,7 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                         {data.logoUrl ? (
                             <img
                                 src={data.logoUrl}
-                                alt="Hotel logo"
+                                alt="Organization logo"
                                 className="w-full h-full object-cover rounded-2xl"
                             />
                         ) : (
@@ -69,7 +81,7 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                 </div>
             </div>
 
-            <FormField label="Hotel/Brand Name">
+            <FormField label="Organization Name">
                 <Input
                     value={data.hotelName}
                     onChange={(e) => onChange({ hotelName: e.target.value })}
@@ -87,10 +99,10 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                 </FormField>
 
                 <FormField label="Property Type">
-                    <Input
+                    <Select
                         value={data.propertyType}
                         onChange={(e) => onChange({ propertyType: e.target.value })}
-                        placeholder="e.g. Hotel, Resort"
+                        options={propertyTypeOptions}
                     />
                 </FormField>
             </div>

@@ -52,7 +52,7 @@ type UserOrganization = {
     location_url?: string | null;
 };
 
-type OrganizationType = {
+export type OrganizationType = {
     type_code: number;
     type_name: string;
 };
@@ -386,5 +386,10 @@ export const settingsApi = {
         );
 
         return Array.isArray(response.data) ? response.data : [];
+    },
+
+    fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
+        const response = await settingsAxios.get<OrganizationType[]>(toApiPath('/organization-types'));
+        return response.data;
     },
 };

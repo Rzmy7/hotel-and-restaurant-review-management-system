@@ -18,6 +18,7 @@ import { HotelInfoSettingsCard } from '../components/settings/organisms/HotelInf
 import { UnsavedChangesModal, type ChangeDetail } from '../components/settings/organisms/UnsavedChangesModal';
 import { useNavigationBlocker } from '../contexts/NavigationBlockerContext';
 import type { SettingsData } from '../types/settings';
+import type { OrganizationType } from '../api/settingsApi';
 
 type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'hotelInfo';
 
@@ -26,13 +27,13 @@ const TABS = [
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
-  { id: 'hotelInfo', label: 'Hotel Profile', icon: Building }
+  { id: 'hotelInfo', label: 'Organization Profile', icon: Building }
 ] as const;
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword, uploadRulesFile, fetchOrganizationRules } = useSettings();
+  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword, uploadRulesFile, fetchOrganizationRules, fetchOrganizationTypes } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -44,6 +45,7 @@ const SettingsPage: React.FC = () => {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingRules, setIsUploadingRules] = useState(false);
   const [organizationRules, setOrganizationRules] = useState<Array<{ rule_id: string; rule_text: string; rule_order: number; is_embedded: boolean; source_filename: string | null }>>([]);
+  const [organizationTypes, setOrganizationTypes] = useState<OrganizationType[]>([]);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const rulesInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -78,6 +80,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'hotelInfo') {
       fetchOrganizationRules().then(setOrganizationRules).catch(() => {});
+      fetchOrganizationTypes().then(setOrganizationTypes).catch(() => {});
     }
   }, [activeTab]);
 
@@ -114,8 +117,8 @@ const SettingsPage: React.FC = () => {
     compareSection('Subscription', serverData.subscription, localData.subscription, {
       plan: 'Plan', billingEmail: 'Billing Email'
     });
-    compareSection('Hotel Profile', serverData.hotelInfo, localData.hotelInfo, {
-      hotelName: 'Hotel Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
+    compareSection('Organization Profile', serverData.hotelInfo, localData.hotelInfo, {
+      hotelName: 'Organization Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
     });
 
     return changes;
@@ -335,6 +338,7 @@ const SettingsPage: React.FC = () => {
                   onRulesUpload={handleRulesUploadClick}
                   isUploadingRules={isUploadingRules}
                   organizationRules={organizationRules}
+                  organizationTypes={organizationTypes}
                 />
               )}
             </div>

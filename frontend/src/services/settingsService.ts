@@ -1,5 +1,5 @@
 import { settingsApi } from '../api/settingsApi';
-import type { PasswordChangePayload } from '../api/settingsApi';
+import type { PasswordChangePayload, OrganizationType } from '../api/settingsApi';
 import type { SettingsData } from '../types/settings';
 import axios from 'axios';
 
@@ -113,6 +113,15 @@ export const settingsService = {
             return await settingsApi.fetchOrganizationRules();
         } catch (error) {
             console.error('Failed to fetch organization rules:', error);
+            return [];
+        }
+    },
+
+    fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
+        try {
+            return await settingsApi.fetchOrganizationTypes();
+        } catch (error) {
+            console.error('Failed to fetch organization types:', error);
             return [];
         }
     },
