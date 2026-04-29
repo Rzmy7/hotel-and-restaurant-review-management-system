@@ -58,6 +58,7 @@ def get_profile(db: Session, user_id):
         "avatar": user.profile_image_url,
         "is_2fa_enabled": bool(user.is_2fa_enabled),
         "is_2fa_feature_enabled": _is_2fa_feature_enabled(),
+        "is_email_notifications_enabled": bool(user.is_email_notifications_enabled) if hasattr(user, 'is_email_notifications_enabled') else True,
         "joinedDate": str(user.created_at),
     }
 
@@ -76,6 +77,7 @@ def update_profile(db: Session, user_id, data):
         job_title=data.jobTitle,
         bio=data.bio,
         location=data.location,
+        is_email_notifications_enabled=data.is_email_notifications_enabled,
     )
 
 # upload profile image

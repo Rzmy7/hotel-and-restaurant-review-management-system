@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.constants.roles import SYSTEM_ADMIN
 from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification, UserRole
+from app.modules.auth.services.email_service import send_notification_email
 
 logger = logging.getLogger(__name__)
 
@@ -298,6 +299,14 @@ def _create_notifications_for_recipients(
         for user_id in recipient_ids
     ]
     db.add_all(user_notifications)
+
+    users_to_email = db.query(User).filter(
+        User.user_id.in_(recipient_ids),
+        User.is_email_notifications_enabled == True
+    ).all()
+
+    for user in users_to_email:
+        send_notification_email(user.email, subject, body)
 
 
 async def send_broadcast(

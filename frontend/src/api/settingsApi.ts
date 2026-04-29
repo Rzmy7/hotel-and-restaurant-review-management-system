@@ -60,6 +60,7 @@ export type OrganizationType = {
 type UserProfile = {
     is_2fa_enabled?: boolean;
     is_2fa_feature_enabled?: boolean;
+    is_email_notifications_enabled?: boolean;
 };
 
 export type PasswordChangePayload = {
@@ -253,6 +254,10 @@ export const settingsApi = {
                     twoFactorAuth: !!profileResponse.data?.is_2fa_enabled,
                     twoFactorFeatureEnabled: profileResponse.data?.is_2fa_feature_enabled !== false,
                 },
+                notifications: {
+                    ...currentSettings.notifications,
+                    emailNotifications: profileResponse.data?.is_email_notifications_enabled ?? true,
+                },
             };
         } catch {
             // Keep existing local security fallback when profile call fails.
@@ -263,6 +268,16 @@ export const settingsApi = {
     updateSettings: async (updates: Partial<SettingsData>): Promise<SettingsData> => {
         if (updates.hotelInfo) {
             await patchHotelInfoToBackend(updates.hotelInfo);
+        }
+        
+        if (updates.notifications && updates.notifications.emailNotifications !== undefined) {
+            try {
+                await settingsAxios.put(toApiPath('/users/me'), {
+                    is_email_notifications_enabled: updates.notifications.emailNotifications
+                });
+            } catch (err) {
+                console.error("Failed to update email notifications preference", err);
+            }
         }
 
         currentSettings = {

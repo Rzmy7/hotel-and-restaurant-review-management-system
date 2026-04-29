@@ -62,3 +62,35 @@ def send_2fa_email(to_email: str, code: str) -> None:
         server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
     finally:
         server.quit()
+
+def send_notification_email(to_email: str, title: str, message: str) -> None:
+    """Send a general notification email to the given address."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print("[email-notif] SMTP is not configured, skipping notification email:", title)
+        return
+
+    try:
+        body = (
+            f"{title}\n\n"
+            f"{message}\n\n"
+            "You are receiving this email because you have email notifications enabled."
+        )
+
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = f"ReviewHub Notification: {title}"
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = to_email
+
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+        try:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
+            print(f"[email-notif] ✓ Email delivered to {to_email} — {title}")
+        finally:
+            server.quit()
+    except Exception as e:
+        print(f"[email-notif] ✗ SMTP error sending to {to_email}: {e}")
+

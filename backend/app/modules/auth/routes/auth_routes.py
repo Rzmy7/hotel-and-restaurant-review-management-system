@@ -301,6 +301,30 @@ def test_smtp():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.get("/test-welcome-email", tags=["Debug"])
+def test_welcome_email(email: str, db: Session = Depends(get_db)):
+    """
+    Debug endpoint to trigger the full welcome notification flow for an existing user.
+    Usage: GET /api/auth/test-welcome-email?email=user@example.com
+    """
+    try:
+        user = get_user_by_email(db, email.lower())
+        if not user:
+            return {"success": False, "error": f"User with email {email} not found in database"}
+
+        from app.services.notification_helpers import notify_welcome
+        display_name = user.full_name or user.email
+        notify_welcome(str(user.user_id), display_name)
+
+        return {
+            "success": True,
+            "message": f"Welcome notification flow triggered for {email}. Check backend console for [email-notif] logs.",
+            "user_id": str(user.user_id),
+            "email_notifications_enabled": getattr(user, 'is_email_notifications_enabled', 'Unknown')
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @router.get("/check-session")
 def check_session(request: Request):
     user = request.session.get("user")

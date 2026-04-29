@@ -3,24 +3,26 @@ from typing import Optional
 
 
 class ProfileResponse(BaseModel):
-    firstName: Optional[str]
-    lastName: Optional[str]
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
     email: str
-    phone: Optional[str]
-    jobTitle: Optional[str]
-    bio: Optional[str]
-    location: Optional[str]
-    avatar: Optional[str]
-    joinedDate: Optional[str]
+    phone: Optional[str] = None
+    jobTitle: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    avatar: Optional[str] = None
+    is_email_notifications_enabled: Optional[bool] = None
+    joinedDate: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
-    firstName: Optional[str]
-    lastName: Optional[str]
-    phone: Optional[str]
-    jobTitle: Optional[str]
-    bio: Optional[str]
-    location: Optional[str]
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    phone: Optional[str] = None
+    jobTitle: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    is_email_notifications_enabled: Optional[bool] = None
 
 
 class PasswordChangeRequest(BaseModel):

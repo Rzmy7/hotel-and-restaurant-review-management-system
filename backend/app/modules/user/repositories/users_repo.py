@@ -50,7 +50,8 @@ def create_user(
         profile_image_url=profile_image_url,
         google_id=google_id,
         is_email_verified=is_email_verified,
-        role_id=role.role_id  # Assigned here before commit
+        role_id=role.role_id,  # Assigned here before commit
+        is_email_notifications_enabled=True,
     )
 
     # Save user to DB
@@ -75,6 +76,7 @@ def update_user_profile(
     bio: str | None = None,
     location: str | None = None,
     profile_image_url: str | None = None,
+    is_email_notifications_enabled: bool | None = None,
 ):
 
     if first_name is not None:
@@ -97,6 +99,9 @@ def update_user_profile(
 
     if profile_image_url is not None:
         user.profile_image_url = profile_image_url
+
+    if is_email_notifications_enabled is not None:
+        user.is_email_notifications_enabled = is_email_notifications_enabled
 
     db.commit()
     db.refresh(user)

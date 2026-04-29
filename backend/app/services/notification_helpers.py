@@ -83,7 +83,7 @@ def notify_welcome(user_id: str, user_name: str) -> None:
     """Welcome notification sent right after signup."""
     send_notification(
         user_id=user_id,
-        title="Welcome to ReviewHub! 🎉",
+        title="Welcome to ReviewHub! ",
         message=(
             f"Hi {user_name}! Welcome aboard. Your account has been created successfully. "
             "Start by adding your first organization and connecting a review source to begin "
