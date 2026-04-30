@@ -14,26 +14,26 @@ import { GeneralSettingsCard } from '../components/settings/organisms/GeneralSet
 import { NotificationSettingsCard } from '../components/settings/organisms/NotificationSettingsCard';
 import { SecuritySettingsCard } from '../components/settings/organisms/SecuritySettingsCard';
 import { SubscriptionSettingsCard } from '../components/settings/organisms/SubscriptionSettingsCard';
-import { HotelInfoSettingsCard } from '../components/settings/organisms/HotelInfoSettingsCard';
+import { OrganizationInfoSettingsCard } from '../components/settings/organisms/OrganizationInfoSettingsCard';
 import { UnsavedChangesModal, type ChangeDetail } from '../components/settings/organisms/UnsavedChangesModal';
 import { useNavigationBlocker } from '../contexts/NavigationBlockerContext';
 import type { SettingsData } from '../types/settings';
 import type { OrganizationType } from '../api/settingsApi';
 
-type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'hotelInfo';
+type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'organizationInfo';
 
 const TABS = [
   { id: 'general', label: 'General Properties', icon: Globe },
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
-  { id: 'hotelInfo', label: 'Organization Profile', icon: Building }
+  { id: 'organizationInfo', label: 'Organization Profile', icon: Building }
 ] as const;
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings, uploadHotelLogo, changePassword, uploadRulesFile, fetchOrganizationRules, fetchOrganizationTypes } = useSettings();
+  const { data: serverData, loading, saving, updateSettings, uploadOrganizationLogo, changePassword, uploadRulesFile, fetchOrganizationRules, fetchOrganizationTypes } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -78,11 +78,19 @@ const SettingsPage: React.FC = () => {
   }, [serverData]);
 
   useEffect(() => {
-    if (activeTab === 'hotelInfo') {
-      fetchOrganizationRules().then(setOrganizationRules).catch(() => {});
-      fetchOrganizationTypes().then(setOrganizationTypes).catch(() => {});
+    if (activeTab === 'organizationInfo') {
+      fetchOrganizationRules()
+        .then(setOrganizationRules)
+        .catch(() => {
+          showToast('Failed to load organization rules', 'error');
+        });
+      fetchOrganizationTypes()
+        .then(setOrganizationTypes)
+        .catch(() => {
+          showToast('Failed to load organization types', 'error');
+        });
     }
-  }, [activeTab]);
+  }, [activeTab, fetchOrganizationRules, fetchOrganizationTypes, showToast]);
 
   if (loading || !localData) {
     return <DashboardSkeleton />;
@@ -117,8 +125,8 @@ const SettingsPage: React.FC = () => {
     compareSection('Subscription', serverData.subscription, localData.subscription, {
       plan: 'Plan', billingEmail: 'Billing Email'
     });
-    compareSection('Organization Profile', serverData.hotelInfo, localData.hotelInfo, {
-      hotelName: 'Organization Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
+    compareSection('Organization Profile', serverData.organizationInfo, localData.organizationInfo, {
+      organizationName: 'Organization Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
     });
 
     return changes;
@@ -199,10 +207,11 @@ const SettingsPage: React.FC = () => {
 
     setIsUploadingLogo(true);
     try {
-      const logoUrl = await uploadHotelLogo(file);
-      handleUpdateSection('hotelInfo', { logoUrl });
-    } catch {
-      // Error toast is handled in useSettings.
+      const logoUrl = await uploadOrganizationLogo(file);
+      handleUpdateSection('organizationInfo', { logoUrl });
+      showToast('Logo uploaded successfully', 'success');
+    } catch (error) {
+      showToast('Failed to upload logo', 'error');
     } finally {
       setIsUploadingLogo(false);
     }
@@ -219,12 +228,13 @@ const SettingsPage: React.FC = () => {
 
     setIsUploadingRules(true);
     try {
-      const result = await uploadRulesFile(file);
+      await uploadRulesFile(file);
       // Refresh rules list after successful upload
       const updatedRules = await fetchOrganizationRules();
       setOrganizationRules(updatedRules);
-    } catch {
-      // Error toast is handled in useSettings.
+      showToast('Rules file uploaded successfully', 'success');
+    } catch (error) {
+      showToast('Failed to upload rules file', 'error');
     } finally {
       setIsUploadingRules(false);
     }
@@ -328,12 +338,12 @@ const SettingsPage: React.FC = () => {
                   onPaymentEdit={() => showToast('Redirecting to secure payment portal...', 'info')}
                 />
               )}
-              {activeTab === 'hotelInfo' && (
-                <HotelInfoSettingsCard
-                  data={localData.hotelInfo}
-                  onChange={(updates) => handleUpdateSection('hotelInfo', updates)}
+              {activeTab === 'organizationInfo' && (
+                <OrganizationInfoSettingsCard
+                  data={localData.organizationInfo}
+                  onChange={(updates) => handleUpdateSection('organizationInfo', updates)}
                   onLogoUpload={handleLogoUploadClick}
-                  onLogoRemove={() => handleUpdateSection('hotelInfo', { logoUrl: undefined })}
+                  onLogoRemove={() => handleUpdateSection('organizationInfo', { logoUrl: undefined })}
                   isUploadingLogo={isUploadingLogo}
                   onRulesUpload={handleRulesUploadClick}
                   isUploadingRules={isUploadingRules}

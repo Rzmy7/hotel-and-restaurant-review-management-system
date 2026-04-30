@@ -22,13 +22,15 @@ export interface SubscriptionSettings {
     billingEmail: string;
 }
 
-export interface OrganizationProfileSettings {
+export interface OrganizationInfoSettings {
     organizationName: string;
     websiteUrl: string;
     propertyType: string;
     primaryEmail: string;
     phoneNumber: string;
     locationUrl: string;
+    city?: string;
+    country?: string;
     logoUrl?: string;
 }
 
@@ -37,5 +39,5 @@ export interface SettingsData {
     notifications: NotificationSettings;
     security: SecuritySettings;
     subscription: SubscriptionSettings;
-    organizationProfile: OrganizationProfileSettings;
+    organizationInfo: OrganizationInfoSettings;
 }

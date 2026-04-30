@@ -63,6 +63,8 @@ def send_2fa_email(to_email: str, code: str) -> None:
     finally:
         server.quit()
 
+
+# send an email when user enable email notifications
 def send_notification_email(to_email: str, title: str, message: str) -> None:
     """Send a general notification email to the given address."""
     if not SMTP_EMAIL or not SMTP_PASSWORD:

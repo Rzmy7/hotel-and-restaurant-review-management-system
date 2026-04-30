@@ -188,8 +188,8 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         if not user:
             return {"message": "If the account exists, a reset link has been sent"}
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = token_sha256(raw_token)
+        raw_token = secrets.token_urlsafe(32)   #  SECRETS: Generate random token
+        token_hash = token_sha256(raw_token)    #  HASHLIB: Hash the token to store in DB
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
         db.execute(

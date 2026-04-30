@@ -16,9 +16,13 @@ from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPI
 
 def hash_password(password: str) -> str:
     """Hash a plain-text password using bcrypt."""
+
+    # bcrypt works with bytes, not strings
     pwd_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
     hashed_bytes = bcrypt.hashpw(pwd_bytes, salt)
+
+    # Convert bytes → string to srore strings in db not bytes
     return hashed_bytes.decode('utf-8')
 
 
@@ -29,6 +33,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     catch that and return False so the API returns 401 instead of 500.
     """
     try:
+
+        # bcrypt works with bytes, not strings
         pwd_bytes = plain_password.encode('utf-8')
         hash_bytes = hashed_password.encode('utf-8')
         return bcrypt.checkpw(pwd_bytes, hash_bytes)

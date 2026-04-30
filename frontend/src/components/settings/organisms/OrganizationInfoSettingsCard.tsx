@@ -4,7 +4,7 @@ import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { Select } from '../../ui/Select';
-import type { HotelInfoSettings } from '../../../types/settings';
+import type { OrganizationInfoSettings } from '../../../types/settings';
 import type { OrganizationType } from '../../../api/settingsApi';
 
 interface OrganizationRule {
@@ -15,9 +15,9 @@ interface OrganizationRule {
     source_filename: string | null;
 }
 
-interface HotelInfoSettingsCardProps {
-    data: HotelInfoSettings;
-    onChange: (updates: Partial<HotelInfoSettings>) => void;
+interface OrganizationInfoSettingsCardProps {
+    data: OrganizationInfoSettings;
+    onChange: (updates: Partial<OrganizationInfoSettings>) => void;
     onLogoUpload: () => void;
     onLogoRemove: () => void;
     isUploadingLogo?: boolean;
@@ -27,7 +27,7 @@ interface HotelInfoSettingsCardProps {
     organizationTypes?: OrganizationType[];
 }
 
-export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
+export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCardProps> = ({
     data,
     onChange,
     onLogoUpload,
@@ -83,8 +83,8 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
 
             <FormField label="Organization Name">
                 <Input
-                    value={data.hotelName}
-                    onChange={(e) => onChange({ hotelName: e.target.value })}
+                    value={data.organizationName}
+                    onChange={(e) => onChange({ organizationName: e.target.value })}
                 />
             </FormField>
 
@@ -122,6 +122,24 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                     onChange={(e) => onChange({ phoneNumber: e.target.value })}
                 />
             </FormField>
+
+            <div className="grid grid-cols-2 gap-6 py-6 border-b border-gray-100 dark:border-slate-700/50 max-md:grid-cols-1">
+                <FormField label="City">
+                    <Input
+                        value={data.city}
+                        onChange={(e) => onChange({ city: e.target.value })}
+                        placeholder="City"
+                    />
+                </FormField>
+
+                <FormField label="Country">
+                    <Input
+                        value={data.country}
+                        onChange={(e) => onChange({ country: e.target.value })}
+                        placeholder="Country"
+                    />
+                </FormField>
+            </div>
 
             <div className="py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
                 <div className="md:col-span-2">

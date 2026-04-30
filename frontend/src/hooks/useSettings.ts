@@ -47,23 +47,23 @@ export const useSettings = () => {
         }
     };
 
-    const uploadHotelLogo = async (file: File) => {
+    const uploadOrganizationLogo = async (file: File) => {
         try {
-            const logoUrl = await settingsService.uploadHotelLogo(file);
+            const logoUrl = await settingsService.uploadOrganizationLogo(file);
             setData((prev) => {
                 if (!prev) return prev;
                 return {
                     ...prev,
-                    hotelInfo: {
-                        ...prev.hotelInfo,
+                    organizationInfo: {
+                        ...prev.organizationInfo,
                         logoUrl,
                     },
                 };
             });
-            showToast('Hotel logo uploaded successfully', 'success');
+            showToast('Organization logo uploaded successfully', 'success');
             return logoUrl;
         } catch (err) {
-            showToast('Failed to upload hotel logo', 'error');
+            showToast('Failed to upload organization logo', 'error');
             throw err;
         }
     };
@@ -99,7 +99,7 @@ export const useSettings = () => {
         error,
         refreshData: loadSettings,
         updateSettings,
-        uploadHotelLogo,
+        uploadOrganizationLogo,
         changePassword,
         uploadRulesFile,
         fetchOrganizationRules,
