@@ -68,9 +68,18 @@ _base_origins: list[str] = [
     ADMIN_FRONTEND_URL,
 ]
 
+# Add 127.0.0.1/localhost variants to avoid browser blocks if IP vs hostname is used
+_expanded_base = []
+for origin in _base_origins:
+    _expanded_base.append(origin)
+    if "localhost" in origin:
+        _expanded_base.append(origin.replace("localhost", "127.0.0.1"))
+    elif "127.0.0.1" in origin:
+        _expanded_base.append(origin.replace("127.0.0.1", "localhost"))
+
 _cors_from_env = os.getenv("CORS_ORIGINS", "")
 if _cors_from_env.strip():
     _extra = [origin.strip() for origin in _cors_from_env.split(",") if origin.strip()]
-    CORS_ORIGINS: list[str] = list(dict.fromkeys(_base_origins + _extra))
+    CORS_ORIGINS: list[str] = list(dict.fromkeys(_expanded_base + _extra))
 else:
-    CORS_ORIGINS = list(dict.fromkeys(_base_origins))
+    CORS_ORIGINS = list(dict.fromkeys(_expanded_base))

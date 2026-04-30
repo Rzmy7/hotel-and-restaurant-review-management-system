@@ -41,8 +41,11 @@ async def reconcile_scraper_jobs():
             logger.error(f"Reconciliation failed: Unexpected error contacting Scraper Engine ({e})")
             return
 
-        active_jobs = data.get("jobs", {})
-        active_source_ids = {str(job.get("source_id")) for job in active_jobs.values() if job.get("source_id")}
+        active_jobs = data.get("jobs", [])
+        if isinstance(active_jobs, dict):
+            active_jobs = active_jobs.values()
+            
+        active_source_ids = {str(job.get("source_id")) for job in active_jobs if job.get("source_id")}
 
         failed_count = 0
         for source in stuck_sources:

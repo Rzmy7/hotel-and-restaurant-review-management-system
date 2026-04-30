@@ -615,3 +615,168 @@ def update_batch_config(payload: BatchConfigUpdatePayload) -> BatchConfigRespons
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to update batch config: {exc}") from exc
 
+
+@router.get("/dupes-test")
+def test_duplicates() -> dict:
+    """Detects duplicated sources and reviews in the database."""
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            
+            # 1. Duplicate Sources (Same URL in same Organization)
+            source_sql = """
+                SELECT organization_id, source_url, COUNT(*) as count
+                FROM dbo.source
+                GROUP BY organization_id, source_url
+                HAVING COUNT(*) > 1
+            """
+            cursor.execute(source_sql)
+            source_groups = cursor.fetchall()
+            duplicate_sources_count = sum(int(row[2]) - 1 for row in source_groups)
+            
+            # 2. Duplicate Reviews (Same text and reviewerName in same Source)
+            # Use casting to VARCHAR(8000) for grouping as text is VARCHAR(MAX)
+            review_sql = """
+                SELECT source_id, reviewerName, CAST([text] AS VARCHAR(8000)) as review_text, COUNT(*) as count
+                FROM dbo.processed_review
+                GROUP BY source_id, reviewerName, CAST([text] AS VARCHAR(8000))
+                HAVING COUNT(*) > 1
+            """
+            cursor.execute(review_sql)
+            review_groups = cursor.fetchall()
+            duplicate_reviews_count = sum(int(row[3]) - 1 for row in review_groups)
+            
+            return {
+                "status": "success",
+                "duplicates": {
+                    "sources": {
+                        "groups": len(source_groups),
+                        "redundant": duplicate_sources_count
+                    },
+                    "reviews": {
+                        "groups": len(review_groups),
+                        "redundant": duplicate_reviews_count
+                    }
+                }
+            }
+    except Exception as exc:
+        import traceback
+        print(f"Error in test_duplicates: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to test for duplicates: {exc}") from exc
+
+
+@router.post("/dupes-cleanup")
+def cleanup_duplicates() -> dict:
+    """Removes duplicated sources and reviews, keeping the most detailed records."""
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            
+            # ── 1. Cleanup Reviews ──────────────────────────────────────────
+            cursor.execute("""
+                SELECT source_id, reviewerName, CAST([text] AS VARCHAR(8000)) as txt
+                FROM dbo.processed_review
+                GROUP BY source_id, reviewerName, CAST([text] AS VARCHAR(8000))
+                HAVING COUNT(*) > 1
+            """)
+            dupe_groups = cursor.fetchall()
+            
+            reviews_deleted = 0
+            for group in dupe_groups:
+                sid, name, txt = group
+                
+                # Handle potential NULLs in sid, name, or txt
+                sql = "SELECT id, heading, sentiment, ai_reply, scrapedAt FROM dbo.processed_review WHERE source_id = ?"
+                params = [sid]
+                
+                if name is None:
+                    sql += " AND reviewerName IS NULL"
+                else:
+                    sql += " AND reviewerName = ?"
+                    params.append(name)
+                    
+                if txt is None:
+                    sql += " AND [text] IS NULL"
+                else:
+                    # Use same casting logic for consistency
+                    sql += " AND CAST([text] AS VARCHAR(8000)) = ?"
+                    params.append(txt)
+                
+                cursor.execute(sql, params)
+                rows = cursor.fetchall()
+                
+                if not rows: continue
+                
+                def get_quality(r):
+                    score = 0
+                    if r[1]: score += 10 # heading
+                    if r[2]: score += 5  # sentiment
+                    if r[3]: score += 5  # ai_reply
+                    return score
+
+                # Sort by quality DESC, then date DESC
+                sorted_rows = sorted(rows, key=lambda r: (get_quality(r), r[4] or datetime.min), reverse=True)
+                
+                others = [r[0] for r in sorted_rows[1:]]
+                if others:
+                    for oid in others:
+                        cursor.execute("DELETE FROM dbo.processed_review WHERE id = ?", (oid,))
+                        reviews_deleted += 1
+
+            # ── 2. Cleanup Sources ──────────────────────────────────────────
+            cursor.execute("""
+                SELECT organization_id, source_url
+                FROM dbo.source
+                GROUP BY organization_id, source_url
+                HAVING COUNT(*) > 1
+            """)
+            source_dupes = cursor.fetchall()
+            
+            sources_deleted = 0
+            for group in source_dupes:
+                org_id, url = group
+                
+                cursor.execute("""
+                    SELECT source_id, created_at
+                    FROM dbo.source
+                    WHERE organization_id = ? AND source_url = ?
+                """, (org_id, url))
+                rows = cursor.fetchall()
+                
+                if not rows: continue
+                
+                source_info = []
+                for r in rows:
+                    sid = r[0]
+                    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE source_id = ?", (sid,))
+                    count = cursor.fetchone()[0]
+                    source_info.append({"id": sid, "count": count, "created_at": r[1] or datetime.max})
+                
+                # Keep source with more reviews, then oldest
+                sorted_sources = sorted(source_info, key=lambda s: (s["count"], -(s["created_at"].timestamp() if isinstance(s["created_at"], datetime) else 0)), reverse=True)
+                
+                losers = [s["id"] for s in sorted_sources[1:]]
+                for loser_id in losers:
+                    cursor.execute("DELETE FROM dbo.processed_review WHERE source_id = ?", (loser_id,))
+                    cursor.execute("DELETE FROM dbo.source WHERE source_id = ?", (loser_id,))
+                    sources_deleted += 1
+
+            conn.commit()
+            
+            log_admin_activity(
+                "settings_updated",
+                "Duplication Cleanup Performed",
+                f"Removed {reviews_deleted} reviews and {sources_deleted} sources."
+            )
+            
+            return {
+                "status": "success",
+                "deleted": {
+                    "reviews": reviews_deleted,
+                    "sources": sources_deleted
+                }
+            }
+    except Exception as exc:
+        import traceback
+        print(f"Error in cleanup_duplicates: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup duplicates: {exc}") from exc

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import {
@@ -10,11 +10,14 @@ import {
     resumeReviewProcessing,
     retryFailedReviews,
     retryAllFailedReviews,
+    testDuplicates,
+    cleanupDuplicates,
 } from '../services/reviewProcessingService';
 import type {
     ReviewProcessingStats,
     ReviewProcessingJob,
     BatchConfig,
+    DuplicateStats,
 } from '../services/reviewProcessingService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
@@ -49,6 +52,12 @@ export const ReviewProcessing: React.FC = () => {
     const [batchInput, setBatchInput] = useState<number>(5);
     const [batchSaveState, setBatchSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [batchSaveMessage, setBatchSaveMessage] = useState<string | null>(null);
+    
+    // Duplication management state
+    const [duplicateStats, setDuplicateStats] = useState<DuplicateStats | null>(null);
+    const [isTestingDupes, setIsTestingDupes] = useState(false);
+    const [isCleaningDupes, setIsCleaningDupes] = useState(false);
+    const [dupeActionMessage, setDupeActionMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
         const loadData = async (isRefresh = false) => {
@@ -167,6 +176,44 @@ export const ReviewProcessing: React.FC = () => {
         } catch (err) {
             setBatchSaveState('error');
             setBatchSaveMessage(err instanceof Error ? err.message : 'Failed to save batch size.');
+        }
+    };
+
+    const handleTestDuplicates = async () => {
+        try {
+            setIsTestingDupes(true);
+            setDupeActionMessage(null);
+            const res = await testDuplicates();
+            setDuplicateStats(res.duplicates);
+        } catch (err) {
+            console.error('Failed to test for duplicates:', err);
+            setError('Failed to run duplication test. Ensure admin-backend is running.');
+        } finally {
+            setIsTestingDupes(false);
+        }
+    };
+
+    const handleCleanupDuplicates = async () => {
+        const totalRedundant = (duplicateStats?.sources.redundant || 0) + (duplicateStats?.reviews.redundant || 0);
+        if (totalRedundant === 0) return;
+        
+        if (!window.confirm(`Are you sure you want to delete all ${totalRedundant} redundant records? This action cannot be undone.`)) return;
+
+        try {
+            setIsCleaningDupes(true);
+            setDupeActionMessage(null);
+            const res = await cleanupDuplicates();
+            setDupeActionMessage({ 
+                text: `Successfully removed ${res.deleted.reviews} reviews and ${res.deleted.sources} sources.`, 
+                type: 'success' 
+            });
+            setDuplicateStats(null);
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to cleanup duplicates:', err);
+            setDupeActionMessage({ text: 'Failed to perform duplication cleanup.', type: 'error' });
+        } finally {
+            setIsCleaningDupes(false);
         }
     };
 
@@ -366,6 +413,77 @@ export const ReviewProcessing: React.FC = () => {
                                 {batchSaveMessage}
                             </p>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Duplication Management */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+                <div className="flex items-start justify-between mb-5">
+                    <div>
+                        <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Copy size={18} className="text-purple-600" />
+                            Duplication Management
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
+                            Identify and remove redundant source configurations and identical reviews across the system.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-2">
+                        {duplicateStats ? (
+                            <div className="flex flex-wrap gap-4">
+                                <div className="flex-1 min-w-[200px] p-4 rounded-lg bg-gray-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold tracking-wider mb-1">Duplicated Sources</div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-gray-900 dark:text-white">{duplicateStats.sources.redundant}</span>
+                                        <span className="text-xs text-gray-400">across {duplicateStats.sources.groups} groups</span>
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-w-[200px] p-4 rounded-lg bg-gray-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold tracking-wider mb-1">Duplicated Reviews</div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-gray-900 dark:text-white">{duplicateStats.reviews.redundant}</span>
+                                        <span className="text-xs text-gray-400">across {duplicateStats.reviews.groups} groups</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-lg border border-dashed border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400">
+                                <AlertTriangle size={18} />
+                                <span className="text-sm">Run a test to check for data redundancy in the system.</span>
+                            </div>
+                        )}
+                        
+                        {dupeActionMessage && (
+                            <div className={`mt-3 p-3 rounded-lg text-sm flex items-center gap-2 ${
+                                dupeActionMessage.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                            }`}>
+                                {dupeActionMessage.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                                {dupeActionMessage.text}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
+                        <button
+                            onClick={handleTestDuplicates}
+                            disabled={isTestingDupes || isCleaningDupes}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        >
+                            <RefreshCw size={16} className={isTestingDupes ? 'animate-spin' : ''} />
+                            {isTestingDupes ? 'Testing...' : 'Run Duplication Test'}
+                        </button>
+                        <button
+                            onClick={handleCleanupDuplicates}
+                            disabled={isCleaningDupes || isTestingDupes || !duplicateStats || (duplicateStats.sources.redundant + duplicateStats.reviews.redundant === 0)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                        >
+                            <Trash2 size={16} className={isCleaningDupes ? 'animate-spin' : ''} />
+                            {isCleaningDupes ? 'Cleaning...' : 'Cleanup Duplicates'}
+                        </button>
                     </div>
                 </div>
             </div>
