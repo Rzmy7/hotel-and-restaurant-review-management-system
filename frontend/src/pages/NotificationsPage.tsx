@@ -4,6 +4,8 @@ import NotificationsTemplate from '../components/notifications/templates/Notific
 import type { Notification } from '../components/notifications/templates/NotificationsTemplate';
 import { notificationsService } from '../services/notificationsService';
 
+
+// maps backend type → frontend UI type
 const mapNotificationType = (type: string): Notification['type'] => {
     switch (type) {
         case 'success':
@@ -20,12 +22,17 @@ const mapNotificationType = (type: string): Notification['type'] => {
     }
 };
 
+
+// convert raw data into human readable date and time
 const getDateLabel = (value: string | null): string => {
     if (!value) return 'Unknown';
+
+    // Convert string → Date object
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return 'Unknown';
 
-    const now = new Date();
+    // gets today date without time
+    const now = new Date();   
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const target = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     const diffDays = Math.floor((today.getTime() - target.getTime()) / 86400000);
@@ -54,13 +61,17 @@ const getTimeLabel = (value: string | null): string => {
 const NotificationsPage: React.FC = () => {
     const location = useLocation();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    //Controls: announcement,alert, system
     const [activePrimaryFilter, setActivePrimaryFilter] = useState<'all' | 'unread'>('all');
     const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'system'>('all-types');
 
+
     const loadNotifications = useCallback(async () => {
         try {
+            // Fetch max 100 notifications from backend
             const result = await notificationsService.getNotifications(100);
             setNotifications(
+                // Convert backend format → frontend format
                 (result.notifications || []).map((item) => ({
                     id: item.notification_id,
                     type: mapNotificationType(item.notification_type),
@@ -96,9 +107,11 @@ const NotificationsPage: React.FC = () => {
         }
     }, [location.search]);
 
+
+    // Auto Fetch Notifications
     React.useEffect(() => {
         loadNotifications();
-        const intervalId = window.setInterval(loadNotifications, 30000);
+        const intervalId = window.setInterval(loadNotifications, 30000);   // Auto refresh every 30s
         return () => window.clearInterval(intervalId);
     }, [loadNotifications]);
 
@@ -132,6 +145,8 @@ const NotificationsPage: React.FC = () => {
 
     const isFiltered = activePrimaryFilter !== 'all' || activeCategoryFilter !== 'all-types';
 
+    // primaryLabel= read state (all / unread)
+    // categoryLabel= types based filter
     const activeFilterLabel = useMemo(() => {
         const primaryLabel = activePrimaryFilter === 'all' ? 'all' : 'unread';
         const categoryLabel = activeCategoryFilter === 'all-types'

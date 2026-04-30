@@ -22,8 +22,8 @@ export interface SubscriptionSettings {
     billingEmail: string;
 }
 
-export interface HotelInfoSettings {
-    hotelName: string;
+export interface OrganizationProfileSettings {
+    organizationName: string;
     websiteUrl: string;
     propertyType: string;
     primaryEmail: string;
@@ -37,5 +37,5 @@ export interface SettingsData {
     notifications: NotificationSettings;
     security: SecuritySettings;
     subscription: SubscriptionSettings;
-    hotelInfo: HotelInfoSettings;
+    organizationProfile: OrganizationProfileSettings;
 }
