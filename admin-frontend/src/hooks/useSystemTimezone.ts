@@ -12,12 +12,12 @@ export const useSystemTimezone = (): string => {
     useEffect(() => {
         const onTimezoneUpdated: EventListener = (event) => {
             const customEvent = event as CustomEvent<string>;
-            setTimezone((customEvent.detail || 'UTC').trim() || 'UTC');
+            setTimezone((customEvent.detail || Intl.DateTimeFormat().resolvedOptions().timeZone).trim() || Intl.DateTimeFormat().resolvedOptions().timeZone);
         };
 
         const onStorageUpdated = (event: StorageEvent) => {
             if (event.key === SYSTEM_TIMEZONE_STORAGE_KEY) {
-                setTimezone((event.newValue || 'UTC').trim() || 'UTC');
+                setTimezone((event.newValue || Intl.DateTimeFormat().resolvedOptions().timeZone).trim() || Intl.DateTimeFormat().resolvedOptions().timeZone);
             }
         };
 

@@ -52,7 +52,7 @@ export interface AdminPasswordChangeResponse {
 }
 
 export const getStoredSystemTimezone = (): string => {
-    return localStorage.getItem(SYSTEM_TIMEZONE_STORAGE_KEY) || 'UTC';
+    return localStorage.getItem(SYSTEM_TIMEZONE_STORAGE_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
 };
 
 export const emitSystemTimezoneUpdated = (timezone: string): void => {
