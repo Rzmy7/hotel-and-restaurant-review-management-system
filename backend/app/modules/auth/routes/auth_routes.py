@@ -192,6 +192,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         token_hash = token_sha256(raw_token)
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
+
         db.execute(
             text("""
                 UPDATE dbo.password_reset_token
