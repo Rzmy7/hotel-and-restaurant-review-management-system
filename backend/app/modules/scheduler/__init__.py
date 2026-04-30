@@ -1,3 +1,12 @@
+import logging
+import pyodbc
+from app.core.pyodbc_connection import get_connection_string
+from app.modules.admin.services.system_settings_service import (
+    get_setting_int, 
+    ensure_system_settings_table,
+    DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES,
+    DEFAULT_DEDUPLICATION_INTERVAL_MINUTES
+)
 from app.modules.scheduler.services.scheduler_service import scheduler, start_scheduler, stop_scheduler
 from app.modules.scheduler.tasks.sync_tasks import process_pending_syncs
 from app.modules.scheduler.tasks.broadcasting_tasks import process_pending_broadcasts
@@ -8,7 +17,28 @@ from app.modules.scheduler.tasks.resume_tasks import auto_resume_sources
 def setup_scheduler():
     """
     Register all recurring jobs onto the APScheduler instance.
+    Intervals are loaded from the system_settings table.
     """
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            ensure_system_settings_table(cursor)
+            
+            review_interval = get_setting_int(
+                cursor, 
+                "scheduler_review_processing_interval_minutes", 
+                default=DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES
+            )
+            dedup_interval = get_setting_int(
+                cursor, 
+                "scheduler_deduplication_interval_minutes", 
+                default=DEFAULT_DEDUPLICATION_INTERVAL_MINUTES
+            )
+    except Exception as e:
+        logging.error(f"Scheduler: Failed to load intervals from DB: {e}. Using defaults.")
+        review_interval = DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES
+        dedup_interval = DEFAULT_DEDUPLICATION_INTERVAL_MINUTES
+
     scheduler.add_job(
         process_pending_syncs, 
         'interval', 
@@ -39,7 +69,7 @@ def setup_scheduler():
     scheduler.add_job(
         process_pending_reviews,
         'interval',
-        minutes=1,
+        minutes=review_interval,
         id='process_reviews_job',
         replace_existing=True,
         misfire_grace_time=30,
@@ -58,7 +88,7 @@ def setup_scheduler():
     scheduler.add_job(
         deduplicate_reviews_task,
         'interval',
-        minutes=60,
+        minutes=dedup_interval,
         id='deduplicate_reviews_job',
         replace_existing=True,
         misfire_grace_time=60,

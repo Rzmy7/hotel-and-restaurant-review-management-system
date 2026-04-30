@@ -26,6 +26,8 @@ from app.modules.admin.schemas import (
     ReplyGenerationSettingsResponse,
     SecuritySettingsPayload,
     SecuritySettingsResponse,
+    SchedulerSettingsPayload,
+    SchedulerSettingsResponse,
 )
 from app.modules.admin.services.system_settings_service import (
     DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
@@ -37,6 +39,8 @@ from app.modules.admin.services.system_settings_service import (
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
     DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
     DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
+    DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES,
+    DEFAULT_DEDUPLICATION_INTERVAL_MINUTES,
     ensure_system_settings_table,
     get_setting_bool,
     get_setting_int,
@@ -45,6 +49,7 @@ from app.modules.admin.services.system_settings_service import (
     is_valid_timezone,
     set_setting,
 )
+from app.modules.scheduler.services.scheduler_service import reschedule_job_interval
 
 router = APIRouter(prefix="/settings", tags=["Admin Settings"])
 
@@ -607,3 +612,60 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
         raise HTTPException(status_code=500, detail=f"Unable to update feature flag: {exc}") from exc
 
     raise HTTPException(status_code=500, detail="Feature flag update failed")
+
+
+@router.get("/scheduler", response_model=SchedulerSettingsResponse)
+def get_scheduler_settings() -> SchedulerSettingsResponse:
+    """Return the current background job intervals."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            review_interval = get_setting_int(
+                cursor,
+                "scheduler_review_processing_interval_minutes",
+                default=DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES,
+            )
+            dedup_interval = get_setting_int(
+                cursor,
+                "scheduler_deduplication_interval_minutes",
+                default=DEFAULT_DEDUPLICATION_INTERVAL_MINUTES,
+            )
+
+            return SchedulerSettingsResponse(
+                reviewProcessingIntervalMinutes=review_interval,
+                deduplicationIntervalMinutes=dedup_interval,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load scheduler settings: {exc}") from exc
+
+
+@router.patch("/scheduler", response_model=SchedulerSettingsResponse)
+def update_scheduler_settings(payload: SchedulerSettingsPayload) -> SchedulerSettingsResponse:
+    """Update background job intervals and reschedule active jobs."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            set_setting(cursor, "scheduler_review_processing_interval_minutes", str(payload.reviewProcessingIntervalMinutes))
+            set_setting(cursor, "scheduler_deduplication_interval_minutes", str(payload.deduplicationIntervalMinutes))
+            connection.commit()
+
+            # Reschedule live jobs
+            reschedule_job_interval("process_reviews_job", payload.reviewProcessingIntervalMinutes)
+            reschedule_job_interval("deduplicate_reviews_job", payload.deduplicationIntervalMinutes)
+
+            log_admin_activity(
+                "settings_updated",
+                "Scheduler Intervals Updated",
+                f"Review Processing: {payload.reviewProcessingIntervalMinutes}m, Deduplication: {payload.deduplicationIntervalMinutes}m",
+            )
+
+            return SchedulerSettingsResponse(
+                reviewProcessingIntervalMinutes=payload.reviewProcessingIntervalMinutes,
+                deduplicationIntervalMinutes=payload.deduplicationIntervalMinutes,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update scheduler settings: {exc}") from exc

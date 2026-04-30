@@ -117,4 +117,17 @@ export const settingsService = {
     async updateSecuritySettings(payload: SecuritySettings): Promise<SecuritySettings> {
         return apiClient.patch<SecuritySettings>('/admin/settings/security', payload);
     },
+
+    async getSchedulerSettings(): Promise<SchedulerSettings> {
+        return apiClient.get<SchedulerSettings>('/admin/settings/scheduler');
+    },
+
+    async updateSchedulerSettings(payload: SchedulerSettings): Promise<SchedulerSettings> {
+        return apiClient.patch<SchedulerSettings>('/admin/settings/scheduler', payload);
+    },
 };
+
+export interface SchedulerSettings {
+    reviewProcessingIntervalMinutes: number;
+    deduplicationIntervalMinutes: number;
+}

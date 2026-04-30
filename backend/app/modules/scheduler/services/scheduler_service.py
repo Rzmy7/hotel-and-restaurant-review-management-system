@@ -47,3 +47,21 @@ def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown()
         logger.info("APScheduler shut down successfully.")
+
+
+def reschedule_job_interval(job_id: str, minutes: int):
+    """
+    Update the interval for a specific job.
+    Effectively reschedules the job without stopping the scheduler.
+    """
+    try:
+        if scheduler.get_job(job_id):
+            scheduler.reschedule_job(job_id, trigger='interval', minutes=minutes)
+            logger.info(f"APScheduler: Job '{job_id}' rescheduled to run every {minutes} minutes.")
+            return True
+        else:
+            logger.warning(f"APScheduler: Job '{job_id}' not found. Cannot reschedule.")
+            return False
+    except Exception as e:
+        logger.error(f"APScheduler: Error rescheduling job '{job_id}': {e}")
+        return False
