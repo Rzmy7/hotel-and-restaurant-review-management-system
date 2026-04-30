@@ -2,7 +2,7 @@ from app.modules.scheduler.services.scheduler_service import scheduler, start_sc
 from app.modules.scheduler.tasks.sync_tasks import process_pending_syncs
 from app.modules.scheduler.tasks.broadcasting_tasks import process_pending_broadcasts
 from app.modules.scheduler.tasks.reconciliation_tasks import reconcile_scraper_jobs
-from app.modules.reviews.tasks import process_pending_reviews
+from app.modules.reviews.tasks import process_pending_reviews, deduplicate_reviews_task
 from app.modules.scheduler.tasks.resume_tasks import auto_resume_sources
 
 def setup_scheduler():
@@ -53,4 +53,15 @@ def setup_scheduler():
         minutes=30,
         id='auto_resume_sources_job',
         replace_existing=True
+    )
+
+    scheduler.add_job(
+        deduplicate_reviews_task,
+        'interval',
+        minutes=60,
+        id='deduplicate_reviews_job',
+        replace_existing=True,
+        misfire_grace_time=60,
+        coalesce=True,
+        jitter=60
     )
