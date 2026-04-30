@@ -60,7 +60,7 @@ export const emitSystemTimezoneUpdated = (timezone: string): void => {
 };
 
 export const applySystemTimezone = (timezone: string): void => {
-    const normalized = timezone.trim() || 'UTC';
+    const normalized = (timezone || '').trim() || Intl.DateTimeFormat().resolvedOptions().timeZone;
     localStorage.setItem(SYSTEM_TIMEZONE_STORAGE_KEY, normalized);
     emitSystemTimezoneUpdated(normalized);
 };
