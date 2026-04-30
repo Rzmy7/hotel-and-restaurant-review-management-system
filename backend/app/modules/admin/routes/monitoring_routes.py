@@ -517,6 +517,8 @@ def review_processing_jobs() -> list[dict]:
                     try:
                         dt = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
                         start_time = dt.isoformat()
+                        if dt.tzinfo is None:
+                            start_time += "Z"
                     except Exception:
                         start_time = str(earliest)[:16]
 
