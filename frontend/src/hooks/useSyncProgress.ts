@@ -10,6 +10,7 @@ interface SyncProgressData {
 }
 
 import { useQueryClient } from '@tanstack/react-query';
+import { getApiBaseUrl } from '../config/api';
 
 export const useSyncProgress = (sourceId: string | number | null, isActive: boolean) => {
     const [progress, setProgress] = useState<SyncProgressData | null>(null);
@@ -20,13 +21,10 @@ export const useSyncProgress = (sourceId: string | number | null, isActive: bool
     const connect = useCallback(() => {
         if (!sourceId || !isActive) return;
 
-        // Construct WebSocket URL
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname;
-        // Backend runs on 8000, but if we are on a different port (e.g. production) 
-        // we might need to handle it. For dev, 8000 is standard.
-        const port = window.location.port === '5173' || window.location.port === '5174' ? '8000' : window.location.port; 
-        const wsUrl = `${protocol}//${host}${port ? `:${port}` : ''}/api/source/${sourceId}/progress`;
+        // Construct WebSocket URL using the configured API base URL
+        const baseUrl = getApiBaseUrl();
+        const wsBaseUrl = baseUrl.replace(/^http/, 'ws');
+        const wsUrl = `${wsBaseUrl}/api/source/${sourceId}/progress`;
 
         console.log(`Connecting to sync progress: ${wsUrl}`);
         
