@@ -69,8 +69,8 @@ def upsert_organization(
                 INNER JOIN dbo.features f
                     ON f.feature_id = pf.feature_id
                 WHERE t.tenant_id = :tenant_id
-                  AND f.feature_key = 'organizations'
-                  AND pf.is_enabled = 1
+                AND f.feature_key = 'organizations'
+                AND pf.is_enabled = 1
                 """
             ),
             {"tenant_id": tenant_id},

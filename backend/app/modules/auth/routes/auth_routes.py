@@ -216,6 +216,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         )
         db.commit()
 
+        # generate the reset link 
         reset_link = f"{FRONTEND_URL}/reset-password/{raw_token}"
         try:
             send_reset_email(user.email, reset_link)

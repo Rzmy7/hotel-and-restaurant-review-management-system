@@ -1,3 +1,5 @@
+// Manage all settings-related logic (fetching, updating, uploading, etc.) in one place.
+
 import { useState, useEffect, useCallback } from 'react';
 import { settingsService } from '../services/settingsService';
 import type { SettingsData } from '../types/settings';
@@ -5,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import type { PasswordChangePayload } from '../api/settingsApi';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 
+// State Management
 export const useSettings = () => {
     const [data, setData] = useState<SettingsData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
