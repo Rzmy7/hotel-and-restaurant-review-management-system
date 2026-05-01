@@ -47,23 +47,53 @@ def _to_int(value: Any, default: int = 0) -> int:
         return default
 
 
-def _fetch_embedding_context(
-    review_text: str, source_id: str, top_k: int
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _extract_token_usage(value: Any) -> int:
+    if value is None:
+        return 0
+
+    if isinstance(value, dict):
+        total = value.get("total_token_count") or value.get("total_tokens")
+        if total is not None:
+            return _to_int(total, default=0)
+
+        prompt = value.get("prompt_token_count") or value.get("input_tokens") or 0
+        completion = value.get("candidates_token_count") or value.get("output_tokens") or 0
+        return _to_int(prompt, default=0) + _to_int(completion, default=0)
+
+    total_attr = getattr(value, "total_token_count", None)
+    if total_attr is not None:
+        return _to_int(total_attr, default=0)
+
+    prompt_attr = getattr(value, "prompt_token_count", None)
+    completion_attr = getattr(value, "candidates_token_count", None)
+    if prompt_attr is not None or completion_attr is not None:
+        return _to_int(prompt_attr, default=0) + _to_int(completion_attr, default=0)
+
+    return 0
+
+
+def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    import logging
+    _logger = logging.getLogger(__name__)
+    _api_key = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
     try:
+        # Uppercase source_id to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
-            json={"query": review_text, "source_ids": [source_id], "top_k": top_k},
+            json={"query": review_text, "source_ids": [source_id.upper()], "top_k": top_k},
+            headers={"X-Internal-API-Key": _api_key},
             timeout=12,
         )
         response.raise_for_status()
         payload = response.json()
         reviews = payload.get("reviews") if isinstance(payload, dict) else []
         rules = payload.get("rules") if isinstance(payload, dict) else []
-        return (reviews if isinstance(reviews, list) else [])[:top_k], (
-            rules if isinstance(rules, list) else []
-        )
-    except Exception:
+
+        safe_reviews = reviews if isinstance(reviews, list) else []
+        safe_rules = rules if isinstance(rules, list) else []
+        return safe_reviews[:top_k], safe_rules
+    except Exception as e:
+        _logger.error(f"Embedding context fetch failed for source_id={source_id}: {e}")
         return [], []
 
 

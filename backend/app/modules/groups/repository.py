@@ -167,6 +167,7 @@ def list_org_groups(db: Session, organization_id: str) -> List[dict]:
                 g.group_id,
                 g.group_name,
                 g.description,
+                g.avatar_url,
                 g.is_private,
                 g.settings,
 
@@ -190,6 +191,7 @@ def list_org_groups(db: Session, organization_id: str) -> List[dict]:
                 "group_id": str(r.group_id),
                 "group_name": r.group_name,
                 "description": r.description,
+                "avatar_url": r.avatar_url,
                 "is_private": bool(r.is_private),
                 "settings": settings.model_dump(),
                 "created_by": str(r.created_by),
@@ -332,7 +334,7 @@ def create_org_invite(
     message: Optional[str] = None,
     expires_days: int = 7,
 ) -> GroupInvite:
-    expires_at = datetime.utcnow() + timedelta(days=expires_days)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
     invite = GroupInvite(
         invite_id=uuid.uuid4(),
         group_id=group_id,

@@ -20,6 +20,8 @@ class ReviewsService {
             sentiment: params.sentiment?.length ? params.sentiment : undefined,
             source: params.source?.length ? params.source : undefined,
             category: params.category?.length ? params.category : undefined,
+            status: params.status?.length ? params.status : undefined,
+            ai_reply: params.hasAiReply || undefined,
             dateFrom: params.dateFrom || undefined,
             dateTo: params.dateTo || undefined,
         });
@@ -69,6 +71,8 @@ class ReviewsService {
             sentiment: params.sentiment?.length ? params.sentiment : undefined,
             source: params.source?.length ? params.source : undefined,
             category: params.category?.length ? params.category : undefined,
+            status: params.status?.length ? params.status : undefined,
+            ai_reply: params.hasAiReply || undefined,
             dateFrom: params.dateFrom || undefined,
             dateTo: params.dateTo || undefined,
         });

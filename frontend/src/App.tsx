@@ -158,7 +158,9 @@ const AppContent: React.FC = () => {
           setMaintenanceMode(!!result.maintenanceMode);
         }
       } catch (error) {
-        console.error('Failed to load maintenance status:', error);
+        if (import.meta.env.DEV) {
+          console.error('Failed to load maintenance status:', error);
+        }
         if (mounted) {
           setMaintenanceMode(false);
         }

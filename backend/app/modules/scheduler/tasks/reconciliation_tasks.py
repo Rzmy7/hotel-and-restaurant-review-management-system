@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 _RECONCILIATION_SCRAPER_URL = _SCRAPER_URL.rstrip("/") + "/"
 
-def reconcile_scraper_jobs():
+import asyncio
+
+async def reconcile_scraper_jobs():
     """
     Checks the backend for 'stuck' tasks (source_status in running/queued) and 
     cross-references against the Scraper Engine's active jobs list.
@@ -18,17 +20,18 @@ def reconcile_scraper_jobs():
     """
     db = SessionLocal()
     try:
-        stuck_sources = get_stuck_sources(db)
+        # Run DB query in thread to avoid blocking loop
+        stuck_sources = await asyncio.to_thread(get_stuck_sources, db)
         if not stuck_sources:
             return
 
         logger.info(f"Reconciliation: Found {len(stuck_sources)} potentially stuck sources. Checking Scraper Engine...")
 
-        # Contact Scraper Engine
+        # Contact Scraper Engine (now async)
         try:
             url = f"{_RECONCILIATION_SCRAPER_URL}api/system/jobs"
-            with httpx.Client(timeout=10.0) as client:
-                resp = client.get(url)
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.RequestError as e:
@@ -39,14 +42,15 @@ def reconcile_scraper_jobs():
             return
 
         active_jobs = data.get("jobs", {})
-        # Note: Scraper Engine returns dictionary of jobs: { job_id: { "source_id": "...", ... } }
         active_source_ids = {str(job.get("source_id")) for job in active_jobs.values() if job.get("source_id")}
 
         failed_count = 0
         for source in stuck_sources:
             if str(source.source_id) not in active_source_ids:
                 logger.info(f"Reconciliation: Source {source.source_id} is marked as running in DB but not active in Scraper Engine. Failing...")
-                update_sync_status(
+                # Run DB update in thread
+                await asyncio.to_thread(
+                    update_sync_status,
                     db,
                     source.source_id,
                     SyncStatusRequest(

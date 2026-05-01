@@ -23,8 +23,9 @@ Task: Analyze a batch of raw guest reviews and transform them into structured, e
 Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, positive_text, negative_text, reviewDate].
 
 Rules:
-1. Output MUST be ONLY a valid JSON array. Do not include markdown (```json) or text.
-2. For each review, provide:
+1. Output MUST be ONLY a valid JSON object in the format: {{"reviews": [review1, review2, ...]}}.
+2. IMPORTANT: All string values must be properly escaped for JSON. Specifically, double quotes inside a string MUST be escaped as \\".
+3. For each review, provide:
    - "sentiment": "Positive", "Neutral", "Negative".
    - "sentiment_score": A float from 1.0 (Very Negative) to 5.0 (Very Positive).
    - "categories": List of 1-3 objects from [Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size]. Each object MUST have "name" (tag) and "score" (a score from 1 to 100).
@@ -38,6 +39,42 @@ Rules:
 Batch Input Data:
 {batch_json}
 """
+
+
+def repair_json(text: str) -> str:
+    """
+    Attempts to repair common LLM JSON errors:
+    1. Truncated arrays (missing closing brackets).
+    2. Trailing commas.
+    3. Unbalanced braces.
+    4. Unclosed strings (if truncated mid-sentence).
+    """
+    text = text.strip()
+    
+    # 1. Handle unclosed strings (heuristic: odd number of non-escaped quotes)
+    # This is a basic check. If the text ends while a string is open, close it.
+    quotes = re.findall(r'(?<!\\)"', text)
+    if len(quotes) % 2 != 0:
+        # If it ends with a backslash, remove it to avoid escaping our new quote
+        if text.endswith('\\'):
+            text = text[:-1]
+        text += '"'
+
+    # 2. Trailing commas before closing brackets/braces
+    text = re.sub(r',\s*([\]}])', r'\1', text)
+    
+    # 3. Balance brackets if truncated (basic approach)
+    open_brackets = text.count('[')
+    close_brackets = text.count(']')
+    if open_brackets > close_brackets:
+        text += ']' * (open_brackets - close_brackets)
+        
+    open_braces = text.count('{')
+    close_braces = text.count('}')
+    if open_braces > close_braces:
+        text += '}' * (open_braces - close_braces)
+        
+    return text
 
 
 def is_retryable_exception(e: Exception) -> bool:
@@ -66,16 +103,56 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     batch_json = json.dumps(reviews, ensure_ascii=False)
 
     try:
+        # Use .replace instead of .format to avoid KeyError with braces in review text
+        prompt = SYSTEM_PROMPT.replace("{batch_json}", batch_json)
+        
         text = gateway_call(
             "review_processing",
-            SYSTEM_PROMPT.format(batch_json=batch_json),
+            prompt,
+            json_mode=False, # Disabled: provider expects 'json_schema' which we haven't implemented yet
         )
+        
+        # Clean up response
+        text = text.strip()
+        # Remove markdown blocks
         text = re.sub(r'^```(?:json)?\s*', '', text)
         text = re.sub(r'\s*```$', '', text)
+        
+        # Attempt to find the first { and last } to isolate the object
+        # We still ask for the object structure in the prompt as it's more stable
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
+        if start_idx == -1:
+            # Fallback to array if it didn't follow the "object" rule
+            start_idx = text.find('[')
+            end_idx = text.rfind(']')
+            
+        if start_idx != -1 and end_idx != -1:
+            text = text[start_idx:end_idx+1]
 
-        results = json.loads(text)
+        try:
+            results = json.loads(text)
+        except json.JSONDecodeError as jde:
+            logger.warning(f"Initial JSON parse failed, attempting repair: {jde.msg}")
+            repaired_text = repair_json(text)
+            try:
+                results = json.loads(repaired_text)
+            except json.JSONDecodeError:
+                # Still failing, log context and raise
+                logger.error(f"JSON repair failed. Snippet: {text[:200]}...{text[-200:]}")
+                raise
+
+        # If it's a dict with "reviews" key, extract it (JSON Mode standard)
+        if isinstance(results, dict) and "reviews" in results:
+            results = results["reviews"]
+
         if not isinstance(results, list):
-            raise ValueError("LLM returned non-list output.")
+            # Fallback: if it's a dict but NOT with "reviews" key, maybe it's a single review or weird format
+            if isinstance(results, dict):
+                 results = [results]
+            else:
+                raise ValueError("LLM returned non-list/non-dict output.")
+        
         return results
 
     except Exception as e:

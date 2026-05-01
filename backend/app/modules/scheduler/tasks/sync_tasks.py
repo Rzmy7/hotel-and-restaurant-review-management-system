@@ -1,12 +1,13 @@
 import logging
 import httpx
 import os
+from typing import Optional, Dict
 from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
-from app.modules.source.services.source_service import update_sync_status
+from app.modules.source.services.source_service import update_sync_status, log_activity
 from app.core.config import SCRAPER_ENGINE_URL
 
 logger = logging.getLogger(__name__)
@@ -14,10 +15,10 @@ logger = logging.getLogger(__name__)
 # Scraper microservice URL from centralized config
 SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
-def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
+async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> Optional[str]:
     """
     Trigger the scraper microservice for a specific platform.
-    Mapping logic handles typical names like 'Google Reviews' -> 'google'.
+    Returns the job_id if successful, None otherwise.
     """
     platform_key = platform_name.lower().replace(" reviews", "").replace(".com", "")
     
@@ -32,17 +33,28 @@ def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> boo
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
     
     try:
-        with httpx.Client() as client:
-            response = client.post(endpoint, json=payload, timeout=20.0)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, json=payload, timeout=20.0)
             response.raise_for_status()
-            logger.info(f"Scrape triggered successfully: {response.json()}")
-            return True
+            data = response.json()
+            job_id = data.get("job_id")
+            logger.info(f"Scrape triggered successfully: {data}")
+            
+            # Register job with sync_socket_manager so progress can be tracked
+            if job_id:
+                try:
+                    from app.modules.source.services.sync_socket_manager import sync_socket_manager
+                    sync_socket_manager.register_job(str(source_id), job_id)
+                except Exception as reg_err:
+                    logger.warning(f"Failed to register job for sync progress: {reg_err}")
+                    
+            return job_id or "triggered" # Fallback if no job_id but success
     except httpx.HTTPError as e:
          logger.error(f"HTTP error triggering scraper for {platform_name}: {e}")
-         return False
+         return None
     except Exception as e:
          logger.error(f"Unexpected error triggering scraper: {e}")
-         return False
+         return None
 
 
 def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
@@ -73,7 +85,9 @@ def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
         return True  # Fail-open
 
 
-def process_pending_syncs():
+import asyncio
+
+async def process_pending_syncs():
     """
     Scheduled task to find pending sources and trigger their sync.
     Runs every minute.
@@ -81,6 +95,9 @@ def process_pending_syncs():
     logger.info("Running scheduled sync check...")
     
     try:
+        # DB operations are synchronous, but since this is a background task,
+        # we can run the query in the main thread if it's fast, 
+        # or use to_thread if we want to be strictly non-blocking.
         db = SessionLocal()
     except Exception as e:
         logger.error(f"Database unavailable for sync check: {e}")
@@ -124,19 +141,49 @@ def process_pending_syncs():
 
             if tenant_id:
                 if tenant_id not in tenant_allowed_cache:
-                    tenant_allowed_cache[tenant_id] = _check_scraping_frequency_for_tenant(tenant_id)
+                    # Run DB-heavy check in thread to avoid blocking loop
+                    tenant_allowed_cache[tenant_id] = await asyncio.to_thread(
+                        _check_scraping_frequency_for_tenant, tenant_id
+                    )
 
                 if not tenant_allowed_cache[tenant_id]:
-                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached.")
+                    logger.info(f"Skipping source {source.source_id} — tenant {tenant_id} weekly scrape limit reached. Auto-pausing source.")
+                    # Auto-pause the source since limit is reached
+                    if source.source_status != 'paused':
+                        source.source_status = 'paused'
+                        db.commit()
+                        
+                        # Log the activity
+                        log_activity(
+                            db, 
+                            source.source_id, 
+                            activity_type="SOURCE_AUTO_PAUSED", 
+                            status="Success",
+                            activity_details="Source auto-paused due to reaching the weekly scraping frequency limit.",
+                            is_important=True
+                        )
                     continue
 
-            # Trigger the microservice
-            trigger_platform_scrape(
+            # Trigger the microservice (now awaited)
+            job_id = await trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
                 url=source.source_url,
                 source_id=source.source_id
             )
-            # Timestamps will be updated via callback to /source/tasks/{source_id}/sync-complete
+
+            if job_id:
+                # Update status to queued to prevent redundant triggers before scraper callback arrives
+                source.source_status = 'queued'
+                db.commit()
+                
+                log_activity(
+                    db,
+                    source.source_id,
+                    activity_type="SYNC_QUEUED",
+                    status="In Progress",
+                    activity_details=f"Scheduled synchronization initiated for {source.platform.platform_name}."
+                )
+            # Timestamps will be updated via callback to /api/source/{source_id}/sync-status
                 
     except Exception as e:
         # Avoid massive tracebacks on timeout by just logging the error string

@@ -71,8 +71,8 @@ def get_negative_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[
     cursor.execute(sql, params)
     return cursor.fetchone()[0] or 0
 
-def get_active_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Optional[datetime] = None) -> int:
-    sql = "SELECT COUNT(*) FROM dbo.source WHERE organization_id = ? AND (source_status IS NULL OR LOWER(source_status) = 'active')"
+def get_all_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Optional[datetime] = None) -> int:
+    sql = "SELECT COUNT(*) FROM dbo.source WHERE organization_id = ?"
     params = [org_id]
     
     if as_of_date:
@@ -182,7 +182,7 @@ def get_dashboard_metrics(org_id: str, period: int = 0, cursor: Optional[pyodbc.
             # All-time: no date filtering, no trend comparison
             avg_val = get_avg_rating(cursor, org_id)
             reviews_val = get_review_count(cursor, org_id)
-            sources_val = get_active_sources_count(cursor, org_id)
+            sources_val = get_all_sources_count(cursor, org_id)
             neg_val = get_negative_count(cursor, org_id)
             avg_trend = {"value": "—", "type": "neutral"}
             review_trend = {"value": "—", "type": "neutral"}
@@ -204,9 +204,9 @@ def get_dashboard_metrics(org_id: str, period: int = 0, cursor: Optional[pyodbc.
             prev_reviews = get_review_count(cursor, org_id, start_date=prev_start, end_date=prev_end)
             review_trend = _calculate_trend(reviews_val, prev_reviews, is_percentage=True)
 
-            # 3. activeSources
-            sources_val = get_active_sources_count(cursor, org_id)
-            prev_sources = get_active_sources_count(cursor, org_id, as_of_date=prev_end)
+            # 3. activeSources (now representing All Sources but keeping key for compatibility)
+            sources_val = get_all_sources_count(cursor, org_id)
+            prev_sources = get_all_sources_count(cursor, org_id, as_of_date=prev_end)
             source_trend = _calculate_trend(sources_val, prev_sources)
 
             # 4. negativeReviews

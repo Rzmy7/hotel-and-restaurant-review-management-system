@@ -26,11 +26,11 @@ export interface ReviewProcessingJob {
     totalReviews: number | null;
 }
 
-export interface GeminiApiKeyConfig {
-    apiKey: string;
-    isConfigured: boolean;
-    lastTestedAt: string | null;
-    lastTestResult: 'success' | 'error' | null;
+export interface BatchConfig {
+    batch_size: number;
+    min: number;
+    max: number;
+    default: number;
 }
 
 export const fetchReviewProcessingStats = (): Promise<ReviewProcessingStats> => {
@@ -45,20 +45,22 @@ export const fetchReviewProcessingJobs = (): Promise<ReviewProcessingJob[]> => {
     return apiClient.get<ReviewProcessingJob[]>('/admin/monitoring/review-processing/jobs');
 };
 
-export const getGeminiApiKeyConfig = (): Promise<GeminiApiKeyConfig> => {
-    return apiClient.get<GeminiApiKeyConfig>('/admin/monitoring/review-processing/gemini-config');
+export const getBatchConfig = (): Promise<BatchConfig> => {
+    return apiClient.get<BatchConfig>('/admin/monitoring/review-processing/batch-config');
 };
 
-export const saveGeminiApiKey = (apiKey: string): Promise<{ status: string; message: string }> => {
-    return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/gemini-config', { apiKey });
-};
-
-export const testGeminiApiKey = (apiKey: string): Promise<{ success: boolean; message: string }> => {
-    return apiClient.post<{ success: boolean; message: string }>('/admin/monitoring/review-processing/gemini-config/test', { apiKey });
+export const updateBatchConfig = (batchSize: number): Promise<BatchConfig> => {
+    return apiClient.patch<BatchConfig>('/admin/monitoring/review-processing/batch-config', { batch_size: batchSize });
 };
 
 export const retryFailedReviews = (sourceId: string): Promise<{ status: string; message: string; count: number }> => {
     return apiClient.post<{ status: string; message: string; count: number }>(
         `/admin/monitoring/review-processing/retry/${sourceId}`
+    );
+};
+
+export const retryAllFailedReviews = (): Promise<{ status: string; message: string; count: number }> => {
+    return apiClient.post<{ status: string; message: string; count: number }>(
+        '/admin/monitoring/review-processing/retry-all'
     );
 };

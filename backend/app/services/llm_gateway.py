@@ -45,6 +45,7 @@ def _ensure_table(cursor) -> None:
                 endpoint    NVARCHAR(500)    NOT NULL,
                 model_name  NVARCHAR(200)    NOT NULL,
                 api_key_enc NVARCHAR(MAX)    NOT NULL,
+                max_tokens  INT              NOT NULL DEFAULT 4096,
                 is_active   BIT              NOT NULL DEFAULT 1,
                 created_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME(),
                 updated_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME()
@@ -59,7 +60,7 @@ def load_model_by_id(model_id: str) -> dict:
         cursor = conn.cursor()
         _ensure_table(cursor)
         row = cursor.execute(
-            "SELECT id, name, endpoint, model_name, api_key_enc "
+            "SELECT id, name, endpoint, model_name, api_key_enc, max_tokens "
             "FROM dbo.llm_model WHERE id = ? AND is_active = 1",
             (model_id,),
         ).fetchone()
@@ -71,6 +72,7 @@ def load_model_by_id(model_id: str) -> dict:
         "endpoint":   row[2],
         "model_name": row[3],
         "api_key":    decrypt_value(row[4]),
+        "max_tokens": row[5],
     }
 
 
@@ -103,6 +105,8 @@ def call(
     api_key: str | None = None,
     endpoint: str | None = None,
     model_name: str | None = None,
+    max_tokens: int | None = None,
+    json_mode: bool = False,
 ) -> str:
     """
     Call an LLM and return the text response.
@@ -115,19 +119,59 @@ def call(
     if model_id:
         model = load_model_by_id(model_id)
     elif api_key and endpoint and model_name:
-        model = {"api_key": api_key, "endpoint": endpoint, "model_name": model_name}
+        model = {
+            "api_key": api_key,
+            "endpoint": endpoint,
+            "model_name": model_name,
+            "max_tokens": max_tokens or 4096
+        }
     else:
         model = get_assigned_model(purpose)
+        if max_tokens is not None:
+            model["max_tokens"] = max_tokens
 
     messages: list[dict] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    client = OpenAI(api_key=model["api_key"], base_url=model["endpoint"])
-    resp = client.chat.completions.create(
-        model=model["model_name"],
-        messages=messages,
-        max_tokens=8192,
-    )
-    return resp.choices[0].message.content or ""
+    try:
+        client = OpenAI(api_key=model["api_key"], base_url=model["endpoint"])
+        
+        # Build completion args
+        completion_args = {
+            "model": model["model_name"],
+            "messages": messages,
+            "max_tokens": model["max_tokens"],
+        }
+        if json_mode:
+            completion_args["response_format"] = {"type": "json_object"}
+
+        resp = client.chat.completions.create(**completion_args)
+        return resp.choices[0].message.content or ""
+    except Exception as exc:
+        msg = str(exc)
+        
+        # Try to extract the specific message if it's an OpenAI-style JSON error
+        try:
+            import json
+            # OpenAI errors sometimes look like "Error code: 402 - {'error': {...}}"
+            if " - {" in msg:
+                json_part = msg.split(" - ", 1)[1].replace("'", '"')
+                data = json.loads(json_part)
+                if "error" in data and "message" in data["error"]:
+                    msg = data["error"]["message"]
+        except:
+            pass
+
+        # Handle OpenRouter/OpenAI specific credit/token errors
+        lower_msg = msg.lower()
+        if "402" in msg or "insufficient_quota" in lower_msg or "credits" in lower_msg:
+            if "max_tokens" in lower_msg:
+                raise ValueError(f"Provider limit reached: {msg}. Try reducing Max Tokens or checking your credits.")
+            raise ValueError(f"Provider reported insufficient credits/quota: {msg}")
+        
+        if "error code:" in msg.lower():
+             raise ValueError(f"LLM Provider Error: {msg}")
+        
+        raise ValueError(msg)

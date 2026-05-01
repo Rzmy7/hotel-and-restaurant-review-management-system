@@ -12,12 +12,12 @@ import {
   EyeOff,
   ChevronDown,
   Save,
-  ExternalLink,
 } from 'lucide-react';
 import {
   llmModelService,
+} from '../services/llmModelService';
+import type {
   LLMModel,
-  LLMAssignments,
 } from '../services/llmModelService';
 
 // ── helpers ──────────────────────────────────────────────────────────
@@ -37,9 +37,10 @@ interface ModelFormState {
   endpoint: string;
   model_name: string;
   api_key: string;
+  max_tokens: number;
 }
 
-const EMPTY_FORM: ModelFormState = { name: '', endpoint: '', model_name: '', api_key: '' };
+const EMPTY_FORM: ModelFormState = { name: '', endpoint: '', model_name: '', api_key: '', max_tokens: 4096 };
 
 // ── sub-components ────────────────────────────────────────────────────
 
@@ -58,12 +59,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ active }) => (
 
 export const LLMModels: React.FC = () => {
   const [models, setModels] = useState<LLMModel[]>([]);
-  const [assignments, setAssignments] = useState<LLMAssignments>({
-    review_processing_model_id: null,
-    reply_generation_model_id: null,
-    review_processing_model_name: null,
-    reply_generation_model_name: null,
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +68,7 @@ export const LLMModels: React.FC = () => {
   const [form, setForm] = useState<ModelFormState>(EMPTY_FORM);
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // test state (per model)
@@ -97,7 +93,6 @@ export const LLMModels: React.FC = () => {
         llmModelService.getAssignments(),
       ]);
       setModels(modelList);
-      setAssignments(assignData);
       setAssignDraft({
         review_processing: assignData.review_processing_model_id || '',
         reply_generation: assignData.reply_generation_model_id || '',
@@ -121,7 +116,7 @@ export const LLMModels: React.FC = () => {
 
   const openEdit = (m: LLMModel) => {
     setEditingId(m.id);
-    setForm({ name: m.name, endpoint: m.endpoint, model_name: m.model_name, api_key: '' });
+    setForm({ name: m.name, endpoint: m.endpoint, model_name: m.model_name, api_key: '', max_tokens: m.max_tokens });
     setShowKey(false);
     setFormError(null);
     setShowModal(true);
@@ -142,7 +137,7 @@ export const LLMModels: React.FC = () => {
     setFormError(null);
     try {
       if (editingId) {
-        const payload: any = { name: form.name, endpoint: form.endpoint, model_name: form.model_name };
+        const payload: any = { name: form.name, endpoint: form.endpoint, model_name: form.model_name, max_tokens: form.max_tokens };
         if (form.api_key.trim()) payload.api_key = form.api_key.trim();
         await llmModelService.update(editingId, payload);
       } else {
@@ -151,6 +146,7 @@ export const LLMModels: React.FC = () => {
           endpoint: form.endpoint.trim(),
           model_name: form.model_name.trim(),
           api_key: form.api_key.trim(),
+          max_tokens: form.max_tokens,
         });
       }
       closeModal();
@@ -171,6 +167,42 @@ export const LLMModels: React.FC = () => {
       setTestResults(prev => ({ ...prev, [id]: { success: false, message: e.message } }));
     } finally {
       setTestingId(null);
+    }
+  };
+
+  const handleTestConnectivity = async () => {
+    if (!form.endpoint.trim() || !form.model_name.trim()) {
+      setFormError('Endpoint and model name are required for testing.');
+      return;
+    }
+    if (!editingId && !form.api_key.trim()) {
+      setFormError('API key is required for new models.');
+      return;
+    }
+
+    setTesting(true);
+    setFormError(null);
+    try {
+      const payload: any = {
+        endpoint: form.endpoint.trim(),
+        model_name: form.model_name.trim(),
+        max_tokens: form.max_tokens,
+        model_id: editingId || undefined,
+      };
+      if (form.api_key.trim()) {
+        payload.api_key = form.api_key.trim();
+      }
+
+      const res = await llmModelService.testConnectivity(payload);
+      if (res.success) {
+        setAssignMsg('Connectivity test successful!');
+      } else {
+        setFormError(`Test failed: ${res.message}`);
+      }
+    } catch (e: any) {
+      setFormError(e.message || 'Connectivity test failed.');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -256,7 +288,7 @@ export const LLMModels: React.FC = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-slate-700/50">
                 <tr>
-                  {['Name', 'Endpoint', 'Model ID', 'Status', 'Actions'].map(h => (
+                  {['Name', 'Endpoint', 'Model ID', 'Max Tokens', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       {h}
                     </th>
@@ -278,6 +310,9 @@ export const LLMModels: React.FC = () => {
                       <code className="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-xs">
                         {model.model_name}
                       </code>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-gray-600 dark:text-slate-300 font-mono text-xs">{model.max_tokens}</span>
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge active={model.is_active} />
@@ -477,6 +512,21 @@ export const LLMModels: React.FC = () => {
                 </p>
               </div>
 
+              {/* Max Tokens */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Max Tokens</label>
+                <input
+                  type="number"
+                  value={form.max_tokens}
+                  onChange={e => setForm(p => ({ ...p, max_tokens: parseInt(e.target.value) || 0 }))}
+                  placeholder="4096"
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
+                />
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                  The maximum number of tokens allowed in the response.
+                </p>
+              </div>
+
               {formError && (
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
                   <XCircle size={15} className="mt-0.5 shrink-0" />
@@ -486,12 +536,20 @@ export const LLMModels: React.FC = () => {
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleTestConnectivity}
+                  disabled={testing}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {testing ? <Loader2 size={15} className="animate-spin" /> : <FlaskConical size={15} />}
+                  Test Connection
+                </button>
               <button
                 onClick={handleSave}
                 disabled={saving}

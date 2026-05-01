@@ -41,7 +41,7 @@ def create_notification_endpoint(
     return create_user_notification(db, payload)
 
 
-@router.get("/me", response_model=NotificationListResponse)
+@router.get("/me")
 def get_my_notifications(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -49,14 +49,35 @@ def get_my_notifications(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_admin_or_tenant),
 ):
+    """Return notifications in the same shape the frontend expects:
+    { userId, notifications: [{ notification_id, user_id, title, message, ... }] }
+    """
     user_id = _get_current_user_uuid(current_user)
-    return get_user_notifications(
+    from app.modules.auth.repositories.notifications_repo import list_notifications_for_user
+    rows = list_notifications_for_user(
         db=db,
         user_id=user_id,
         limit=limit,
         offset=offset,
         unread_only=unreadOnly,
     )
+    notifications = []
+    for un in rows:
+        n = un.notification
+        notifications.append({
+            "notification_id": str(un.notification_id),
+            "user_id": str(un.user_id),
+            "title": n.title if n else "",
+            "message": n.message if n else "",
+            "notification_type": n.notification_type if n else "info",
+            "is_read": bool(un.is_read),
+            "created_at": n.created_at.isoformat() if n and n.created_at else None,
+            "read_at": un.read_at.isoformat() if un.read_at else None,
+        })
+    return {
+        "userId": str(user_id),
+        "notifications": notifications,
+    }
 
 
 @router.get("/me/unread-count")
@@ -65,10 +86,15 @@ def get_my_unread_count(
     current_user: dict = Depends(require_admin_or_tenant),
 ):
     user_id = _get_current_user_uuid(current_user)
-    return get_unread_count(db, user_id)
+    from app.modules.auth.repositories.notifications_repo import count_unread_notifications
+    count = count_unread_notifications(db, user_id)
+    return {
+        "userId": str(user_id),
+        "count": count,
+    }
 
 
-@router.patch("/{notification_id}/read", response_model=NotificationResponse)
+@router.post("/{notification_id}/read", response_model=NotificationResponse)
 def mark_my_notification_read(
     notification_id: str,
     db: Session = Depends(get_db),
@@ -88,10 +114,58 @@ def mark_my_notification_read(
     return updated
 
 
-@router.patch("/me/read-all", response_model=MarkAllReadResponse)
+@router.post("/read-all", response_model=MarkAllReadResponse)
 def mark_my_notifications_read_all(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_admin_or_tenant),
 ):
     user_id = _get_current_user_uuid(current_user)
     return mark_user_notifications_read_all(db, user_id)
+
+
+@router.delete("/read-all")
+def delete_my_read_notifications(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin_or_tenant),
+):
+    """Delete all read notifications for the current user."""
+    user_id = _get_current_user_uuid(current_user)
+    from app.modules.auth.models import UserNotification
+    deleted = (
+        db.query(UserNotification)
+        .filter(
+            UserNotification.user_id == user_id,
+            UserNotification.is_read == True,
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.commit()
+    return {"success": True, "deleted": deleted, "message": "Read notifications cleared"}
+
+
+@router.delete("/{notification_id}")
+def delete_my_notification(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin_or_tenant),
+):
+    """Delete a specific notification for the current user."""
+    user_id = _get_current_user_uuid(current_user)
+    try:
+        parsed_id = uuid.UUID(notification_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid notification id")
+
+    from app.modules.auth.models import UserNotification
+    deleted = (
+        db.query(UserNotification)
+        .filter(
+            UserNotification.notification_id == parsed_id,
+            UserNotification.user_id == user_id,
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.commit()
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    return {"success": True, "message": "Notification deleted"}

@@ -115,7 +115,32 @@ async def ingest_from_scraper(
                     if review_balance <= 0:
                         from app.modules.admin.services.subscription_service import send_limit_reached_notification
                         send_limit_reached_notification(tenant_id, limit_info["feature_name"])
-                        logger.info(f"Review count limit reached for tenant {tenant_id}. Skipping ingestion.")
+                        logger.info(f"Review count limit reached for tenant {tenant_id}. Skipping ingestion and auto-pausing source {source_id}.")
+                        
+                        # Auto-pause source
+                        try:
+                            from app.database.session import SessionLocal
+                            from app.modules.source.models import Source as SourceSource
+                            from app.modules.source.services.source_service import log_activity
+                            db = SessionLocal()
+                            try:
+                                src = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+                                if src and src.source_status != 'paused':
+                                    src.source_status = 'paused'
+                                    db.commit()
+                                    log_activity(
+                                        db, 
+                                        source_id, 
+                                        activity_type="SOURCE_AUTO_PAUSED", 
+                                        status="Success",
+                                        activity_details="Source auto-paused due to reaching the maximum review count limit.",
+                                        is_important=True
+                                    )
+                            finally:
+                                db.close()
+                        except Exception as p_err:
+                            logger.error(f"Failed to auto-pause source {source_id}: {p_err}")
+
                         return 0
                     elif review_balance < len(reviews_to_process):
                         logger.info(f"Truncating ingestion from {len(reviews_to_process)} to {review_balance} (limit reached).")

@@ -24,7 +24,16 @@ from app.modules.reviews.models import ProcessedReview
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+# Configure logging for production mode
+if os.getenv("PROD_MODE", "false").lower() == "true":
+    logging.basicConfig(level=logging.WARNING)
+    # Suppress uvicorn access logs explicitly if uvicorn is used internally or via CLI
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.WARNING)
+else:
+    logger = logging.getLogger(__name__)
 
 # Canonical database imports — single source of truth
 from app.database.session import Base, engine, get_db
@@ -81,8 +90,8 @@ async def lifespan(app: FastAPI):
         )
         from app.modules.reviews.services.processor import run_analysis_pipeline
 
-        # reconcile_scraper_jobs is sync, run it in a thread pool via to_thread
-        asyncio.create_task(asyncio.to_thread(reconcile_scraper_jobs))
+        # reconcile_scraper_jobs is async, run it directly via create_task
+        asyncio.create_task(reconcile_scraper_jobs())
         # run_analysis_pipeline is async, run it directly via create_task
         asyncio.create_task(run_analysis_pipeline())
 
@@ -179,6 +188,15 @@ app.add_middleware(
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
+# ── Proxy Headers (Production HTTPS support) ──────────────────────
+# When running behind a reverse proxy (Nginx, Cloudflare), this allows
+# FastAPI to recognize HTTPS and use correct protocol in url_for().
+try:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+except ImportError:
+    pass
+
 
 # Global Exception Handler to capture 500 errors and include CORS headers
 @app.exception_handler(Exception)
@@ -189,12 +207,15 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(f"CRITICAL ERROR: {error_details}")
 
     # Write error to a temporary log file for AI to read
-    with open("backend_error.log", "a", encoding="utf-8") as f:
-        f.write(
-            f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
-        )
-        f.write(error_details)
-        f.write("\n" + "=" * 50 + "\n")
+    try:
+        with open("backend_error.log", "a", encoding="utf-8") as f:
+            f.write(
+                f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
+            )
+            f.write(error_details)
+            f.write("\n" + "=" * 50 + "\n")
+    except Exception as log_err:
+        print(f"FAILED TO WRITE TO backend_error.log: {log_err}")
 
     return Response(
         content=json.dumps({"detail": "Internal Server Error", "traceback": str(exc)}),

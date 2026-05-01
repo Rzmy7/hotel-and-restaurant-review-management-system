@@ -5,7 +5,7 @@ import sys
 sys.path.append('.')
 
 from app.core.security import create_access_token
-from app.core.database import SessionLocal
+from app.database.session import SessionLocal
 from app.modules.auth.models import User
 
 db = SessionLocal()

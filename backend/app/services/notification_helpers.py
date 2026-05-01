@@ -7,10 +7,34 @@ the primary operation.
 """
 
 import logging
+import time
 import uuid
 from app.modules.auth.constants.roles import ADMIN_ROLE_ID
 
 logger = logging.getLogger(__name__)
+
+# ── Cooldown deduplication ──────────────────────────────────────────
+# Prevents the same notification from being sent repeatedly within a
+# short time window. Key = (user_id, dedup_key), value = epoch timestamp.
+_sent_cache: dict[tuple[str, str], float] = {}
+_DEFAULT_COOLDOWN_SECONDS = 24 * 60 * 60  # 24 hours
+
+
+def _should_send(user_id: str, dedup_key: str, cooldown_seconds: int = _DEFAULT_COOLDOWN_SECONDS) -> bool:
+    """Return True if this notification hasn't been sent recently."""
+    cache_key = (user_id, dedup_key)
+    now = time.monotonic()
+    last_sent = _sent_cache.get(cache_key)
+    if last_sent is not None and (now - last_sent) < cooldown_seconds:
+        return False
+    _sent_cache[cache_key] = now
+    # Prune old entries periodically (keep cache small)
+    if len(_sent_cache) > 500:
+        cutoff = now - cooldown_seconds
+        to_remove = [k for k, v in _sent_cache.items() if v < cutoff]
+        for k in to_remove:
+            del _sent_cache[k]
+    return True
 
 
 def send_notification(
@@ -109,7 +133,10 @@ def notify_plan_changed_by_admin(user_id: str, plan_name: str) -> None:
 
 
 def notify_scrape_failed(user_id: str, platform_name: str, error_message: str | None = None, org_name: str | None = None) -> None:
-    """Notification when a scraping job fails."""
+    """Notification when a scraping job fails.
+    Sent at most once per hour per user per platform to avoid spam on repeated failures."""
+    if not _should_send(user_id, f"scrape_failed_{platform_name}", cooldown_seconds=3600):
+        return
     detail = f" Error: {error_message}" if error_message else ""
     org_info = f" for '{org_name}'" if org_name else ""
     send_notification(
@@ -168,7 +195,10 @@ def notify_group_created(user_id: str, group_name: str) -> None:
 
 
 def notify_approaching_review_limit(user_id: str, used: int, limit: int) -> None:
-    """Warning notification when review count usage reaches 80% of the plan limit."""
+    """Warning notification when review count usage reaches 80% of the plan limit.
+    Sent at most once every 24 hours per user to avoid spam."""
+    if not _should_send(user_id, "approaching_review_limit"):
+        return
     percentage = round((used / limit) * 100)
     send_notification(
         user_id=user_id,

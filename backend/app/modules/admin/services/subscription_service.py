@@ -919,7 +919,13 @@ def send_limit_reached_notification(user_id: str, feature_name: str) -> None:
     """
     Creates an in-app notification telling the user they've hit a feature limit
     and should upgrade their subscription plan.
+    Sent at most once every 24 hours per user per feature to avoid spam.
     """
+    from app.services.notification_helpers import _should_send
+
+    if not _should_send(user_id, f"limit_reached_{feature_name}"):
+        return
+
     from app.database.session import SessionLocal
     from app.modules.auth.repositories.notifications_repo import create_notification
     import uuid

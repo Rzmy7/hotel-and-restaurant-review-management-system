@@ -32,6 +32,15 @@ const CompetitorComparison = () => {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const currentOrg = useOrganizationStore(state => state.currentOrg);
     const organizationId = currentOrg?.id;
+    const prevOrgId = useRef<string | undefined>(organizationId);
+
+    // Navigate to competitors list when the organization changes
+    useEffect(() => {
+        if (prevOrgId.current !== undefined && prevOrgId.current !== organizationId) {
+            navigate('/competitors', { replace: true });
+        }
+        prevOrgId.current = organizationId;
+    }, [organizationId, navigate]);
 
     // Close dropdown on outside click
     useEffect(() => {

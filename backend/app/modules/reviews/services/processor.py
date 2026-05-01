@@ -8,6 +8,7 @@ import json
 import uuid
 import logging
 import os
+import time
 from datetime import datetime
 
 import pyodbc
@@ -17,24 +18,40 @@ from app.modules.reviews.services.gemini_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
 
-# Configuration from environment
-BATCH_SIZE = int(os.getenv("GEMINI_BATCH_SIZE", 10))
 MAX_RETRIES = int(os.getenv("MAX_RETRY_ATTEMPTS", 3))
+MAX_RUN_TIME = 35  # Reduced from 45 to allow more buffer for individual batch overhead
 
 
 async def run_analysis_pipeline():
     """
     Main entry point for the AI processing background task.
     Fetches pending reviews, analyzes with Gemini, and updates the database.
-    Processes in batches until no pending reviews remain.
+    Processes in batches until no pending reviews remain or time limit is reached.
     """
     logger.info("--- Starting Review Analysis Pipeline ---")
-    
+    start_time = time.time()
+
+    # Read batch size from DB so admin panel changes take effect each run.
+    batch_size = 5  # safe fallback if DB read fails
+    try:
+        from app.modules.admin.services.system_settings_service import get_review_batch_size
+        with pyodbc.connect(get_connection_string()) as _conf_conn:
+            batch_size = get_review_batch_size(_conf_conn.cursor())
+    except Exception as _e:
+        logger.warning(f"Could not read review_batch_size from DB, using default {batch_size}: {_e}")
+    logger.info(f"Pipeline: batch_size={batch_size}")
+
     total_processed = 0
     max_loops = 50  # Safety cap to prevent infinite processing in one task
     loop_count = 0
 
     while loop_count < max_loops:
+        # Check if we have exceeded the time limit for this run
+        elapsed = time.time() - start_time
+        if elapsed > MAX_RUN_TIME:
+            logger.info(f"Pipeline: Reached time limit ({elapsed:.1f}s / {MAX_RUN_TIME}s). Exiting current run.")
+            break
+
         loop_count += 1
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
@@ -42,14 +59,14 @@ async def run_analysis_pipeline():
             try:
                 from app.modules.admin.services.system_settings_service import get_setting_bool
                 if get_setting_bool(cursor, "review_processing_paused", default=False):
-                    logger.warning("Review processing is paused due to Gemini API limits. Skipping...")
+                    logger.warning("Review processing is paused due to API limits. Skipping...")
                     break
             except Exception as e:
                 logger.error(f"Failed to check paused setting: {e}")
 
             # 1. Fetch pending reviews
             try:
-                pending_reviews = get_pending_batch(cursor, limit=BATCH_SIZE)
+                pending_reviews = get_pending_batch(cursor, limit=batch_size)
             except Exception as e:
                 logger.error(f"Failed to fetch pending reviews: {e}")
                 break
@@ -84,6 +101,37 @@ async def run_analysis_pipeline():
                 ai_results = await asyncio.to_thread(analyze_reviews_batch, ai_input)
 
             except Exception as e:
+                err_msg = str(e)
+                # Phase 2 Fallback: If it's a JSON error or Retry error, try single-review processing for this batch
+                if "JSON" in err_msg or "Retry" in err_msg:
+                    logger.warning(f"Batch failed ({err_msg}). Falling back to single-review processing for this batch...")
+                    fallback_success = 0
+                    for r in pending_reviews:
+                        try:
+                            single_input = [{
+                                "id": str(r["id"]),
+                                "rating": r["rating"],
+                                "reviewerName": r["reviewerName"],
+                                "text": r.get("text"),
+                                "positive_text": r.get("positive_text"),
+                                "negative_text": r.get("negative_text"),
+                                "heading": r.get("heading"),
+                                "reviewDate": str(r["reviewDate"]),
+                            }]
+                            # Use a slightly longer timeout/wait for single if needed, but here we reuse
+                            single_res = await asyncio.to_thread(analyze_reviews_batch, single_input)
+                            if single_res and len(single_res) > 0:
+                                if _update_review_success(cursor, r, single_res[0]):
+                                    fallback_success += 1
+                        except Exception as se:
+                            logger.error(f"Fallback failed for review {r['id']}: {se}")
+                            _update_review_failure(cursor, r["id"], f"Fallback failed: {se}")
+                    
+                    conn.commit()
+                    total_processed += fallback_success
+                    logger.info(f"Fallback completed: {fallback_success}/{len(pending_reviews)} recovered.")
+                    continue  # Move to next batch instead of breaking the run
+
                 logger.error(f"!!! Gemini batch analysis FAILED: {e}", exc_info=True)
                 _mark_batch_as_failed(cursor, pending_reviews, str(e))
                 conn.commit()
@@ -100,12 +148,20 @@ async def run_analysis_pipeline():
                 except Exception:
                     pass
 
-                # Stop processing this run if API fails
+                # Stop processing this run if API fails (and not a JSON/Retry error)
+                break
+
+            # Check time again after heavy AI analysis
+            if time.time() - start_time > MAX_RUN_TIME + 10:
+                logger.info("Pipeline: Batch analysis took significant time. Saving results and exiting run.")
+                _save_batch_results(cursor, pending_reviews, ai_results)
+                conn.commit()
+                total_processed += len(ai_results)
                 break
 
             # 3. Process results and update DB
             results_map = {str(res["id"]): res for res in ai_results if "id" in res}
-
+            
             batch_success_count = 0
             for review in pending_reviews:
                 r_id_str = str(review["id"])
@@ -272,6 +328,22 @@ def _update_review_success(
         # We don't fail the whole update if only the category sync fails
         
     return cursor.rowcount > 0
+
+
+def _save_batch_results(cursor: pyodbc.Cursor, pending_reviews: list, ai_results: list):
+    """Helper to save results for a whole batch. Used when exiting early due to time."""
+    results_map = {str(res["id"]): res for res in ai_results if "id" in res}
+    for review in pending_reviews:
+        r_id_str = str(review["id"])
+        analysis = results_map.get(r_id_str)
+        if analysis:
+            try:
+                _update_review_success(cursor, review, analysis)
+            except Exception as e:
+                logger.error(f"Failed to update review {r_id_str} during early exit: {e}")
+                _update_review_failure(cursor, review["id"], f"Update failed: {e}")
+        else:
+            _update_review_failure(cursor, review["id"], "AI skipped this record during early exit.")
 
 
 def _update_review_failure(cursor: pyodbc.Cursor, review_id: Any, error: str):

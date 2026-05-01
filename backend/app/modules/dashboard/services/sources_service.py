@@ -80,7 +80,7 @@ def get_source_comparison_metrics(
             FROM dbo.source s
             JOIN dbo.platform p ON s.platform_id = p.platform_id
             LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
-            WHERE s.organization_id = ? AND (s.source_status IS NULL OR LOWER(s.source_status) = 'active')
+            WHERE s.organization_id = ?
             GROUP BY s.source_id, p.platform_name
         """,
             org_id,
@@ -100,7 +100,7 @@ def get_source_comparison_metrics(
             JOIN dbo.platform p ON s.platform_id = p.platform_id
             LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
                 AND r.reviewDate >= CAST(? AS DATE)
-            WHERE s.organization_id = ? AND (s.source_status IS NULL OR LOWER(s.source_status) = 'active')
+            WHERE s.organization_id = ?
             GROUP BY s.source_id, p.platform_name
         """,
             curr_start,

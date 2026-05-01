@@ -6,6 +6,7 @@ export interface LLMModel {
   endpoint: string;
   model_name: string;
   api_key_masked: string;
+  max_tokens: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -16,6 +17,7 @@ export interface LLMModelCreatePayload {
   endpoint: string;
   model_name: string;
   api_key: string;
+  max_tokens: number;
 }
 
 export interface LLMModelUpdatePayload {
@@ -23,6 +25,7 @@ export interface LLMModelUpdatePayload {
   endpoint?: string;
   model_name?: string;
   api_key?: string;
+  max_tokens?: number;
 }
 
 export interface LLMAssignments {
@@ -52,6 +55,9 @@ export const llmModelService = {
 
   test: (id: string) =>
     apiClient.post<LLMTestResult>(`/admin/llm-models/${id}/test`, {}),
+
+  testConnectivity: (data: { endpoint: string; model_name: string; api_key?: string; max_tokens: number; model_id?: string }) =>
+    apiClient.post<LLMTestResult>('/admin/llm-models/test-connectivity', data),
 
   getAssignments: () =>
     apiClient.get<LLMAssignments>('/admin/llm-models/assignments'),

@@ -368,6 +368,7 @@ jobs:
             VITE_SCRAPING_URL=${{ vars.PROD_SCRAPER_URL }}
             VITE_EMBEDDING_SERVICE_URL=${{ vars.PROD_EMBEDDING_URL }}
             VITE_FRONTEND_URL=${{ vars.PROD_FRONTEND_URL }}
+            VITE_INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
 
   build-backend:
     needs: [detect-changes, test-backend]

@@ -5,7 +5,9 @@ import {
     RefreshCw,
     Pause,
     Play,
-    Loader
+    Loader,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import {
     getThresholds,
@@ -41,6 +43,10 @@ export const Embeddings: React.FC = () => {
     const [isPaused, setIsPaused] = useState(false);
     const [pauseLoading, setPauseLoading] = useState(false);
     const [triggering, setTriggering] = useState(false);
+    const [jobsPage, setJobsPage] = useState(1);
+    const [jobsTotalPages, setJobsTotalPages] = useState(1);
+    const [jobsTotal, setJobsTotal] = useState(0);
+    const JOBS_PAGE_SIZE = 10;
 
     // Load initial data on mount
     useEffect(() => {
@@ -49,12 +55,14 @@ export const Embeddings: React.FC = () => {
                 setLoading(true);
                 const [thresholdsData, jobsData, dbStats, serviceStatus] = await Promise.all([
                     getThresholds(),
-                    getRecentJobs(10),
+                    getRecentJobs(1, JOBS_PAGE_SIZE),
                     getDatabaseStats(),
                     getServiceStatus()
                 ]);
                 setThresholds(thresholdsData);
-                setJobs(jobsData);
+                setJobs(jobsData.jobs);
+                setJobsTotalPages(jobsData.total_pages);
+                setJobsTotal(jobsData.total);
                 setVectorDb(dbStats);
                 setIsPaused(serviceStatus.isPaused);
                 setError(null);
@@ -74,11 +82,13 @@ export const Embeddings: React.FC = () => {
         const interval = setInterval(async () => {
             try {
                 const [jobsData, dbStats, serviceStatus] = await Promise.all([
-                    getRecentJobs(10),
+                    getRecentJobs(jobsPage, JOBS_PAGE_SIZE),
                     getDatabaseStats(),
                     getServiceStatus()
                 ]);
-                setJobs(jobsData);
+                setJobs(jobsData.jobs);
+                setJobsTotalPages(jobsData.total_pages);
+                setJobsTotal(jobsData.total);
                 setVectorDb(dbStats);
                 setIsPaused(serviceStatus.isPaused);
             } catch (err) {
@@ -87,7 +97,7 @@ export const Embeddings: React.FC = () => {
         }, 5000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [jobsPage]);
 
     // Save thresholds with debouncing
     const handleThresholdChange = (newThresholds: SimilarityThresholds) => {
@@ -132,8 +142,10 @@ export const Embeddings: React.FC = () => {
     const handleRefreshJobs = async () => {
         try {
             setJobsLoading(true);
-            const jobsData = await getRecentJobs(10);
-            setJobs(jobsData);
+            const jobsData = await getRecentJobs(jobsPage, JOBS_PAGE_SIZE);
+            setJobs(jobsData.jobs);
+            setJobsTotalPages(jobsData.total_pages);
+            setJobsTotal(jobsData.total);
         } catch (err) {
             console.error('Failed to refresh jobs:', err);
             setError('Failed to refresh jobs.');
@@ -440,7 +452,7 @@ export const Embeddings: React.FC = () => {
             {/* Recent Embedding Jobs */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <div className="flex items-center justify-between p-6 pb-4">
-                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">Recent Embedding Jobs</h3>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">Embedding Jobs</h3>
                     <button
                         onClick={handleRefreshJobs}
                         disabled={jobsLoading}
@@ -509,6 +521,36 @@ export const Embeddings: React.FC = () => {
                             ))}
                         </tbody>
                     </table>
+                )}
+
+                {/* Pagination */}
+                {jobsTotal > 0 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700">
+                        <span className="text-sm text-gray-500 dark:text-slate-400">
+                            Showing {(jobsPage - 1) * JOBS_PAGE_SIZE + 1} to {Math.min(jobsPage * JOBS_PAGE_SIZE, jobsTotal)} of {jobsTotal} jobs
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setJobsPage(p => Math.max(1, p - 1))}
+                                disabled={jobsPage <= 1}
+                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                <ChevronLeft size={16} />
+                                Prev
+                            </button>
+                            <span className="text-sm font-medium text-gray-700 dark:text-slate-300 px-2">
+                                Page {jobsPage} of {jobsTotalPages}
+                            </span>
+                            <button
+                                onClick={() => setJobsPage(p => Math.min(jobsTotalPages, p + 1))}
+                                disabled={jobsPage >= jobsTotalPages}
+                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                Next
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

@@ -180,8 +180,8 @@ def get_general_settings() -> GeneralSettingsResponse:
             cursor = connection.cursor()
             ensure_system_settings_table(cursor)
 
-            timezone_value = (get_setting(cursor, "timezone") or "UTC").strip() or "UTC"
-            if not is_valid_timezone(timezone_value):
+            timezone_value = (get_setting(cursor, "timezone") or "").strip()
+            if timezone_value and not is_valid_timezone(timezone_value):
                 timezone_value = "UTC"
 
             language = (get_setting(cursor, "language") or DEFAULT_LANGUAGE).strip() or DEFAULT_LANGUAGE

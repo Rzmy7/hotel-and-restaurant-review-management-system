@@ -1,11 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import os
 import time
 import uuid
 import psutil
 from datetime import datetime
+import logging
+
+# Configure logging for production mode
+IS_PROD = os.getenv("PROD_MODE", "false").lower() == "true"
+if IS_PROD:
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    # Patch print to do nothing in prod
+    def print(*args, **kwargs):
+        pass
 
 from app.chroma import save_embedding, collection
 from app.config import (
@@ -14,6 +26,15 @@ from app.config import (
 )
 from app.jobs import add_job, update_job, get_recent_jobs
 from app.embedding import embed_text
+
+# ── Internal API Key ────────────────────────────────────────────────
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+
+def verify_api_key(x_internal_api_key: Optional[str] = Header(None)):
+    """Validate service-to-service communication via shared secret (X-Internal-API-Key header)."""
+    if not x_internal_api_key or x_internal_api_key != INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing Internal API Key")
+    return True
 
 app = FastAPI(title="Embedding Service")
 
@@ -76,7 +97,7 @@ def get_threshold(query: str) -> float:
 
 
 @app.post("/embed")
-def embed_batch(data: BatchEmbedRequest):
+def embed_batch(data: BatchEmbedRequest, _auth: bool = Depends(verify_api_key)):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Review", "Running", 0)
     
@@ -119,7 +140,7 @@ def embed_batch(data: BatchEmbedRequest):
     }
 
 @app.post("/embed/rule")
-def embed_rule_batch(data: BatchRuleEmbedRequest):
+def embed_rule_batch(data: BatchRuleEmbedRequest, _auth: bool = Depends(verify_api_key)):
     job_id = str(uuid.uuid4())[:8]
     add_job(job_id, "Regulation", "Running", 0)
     
@@ -167,7 +188,7 @@ def embed_rule_batch(data: BatchRuleEmbedRequest):
 
 
 @app.post("/search")
-def search(data: SearchRequest):
+def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
     vector = embed_text(data.query)
 
     threshold = get_threshold(data.query)
@@ -235,14 +256,14 @@ def search(data: SearchRequest):
 
 
 @app.get("/thresholds")
-def get_thresholds() -> Dict[str, float]:
+def get_thresholds(_auth: bool = Depends(verify_api_key)) -> Dict[str, float]:
     """Get current similarity thresholds"""
     thresholds = load_config()
     return thresholds
 
 
 @app.put("/thresholds")
-def update_thresholds(config: ThresholdConfig) -> Dict[str, Any]:
+def update_thresholds(config: ThresholdConfig, _auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Update similarity thresholds"""
     thresholds = {
         "oneWord": config.oneWord,
@@ -266,7 +287,7 @@ def update_thresholds(config: ThresholdConfig) -> Dict[str, Any]:
 
 
 @app.post("/thresholds/reset")
-def reset_thresholds() -> Dict[str, Any]:
+def reset_thresholds(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Reset thresholds to default values"""
     success = save_config(DEFAULT_THRESHOLDS)
     if not success:
@@ -276,14 +297,13 @@ def reset_thresholds() -> Dict[str, Any]:
 
 
 @app.get("/jobs/recent")
-def get_jobs(limit: int = 10) -> Dict[str, Any]:
-    """Get recent embedding jobs"""
-    jobs = get_recent_jobs(limit)
-    return {"jobs": jobs}
+def get_jobs(page: int = 1, page_size: int = 10, _auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
+    """Get embedding jobs with pagination"""
+    return get_recent_jobs(page, page_size)
 
 
 @app.post("/service/pause")
-def pause_service() -> Dict[str, Any]:
+def pause_service(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Pause the embedding service"""
     success = set_service_paused(True)
     if not success:
@@ -292,7 +312,7 @@ def pause_service() -> Dict[str, Any]:
 
 
 @app.post("/service/resume")
-def resume_service() -> Dict[str, Any]:
+def resume_service(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Resume the embedding service"""
     success = set_service_paused(False)
     if not success:
@@ -301,7 +321,7 @@ def resume_service() -> Dict[str, Any]:
 
 
 @app.get("/service/status")
-def get_service_status() -> Dict[str, Any]:
+def get_service_status(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Get embedding service status"""
     return {
         "isPaused": is_service_paused(),
@@ -310,7 +330,7 @@ def get_service_status() -> Dict[str, Any]:
 
 
 @app.get("/database/stats")
-def get_database_stats() -> Dict[str, Any]:
+def get_database_stats(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Get ChromaDB statistics"""
     try:
         # Get collection information
@@ -360,7 +380,7 @@ def get_database_stats() -> Dict[str, Any]:
 
 
 @app.post("/database/reindex")
-def reindex_database() -> Dict[str, Any]:
+def reindex_database(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Re-generate all embeddings using the current model"""
     try:
         # Get all existing documents
@@ -430,7 +450,7 @@ def reindex_database() -> Dict[str, Any]:
 
 
 @app.post("/database/clear")
-def clear_database() -> Dict[str, Any]:
+def clear_database(_auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Clear all vectors from the database (WARNING: deletes all data)"""
     try:
         # Get count before clearing
@@ -506,7 +526,7 @@ def health_check() -> Dict[str, Any]:
         }
 
 @app.delete("/delete/source/{source_id}")
-def delete_by_source(source_id: str) -> Dict[str, Any]:
+def delete_by_source(source_id: str, _auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
     """Delete all embeddings associated with a specific source ID."""
     try:
         # Get count before deleting (informative)
@@ -522,4 +542,25 @@ def delete_by_source(source_id: str) -> Dict[str, Any]:
         }
     except Exception as e:
         print(f"Error deleting embeddings for source {source_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/delete/source/{source_id}/rules")
+def delete_rules_by_source(source_id: str, _auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
+    """Delete only rule-type embeddings for a source, preserving review embeddings."""
+    try:
+        collection.delete(where={
+            "$and": [
+                {"source_id": source_id},
+                {"type": "rule"}
+            ]
+        })
+        
+        return {
+            "status": "success",
+            "message": f"Deleted rule embeddings for source_id: {source_id}",
+            "source_id": source_id
+        }
+    except Exception as e:
+        print(f"Error deleting rule embeddings for source {source_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

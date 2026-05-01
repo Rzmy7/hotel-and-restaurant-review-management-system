@@ -146,11 +146,27 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "api.main:app",
-        host="127.0.0.1",
-        port=8001,
-        reload=True,
-        reload_dirs=["api", "core"],
-        reload_excludes=["output/*", "platforms/*", "*.json"],
-    )
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Scraper Engine")
+    parser.add_argument("--prod", action="store_true", help="Run in production mode")
+    args = parser.parse_args()
+
+    if args.prod:
+        uvicorn.run(
+            "api.main:app",
+            host="127.0.0.1",
+            port=8001,
+            reload=False,
+            access_log=False,
+            log_level="warning",
+        )
+    else:
+        uvicorn.run(
+            "api.main:app",
+            host="127.0.0.1",
+            port=8001,
+            reload=True,
+            reload_dirs=["api", "core"],
+            reload_excludes=["output/*", "platforms/*", "*.json"],
+        )

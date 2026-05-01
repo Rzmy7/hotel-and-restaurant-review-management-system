@@ -8,6 +8,16 @@ export interface SourceComparisonProps {
     sources: SourceData[];
 }
 
+const normalizeSentiment = (sentiment: { pos: number; neu: number; neg: number }) => {
+    const { pos, neu, neg } = sentiment;
+    const sum = pos + neu + neg;
+    if (sum === 100 || sum === 0) return sentiment;
+    const diff = 100 - sum;
+    if (pos >= neu && pos >= neg) return { pos: pos + diff, neu, neg };
+    if (neu >= pos && neu >= neg) return { pos, neu: neu + diff, neg };
+    return { pos, neu, neg: neg + diff };
+};
+
 const createDonutPath = (pct: number, startAngle: number, R = 90, r = 60) => {
     const cx = 100, cy = 100;
     const a = (pct / 100) * 360;
@@ -45,7 +55,12 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
     };
 
     const processedSources = useMemo(() => {
-        const sorted = [...rawSources].sort((a, b) => b.reviews - a.reviews);
+        const normalizedRaw = rawSources.map(s => ({
+            ...s,
+            sentiment: normalizeSentiment(s.sentiment)
+        }));
+
+        const sorted = [...normalizedRaw].sort((a, b) => b.reviews - a.reviews);
         if (sorted.length <= 6) return sorted;
 
         const top = sorted.slice(0, 5);
@@ -75,11 +90,11 @@ export const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: raw
             color: '#64748b',
             bgColor: 'bg-slate-50/60',
             borderColor: 'border-slate-100',
-            sentiment: {
+            sentiment: normalizeSentiment({
                 pos: Math.round(otherSentiment.pos),
                 neu: Math.round(otherSentiment.neu),
                 neg: Math.round(otherSentiment.neg)
-            },
+            }),
             lastSync: 'Varies',
             isOthers: true
         }];

@@ -182,16 +182,24 @@ def fetch_all_reviews_enriched(
                 search_val = f"%{filters['search']}%"
                 if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
                     import httpx
-                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
+                    import logging
+                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL, _AUTH_HEADERS
+                    _logger = logging.getLogger(__name__)
                     
-                    source_ids = [str(sid[0]) for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
+                    # Uppercase source_ids to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+                    source_ids = [str(sid[0]).upper() for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
                     matching_ids = []
                     if source_ids:
                         try:
-                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
+                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, headers=_AUTH_HEADERS, timeout=10.0)
                             if resp.status_code == 200:
-                                matching_ids = [r.get("review_id") or r.get("id") for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
-                        except: pass
+                                data = resp.json()
+                                _logger.info(f"Embedding search returned {len(data.get('reviews', []))} results for query '{filters['search']}'")
+                                matching_ids = [(r.get("review_id") or r.get("id")).upper() for r in data.get("reviews", []) if r.get("review_id") or r.get("id")]
+                            else:
+                                _logger.warning(f"Embedding search returned status {resp.status_code}: {resp.text[:200]}")
+                        except Exception as emb_err:
+                            _logger.error(f"Embedding search failed: {emb_err}")
                     
                     if not matching_ids:
                         query = query.filter(ProcessedReview.id == None)
@@ -207,18 +215,50 @@ def fetch_all_reviews_enriched(
                     ))
             
             if filters.get("rating"):
-                query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
+                rating_filters = []
+                for r in filters["rating"]:
+                    # Handle integer ratings as ranges to include floats (e.g. 4.0 matches 3.5 to 4.49)
+                    # Standard rounding: r=5 matches >=4.5, r=4 matches 3.5-4.5, etc.
+                    rating_filters.append(and_(ProcessedReview.rating >= r - 0.5, ProcessedReview.rating < r + 0.5))
+                query = query.filter(or_(*rating_filters))
+
             if filters.get("sentiment"):
                 query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+
             if filters.get("source"):
                 query = query.filter(Platform.platform_name.in_(filters["source"]))
+
             if filters.get("category"):
                 cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
-                query = query.filter(and_(*cat_filters))
+                query = query.filter(or_(*cat_filters))
+
+            if filters.get("status"):
+                status_filters = []
+                for s in filters["status"]:
+                    if s == "Pending":
+                        status_filters.append(ProcessedReview.status == 'pending')
+                    elif s == "Replied":
+                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
+                    elif s == "AI Draft":
+                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                if status_filters:
+                    query = query.filter(or_(*status_filters))
+
             if filters.get("dateFrom"):
-                query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+                try:
+                    from dateutil import parser as date_parser
+                    df = date_parser.parse(filters["dateFrom"])
+                    query = query.filter(ProcessedReview.reviewDate >= df)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+
             if filters.get("dateTo"):
-                query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+                try:
+                    from dateutil import parser as date_parser
+                    dt = date_parser.parse(filters["dateTo"])
+                    query = query.filter(ProcessedReview.reviewDate <= dt)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         total_count = query.count()
 
@@ -344,17 +384,22 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
             if filters.get("search"):
                 search_val = f"%{filters['search']}%"
                 if filters.get("embedding_search") in [True, "true", "True", "1", 1]:
-                    # Simple version for stats check
                     import httpx
-                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL
-                    source_ids = [str(sid[0]) for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
+                    import logging
+                    from app.modules.source.services.embedding_client import EMBEDDING_SERVICE_URL, _AUTH_HEADERS
+                    _logger = logging.getLogger(__name__)
+                    # Uppercase source_ids to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+                    source_ids = [str(sid[0]).upper() for sid in db.query(Source.source_id).filter(Source.organization_id == organization_id).all()]
                     matching_ids = []
                     if source_ids:
                         try:
-                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, timeout=10.0)
+                            resp = httpx.post(f"{EMBEDDING_SERVICE_URL}/search", json={"query": filters["search"], "source_ids": source_ids, "top_k": 50}, headers=_AUTH_HEADERS, timeout=10.0)
                             if resp.status_code == 200:
-                                matching_ids = [r.get("review_id") or r.get("id") for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
-                        except: pass
+                                matching_ids = [(r.get("review_id") or r.get("id")).upper() for r in resp.json().get("reviews", []) if r.get("review_id") or r.get("id")]
+                            else:
+                                _logger.warning(f"Embedding stats search returned status {resp.status_code}")
+                        except Exception as emb_err:
+                            _logger.error(f"Embedding stats search failed: {emb_err}")
                     query = query.filter(ProcessedReview.id.in_(matching_ids)) if matching_ids else query.filter(ProcessedReview.id == None)
                 else:
                     query = query.filter(or_(
@@ -364,14 +409,49 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
                         ProcessedReview.reviewerName.ilike(search_val),
                         ProcessedReview.heading.ilike(search_val)
                     ))
-            if filters.get("rating"): query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
-            if filters.get("sentiment"): query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
-            if filters.get("source"): query = query.filter(Platform.platform_name.in_(filters["source"]))
+            if filters.get("rating"):
+                rating_filters = []
+                for r in filters["rating"]:
+                    rating_filters.append(and_(ProcessedReview.rating >= r - 0.5, ProcessedReview.rating < r + 0.5))
+                query = query.filter(or_(*rating_filters))
+
+            if filters.get("sentiment"):
+                query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+
+            if filters.get("source"):
+                query = query.filter(Platform.platform_name.in_(filters["source"]))
+
             if filters.get("category"):
                 cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
-                query = query.filter(and_(*cat_filters))
-            if filters.get("dateFrom"): query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
-            if filters.get("dateTo"): query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+                query = query.filter(or_(*cat_filters))
+
+            if filters.get("status"):
+                status_filters = []
+                for s in filters["status"]:
+                    if s == "Pending":
+                        status_filters.append(ProcessedReview.status == 'pending')
+                    elif s == "Replied":
+                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
+                    elif s == "AI Draft":
+                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                if status_filters:
+                    query = query.filter(or_(*status_filters))
+
+            if filters.get("dateFrom"):
+                try:
+                    from dateutil import parser as date_parser
+                    df = date_parser.parse(filters["dateFrom"])
+                    query = query.filter(ProcessedReview.reviewDate >= df)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+
+            if filters.get("dateTo"):
+                try:
+                    from dateutil import parser as date_parser
+                    dt = date_parser.parse(filters["dateTo"])
+                    query = query.filter(ProcessedReview.reviewDate <= dt)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         # Aggregations
         # Apply the same filters to aggregation query by reusing the query object

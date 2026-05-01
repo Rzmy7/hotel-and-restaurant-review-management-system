@@ -20,6 +20,7 @@ from app.modules.admin.schemas import (
     LLMAssignmentsUpdate,
     LLMModelCreate,
     LLMModelResponse,
+    LLMModelTestPayload,
     LLMModelTestResponse,
     LLMModelUpdate,
 )
@@ -42,6 +43,7 @@ def ensure_llm_model_table(cursor) -> None:
                 endpoint    NVARCHAR(500)    NOT NULL,
                 model_name  NVARCHAR(200)    NOT NULL,
                 api_key_enc NVARCHAR(MAX)    NOT NULL,
+                max_tokens  INT              NOT NULL DEFAULT 4096,
                 is_active   BIT              NOT NULL DEFAULT 1,
                 created_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME(),
                 updated_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME()
@@ -72,9 +74,10 @@ def _row_to_response(row) -> LLMModelResponse:
         endpoint=row[2],
         model_name=row[3],
         api_key_masked=_mask_key(decrypt_value(row[4])),
-        is_active=bool(row[5]),
-        created_at=str(row[6]),
-        updated_at=str(row[7]),
+        max_tokens=row[5],
+        is_active=bool(row[6]),
+        created_at=str(row[7]),
+        updated_at=str(row[8]),
     )
 
 
@@ -85,7 +88,7 @@ def list_models():
             cursor = conn.cursor()
             ensure_llm_model_table(cursor)
             rows = cursor.execute(
-                "SELECT id, name, endpoint, model_name, api_key_enc, is_active, created_at, updated_at "
+                "SELECT id, name, endpoint, model_name, api_key_enc, max_tokens, is_active, created_at, updated_at "
                 "FROM dbo.llm_model WHERE is_active = 1 ORDER BY created_at DESC"
             ).fetchall()
         return [_row_to_response(r) for r in rows]
@@ -101,11 +104,11 @@ def create_model(payload: LLMModelCreate):
             cursor = conn.cursor()
             ensure_llm_model_table(cursor)
             cursor.execute(
-                "INSERT INTO dbo.llm_model (name, endpoint, model_name, api_key_enc) "
+                "INSERT INTO dbo.llm_model (name, endpoint, model_name, api_key_enc, max_tokens) "
                 "OUTPUT inserted.id, inserted.name, inserted.endpoint, inserted.model_name, "
-                "       inserted.api_key_enc, inserted.is_active, inserted.created_at, inserted.updated_at "
-                "VALUES (?, ?, ?, ?)",
-                (payload.name.strip(), payload.endpoint.strip(), payload.model_name.strip(), encrypted),
+                "       inserted.api_key_enc, inserted.max_tokens, inserted.is_active, inserted.created_at, inserted.updated_at "
+                "VALUES (?, ?, ?, ?, ?)",
+                (payload.name.strip(), payload.endpoint.strip(), payload.model_name.strip(), encrypted, payload.max_tokens),
             )
             row = cursor.fetchone()
             conn.commit()
@@ -173,7 +176,7 @@ def get_model(model_id: str):
             cursor = conn.cursor()
             ensure_llm_model_table(cursor)
             row = cursor.execute(
-                "SELECT id, name, endpoint, model_name, api_key_enc, is_active, created_at, updated_at "
+                "SELECT id, name, endpoint, model_name, api_key_enc, max_tokens, is_active, created_at, updated_at "
                 "FROM dbo.llm_model WHERE id = ? AND is_active = 1",
                 (model_id,),
             ).fetchone()
@@ -194,7 +197,7 @@ def update_model(model_id: str, payload: LLMModelUpdate):
             ensure_llm_model_table(cursor)
 
             row = cursor.execute(
-                "SELECT id, name, endpoint, model_name, api_key_enc, is_active, created_at, updated_at "
+                "SELECT id, name, endpoint, model_name, api_key_enc, max_tokens, is_active, created_at, updated_at "
                 "FROM dbo.llm_model WHERE id = ? AND is_active = 1",
                 (model_id,),
             ).fetchone()
@@ -205,17 +208,18 @@ def update_model(model_id: str, payload: LLMModelUpdate):
             new_endpoint   = payload.endpoint.strip()   if payload.endpoint   else row[2]
             new_model_name = payload.model_name.strip() if payload.model_name else row[3]
             new_enc        = encrypt_value(payload.api_key.strip()) if payload.api_key else row[4]
+            new_max_tokens = payload.max_tokens if payload.max_tokens is not None else row[5]
 
             cursor.execute(
                 "UPDATE dbo.llm_model "
-                "SET name = ?, endpoint = ?, model_name = ?, api_key_enc = ?, updated_at = SYSUTCDATETIME() "
+                "SET name = ?, endpoint = ?, model_name = ?, api_key_enc = ?, max_tokens = ?, updated_at = SYSUTCDATETIME() "
                 "WHERE id = ?",
-                (new_name, new_endpoint, new_model_name, new_enc, model_id),
+                (new_name, new_endpoint, new_model_name, new_enc, new_max_tokens, model_id),
             )
             conn.commit()
 
             updated = cursor.execute(
-                "SELECT id, name, endpoint, model_name, api_key_enc, is_active, created_at, updated_at "
+                "SELECT id, name, endpoint, model_name, api_key_enc, max_tokens, is_active, created_at, updated_at "
                 "FROM dbo.llm_model WHERE id = ?",
                 (model_id,),
             ).fetchone()
@@ -266,12 +270,52 @@ def delete_model(model_id: str):
 
 @router.post("/{model_id}/test", response_model=LLMModelTestResponse)
 def test_model(model_id: str):
-    from app.services.llm_gateway import call as gateway_call
-
     try:
+        from app.services.llm_gateway import call as gateway_call
         text = (gateway_call("review_processing", "Reply with exactly: ok", model_id=model_id) or "").strip()
         if text:
             return LLMModelTestResponse(success=True, message="Model is reachable and responded successfully.")
         return LLMModelTestResponse(success=False, message="Model responded but returned an empty response.")
     except Exception as exc:
         return LLMModelTestResponse(success=False, message=f"Test failed: {exc}")
+
+
+@router.post("/test-connectivity", response_model=LLMModelTestResponse)
+def test_connectivity(payload: LLMModelTestPayload):
+    """Test LLM parameters before saving."""
+
+    api_key = payload.api_key.strip() if payload.api_key else None
+    
+    # If no key provided but we have a model_id, load the existing key
+    if not api_key and payload.model_id:
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cursor = conn.cursor()
+                row = cursor.execute(
+                    "SELECT api_key_enc FROM dbo.llm_model WHERE id = ? AND is_active = 1",
+                    (payload.model_id,)
+                ).fetchone()
+                if row:
+                    api_key = decrypt_value(row[0])
+        except Exception as e:
+            return LLMModelTestResponse(success=False, message=f"Failed to load existing credentials: {e}")
+
+    if not api_key:
+        return LLMModelTestResponse(success=False, message="API key is required.")
+
+    try:
+        from app.services.llm_gateway import call as gateway_call
+        text = (gateway_call(
+            "review_processing",
+            "Reply with exactly: ok",
+            api_key=api_key,
+            endpoint=payload.endpoint.strip(),
+            model_name=payload.model_name.strip(),
+            max_tokens=payload.max_tokens,
+        ) or "").strip()
+        
+        if text:
+            return LLMModelTestResponse(success=True, message="Parameters are valid. Model responded successfully.")
+        return LLMModelTestResponse(success=False, message="Model responded but returned an empty response.")
+    except Exception as exc:
+        return LLMModelTestResponse(success=False, message=str(exc))
