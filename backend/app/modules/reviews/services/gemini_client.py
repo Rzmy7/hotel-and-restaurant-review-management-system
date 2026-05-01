@@ -77,10 +77,25 @@ def repair_json(text: str) -> str:
     return text
 
 
+def _is_billing_error(s: str) -> bool:
+    """Return True if the error string indicates a billing / credit-limit problem."""
+    lower = s.lower()
+    return (
+        "402" in s
+        or "429" in s
+        or "RESOURCE_EXHAUSTED" in s
+        or "insufficient_quota" in lower
+        or "insufficient credits" in lower
+        or ("credits" in lower and "max_tokens" in lower)
+    )
+
+
 def is_retryable_exception(e: Exception) -> bool:
-    """Provider-agnostic retry predicate. Rate-limit and auth errors are not retried."""
+    """Provider-agnostic retry predicate. Billing, rate-limit, and auth errors are not retried."""
     s = str(e)
-    if "429" in s or "RESOURCE_EXHAUSTED" in s or "rate_limit" in s.lower():
+    if _is_billing_error(s):
+        return False
+    if "rate_limit" in s.lower():
         return False
     if any(code in s for code in ("400", "401", "403")):
         return False
@@ -165,7 +180,7 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 alert_gemini_api_error,
                 alert_gemini_key_missing,
             )
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            if _is_billing_error(err_str):
                 alert_gemini_quota_exceeded(err_str[:200])
             elif "No LLM model assigned" in err_str:
                 alert_gemini_key_missing()
@@ -174,7 +189,9 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         except Exception as alert_err:
             logger.debug(f"Failed to log system alert: {alert_err}")
 
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+        # Auto-pause review processing on any billing / quota / credit error
+        if _is_billing_error(err_str):
+            logger.warning("Billing/credit limit detected — auto-pausing review processing.")
             try:
                 from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
                 notify_admin_gemini_quota_exceeded()
@@ -189,6 +206,7 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     cursor = conn.cursor()
                     set_setting(cursor, "review_processing_paused", "true")
                     conn.commit()
+                logger.info("Review processing has been PAUSED. Resume from Admin → System Settings.")
             except Exception as pause_err:
                 logger.error(f"Failed to pause review processing: {pause_err}")
 
