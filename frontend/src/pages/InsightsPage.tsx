@@ -36,23 +36,31 @@ interface RangeData {
     aiActions: { severity: 'critical' | 'warning' | 'info'; title: string; body: string }[];
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
 // ═══════════════════════════════════════════════════════════════════
 //  HELPER: Change badge
 // ═══════════════════════════════════════════════════════════════════
-const ChangeBadge = ({ value }: { value: string }) => {
+const ChangeBadge = ({ value }: { value?: string }) => {
+    if (!value) {
+        return (
+            <span className="text-gray-400 text-xs px-2 py-1">
+                N/A
+            </span>
+        );
+    }
+
     const num = parseFloat(value.replace('%', ''));
+
     const isUp = num > 0 || value.includes('+');
     const isNeutral = num === 0 || value === '0' || value === '0%';
+
     const colors = isNeutral
         ? 'text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-slate-700'
         : isUp
             ? 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/40'
             : 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/40';
+
     const Icon = isNeutral ? Minus : isUp ? ArrowUpRight : ArrowDownRight;
+
     return (
         <span className={`inline-flex items-center gap-0.5 text-[13px] font-semibold px-2 py-1 rounded-md ${colors}`}>
             <Icon size={13} />
@@ -82,8 +90,6 @@ const InsightsPage: React.FC = () => {
     const [insightData, setInsightData] = useState<RangeData | null>(null);
     const [loading, setLoading] = useState(true);
     const [hasAccess, setHasAccess] = useState<boolean | null>(null);
-    const [d, setD] = useState<RangeData | null>(null);
-    const [loading, setLoading] = useState(false);
     const { user } = useAuth();
     const navigate = useNavigate();
     const currentOrg = useOrganizationStore(state => state.currentOrg);
@@ -109,28 +115,6 @@ const InsightsPage: React.FC = () => {
     }, [user?.user_id, organizationId]);
 
     useEffect(() => {
-<<<<<<< HEAD
-        if (hasAccess && organizationId) {
-            setLoading(true);
-            dashboardService.getInsights(organizationId, timeRange).then(data => {
-                setD(data);
-                setLoading(false);
-            }).catch(err => {
-                console.error("Error fetching insights", err);
-                setLoading(false);
-            });
-        }
-    }, [hasAccess, organizationId, timeRange]);
-
-
-    if (hasAccess === null || loading) {
-        return (
-            <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-gray-500 font-medium">Generating AI Insights...</p>
-                </div>
-=======
         const fetchData = async () => {
             setLoading(true);
 
@@ -168,7 +152,6 @@ const InsightsPage: React.FC = () => {
         return (
             <div className="flex items-center justify-center h-screen">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
->>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
             </div>
         );
     }
@@ -185,25 +168,6 @@ const InsightsPage: React.FC = () => {
         );
     }
 
-<<<<<<< HEAD
-    if (!d) return null;
-
-    // ── Sentiment chart coordinates ─────────────────────────────
-    const sentLen = Math.max(d.sentimentMonths?.length || 1, 1);
-    const chartW = 600;
-    const chartH = 180;
-    const gapX = chartW / (sentLen - 1 || 1);
-    const toY = (v: number) => chartH - (v / 100) * chartH;
-    const linePoints = (vals: number[]) =>
-        vals.map((v, i) => `${i * gapX},${toY(v || 0)}`).join(' ');
-    const areaPath = (vals: number[]) => {
-        const pts = vals.map((v, i) => `${i * gapX},${toY(v || 0)}`).join(' L');
-        return `M0,${chartH} L${pts} L${(vals.length - 1) * gapX},${chartH} Z`;
-    };
-
-    // ── Heatmap max ─────────────────────────────────────────────
-    const heatMax = Math.max(...(d.heatmapWeeks || []).flat(), 1);
-=======
     // ✅ 4. SAFE AREA (ONLY HERE)
     const d = insightData;
 
@@ -242,7 +206,6 @@ const InsightsPage: React.FC = () => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
     };
 
->>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900">
@@ -326,38 +289,6 @@ const InsightsPage: React.FC = () => {
                     Rating Distribution
                     </h3>
 
-<<<<<<< HEAD
-                    {/* Rating Distribution */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Rating Distribution</h3>
-                        <div className="flex flex-col gap-3">
-                            {(d.ratingDistribution || []).map((r) => (
-                                <div key={r.stars} className="grid grid-cols-[60px_1fr_70px] items-center gap-3">
-                                    <div className="flex items-center gap-1">
-                                        <Star size={14} className="text-amber-400" fill="#fbbf24" />
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.stars}</span>
-                                    </div>
-                                    <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full transition-all duration-500"
-                                            style={{
-                                                width: `${r.pct}%`,
-                                                backgroundColor: r.stars >= 4 ? '#3b82f6' : r.stars === 3 ? '#94a3b8' : '#ef4444',
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.count}</span>
-                                        <span className="text-xs text-gray-400 ml-1">({r.pct}%)</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Satisfaction Rate</span>
-                            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                {(d.ratingDistribution || []).filter((r) => r.stars >= 4).reduce((a, r) => a + r.pct, 0)}%
-=======
                     {/* Bars */}
                     <div className="flex flex-col gap-3">
                     {d.ratingDistribution.map((r) => (
@@ -370,7 +301,6 @@ const InsightsPage: React.FC = () => {
                             <Star size={14} className="text-amber-400" fill="#fbbf24" />
                             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                             {r.rating}
->>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
                             </span>
                         </div>
 
@@ -414,40 +344,7 @@ const InsightsPage: React.FC = () => {
 
                     {/* Category Performance */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-<<<<<<< HEAD
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Category Performance</h3>
-                        <div className="flex flex-col gap-3.5 h-[230px] overflow-y-auto pr-2">
-                            {(d.categories || []).length > 0 ? d.categories.map((c) => {
-                                const delta = c.score - c.prev;
-                                return (
-                                    <div key={c.name} className="grid grid-cols-[100px_1fr_80px] items-center gap-3">
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate" title={c.name}>{c.name}</span>
-                                        <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: `${c.score}%`,
-                                                    backgroundColor: c.score >= 80 ? '#3b82f6' : c.score >= 60 ? '#f59e0b' : '#ef4444',
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-1.5 justify-end">
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.score}%</span>
-                                            <span className={`text-[11px] font-semibold ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                                                {delta > 0 ? `↑${delta}` : delta < 0 ? `↓${Math.abs(delta)}` : '—'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            }) : (
-                                <div className="text-sm text-gray-500 py-4 text-center">Not enough category data available.</div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-=======
                         <h3 className="mb-5 font-bold text-gray-800 dark:text-white">Category Performance</h3>
->>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
 
                     <div className="flex flex-col gap-3">
                     {d.categories.map((c) => (
