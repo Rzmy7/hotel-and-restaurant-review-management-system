@@ -91,6 +91,9 @@ export interface GroupAnalytics {
     owner_name: string;
     review_count: number;
     avg_rating: number | null;
+    positive_count: number;
+    negative_count: number;
+    neutral_count: number;
   }>;
   reviews_over_time: Array<{ date: string; count: number }>;
   rating_distribution: Array<{ star: number; count: number }>;

@@ -10,6 +10,7 @@ from app.modules.admin.routes.notifications_routes import router as notification
 from app.modules.admin.routes.maintenance_routes import router as maintenance_router
 from app.modules.admin.routes.monitoring_routes import router as monitoring_router
 from app.modules.admin.routes.subscription_routes import router as subscription_router
+from app.modules.admin.routes.llm_model_routes import router as llm_model_router
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 router.include_router(insights_router)
@@ -21,3 +22,4 @@ router.include_router(notifications_router)
 router.include_router(settings_router)
 router.include_router(maintenance_router)
 router.include_router(subscription_router)
+router.include_router(llm_model_router)

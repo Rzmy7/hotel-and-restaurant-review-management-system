@@ -19,8 +19,6 @@ from app.core.db_utils import (
 from app.modules.admin.schemas import (
     ScrapingPlatformCreatePayload,
     ScrapingPlatformUpdatePayload,
-    GeminiApiKeySavePayload,
-    GeminiApiKeyTestPayload,
 )
 from app.modules.admin.services.monitoring_service import (
     create_platform_in_db,
@@ -400,6 +398,35 @@ def resume_review_processing() -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to resume review processing: {exc}") from exc
 
 
+@router.post("/review-processing/retry/{source_id}")
+def retry_failed_reviews(source_id: str) -> dict:
+    """Reset all failed reviews for a source back to 'pending' for reprocessing."""
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            sql = """
+                UPDATE dbo.processed_review
+                SET status = 'pending',
+                    retry_count = 0,
+                    error_message = NULL,
+                    last_attempt = NULL
+                WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                  AND status = 'failed'
+            """
+            cursor.execute(sql, source_id)
+            affected = cursor.rowcount
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "Failed Reviews Retried",
+            f"Reset {affected} failed reviews for source {source_id} to pending",
+        )
+        return {"status": "success", "message": f"{affected} reviews reset to pending.", "count": affected}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retry reviews: {exc}") from exc
+
+
 @router.get("/review-processing/jobs")
 def review_processing_jobs() -> list[dict]:
     """Returns recent review processing activity grouped by source as job-like rows."""
@@ -499,120 +526,5 @@ def review_processing_jobs() -> list[dict]:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
 
 
-@router.get("/review-processing/gemini-config")
-def get_gemini_config() -> dict:
-    """Returns current Gemini API key configuration status."""
-    from app.modules.admin.services.system_settings_service import (
-        ensure_system_settings_table,
-        get_setting,
-    )
-
-    try:
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-
-            raw_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
-            last_tested_at = get_setting(cursor, "review_processing_gemini_last_tested_at")
-            last_test_result = get_setting(cursor, "review_processing_gemini_last_test_result")
-
-            # Mask the key for display
-            masked_key = ""
-            if raw_key:
-                if len(raw_key) > 8:
-                    masked_key = raw_key[:4] + "•" * (len(raw_key) - 8) + raw_key[-4:]
-                else:
-                    masked_key = "•" * len(raw_key)
-
-            return {
-                "apiKey": masked_key,
-                "isConfigured": bool(raw_key),
-                "lastTestedAt": last_tested_at,
-                "lastTestResult": last_test_result,
-            }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to load Gemini config: {exc}") from exc
-
-
-@router.post("/review-processing/gemini-config")
-def save_gemini_config(payload: GeminiApiKeySavePayload) -> dict:
-    """Saves Gemini API key for review processing and updates in-memory config."""
-    from app.modules.admin.services.system_settings_service import (
-        ensure_system_settings_table,
-        set_setting,
-    )
-    import app.core.config as app_config
-
-    api_key = payload.apiKey.strip()
-    api_key = "".join(c for c in api_key if ord(c) < 128)
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
-
-    try:
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-            set_setting(cursor, "review_processing_gemini_api_key", api_key)
-            conn.commit()
-
-        # Update in-memory config so the processor picks it up immediately
-        app_config.GENAI_KEY = api_key
-
-        log_admin_activity(
-            "ai_job",
-            "Gemini API Key Updated",
-            "Review processing Gemini API key was saved",
-        )
-
-        return {"status": "saved", "message": "Gemini API key saved successfully."}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to save Gemini API key: {exc}") from exc
-
-
-@router.post("/review-processing/gemini-config/test")
-def test_gemini_config(payload: GeminiApiKeyTestPayload) -> dict:
-    """Tests a Gemini API key by making a simple generation request."""
-    from google import genai
-    from app.modules.admin.services.system_settings_service import (
-        ensure_system_settings_table,
-        set_setting,
-    )
-
-    api_key = payload.apiKey.strip()
-    api_key = "".join(c for c in api_key if ord(c) < 128)
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
-
-    success = False
-    message = ""
-
-    try:
-        client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents="Reply with exactly: ok"
-        )
-        text = (getattr(response, "text", "") or "").strip()
-        if text:
-            success = True
-            message = "API key is valid and Gemini model is reachable."
-        else:
-            message = "API key accepted but model returned an empty response."
-    except Exception as exc:
-        message = f"API key test failed: {exc}"
-
-    # Persist test result
-    try:
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-            set_setting(cursor, "review_processing_gemini_last_tested_at", datetime.now().isoformat())
-            set_setting(cursor, "review_processing_gemini_last_test_result", "success" if success else "error")
-            conn.commit()
-    except Exception:
-        pass  # Non-critical — don't fail the test response
-
-    return {"success": success, "message": message}
+# Gemini-specific config endpoints removed — use /api/admin/llm-models instead.
 

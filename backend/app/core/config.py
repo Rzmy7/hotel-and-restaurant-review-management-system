@@ -48,6 +48,11 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 # ── Google Generative AI ────────────────────────────────────────────
 GENAI_KEY: str | None = os.getenv("GENAI_KEY")
 
+# ── LLM Gateway ─────────────────────────────────────────────────────
+# 32-byte AES-256 key, base64-encoded.
+# Generate: python -c "import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
+LLM_ENCRYPTION_KEY: str = os.getenv("LLM_ENCRYPTION_KEY", "")
+
 # ── Password reset ──────────────────────────────────────────────────
 PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 

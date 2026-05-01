@@ -643,8 +643,11 @@ def get_group_analytics(db: Session, group_id: str) -> dict:
                 u.last_name  AS owner_last,
                 gm.joined_at,
                 gm.role,
-                COUNT(pr.id)                        AS review_count,
-                AVG(CAST(pr.rating AS FLOAT))       AS avg_rating
+                COUNT(pr.id)                                         AS review_count,
+                AVG(CAST(pr.rating AS FLOAT))                        AS avg_rating,
+                COUNT(CASE WHEN pr.sentiment = 'positive' THEN 1 END) AS positive_count,
+                COUNT(CASE WHEN pr.sentiment = 'negative' THEN 1 END) AS negative_count,
+                COUNT(CASE WHEN pr.sentiment = 'neutral'  THEN 1 END) AS neutral_count
             FROM group_member gm
             JOIN organization o ON o.organization_id = gm.organization_id
             JOIN tenant t ON t.tenant_id = o.tenant_id
@@ -667,6 +670,9 @@ def get_group_analytics(db: Session, group_id: str) -> dict:
             "owner_name": f"{r.owner_first or ''} {r.owner_last or ''}".strip(),
             "review_count": r.review_count or 0,
             "avg_rating": round(float(r.avg_rating), 2) if r.avg_rating else None,
+            "positive_count": r.positive_count or 0,
+            "negative_count": r.negative_count or 0,
+            "neutral_count": r.neutral_count or 0,
             "joined_at": r.joined_at.isoformat() if r.joined_at else None,
             "role": r.role,
         }

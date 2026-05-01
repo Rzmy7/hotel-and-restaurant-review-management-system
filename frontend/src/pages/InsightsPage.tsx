@@ -26,7 +26,7 @@ interface RangeData {
     sentimentPositive: number[];
     sentimentNeutral: number[];
     sentimentNegative: number[];
-    ratingDistribution: { stars: number; count: number; pct: number }[];
+    ratingDistribution: { rating: number; count: number; pct: number }[];
     categories: { name: string; score: number; prev: number }[];
     sources: { name: string; rating: number; reviews: number; pct: number; color: string }[];
     positiveKeywords: { word: string; count: number }[];
@@ -36,6 +36,10 @@ interface RangeData {
     aiActions: { severity: 'critical' | 'warning' | 'info'; title: string; body: string }[];
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
 // ═══════════════════════════════════════════════════════════════════
 //  HELPER: Change badge
 // ═══════════════════════════════════════════════════════════════════
@@ -57,6 +61,7 @@ const ChangeBadge = ({ value }: { value: string }) => {
     );
 };
 
+
 // ═══════════════════════════════════════════════════════════════════
 //  HELPER: Heatmap cell color
 // ═══════════════════════════════════════════════════════════════════
@@ -74,6 +79,8 @@ const heatColor = (v: number, max: number) => {
 // ═══════════════════════════════════════════════════════════════════
 const InsightsPage: React.FC = () => {
     const [timeRange, setTimeRange] = useState('30d');
+    const [insightData, setInsightData] = useState<RangeData | null>(null);
+    const [loading, setLoading] = useState(true);
     const [hasAccess, setHasAccess] = useState<boolean | null>(null);
     const [d, setD] = useState<RangeData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -81,6 +88,7 @@ const InsightsPage: React.FC = () => {
     const navigate = useNavigate();
     const currentOrg = useOrganizationStore(state => state.currentOrg);
     const organizationId = currentOrg?.id;
+    
 
     useEffect(() => {
         if (!user?.user_id) return;
@@ -101,6 +109,7 @@ const InsightsPage: React.FC = () => {
     }, [user?.user_id, organizationId]);
 
     useEffect(() => {
+<<<<<<< HEAD
         if (hasAccess && organizationId) {
             setLoading(true);
             dashboardService.getInsights(organizationId, timeRange).then(data => {
@@ -121,36 +130,62 @@ const InsightsPage: React.FC = () => {
                     <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-gray-500 font-medium">Generating AI Insights...</p>
                 </div>
+=======
+        const fetchData = async () => {
+            setLoading(true);
+
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/api/insights?range=${timeRange}`);
+
+                const data = await res.json();
+
+                console.log("INSIGHT DATA:", data); // 👈 ADD THIS
+
+                setInsightData(data);
+
+            } catch (err) {
+                console.error("Error fetching insights:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [timeRange]);
+
+
+    
+
+
+
+    // ✅ 1. Loading
+    if (loading || !insightData) {
+        return <div>Loading insights...</div>;
+    }
+
+    // ✅ 2. Access checking
+    if (hasAccess === null) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+>>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
             </div>
         );
     }
 
+    // ✅ 3. No access
     if (hasAccess === false) {
         return (
             <div className="min-h-full bg-gray-50 dark:bg-slate-900">
                 <InsightsHeader timeRange={timeRange} onTimeRangeChange={setTimeRange} />
-                <div className="flex-1 flex flex-col items-center justify-center p-8 mt-20">
-                    <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-slate-700 p-8 text-center">
-                        <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Lock size={32} className="text-blue-500" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Upgrade to Premium</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                            Your current plan does not include access to AI-powered insights and advanced analytics. Upgrade your plan to unlock these features.
-                        </p>
-                        <Button
-                            className="w-full"
-                            size="lg"
-                            onClick={() => navigate('/subscription')}
-                        >
-                            View Upgrade Options
-                        </Button>
-                    </div>
+                <div className="flex items-center justify-center h-[80vh]">
+                    <p>Upgrade to access insights</p>
                 </div>
             </div>
         );
     }
 
+<<<<<<< HEAD
     if (!d) return null;
 
     // ── Sentiment chart coordinates ─────────────────────────────
@@ -168,6 +203,46 @@ const InsightsPage: React.FC = () => {
 
     // ── Heatmap max ─────────────────────────────────────────────
     const heatMax = Math.max(...(d.heatmapWeeks || []).flat(), 1);
+=======
+    // ✅ 4. SAFE AREA (ONLY HERE)
+    const d = insightData;
+
+    const total = d.ratingDistribution.reduce((sum, r) => sum + r.count, 0);
+
+    const positive = d.ratingDistribution
+    .filter((r) => r.rating >= 4)
+    .reduce((sum, r) => sum + r.count, 0);
+
+    const satisfactionRate =
+    total > 0 ? Math.round((positive / total) * 100) : 0;
+
+    const max = Math.max(
+    ...(d.ratingDistribution.map(r => r.count) || [1])
+    );
+
+    // calculations
+    const sentLen = d.sentimentMonths.length;
+    const chartW = 600;
+    const chartH = 180;
+    const gapX = chartW / (sentLen - 1 || 1);
+
+    const toY = (v: number) => chartH - (v / 100) * chartH;
+
+    const linePoints = (vals: number[]) =>
+        vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' ');
+
+    const areaPath = (vals: number[]) => {
+        const pts = vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' L');
+        return `M0,${chartH} L${pts} L${(vals.length - 1) * gapX},${chartH} Z`;
+    };
+
+    const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
+
+    const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    };
+
+>>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900">
@@ -183,7 +258,10 @@ const InsightsPage: React.FC = () => {
                         { icon: <Star size={20} />, label: 'Avg Rating', value: d.avgRating, change: d.avgRatingChange, bg: 'bg-amber-50 dark:bg-amber-900/40', fg: 'text-amber-500 dark:text-amber-400' },
                         { icon: <Clock size={20} />, label: 'Response Rate', value: d.responseRate, change: d.responseRateChange, bg: 'bg-emerald-50 dark:bg-emerald-900/40', fg: 'text-emerald-500 dark:text-emerald-400' },
                     ].map((m) => (
-                        <div key={m.label} className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+                        <div
+                            key={m.label}
+                            className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl cursor-pointer hover:scale-105 transition-all"
+                        >
                             <div className={`w-11 h-11 grid place-items-center ${m.bg} ${m.fg} rounded-[10px]`}>{m.icon}</div>
                             <div className="flex-1">
                                 <p className="mb-1.5 text-[13px] text-gray-500 dark:text-gray-400 font-medium m-0">{m.label}</p>
@@ -238,9 +316,17 @@ const InsightsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ═══ 3 + 4. RATING DISTRIBUTION + CATEGORY PERFORMANCE ═════ */}
-                <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
+                {/* ═══ RATING DISTRIBUTION ═══ */}
+                <div
+                id="total-reviews-section"
+                className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5"
+                >
+                <div id="rating-section">
+                    <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">
+                    Rating Distribution
+                    </h3>
 
+<<<<<<< HEAD
                     {/* Rating Distribution */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                         <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Rating Distribution</h3>
@@ -271,12 +357,64 @@ const InsightsPage: React.FC = () => {
                             <span className="text-sm text-gray-500 dark:text-gray-400">Satisfaction Rate</span>
                             <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                                 {(d.ratingDistribution || []).filter((r) => r.stars >= 4).reduce((a, r) => a + r.pct, 0)}%
+=======
+                    {/* Bars */}
+                    <div className="flex flex-col gap-3">
+                    {d.ratingDistribution.map((r) => (
+                        <div
+                        key={r.rating}
+                        className="grid grid-cols-[60px_1fr_70px] items-center gap-3"
+                        >
+                        {/* ⭐ Star */}
+                        <div className="flex items-center gap-1">
+                            <Star size={14} className="text-amber-400" fill="#fbbf24" />
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            {r.rating}
+>>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
                             </span>
                         </div>
+
+                        {/* 🔴 Bar */}
+                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded h-2">
+                            <div
+                            className="bg-red-500 h-2 rounded transition-all duration-700 ease-in-out"
+                            style={{
+                                width: `${(r.count / max) * 100}%`,
+                            }}
+                            />
+                        </div>
+
+                        {/* 🔢 Count */}
+                        <div className="text-right">
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            {r.count}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-1">
+                            ({r.pct}%)
+                            </span>
+                        </div>
+                        </div>
+                    ))}
                     </div>
+
+                    {/* Satisfaction */}
+                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Satisfaction Rate
+                    </span>
+                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {satisfactionRate}%
+                    </span>
+                    </div>
+                </div>
+                </div>
+
+                {/* ═══ CATEGORY + SOURCE (SAME ROW) ═══ */}
+                <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
 
                     {/* Category Performance */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+<<<<<<< HEAD
                         <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Category Performance</h3>
                         <div className="flex flex-col gap-3.5 h-[230px] overflow-y-auto pr-2">
                             {(d.categories || []).length > 0 ? d.categories.map((c) => {
@@ -307,9 +445,52 @@ const InsightsPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+=======
+                        <h3 className="mb-5 font-bold text-gray-800 dark:text-white">Category Performance</h3>
+>>>>>>> 05ce51cc236f2205e475f143c8f6da8c342e1889
 
-                {/* ═══ 5. SOURCE BREAKDOWN ══════════════════════════ */}
-                <SourceBreakdown timeRange={timeRange} />
+                    <div className="flex flex-col gap-3">
+                    {d.categories.map((c) => (
+                        <div
+                        key={c.name}
+                        className="grid grid-cols-[80px_1fr_70px] items-center gap-3"
+                        >
+                        {/* 📌 Category Name */}
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            {c.name}
+                        </span>
+
+                        {/* 📊 Bar */}
+                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded h-2">
+                            <div
+                            className="h-2 rounded transition-all duration-700"
+                            style={{
+                                width: `${c.score}%`,
+                                backgroundColor:
+                                c.score >= 80
+                                    ? "#3b82f6"   // Blue
+                                    : c.score >= 60
+                                    ? "#f59e0b"   // Orange
+                                    : "#ef4444",  // Red
+                            }}
+                            />
+                        </div>
+
+                        {/* 🔢 Percentage */}
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
+                            {c.score}%
+                        </span>
+                        </div>
+                    ))}
+                    </div>
+                    </div>
+
+                    {/* Source Breakdown */}
+                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+                        <SourceBreakdown timeRange={timeRange} />
+                    </div>
+
+                </div>
 
                 {/* ═══ 6. TOP KEYWORDS ═══════════════════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
@@ -374,6 +555,7 @@ const InsightsPage: React.FC = () => {
                                     <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">{m.label}</span>
                                 </div>
                             ))}
+
                         </div>
                         <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700">
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 m-0 leading-relaxed">
@@ -463,6 +645,7 @@ const InsightsPage: React.FC = () => {
 
             </div>
         </div>
+
     );
 };
 
