@@ -390,7 +390,7 @@ const InsightsPage: React.FC = () => {
                             <div
                             className="h-2 rounded transition-all duration-700"
                             style={{
-                                width: `${c.score}%`,
+                                width: `${(c.score / 5) * 100}%`,
                                 backgroundColor:
                                 c.score >= 80
                                     ? "#3b82f6"   // Blue
@@ -403,7 +403,7 @@ const InsightsPage: React.FC = () => {
 
                         {/* 🔢 Percentage */}
                         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">
-                            {c.score}%
+                            {c.score} ⭐
                         </span>
                         </div>
                     ))}

@@ -5,52 +5,48 @@ from app.modules.reviews.models import ProcessedReview
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from app.services.gemini_client import generate_insights
+import json
 
 router = APIRouter()
 
 
-# 🔥 Calculate % change
+# ── Helpers ─────────────────────────────────────────
+
 def calculate_change(current, previous):
     if previous == 0:
-        if current == 0:
-            return "0%"
-        return "+100%"
+        return "0%" if current == 0 else "+100%"
 
     change = current - previous
     percent = (change / previous) * 100
-
     sign = "+" if percent > 0 else ""
     return f"{sign}{round(percent, 1)}%"
 
 
-# 🔥 Average rating helper
 def avg_rating_calc(data):
     if not data:
         return 0
     return sum(r.rating or 0 for r in data) / len(data)
 
 
+# ── API ─────────────────────────────────────────────
+
 @router.get("/insights")
 def get_insights(range: str = "30d", db: Session = Depends(get_db)):
 
     now = datetime.utcnow()
 
-    # 🔹 Determine range
+    # 🔹 Range selection
+    days = 30
     if range == "7d":
         days = 7
-    elif range == "30d":
-        days = 30
     elif range == "90d":
         days = 90
-    else:
-        days = 30
 
-    # 🔹 Define periods
     start_date = now - timedelta(days=days)
     prev_start = start_date - timedelta(days=days)
     prev_end = start_date
 
-    # 🔹 Fetch data
+    # 🔹 Fetch reviews
     current_reviews = db.query(ProcessedReview).filter(
         ProcessedReview.reviewDate >= start_date,
         ProcessedReview.reviewDate < now
@@ -64,7 +60,7 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
     current_total = len(current_reviews)
     previous_total = len(previous_reviews)
 
-    # 🔹 Handle no data
+    # 🔹 Empty state
     if current_total == 0:
         return {
             "overallScore": 0,
@@ -95,27 +91,14 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
     current_avg = avg_rating_calc(current_reviews)
     previous_avg = avg_rating_calc(previous_reviews)
 
-    # 🔹 Changes
     avg_rating_change = calculate_change(current_avg, previous_avg)
     total_reviews_change = calculate_change(current_total, previous_total)
 
     overall_score = int(current_avg * 20)
     overall_score_change = avg_rating_change
 
-    # 🔹 Sentiment split
-    positive = [r for r in current_reviews if (r.rating or 0) >= 4]
-    neutral  = [r for r in current_reviews if (r.rating or 0) == 3]
-    negative = [r for r in current_reviews if (r.rating or 0) <= 2]
+    # ── Weekly Sentiment ─────────────────────────────
 
-    # 🔹 Rating distribution
-    rating_counts = Counter(int(r.rating or 0) for r in current_reviews if r.rating)
-
-    rating_distribution = [
-        {"rating": i, "count": rating_counts.get(i, 0)}
-        for i in [5, 4, 3, 2, 1]
-    ]
-
-    # 🔹 Weekly sentiment
     weekly = defaultdict(lambda: {"pos": 0, "neu": 0, "neg": 0})
 
     for r in current_reviews:
@@ -139,9 +122,66 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
     sentimentNeutral  = [weekly[w]["neu"] for w in sorted_weeks]
     sentimentNegative = [weekly[w]["neg"] for w in sorted_weeks]
 
-    # 🔹 Keywords (simple version)
-    pos_words = []
-    neg_words = []
+    # ── Rating Distribution ──────────────────────────
+
+    rating_counts = Counter(int(r.rating or 0) for r in current_reviews if r.rating)
+
+    rating_distribution = [
+        {"rating": i, "count": rating_counts.get(i, 0)}
+        for i in [5, 4, 3, 2, 1]
+    ]
+
+    # ── Category Performance (SAFE) ──────────────────
+
+    category_scores = {}
+    category_counts = {}
+
+    for r in current_reviews:
+        raw = r.categories
+        if not raw:
+            continue
+
+        try:
+            cats = json.loads(raw)
+        except:
+            continue
+
+        # dict case
+        if isinstance(cats, dict):
+            for key, value in cats.items():
+                if isinstance(value, (int, float)):
+                    category_scores[key] = category_scores.get(key, 0) + value
+                    category_counts[key] = category_counts.get(key, 0) + 1
+
+        # list case
+        elif isinstance(cats, list):
+            for item in cats:
+                if isinstance(item, dict):
+                    key = item.get("name")
+                    value = item.get("score")
+
+                    if key and isinstance(value, (int, float)):
+                        category_scores[key] = category_scores.get(key, 0) + value
+                        category_counts[key] = category_counts.get(key, 0) + 1
+
+                elif isinstance(item, str):
+                    category_scores[item] = category_scores.get(item, 0) + 1
+                    category_counts[item] = category_counts.get(item, 0) + 1
+
+    category_performance = []
+
+    for key in category_scores:
+        avg = category_scores[key] / category_counts[key]
+        category_performance.append({
+            "name": key,
+            "score": round(avg / 20, 1)
+        })
+
+    category_performance.sort(key=lambda x: x["score"], reverse=True)
+
+    # ── Keywords ────────────────────────────────────
+
+    pos_words, neg_words = [], []
 
     for r in current_reviews:
         text = (r.text or "").lower()
@@ -152,19 +192,16 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
         if "bad" in text or "slow" in text:
             neg_words.append("Bad")
 
-    positive_keywords = [
-        {"word": k, "count": v} for k, v in Counter(pos_words).items()
-    ]
+    positive_keywords = [{"word": k, "count": v} for k, v in Counter(pos_words).items()]
+    negative_keywords = [{"word": k, "count": v} for k, v in Counter(neg_words).items()]
 
-    negative_keywords = [
-        {"word": k, "count": v} for k, v in Counter(neg_words).items()
-    ]
+    # ── AI Insights ─────────────────────────────────
 
-    # 🔹 AI Insights
     review_texts = [(r.text or "") for r in current_reviews if r.text]
     ai_result = generate_insights(review_texts)
 
-    # 🔹 FINAL RESPONSE
+    # ── Final Response ─────────────────────────────
+
     return {
         "overallScore": overall_score,
         "overallScoreChange": overall_score_change,
@@ -180,7 +217,7 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
         "sentimentNeutral": sentimentNeutral,
         "sentimentNegative": sentimentNegative,
 
-        "categories": [],
+        "categories": category_performance,
         "ratingDistribution": rating_distribution,
 
         "positiveKeywords": positive_keywords,
