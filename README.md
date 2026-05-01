@@ -602,3 +602,5 @@ For questions or issues, please refer to the individual component READMEs:
 - **[Admin Panel Documentation](admin-frontend/README.md)**
 - **[Embedding Service Documentation](microservices/embedding-service/readme.md)**
 - **[Scraper Engine Documentation](microservices/scraper_engine/README.md)**
+- **[Monitoring API](admin-frontend/MONITORING_API.md)** — Health endpoint specification for system monitoring
+- **[API Calls Reference](API_CALLS.md)** — Complete catalog of frontend/admin API calls
