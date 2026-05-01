@@ -133,7 +133,7 @@ async def verifyAgodaEndpoint(generatedUrl, expected_name):
             await browser.close()
 
 if __name__ == "__main__":
-    hotel = "Hilton Colombo"
+    hotel = "Cinnamon Colombo"
     print(f"Resolving: {hotel}...")
     
     # Run Resolver
