@@ -1,9 +1,9 @@
 import time
 import math
-from platforms.agoda.browser import PlaywrightBrowser
-from platforms.agoda.extractor import AgodaExtractor
+from platforms.agoda.shared.browser import PlaywrightBrowser
+from platforms.agoda.scraping.extractor import AgodaExtractor
 from core.database import init_db
-from platforms.agoda.models import save_reviews_to_db
+from platforms.agoda.scraping.models import save_reviews_to_db
 from core.config import setup_logger, config
 from core.job_manager import job_manager, JobStatus
 from core.audit import audit_logger
