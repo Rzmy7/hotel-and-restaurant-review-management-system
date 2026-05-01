@@ -17,6 +17,7 @@ import logging
 from dotenv import load_dotenv
 from app.database import get_db
 from app.modules.reviews.models import ProcessedReview
+from datetime import datetime, timedelta
 
 
 
@@ -137,6 +138,40 @@ try:
 except ImportError:
     legacy_source_router = None
 
+def calculate_change(current, previous):
+    if previous == 0:
+        if current == 0:
+            return "0%"
+        return "+100%"   # new data appeared
+    
+    change = current - previous
+    percent = (change / previous) * 100
+
+    sign = "+" if percent > 0 else ""
+    return f"{sign}{round(percent, 1)}%"
+
+
+
+    # 🔹 6. Return response
+    return {
+        "overallScore": overall_score,
+        "overallScoreChange": overall_score_change,
+        "totalReviews": str(current_total),
+        "totalReviewsChange": total_reviews_change,
+        "avgRating": round(current_avg, 1),
+        "avgRatingChange": avg_rating_change,
+        "responseRate": f"{response_rate}%",
+        "responseRateChange": response_rate_change
+    }
+
+def get_reviews(start_date, end_date):
+    reviews = db.query(Review).filter(
+        Review.created_at >= start_date,
+        Review.created_at < end_date
+    ).all()
+
+    return [{"rating": r.rating} for r in reviews]
+
 # admin_backend_router removed and consolidated into admin_router
 
 # ── Pre-load ORM models so SQLAlchemy can resolve cross-module relationships ──
@@ -196,6 +231,7 @@ try:
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 except ImportError:
     pass
+
 
 
 # Global Exception Handler to capture 500 errors and include CORS headers

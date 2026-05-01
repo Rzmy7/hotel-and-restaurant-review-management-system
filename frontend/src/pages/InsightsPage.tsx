@@ -215,12 +215,40 @@ const InsightsPage: React.FC = () => {
 
                 {/* ═══ 1. KPI METRICS ROW ═══════════════════════════ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 min-[1000px]:grid-cols-4 gap-4">
-                    {[
-                        { icon: <Zap size={20} />, label: 'Overall Score', value: `${d.overallScore}`, change: d.overallScoreChange, bg: 'bg-blue-50 dark:bg-blue-900/40', fg: 'text-blue-500 dark:text-blue-400' },
-                        { icon: <MessageSquare size={20} />, label: 'Total Reviews', value: d.totalReviews, change: d.totalReviewsChange, bg: 'bg-violet-50 dark:bg-violet-900/40', fg: 'text-violet-500 dark:text-violet-400' },
-                        { icon: <Star size={20} />, label: 'Avg Rating', value: d.avgRating, change: d.avgRatingChange, bg: 'bg-amber-50 dark:bg-amber-900/40', fg: 'text-amber-500 dark:text-amber-400' },
-                        { icon: <Clock size={20} />, label: 'Response Rate', value: d.responseRate, change: d.responseRateChange, bg: 'bg-emerald-50 dark:bg-emerald-900/40', fg: 'text-emerald-500 dark:text-emerald-400' },
-                    ].map((m) => (
+                {[
+                    {
+                        icon: <Zap size={20} />,
+                        label: 'Overall Score',
+                        value: d.overallScore ?? "--",
+                        change: d.overallScoreChange ?? "0%",
+                        bg: 'bg-blue-50 dark:bg-blue-900/40',
+                        fg: 'text-blue-500 dark:text-blue-400'
+                    },
+                    {
+                        icon: <MessageSquare size={20} />,
+                        label: 'Total Reviews',
+                        value: d.totalReviews ?? "--",
+                        change: d.totalReviewsChange ?? "0%",
+                        bg: 'bg-violet-50 dark:bg-violet-900/40',
+                        fg: 'text-violet-500 dark:text-violet-400'
+                    },
+                    {
+                        icon: <Star size={20} />,
+                        label: 'Avg Rating',
+                        value: d.avgRating ?? "--",
+                        change: d.avgRatingChange ?? "0%",
+                        bg: 'bg-amber-50 dark:bg-amber-900/40',
+                        fg: 'text-amber-500 dark:text-amber-400'
+                    },
+                    {
+                        icon: <Clock size={20} />,
+                        label: 'Response Rate',
+                        value: d.responseRate ?? "--",
+                        change: d.responseRateChange ?? "0%",
+                        bg: 'bg-emerald-50 dark:bg-emerald-900/40',
+                        fg: 'text-emerald-500 dark:text-emerald-400'
+                    },
+                ].map((m) => (
                         <div
                             key={m.label}
                             className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl cursor-pointer hover:scale-105 transition-all"
