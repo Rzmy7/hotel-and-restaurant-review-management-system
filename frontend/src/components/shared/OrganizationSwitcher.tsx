@@ -82,7 +82,7 @@ const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
                     </div>
 
                     <div className="p-2 bg-gray-50/80 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700">
-                         <button
+                        <button
                             onClick={() => {
                                 onAdd();
                                 setIsOpen(false);

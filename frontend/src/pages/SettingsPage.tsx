@@ -306,6 +306,8 @@ const SettingsPage: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#4e80ee] dark:text-blue-400 flex items-center justify-center">
                   <activeTabData.icon size={20} />
                 </div>
+
+                {/* each tab content title name */}
                 <h2 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase m-0">{activeTabData.label}</h2>
               </div>
             )}

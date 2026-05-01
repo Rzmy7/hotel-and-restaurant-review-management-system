@@ -52,7 +52,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
         <div className="flex flex-col">
 
             {/* Logo Upload */}
-            <div className="flex flex-col gap-2 py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
+            <div className="flex flex-col gap-2 py-6 border-b border-gray-100 dark:border-slate-900/50 last:border-b-0">
                 <div className="flex gap-6 items-start max-md:flex-col">
                     <div
                         onClick={onLogoUpload}
@@ -67,7 +67,9 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                         ) : (
                             <>
                                 <Upload className="text-gray-400 group-hover:text-[#4e80ee] transition-colors" size={32} />
-                                <span className="text-[11px] font-black tracking-widest text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors text-center w-24">Upload Logo</span>
+                                <span className="text-[11px] font-black tracking-widest text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors text-center w-24">
+                                    Upload Logo
+                                </span>
                             </>
                         )}
                     </div>
@@ -75,7 +77,9 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                         <Button variant="outline" size="sm" onClick={onLogoUpload} isLoading={isUploadingLogo}>
                             {data.logoUrl ? 'Change Logo' : 'Upload Logo'}
                         </Button>
-                        <Button variant="danger" size="sm" onClick={onLogoRemove} disabled={isUploadingLogo || !data.logoUrl}>Remove</Button>
+                        <Button variant="danger" size="sm" onClick={onLogoRemove} disabled={isUploadingLogo || !data.logoUrl}>
+                            Remove
+                        </Button>
                         <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mt-2">Recommended 800x800px PNG</p>
                     </div>
                 </div>
@@ -102,6 +106,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                     <Select
                         value={data.propertyType}
                         onChange={(e) => onChange({ propertyType: e.target.value })}
+                        
                         options={propertyTypeOptions}
                     />
                 </FormField>
@@ -195,7 +200,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                                         <span className="text-xs font-bold tracking-wider text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors">
                                             {organizationRules.length > 0 ? 'Replace Rules File' : 'Upload Rules File'}
                                         </span>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-400 text-center">
                                             Supported formats: .txt, .docx, .pdf (max 10MB)
                                         </span>
                                     </>

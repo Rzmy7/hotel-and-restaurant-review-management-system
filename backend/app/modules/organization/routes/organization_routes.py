@@ -284,6 +284,8 @@ def update_organization(
         "organization_id": org_id
     }
 
+
+# logo upload
 @router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse)
 async def upload_organization_logo(
     org_id: str,
@@ -291,7 +293,7 @@ async def upload_organization_logo(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    # Verify ownership
+    # Verify user owns this organization
     org = db.execute(
         text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
         {"org_id": org_id, "tenant_id": user.user_id}

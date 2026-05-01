@@ -304,6 +304,7 @@ export const settingsApi = {
         return { ...currentSettings };
     },
 
+    // Get active org ID from localStorage
     uploadOrganizationLogo: async (file: File): Promise<string> => {
         const orgId = getActiveOrganizationId();
         if (!orgId) {
