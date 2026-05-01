@@ -72,7 +72,7 @@ export const LandingHeader = () => {
                   Login
                 </Button>
               </Link>
-              <Link to="/register">
+              <Link to="/signup">
                 <Button variant="primary" size="sm">
                   Get Started
                 </Button>
@@ -119,7 +119,7 @@ export const LandingHeader = () => {
                       Login
                     </Button>
                   </Link>
-                  <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
                     <Button variant="primary" className="w-full">
                       Get Started
                     </Button>

@@ -39,7 +39,7 @@ export const CTA = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <Link to={user ? "/dashboard" : "/register"} className="w-full sm:w-auto">
+            <Link to={user ? "/dashboard" : "/signup"} className="w-full sm:w-auto">
               <Button 
                 variant="secondary" 
                 size="lg" 
