@@ -44,10 +44,14 @@ def get_insights(org_id: str, timeRange: str = "30d", user=Depends(get_current_u
             # Convert categories to expected format
             categories = []
             for cat in category_performance:
+                try:
+                    delta = int(str(cat.get("trend", "0")).replace("%", "").replace("+", "").replace("—", "0"))
+                except ValueError:
+                    delta = 0
                 categories.append({
-                    "name": cat["category"],
-                    "score": round(cat["sentiment"] * 100) if cat["sentiment"] else 0,
-                    "prev": round(cat["sentiment"] * 100) - 2 if cat["sentiment"] else 0
+                    "name": cat.get("name", "Unknown"),
+                    "score": cat.get("score", 0),
+                    "prev": cat.get("score", 0) - delta
                 })
 
             # Convert sources

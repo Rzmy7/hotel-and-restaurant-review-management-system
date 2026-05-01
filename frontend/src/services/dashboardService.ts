@@ -14,6 +14,18 @@ class DashboardService {
         );
         return response;
     }
+
+    /**
+     * Fetches the dynamic AI insights and aggregated metrics for the Insights page.
+     * @param orgId - Organization ID
+     * @param timeRange - Time range string (e.g., '7d', '30d', '90d')
+     */
+    async getInsights(orgId: string, timeRange: string): Promise<any> {
+        return await apiClient.get<any>(
+            `/organizations/${orgId}/insights`,
+            { timeRange }
+        );
+    }
 }
 
 export const dashboardService = new DashboardService();

@@ -131,3 +131,9 @@ The system utilizes strict prompt templates to ensure the AI acts as a professio
 - **Short Review Handling**: Expands naturally on exceptionally brief reviews.
 - **Output Constraints**: Returns only the raw response text without placeholders, repetition, or conversational filler.
 - **Graceful Fallback Mechanism**: If the primary LLM provider (e.g., Google Gemini) fails due to invalid API keys, network errors, or rate limits, the `/api/reviews/generate-reply` endpoint will gracefully return a templated fallback response. The frontend is designed to safely render these fallbacks without throwing UI errors to ensure continuous functionality.
+
+## 9. Insights Analytical Engine
+The system features a dynamic Insights module (`GET /organizations/{org_id}/insights`) within the `dashboard` boundary.
+- **SQL Aggregations**: Extracts live review metrics, response rates, category performance, and source comparison across 7d/30d/90d intervals using raw PyODBC.
+- **NLP Keyword Extraction**: Extracts the top positive and negative keywords natively from the SQL data.
+- **Dynamic AI Actions**: Sends a JSON representation of the aggregated metrics directly to Google Gemini via the `genai` client to generate 3-5 high-level actionable insights (labeled as critical, warning, or info). This allows hoteliers to get strategic business intelligence automatically without manually reading hundreds of reviews.
