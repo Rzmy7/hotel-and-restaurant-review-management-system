@@ -184,8 +184,8 @@ const SetupPage = () => {
                 name: orgName,
                 type: selectedType,
                 locationUrl: locUrlTrim,
-                hasRulesFile: !!rulesFile,
-                rulesFileName: rulesFile?.name || null,
+                hasRulesFile: !!rulesFile,   // ← Flag indicating file exists
+                rulesFileName: rulesFile?.name || null,   // ← Store file name for display 
             }
         }));
 
@@ -342,7 +342,7 @@ const SetupPage = () => {
                         <span className="text-sm text-slate-400 group-hover:text-blue-500 transition-colors">Click to upload .txt, .docx, or .pdf</span>
                     </div>
                 )}
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Upload your property rules. AI will extract individual rules for review reply context.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400 mt-1.5">Upload your property rules. AI will extract individual rules for review reply context.</p>
             </div>
 
             {isLoading ? (

@@ -14,6 +14,7 @@ from app.core.exceptions.custom_exceptions import FileValidationException
 from app.core.security import create_access_token
 from app.modules.auth.repositories.roles_repo import get_user_role_names
 from app.core.geo_utils import parse_google_maps_url
+from app.modules.auth.models import Notification, UserNotification
 
 router = APIRouter(prefix="/api", tags=["organization"])
 
@@ -187,6 +188,30 @@ def upsert_organization(
                 )
 
     db.commit()
+
+    # Send notification if organization was created
+    if organization_created:
+        try:
+            notification = Notification(
+                title="Organization Created",
+                message=f"Your organization '{organization_name}' has been successfully created and is now ready to use.",
+                notification_type="success",
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            )
+            db.add(notification)
+            db.flush()
+
+            user_notification = UserNotification(
+                notification_id=notification.notification_id,
+                user_id=user.user_id,
+                is_read=False,
+                delivered_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            )
+            db.add(user_notification)
+            db.commit()
+        except Exception as e:
+            # Log but don't fail the organization creation
+            print(f"Warning: Failed to send organization creation notification: {e}")
 
     # Generate fresh token with the new/updated organization_id
     roles = get_user_role_names(db, user.user_id)
