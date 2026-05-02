@@ -61,9 +61,9 @@ const getTimeLabel = (value: string | null): string => {
 const NotificationsPage: React.FC = () => {
     const location = useLocation();
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    //Controls: announcement,alert, system
+    //Controls: announcement, alert, success, system
     const [activePrimaryFilter, setActivePrimaryFilter] = useState<'all' | 'unread'>('all');
-    const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'system'>('all-types');
+    const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'success' | 'system'>('all-types');
 
 
     const loadNotifications = useCallback(async () => {
@@ -102,8 +102,8 @@ const NotificationsPage: React.FC = () => {
             return;
         }
 
-        if (filterParam === 'announcement' || filterParam === 'alert' || filterParam === 'system') {
-            setActiveCategoryFilter(filterParam);
+        if (filterParam === 'announcement' || filterParam === 'alert' || filterParam === 'success' || filterParam === 'system') {
+            setActiveCategoryFilter(filterParam as 'announcement' | 'alert' | 'success' | 'system');
         }
     }, [location.search]);
 
@@ -123,6 +123,7 @@ const NotificationsPage: React.FC = () => {
         unread: notifications.filter(n => !n.read).length,
         announcement: notifications.filter(n => n.type === 'announcement').length,
         alert: notifications.filter(n => n.type === 'alert').length,
+        success: notifications.filter(n => n.type === 'success').length,
         system: notifications.filter(n => n.type === 'system').length,
     }), [notifications]);
 

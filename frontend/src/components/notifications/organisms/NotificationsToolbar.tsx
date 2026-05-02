@@ -5,9 +5,9 @@ import BulkActions from '../molecules/BulkActions';
 
 interface NotificationsToolbarProps {
     activePrimaryFilter: 'all' | 'unread';
-    activeCategoryFilter: 'all-types' | 'announcement' | 'alert' | 'system';
+    activeCategoryFilter: 'all-types' | 'announcement' | 'alert' | 'success' | 'system';
     onPrimaryFilterChange: (filter: 'all' | 'unread') => void;
-    onCategoryFilterChange: (filter: 'all-types' | 'announcement' | 'alert' | 'system') => void;
+    onCategoryFilterChange: (filter: 'all-types' | 'announcement' | 'alert' | 'success' | 'system') => void;
     counts: Record<string, number>;
     unreadCount: number;
     totalCount: number;
@@ -24,6 +24,7 @@ const categoryFilterTabs = [
     { key: 'all-types', label: 'All Types' },
     { key: 'announcement', label: 'Announcements' },
     { key: 'alert', label: 'Alerts' },
+    { key: 'success', label: 'Success' },
     { key: 'system', label: 'System' },
 ];
 
@@ -68,7 +69,7 @@ const NotificationsToolbar: React.FC<NotificationsToolbarProps> = ({
                                 label={tab.label}
                                 count={tab.key === 'all-types' ? (counts.all || 0) : (counts[tab.key] || 0)}
                                 isActive={activeCategoryFilter === tab.key}
-                                onClick={() => onCategoryFilterChange(tab.key as 'all-types' | 'announcement' | 'alert' | 'system')}
+                                onClick={() => onCategoryFilterChange(tab.key as 'all-types' | 'announcement' | 'alert' | 'success' | 'system')}
                             />
                         ))}
                     </div>
