@@ -44,7 +44,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile, onUpdate, onSave, on
                 <FormField label="Job Title" name="jobTitle" value={profile.jobTitle} onChange={handleChange} placeholder="Hotel Manager" />
                 <FormField label="Location" name="location" value={profile.location} onChange={handleChange} placeholder="New York, NY" />
                 
-                <FormField label="Bio" name="bio" value={profile.bio} onChange={handleChange} multiline placeholder="Describe your experience or role..." />
+                <FormField label="Bio" name="bio" value={profile.bio} onChange={handleChange} multiline placeholder="Describe your experience or role..." />  
             </div>
 
             <div className="mt-10 pt-8 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4 flex-wrap">

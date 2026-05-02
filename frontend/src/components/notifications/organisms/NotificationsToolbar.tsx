@@ -39,6 +39,7 @@ const NotificationsToolbar: React.FC<NotificationsToolbarProps> = ({
     onClearAll,
 }) => {
     return (
+        // full tool bar background 
         <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden transition-all duration-300">
             <div className="flex items-center justify-between px-6 py-4 flex-wrap gap-4">
                 {/* Filters */}
