@@ -107,7 +107,7 @@ def suggested_competitors(
                       )) <= 50
                   AND o.organization_type_id = :type_id
                   AND NOT EXISTS (
-                        SELECT 1 FROM dbo.Competitors c WHERE c.competitor_organization_id = o.organization_id AND c.tracking_organization_id = :my_org
+                        SELECT 1 FROM dbo.Competitors c WHERE c.competitor_organization_id = o.organization_id AND c.tracking_organization_id = :my_org AND c.isTracked = 1
                   )
                 GROUP BY o.organization_id, o.organization_name, o.location_url, o.latitude, o.longitude, o.organization_type_id
                 ORDER BY review_count DESC, o.organization_name ASC
