@@ -17,6 +17,8 @@ from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_us
 # Let's read what oauth_routes actually has by importing it inline, or better, writing the whole thing:
 
 from authlib.integrations.starlette_client import OAuth
+
+
 from starlette.config import Config
 import os
 from dotenv import load_dotenv
@@ -25,10 +27,12 @@ load_dotenv()
 config = Config(environ=os.environ)
 oauth = OAuth(config)
 
+
+# OAuth Setup Section - register google as OAuth provider
 oauth.register(
     name="google",
-    client_id=os.getenv("GOOGLE_CLIENT_ID"),
-    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),   # identifies our app
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),   # proves our backend
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid email profile"},
 )
@@ -39,7 +43,7 @@ router = APIRouter(tags=["OAuth"])
 async def login_google(request: Request):
     if not getattr(oauth, "google", None):
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
-    redirect_uri = request.url_for("auth_google")
+    redirect_uri = request.url_for("auth_google")   # Builds callback URL
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/auth/google")
@@ -47,8 +51,8 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
     token = await oauth.google.authorize_access_token(request)
     user_info = token.get("userinfo") or token
 
-    email = user_info.get("email")
-    google_id = user_info.get("sub")
+    email = user_info.get("email")     # user identity
+    google_id = user_info.get("sub")   # unique Google ID
 
     if not email:
         raise HTTPException(status_code=400, detail="Google did not return an email")

@@ -58,7 +58,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile, onUpdate, onSave, on
                 </button>
                 <button
                     onClick={onCancel}
-                    className="h-12 px-8 bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-slate-400 rounded-2xl font-black text-[12px] uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center gap-2"
+                    className="h-12 px-8 bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-slate-400 rounded-2xl font-black text-[12px] uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center gap-2"
                 >
                     <X size={16} />
                     Discard Changes

@@ -207,6 +207,7 @@ const LoginPage = () => {
     return twoFactorMessage || 'Enter the 6-digit code sent to your email.';
   }, [isTwoFactorStep, twoFactorMessage]);
 
+
   return (
     <AuthLayout
       title="Welcome Back"
@@ -227,6 +228,7 @@ const LoginPage = () => {
         </div>
       )}
 
+      {/*when enable 2FA*/ }
       <form onSubmit={isTwoFactorStep ? handleVerifyTwoFactor : handleSubmit} className="space-y-5">
         {isTwoFactorStep && (
           <div className="rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-900/20 p-4 mb-6 animate-in fade-in slide-in-from-top-2">

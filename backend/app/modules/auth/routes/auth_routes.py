@@ -41,6 +41,7 @@ def as_utc(dt: datetime | None) -> datetime | None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
+
 @router.post("/signup")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
     validated = validate_signup_payload(payload.name, payload.email, payload.password)
@@ -51,6 +52,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             status_code=400,
             detail="Email already exists in database"
         )
+    # split the full name into first name and last name
     name_parts = validated["name"].split(" ", 1)
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
@@ -86,8 +88,8 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         {"user_id": str(user.user_id)}
     )
 
-    db.commit()
-    db.refresh(new_tenant)
+    db.commit()   # permanently save changes
+    db.refresh(new_tenant)  # get updated data from DB
 
     # ── Send welcome notification ──
     try:
