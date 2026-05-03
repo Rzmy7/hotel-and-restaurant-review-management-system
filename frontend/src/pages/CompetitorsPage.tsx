@@ -106,6 +106,7 @@ const CompetitorsPage = () => {
                     )}
 
                     {/* Table */}
+                    {!loading && tracked.length > 0 && (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -157,6 +158,7 @@ const CompetitorsPage = () => {
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </div>
 
             </main>
