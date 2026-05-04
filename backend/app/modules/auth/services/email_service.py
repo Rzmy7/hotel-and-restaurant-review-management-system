@@ -28,13 +28,14 @@ def send_reset_email(to_email: str, link: str) -> None:
 
     server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
     try:
-        server.ehlo()
-        server.starttls()
+        server.ehlo()     # introduce client to server
+        server.starttls()   # data encrypted using this
         server.ehlo()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
     finally:
         server.quit()
+
 
 def send_2fa_email(to_email: str, code: str) -> None:
     """Send a 2-factor authentication code email to the given address."""
@@ -67,6 +68,7 @@ def send_2fa_email(to_email: str, code: str) -> None:
 # send an email when user enable email notifications
 def send_notification_email(to_email: str, title: str, message: str) -> None:
     """Send a general notification email to the given address."""
+    # Checks whether email credentials are available
     if not SMTP_EMAIL or not SMTP_PASSWORD:
         print("[email-notif] SMTP is not configured, skipping notification email:", title)
         return

@@ -148,7 +148,7 @@ const ProfilePage: React.FC = () => {
                     avatar: data.profile_image_url,
                 }));
 
-                // 🧹 Clean memory (important)
+                //  Clean memory (important)
                 URL.revokeObjectURL(previewUrl);
 
                 // STEP 5: Success message
@@ -157,7 +157,7 @@ const ProfilePage: React.FC = () => {
             } catch (error) {
                 console.error(error);
 
-                // ❌ RESTORE OLD IMAGE (IMPORTANT UX FIX)
+                //  RESTORE OLD IMAGE (IMPORTANT UX FIX)
                 setProfile((prev) => ({
                     ...prev,
                     avatar: previousAvatar,

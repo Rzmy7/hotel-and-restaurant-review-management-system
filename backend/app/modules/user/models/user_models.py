@@ -1,4 +1,6 @@
 # app/modules/user/models/user_models.py
+
+# Database representation for user
 import uuid
 from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey
 from sqlalchemy.orm import relationship

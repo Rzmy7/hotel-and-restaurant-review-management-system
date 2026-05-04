@@ -34,7 +34,7 @@ def _assert_password_matches_email(password: str, password_hash: str) -> None:
 def login_user(db: Session, email: str, password: str) -> dict:
     """Authenticate a user by email/password and return a JWT token."""
     # The route/validator normalizes email before this lookup.
-    user = get_user_by_email(db, email)
+    user = get_user_by_email(db, email)  # find user
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -56,7 +56,7 @@ def login_user(db: Session, email: str, password: str) -> dict:
     # This is the account-specific credential check (email + password pair).
     _assert_password_matches_email(password, user.password_hash)
 
-    role = get_user_primary_role(db, user.user_id)
+    role = get_user_primary_role(db, user.user_id)    # get user role
     if not role:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

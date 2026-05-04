@@ -54,10 +54,10 @@ const LoginPage = () => {
     if (auth.user) {
       const destination = getDashboardPathForRole(auth.user.role);
       if (isExternalDestination(destination)) {
-        window.location.href = destination;
+        window.location.href = destination;   // Admin → External admin-frontend
         return;
       }
-      navigate(destination);
+      navigate(destination);   // User → Internal /dashboard
     }
   }, [auth.user, navigate, searchParams, setSearchParams, auth]);
 
@@ -145,7 +145,7 @@ const LoginPage = () => {
       }
       setError(backendMessage);
     } finally {
-      setLoading(false);
+      setLoading(false);   // loading state is reset regarless wheather the operation success or fail
     }
   };
 
@@ -202,7 +202,7 @@ const LoginPage = () => {
     }
   };
 
-  const twoFactorHint = useMemo(() => {
+  const twoFactorHint = useMemo(() => {   // generate message for OTP screen
     if (!isTwoFactorStep) return null;
     return twoFactorMessage || 'Enter the 6-digit code sent to your email.';
   }, [isTwoFactorStep, twoFactorMessage]);
@@ -283,7 +283,7 @@ const LoginPage = () => {
                   setTwoFactorMessage(null);
                   setSearchParams({});
                 }}
-                className="text-sm font-bold text-gray-500 hover:text-gray-700"
+                className="text-sm font-bold text-gray-500 hover:text-gray-300"
               >
                 Back to login
               </button>
