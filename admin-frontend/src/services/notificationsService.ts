@@ -21,12 +21,23 @@ interface UnreadCountResponse {
     count: number;
 }
 
+export interface PaginatedNotifications {
+    data: AdminNotification[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
 export const notificationsService = {
     async getAdminNotifications(limit = 20): Promise<AdminNotificationsResponse> {
         const params = new URLSearchParams();
         params.append('limit', String(limit));
         // Path is now /api/admin/notifications/ (trailing slash or empty for @router.get("/"))
         return apiClient.get<AdminNotificationsResponse>(`/admin/notifications/?${params.toString()}`);
+    },
+
+    async getPaginatedNotifications(page = 1, limit = 10): Promise<PaginatedNotifications> {
+        return apiClient.get<PaginatedNotifications>(`/admin/notifications/paginated?page=${page}&limit=${limit}`);
     },
 
     async getAdminUnreadCount(): Promise<UnreadCountResponse> {

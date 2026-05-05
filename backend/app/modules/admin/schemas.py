@@ -42,6 +42,13 @@ class SystemAlert(BaseModel):
     isRead: bool
 
 
+class PaginatedAlerts(BaseModel):
+    data: list[SystemAlert]
+    total: int
+    page: int
+    limit: int
+
+
 class RecentActivity(BaseModel):
     id: str
     type: Literal[
@@ -62,6 +69,13 @@ class RecentActivity(BaseModel):
     description: str
     timestamp: str
     user: Optional[str] = None
+
+
+class PaginatedActivities(BaseModel):
+    data: list[RecentActivity]
+    total: int
+    page: int
+    limit: int
 
 
 # ── Organization schemas ────────────────────────────────────────────

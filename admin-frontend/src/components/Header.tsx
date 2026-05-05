@@ -7,6 +7,7 @@ import type { AdminNotification } from '../services/notificationsService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
 import { useTheme } from '../contexts/ThemeContext';
+import { AllNotificationsModal } from './AllNotificationsModal';
 
 export const Header: React.FC = () => {
     const location = useLocation();
@@ -15,6 +16,7 @@ export const Header: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [isAllNotificationsOpen, setIsAllNotificationsOpen] = useState(false);
     const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
     const [notifications, setNotifications] = useState<AdminNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -303,10 +305,31 @@ export const Header: React.FC = () => {
                                     ))
                                 )}
                             </div>
+                            
+                            {/* View All Button */}
+                            <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-700 text-center">
+                                <button
+                                    onClick={() => {
+                                        setIsNotificationsOpen(false);
+                                        setIsAllNotificationsOpen(true);
+                                    }}
+                                    className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition-colors"
+                                >
+                                    View all notifications
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
+
+            <AllNotificationsModal
+                isOpen={isAllNotificationsOpen}
+                onClose={() => setIsAllNotificationsOpen(false)}
+                timezone={systemTimezone}
+                onMarkAllRead={handleMarkAllRead}
+                onMarkSingleRead={handleMarkSingleRead}
+            />
         </header>
     );
 };
