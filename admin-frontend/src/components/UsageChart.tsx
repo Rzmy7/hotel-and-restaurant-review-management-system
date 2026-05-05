@@ -58,7 +58,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                 </div>
                 <div>
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Usage Over Time</h3>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">Active users per month</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Reviews processed per month</p>
                 </div>
             </div>
             <div className="flex-1 relative">
