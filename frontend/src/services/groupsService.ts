@@ -107,6 +107,26 @@ export interface JoinLinkInfo {
   already_member: boolean;
 }
 
+/**
+ * Returns the active organization_id from the org store.
+ * All group endpoints scope to this org so multi-org users hit the right membership row.
+ */
+const activeOrgId = (): string | undefined => {
+  try {
+    // Mirrors useOrganizationStore — set by switchOrganization() in localStorage.
+    const raw = localStorage.getItem('current_organization');
+    if (raw) return raw;
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+};
+
+const orgScope = (extra?: Record<string, unknown>): Record<string, unknown> => {
+  const oid = activeOrgId();
+  return oid ? { organization_id: oid, ...(extra ?? {}) } : { ...(extra ?? {}) };
+};
+
 export const groupsService = {
   // ── Groups ──────────────────────────────────────────────────────
 
@@ -120,7 +140,7 @@ export const groupsService = {
   },
 
   async joinPublicGroup(groupId: string): Promise<{ message: string; group_id: string }> {
-    return apiClient.post(`/groups/${groupId}/join`);
+    return apiClient.post(`/groups/${groupId}/join`, orgScope());
   },
 
   async createGroup(organizationId: string, data: {
@@ -140,60 +160,80 @@ export const groupsService = {
     group_name?: string;
     description?: string;
     is_private?: boolean;
-  }): Promise<{ message: string }> {
-    return apiClient.put(`/groups/${groupId}`, data);
+  }, organizationId?: string): Promise<{ message: string }> {
+    const oid = organizationId ?? activeOrgId();
+    const url = oid ? `/groups/${groupId}?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}`;
+    return apiClient.put(url, data);
   },
 
-  async deleteGroup(groupId: string): Promise<{ message: string }> {
-    return apiClient.delete(`/groups/${groupId}`);
+  async deleteGroup(groupId: string, organizationId?: string): Promise<{ message: string }> {
+    const oid = organizationId ?? activeOrgId();
+    const url = oid ? `/groups/${groupId}?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}`;
+    return apiClient.delete(url);
   },
 
-  async leaveGroup(groupId: string): Promise<{ message: string }> {
-    return apiClient.post(`/groups/${groupId}/leave`);
+  async leaveGroup(groupId: string, organizationId?: string): Promise<{ message: string }> {
+    return apiClient.post(`/groups/${groupId}/leave`, orgScope({}));
   },
 
   // ── Members ──────────────────────────────────────────────────────
 
-  async listMembers(groupId: string): Promise<{ members: GroupMember[]; count: number }> {
-    return apiClient.get(`/groups/${groupId}/members`);
+  async listMembers(groupId: string, organizationId?: string): Promise<{ members: GroupMember[]; count: number }> {
+    const oid = organizationId ?? activeOrgId();
+    return apiClient.get(`/groups/${groupId}/members`, oid ? { organization_id: oid } : undefined);
   },
 
   /** Remove a member organization. Pass the organization_id (not user_id). */
-  async removeMember(groupId: string, organizationId: string): Promise<{ message: string }> {
-    return apiClient.delete(`/groups/${groupId}/members/${organizationId}`);
+  async removeMember(groupId: string, memberOrganizationId: string, organizationId?: string): Promise<{ message: string }> {
+    const oid = organizationId ?? activeOrgId();
+    const url = oid
+      ? `/groups/${groupId}/members/${memberOrganizationId}?organization_id=${encodeURIComponent(oid)}`
+      : `/groups/${groupId}/members/${memberOrganizationId}`;
+    return apiClient.delete(url);
   },
 
   // ── Settings ─────────────────────────────────────────────────────
 
-  async getSettings(groupId: string): Promise<GroupSettings> {
-    return apiClient.get(`/groups/${groupId}/settings`);
+  async getSettings(groupId: string, organizationId?: string): Promise<GroupSettings> {
+    const oid = organizationId ?? activeOrgId();
+    return apiClient.get(`/groups/${groupId}/settings`, oid ? { organization_id: oid } : undefined);
   },
 
-  async updateSettings(groupId: string, settings: GroupSettings): Promise<{ message: string }> {
-    return apiClient.put(`/groups/${groupId}/settings`, settings);
+  async updateSettings(groupId: string, settings: GroupSettings, organizationId?: string): Promise<{ message: string }> {
+    const oid = organizationId ?? activeOrgId();
+    const url = oid ? `/groups/${groupId}/settings?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}/settings`;
+    return apiClient.put(url, settings);
   },
 
   // ── Analytics ────────────────────────────────────────────────────
 
-  async getAnalytics(groupId: string): Promise<GroupAnalytics> {
-    return apiClient.get(`/groups/${groupId}/analytics`);
+  async getAnalytics(groupId: string, organizationId?: string): Promise<GroupAnalytics> {
+    const oid = organizationId ?? activeOrgId();
+    return apiClient.get(`/groups/${groupId}/analytics`, oid ? { organization_id: oid } : undefined);
   },
 
   // ── Invites ───────────────────────────────────────────────────────
 
-  async listGroupInvites(groupId: string): Promise<{ invites: GroupInvite[]; count: number }> {
-    return apiClient.get(`/groups/${groupId}/invites`);
+  async listGroupInvites(groupId: string, organizationId?: string): Promise<{ invites: GroupInvite[]; count: number }> {
+    const oid = organizationId ?? activeOrgId();
+    return apiClient.get(`/groups/${groupId}/invites`, oid ? { organization_id: oid } : undefined);
   },
 
   async sendInvite(groupId: string, data: {
     organization_id: string;
     message?: string;
-  }): Promise<{ invite_id: string }> {
-    return apiClient.post(`/groups/${groupId}/invites`, data);
+  }, scopeOrgId?: string): Promise<{ invite_id: string }> {
+    const oid = scopeOrgId ?? activeOrgId();
+    const url = oid ? `/groups/${groupId}/invites?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}/invites`;
+    return apiClient.post(url, data);
   },
 
-  async cancelInvite(groupId: string, inviteId: string): Promise<{ message: string }> {
-    return apiClient.delete(`/groups/${groupId}/invites/${inviteId}`);
+  async cancelInvite(groupId: string, inviteId: string, organizationId?: string): Promise<{ message: string }> {
+    const oid = organizationId ?? activeOrgId();
+    const url = oid
+      ? `/groups/${groupId}/invites/${inviteId}?organization_id=${encodeURIComponent(oid)}`
+      : `/groups/${groupId}/invites/${inviteId}`;
+    return apiClient.delete(url);
   },
 
   // ── My invites (as invitee) ───────────────────────────────────────
@@ -221,7 +261,8 @@ export const groupsService = {
   },
   // ── Organization search ───────────────────────────────────────────
 
-  async searchOrganizations(query: string): Promise<{ organizations: Organization[] }> {
-    return apiClient.get('/groups/search-organizations', { q: query });
+  async searchOrganizations(query: string, organizationId?: string): Promise<{ organizations: Organization[] }> {
+    const oid = organizationId ?? activeOrgId();
+    return apiClient.get('/groups/search-organizations', oid ? { q: query, organization_id: oid } : { q: query });
   },
 };
