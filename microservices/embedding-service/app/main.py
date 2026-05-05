@@ -42,12 +42,17 @@ app = FastAPI(title="Embedding Service")
 SERVICE_START_TIME = datetime.now()
 
 # Add CORS middleware
+ADMIN_ORIGIN = os.getenv("ADMIN_FRONTEND_URL", "http://localhost:5174")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=[
+        ADMIN_ORIGIN,
+        "http://localhost:5174",   # local dev
+        "http://localhost:5173",   # local dev (user frontend)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "x-internal-api-key"],
 )
 
 # Preload models at startup

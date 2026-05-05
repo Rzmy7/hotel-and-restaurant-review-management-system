@@ -613,13 +613,20 @@ def update_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, user_id: s
 
     if next_role == "User" and payload.plan:
         set_user_subscription_plan(cursor, user_id, payload.plan)
-        # ── Notify user about admin-initiated plan change ──
+    conn.commit()
+
+    # ── Notify user about admin-initiated plan change ──
+    # IMPORTANT: This MUST happen AFTER conn.commit() because the notification
+    # helper opens a separate SQLAlchemy session. If called before commit, the
+    # pyodbc connection still holds write locks on the user table, and the
+    # SQLAlchemy session can deadlock waiting for those locks — freezing the
+    # entire backend with no error output.
+    if next_role == "User" and payload.plan:
         try:
             from app.services.notification_helpers import notify_plan_changed_by_admin
             notify_plan_changed_by_admin(user_id, payload.plan)
         except Exception:
             pass  # Best-effort
-    conn.commit()
 
     updated_row = _get_user_row_by_id(cursor, user_id, columns)
     if updated_row is None:
