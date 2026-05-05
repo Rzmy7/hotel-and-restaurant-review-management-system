@@ -3,9 +3,8 @@
 from app.modules.admin.services.admin_activity_logger import log_admin_activity
 
 import pyodbc
-import requests
 from fastapi import APIRouter, HTTPException, Depends
-from google import genai
+
 
 from app.core.db_utils import get_connection_string
 from app.core.db_utils import execute_query, get_table_columns
@@ -20,8 +19,6 @@ from app.modules.admin.schemas import (
     AdminProfileUpdatePayload,
     FeatureFlagResponse,
     FeatureFlagUpdatePayload,
-    ReplyGenerationApiTestPayload,
-    ReplyGenerationApiTestResponse,
     ReplyGenerationSettingsPayload,
     ReplyGenerationSettingsResponse,
     SecuritySettingsPayload,
@@ -32,8 +29,6 @@ from app.modules.admin.services.system_settings_service import (
     DEFAULT_CURRENCY,
     DEFAULT_DATE_FORMAT,
     DEFAULT_LANGUAGE,
-    DEFAULT_REPLY_GOOGLE_MODEL,
-    DEFAULT_REPLY_SELECTED_MODEL,
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
     DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
     DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
@@ -420,11 +415,8 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
             cursor = connection.cursor()
             ensure_system_settings_table(cursor)
 
-            google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-            selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
             similar_reviews_count = get_similar_reviews_count(cursor)
-            google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
-            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            reply_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
             use_embedding_rules = get_setting_bool(
                 cursor,
                 "reply_use_embedding_rules",
@@ -437,11 +429,8 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
             )
 
             return ReplyGenerationSettingsResponse(
-                googleApiKey=google_api_key,
-                selectedModel=selected_model,
                 similarReviewsCount=similar_reviews_count,
-                googleRequestCount=google_request_count,
-                googleTokenUsage=google_token_usage,
+                replyRequestCount=reply_request_count,
                 useEmbeddingRules=use_embedding_rules,
                 useSimilarReviews=use_similar_reviews,
             )
@@ -451,18 +440,9 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
 
 @router.patch("/reply-generation", response_model=ReplyGenerationSettingsResponse)
 def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) -> ReplyGenerationSettingsResponse:
-    google_api_key = payload.googleApiKey.strip()
-    google_api_key = "".join(c for c in google_api_key if ord(c) < 128)
-    selected_model = payload.selectedModel.strip()
     similar_reviews_count = payload.similarReviewsCount
     use_embedding_rules = payload.useEmbeddingRules
     use_similar_reviews = payload.useSimilarReviews
-
-    if not selected_model:
-        raise HTTPException(status_code=400, detail="A model selection is required.")
-
-    if not google_api_key:
-        raise HTTPException(status_code=400, detail="Google API key is required for the selected provider.")
 
     if similar_reviews_count < 1 or similar_reviews_count > 20:
         raise HTTPException(status_code=400, detail="similarReviewsCount must be between 1 and 20.")
@@ -472,27 +452,21 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
             cursor = connection.cursor()
             ensure_system_settings_table(cursor)
 
-            set_setting(cursor, "reply_google_api_key", google_api_key)
-            set_setting(cursor, "reply_selected_model", selected_model)
             set_setting(cursor, "reply_similar_reviews_count", str(similar_reviews_count))
             set_setting(cursor, "reply_use_embedding_rules", "true" if use_embedding_rules else "false")
             set_setting(cursor, "reply_use_similar_reviews", "true" if use_similar_reviews else "false")
-            google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
-            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            reply_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
             connection.commit()
 
             log_admin_activity(
                 "ai_job",
                 "Reply Generation Settings Updated",
-                f"Model: {selected_model}, Similar reviews: {similar_reviews_count}",
+                f"Similar reviews: {similar_reviews_count}, Rules: {use_embedding_rules}, Similar: {use_similar_reviews}",
             )
 
             return ReplyGenerationSettingsResponse(
-                googleApiKey=google_api_key,
-                selectedModel=selected_model,
                 similarReviewsCount=similar_reviews_count,
-                googleRequestCount=google_request_count,
-                googleTokenUsage=google_token_usage,
+                replyRequestCount=reply_request_count,
                 useEmbeddingRules=use_embedding_rules,
                 useSimilarReviews=use_similar_reviews,
             )
@@ -501,52 +475,6 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to update reply generation settings: {exc}") from exc
 
-
-@router.post("/reply-generation/test", response_model=ReplyGenerationApiTestResponse)
-def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> ReplyGenerationApiTestResponse:
-    provider = payload.provider.strip().lower()
-    api_key = payload.apiKey.strip()
-    api_key = "".join(c for c in api_key if ord(c) < 128)
-    model = (payload.model or "").strip()
-
-    if provider != "google":
-        raise HTTPException(status_code=400, detail="Provider must be 'google'.")
-
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
-    if not model:
-        model = DEFAULT_REPLY_GOOGLE_MODEL
-
-    try:
-        resolved_google_version = "v1"
-        last_google_error: Exception | None = None
-
-        for api_version in ("v1", "v1beta"):
-            try:
-                client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
-                response = client.models.generate_content(model=model, contents="Reply with exactly: ok")
-                if not (getattr(response, "text", "") or "").strip():
-                    raise ValueError("Google API returned an empty response.")
-                resolved_google_version = api_version
-                last_google_error = None
-                break
-            except Exception as exc:
-                last_google_error = exc
-
-        if last_google_error is not None:
-            raise last_google_error
-
-        return ReplyGenerationApiTestResponse(
-            provider=provider,
-            success=True,
-            message=f"API key is valid and model '{model}' is reachable (Google API {resolved_google_version}).",
-        )
-    except Exception as exc:
-        return ReplyGenerationApiTestResponse(
-            provider=provider,
-            success=False,
-            message=f"API key test failed: {exc}",
-        )
 
 
 @router.get("/feature-flags", response_model=list[FeatureFlagResponse])

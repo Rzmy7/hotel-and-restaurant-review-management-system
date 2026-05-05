@@ -11,11 +11,8 @@ export interface GeneralSettings {
 }
 
 export interface ReplyGenerationSettings {
-    googleApiKey: string;
-    selectedModel: string;
     similarReviewsCount: number;
-    googleRequestCount: number;
-    googleTokenUsage: number;
+    replyRequestCount: number;
     useEmbeddingRules: boolean;
     useSimilarReviews: boolean;
 }
@@ -26,17 +23,7 @@ export interface SecuritySettings {
     requireTwoFactorAuth: boolean;
 }
 
-export interface ReplyGenerationApiTestPayload {
-    provider: 'google';
-    apiKey: string;
-    model: string;
-}
 
-export interface ReplyGenerationApiTestResponse {
-    provider: 'google';
-    success: boolean;
-    message: string;
-}
 
 export interface AdminProfile {
     name: string;
@@ -84,18 +71,12 @@ export const settingsService = {
 
     async updateReplyGenerationSettings(payload: ReplyGenerationSettings): Promise<ReplyGenerationSettings> {
         const requestPayload = {
-            googleApiKey: payload.googleApiKey,
-            selectedModel: payload.selectedModel,
             similarReviewsCount: payload.similarReviewsCount,
             useEmbeddingRules: payload.useEmbeddingRules,
             useSimilarReviews: payload.useSimilarReviews,
         };
 
         return apiClient.patch<ReplyGenerationSettings>('/admin/settings/reply-generation', requestPayload);
-    },
-
-    async testReplyGenerationApiKey(payload: ReplyGenerationApiTestPayload): Promise<ReplyGenerationApiTestResponse> {
-        return apiClient.post<ReplyGenerationApiTestResponse>('/admin/settings/reply-generation/test', payload);
     },
 
     async getAdminProfile(): Promise<AdminProfile> {
