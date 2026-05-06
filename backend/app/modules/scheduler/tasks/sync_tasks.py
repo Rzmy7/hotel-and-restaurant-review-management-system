@@ -172,8 +172,9 @@ async def process_pending_syncs():
             )
 
             if job_id:
-                # Update status to queued to prevent redundant triggers before scraper callback arrives
-                source.source_status = 'queued'
+                # Scraper accepted the job — set status to 'running' immediately
+                # so the frontend shows "Syncing" without waiting for the scraper's callback
+                source.source_status = 'running'
                 db.commit()
                 
                 log_activity(
