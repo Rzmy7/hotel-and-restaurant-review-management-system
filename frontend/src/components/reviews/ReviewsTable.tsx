@@ -8,7 +8,7 @@ import type { Review } from '../../types/reviews';
 
 interface ReviewsTableProps {
     reviews?: Review[];
-    pagination?: { total: 5; page: number; limit: 5; totalPages: number };
+    pagination?: { total: number; page: number; limit: number; totalPages: number };
     isLoading?: boolean;
 }
 
