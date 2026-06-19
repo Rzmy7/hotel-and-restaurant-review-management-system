@@ -64,12 +64,12 @@ def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
     """
     try:
         import pyodbc
-        from app.core.db_utils import get_connection_string
+        from app.core.pyodbc_connection import get_raw_connection
         from app.modules.admin.services.subscription_service import (
             check_feature_limit,
             send_limit_reached_notification,
         )
-        with pyodbc.connect(get_connection_string()) as conn:
+        with get_raw_connection() as conn:
             cursor = conn.cursor()
             limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
             if not limit_info["allowed"]:

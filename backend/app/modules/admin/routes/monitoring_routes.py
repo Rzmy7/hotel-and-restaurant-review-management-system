@@ -16,6 +16,7 @@ from app.core.db_utils import (
     get_connection_string,
     table_exists,
 )
+from app.core.pyodbc_connection import get_raw_connection
 from app.modules.admin.schemas import (
     BatchConfigResponse,
     BatchConfigUpdatePayload,
@@ -404,7 +405,7 @@ def resume_review_processing() -> dict:
 def retry_failed_reviews(source_id: str) -> dict:
     """Reset all failed reviews for a source back to 'pending' for reprocessing."""
     try:
-        with pyodbc.connect(get_connection_string()) as conn:
+        with get_raw_connection() as conn:
             cursor = conn.cursor()
             sql = """
                 UPDATE dbo.processed_review
@@ -433,7 +434,7 @@ def retry_failed_reviews(source_id: str) -> dict:
 def retry_all_failed_reviews() -> dict:
     """Reset ALL failed reviews across all sources back to 'pending' for reprocessing."""
     try:
-        with pyodbc.connect(get_connection_string()) as conn:
+        with get_raw_connection() as conn:
             cursor = conn.cursor()
             sql = """
                 UPDATE dbo.processed_review
