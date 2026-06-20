@@ -14,6 +14,7 @@ from typing import Optional
 
 from app.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.tenant_context import resolve_tenant_scope
 from app.modules.groups import repository as repo
 from app.modules.groups.schemas import (
     GroupCreate,
@@ -33,16 +34,7 @@ def _get_current_org_id(current_user: dict, db: Session) -> str:
     The JWT may carry 'organization_id' directly; otherwise resolve from user_id.
     """
     org_id = current_user.get("organization_id")
-    if org_id:
-        return org_id
-    # Fallback: look up via user's tenant
-    resolved = repo.get_user_current_org_id(db, current_user["user_id"])
-    if not resolved:
-        raise HTTPException(
-            status_code=400,
-            detail="No organization found for your account. Please create or select an organization first."
-        )
-    return resolved
+    return resolve_tenant_scope(current_user, db, org_id)
 
 
 def _require_owner(group_id: str, organization_id: str, db: Session):
@@ -186,10 +178,7 @@ def list_groups(
 ):
     """Return all groups the specified (or current) organization belongs to."""
     # Explicit org_id from query param takes priority — this is what the frontend sends
-    if organization_id:
-        org_id = organization_id
-    else:
-        org_id = _get_current_org_id(current_user, db)
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     groups = repo.list_org_groups(db, org_id)
     return {"groups": groups, "count": len(groups)}
 
@@ -201,7 +190,7 @@ def create_group(
     db: Session = Depends(get_db),
 ):
     """Create a new group. The specified (or current) organization becomes the GROUP_OWNER."""
-    org_id = body.organization_id or _get_current_org_id(current_user, db)
+    org_id = resolve_tenant_scope(current_user, db, body.organization_id)
     group = repo.create_group(
         db,
         group_name=body.group_name,
@@ -275,7 +264,7 @@ def get_group(
     db: Session = Depends(get_db),
 ):
     """Return full group details for a member organization."""
-    org_id = organization_id or _get_current_org_id(current_user, db)
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     detail = repo.get_group_detail(db, group_id, org_id)
     if not detail:
         raise HTTPException(status_code=404, detail="Group not found or your organization is not a member.")

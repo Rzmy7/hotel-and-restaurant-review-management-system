@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.database.session import get_db
+from app.core.tenant_context import resolve_tenant_scope
 from app.modules.organization.schemas.source_schema import (
     SourceConnectRequest,
     CustomSourceConnectRequest,
@@ -40,55 +41,14 @@ def _ensure_sources_table(db: Session):
     )
 
 
-def _resolve_org_id(db: Session, user_id, organization_id: str | None):
-    if organization_id:
-        membership = db.execute(
-            text(
-                """
-                SELECT 1
-                FROM dbo.user_organizations
-                WHERE user_id = :user_id AND organization_id = :organization_id
-                """
-            ),
-            {"user_id": user_id, "organization_id": organization_id},
-        ).fetchone()
-
-        if not membership:
-            raise HTTPException(
-                status_code=403, detail="You are not a member of this organization"
-            )
-
-        return organization_id
-
-    fallback_org = db.execute(
-        text(
-            """
-            SELECT TOP 1 organization_id
-            FROM dbo.user_organizations
-            WHERE user_id = :user_id
-            """
-        ),
-        {"user_id": user_id},
-    ).fetchone()
-
-    if not fallback_org:
-        raise HTTPException(
-            status_code=400, detail="No organization found for this user"
-        )
-
-    return str(fallback_org[0])
-
-
 @router.get("/setup/sources")
 def get_setup_sources(
     organization_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    user_id = user.user_id
-
     _ensure_sources_table(db)
-    resolved_org_id = _resolve_org_id(db, user_id, organization_id)
+    resolved_org_id = resolve_tenant_scope(user, db, organization_id)
 
     rows = db.execute(
         text(
@@ -136,10 +96,8 @@ def connect_setup_source(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    user_id = user.user_id
-
     _ensure_sources_table(db)
-    resolved_org_id = _resolve_org_id(db, user_id, payload.organization_id)
+    resolved_org_id = resolve_tenant_scope(user, db, payload.organization_id)
 
     existing = db.execute(
         text(
@@ -248,10 +206,8 @@ def disconnect_setup_source(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    user_id = user.user_id
-
     _ensure_sources_table(db)
-    resolved_org_id = _resolve_org_id(db, user_id, payload.organization_id)
+    resolved_org_id = resolve_tenant_scope(user, db, payload.organization_id)
 
     existing = db.execute(
         text(
