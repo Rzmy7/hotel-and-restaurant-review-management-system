@@ -22,7 +22,7 @@ from app.modules.admin.services.subscription_service import (
     update_subscription_plan,
 )
 
-router = APIRouter(tags=["Admin Subscription Plans"])
+router = APIRouter(tags=["Admin - Subscriptions"])
 
 
 @router.get("/subscription-features", response_model=list[SubscriptionFeature])

@@ -33,17 +33,19 @@ oauth.register(
     client_kwargs={"scope": "openid email profile"},
 )
 
-router = APIRouter(tags=["OAuth"])
+router = APIRouter(tags=["Authentication"])
 
-@router.get("/login/google")
+@router.get("/login/google", summary="Initiate Google OAuth login")
 async def login_google(request: Request):
+    """Redirect the user to Google's OAuth consent screen."""
     if not getattr(oauth, "google", None):
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
     redirect_uri = request.url_for("auth_google")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
-@router.get("/callback/google", name="auth_google")
+@router.get("/callback/google", name="auth_google", summary="Google OAuth callback")
 async def auth_google(request: Request, db: Session = Depends(get_db)):
+    """Handle the OAuth callback from Google, create/login the user, and redirect with a JWT."""
     token = await oauth.google.authorize_access_token(request)
     user_info = token.get("userinfo") or token
 

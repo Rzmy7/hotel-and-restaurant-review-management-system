@@ -16,10 +16,10 @@ from app.modules.auth.repositories.roles_repo import get_user_role_names
 from app.core.geo_utils import parse_google_maps_url
 from app.core.tenant_context import resolve_tenant_scope
 
-router = APIRouter(prefix="/api", tags=["organization"])
+router = APIRouter(prefix="/api", tags=["Organizations"])
 
 
-@router.post("/organizations/{tenant_id}")
+@router.post("/organizations/{tenant_id}", status_code=201, summary="Create or upsert an organization")
 def upsert_organization(
     tenant_id: str,
     data: OrganizationCreate,
@@ -206,7 +206,7 @@ def upsert_organization(
     }
 
 
-@router.patch("/organizations/{org_id}")
+@router.patch("/organizations/{org_id}", summary="Update organization fields")
 @router.post("/organizations/{org_id}", include_in_schema=False)  # legacy alias kept for backward compatibility
 def update_organization(
     org_id: str,
@@ -279,7 +279,7 @@ def update_organization(
         "organization_id": org_id
     }
 
-@router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse)
+@router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse, summary="Upload organization logo")
 async def upload_organization_logo(
     org_id: str,
     file: UploadFile = File(...),
@@ -297,7 +297,7 @@ async def upload_organization_logo(
         raise HTTPException(status_code=503, detail=str(e))
 
 
-@router.delete("/organizations/{org_id}")
+@router.delete("/organizations/{org_id}", status_code=200, summary="Delete an organization")
 def delete_organization(
     org_id: str,
     db: Session = Depends(get_db),
@@ -329,7 +329,7 @@ def delete_organization(
     return {"message": "Organization deleted successfully"}
 
 
-@router.delete("/setup/organizations/{org_id}/discard")
+@router.delete("/setup/organizations/{org_id}/discard", summary="Discard an incomplete setup organization")
 def discard_setup_organization(
     org_id: str,
     db: Session = Depends(get_db),

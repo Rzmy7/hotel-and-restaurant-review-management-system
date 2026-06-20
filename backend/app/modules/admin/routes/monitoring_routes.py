@@ -39,7 +39,7 @@ from app.modules.admin.services.monitoring_service import (
     update_platform_in_db,
 )
 
-router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
+router = APIRouter(prefix="/monitoring", tags=["Admin - Monitoring"])
 
 
 @router.get("/admin-backend-status")

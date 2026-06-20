@@ -46,7 +46,7 @@ from app.modules.admin.services.system_settings_service import (
 )
 from app.modules.scheduler.services.scheduler_service import reschedule_job_interval
 
-router = APIRouter(prefix="/settings", tags=["Admin Settings"])
+router = APIRouter(prefix="/settings", tags=["Admin - Settings"])
 
 
 FEATURE_FLAG_DEFINITIONS = {

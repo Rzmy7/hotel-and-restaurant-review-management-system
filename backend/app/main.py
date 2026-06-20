@@ -246,8 +246,8 @@ except ImportError:
 if reviews_router:
     app.include_router(reviews_router)
 # Hansi routers (now standardized under /api)
-app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(oauth_router, prefix="/api/auth")
 app.include_router(profile_router, prefix="/api")
 app.include_router(org_router)  # already declares prefix="/api" internally
 app.include_router(onboarding_router, prefix="/api")
@@ -310,12 +310,12 @@ def user_subscription_usage(
 # ----------------------
 
 
-@app.get("/", tags=["Health"])
+@app.get("/", tags=["System"], summary="API health check")
 async def root():
     return {"message": "API is online", "status": "healthy"}
 
 
-@app.get("/api/maintenance/status", tags=["Public"])
+@app.get("/api/maintenance/status", tags=["System"], summary="Public maintenance mode status")
 def public_maintenance_status():
     """Public endpoint to check if maintenance mode is active (no auth required)."""
     import pyodbc
@@ -338,7 +338,7 @@ def public_maintenance_status():
         return {"maintenanceMode": False}
 
 
-@app.get("/api/settings/feature-flags", tags=["Public"])
+@app.get("/api/settings/feature-flags", tags=["System"], summary="Public feature flags list")
 def public_feature_flags():
     """Public endpoint to get active feature flags (no auth required)."""
     import pyodbc
@@ -355,12 +355,12 @@ def public_feature_flags():
         raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}")
 
 
-@app.get("/which-main", tags=["Debug"])
+@app.get("/which-main", tags=["System"], summary="Identify the running main module")
 def which_main():
     return {"message": "backend/app/main.py is running"}
 
 
-@app.get("/db-test", tags=["Debug"])
+@app.get("/db-test", tags=["System"], summary="Verify database connectivity")
 def db_test(db: Session = Depends(get_db)):
     try:
         result = db.execute(text("SELECT 1 AS ok"))

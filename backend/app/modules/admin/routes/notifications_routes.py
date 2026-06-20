@@ -14,7 +14,7 @@ from app.core.db_utils import get_connection_string
 from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
 from app.modules.admin.services.notifications_service import resolve_target_user_id
 
-router = APIRouter(prefix="/notifications", tags=["Admin Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Admin - Settings"])
 
 
 @router.get("/")

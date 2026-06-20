@@ -18,10 +18,10 @@ from app.modules.auth.utils.auth_utils import get_current_user
 import pyodbc
 import uuid
 
-router = APIRouter()
+router = APIRouter(tags=["Dashboard"])
 
 
-@router.get("/organizations/{org_id}/dashboard")
+@router.get("/organizations/{org_id}/dashboard", summary="Get unified organization dashboard")
 def get_unified_dashboard(
     org_id: str,
     period: int = 0,

@@ -42,7 +42,7 @@ from app.modules.reviews.services.reply_generation_service import generate_revie
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/reviews", tags=["reviews"])
+router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
 
 
 @router.get("/", response_model=PaginatedReviewResponse)
@@ -189,7 +189,7 @@ def read_reviews_legacy(
         raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
-@router.post("/trigger/{source_id}")
+@router.post("/trigger/{source_id}", summary="Trigger full ingestion and processing for a source")
 async def trigger_review_sync(
     source_id: uuid.UUID,
     background_tasks: BackgroundTasks,
@@ -205,7 +205,7 @@ async def trigger_review_sync(
     return {"message": "Processing flow started in background."}
 
 
-@router.post("/ingest/{source_id}")
+@router.post("/ingest/{source_id}", summary="Ingest reviews from scraper (no AI processing)")
 async def trigger_ingest_only(
     source_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -270,7 +270,7 @@ def get_processing_status(
         )
 
 
-@router.post("/process/{review_id}")
+@router.post("/process/{review_id}", summary="Manually trigger AI analysis for a single review")
 async def trigger_single_review_processing(
     review_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -309,7 +309,7 @@ async def trigger_single_review_processing(
         )
 
 
-@router.post("/generate-reply", response_model=ReplyGenerationResponse)
+@router.post("/generate-reply", response_model=ReplyGenerationResponse, summary="Generate an AI reply for a review")
 def generate_reply(
     payload: ReplyGenerationRequest,
     db: Session = Depends(get_db),
@@ -376,7 +376,7 @@ def generate_reply(
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
 
 
-@router.delete("/source/{source_id}")
+@router.delete("/source/{source_id}", summary="Delete all reviews for a source")
 def delete_reviews_by_source(
     source_id: uuid.UUID,
     db: Session = Depends(get_db),
