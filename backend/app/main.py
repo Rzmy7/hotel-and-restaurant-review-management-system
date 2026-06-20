@@ -154,7 +154,6 @@ from app.modules.user.routes.user_routes import router as user_router
 from app.modules.organization.routes.user_organization_routes import (
     router as user_org_router,
 )
-from app.modules.organization.routes.source_routes import router as org_source_router
 from app.modules.auth.routes.auth_routes import router as auth_router
 from app.modules.auth.routes.oauth_routes import router as oauth_router
 
@@ -254,7 +253,6 @@ app.include_router(org_router)  # already declares prefix="/api" internally
 app.include_router(onboarding_router, prefix="/api")
 app.include_router(user_router)  # already declares prefix="/api" internally
 app.include_router(user_org_router)  # already declares prefix="/api" internally
-app.include_router(org_source_router)  # already declares prefix="/api" internally
 
 # User Notifications
 from app.modules.auth.routes.notifications_routes import router as user_notifications_router
