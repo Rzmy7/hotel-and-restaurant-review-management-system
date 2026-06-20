@@ -14,7 +14,13 @@ def _get_scheduler_config():
     db_url = f"mssql+pyodbc:///?odbc_connect={quoted_conn}"
 
     jobstores = {
-        'default': SQLAlchemyJobStore(url=db_url)
+        'default': SQLAlchemyJobStore(
+            url=db_url,
+            engine_options={
+                "pool_pre_ping": True,
+                "pool_recycle": 1800
+            }
+        )
     }
     
     # Global job defaults for robustness
