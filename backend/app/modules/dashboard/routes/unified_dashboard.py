@@ -1,5 +1,8 @@
 """Unified dashboard route — aggregating stats, activities, and trends."""
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database.session import get_db
+from app.core.tenant_context import resolve_tenant_scope
 from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_sentiment_counts
 from app.modules.dashboard.services.trends_service import get_usage, get_recent_reviews
 from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
@@ -19,7 +22,12 @@ router = APIRouter()
 
 
 @router.get("/organizations/{org_id}/dashboard")
-def get_unified_dashboard(org_id: str, period: int = 0, user=Depends(get_current_user)):
+def get_unified_dashboard(
+    org_id: str,
+    period: int = 0,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """
     Returns a unified dashboard response matching the frontend DashboardResponse interface.
     """
@@ -31,6 +39,9 @@ def get_unified_dashboard(org_id: str, period: int = 0, user=Depends(get_current
             status_code=404,
             detail=f"Organization ID '{org_id}' is not a valid UUID format.",
         )
+
+    # Validate org_id ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
 
     try:
         conn = pyodbc.connect(get_connection_string())

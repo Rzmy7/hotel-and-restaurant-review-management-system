@@ -15,6 +15,7 @@ from typing import List, Optional
 import uuid
 
 from app.database import get_db
+from app.core.tenant_context import resolve_tenant_scope
 from app.modules.source.services import source_service
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.source.schemas import (
@@ -73,6 +74,7 @@ def get_sync_logs(
     user=Depends(get_current_user),
 ):
     """Fetch recent synchronization logs for an organization with advanced filtering and pagination."""
+    resolve_tenant_scope(user, db, str(organization_id))
     return source_service.get_sync_logs(
         db,
         organization_id,
@@ -132,6 +134,7 @@ def get_organization_sources(
     user=Depends(get_current_user),
 ):
     """Fetch all sources for a specific organization with overall stats."""
+    resolve_tenant_scope(user, db, str(organization_id))
     return source_service.get_organization_sources_with_stats(db, organization_id)
 
 
@@ -142,6 +145,7 @@ def add_source(
     user=Depends(get_current_user),
 ):
     """Add a new review source to an organization."""
+    resolve_tenant_scope(user, db, str(source_data.organization_id))
     return source_service.create_source(db, source_data)
 
 
@@ -153,6 +157,10 @@ def update_source(
     user=Depends(get_current_user),
 ):
     """Update an existing source's configuration."""
+    source = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    resolve_tenant_scope(user, db, str(source.organization_id))
     return source_service.update_source(db, source_id, updates)
 
 
@@ -163,6 +171,10 @@ def delete_source(
     user=Depends(get_current_user),
 ):
     """Remove a source from the system."""
+    source = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    resolve_tenant_scope(user, db, str(source.organization_id))
     source_service.delete_source(db, source_id)
     return None
 
@@ -174,6 +186,10 @@ def trigger_sync(
     user=Depends(get_current_user),
 ):
     """Manually trigger a synchronization task for a specific source."""
+    source = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    resolve_tenant_scope(user, db, str(source.organization_id))
     return source_service.trigger_sync(db, source_id)
 
 
@@ -197,6 +213,7 @@ def export_sync_logs(
     user=Depends(get_current_user),
 ):
     """Export all sync logs for an organization to a CSV file."""
+    resolve_tenant_scope(user, db, str(organization_id))
     logs = source_service.get_sync_logs(
         db, organization_id, limit=1000
     )  # Get a large batch
@@ -248,5 +265,6 @@ def clear_sync_logs(
     user=Depends(get_current_user),
 ):
     """Clear activity history for an organization."""
+    resolve_tenant_scope(user, db, str(organization_id))
     source_service.delete_organization_logs(db, organization_id)
     return None
