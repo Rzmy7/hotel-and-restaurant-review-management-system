@@ -13,17 +13,21 @@ from app.modules.admin.schemas import (
     ChartDataPoint,
     DashboardStats,
     RecentActivity,
+    PaginatedActivities,
     SystemAlert,
+    PaginatedAlerts,
 )
 from app.modules.admin.services.dashboard_service import (
     build_dashboard_stats,
     build_recent_activity,
+    build_paginated_recent_activity,
     build_review_data,
     build_system_alerts,
+    build_paginated_system_alerts,
     build_usage_data,
 )
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["Admin - Dashboard"])
 
 
 def _get_cursor():
@@ -104,6 +108,23 @@ def get_system_alerts() -> list[SystemAlert]:
         raise HTTPException(status_code=500, detail=f"Unable to fetch system alerts: {exc}")
 
 
+@router.get("/alerts/paginated", response_model=PaginatedAlerts)
+def get_paginated_alerts(page: int = 1, limit: int = 10) -> PaginatedAlerts:
+    """
+    Paginated system alerts.
+    """
+    try:
+        conn, cursor = _get_cursor()
+        try:
+            result = build_paginated_system_alerts(cursor, page, limit)
+            result["data"] = [SystemAlert(**row) for row in result["data"]]
+            return PaginatedAlerts(**result)
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to fetch paginated alerts: {exc}")
+
+
 @router.get("/activities", response_model=list[RecentActivity])
 def get_recent_activity() -> list[RecentActivity]:
     """
@@ -119,6 +140,24 @@ def get_recent_activity() -> list[RecentActivity]:
             conn.close()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to fetch recent activity: {exc}")
+
+
+@router.get("/activities/paginated", response_model=PaginatedActivities)
+def get_paginated_activity(page: int = 1, limit: int = 10) -> PaginatedActivities:
+    """
+    Paginated platform activity.
+    """
+    try:
+        conn, cursor = _get_cursor()
+        try:
+            result = build_paginated_recent_activity(cursor, page, limit)
+            # data is list of dicts, map to RecentActivity
+            result["data"] = [RecentActivity(**row) for row in result["data"]]
+            return PaginatedActivities(**result)
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to fetch paginated activity: {exc}")
 
 
 @router.post("/alerts/{alert_id}/dismiss")

@@ -168,6 +168,8 @@ Update this README if:
 | **Frontend Docs** | [`../frontend/README.md`](../frontend/README.md) |
 | **Admin Docs** | [`../admin-frontend/README.md`](../admin-frontend/README.md) |
 | **Embedding Service** | [`../microservices/embedding-service/readme.md`](../microservices/embedding-service/readme.md) |
+| **API Calls Reference** | [`../API_CALLS.md`](../API_CALLS.md) |
+| **Monitoring API** | [`../admin-frontend/MONITORING_API.md`](../admin-frontend/MONITORING_API.md) |
 | **Scraper Engine** | [`../microservices/scraper_engine/README.md`](../microservices/scraper_engine/README.md) |
 
 ---

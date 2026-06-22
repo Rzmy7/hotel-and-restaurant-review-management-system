@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from app.modules.admin.schemas import AdminUserCreatePayload, AdminUserUpdatePayload
 from app.modules.admin.services.user_service import get_admin_users, create_admin_user, update_admin_user, delete_admin_user
 
-router = APIRouter(prefix="/users", tags=["Admin Users"])
+router = APIRouter(prefix="/users", tags=["Admin - Users"])
 
 @router.get("/")
 def list_users():

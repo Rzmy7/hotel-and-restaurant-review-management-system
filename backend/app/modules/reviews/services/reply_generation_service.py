@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pyodbc
@@ -72,15 +73,38 @@ def _extract_token_usage(value: Any) -> int:
     return 0
 
 
+def _get_org_source_ids(source_id: str) -> list[str]:
+    """Fetch all source IDs that belong to the same organization as the given source."""
+    import logging
+    _logger = logging.getLogger(__name__)
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute(
+                "SELECT CAST(s2.source_id AS NVARCHAR(36)) "
+                "FROM dbo.source s1 "
+                "JOIN dbo.source s2 ON s1.organization_id = s2.organization_id "
+                "WHERE CAST(s1.source_id AS NVARCHAR(36)) = ?",
+                (source_id,),
+            ).fetchall()
+            # Uppercase to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+            return [row[0].upper() for row in rows] if rows else [source_id.upper()]
+    except Exception as e:
+        _logger.warning(f"Failed to resolve org sources for {source_id}, falling back to single source: {e}")
+        return [source_id.upper()]
+
+
 def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     import logging
     _logger = logging.getLogger(__name__)
     _api_key = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
     try:
-        # Uppercase source_id to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+        # Get all source IDs belonging to the same organization
+        org_source_ids = _get_org_source_ids(source_id) if source_id else []
+
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
-            json={"query": review_text, "source_ids": [source_id.upper()], "top_k": top_k},
+            json={"query": review_text, "source_ids": org_source_ids, "top_k": top_k},
             headers={"X-Internal-API-Key": _api_key},
             timeout=12,
         )
@@ -93,7 +117,7 @@ def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tu
         safe_rules = rules if isinstance(rules, list) else []
         return safe_reviews[:top_k], safe_rules
     except Exception as e:
-        _logger.error(f"Embedding context fetch failed for source_id={source_id}: {e}")
+        _logger.error(f"Embedding context fetch failed: {e}")
         return [], []
 
 

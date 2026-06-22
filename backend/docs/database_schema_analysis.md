@@ -1,22 +1,118 @@
-# Database Schema & Module Analysis
+﻿# Database Schema & Module Analysis
 
-This document outlines the required database tables as defined by the FastAPI backend modules (ORM models) and contrasts them with the full schema available in the actual `ReviewMate` SQL Server database.
+This document is the definitive database reference for the system -- it combines module-level ORM requirements, full column-level schema, ORM-vs-DB discrepancies, table categorization by business domain, and identification of legacy/redundant tables. **Total tables in the database: 41.**
 
-## 1. Needed Tables per Module (Backend Requirements)
+## Table Categorization by Business Domain
+
+### User & Access Management
+| Table | Access Method | Model/Service | Description |
+|-------|---------------|---------------|-------------|
+| `user` | ORM | `User` | Primary user accounts |
+| `role` | ORM / SQL | `Role` | RBAC roles (Admin, Tenant, etc.) |
+| `session` | ORM | `Session` | JWT refresh tokens and active session tracking |
+| `password_reset_token` | ORM / SQL | `PasswordResetToken` | Security tokens for password recovery |
+| `user_organizations` | Raw SQL | `source_routes.py` | Junction table for users and organizations |
+
+### Organization & Multi-Tenancy
+| Table | Access Method | Model/Service | Description |
+|-------|---------------|---------------|-------------|
+| `tenant` | ORM / SQL | `Tenant` | Top-level accounts for multi-tenancy |
+| `organization` | ORM / SQL | `Organization` | Physical locations (Hotels/Restaurants) |
+| `organization_type` | ORM / SQL | `OrganizationType` | Classification (e.g., Hotel, Resort) |
+| `group` | ORM | `Group` | Logical team groupings within an organization |
+| `group_member` | ORM | `GroupMember` | Mapping of users to specific groups |
+| `group_member_role` | ORM | `GroupMemberRole` | Permissions within a specific group |
+
+### Review Scraping & AI Analysis
+| Table | Access Method | Model/Service | Description |
+|-------|---------------|---------------|-------------|
+| `processed_review` | ORM / SQL | `ProcessedReview` | Main storage for analyzed reviews (Sentiment, AI Summary) |
+| `review_media` | ORM / SQL | `ReviewMedia` | Images and videos associated with reviews |
+| `platform` | ORM / SQL | `Platform` | Platform metadata (Booking, Google, TripAdvisor) |
+| `source` | ORM / SQL | `Source` | Target URLs for specific organizations |
+| `sync_frequency` | ORM | `SyncFrequency` | Scheduling definitions (Daily, Weekly) |
+| `sync_log` | ORM | `SyncLog` | Audit trail of scraping job outcomes |
+| `organization_review_sources` | Raw SQL | `source_routes.py` | Ad-hoc source connections for setup |
+
+### Subscriptions & Limits
+| Table | Access Method | Model/Service | Description |
+|-------|---------------|---------------|-------------|
+| `plans` | Raw SQL | `subscription_service` | Definition of pricing tiers (Free, Pro, etc.) |
+| `features` | Raw SQL | `subscription_service` | List of system features that can be limited |
+| `plan_feature` | Raw SQL | `subscription_service` | Junction table defining limits per plan |
+| `user_subscription` | Raw SQL | `subscription_service` | Historical tracking of user plan assignments |
+| `user_feature_usage` | Raw SQL | `subscription_service` | Real-time tracking of feature consumption |
+
+### Communication & Settings
+| Table | Access Method | Model/Service | Description |
+|-------|---------------|---------------|-------------|
+| `notification` | ORM / SQL | `Notification` | System announcements and in-app alerts |
+| `user_notification` | ORM / SQL | `UserNotification` | User-specific read status for notifications |
+| `broadcast_event` | ORM / SQL | `BroadcastEvent` | History of mass messages sent by admins |
+| `system_settings` | Raw SQL | `system_settings_service` | Global app config (Timezone, AI Model selection) |
+
+### Competitor Benchmarking
+| Table | Access Method | Model/Service | Description |
+|-------|---------------|---------------|-------------|
+| `Competitors` | Raw SQL | `competitor_service` | List of external hotels tracked for comparison |
+| `CompetitorReviews` | Raw SQL | `competitor_service` | Scraped reviews of competitors for sentiment analysis |
+
+### Legacy & Redundant Tables
+| Table | Status | Replaced By |
+|-------|--------|-------------|
+| `dbo.reviews` | Legacy | `processed_review` |
+| `dbo.review_photos` | Legacy | `review_media` |
+| `dbo.ProcessedReviews` | Legacy | `processed_review` |
+| `dbo.notifications` | Plural version | `notification` (ORM uses singular) |
+| `dbo.broadcast_events` | Plural version | `broadcast_event` (ORM uses singular) |
+| `dbo.users` | Plural version | `user` (ORM uses singular) |
+| `dbo.organizations` | Plural version | `organization` |
+| `dbo.sync_log_source` | Legacy | `sync_log` |
+
+### Test & Seed Tables
+| Table | Usage |
+|-------|-------|
+| `tenants_source` | Seeding script `seed_source_data.sql` |
+| `organizations_source` | Seeding script `seed_source_data.sql` |
+| `platforms_source` | Seeding script `seed_source_data.sql` |
+| `sources_source` | Seeding script `seed_source_data.sql` |
+
+### Key Table: `processed_review`
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID (PK) | Primary key |
+| `platformReviewId` | NVARCHAR | External platform ID |
+| `organization_id` | UUID (FK) | Link to organization |
+| `rating` | INT | Star rating |
+| `text` | NVARCHAR(MAX) | Raw content |
+| `sentiment` | VARCHAR | AI sentiment (Positive, Negative, Neutral) |
+| `summary` | VARCHAR | AI-generated summary |
+| `categories` | JSON (NVARCHAR) | List of tags |
+
+### Key Table: `system_settings`
+| Column | Type | Description |
+|--------|------|-------------|
+| `setting_key` | NVARCHAR(100) | Identifier (e.g., `timezone`, `reply_provider`) |
+| `setting_value` | NVARCHAR(255) | Stored value |
+| `updated_at` | DATETIME2 | Timestamp |
+
+---
+
+## ORM Model Requirements (per Backend Module)
 
 The backend defines SQLAlchemy models for the following tables across various modules. These are the tables the backend actively uses or manages:
 
-### **`auth` Module**
+### `auth` Module
 *   **`role`**: `role_id` (PK), `role_name`, `description`, `created_at`
 *   **`session`**: `session_id` (PK), `user_id` (FK), `refresh_token_hash`, `ip_address`, `user_agent`, `is_revoked`, `created_at`, `expires_at`, `revoked_at`
 *   **`password_reset_token`**: `token_id` (PK), `user_id` (FK), `token_hash`, `expires_at`, `used_at`, `created_at`
 
-### **`groups` Module**
+### `groups` Module
 *   **`group`**: `group_id` (PK), `group_name`, `organization_id`, `created_by` (FK), `created_at`
 *   **`group_member`**: `group_id` (PK/FK), `user_id` (PK/FK), `role`, `role_id` (FK), `joined_at`
 *   **`group_member_role`**: `role_id` (PK), `role_name`, `description`, `skills`, `created_at`
 
-### **`source` Module**
+### `source` Module
 *   **`tenant`**: `tenant_id` (PK/FK), `plan`, `created_at`
 *   **`organization_type`**: `type_code` (PK), `type_name`, `description`
 *   **`organization`**: `organization_id` (PK), `tenant_id` (FK), `organization_name`, `organization_type_id` (FK), `created_at`, `updated_at`
@@ -25,18 +121,16 @@ The backend defines SQLAlchemy models for the following tables across various mo
 *   **`source`**: `source_id` (PK), `organization_id` (FK), `platform_id` (FK), `source_url`, `source_status`, `fetching_frequency` (FK), `last_synced_at`, `next_synced_at`, `num_of_syncs`, `success_sync_count`, `success_rate`, `created_at`
 *   **`sync_log`**: `log_id` (PK), `source_id` (FK), `status`, `timestamp`, `duration_ms`, `reviews_fetched`, `error_message`
 
-### **`user` Module**
+### `user` Module
 *   **`user`**: `user_id` (PK), `email`, `password_hash`, `first_name`, `last_name`, `phone`, `job_title`, `bio`, `location`, `profile_image_url`, `google_id`, `is_active`, `is_email_verified`, `is_phone_verified`, `last_login_at`, `created_at`, `updated_at`, `role_id` (FK)
 
-### **`reviews` Module**
+### `reviews` Module
 *   **`processed_review`**: `id` (PK), `platformReviewId`, `organization_id` (FK), `platform_id` (FK), `source_id` (FK), `rating`, `reviewerName`, `text`, `summary`, `sentiment`, `sentiment_score`, `language`, `categories`, `keyPhrases`, `positive_text`, `negative_text`, `error_message`, `retry_count`, `last_attempt`, `reviewDate`, `scrapedAt`, `status`, `ai_reply`
 *   **`review_media`**: `media_id` (PK), `review_id` (FK), `src`, `alt`
 
 ---
 
-## 2. Discrepancies (ORM vs Live Database)
-
-Based on a comparison of the backend's SQLAlchemy Python models and the live `ReviewMate` SQL database, the following mismatches require attention:
+## Discrepancies (ORM vs Live Database)
 
 ### Missing Columns in Python Models
 *   **`user`.`tenant_id`**: The database `user` table contains a `tenant_id` (`uniqueidentifier`) column. This column is **missing** from `backend/app/modules/user/models/user_models.py`.
@@ -46,11 +140,11 @@ Based on a comparison of the backend's SQLAlchemy Python models and the live `Re
 *   **`sync_frequency.description`**: Defined in Python as `String(255)`, but the DB restricts it to `nvarchar(100)`.
 
 ### Missing ORM Models for Existing Relationships
-*   **Notifications**: The `User` Python model has a relationship mapping to `UserNotification`, but neither `UserNotification` nor `Notification` models exist in any Python files, despite the tables securely existing in the database.
+*   **Notifications**: The `User` Python model has a relationship mapping to `UserNotification`, but neither `UserNotification` nor `Notification` models exist in any Python files, despite the tables existing in the database.
 
 ---
 
-## 3. Full Database Schema (All Tables Available in ReviewMate DB)
+## Full Database Schema (All Tables in ReviewMate DB)
 
 The following represents the complete structural state of the *actual* database. This includes tables configured in the ORM *plus* extra tables used by parallel services (scrapers, billing engines, legacy features).
 
@@ -352,3 +446,7 @@ The following represents the complete structural state of the *actual* database.
   ends_at (datetime2)
   created_at (datetime2)
   updated_at (datetime2)
+
+---
+
+*Compiled from both ORM module analysis and live database inspection. This document supersedes the now-removed `database_tables.md`.*

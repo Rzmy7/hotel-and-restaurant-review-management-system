@@ -24,6 +24,10 @@ REVIEW_BATCH_SIZE_DEFAULT = 5
 REVIEW_BATCH_SIZE_MIN = 1
 REVIEW_BATCH_SIZE_MAX = 20
 
+# Scheduler Intervals (in minutes)
+DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES = 1
+DEFAULT_DEDUPLICATION_INTERVAL_MINUTES = 60
+
 
 def ensure_system_settings_table(cursor: pyodbc.Cursor) -> None:
     cursor.execute(

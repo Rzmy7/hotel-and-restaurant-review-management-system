@@ -38,13 +38,13 @@ from app.modules.admin.services.admin_service import (
     update_user_in_db,
 )
 
-router = APIRouter(tags=["Admin Data"])
+router = APIRouter(tags=["Admin - Organizations"])
 
 
 # ── Organization endpoints ──────────────────────────────────────────
 
 
-@router.get("/organizations", response_model=list[OrganizationSummary])
+@router.get("/organizations", response_model=list[OrganizationSummary], summary="List all organizations")
 def get_organizations() -> list[OrganizationSummary]:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -54,7 +54,7 @@ def get_organizations() -> list[OrganizationSummary]:
         raise HTTPException(status_code=500, detail=f"Unable to fetch organizations: {error}")
 
 
-@router.get("/organizations/stats", response_model=OrganizationStats)
+@router.get("/organizations/stats", response_model=OrganizationStats, summary="Get aggregated organization statistics")
 def get_organization_stats() -> OrganizationStats:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -127,7 +127,7 @@ def get_org_sources(org_id: str) -> list[dict]:
         raise HTTPException(status_code=500, detail=f"Failed to fetch org sources: {exc}") from exc
 
 
-@router.patch("/organizations/{org_id}")
+@router.patch("/organizations/{org_id}", summary="Update an organization's name")
 def update_organization(org_id: str, payload: OrganizationUpdatePayload) -> dict:
     """Updates an organization's name."""
     name = payload.name.strip()
@@ -238,7 +238,7 @@ def update_org_sources(org_id: str, payload: OrgSourcesUpdatePayload) -> list[di
         raise HTTPException(status_code=500, detail=f"Failed to update org sources: {exc}") from exc
 
 
-@router.delete("/organizations/{org_id}")
+@router.delete("/organizations/{org_id}", summary="Delete an organization and its linked data")
 def delete_organization(org_id: str) -> dict:
     """Deletes an organization and its linked source entries and reviews."""
     try:
@@ -295,7 +295,7 @@ def delete_organization(org_id: str) -> dict:
 # ── User endpoints ──────────────────────────────────────────────────
 
 
-@router.get("/users", response_model=list[AdminUser])
+@router.get("/users", response_model=list[AdminUser], tags=["Admin - Users"], summary="List all users")
 def get_users() -> list[AdminUser]:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -305,7 +305,7 @@ def get_users() -> list[AdminUser]:
         raise HTTPException(status_code=500, detail=f"Unable to fetch users: {error}")
 
 
-@router.post("/users", response_model=AdminUser)
+@router.post("/users", response_model=AdminUser, status_code=201, tags=["Admin - Users"], summary="Create a new user")
 def create_user(payload: AdminUserCreatePayload) -> AdminUser:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -323,7 +323,7 @@ def create_user(payload: AdminUserCreatePayload) -> AdminUser:
         raise HTTPException(status_code=500, detail=f"Unable to create user: {error}")
 
 
-@router.patch("/users/{user_id}", response_model=AdminUser)
+@router.patch("/users/{user_id}", response_model=AdminUser, tags=["Admin - Users"], summary="Update a user's role, status, or plan")
 def update_user(user_id: str, payload: AdminUserUpdatePayload) -> AdminUser:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -345,7 +345,7 @@ def update_user(user_id: str, payload: AdminUserUpdatePayload) -> AdminUser:
         raise HTTPException(status_code=500, detail=f"Unable to update user: {error}")
 
 
-@router.delete("/users/{user_id}", response_model=DeleteUserResponse)
+@router.delete("/users/{user_id}", response_model=DeleteUserResponse, tags=["Admin - Users"], summary="Delete a user")
 def delete_user(user_id: str) -> DeleteUserResponse:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -363,7 +363,7 @@ def delete_user(user_id: str) -> DeleteUserResponse:
         raise HTTPException(status_code=500, detail=f"Unable to delete user: {error}")
 
 
-@router.get("/users/stats", response_model=UserStatsData)
+@router.get("/users/stats", response_model=UserStatsData, tags=["Admin - Users"], summary="Get aggregated user statistics")
 def get_user_stats_endpoint() -> UserStatsData:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
@@ -374,7 +374,7 @@ def get_user_stats_endpoint() -> UserStatsData:
 
 # ── Embeddings endpoints ────────────────────────────────────────────
 
-@router.post("/embeddings/trigger-pending")
+@router.post("/embeddings/trigger-pending", tags=["Admin - Organizations"], summary="Trigger embedding for all unembedded reviews")
 def trigger_pending_embeddings() -> dict:
     """Manually triggers embedding for all unembedded, processed reviews."""
     try:

@@ -18,7 +18,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+# Configure logging for production mode
+if os.getenv("PROD_MODE", "false").lower() == "true":
+    logging.basicConfig(level=logging.WARNING)
+    # Suppress uvicorn access logs explicitly if uvicorn is used internally or via CLI
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.WARNING)
+else:
+    logger = logging.getLogger(__name__)
 
 # Canonical database imports — single source of truth
 from app.database.session import Base, engine, get_db
@@ -75,8 +84,8 @@ async def lifespan(app: FastAPI):
         )
         from app.modules.reviews.services.processor import run_analysis_pipeline
 
-        # reconcile_scraper_jobs is sync, run it in a thread pool via to_thread
-        asyncio.create_task(asyncio.to_thread(reconcile_scraper_jobs))
+        # reconcile_scraper_jobs is async, run it directly via create_task
+        asyncio.create_task(reconcile_scraper_jobs())
         # run_analysis_pipeline is async, run it directly via create_task
         asyncio.create_task(run_analysis_pipeline())
 
@@ -133,7 +142,9 @@ import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform,
 import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
 import app.modules.organization.models.rules_model  # noqa: F401  (OrganizationRule)
 
+
 # Hansi UserManagement routers
+
 from app.modules.user.routes.profile_routes import router as profile_router
 from app.modules.organization.routes.organization_routes import router as org_router
 from app.modules.organization.routes.onboarding_routes import (
@@ -143,7 +154,6 @@ from app.modules.user.routes.user_routes import router as user_router
 from app.modules.organization.routes.user_organization_routes import (
     router as user_org_router,
 )
-from app.modules.organization.routes.source_routes import router as org_source_router
 from app.modules.auth.routes.auth_routes import router as auth_router
 from app.modules.auth.routes.oauth_routes import router as oauth_router
 
@@ -171,6 +181,15 @@ app.add_middleware(
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
+# ── Proxy Headers (Production HTTPS support) ──────────────────────
+# When running behind a reverse proxy (Nginx, Cloudflare), this allows
+# FastAPI to recognize HTTPS and use correct protocol in url_for().
+try:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+except ImportError:
+    pass
+
 
 # Global Exception Handler to capture 500 errors and include CORS headers
 @app.exception_handler(Exception)
@@ -181,12 +200,15 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(f"CRITICAL ERROR: {error_details}")
 
     # Write error to a temporary log file for AI to read
-    with open("backend_error.log", "a", encoding="utf-8") as f:
-        f.write(
-            f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
-        )
-        f.write(error_details)
-        f.write("\n" + "=" * 50 + "\n")
+    try:
+        with open("backend_error.log", "a", encoding="utf-8") as f:
+            f.write(
+                f"\n--- {type(exc).__name__} at {status.HTTP_500_INTERNAL_SERVER_ERROR} ---\n"
+            )
+            f.write(error_details)
+            f.write("\n" + "=" * 50 + "\n")
+    except Exception as log_err:
+        print(f"FAILED TO WRITE TO backend_error.log: {log_err}")
 
     return Response(
         content=json.dumps({"detail": "Internal Server Error", "traceback": str(exc)}),
@@ -224,14 +246,13 @@ except ImportError:
 if reviews_router:
     app.include_router(reviews_router)
 # Hansi routers (now standardized under /api)
-app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(oauth_router, prefix="/api/auth")
 app.include_router(profile_router, prefix="/api")
 app.include_router(org_router)  # already declares prefix="/api" internally
 app.include_router(onboarding_router, prefix="/api")
 app.include_router(user_router)  # already declares prefix="/api" internally
 app.include_router(user_org_router)  # already declares prefix="/api" internally
-app.include_router(org_source_router)  # already declares prefix="/api" internally
 
 # User Notifications
 from app.modules.auth.routes.notifications_routes import router as user_notifications_router
@@ -289,12 +310,12 @@ def user_subscription_usage(
 # ----------------------
 
 
-@app.get("/", tags=["Health"])
+@app.get("/", tags=["System"], summary="API health check")
 async def root():
     return {"message": "API is online", "status": "healthy"}
 
 
-@app.get("/api/maintenance/status", tags=["Public"])
+@app.get("/api/maintenance/status", tags=["System"], summary="Public maintenance mode status")
 def public_maintenance_status():
     """Public endpoint to check if maintenance mode is active (no auth required)."""
     import pyodbc
@@ -317,7 +338,7 @@ def public_maintenance_status():
         return {"maintenanceMode": False}
 
 
-@app.get("/api/settings/feature-flags", tags=["Public"])
+@app.get("/api/settings/feature-flags", tags=["System"], summary="Public feature flags list")
 def public_feature_flags():
     """Public endpoint to get active feature flags (no auth required)."""
     import pyodbc
@@ -334,12 +355,12 @@ def public_feature_flags():
         raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}")
 
 
-@app.get("/which-main", tags=["Debug"])
+@app.get("/which-main", tags=["System"], summary="Identify the running main module")
 def which_main():
     return {"message": "backend/app/main.py is running"}
 
 
-@app.get("/db-test", tags=["Debug"])
+@app.get("/db-test", tags=["System"], summary="Verify database connectivity")
 def db_test(db: Session = Depends(get_db)):
     try:
         result = db.execute(text("SELECT 1 AS ok"))

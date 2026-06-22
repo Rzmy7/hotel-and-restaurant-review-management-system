@@ -654,7 +654,7 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
                     <Cell key={i} fill={['#4e80ee','#22c55e','#f59e0b','#ef4444','#a855f7','#06b6d4','#ec4899','#84cc16'][i % 8]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px' }} formatter={(v: number) => [`${v} reviews`]} />
+                <Tooltip contentStyle={{ borderRadius: '12px' }} formatter={(v: any) => [`${v ?? 0} reviews`]} />
                 <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
@@ -702,7 +702,7 @@ const AnalyticsTab: React.FC<{ analytics: GroupAnalytics | null; loading: boolea
                       <Pie data={slices} cx={60} cy={50} innerRadius={28} outerRadius={44} paddingAngle={2} dataKey="value" strokeWidth={0}>
                         {slices.map((s, i) => <Cell key={i} fill={s.color} />)}
                       </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '11px' }} formatter={(v: number, name: string) => [`${v} (${Math.round((v / total) * 100)}%)`, name]} />
+                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '11px' }} formatter={(v: any, name: any) => [`${v ?? 0} (${total > 0 ? Math.round(((v ?? 0) / total) * 100) : 0}%)`, name ?? '']} />
                     </PieChart>
                   )}
                   <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5">

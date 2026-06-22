@@ -120,12 +120,12 @@ const ReviewSourcesPage = () => {
     mutationFn: (id: string | number) => sourcesService.triggerSync(id),
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
-      showToast(`Sync queued for ${source?.platform || 'source'}`, 'success');
+      showToast(`Sync started for ${source?.platform || 'source'}`, 'success');
       
       // Update trigger time to start polling
       setLastSyncTriggeredAt(Date.now());
       
-      // Invalidate immediately to show "In Queue"
+      // Invalidate immediately to show updated status
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     },
     onError: () => showToast('Sync failed', 'error'),

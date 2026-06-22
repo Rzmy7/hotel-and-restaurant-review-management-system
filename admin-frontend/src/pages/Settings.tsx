@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Tabs } from '../components/Tabs';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { settingsService } from '../services/settingsService';
-import type { SecuritySettings } from '../services/settingsService';
+import type { SecuritySettings, SchedulerSettings } from '../services/settingsService';
 import { useTheme } from '../contexts/ThemeContext';
 import type { AdminSettings } from '../types';
 
@@ -82,14 +82,23 @@ export const Settings: React.FC = () => {
     const [securitySaveState, setSecuritySaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [securitySaveError, setSecuritySaveError] = useState<string | null>(null);
 
+    // Scheduler settings state
+    const [schedulerSettings, setSchedulerSettings] = useState<SchedulerSettings>({
+        reviewProcessingIntervalMinutes: 1,
+        deduplicationIntervalMinutes: 60,
+    });
+    const [schedulerSaveState, setSchedulerSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [schedulerSaveError, setSchedulerSaveError] = useState<string | null>(null);
+
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             try {
-                const [data, profile, security] = await Promise.all([
+                const [data, profile, security, scheduler] = await Promise.all([
                     settingsService.getGeneralSettings(),
                     settingsService.getAdminProfile(),
                     settingsService.getSecuritySettings(),
+                    settingsService.getSchedulerSettings(),
                 ]);
                 setSettings({
                     ...defaultSettings,
@@ -100,6 +109,7 @@ export const Settings: React.FC = () => {
                 });
                 setAdminProfileName(profile.name || 'System Admin');
                 setSecuritySettings(security);
+                setSchedulerSettings(scheduler);
 
                 const status = await maintenanceService.getStatus();
                 setMaintenanceMode(!!status.maintenanceMode);
@@ -278,6 +288,7 @@ export const Settings: React.FC = () => {
                     { id: 'general', label: 'General' },
                     { id: 'security', label: 'Security' },
                     { id: 'notifications', label: 'Notifications' },
+                    { id: 'system-jobs', label: 'System Jobs' },
                     { id: 'admin-profile', label: 'Admin Profile' }
                 ]}
                 activeTab={activeTab}
@@ -577,6 +588,102 @@ export const Settings: React.FC = () => {
                         >
                             <Save size={16} />
                             Save Changes
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'system-jobs' && (
+                <div className="space-y-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                        <div className="mb-4">
+                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">System Scheduler Jobs</h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">Configure how often background maintenance and processing jobs run</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Review Processing Interval */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Review Processing Interval</label>
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">How often the system checks for and analyzes new reviews</p>
+                                <select
+                                    value={schedulerSettings.reviewProcessingIntervalMinutes}
+                                    onChange={(e) => {
+                                        setSchedulerSettings(prev => ({ ...prev, reviewProcessingIntervalMinutes: Number(e.target.value) }));
+                                        setSchedulerSaveState('idle');
+                                        setSchedulerSaveError(null);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value={1}>Every 1 Minute (Real-time)</option>
+                                    <option value={2}>Every 2 Minutes</option>
+                                    <option value={5}>Every 5 Minutes</option>
+                                    <option value={10}>Every 10 Minutes</option>
+                                    <option value={15}>Every 15 Minutes</option>
+                                    <option value={30}>Every 30 Minutes</option>
+                                    <option value={60}>Every 1 Hour</option>
+                                </select>
+                            </div>
+
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
+
+                            {/* Review Deduplication Interval */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Review Deduplication Interval</label>
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mb-2">How often the system scans and cleans up duplicate review records</p>
+                                <select
+                                    value={schedulerSettings.deduplicationIntervalMinutes}
+                                    onChange={(e) => {
+                                        setSchedulerSettings(prev => ({ ...prev, deduplicationIntervalMinutes: Number(e.target.value) }));
+                                        setSchedulerSaveState('idle');
+                                        setSchedulerSaveError(null);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value={10}>Every 10 Minutes (Aggressive)</option>
+                                    <option value={30}>Every 30 Minutes</option>
+                                    <option value={60}>Every 1 Hour (Recommended)</option>
+                                    <option value={120}>Every 2 Hours</option>
+                                    <option value={360}>Every 6 Hours</option>
+                                    <option value={720}>Every 12 Hours</option>
+                                    <option value={1440}>Every 24 Hours</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {schedulerSaveState === 'saved' && (
+                        <Alert type="success" message="Scheduler settings saved successfully. Jobs have been rescheduled." />
+                    )}
+                    {(schedulerSaveState === 'error' && schedulerSaveError) && (
+                        <Alert type="error" message={schedulerSaveError} />
+                    )}
+
+                    <div className="flex justify-end">
+                        <button
+                            onClick={async () => {
+                                if (schedulerSaveState === 'saving') return;
+                                setSchedulerSaveState('saving');
+                                setSchedulerSaveError(null);
+                                try {
+                                    const saved = await settingsService.updateSchedulerSettings(schedulerSettings);
+                                    setSchedulerSettings(saved);
+                                    setSchedulerSaveState('saved');
+                                    window.setTimeout(() => setSchedulerSaveState('idle'), 2500);
+                                } catch (error) {
+                                    setSchedulerSaveState('error');
+                                    setSchedulerSaveError(
+                                        error instanceof Error
+                                            ? error.message
+                                            : 'Failed to save scheduler settings. Please try again.',
+                                    );
+                                }
+                            }}
+                            disabled={schedulerSaveState === 'saving'}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        >
+                            <Save size={16} />
+                            {schedulerSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </div>

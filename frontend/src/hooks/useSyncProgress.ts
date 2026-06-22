@@ -10,6 +10,7 @@ interface SyncProgressData {
 }
 
 import { useQueryClient } from '@tanstack/react-query';
+import { getApiBaseUrl } from '../config/api';
 
 export const useSyncProgress = (sourceId: string | number | null, isActive: boolean) => {
     const [progress, setProgress] = useState<SyncProgressData | null>(null);
@@ -20,13 +21,10 @@ export const useSyncProgress = (sourceId: string | number | null, isActive: bool
     const connect = useCallback(() => {
         if (!sourceId || !isActive) return;
 
-        // Construct WebSocket URL
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname;
-        // Backend runs on 8000, but if we are on a different port (e.g. production) 
-        // we might need to handle it. For dev, 8000 is standard.
-        const port = window.location.port === '5173' || window.location.port === '5174' ? '8000' : window.location.port; 
-        const wsUrl = `${protocol}//${host}${port ? `:${port}` : ''}/api/source/${sourceId}/progress`;
+        // Construct WebSocket URL using the configured API base URL
+        const baseUrl = getApiBaseUrl();
+        const wsBaseUrl = baseUrl.replace(/^http/, 'ws');
+        const wsUrl = `${wsBaseUrl}/api/source/${sourceId}/progress`;
 
         console.log(`Connecting to sync progress: ${wsUrl}`);
         
@@ -41,15 +39,32 @@ export const useSyncProgress = (sourceId: string | number | null, isActive: bool
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
+                console.log('Sync progress message received:', data);
+
+                // If the message contains source_id, verify it matches
+                if (data.source_id && String(data.source_id) !== String(sourceId)) {
+                    console.log('Skipping progress message for different source:', data.source_id);
+                    return;
+                }
+
+                // Ensure percentage is a number
+                if (typeof data.percentage === 'undefined' && data.status === 'running') {
+                    // Fallback to avoid empty progress bar if scraper doesn't send it yet
+                    data.percentage = 0;
+                }
+
                 setProgress(data);
                 
                 // If the sync is complete, invalidate reviews query to refresh UI
-                if (data.status === 'completed' || data.status === 'processed') {
+                const status = (data.status || '').toLowerCase();
+                if (status === 'completed' || status === 'processed' || status === 'success') {
+                    console.log('Sync completed, invalidating queries...');
                     queryClient.invalidateQueries({ queryKey: ['reviews'] });
                     queryClient.invalidateQueries({ queryKey: ['review-stats'] });
+                    queryClient.invalidateQueries({ queryKey: ['sources'] }); // Refresh source status too
                 }
             } catch (err) {
-                console.error('Failed to parse sync progress message', err);
+                console.error('Failed to parse sync progress message', err, event.data);
             }
         };
 

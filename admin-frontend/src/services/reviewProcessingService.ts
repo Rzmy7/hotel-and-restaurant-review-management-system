@@ -59,8 +59,29 @@ export const retryFailedReviews = (sourceId: string): Promise<{ status: string; 
     );
 };
 
-export const retryAllFailedReviews = (): Promise<{ status: string; message: string; count: number }> => {
-    return apiClient.post<{ status: string; message: string; count: number }>(
-        '/admin/monitoring/review-processing/retry-all'
-    );
+
+ export const retryAllFailedReviews = (): Promise<{ status: string; message: string; count: number }> => {
+     return apiClient.post<{ status: string; message: string; count: number }>(
+         '/admin/monitoring/review-processing/retry-all'
+     );
+ };
+
+export interface DuplicateStats {
+    sources: {
+        groups: number;
+        redundant: number;
+    };
+    reviews: {
+        groups: number;
+        redundant: number;
+    };
+}
+
+export const testDuplicates = (): Promise<{ status: string; duplicates: DuplicateStats }> => {
+    return apiClient.get<{ status: string; duplicates: DuplicateStats }>('/admin/monitoring/dupes-test');
 };
+
+export const cleanupDuplicates = (): Promise<{ status: string; deleted: { reviews: number; sources: number } }> => {
+    return apiClient.post<{ status: string; deleted: { reviews: number; sources: number } }>('/admin/monitoring/dupes-cleanup');
+};
+

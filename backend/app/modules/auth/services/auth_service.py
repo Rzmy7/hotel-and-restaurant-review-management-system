@@ -87,7 +87,9 @@ def login_user(db: Session, email: str, password: str) -> dict:
         pass
 
     is_2fa_enabled = getattr(user, 'is_2fa_enabled', False)
-    if two_fa_feature_enabled and (is_2fa_enabled or (role == "Admin" and require_2fa_for_admins)):
+    role_upper = str(role or "").upper()
+    
+    if two_fa_feature_enabled and (is_2fa_enabled or (role_upper == "ADMIN" and require_2fa_for_admins)):
         code = f"{random.randint(100000, 999999)}"
         expires_at = datetime.utcnow() + timedelta(minutes=10)
         
@@ -115,7 +117,7 @@ def _generate_login_response(db: Session, user, role) -> dict:
     # ----------------------------------------------------
     # Initialize "Free" subscription if they are a Tenant
     # ----------------------------------------------------
-    if role == "Tenant":
+    if str(role or "").upper() == "TENANT":
         try:
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()

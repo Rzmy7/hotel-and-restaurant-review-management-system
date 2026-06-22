@@ -22,7 +22,6 @@ from app.modules.admin.schemas import (
     FeatureFlagUpdatePayload,
     GeneralSettingsPayload,
     ReplyGenerationSettingsPayload,
-    ReplyGenerationApiTestPayload,
     GeminiApiKeySavePayload,
     GeminiApiKeyTestPayload,
     DashboardStats,
@@ -387,15 +386,12 @@ class TestReplyGenerationSettingsPayload:
 
     def test_defaults(self):
         model = ReplyGenerationSettingsPayload()
-        assert model.selectedModel == "gemini-2.5-flash-lite"
         assert model.similarReviewsCount == 3
         assert model.useEmbeddingRules is True
         assert model.useSimilarReviews is True
 
     def test_custom_values(self):
         model = ReplyGenerationSettingsPayload(
-            googleApiKey="test-key",
-            selectedModel="gemini-pro",
             similarReviewsCount=5,
         )
         assert model.similarReviewsCount == 5

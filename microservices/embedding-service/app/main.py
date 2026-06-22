@@ -7,6 +7,17 @@ import time
 import uuid
 import psutil
 from datetime import datetime
+import logging
+
+# Configure logging for production mode
+IS_PROD = os.getenv("PROD_MODE", "false").lower() == "true"
+if IS_PROD:
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    # Patch print to do nothing in prod
+    def print(*args, **kwargs):
+        pass
 
 from app.chroma import save_embedding, collection
 from app.config import (
@@ -31,12 +42,17 @@ app = FastAPI(title="Embedding Service")
 SERVICE_START_TIME = datetime.now()
 
 # Add CORS middleware
+ADMIN_ORIGIN = os.getenv("ADMIN_FRONTEND_URL", "http://localhost:5174")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=[
+        ADMIN_ORIGIN,
+        "http://localhost:5174",   # local dev
+        "http://localhost:5173",   # local dev (user frontend)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "x-internal-api-key"],
 )
 
 # Preload models at startup
@@ -63,7 +79,7 @@ class BatchEmbedRequest(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    source_ids: List[str]
+    source_ids: List[str] = []
     top_k: int = 3
 
 class RuleItem(BaseModel):
@@ -182,22 +198,24 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
 
     threshold = get_threshold(data.query)
 
-    # Build source_id filter: single value or $in for multiple
-    if len(data.source_ids) == 1:
-        source_filter = {"source_id": data.source_ids[0]}
+    # Build source_id filter: skip filter entirely when source_ids is empty (search ALL sources)
+    if data.source_ids:
+        if len(data.source_ids) == 1:
+            source_filter = {"source_id": data.source_ids[0]}
+        else:
+            source_filter = {"source_id": {"$in": data.source_ids}}
+        review_where = {"$and": [source_filter, {"type": "review"}]}
+        rule_where = {"$and": [source_filter, {"type": "rule"}]}
     else:
-        source_filter = {"source_id": {"$in": data.source_ids}}
+        # No source filter — search across ALL sources
+        review_where = {"type": "review"}
+        rule_where = {"type": "rule"}
 
     # Search REVIEWS
     review_results = collection.query(
         query_embeddings=[vector],
         n_results=data.top_k,
-        where={
-            "$and": [
-                source_filter,
-                {"type": "review"}
-            ]
-        },
+        where=review_where,
         include=["documents", "metadatas", "distances"]
     )
 
@@ -216,12 +234,7 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
     rule_results = collection.query(
         query_embeddings=[vector],
         n_results=5,
-        where={
-            "$and": [
-                source_filter,
-                {"type": "rule"}
-            ]
-        },
+        where=rule_where,
         include=["documents", "metadatas", "distances"]
     )
 

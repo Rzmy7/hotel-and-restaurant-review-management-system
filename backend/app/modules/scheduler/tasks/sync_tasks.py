@@ -1,6 +1,7 @@
 import logging
 import httpx
 import os
+from typing import Optional, Dict
 from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 
@@ -14,10 +15,10 @@ logger = logging.getLogger(__name__)
 # Scraper microservice URL from centralized config
 SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
-async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> bool:
+async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> Optional[str]:
     """
     Trigger the scraper microservice for a specific platform.
-    Mapping logic handles typical names like 'Google Reviews' -> 'google'.
+    Returns the job_id if successful, None otherwise.
     """
     platform_key = platform_name.lower().replace(" reviews", "").replace(".com", "")
     
@@ -35,14 +36,25 @@ async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) 
         async with httpx.AsyncClient() as client:
             response = await client.post(endpoint, json=payload, timeout=20.0)
             response.raise_for_status()
-            logger.info(f"Scrape triggered successfully: {response.json()}")
-            return True
+            data = response.json()
+            job_id = data.get("job_id")
+            logger.info(f"Scrape triggered successfully: {data}")
+            
+            # Register job with sync_socket_manager so progress can be tracked
+            if job_id:
+                try:
+                    from app.modules.source.services.sync_socket_manager import sync_socket_manager
+                    sync_socket_manager.register_job(str(source_id), job_id)
+                except Exception as reg_err:
+                    logger.warning(f"Failed to register job for sync progress: {reg_err}")
+                    
+            return job_id or "triggered" # Fallback if no job_id but success
     except httpx.HTTPError as e:
          logger.error(f"HTTP error triggering scraper for {platform_name}: {e}")
-         return False
+         return None
     except Exception as e:
          logger.error(f"Unexpected error triggering scraper: {e}")
-         return False
+         return None
 
 
 def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
@@ -52,12 +64,12 @@ def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
     """
     try:
         import pyodbc
-        from app.core.db_utils import get_connection_string
+        from app.core.pyodbc_connection import get_raw_connection
         from app.modules.admin.services.subscription_service import (
             check_feature_limit,
             send_limit_reached_notification,
         )
-        with pyodbc.connect(get_connection_string()) as conn:
+        with get_raw_connection() as conn:
             cursor = conn.cursor()
             limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
             if not limit_info["allowed"]:
@@ -153,15 +165,16 @@ async def process_pending_syncs():
                     continue
 
             # Trigger the microservice (now awaited)
-            await trigger_platform_scrape(
+            job_id = await trigger_platform_scrape(
                 platform_name=source.platform.platform_name,
                 url=source.source_url,
                 source_id=source.source_id
             )
 
-            if success:
-                # Update status to queued to prevent redundant triggers before scraper callback arrives
-                source.source_status = 'queued'
+            if job_id:
+                # Scraper accepted the job — set status to 'running' immediately
+                # so the frontend shows "Syncing" without waiting for the scraper's callback
+                source.source_status = 'running'
                 db.commit()
                 
                 log_activity(

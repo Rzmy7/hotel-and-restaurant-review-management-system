@@ -12,7 +12,7 @@ from app.modules.admin.routes.monitoring_routes import router as monitoring_rout
 from app.modules.admin.routes.subscription_routes import router as subscription_router
 from app.modules.admin.routes.llm_model_routes import router as llm_model_router
 
-router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 router.include_router(insights_router)
 router.include_router(dashboard_router)
 router.include_router(admin_ops_router)
