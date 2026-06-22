@@ -110,7 +110,6 @@ const getHeaders = (customHeaders?: Record<string, string>, isFormData: boolean 
 export const apiClient = {
     async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
-        console.log(`[API GET] ${fullUrl}`, params);
         
         let queryString = '';
         if (params) {
@@ -137,7 +136,6 @@ export const apiClient = {
     async post<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         const isFormData = body instanceof FormData;
-        console.log(`[API POST] ${fullUrl}`, isFormData ? '[FormData]' : body);
         
         const response = await fetch(fullUrl, {
             method: 'POST',
@@ -150,7 +148,6 @@ export const apiClient = {
     async put<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         const isFormData = body instanceof FormData;
-        console.log(`[API PUT] ${fullUrl}`, isFormData ? '[FormData]' : body);
         
         const response = await fetch(fullUrl, {
             method: 'PUT',
@@ -163,7 +160,6 @@ export const apiClient = {
     async patch<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
         const isFormData = body instanceof FormData;
-        console.log(`[API PATCH] ${fullUrl}`, isFormData ? '[FormData]' : body);
         
         const response = await fetch(fullUrl, {
             method: 'PATCH',
@@ -175,7 +171,6 @@ export const apiClient = {
 
     async delete<T>(url: string, customHeaders?: Record<string, string>): Promise<T> {
         const fullUrl = getFullUrl(url);
-        console.log(`[API DELETE] ${fullUrl}`);
         const response = await fetch(fullUrl, { 
             method: 'DELETE',
             headers: getHeaders(customHeaders)

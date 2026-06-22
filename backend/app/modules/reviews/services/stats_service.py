@@ -98,6 +98,69 @@ def get_recent_activity(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     except Exception:
         return []
 
+def get_paginated_recent_activity(cursor: pyodbc.Cursor, page: int = 1, limit: int = 10) -> Dict[str, Any]:
+    """Return paginated recent admin-panel actions."""
+    offset = (page - 1) * limit
+    
+    # Ensure the table exists before querying
+    try:
+        cursor.execute(
+            """
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'admin_activity_log'
+            )
+            BEGIN
+                CREATE TABLE dbo.admin_activity_log (
+                    id          NVARCHAR(36)   NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    action_type NVARCHAR(50)   NOT NULL,
+                    title       NVARCHAR(200)  NOT NULL,
+                    description NVARCHAR(500)  NULL,
+                    admin_user  NVARCHAR(200)  NULL,
+                    created_at  DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME()
+                );
+            END
+            """
+        )
+    except Exception:
+        pass
+
+    try:
+        # Get total count
+        cursor.execute("SELECT COUNT(*) FROM dbo.admin_activity_log")
+        total = cursor.fetchone()[0] or 0
+
+        # Get paginated data
+        sql = """
+            SELECT
+                CAST(id AS VARCHAR(36)) as id,
+                action_type as [type],
+                title,
+                ISNULL(description, '') as description,
+                CONVERT(VARCHAR(50), created_at, 126) as [timestamp],
+                admin_user as [user]
+            FROM dbo.admin_activity_log
+            ORDER BY created_at DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """
+        cursor.execute(sql, (offset, limit))
+        columns = [column[0] for column in cursor.description]
+        data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
+    except Exception:
+        return {
+            "data": [],
+            "total": 0,
+            "page": page,
+            "limit": limit
+        }
+
 def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     """Return system alerts matching the SystemAlert frontend shape.
 
@@ -228,3 +291,134 @@ def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
     # Sort by timestamp descending, return top 10
     alerts.sort(key=lambda a: a.get("timestamp", ""), reverse=True)
     return alerts[:10]
+
+def get_paginated_system_alerts(cursor: pyodbc.Cursor, page: int = 1, limit: int = 10) -> Dict[str, Any]:
+    """Return paginated system alerts combining DB and dynamic alerts."""
+    from app.modules.admin.services.system_alert_logger import (
+        ensure_system_alert_log_table,
+    )
+    from datetime import datetime
+
+    alerts: List[Dict[str, Any]] = []
+
+    # ── 1. Persisted alerts from system_alert_log ──────────────────
+    try:
+        ensure_system_alert_log_table(cursor)
+        cursor.execute(
+            """
+            SELECT
+                id,
+                severity   AS [type],
+                title,
+                message,
+                CONVERT(VARCHAR(50), created_at, 126) AS [timestamp],
+                is_read    AS isRead
+            FROM dbo.system_alert_log
+            WHERE is_dismissed = 0
+            ORDER BY created_at DESC
+            """
+        )
+        columns = [col[0] for col in cursor.description]
+        for row in cursor.fetchall():
+            d = dict(zip(columns, row))
+            sev = (d.get("type") or "info").lower()
+            if sev not in ("error", "warning", "info"):
+                sev = "info"
+            d["type"] = sev
+            d["isRead"] = bool(d.get("isRead", False))
+            alerts.append(d)
+    except Exception:
+        pass
+
+    # ── 2. Dynamic: recent scraping sync failures (last 24 h) ──────
+    try:
+        cursor.execute(
+            """
+            SELECT TOP 5
+                CAST(sl.log_id AS VARCHAR(36))                 AS id,
+                ISNULL(p.platform_name, 'Unknown Platform')    AS platform,
+                LEFT(sl.error_message, 300)                    AS error_msg,
+                CONVERT(VARCHAR(50), sl.[timestamp], 126)      AS [timestamp]
+            FROM dbo.sync_log sl
+            JOIN dbo.source s   ON s.source_id  = sl.source_id
+            JOIN dbo.platform p ON p.platform_id = s.platform_id
+            WHERE sl.status = 'Failed'
+              AND sl.[timestamp] > DATEADD(HOUR, -24, SYSUTCDATETIME())
+            ORDER BY sl.[timestamp] DESC
+            """
+        )
+        for row in cursor.fetchall():
+            alert_id = f"sync-{row[0]}"
+            if any(a["id"] == alert_id for a in alerts):
+                continue
+            alerts.append({
+                "id": alert_id,
+                "type": "error",
+                "title": f"Sync Failure — {row[1]}",
+                "message": row[2] or "A data sync job failed. Check the scraping logs for details.",
+                "timestamp": row[3],
+                "isRead": False,
+            })
+    except Exception:
+        pass
+
+    # ── 3. Dynamic: unprocessed review backlog ─────────────────────
+    try:
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM dbo.processed_review
+            WHERE status = 'pending'
+            """
+        )
+        pending = cursor.fetchone()[0] or 0
+        if pending > 50:
+            alerts.append({
+                "id": "dynamic-pending-backlog",
+                "type": "warning",
+                "title": f"Review Processing Backlog ({pending} pending)",
+                "message": (
+                    f"There are {pending} reviews waiting for AI analysis. "
+                    "Ensure the Gemini API key is configured and quota is available."
+                ),
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                "isRead": False,
+            })
+    except Exception:
+        pass
+
+    # ── 4. Dynamic: failed reviews (retry exhausted) ───────────────
+    try:
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM dbo.processed_review
+            WHERE status = 'failed'
+              AND last_attempt > DATEADD(HOUR, -24, GETUTCDATE())
+            """
+        )
+        failed = cursor.fetchone()[0] or 0
+        if failed > 0:
+            alerts.append({
+                "id": "dynamic-failed-reviews",
+                "type": "error",
+                "title": f"{failed} Reviews Failed Processing",
+                "message": (
+                    f"{failed} reviews exhausted all retry attempts in the last 24 hours. "
+                    "These reviews require manual re-processing or investigation."
+                ),
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+                "isRead": False,
+            })
+    except Exception:
+        pass
+
+    # Sort and Paginate
+    alerts.sort(key=lambda a: a.get("timestamp", ""), reverse=True)
+    total = len(alerts)
+    offset = (page - 1) * limit
+    
+    return {
+        "data": alerts[offset:offset+limit],
+        "total": total,
+        "page": page,
+        "limit": limit
+    }

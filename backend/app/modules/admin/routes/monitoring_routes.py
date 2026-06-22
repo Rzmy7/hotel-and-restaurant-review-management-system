@@ -16,11 +16,12 @@ from app.core.db_utils import (
     get_connection_string,
     table_exists,
 )
+from app.core.pyodbc_connection import get_raw_connection
 from app.modules.admin.schemas import (
+    BatchConfigResponse,
+    BatchConfigUpdatePayload,
     ScrapingPlatformCreatePayload,
     ScrapingPlatformUpdatePayload,
-    GeminiApiKeySavePayload,
-    GeminiApiKeyTestPayload,
 )
 from app.modules.admin.services.monitoring_service import (
     create_platform_in_db,
@@ -38,7 +39,7 @@ from app.modules.admin.services.monitoring_service import (
     update_platform_in_db,
 )
 
-router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
+router = APIRouter(prefix="/monitoring", tags=["Admin - Monitoring"])
 
 
 @router.get("/admin-backend-status")
@@ -400,6 +401,63 @@ def resume_review_processing() -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to resume review processing: {exc}") from exc
 
 
+@router.post("/review-processing/retry/{source_id}")
+def retry_failed_reviews(source_id: str) -> dict:
+    """Reset all failed reviews for a source back to 'pending' for reprocessing."""
+    try:
+        with get_raw_connection() as conn:
+            cursor = conn.cursor()
+            sql = """
+                UPDATE dbo.processed_review
+                SET status = 'pending',
+                    retry_count = 0,
+                    error_message = NULL,
+                    last_attempt = NULL
+                WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                  AND status = 'failed'
+            """
+            cursor.execute(sql, source_id)
+            affected = cursor.rowcount
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "Failed Reviews Retried",
+            f"Reset {affected} failed reviews for source {source_id} to pending",
+        )
+        return {"status": "success", "message": f"{affected} reviews reset to pending.", "count": affected}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retry reviews: {exc}") from exc
+
+
+@router.post("/review-processing/retry-all")
+def retry_all_failed_reviews() -> dict:
+    """Reset ALL failed reviews across all sources back to 'pending' for reprocessing."""
+    try:
+        with get_raw_connection() as conn:
+            cursor = conn.cursor()
+            sql = """
+                UPDATE dbo.processed_review
+                SET status = 'pending',
+                    retry_count = 0,
+                    error_message = NULL,
+                    last_attempt = NULL
+                WHERE status = 'failed'
+            """
+            cursor.execute(sql)
+            affected = cursor.rowcount
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "All Failed Reviews Retried",
+            f"Reset {affected} failed reviews across all sources to pending",
+        )
+        return {"status": "success", "message": f"{affected} reviews reset to pending.", "count": affected}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retry all reviews: {exc}") from exc
+
+
 @router.get("/review-processing/jobs")
 def review_processing_jobs() -> list[dict]:
     """Returns recent review processing activity grouped by source as job-like rows."""
@@ -460,6 +518,8 @@ def review_processing_jobs() -> list[dict]:
                     try:
                         dt = earliest if isinstance(earliest, datetime) else datetime.fromisoformat(str(earliest))
                         start_time = dt.isoformat()
+                        if dt.tzinfo is None:
+                            start_time += "Z"
                     except Exception:
                         start_time = str(earliest)[:16]
 
@@ -499,120 +559,225 @@ def review_processing_jobs() -> list[dict]:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
 
 
-@router.get("/review-processing/gemini-config")
-def get_gemini_config() -> dict:
-    """Returns current Gemini API key configuration status."""
-    from app.modules.admin.services.system_settings_service import (
-        ensure_system_settings_table,
-        get_setting,
-    )
+# Gemini-specific config endpoints removed — use /api/admin/llm-models instead.
 
+
+# ── Batch size configuration ────────────────────────────────────────
+
+@router.get("/review-processing/batch-config", response_model=BatchConfigResponse)
+def get_batch_config() -> BatchConfigResponse:
+    """Return the current review-processing batch size and its allowed range."""
+    from app.modules.admin.services.system_settings_service import (
+        get_review_batch_size,
+        REVIEW_BATCH_SIZE_DEFAULT,
+        REVIEW_BATCH_SIZE_MIN,
+        REVIEW_BATCH_SIZE_MAX,
+    )
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-
-            raw_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
-            last_tested_at = get_setting(cursor, "review_processing_gemini_last_tested_at")
-            last_test_result = get_setting(cursor, "review_processing_gemini_last_test_result")
-
-            # Mask the key for display
-            masked_key = ""
-            if raw_key:
-                if len(raw_key) > 8:
-                    masked_key = raw_key[:4] + "•" * (len(raw_key) - 8) + raw_key[-4:]
-                else:
-                    masked_key = "•" * len(raw_key)
-
-            return {
-                "apiKey": masked_key,
-                "isConfigured": bool(raw_key),
-                "lastTestedAt": last_tested_at,
-                "lastTestResult": last_test_result,
-            }
+            batch_size = get_review_batch_size(cursor)
+        return BatchConfigResponse(
+            batch_size=batch_size,
+            min=REVIEW_BATCH_SIZE_MIN,
+            max=REVIEW_BATCH_SIZE_MAX,
+            default=REVIEW_BATCH_SIZE_DEFAULT,
+        )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to load Gemini config: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Failed to fetch batch config: {exc}") from exc
 
 
-@router.post("/review-processing/gemini-config")
-def save_gemini_config(payload: GeminiApiKeySavePayload) -> dict:
-    """Saves Gemini API key for review processing and updates in-memory config."""
+@router.patch("/review-processing/batch-config", response_model=BatchConfigResponse)
+def update_batch_config(payload: BatchConfigUpdatePayload) -> BatchConfigResponse:
+    """Persist a new review-processing batch size (1–20)."""
     from app.modules.admin.services.system_settings_service import (
-        ensure_system_settings_table,
-        set_setting,
+        set_review_batch_size,
+        REVIEW_BATCH_SIZE_DEFAULT,
+        REVIEW_BATCH_SIZE_MIN,
+        REVIEW_BATCH_SIZE_MAX,
     )
-    import app.core.config as app_config
-
-    api_key = payload.apiKey.strip()
-    api_key = "".join(c for c in api_key if ord(c) < 128)
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
-
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-            set_setting(cursor, "review_processing_gemini_api_key", api_key)
+            saved = set_review_batch_size(cursor, payload.batch_size)
             conn.commit()
-
-        # Update in-memory config so the processor picks it up immediately
-        app_config.GENAI_KEY = api_key
 
         log_admin_activity(
-            "ai_job",
-            "Gemini API Key Updated",
-            "Review processing Gemini API key was saved",
+            "settings_updated",
+            "Batch Size Updated",
+            f"Review processing batch size set to {saved}",
         )
-
-        return {"status": "saved", "message": "Gemini API key saved successfully."}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to save Gemini API key: {exc}") from exc
-
-
-@router.post("/review-processing/gemini-config/test")
-def test_gemini_config(payload: GeminiApiKeyTestPayload) -> dict:
-    """Tests a Gemini API key by making a simple generation request."""
-    from google import genai
-    from app.modules.admin.services.system_settings_service import (
-        ensure_system_settings_table,
-        set_setting,
-    )
-
-    api_key = payload.apiKey.strip()
-    api_key = "".join(c for c in api_key if ord(c) < 128)
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
-
-    success = False
-    message = ""
-
-    try:
-        client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents="Reply with exactly: ok"
+        return BatchConfigResponse(
+            batch_size=saved,
+            min=REVIEW_BATCH_SIZE_MIN,
+            max=REVIEW_BATCH_SIZE_MAX,
+            default=REVIEW_BATCH_SIZE_DEFAULT,
         )
-        text = (getattr(response, "text", "") or "").strip()
-        if text:
-            success = True
-            message = "API key is valid and Gemini model is reachable."
-        else:
-            message = "API key accepted but model returned an empty response."
     except Exception as exc:
-        message = f"API key test failed: {exc}"
+        raise HTTPException(status_code=500, detail=f"Failed to update batch config: {exc}") from exc
 
-    # Persist test result
+
+@router.get("/dupes-test")
+def test_duplicates() -> dict:
+    """Detects duplicated sources and reviews in the database."""
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-            set_setting(cursor, "review_processing_gemini_last_tested_at", datetime.now().isoformat())
-            set_setting(cursor, "review_processing_gemini_last_test_result", "success" if success else "error")
+            
+            # 1. Duplicate Sources (Same URL in same Organization)
+            source_sql = """
+                SELECT organization_id, source_url, COUNT(*) as count
+                FROM dbo.source
+                GROUP BY organization_id, source_url
+                HAVING COUNT(*) > 1
+            """
+            cursor.execute(source_sql)
+            source_groups = cursor.fetchall()
+            duplicate_sources_count = sum(int(row[2]) - 1 for row in source_groups)
+            
+            # 2. Duplicate Reviews (Same text and reviewerName in same Source)
+            # Use casting to VARCHAR(8000) for grouping as text is VARCHAR(MAX)
+            review_sql = """
+                SELECT source_id, reviewerName, CAST([text] AS VARCHAR(8000)) as review_text, COUNT(*) as count
+                FROM dbo.processed_review
+                GROUP BY source_id, reviewerName, CAST([text] AS VARCHAR(8000))
+                HAVING COUNT(*) > 1
+            """
+            cursor.execute(review_sql)
+            review_groups = cursor.fetchall()
+            duplicate_reviews_count = sum(int(row[3]) - 1 for row in review_groups)
+            
+            return {
+                "status": "success",
+                "duplicates": {
+                    "sources": {
+                        "groups": len(source_groups),
+                        "redundant": duplicate_sources_count
+                    },
+                    "reviews": {
+                        "groups": len(review_groups),
+                        "redundant": duplicate_reviews_count
+                    }
+                }
+            }
+    except Exception as exc:
+        import traceback
+        print(f"Error in test_duplicates: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to test for duplicates: {exc}") from exc
+
+
+@router.post("/dupes-cleanup")
+def cleanup_duplicates() -> dict:
+    """Removes duplicated sources and reviews, keeping the most detailed records."""
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            
+            # ── 1. Cleanup Reviews ──────────────────────────────────────────
+            cursor.execute("""
+                SELECT source_id, reviewerName, CAST([text] AS VARCHAR(8000)) as txt
+                FROM dbo.processed_review
+                GROUP BY source_id, reviewerName, CAST([text] AS VARCHAR(8000))
+                HAVING COUNT(*) > 1
+            """)
+            dupe_groups = cursor.fetchall()
+            
+            reviews_deleted = 0
+            for group in dupe_groups:
+                sid, name, txt = group
+                
+                # Handle potential NULLs in sid, name, or txt
+                sql = "SELECT id, heading, sentiment, ai_reply, scrapedAt FROM dbo.processed_review WHERE source_id = ?"
+                params = [sid]
+                
+                if name is None:
+                    sql += " AND reviewerName IS NULL"
+                else:
+                    sql += " AND reviewerName = ?"
+                    params.append(name)
+                    
+                if txt is None:
+                    sql += " AND [text] IS NULL"
+                else:
+                    # Use same casting logic for consistency
+                    sql += " AND CAST([text] AS VARCHAR(8000)) = ?"
+                    params.append(txt)
+                
+                cursor.execute(sql, params)
+                rows = cursor.fetchall()
+                
+                if not rows: continue
+                
+                def get_quality(r):
+                    score = 0
+                    if r[1]: score += 10 # heading
+                    if r[2]: score += 5  # sentiment
+                    if r[3]: score += 5  # ai_reply
+                    return score
+
+                # Sort by quality DESC, then date DESC
+                sorted_rows = sorted(rows, key=lambda r: (get_quality(r), r[4] or datetime.min), reverse=True)
+                
+                others = [r[0] for r in sorted_rows[1:]]
+                if others:
+                    for oid in others:
+                        cursor.execute("DELETE FROM dbo.processed_review WHERE id = ?", (oid,))
+                        reviews_deleted += 1
+
+            # ── 2. Cleanup Sources ──────────────────────────────────────────
+            cursor.execute("""
+                SELECT organization_id, source_url
+                FROM dbo.source
+                GROUP BY organization_id, source_url
+                HAVING COUNT(*) > 1
+            """)
+            source_dupes = cursor.fetchall()
+            
+            sources_deleted = 0
+            for group in source_dupes:
+                org_id, url = group
+                
+                cursor.execute("""
+                    SELECT source_id, created_at
+                    FROM dbo.source
+                    WHERE organization_id = ? AND source_url = ?
+                """, (org_id, url))
+                rows = cursor.fetchall()
+                
+                if not rows: continue
+                
+                source_info = []
+                for r in rows:
+                    sid = r[0]
+                    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review WHERE source_id = ?", (sid,))
+                    count = cursor.fetchone()[0]
+                    source_info.append({"id": sid, "count": count, "created_at": r[1] or datetime.max})
+                
+                # Keep source with more reviews, then oldest
+                sorted_sources = sorted(source_info, key=lambda s: (s["count"], -(s["created_at"].timestamp() if isinstance(s["created_at"], datetime) else 0)), reverse=True)
+                
+                losers = [s["id"] for s in sorted_sources[1:]]
+                for loser_id in losers:
+                    cursor.execute("DELETE FROM dbo.processed_review WHERE source_id = ?", (loser_id,))
+                    cursor.execute("DELETE FROM dbo.source WHERE source_id = ?", (loser_id,))
+                    sources_deleted += 1
+
             conn.commit()
-    except Exception:
-        pass  # Non-critical — don't fail the test response
-
-    return {"success": success, "message": message}
-
+            
+            log_admin_activity(
+                "settings_updated",
+                "Duplication Cleanup Performed",
+                f"Removed {reviews_deleted} reviews and {sources_deleted} sources."
+            )
+            
+            return {
+                "status": "success",
+                "deleted": {
+                    "reviews": reviews_deleted,
+                    "sources": sources_deleted
+                }
+            }
+    except Exception as exc:
+        import traceback
+        print(f"Error in cleanup_duplicates: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup duplicates: {exc}") from exc

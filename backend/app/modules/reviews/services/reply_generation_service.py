@@ -1,4 +1,4 @@
-"""Reply generation service using Google Gemini and embedding context."""
+"""Reply generation service — uses the LLM Gateway for AI calls."""
 
 from __future__ import annotations
 
@@ -7,51 +7,33 @@ from typing import Any
 
 import pyodbc
 import requests
-from google import genai
 
 from app.core.db_utils import get_connection_string
 from app.modules.admin.services.system_settings_service import (
-    DEFAULT_REPLY_GOOGLE_MODEL,
-    DEFAULT_REPLY_SELECTED_MODEL,
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
     DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
     ensure_system_settings_table,
     increment_setting_counter,
     get_setting_bool,
-    get_setting,
     get_similar_reviews_count,
 )
 from app.modules.reviews.schemas import ReplyGenerationRequest
-
 from app.core.config import EMBEDDING_SERVICE_URL
+from app.services.llm_gateway import call as gateway_call
 
 
-def _load_reply_generation_settings() -> dict[str, Any]:
+def _load_context_settings() -> dict[str, Any]:
     with pyodbc.connect(get_connection_string()) as connection:
         cursor = connection.cursor()
         ensure_system_settings_table(cursor)
-
-        google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-        selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
         similar_reviews_count = get_similar_reviews_count(cursor)
         use_embedding_rules = get_setting_bool(
-            cursor,
-            "reply_use_embedding_rules",
-            default=DEFAULT_REPLY_USE_EMBEDDING_RULES,
+            cursor, "reply_use_embedding_rules", default=DEFAULT_REPLY_USE_EMBEDDING_RULES
         )
         use_similar_reviews = get_setting_bool(
-            cursor,
-            "reply_use_similar_reviews",
-            default=DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
+            cursor, "reply_use_similar_reviews", default=DEFAULT_REPLY_USE_SIMILAR_REVIEWS
         )
-
-    google_model = selected_model if selected_model else DEFAULT_REPLY_GOOGLE_MODEL
-
     return {
-        "provider": "google",
-        "google_api_key": google_api_key,
-        "selected_model": selected_model,
-        "google_model": google_model,
         "similar_reviews_count": similar_reviews_count,
         "use_embedding_rules": use_embedding_rules,
         "use_similar_reviews": use_similar_reviews,
@@ -61,9 +43,7 @@ def _load_reply_generation_settings() -> dict[str, Any]:
 def _to_int(value: Any, default: int = 0) -> int:
     try:
         parsed = int(value)
-        if parsed < 0:
-            return 0
-        return parsed
+        return max(0, parsed)
     except Exception:
         return default
 
@@ -93,15 +73,38 @@ def _extract_token_usage(value: Any) -> int:
     return 0
 
 
+def _get_org_source_ids(source_id: str) -> list[str]:
+    """Fetch all source IDs that belong to the same organization as the given source."""
+    import logging
+    _logger = logging.getLogger(__name__)
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute(
+                "SELECT CAST(s2.source_id AS NVARCHAR(36)) "
+                "FROM dbo.source s1 "
+                "JOIN dbo.source s2 ON s1.organization_id = s2.organization_id "
+                "WHERE CAST(s1.source_id AS NVARCHAR(36)) = ?",
+                (source_id,),
+            ).fetchall()
+            # Uppercase to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+            return [row[0].upper() for row in rows] if rows else [source_id.upper()]
+    except Exception as e:
+        _logger.warning(f"Failed to resolve org sources for {source_id}, falling back to single source: {e}")
+        return [source_id.upper()]
+
+
 def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     import logging
     _logger = logging.getLogger(__name__)
     _api_key = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
     try:
-        # Uppercase source_id to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
+        # Get all source IDs belonging to the same organization
+        org_source_ids = _get_org_source_ids(source_id) if source_id else []
+
         response = requests.post(
             f"{EMBEDDING_SERVICE_URL}/search",
-            json={"query": review_text, "source_ids": [source_id.upper()], "top_k": top_k},
+            json={"query": review_text, "source_ids": org_source_ids, "top_k": top_k},
             headers={"X-Internal-API-Key": _api_key},
             timeout=12,
         )
@@ -114,46 +117,39 @@ def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tu
         safe_rules = rules if isinstance(rules, list) else []
         return safe_reviews[:top_k], safe_rules
     except Exception as e:
-        _logger.error(f"Embedding context fetch failed for source_id={source_id}: {e}")
+        _logger.error(f"Embedding context fetch failed: {e}")
         return [], []
 
 
 def _format_context_lines(title: str, items: list[dict[str, Any]], max_items: int) -> str:
     if not items:
         return f"{title}: None"
-
     lines: list[str] = [f"{title}:"]
     for index, item in enumerate(items[:max_items], start=1):
         text = str(item.get("text") or "").strip()
-        distance = item.get("distance")
         if not text:
             continue
-
+        distance = item.get("distance")
         if isinstance(distance, (int, float)):
             lines.append(f"{index}. {text} (distance={distance:.3f})")
         else:
             lines.append(f"{index}. {text}")
-
-    if len(lines) == 1:
-        return f"{title}: None"
-    return "\n".join(lines)
+    return "\n".join(lines) if len(lines) > 1 else f"{title}: None"
 
 
-def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[str, Any]], rules: list[dict[str, Any]]) -> str:
+def _build_prompt(
+    payload: ReplyGenerationRequest,
+    similar_reviews: list[dict[str, Any]],
+    rules: list[dict[str, Any]],
+) -> str:
     tone = (payload.tone or "standard").strip().lower()
     length = (payload.length or "standard").strip().lower()
 
-    length_instruction = "120 to 180 words"
-    if length == "short":
-        length_instruction = "40 to 90 words"
-
+    length_instruction = "40 to 90 words" if length == "short" else "120 to 180 words"
     tone_instruction = {
         "professional": "Use a professional and polished tone.",
         "casual": "Use a warm and conversational tone.",
     }.get(tone, "Use a balanced, courteous customer-support tone.")
-
-    similar_reviews_section = _format_context_lines("Similar Reviews", similar_reviews, len(similar_reviews))
-    rules_section = _format_context_lines("Relevant Rules", rules, len(rules))
 
     language_hint = (payload.language or "").strip()
     language_hint_line = (
@@ -173,8 +169,8 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
         f"Tone Requirement: {tone_instruction}\n\n"
         "Original Review:\n"
         f"{payload.reviewText.strip()}\n\n"
-        f"{rules_section}\n\n"
-        f"{similar_reviews_section}\n\n"
+        f"{_format_context_lines('Relevant Rules', rules, len(rules))}\n\n"
+        f"{_format_context_lines('Similar Reviews', similar_reviews, len(similar_reviews))}\n\n"
         "Reply requirements:\n"
         "- The reply language MUST match the language used in the Original Review text.\n"
         "- Do not translate to English unless the Original Review is in English.\n"
@@ -187,110 +183,76 @@ def _build_prompt(payload: ReplyGenerationRequest, similar_reviews: list[dict[st
     )
 
 
-def _generate_with_google(api_key: str, model: str, prompt: str) -> tuple[str, int]:
-    last_error: Exception | None = None
-
-    # Some Gemini aliases are only reachable on v1beta; try both.
-    for api_version in ("v1", "v1beta"):
-        try:
-            client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
-            response = client.models.generate_content(model=model, contents=prompt)
-            text = getattr(response, "text", None)
-            usage = _extract_token_usage(getattr(response, "usage_metadata", None))
-            return (text or "").strip(), usage
-        except Exception as exc:
-            last_error = exc
-
-    if last_error is not None:
-        raise last_error
-    raise ValueError("Google generation failed for an unknown reason.")
-
-
-def _increment_provider_usage(tokens_used: int = 0) -> None:
-    with pyodbc.connect(get_connection_string()) as connection:
-        cursor = connection.cursor()
-        ensure_system_settings_table(cursor)
-        increment_setting_counter(cursor, "reply_google_request_count", delta=1)
-        safe_tokens_used = max(0, _to_int(tokens_used, default=0))
-        if safe_tokens_used > 0:
-            increment_setting_counter(cursor, "reply_google_token_usage", delta=safe_tokens_used)
-        connection.commit()
+def _increment_usage() -> None:
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+            increment_setting_counter(cursor, "reply_google_request_count", delta=1)
+            connection.commit()
+    except Exception:
+        pass
 
 
 def _fallback_reply(payload: ReplyGenerationRequest) -> str:
     user_name = (payload.userName or "Guest").strip() or "Guest"
     sentiment = (payload.sentiment or "Neutral").strip().lower()
-
     if sentiment == "negative":
         return (
             f"Dear {user_name},\n\n"
-            "Thank you for sharing your feedback. We are truly sorry that your experience did not meet expectations. "
-            "Your comments have been shared with our team, and we are taking immediate steps to improve. "
-            "We value your input and hope to provide you with a much better experience next time."
+            "Thank you for sharing your feedback. We are truly sorry that your experience did not "
+            "meet expectations. Your comments have been shared with our team, and we are taking "
+            "immediate steps to improve. We value your input and hope to provide you with a much "
+            "better experience next time."
         )
-
     if sentiment == "positive":
         return (
             f"Dear {user_name},\n\n"
-            "Thank you for your wonderful review. We are delighted to hear about your positive experience. "
-            "Your feedback means a lot to our team, and we look forward to welcoming you again soon."
+            "Thank you for your wonderful review. We are delighted to hear about your positive "
+            "experience. Your feedback means a lot to our team, and we look forward to welcoming "
+            "you again soon."
         )
-
     return (
         f"Dear {user_name},\n\n"
-        "Thank you for taking the time to share your feedback. We appreciate your comments and continuously use guest insights "
-        "to improve our service. We hope to welcome you again soon."
+        "Thank you for taking the time to share your feedback. We appreciate your comments and "
+        "continuously use guest insights to improve our service. We hope to welcome you again soon."
     )
 
 
 def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
     try:
-        settings = _load_reply_generation_settings()
-
-        similar_reviews_count = int(settings["similar_reviews_count"])
-        use_embedding_rules = bool(settings["use_embedding_rules"])
-        use_similar_reviews = bool(settings["use_similar_reviews"])
-        source_id = payload.sourceId or ""
+        settings = _load_context_settings()
 
         similar_reviews: list[dict[str, Any]] = []
         rules: list[dict[str, Any]] = []
-        if use_embedding_rules or use_similar_reviews:
+        if settings["use_embedding_rules"] or settings["use_similar_reviews"]:
             similar_reviews, rules = _fetch_embedding_context(
                 payload.reviewText,
-                source_id,
-                similar_reviews_count,
+                payload.sourceId or "",
+                int(settings["similar_reviews_count"]),
             )
-
-        if not use_similar_reviews:
+        if not settings["use_similar_reviews"]:
             similar_reviews = []
-        if not use_embedding_rules:
+        if not settings["use_embedding_rules"]:
             rules = []
 
         prompt = _build_prompt(payload, similar_reviews, rules)
 
         reply = ""
-        tokens_used = 0
-        provider_output = "google"
         provider_error: str | None = None
         try:
-            api_key = str(settings["google_api_key"])
-            model = str(settings["google_model"])
-            if not api_key:
-                raise ValueError("Google API key is not configured in reply generation settings.")
-            reply, tokens_used = _generate_with_google(api_key, model, prompt)
-            _increment_provider_usage(tokens_used=tokens_used)
-        except Exception as provider_exc:
-            # Avoid surfacing provider/transient failures as HTTP 500 to the UI.
+            reply = gateway_call("reply_generation", prompt)
+            _increment_usage()
+        except Exception as exc:
             reply = _fallback_reply(payload)
-            provider_output = "google-fallback"
-            provider_error = str(provider_exc)
+            provider_error = str(exc)
 
         if not reply:
             reply = _fallback_reply(payload)
 
         return {
             "reply": reply,
-            "provider": provider_output,
+            "provider": "llm-gateway",
             "similarReviewsUsed": len(similar_reviews),
             "rulesUsed": len(rules),
             "providerError": provider_error,

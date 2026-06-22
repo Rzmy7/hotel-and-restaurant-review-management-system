@@ -9,7 +9,7 @@ from datetime import datetime
 import pyodbc
 from sqlalchemy import select, func, and_, or_, case
 from sqlalchemy.orm import Session, joinedload
-from app.core.pyodbc_connection import get_connection_string
+from app.core.pyodbc_connection import get_raw_connection
 
 
 def upsert_review_pending(cursor: pyodbc.Cursor, review_data: dict) -> uuid.UUID:
@@ -137,7 +137,7 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
             source_id
         FROM dbo.processed_review
         WHERE status = 'pending'
-        ORDER BY scrapedAt ASC
+        ORDER BY scrapedAt ASC, id ASC
     """
     cursor.execute(sql)
     columns = [column[0] for column in cursor.description]
@@ -215,18 +215,50 @@ def fetch_all_reviews_enriched(
                     ))
             
             if filters.get("rating"):
-                query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
+                rating_filters = []
+                for r in filters["rating"]:
+                    # Handle integer ratings as ranges to include floats (e.g. 4.0 matches 3.5 to 4.49)
+                    # Standard rounding: r=5 matches >=4.5, r=4 matches 3.5-4.5, etc.
+                    rating_filters.append(and_(ProcessedReview.rating >= r - 0.5, ProcessedReview.rating < r + 0.5))
+                query = query.filter(or_(*rating_filters))
+
             if filters.get("sentiment"):
                 query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+
             if filters.get("source"):
                 query = query.filter(Platform.platform_name.in_(filters["source"]))
+
             if filters.get("category"):
                 cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
-                query = query.filter(and_(*cat_filters))
+                query = query.filter(or_(*cat_filters))
+
+            if filters.get("status"):
+                status_filters = []
+                for s in filters["status"]:
+                    if s == "Pending":
+                        status_filters.append(ProcessedReview.status == 'pending')
+                    elif s == "Replied":
+                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
+                    elif s == "AI Draft":
+                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                if status_filters:
+                    query = query.filter(or_(*status_filters))
+
             if filters.get("dateFrom"):
-                query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+                try:
+                    from dateutil import parser as date_parser
+                    df = date_parser.parse(filters["dateFrom"])
+                    query = query.filter(ProcessedReview.reviewDate >= df)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+
             if filters.get("dateTo"):
-                query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+                try:
+                    from dateutil import parser as date_parser
+                    dt = date_parser.parse(filters["dateTo"])
+                    query = query.filter(ProcessedReview.reviewDate <= dt)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         total_count = query.count()
 
@@ -377,14 +409,49 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
                         ProcessedReview.reviewerName.ilike(search_val),
                         ProcessedReview.heading.ilike(search_val)
                     ))
-            if filters.get("rating"): query = query.filter(ProcessedReview.rating.in_(filters["rating"]))
-            if filters.get("sentiment"): query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
-            if filters.get("source"): query = query.filter(Platform.platform_name.in_(filters["source"]))
+            if filters.get("rating"):
+                rating_filters = []
+                for r in filters["rating"]:
+                    rating_filters.append(and_(ProcessedReview.rating >= r - 0.5, ProcessedReview.rating < r + 0.5))
+                query = query.filter(or_(*rating_filters))
+
+            if filters.get("sentiment"):
+                query = query.filter(ProcessedReview.sentiment.in_(filters["sentiment"]))
+
+            if filters.get("source"):
+                query = query.filter(Platform.platform_name.in_(filters["source"]))
+
             if filters.get("category"):
                 cat_filters = [ProcessedReview.categories.ilike(f'%"{cat}"%') for cat in filters["category"]]
-                query = query.filter(and_(*cat_filters))
-            if filters.get("dateFrom"): query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
-            if filters.get("dateTo"): query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
+                query = query.filter(or_(*cat_filters))
+
+            if filters.get("status"):
+                status_filters = []
+                for s in filters["status"]:
+                    if s == "Pending":
+                        status_filters.append(ProcessedReview.status == 'pending')
+                    elif s == "Replied":
+                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
+                    elif s == "AI Draft":
+                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                if status_filters:
+                    query = query.filter(or_(*status_filters))
+
+            if filters.get("dateFrom"):
+                try:
+                    from dateutil import parser as date_parser
+                    df = date_parser.parse(filters["dateFrom"])
+                    query = query.filter(ProcessedReview.reviewDate >= df)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate >= filters["dateFrom"])
+
+            if filters.get("dateTo"):
+                try:
+                    from dateutil import parser as date_parser
+                    dt = date_parser.parse(filters["dateTo"])
+                    query = query.filter(ProcessedReview.reviewDate <= dt)
+                except:
+                    query = query.filter(ProcessedReview.reviewDate <= filters["dateTo"])
 
         # Aggregations
         # Apply the same filters to aggregation query by reusing the query object
@@ -414,12 +481,11 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
 
 def count_reviews_raw() -> int:
     """Return the total count of processed reviews."""
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+    with get_raw_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM dbo.processed_review")
+        count = cursor.fetchone()[0]
+        return count
 
 
 def get_processing_metrics(
@@ -480,25 +546,24 @@ def get_full_distribution(organization_id: str) -> Dict:
     Returns the full rating distribution (1-5 stars) with per-source breakdowns.
     Used by the "See Details" distribution modal.
     """
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
+    with get_raw_connection() as conn:
+        cursor = conn.cursor()
 
-    # Get distribution grouped by source platform and rounded rating
-    cursor.execute("""
-        SELECT 
-            p.platform_name AS source_name,
-            CAST(ROUND(r.rating, 0) AS INT) AS rounded_rating,
-            COUNT(*) AS cnt
-        FROM dbo.processed_review r
-        JOIN dbo.source s ON r.source_id = s.source_id
-        JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ? AND r.rating IS NOT NULL
-        GROUP BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT)
-        ORDER BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT) DESC
-    """, organization_id)
+        # Get distribution grouped by source platform and rounded rating
+        cursor.execute("""
+            SELECT 
+                p.platform_name AS source_name,
+                CAST(ROUND(r.rating, 0) AS INT) AS rounded_rating,
+                COUNT(*) AS cnt
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            JOIN dbo.platform p ON s.platform_id = p.platform_id
+            WHERE s.organization_id = ? AND r.rating IS NOT NULL
+            GROUP BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT)
+            ORDER BY p.platform_name, CAST(ROUND(r.rating, 0) AS INT) DESC
+        """, organization_id)
 
-    rows = cursor.fetchall()
-    conn.close()
+        rows = cursor.fetchall()
 
     # Build per-source and global stats
     source_map: Dict[str, Dict[int, int]] = {}
@@ -553,9 +618,8 @@ def delete_reviews_by_source_id(source_id: str) -> int:
     Delete all reviews and associated media for a specific source.
     Returns the number of reviews deleted.
     """
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-    try:
+    with get_raw_connection() as conn:
+        cursor = conn.cursor()
         # 1. Delete associated media
         # We join with processed_review to find media belonging to this source
         media_sql = """
@@ -571,10 +635,4 @@ def delete_reviews_by_source_id(source_id: str) -> int:
         cursor.execute(reviews_sql, source_id)
         
         deleted_count = cursor.rowcount
-        conn.commit()
         return deleted_count
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()

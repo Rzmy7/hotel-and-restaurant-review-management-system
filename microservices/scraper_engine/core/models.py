@@ -33,7 +33,7 @@ class Source(Base):
     source_url  = Column(Unicode(1000), nullable=False, unique=False)
     platform_name = Column(Unicode(100), nullable=False)  # agoda | booking | google | tripadvisor
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=text('SYSDATETIMEOFFSET()'))
 
     __table_args__ = (
         Index('IX_sources_platform', 'platform_name'),
@@ -58,7 +58,7 @@ class Review(Base):
     source_id  = Column(String(36), ForeignKey('sources.source_id', ondelete='CASCADE'), nullable=False)
     platform_review_id = Column(Unicode(255), nullable=True)
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=text('SYSDATETIMEOFFSET()'))
 
     __table_args__ = (
         Index('IX_reviews_source', 'source_id'),
@@ -203,7 +203,7 @@ class ReviewMedia(Base):
     thumbnail_url = Column(Unicode(1000), nullable=True)
     media_type    = Column(Unicode(20), nullable=True)  # image | video
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=text('SYSDATETIMEOFFSET()'))
 
     __table_args__ = (
         Index('IX_media_review', 'review_id'),
@@ -230,7 +230,7 @@ class AuditLog(Base):
     ip_address  = Column(Unicode(50), nullable=True)
     user_agent  = Column(Unicode(255), nullable=True)
     performed_by = Column(Unicode(255), nullable=True, default='system')
-    timestamp   = Column(DateTime, server_default=func.now())
+    timestamp   = Column(DateTime(timezone=True), server_default=text('SYSDATETIMEOFFSET()'))
 
     __table_args__ = (
         Index('IX_audit_timestamp', 'timestamp'),

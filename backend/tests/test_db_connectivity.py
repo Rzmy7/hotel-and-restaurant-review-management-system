@@ -11,8 +11,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pyodbc
 from sqlalchemy import text
-from app.core.pyodbc_connection import get_connection_string
-from app.core.database import SessionLocal, engine
+from app.core.db_utils import get_connection_string
+from app.database.session import SessionLocal, engine
 
 
 def test_raw_pyodbc():

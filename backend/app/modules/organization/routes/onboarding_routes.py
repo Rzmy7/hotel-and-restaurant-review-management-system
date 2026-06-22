@@ -4,10 +4,11 @@ from sqlalchemy import text
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.database.session import get_db
 
-router = APIRouter()
+router = APIRouter(tags=["Organizations"])
 
-@router.post("/onboarding/skip")
+@router.post("/onboarding/skip", summary="Skip the onboarding flow")
 def skip_onboarding(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Mark the authenticated user's onboarding as completed without going through the steps."""
     db.execute(text("""
         UPDATE users
         SET onboarding_completed = 1

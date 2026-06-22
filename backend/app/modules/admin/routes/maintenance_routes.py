@@ -13,7 +13,7 @@ from app.modules.admin.services.system_settings_service import (
     set_setting,
 )
 
-router = APIRouter(prefix="/maintenance", tags=["Admin Maintenance"])
+router = APIRouter(prefix="/maintenance", tags=["Admin - Settings"])
 
 
 class MaintenanceStatusPayload(BaseModel):

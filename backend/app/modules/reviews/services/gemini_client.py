@@ -1,5 +1,8 @@
 """
-Gemini AI Client — handles communication with the Google Generative AI API for review analysis.
+Review analysis client — delegates to the LLM Gateway.
+
+All retry logic and alerting remain here; only the raw API call is handled
+by app.services.llm_gateway which routes to the admin-assigned model.
 """
 
 import json
@@ -7,17 +10,12 @@ import logging
 import re
 from typing import List, Dict, Any
 
-from google import genai
-from google.genai import errors, types
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, retry_if_exception
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
-import app.core.config as app_config
+from app.services.llm_gateway import call as gateway_call
 
 logger = logging.getLogger(__name__)
 
-# ------------------------------------------------------------------
-# SYSTEM PROMPT
-# ------------------------------------------------------------------
 SYSTEM_PROMPT = """Role: You are an Advanced Reputation Analyst for a Hotel Management SaaS.
 
 Task: Analyze a batch of raw guest reviews and transform them into structured, enriched JSON objects.
@@ -25,8 +23,9 @@ Task: Analyze a batch of raw guest reviews and transform them into structured, e
 Input: A JSON array of reviews. Each review has [id, platformReviewId, rating, reviewerName, text, positive_text, negative_text, reviewDate].
 
 Rules:
-1. Output MUST be ONLY a valid JSON array. Do not include markdown (```json) or text.
-2. For each review, provide:
+1. Output MUST be ONLY a valid JSON object in the format: {{"reviews": [review1, review2, ...]}}.
+2. IMPORTANT: All string values must be properly escaped for JSON. Specifically, double quotes inside a string MUST be escaped as \\".
+3. For each review, provide:
    - "sentiment": "Positive", "Neutral", "Negative".
    - "sentiment_score": A float from 1.0 (Very Negative) to 5.0 (Very Positive).
    - "categories": List of 1-3 objects from [Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size]. Each object MUST have "name" (tag) and "score" (a score from 1 to 100).
@@ -41,72 +40,65 @@ Batch Input Data:
 {batch_json}
 """
 
-def _resolve_api_key() -> str | None:
+
+def repair_json(text: str) -> str:
     """
-    Resolve the Gemini API key with priority:
-      1. DB-stored key from admin panel (dbo.system_settings)
-      2. In-memory config (updated by admin save endpoint)
-      3. GENAI_KEY env var (loaded at startup)
+    Attempts to repair common LLM JSON errors:
+    1. Truncated arrays (missing closing brackets).
+    2. Trailing commas.
+    3. Unbalanced braces.
+    4. Unclosed strings (if truncated mid-sentence).
     """
-    # Try DB-stored key first (survives restarts)
-    try:
-        import pyodbc
-        from app.core.db_utils import get_connection_string
-        from app.modules.admin.services.system_settings_service import (
-            ensure_system_settings_table,
-            get_setting,
-        )
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            ensure_system_settings_table(cursor)
-            db_key = (get_setting(cursor, "review_processing_gemini_api_key") or "").strip()
-            if db_key:
-                # Also sync in-memory so other parts of the app see it
-                app_config.GENAI_KEY = db_key
-                return db_key
-    except Exception as e:
-        logger.debug(f"Could not read Gemini key from DB, falling back to config: {e}")
+    text = text.strip()
+    
+    # 1. Handle unclosed strings (heuristic: odd number of non-escaped quotes)
+    # This is a basic check. If the text ends while a string is open, close it.
+    quotes = re.findall(r'(?<!\\)"', text)
+    if len(quotes) % 2 != 0:
+        # If it ends with a backslash, remove it to avoid escaping our new quote
+        if text.endswith('\\'):
+            text = text[:-1]
+        text += '"'
 
-    # Fall back to in-memory / env var
-    return app_config.GENAI_KEY
+    # 2. Trailing commas before closing brackets/braces
+    text = re.sub(r',\s*([\]}])', r'\1', text)
+    
+    # 3. Balance brackets if truncated (basic approach)
+    open_brackets = text.count('[')
+    close_brackets = text.count(']')
+    if open_brackets > close_brackets:
+        text += ']' * (open_brackets - close_brackets)
+        
+    open_braces = text.count('{')
+    close_braces = text.count('}')
+    if open_braces > close_braces:
+        text += '}' * (open_braces - close_braces)
+        
+    return text
 
 
-def _get_client():
-    api_key = _resolve_api_key()
-    if not api_key:
-        raise RuntimeError(
-            "No Gemini API key configured. "
-            "Set it via Admin Panel → Review Processing → Gemini API Key, "
-            "or set the GENAI_KEY environment variable."
-        )
-    return genai.Client(
-        api_key=api_key, 
-        http_options=types.HttpOptions(
-            api_version="v1",
-            retry_options=types.HttpRetryOptions(attempts=1)
-        )
+def _is_billing_error(s: str) -> bool:
+    """Return True if the error string indicates a billing / credit-limit problem."""
+    lower = s.lower()
+    return (
+        "402" in s
+        or "429" in s
+        or "RESOURCE_EXHAUSTED" in s
+        or "insufficient_quota" in lower
+        or "insufficient credits" in lower
+        or ("credits" in lower and "max_tokens" in lower)
     )
 
 
 def is_retryable_exception(e: Exception) -> bool:
-    """
-    Determines if an exception from Gemini should trigger a retry.
-    We exclude 429 (RESOURCE_EXHAUSTED) because quota resets usually 
-    take longer than our retry window.
-    """
-    err_str = str(e)
-    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+    """Provider-agnostic retry predicate. Billing, rate-limit, and auth errors are not retried."""
+    s = str(e)
+    if _is_billing_error(s):
         return False
-    
-    # Retry on ServerErrors (5xx)
-    if isinstance(e, errors.ServerError):
-        return True
-    
-    # Do not retry on other ClientErrors (4xx) like 400 or 403
-    if isinstance(e, errors.ClientError):
+    if "rate_limit" in s.lower():
         return False
-        
-    # Retry on generic exceptions (might be network issues)
+    if any(code in s for code in ("400", "401", "403")):
+        return False
     return True
 
 
@@ -114,69 +106,98 @@ def is_retryable_exception(e: Exception) -> bool:
     wait=wait_exponential(multiplier=2, min=2, max=20),
     stop=stop_after_attempt(5),
     retry=retry_if_exception(is_retryable_exception),
-    before_sleep=lambda retry_state: logger.warning(f"Gemini API busy (503/Error). Retrying in {retry_state.next_action.sleep} seconds... (Attempt {retry_state.attempt_number})")
+    before_sleep=lambda rs: logger.warning(
+        f"LLM API busy. Retrying in {rs.next_action.sleep}s (attempt {rs.attempt_number})"
+    ),
 )
 def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Sends a batch of reviews to Gemini and returns the enriched data.
-    """
+    """Send a batch of reviews to the assigned LLM and return enriched data."""
     if not reviews:
         return []
 
-    client = _get_client()
     batch_json = json.dumps(reviews, ensure_ascii=False)
-    response = None
-    
+
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite", 
-            contents=SYSTEM_PROMPT.format(batch_json=batch_json)
+        # Use .replace instead of .format to avoid KeyError with braces in review text
+        prompt = SYSTEM_PROMPT.replace("{batch_json}", batch_json)
+        
+        text = gateway_call(
+            "review_processing",
+            prompt,
+            json_mode=False, # Disabled: provider expects 'json_schema' which we haven't implemented yet
         )
         
-        # Clean response text
-        text = response.text
-        # Remove markdown fences if present
+        # Clean up response
+        text = text.strip()
+        # Remove markdown blocks
         text = re.sub(r'^```(?:json)?\s*', '', text)
         text = re.sub(r'\s*```$', '', text)
         
-        # Parse JSON
-        results = json.loads(text)
-        
-        if not isinstance(results, list):
-            raise ValueError("Gemini returned non-list output.")
+        # Attempt to find the first { and last } to isolate the object
+        # We still ask for the object structure in the prompt as it's more stable
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
+        if start_idx == -1:
+            # Fallback to array if it didn't follow the "object" rule
+            start_idx = text.find('[')
+            end_idx = text.rfind(']')
             
+        if start_idx != -1 and end_idx != -1:
+            text = text[start_idx:end_idx+1]
+
+        try:
+            results = json.loads(text)
+        except json.JSONDecodeError as jde:
+            logger.warning(f"Initial JSON parse failed, attempting repair: {jde.msg}")
+            repaired_text = repair_json(text)
+            try:
+                results = json.loads(repaired_text)
+            except json.JSONDecodeError:
+                # Still failing, log context and raise
+                logger.error(f"JSON repair failed. Snippet: {text[:200]}...{text[-200:]}")
+                raise
+
+        # If it's a dict with "reviews" key, extract it (JSON Mode standard)
+        if isinstance(results, dict) and "reviews" in results:
+            results = results["reviews"]
+
+        if not isinstance(results, list):
+            # Fallback: if it's a dict but NOT with "reviews" key, maybe it's a single review or weird format
+            if isinstance(results, dict):
+                 results = [results]
+            else:
+                raise ValueError("LLM returned non-list/non-dict output.")
+        
         return results
 
     except Exception as e:
         err_str = str(e)
-        logger.error(f"Gemini analysis failed: {err_str}")
-        
-        # Log system alert for admin dashboard visibility
+        logger.error(f"Review analysis failed: {err_str}")
+
         try:
             from app.modules.admin.services.system_alert_logger import (
                 alert_gemini_quota_exceeded,
                 alert_gemini_api_error,
                 alert_gemini_key_missing,
             )
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            if _is_billing_error(err_str):
                 alert_gemini_quota_exceeded(err_str[:200])
-            elif "No Gemini API key configured" in err_str:
+            elif "No LLM model assigned" in err_str:
                 alert_gemini_key_missing()
             else:
                 alert_gemini_api_error(err_str[:300])
         except Exception as alert_err:
             logger.debug(f"Failed to log system alert: {alert_err}")
 
-        # Notify admin if it's a quota issue
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+        # Auto-pause review processing on any billing / quota / credit error
+        if _is_billing_error(err_str):
+            logger.warning("Billing/credit limit detected — auto-pausing review processing.")
             try:
                 from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
                 notify_admin_gemini_quota_exceeded()
-            except ImportError:
-                logger.warning("Could not import notification helper to notify admin of Gemini quota issue.")
-            except Exception as notify_err:
-                logger.warning(f"Failed to trigger admin notification for Gemini quota: {notify_err}")
-                
+            except Exception:
+                pass
+
             try:
                 import pyodbc
                 from app.core.db_utils import get_connection_string
@@ -185,10 +206,8 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     cursor = conn.cursor()
                     set_setting(cursor, "review_processing_paused", "true")
                     conn.commit()
+                logger.info("Review processing has been PAUSED. Resume from Admin → System Settings.")
             except Exception as pause_err:
                 logger.error(f"Failed to pause review processing: {pause_err}")
 
-        if response:
-            logger.debug(f"Raw response text: {getattr(response, 'text', 'N/A')}")
         raise e
-

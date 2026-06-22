@@ -14,6 +14,7 @@ from app.database import get_db
 from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.dependencies import get_optional_user
+from app.core.tenant_context import resolve_tenant_scope
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.modules.reviews.schemas import (
     ReviewModel,
@@ -41,40 +42,7 @@ from app.modules.reviews.services.reply_generation_service import generate_revie
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/reviews", tags=["reviews"])
-
-
-def _resolve_org_id(user, organization_id_param):
-    """Resolve organization_id: prefer JWT, fall back to query param with ownership check."""
-    jwt_org_id = user.organization_id if hasattr(user, 'organization_id') else (
-        user.get("organization_id") if isinstance(user, dict) else None
-    )
-    if jwt_org_id:
-        return str(jwt_org_id)
-    if organization_id_param:
-        # Verify the user owns this organization
-        user_id = user.user_id if hasattr(user, 'user_id') else (
-            user.get("user_id") if isinstance(user, dict) else None
-        )
-        if user_id:
-            try:
-                with pyodbc.connect(get_connection_string()) as conn:
-                    cursor = conn.cursor()
-                    row = cursor.execute(
-                        "SELECT TOP 1 1 FROM dbo.organization WHERE organization_id = ? AND tenant_id = ?",
-                        (str(organization_id_param), str(user_id)),
-                    ).fetchone()
-                    if not row:
-                        raise HTTPException(
-                            status_code=403,
-                            detail="You do not have access to this organization.",
-                        )
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.warning(f"Org ownership check failed: {e}")
-        return str(organization_id_param)
-    raise HTTPException(status_code=400, detail="organization_id is required.")
+router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
 
 
 @router.get("/", response_model=PaginatedReviewResponse)
@@ -88,6 +56,7 @@ def read_reviews(
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
     category: List[str] = Query(None),
+    status: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -95,7 +64,7 @@ def read_reviews(
 ):
     """Fetch processed reviews with pagination and filtering."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id) if organization_id else None)
         filters = {
             "search": search,
             "embedding_search": embedding_search,
@@ -103,6 +72,7 @@ def read_reviews(
             "sentiment": sentiment,
             "source": source,
             "category": category,
+            "status": status,
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
@@ -136,7 +106,7 @@ def get_options(
 ):
     """Fetch available filter options (sources, categories)."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id) if organization_id else None)
         return get_review_options(resolved_org_id, db=db)
     except HTTPException:
         raise
@@ -154,6 +124,7 @@ def get_stats(
     sentiment: List[str] = Query(None),
     source: List[str] = Query(None),
     category: List[str] = Query(None),
+    status: List[str] = Query(None),
     dateFrom: Optional[str] = Query(None),
     dateTo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -161,7 +132,7 @@ def get_stats(
 ):
     """Fetch aggregated review statistics, respecting all active filters."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id) if organization_id else None)
         filters = {
             "search": search,
             "embedding_search": embedding_search,
@@ -169,6 +140,7 @@ def get_stats(
             "sentiment": sentiment,
             "source": source,
             "category": category,
+            "status": status,
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
@@ -185,11 +157,12 @@ def get_stats(
 @router.get("/meta/distribution")
 def get_distribution_details(
     organization_id: Optional[uuid.UUID] = Query(None),
+    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Fetch the full rating distribution broken down by source platform."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id) if organization_id else None)
         return get_full_distribution(resolved_org_id)
     except HTTPException:
         raise
@@ -199,10 +172,14 @@ def get_distribution_details(
 
 
 @router.get("/{organization_id}", response_model=List[ReviewModel], deprecated=True)
-def read_reviews_legacy(organization_id: uuid.UUID, current_user=Depends(get_current_user)):
+def read_reviews_legacy(
+    organization_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     """Legacy endpoint for fetching reviews. Use GET / instead."""
     try:
-        resolved_org_id = _resolve_org_id(current_user, organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id))
         result = get_all_reviews_from_db(resolved_org_id)
         return result["data"]
     except HTTPException:
@@ -212,22 +189,27 @@ def read_reviews_legacy(organization_id: uuid.UUID, current_user=Depends(get_cur
         raise HTTPException(status_code=500, detail="Failed to fetch reviews.")
 
 
-@router.post("/trigger/{source_id}")
+@router.post("/trigger/{source_id}", summary="Trigger full ingestion and processing for a source")
 async def trigger_review_sync(
     source_id: uuid.UUID,
     background_tasks: BackgroundTasks,
-    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """Manually trigger the full ingestion and processing flow for a source."""
+    source = get_source_by_id(db, source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found.")
+    resolve_tenant_scope(current_user, db, str(source.organization_id))
     background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
     return {"message": "Processing flow started in background."}
 
 
-@router.post("/ingest/{source_id}")
+@router.post("/ingest/{source_id}", summary="Ingest reviews from scraper (no AI processing)")
 async def trigger_ingest_only(
     source_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user=Depends(get_optional_user),
+    current_user=Depends(get_current_user),
 ):
     """
     Triggers only the ingestion of reviews from the scraper engine.
@@ -237,6 +219,8 @@ async def trigger_ingest_only(
         source = get_source_by_id(db, source_id)
         if not source:
             raise HTTPException(status_code=404, detail="Source not found.")
+
+        resolve_tenant_scope(current_user, db, str(source.organization_id))
 
         count = await ingest_from_scraper(
             source_id, source.organization_id, source.platform_id
@@ -255,7 +239,7 @@ async def trigger_ingest_only(
 
 
 @router.get("/meta/count")
-def get_total_review_count(current_user=Depends(get_optional_user)):
+def get_total_review_count(current_user=Depends(get_current_user)):
     """Returns the total number of reviews across the entire platform."""
     try:
         count = count_all_reviews()
@@ -267,14 +251,18 @@ def get_total_review_count(current_user=Depends(get_optional_user)):
 @router.get("/processing/status")
 def get_processing_status(
     organization_id: uuid.UUID = Query(None),
-    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get the current processing status of reviews.
     Optional organization_id filter.
     """
     try:
-        return get_processing_report(str(organization_id) if organization_id else None)
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id) if organization_id else None)
+        return get_processing_report(resolved_org_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to fetch processing status: {e}")
         raise HTTPException(
@@ -282,22 +270,36 @@ def get_processing_status(
         )
 
 
-@router.post("/process/{review_id}")
+@router.post("/process/{review_id}", summary="Manually trigger AI analysis for a single review")
 async def trigger_single_review_processing(
     review_id: uuid.UUID,
-    current_user=Depends(get_optional_user),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Manually trigger AI analysis for a specific review.
     This will analyze/re-analyze the review and update its analytical columns.
     """
     try:
+        from sqlalchemy import text
+        review_row = db.execute(
+            text("SELECT organization_id FROM dbo.processed_review WHERE id = :review_id"),
+            {"review_id": str(review_id)}
+        ).fetchone()
+        
+        if not review_row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+            
+        resolve_tenant_scope(current_user, db, str(review_row[0]))
+
         result = await process_single_review(review_id)
         return {
             "message": "Review processed successfully",
             "review_id": str(review_id),
             "analysis": result,
         }
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -307,17 +309,30 @@ async def trigger_single_review_processing(
         )
 
 
-@router.post("/generate-reply", response_model=ReplyGenerationResponse)
+@router.post("/generate-reply", response_model=ReplyGenerationResponse, summary="Generate an AI reply for a review")
 def generate_reply(
-    payload: ReplyGenerationRequest, current_user=Depends(get_current_user)
+    payload: ReplyGenerationRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Generate an AI reply for a specific review."""
     try:
+        from sqlalchemy import text
+        review_row = db.execute(
+            text("SELECT organization_id FROM dbo.processed_review WHERE id = :review_id"),
+            {"review_id": str(payload.reviewId)}
+        ).fetchone()
+        
+        if not review_row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+            
+        resolve_tenant_scope(current_user, db, str(review_row[0]))
+
         # ── Check reply_generations limit ──
         user_id = (
             str(current_user.user_id)
             if hasattr(current_user, "user_id")
-            else str(current_user.id)
+            else str(current_user.get("user_id") or current_user.get("id"))
         )
         try:
             with pyodbc.connect(get_connection_string()) as conn:
@@ -361,7 +376,7 @@ def generate_reply(
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
 
 
-@router.delete("/source/{source_id}")
+@router.delete("/source/{source_id}", summary="Delete all reviews for a source")
 def delete_reviews_by_source(
     source_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -376,6 +391,8 @@ def delete_reviews_by_source(
         source = get_source_by_id(db, source_id)
         if not source:
             raise HTTPException(status_code=404, detail="Source not found.")
+
+        resolve_tenant_scope(current_user, db, str(source.organization_id))
 
         # 2. Delete reviews and media from database
         deleted_count = delete_reviews_by_source_id(str(source_id))

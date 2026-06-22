@@ -92,6 +92,13 @@ class ScrapePool:
             import asyncio
             import sys
             
+            # Clear any inherited running loop from contextvars/thread-locals to prevent
+            # Playwright Sync API from raising an error about running inside an asyncio loop.
+            try:
+                asyncio._set_running_loop(None)
+            except Exception:
+                pass
+
             if sys.platform == 'win32':
                 asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 

@@ -29,8 +29,10 @@ from app.modules.user.services.admin_stats_service import (
 )
 from app.modules.reviews.services.stats_service import (
     get_recent_activity,
+    get_paginated_recent_activity,
     get_review_metrics,
     get_system_alerts,
+    get_paginated_system_alerts,
     get_usage_trend,
 )
 
@@ -156,7 +158,15 @@ def build_system_alerts(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
     """Return system alerts list matching the SystemAlert frontend shape."""
     return get_system_alerts(cursor)
 
+def build_paginated_system_alerts(cursor: "pyodbc.Cursor", page: int, limit: int) -> dict[str, Any]:
+    """Return paginated system alerts."""
+    return get_paginated_system_alerts(cursor, page, limit)
+
 
 def build_recent_activity(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
     """Return recent activity list matching the RecentActivity frontend shape."""
     return get_recent_activity(cursor)
+
+def build_paginated_recent_activity(cursor: "pyodbc.Cursor", page: int, limit: int) -> dict[str, Any]:
+    """Return paginated recent activity."""
+    return get_paginated_recent_activity(cursor, page, limit)

@@ -181,7 +181,7 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
         source_url=source_data.source_url,
         source_status=source_data.source_status,
         fetching_frequency=source_data.fetching_frequency,
-        next_synced_at=calculate_next_sync_time(now, source_data.fetching_frequency)
+        next_synced_at=now  # Set to now to trigger initial sync immediately
     )
     
     db.add(new_source)
@@ -435,7 +435,7 @@ def update_sync_status(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
     
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     
     # Handle status-specific logic
     if request.status == SyncStatus.COMPLETED:
@@ -725,11 +725,13 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
         "pages": "*"
     }
     
+    scraper_accepted = False
     try:
         # We use a short timeout and fire-and-forget approach for the trigger
         with httpx.Client() as client:
             resp = client.post(endpoint, json=payload, timeout=10.0)
             if resp.status_code in [200, 201, 202]:
+                scraper_accepted = True
                 data = resp.json()
                 job_id = data.get("job_id")
                 if job_id:
@@ -740,10 +742,16 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
         # The scraper's own reconciliation will pick it up if it failed to receive the POST
         pass
 
+    # If the scraper accepted the job, update status to 'running' immediately
+    # so the frontend shows "Syncing" instead of waiting for the scraper's callback
+    if scraper_accepted:
+        source.source_status = "running"
+        db.commit()
+
     return {
         "message": "Synchronization triggered successfully",
         "source_id": str(source_id),
-        "status": "queued"
+        "status": "running" if scraper_accepted else "queued"
     }
 
 def prune_activities(db: Session, organization_id: uuid.UUID):
@@ -794,7 +802,7 @@ def log_activity(
     is_important: bool = False
 ) -> SyncLogSource:
     """Create a new activity log and prune old ones."""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     
     new_log = SyncLogSource(
         source_id=source_id,

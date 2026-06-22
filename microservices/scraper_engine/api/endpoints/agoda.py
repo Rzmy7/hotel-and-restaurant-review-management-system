@@ -12,7 +12,7 @@ from core.models import Source
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
 from services.source_service import SourceService
-from platforms.agoda.logic import scrape_agoda
+from platforms.agoda.scraping.logic import scrape_agoda
 from core.limiter import limiter
 from core.config import config, setup_logger
 from core.utils import normalize_url

@@ -42,6 +42,13 @@ class SystemAlert(BaseModel):
     isRead: bool
 
 
+class PaginatedAlerts(BaseModel):
+    data: list[SystemAlert]
+    total: int
+    page: int
+    limit: int
+
+
 class RecentActivity(BaseModel):
     id: str
     type: Literal[
@@ -62,6 +69,13 @@ class RecentActivity(BaseModel):
     description: str
     timestamp: str
     user: Optional[str] = None
+
+
+class PaginatedActivities(BaseModel):
+    data: list[RecentActivity]
+    total: int
+    page: int
+    limit: int
 
 
 # ── Organization schemas ────────────────────────────────────────────
@@ -286,33 +300,17 @@ class AdminPasswordChangeResponse(BaseModel):
 
 
 class ReplyGenerationSettingsResponse(BaseModel):
-    googleApiKey: str
-    selectedModel: str
     similarReviewsCount: int
-    googleRequestCount: int
-    googleTokenUsage: int
+    replyRequestCount: int
     useEmbeddingRules: bool
     useSimilarReviews: bool
 
 
 class ReplyGenerationSettingsPayload(BaseModel):
-    googleApiKey: str = Field(default="", max_length=512)
-    selectedModel: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=128)
     similarReviewsCount: int = Field(default=3, ge=1, le=20)
     useEmbeddingRules: bool = True
     useSimilarReviews: bool = True
 
-
-class ReplyGenerationApiTestPayload(BaseModel):
-    provider: Literal["google"]
-    apiKey: str = Field(..., min_length=1, max_length=512)
-    model: str | None = Field(default=None, min_length=1, max_length=128)
-
-
-class ReplyGenerationApiTestResponse(BaseModel):
-    provider: Literal["google"]
-    success: bool
-    message: str
 
 
 class FeatureFlagResponse(BaseModel):
@@ -378,6 +376,76 @@ class GeminiApiKeyTestResponse(BaseModel):
     message: str
 
 
+# ── Batch config schemas ───────────────────────────────────────────
+
+
+class BatchConfigResponse(BaseModel):
+    batch_size: int
+    min: int
+    max: int
+    default: int
+
+
+class BatchConfigUpdatePayload(BaseModel):
+    batch_size: int = Field(..., ge=1, le=20, description="Number of reviews per LLM batch (1–20)")
+
+
+# ── LLM Gateway schemas ────────────────────────────────────────────
+
+
+class LLMModelCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    endpoint: str = Field(..., min_length=1, max_length=500)
+    model_name: str = Field(..., min_length=1, max_length=200)
+    api_key: str = Field(..., min_length=1, max_length=2048)
+    max_tokens: int = Field(default=4096, ge=1, le=128000)
+
+
+class LLMModelUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    endpoint: str | None = Field(default=None, min_length=1, max_length=500)
+    model_name: str | None = Field(default=None, min_length=1, max_length=200)
+    api_key: str | None = Field(default=None, min_length=1, max_length=2048)
+    max_tokens: int | None = Field(default=None, ge=1, le=128000)
+
+
+class LLMModelResponse(BaseModel):
+    id: str
+    name: str
+    endpoint: str
+    model_name: str
+    api_key_masked: str
+    max_tokens: int
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+class LLMModelTestPayload(BaseModel):
+    endpoint: str = Field(..., min_length=1, max_length=500)
+    model_name: str = Field(..., min_length=1, max_length=200)
+    api_key: str | None = Field(default=None, max_length=2048)
+    max_tokens: int = Field(default=4096, ge=1, le=128000)
+    model_id: str | None = None
+
+
+class LLMModelTestResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class LLMAssignmentsResponse(BaseModel):
+    review_processing_model_id: str | None = None
+    reply_generation_model_id: str | None = None
+    review_processing_model_name: str | None = None
+    reply_generation_model_name: str | None = None
+
+
+class LLMAssignmentsUpdate(BaseModel):
+    review_processing_model_id: str | None = None
+    reply_generation_model_id: str | None = None
+
+
 # ── Broadcasting schemas ────────────────────────────────────────────
 
 
@@ -401,3 +469,16 @@ class StatisticsResponse(BaseModel):
     sent: int
     scheduled: int
     failed: int
+
+
+# ── Scheduler schemas ───────────────────────────────────────────────
+
+
+class SchedulerSettingsResponse(BaseModel):
+    reviewProcessingIntervalMinutes: int
+    deduplicationIntervalMinutes: int
+
+
+class SchedulerSettingsPayload(BaseModel):
+    reviewProcessingIntervalMinutes: int = Field(..., ge=1, le=1440)  # 1 min to 24 hours
+    deduplicationIntervalMinutes: int = Field(..., ge=1, le=1440)

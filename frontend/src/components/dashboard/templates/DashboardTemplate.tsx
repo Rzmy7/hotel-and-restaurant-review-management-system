@@ -33,7 +33,7 @@ export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data, peri
                     />
                     <MetricCard
                         icon={<Link2 size={20} />}
-                        label="Active Sources"
+                        label="All Sources"
                         {...data.metrics.activeSources}
                     />
                     <MetricCard

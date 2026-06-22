@@ -12,12 +12,11 @@ The **Embedding Service** is a specialized microservice providing **semantic emb
 
 | Feature | Description |
 |---------|-------------|
-| **⚡ High-Performance Embedding** | Single and batch processing for reviews and hotel rules |
-| **🔍 Semantic Search** | Advanced vector search with hotel-level filtering and metadata separation |
-| **✨ Dynamic Model Switching** | Seamlessly toggle between **Google Gemini** (Cloud) and **MiniLM** (Local) via API or Admin Panel |
-| **🛡️ Robust Error Handling** | Automatic fallback to local MiniLM if Gemini API connectivity fails |
+| **⚡ High-Performance Embedding** | Batch processing for reviews and hotel rules |
+| **🔍 Semantic Search** | Advanced vector search with hotel-level filtering and dynamic thresholds |
+| **🚀 Local Execution** | Uses the highly efficient `all-MiniLM-L6-v2` model locally without external API dependencies |
 | **📦 Containerized** | Fully Docker-ready with volume persistence for ChromaDB data |
-| **🔧 Configurable** | API key management via environment variables or Admin Panel |
+| **⏸️ Circuit Breaker** | Built-in service pause/resume mechanism for safe background processing |
 
 ---
 
@@ -28,19 +27,8 @@ The **Embedding Service** is a specialized microservice providing **semantic emb
 | Model | Provider | Dimensions | Speed | Cost |
 |-------|----------|------------|-------|------|
 | **MiniLM** (`all-MiniLM-L6-v2`) | Local (HuggingFace) | 384 | Fast (~10ms) | Free |
-| **Gemini** (`models/text-embedding-004`) | Google Cloud | 768 | Medium (~100-500ms) | API calls charged |
 
-### Model Comparison
-
-| Aspect | MiniLM | Gemini |
-|--------|--------|--------|
-| **Accuracy** | Good | Excellent |
-| **Latency** | Low | Medium |
-| **Privacy** | Full (offline) | Data sent to Google |
-| **RAM Usage** | ~500MB | Minimal |
-| **Best For** | High-volume, low-latency | Superior semantic understanding |
-
-> ⚠️ **Compatibility Warning**: Embeddings from different models are **NOT compatible**. Clear vector store when switching models.
+> ℹ️ **Note**: The service is optimized to run this model locally to guarantee data privacy and zero API costs.
 
 ---
 
@@ -50,29 +38,30 @@ The **Embedding Service** is a specialized microservice providing **semantic emb
 
 | Endpoint | Method | Description | Request Body | Response |
 |----------|--------|-------------|--------------|----------|
-| `/embed/batch` | POST | Process multiple texts | `{ texts: string[], metadata?: object[] }` | `{ ids: string[], count: number }` |
-| `/embed/single` | POST | Embed single text | `{ text: string, metadata?: object }` | `{ id: string, embedding: number[] }` |
+| `/embed` | POST | Embed multiple reviews | `{ source_id: string, reviews: [{review_id, text}] }` | `{ embedded_ids: string[], job_id: string }` |
+| `/embed/rule` | POST | Embed multiple rules | `{ source_id: string, rules: [{rule_id, text}] }` | `{ embedded_ids: string[], job_id: string }` |
 
 ### Search
 
 | Endpoint | Method | Description | Request Body | Response |
 |----------|--------|-------------|--------------|----------|
-| `/search` | POST | Semantic query | `{ query: string, filter?: object, n_results?: number }` | `{ results: object[] }` |
+| `/search` | POST | Semantic query | `{ query: string, source_ids: string[], top_k?: int }` | `{ reviews: [], rules: [] }` |
 
-### Configuration
-
-| Endpoint | Method | Description | Request Body | Response |
-|----------|--------|-------------|--------------|----------|
-| `/model` | PUT | Switch embedding model | `{ model: "minilm" \| "gemini" }` | `{ current_model: string }` |
-| `/model` | GET | Get current model | - | `{ current_model: string }` |
-| `/api-settings` | PUT | Update API keys | `{ gemini_api_key?: string }` | `{ status: string }` |
-
-### Health & Diagnostics
+### Configuration & Control
 
 | Endpoint | Method | Description | Response |
 |----------|--------|-------------|----------|
-| `/health` | GET | Service health check | `{ status, cpu_usage, ram_usage, uptime, model }` |
-| `/` | GET | Root endpoint | `{ service: "Embedding Service", version }` |
+| `/thresholds` | GET/PUT | Manage search similarity thresholds | `{ oneWord, twoWords, threeOrMore }` |
+| `/service/pause` | POST | Pause background embedding | `{ status: "success" }` |
+| `/service/resume` | POST | Resume background embedding | `{ status: "success" }` |
+
+### Database & Diagnostics
+
+| Endpoint | Method | Description | Response |
+|----------|--------|-------------|----------|
+| `/health` | GET | Service metrics | `{ status, cpu_usage, ram_usage, uptime }` |
+| `/jobs/recent` | GET | Paginated background jobs | `{ jobs: [], total: int }` |
+| `/database/stats` | GET | ChromaDB metrics | `{ totalVectors, storage, ... }` |
 
 ---
 
@@ -82,7 +71,6 @@ The **Embedding Service** is a specialized microservice providing **semantic emb
 
 - **Python 3.10+**
 - **Docker** (for containerized deployment)
-- **Google Gemini API Key** (optional, for Gemini model)
 
 ### 🚀 Local Execution
 
@@ -100,13 +88,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` with your Gemini API key (optional):
+Edit `.env` to set the internal communication key:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+INTERNAL_API_KEY=your_internal_secret
 ```
-
-> **Note**: The service can run without a Gemini API key using only the MiniLM model.
 
 #### 3. Run Service
 
@@ -132,7 +118,7 @@ docker build -t embedding-service .
 docker run -d \
   -p 8001:8000 \
   -v chroma_data:/data/chroma \
-  -e GEMINI_API_KEY=your_api_key \
+  -e INTERNAL_API_KEY=your_internal_secret \
   --name embedding_service \
   embedding-service
 ```
@@ -169,16 +155,15 @@ docker volume rm chroma_data
 
 | VPS RAM | Recommended Mode | Notes |
 |---------|------------------|-------|
-| **1 GB** | Gemini API Only | MiniLM may cause OOM errors |
+| **1 GB** | Not Recommended | MiniLM may cause OOM errors |
 | **2 GB** | Local MiniLM | Recommended minimum |
-| **4 GB+** | Either Mode | Optimal performance |
+| **4 GB+** | Local MiniLM | Optimal performance |
 
 ### Resource Usage
 
 | Model | RAM Usage | CPU Usage | Disk Space |
 |-------|-----------|-----------|------------|
-| **MiniLM** | ~500MB | Low (during embedding) | ~300MB |
-| **Gemini** | ~100MB | Minimal | ~50MB |
+| **MiniLM** | ~500MB | High (during embedding) | ~300MB |
 
 ### First Startup
 
@@ -228,16 +213,14 @@ docker run -d -p 8001:8000 -v chroma_data:/data/chroma --name embedding_service 
 ### Generate Embeddings (Batch)
 
 ```bash
-curl -X POST http://localhost:8001/embed/batch \
+curl -X POST http://localhost:8001/embed \
   -H "Content-Type: application/json" \
+  -H "X-Internal-API-Key: your_internal_secret" \
   -d '{
-    "texts": [
-      "Great hotel with excellent service",
-      "Poor experience, room was dirty"
-    ],
-    "metadata": [
-      { "review_id": "123", "source_id": "456" },
-      { "review_id": "124", "source_id": "456" }
+    "source_id": "456",
+    "reviews": [
+      { "review_id": "123", "text": "Great hotel with excellent service" },
+      { "review_id": "124", "text": "Poor experience, room was dirty" }
     ]
   }'
 ```
@@ -247,33 +230,19 @@ curl -X POST http://localhost:8001/embed/batch \
 ```bash
 curl -X POST http://localhost:8001/search \
   -H "Content-Type: application/json" \
+  -H "X-Internal-API-Key: your_internal_secret" \
   -d '{
     "query": "clean rooms and friendly staff",
-    "filter": { "source_id": "456" },
-    "n_results": 5
+    "source_ids": ["456"],
+    "top_k": 5
   }'
 ```
 
-### Switch Model
+### Pause Service
 
 ```bash
-# Switch to Gemini
-curl -X PUT http://localhost:8001/model \
-  -H "Content-Type: application/json" \
-  -d '{ "model": "gemini" }'
-
-# Switch to MiniLM
-curl -X PUT http://localhost:8001/model \
-  -H "Content-Type: application/json" \
-  -d '{ "model": "minilm" }'
-```
-
-### Configure API Key
-
-```bash
-curl -X PUT http://localhost:8001/api-settings \
-  -H "Content-Type: application/json" \
-  -d '{ "gemini_api_key": "your_new_api_key" }'
+curl -X POST http://localhost:8001/service/pause \
+  -H "X-Internal-API-Key: your_internal_secret"
 ```
 
 ---
@@ -288,9 +257,7 @@ curl -X PUT http://localhost:8001/api-settings \
   "cpu_usage": 12.5,
   "ram_usage": 45.2,
   "uptime": "2d 5h 30m",
-  "current_model": "minilm",
-  "chroma_collections": 2,
-  "total_embeddings": 15420
+  "service_paused": false
 }
 ```
 
@@ -316,27 +283,11 @@ docker logs embedding_service
 netstat -an | grep 8001
 ```
 
-### Model Switching Issues
-
-```bash
-# Check current model
-curl http://localhost:8001/model
-
-# If switching fails, clear ChromaDB volume
-docker volume rm chroma_data
-```
-
 ### High Memory Usage
 
-- Use **Gemini API mode** for VPS with <2GB RAM
-- Reduce batch size for embedding requests
+- Reduce batch size for embedding requests if experiencing out-of-memory errors
 - Restart service periodically to clear memory
-
-### API Rate Limits (Gemini)
-
-- Gemini API has rate limits (check Google AI Studio)
-- Implement retry logic in client applications
-- Consider caching frequently used embeddings
+- Ensure VPS has at least 2GB RAM
 
 ### CORS Errors
 
@@ -362,17 +313,11 @@ app.add_middleware(
 ```
 embedding-service/
 ├── app/
-│   ├── main.py             # FastAPI application
-│   ├── routes/
-│   │   ├── embeddings.py   # Embedding endpoints
-│   │   ├── search.py       # Search endpoints
-│   │   └── config.py       # Configuration endpoints
-│   ├── services/
-│   │   ├── chroma_service.py  # ChromaDB operations
-│   │   ├── gemini_service.py  # Gemini API wrapper
-│   │   └── minilm_service.py  # MiniLM wrapper
-│   └── utils/
-│       └── health.py       # Health check utilities
+│   ├── main.py             # FastAPI application and routes
+│   ├── config.py           # Configuration and thresholds
+│   ├── embedding.py        # SentenceTransformers integration
+│   ├── chroma.py           # ChromaDB operations
+│   └── jobs.py             # Background job tracking
 ├── Dockerfile              # Docker build configuration
 ├── requirements.txt        # Python dependencies
 ├── .env.example            # Environment template
@@ -396,7 +341,6 @@ pytest tests/
 - **[Root README](../../README.md)** - Project overview
 - **[Admin Panel](../../admin-frontend/README.md)** - Configuration UI
 - **[ChromaDB Docs](https://docs.trychroma.com/)** - Vector database documentation
-- **[Google Gemini API](https://ai.google.dev/)** - Embedding API reference
 - **[SentenceTransformers](https://sbert.net/)** - MiniLM model documentation
 
 ---

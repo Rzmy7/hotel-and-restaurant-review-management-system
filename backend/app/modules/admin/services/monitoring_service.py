@@ -787,6 +787,8 @@ def format_job_start_time(value: str | None) -> str:
         dt_value = datetime.fromisoformat(value)
     except ValueError:
         return value
+    if dt_value.tzinfo is None:
+        return dt_value.isoformat() + "Z"
     return dt_value.isoformat()
 
 

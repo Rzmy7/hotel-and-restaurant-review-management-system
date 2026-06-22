@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Building2, 
-  Users, 
-  Flag, 
-  Settings as SettingsIcon, 
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  Flag,
+  Settings as SettingsIcon,
   Check,
   Database,
   Search,
-
   Activity,
   CreditCard,
   Megaphone,
   MessageSquareText,
   Sparkles,
+  Bot,
   LogOut,
 } from 'lucide-react';
 import { getFrontendLoginUrl } from '../config/frontend';
@@ -31,6 +31,7 @@ export const Sidebar: React.FC = () => {
     { to: '/monitoring', icon: Activity, label: 'Monitoring' },
     { to: '/subscription-plans', icon: CreditCard, label: 'Subscription Plans' },
     { to: '/broadcasting', icon: Megaphone, label: 'Broadcasting' },
+    { to: '/llm-models', icon: Bot, label: 'LLM Models' },
     { to: '/reply-generation', icon: MessageSquareText, label: 'Reply Generation' },
     { to: '/review-processing', icon: Sparkles, label: 'Review Processing' },
     { to: '/settings', icon: SettingsIcon, label: 'Admin Setting' },

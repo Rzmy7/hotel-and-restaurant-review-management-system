@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import type { DashboardStats, ChartDataPoint, SystemAlert, RecentActivity } from '../types';
+import type { DashboardStats, ChartDataPoint, SystemAlert, PaginatedAlerts, RecentActivity, PaginatedActivities } from '../types';
 
 /**
  * Fetch overall dashboard statistics.
@@ -34,11 +34,27 @@ export const fetchSystemAlerts = (): Promise<SystemAlert[]> => {
 };
 
 /**
+ * Fetch paginated system alerts for the Alerts modal.
+ * Backend: GET /api/admin/dashboard/alerts/paginated?page=1&limit=10 → PaginatedAlerts
+ */
+export const fetchPaginatedAlerts = (page: number = 1, limit: number = 10): Promise<PaginatedAlerts> => {
+    return apiClient.get<PaginatedAlerts>(`/admin/dashboard/alerts/paginated?page=${page}&limit=${limit}`);
+};
+
+/**
  * Fetch recent platform activity for the Activity feed.
  * Backend: GET /api/admin/dashboard/activities → RecentActivity[]
  */
 export const fetchRecentActivity = (): Promise<RecentActivity[]> => {
     return apiClient.get<RecentActivity[]>('/admin/dashboard/activities');
+};
+
+/**
+ * Fetch paginated platform activity for the Activity feed modal.
+ * Backend: GET /api/admin/dashboard/activities/paginated?page=1&limit=10 → PaginatedActivities
+ */
+export const fetchPaginatedActivity = (page: number = 1, limit: number = 10): Promise<PaginatedActivities> => {
+    return apiClient.get<PaginatedActivities>(`/admin/dashboard/activities/paginated?page=${page}&limit=${limit}`);
 };
 
 /**
