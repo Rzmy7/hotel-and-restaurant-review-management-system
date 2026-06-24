@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 const TermsOfServicePage: React.FC = () => {
     const navigate = useNavigate();
     return (
-        <div className="min-h-screen bg-[#060913] text-slate-200 py-12 px-6">
+        <div className="fixed inset-0 overflow-y-auto bg-[#060913] text-slate-200 py-12 px-6">
             {/* Same background layers as AuthLayout for consistency */}
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, background: 'linear-gradient(135deg, #060913 0%, #0a1128 50%, #060913 100%)' }} />
             <div aria-hidden="true" style={{ position: 'absolute', top: '-10%', left: '-10%', width: '60%', height: '80%', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.15) 0%, transparent 80%)', filter: 'blur(80px)' }} />
