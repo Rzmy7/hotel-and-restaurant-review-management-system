@@ -165,11 +165,11 @@ const SignUpPage = () => {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+          <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
             Work Email
           </label>
           <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
             <Input
               type="email"
               placeholder="name@company.com"
@@ -189,11 +189,11 @@ const SignUpPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+            <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
               Password
             </label>
             <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
               <Input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
@@ -220,11 +220,11 @@ const SignUpPage = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+            <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
               Confirm
             </label>
             <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
               <Input
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="••••••••"
@@ -262,7 +262,7 @@ const SignUpPage = () => {
                 setError(null);
               }}
               onBlur={() => validateSingleField('acceptedTerms')}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-700 bg-[#0B1021] text-blue-600 focus:ring-blue-500/20 accent-blue-600 cursor-pointer"
             />
           </div>
           <label htmlFor="terms" className="text-[12px] font-medium text-gray-500 dark:text-gray-400 leading-snug cursor-pointer select-none">

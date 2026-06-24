@@ -65,13 +65,56 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
          */
         <div
             className="dark fixed inset-0 w-full h-full flex text-slate-200 overflow-hidden"
-            style={{ background: '#080d1a' }}
+            style={{ background: '#060913' }}
         >
             {/*
-             * PAGE-WIDE NOISE TEXTURE
-             * 3 % opacity SVG turbulence overlay — ties both panels together
-             * with the same grain the reference image shows.
+             * UNIFIED PAGE BACKGROUND LAYERS
+             * Moved out of the left panel to span the entire screen, creating
+             * a seamless single-page experience without hard borders.
              */}
+
+            {/* Layer 1 — Page-wide deep gradient base */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+                    background: 'linear-gradient(135deg, #060913 0%, #0a1128 50%, #060913 100%)',
+                }}
+            />
+
+            {/* Layer 2 — Large, intensified ambient blue orb covering the left side */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute', top: '-10%', left: '-10%',
+                    width: '60%', height: '80%', borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
+                    background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.35) 0%, rgba(37,99,235,0.15) 40%, rgba(37,99,235,0.04) 65%, transparent 80%)',
+                    filter: 'blur(80px)',
+                }}
+            />
+
+            {/* Layer 3 — Deep indigo counter-glow from the bottom */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute', bottom: '-20%', left: '20%',
+                    width: '70%', height: '60%', borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
+                    background: 'radial-gradient(ellipse at center, rgba(79,70,229,0.20) 0%, rgba(79,70,229,0.06) 50%, transparent 75%)',
+                    filter: 'blur(90px)',
+                }}
+            />
+
+            {/* Layer 4 — Page-wide sparse dot grid */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, opacity: 0.04,
+                    backgroundImage: 'radial-gradient(circle, rgba(148,163,184,1) 1px, transparent 1px)',
+                    backgroundSize: '32px 32px',
+                }}
+            />
+
+            {/* Layer 5 — Page-wide noise texture for cohesion */}
             <div
                 aria-hidden="true"
                 style={{
@@ -89,57 +132,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                 Hidden on screens below lg.
             ───────────────────────────────────────────── */}
             <div
-                className="hidden lg:flex w-1/2 relative overflow-hidden flex-col justify-between p-12"
-                style={{ borderRight: '1px solid rgba(255,255,255,0.05)' }}
+                className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 z-10"
             >
-                {/*
-                 * LEFT PANEL BACKGROUND LAYERS
-                 * Rule: all opacity values are explicit inline styles so
-                 * Tailwind JIT cannot silently drop them.
-                 */}
 
-                {/* Layer 1 — same deep navy as the page canvas (no visible shift) */}
-                <div
-                    aria-hidden="true"
-                    style={{
-                        position: 'absolute', inset: 0, pointerEvents: 'none',
-                        background: 'linear-gradient(180deg, #080d1a 0%, #0a1020 60%, #080d1a 100%)',
-                    }}
-                />
-
-                {/* Layer 2 — single ambient blue orb, top-left, 12 % max opacity */}
-                <div
-                    aria-hidden="true"
-                    style={{
-                        position: 'absolute', top: '-15%', left: '-10%',
-                        width: '70%', height: '65%', borderRadius: '50%', pointerEvents: 'none',
-                        background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.12) 0%, rgba(37,99,235,0.04) 45%, transparent 70%)',
-                        filter: 'blur(80px)',
-                    }}
-                />
-
-                {/* Layer 3 — faint indigo counter-glow, bottom-right, 8 % */}
-                <div
-                    aria-hidden="true"
-                    style={{
-                        position: 'absolute', bottom: '-10%', right: '-5%',
-                        width: '55%', height: '50%', borderRadius: '50%', pointerEvents: 'none',
-                        background: 'radial-gradient(ellipse at center, rgba(79,70,229,0.08) 0%, transparent 65%)',
-                        filter: 'blur(70px)',
-                    }}
-                />
-
-                {/* Layer 4 — sparse dot grid, 2.5 % opacity (Vercel / Linear style) */}
-                <div
-                    aria-hidden="true"
-                    style={{
-                        position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.025,
-                        backgroundImage: 'radial-gradient(circle, rgba(148,163,184,1) 1px, transparent 1px)',
-                        backgroundSize: '32px 32px',
-                    }}
-                />
-
-                {/* ── Content (unchanged) ── */}
+                {/* ── Content ── */}
                 <div className="relative z-10 flex flex-col h-full justify-center max-w-lg mx-auto">
                     {/* Logo Area */}
                     <div className="flex items-center gap-3 mb-12">
@@ -151,22 +147,37 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
 
                     {/* Main Content */}
                     <div className="mb-12">
-                        <h1 className="text-4xl lg:text-5xl font-black text-white leading-tight mb-6 tracking-tight">
-                            {content.title} <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-200">{content.highlight}</span>
+                        {/* 
+                          * Heading: reduced size and weight to balance against the highlighted form card.
+                          * Color matched to the description text (slate-400) for a subtle gray look.
+                        */}
+                        <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-400 leading-[1.2] mb-6 tracking-tight">
+                            {content.title}{' '}
+                            <span
+                                style={{
+                                    background: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                    display: 'inline',
+                                }}
+                            >
+                                {content.highlight}
+                            </span>
                         </h1>
-                        <p className="text-lg text-slate-300 font-medium leading-relaxed mb-10">
+                        <p className="text-base text-slate-400 font-normal leading-relaxed mb-10">
                             {content.description}
                         </p>
 
                         {/* Feature Highlights */}
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {content.features.map((feature, idx) => (
-                                <div key={idx} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-900/50 border border-slate-800/50 backdrop-blur-sm hover:bg-slate-800/50 transition-colors">
-                                    <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center shrink-0 border border-brand-500/20">
+                                <div key={idx} className="flex items-start gap-4 p-4 rounded-xl bg-slate-900/50 border border-slate-800/50 backdrop-blur-sm hover:bg-slate-800/50 transition-colors">
+                                    <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center shrink-0 border border-brand-500/20">
                                         {feature.icon}
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold text-lg mb-1">{feature.title}</h3>
+                                        <h3 className="text-slate-200 font-semibold text-base mb-0.5">{feature.title}</h3>
                                         <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
                                     </div>
                                 </div>
@@ -175,18 +186,18 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                     </div>
 
                     {/* Bottom Stats / Trust Indicators */}
-                    <div className="flex items-center gap-8 pt-8 border-t border-slate-800/60">
+                    <div className="flex items-center gap-8 pt-8 border-t border-slate-800/50">
                         <div>
-                            <div className="text-2xl font-black text-white mb-1">10K+</div>
-                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reviews Processed</div>
+                            <div className="text-2xl font-bold text-slate-100 mb-0.5">10K+</div>
+                            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Reviews Processed</div>
                         </div>
                         <div className="w-px h-10 bg-slate-800"></div>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                            <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center">
                                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
                             </div>
                             <div>
-                                <div className="text-lg font-black text-white">99.9%</div>
+                                <div className="text-lg font-bold text-slate-100">99.9%</div>
                                 <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Uptime SLA</div>
                             </div>
                         </div>
@@ -201,23 +212,19 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                 className="w-full lg:w-1/2 flex flex-col p-6 sm:p-12 md:p-16 lg:p-20 overflow-y-auto relative"
                 style={{ background: 'transparent' }}
             >
-                {/*
-                 * Soft blue glow centred behind the form card.
-                 * Connects right panel visually to the left accent colour
-                 * without competing with the form for attention.
-                 */}
+                {/* Intensified spotlight behind the form card to make it pop */}
                 <div
                     aria-hidden="true"
                     style={{
                         position: 'absolute', top: '50%', left: '50%',
                         transform: 'translate(-50%, -50%)',
-                        width: '480px', height: '480px', borderRadius: '50%', pointerEvents: 'none',
-                        background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.09) 0%, rgba(37,99,235,0.03) 50%, transparent 70%)',
-                        filter: 'blur(60px)',
+                        width: '600px', height: '600px', borderRadius: '50%', pointerEvents: 'none',
+                        background: 'radial-gradient(ellipse at center, rgba(29,78,216,0.22) 0%, rgba(37,99,235,0.10) 40%, rgba(37,99,235,0.03) 65%, transparent 75%)',
+                        filter: 'blur(50px)',
                     }}
                 />
 
-                <div className="w-full max-w-[440px] mx-auto my-auto relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="w-full max-w-[540px] mx-auto my-auto relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center gap-2 mb-10">
                         <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20 border border-brand-500/30">
@@ -226,20 +233,42 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                         <span className="text-2xl font-black text-white tracking-tight">ReviewMate</span>
                     </div>
 
-                    <div className="space-y-3 mb-10">
-                        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                            {title}
-                        </h2>
-                        {description && (
-                            <p className="text-slate-400 font-medium text-lg">
-                                {description}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Form Container */}
-                    <div className="bg-slate-900/40 p-6 sm:p-8 rounded-2xl border border-slate-800/80 shadow-xl shadow-black/20 backdrop-blur-sm">
-                        {children}
+                    {/* Form Container — highlighted card */}
+                    <div style={{ position: 'relative' }}>
+                        {/* Outer blue glow ring — makes the card float and stand out */}
+                        <div
+                            aria-hidden="true"
+                            style={{
+                                position: 'absolute',
+                                inset: '-2px',
+                                borderRadius: '18px',
+                                background: 'linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(99,102,241,0.20) 50%, rgba(59,130,246,0.12) 100%)',
+                                filter: 'blur(1px)',
+                                zIndex: 0,
+                            }}
+                        />
+                        <div
+                            className="p-8 sm:p-10 lg:p-12 rounded-[24px] backdrop-blur-md relative"
+                            style={{
+                                zIndex: 1,
+                                background: 'rgba(13, 20, 40, 0.92)',
+                                border: '1px solid rgba(99, 130, 200, 0.25)',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.4), 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.08)',
+                            }}
+                        >
+                            <div className="space-y-3 mb-8">
+                                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                                    {title}
+                                </h2>
+                                {description && (
+                                    <p className="text-slate-400 font-medium text-lg">
+                                        {description}
+                                    </p>
+                                )}
+                            </div>
+                            
+                            {children}
+                        </div>
                     </div>
                 </div>
             </div>

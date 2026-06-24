@@ -39,7 +39,7 @@ const LoginPage = () => {
   useEffect(() => {
     if (searchParams.get('logout') === 'true' || searchParams.get('expired') === 'true') {
       localStorage.clear();
-      
+
       if (auth.user) {
         auth.logout();
       } else {
@@ -184,10 +184,10 @@ const LoginPage = () => {
   const handleResendCode = async () => {
     setResendLoading(true);
     setError(null);
-    
+
     if (searchParams.get('oauth_2fa') === 'true') {
-        handleGoogleLogin();
-        return;
+      handleGoogleLogin();
+      return;
     }
 
     try {
@@ -211,7 +211,7 @@ const LoginPage = () => {
   return (
     <AuthLayout
       type="login"
-      title="Welcome Back 👋"
+      title="Welcome Back"
       description="Sign in to access your dashboard"
     >
       {error && (
@@ -229,7 +229,7 @@ const LoginPage = () => {
         </div>
       )}
 
-      {/*when enable 2FA*/ }
+      {/*when enable 2FA*/}
       <form onSubmit={isTwoFactorStep ? handleVerifyTwoFactor : handleSubmit} className="space-y-5">
         {isTwoFactorStep && (
           <div className="rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-900/20 p-4 mb-6 animate-in fade-in slide-in-from-top-2">
@@ -299,91 +299,91 @@ const LoginPage = () => {
             </Button>
           </div>
         ) : (
-        <>
-        <div className="space-y-1.5">
-          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
-            Work Email
-          </label>
-          <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
-            <Input
-              type="email"
-              placeholder="name@company.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setFieldError('email', null);
-                setError(null);
-              }}
-              onBlur={() => validateSingleField('email')}
-              className="pl-11"
-              required
-            />
-          </div>
-          {fieldErrors.email && <p className="text-xs text-rose-500 ml-1">{fieldErrors.email}</p>}
-        </div>
+          <>
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                Work Email
+              </label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
+                <Input
+                  type="email"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldError('email', null);
+                    setError(null);
+                  }}
+                  onBlur={() => validateSingleField('email')}
+                  className="pl-11"
+                  required
+                />
+              </div>
+              {fieldErrors.email && <p className="text-xs text-rose-500 ml-1">{fieldErrors.email}</p>}
+            </div>
 
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center px-1">
-            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-              Password
-            </label>
-            <Link
-              to="/forgot-password"
-              className="text-[12px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center px-1">
+                <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-[12px] font-bold text-blue-500 hover:text-blue-400 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setFieldError('password', null);
+                    setError(null);
+                  }}
+                  onBlur={() => validateSingleField('password')}
+                  className="px-11"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {fieldErrors.password && <p className="text-xs text-rose-500 ml-1">{fieldErrors.password}</p>}
+            </div>
+
+            <div className="flex items-center gap-3 px-1">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-700 bg-[#0B1021] text-blue-600 focus:ring-blue-500/20 accent-blue-600 cursor-pointer"
+                />
+              </div>
+              <label htmlFor="remember" className="text-sm font-semibold text-slate-300 cursor-pointer select-none">
+                Keep me signed in
+              </label>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-12 text-sm uppercase tracking-widest"
+              isLoading={loading}
             >
-              Forgot?
-            </Link>
-          </div>
-          <div className="relative group">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setFieldError('password', null);
-                setError(null);
-              }}
-              onBlur={() => validateSingleField('password')}
-              className="px-11"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-          {fieldErrors.password && <p className="text-xs text-rose-500 ml-1">{fieldErrors.password}</p>}
-        </div>
-
-        <div className="flex items-center gap-3 px-1">
-          <div className="relative flex items-center">
-            <input
-              type="checkbox"
-              id="remember"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
-            />
-          </div>
-          <label htmlFor="remember" className="text-sm font-bold text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-            Keep me signed in
-          </label>
-        </div>
-
-        <Button
-          type="submit"
-          className="w-full h-12 text-sm uppercase tracking-widest"
-          isLoading={loading}
-        >
-          {loading ? 'Authenticating...' : isTwoFactorStep ? 'Verify Code' : 'Sign In To Dashboard'}
-        </Button>
-        </>
+              {loading ? 'Authenticating...' : isTwoFactorStep ? 'Verify Code' : 'Sign In To Dashboard'}
+            </Button>
+          </>
 
         )}
 
