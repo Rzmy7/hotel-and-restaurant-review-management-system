@@ -136,7 +136,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
             >
 
                 {/* ── Content ── */}
-                <div className="relative z-10 flex flex-col h-full justify-center max-w-lg mx-auto">
+                <div className="relative z-10 flex flex-col h-full justify-center max-w-lg lg:ml-auto lg:mr-8 xl:mr-16">
                     {/* Logo Area */}
                     <div className="flex items-center gap-3 mb-12">
                         <div className="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20 border border-brand-500/50">
@@ -224,7 +224,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                     }}
                 />
 
-                <div className="w-full max-w-[540px] mx-auto my-auto relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="w-full max-w-[540px] mx-auto lg:mx-0 lg:ml-8 xl:ml-16 my-auto relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center gap-2 mb-10">
                         <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20 border border-brand-500/30">
