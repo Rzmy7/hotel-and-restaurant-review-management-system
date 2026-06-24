@@ -117,7 +117,7 @@ const TermsOfServicePage: React.FC = () => {
                         For information on how we handle your data, read our{' '}
                         <Link to="/privacy" className="text-[#4e80ee] font-bold hover:underline">Privacy Policy</Link>.
                         {' '}Questions?{' '}
-                        <a href="mailto:support@reviewmate.io" className="text-[#4e80ee] font-bold hover:underline">Contact us</a>
+                        <Link to="/support" className="text-[#4e80ee] font-bold hover:underline">Contact us</Link>
                     </p>
                 </div>
             </main>
