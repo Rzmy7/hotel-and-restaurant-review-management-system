@@ -10,7 +10,7 @@ interface AuthLayoutProps {
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, description, type = 'other' }) => {
-    
+
     // Content mapping based on type
     const leftPanelContent = {
         login: {
@@ -62,10 +62,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
 
     return (
         <div className="dark fixed inset-0 w-full h-full flex bg-slate-950 text-slate-200 selection:bg-brand-500/30 selection:text-brand-100 overflow-hidden">
-            
+
             {/* Left Panel - Branding & Features (Hidden on smaller screens) */}
             <div className="hidden lg:flex w-1/2 relative overflow-hidden flex-col justify-between p-12 bg-slate-950 border-r border-slate-800/50">
-                
+
                 {/* Background decorative elements matching brand color palette */}
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                     <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br ${content.imageGradient} blur-[120px] opacity-70`}></div>
@@ -129,7 +129,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
 
             {/* Right Panel - Auth Form (Now fully dark mode) */}
             <div className="w-full lg:w-1/2 flex flex-col p-6 sm:p-12 md:p-16 lg:p-20 overflow-y-auto bg-[#0B0F19] relative">
-                
+
                 {/* Subtle gradient glow in right panel for depth */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-900/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -152,7 +152,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                             </p>
                         )}
                     </div>
-                    
+
                     {/* Form Container */}
                     <div className="bg-slate-900/40 p-6 sm:p-8 rounded-2xl border border-slate-800/80 shadow-xl shadow-black/20 backdrop-blur-sm">
                         {children}
