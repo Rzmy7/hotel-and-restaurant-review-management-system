@@ -29,7 +29,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                     desc: "Respond to reviews quickly with AI-assisted replies."
                 }
             ],
-            imageGradient: "from-brand-600/20 to-purple-600/20"
         },
         signup: {
             title: "Turn Customer Reviews Into",
@@ -47,32 +46,100 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                     desc: "Automatically detect sentiment trends and actionable insights instantly."
                 }
             ],
-            imageGradient: "from-brand-500/20 to-indigo-600/20"
         },
         other: {
             title: "Manage Your Reviews",
             highlight: "Effectively",
             description: "Secure your account and continue managing your online reputation.",
             features: [],
-            imageGradient: "from-brand-500/20 to-slate-600/20"
         }
     };
 
     const content = leftPanelContent[type] || leftPanelContent.other;
 
     return (
-        <div className="dark fixed inset-0 w-full h-full flex bg-slate-950 text-slate-200 selection:bg-brand-500/30 selection:text-brand-100 overflow-hidden">
+        /*
+         * UNIFIED CANVAS
+         * Both panels share the same deep navy base (#080d1a) so they read
+         * as one surface rather than two separate pages placed side-by-side.
+         */
+        <div
+            className="dark fixed inset-0 w-full h-full flex text-slate-200 overflow-hidden"
+            style={{ background: '#080d1a' }}
+        >
+            {/*
+             * PAGE-WIDE NOISE TEXTURE
+             * 3 % opacity SVG turbulence overlay — ties both panels together
+             * with the same grain the reference image shows.
+             */}
+            <div
+                aria-hidden="true"
+                style={{
+                    position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'repeat',
+                    backgroundSize: '128px 128px',
+                    opacity: 0.35,
+                    mixBlendMode: 'overlay',
+                }}
+            />
 
-            {/* Left Panel - Branding & Features (Hidden on smaller screens) */}
-            <div className="hidden lg:flex w-1/2 relative overflow-hidden flex-col justify-between p-12 bg-slate-950 border-r border-slate-800/50">
+            {/* ─────────────────────────────────────────────
+                LEFT PANEL — Branding & Features
+                Hidden on screens below lg.
+            ───────────────────────────────────────────── */}
+            <div
+                className="hidden lg:flex w-1/2 relative overflow-hidden flex-col justify-between p-12"
+                style={{ borderRight: '1px solid rgba(255,255,255,0.05)' }}
+            >
+                {/*
+                 * LEFT PANEL BACKGROUND LAYERS
+                 * Rule: all opacity values are explicit inline styles so
+                 * Tailwind JIT cannot silently drop them.
+                 */}
 
-                {/* Background decorative elements matching brand color palette */}
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br ${content.imageGradient} blur-[120px] opacity-70`}></div>
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-gradient-to-tl from-brand-900/40 to-slate-900/40 blur-[120px]"></div>
-                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)] opacity-60"></div>
-                </div>
+                {/* Layer 1 — same deep navy as the page canvas (no visible shift) */}
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', inset: 0, pointerEvents: 'none',
+                        background: 'linear-gradient(180deg, #080d1a 0%, #0a1020 60%, #080d1a 100%)',
+                    }}
+                />
 
+                {/* Layer 2 — single ambient blue orb, top-left, 12 % max opacity */}
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', top: '-15%', left: '-10%',
+                        width: '70%', height: '65%', borderRadius: '50%', pointerEvents: 'none',
+                        background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.12) 0%, rgba(37,99,235,0.04) 45%, transparent 70%)',
+                        filter: 'blur(80px)',
+                    }}
+                />
+
+                {/* Layer 3 — faint indigo counter-glow, bottom-right, 8 % */}
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', bottom: '-10%', right: '-5%',
+                        width: '55%', height: '50%', borderRadius: '50%', pointerEvents: 'none',
+                        background: 'radial-gradient(ellipse at center, rgba(79,70,229,0.08) 0%, transparent 65%)',
+                        filter: 'blur(70px)',
+                    }}
+                />
+
+                {/* Layer 4 — sparse dot grid, 2.5 % opacity (Vercel / Linear style) */}
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.025,
+                        backgroundImage: 'radial-gradient(circle, rgba(148,163,184,1) 1px, transparent 1px)',
+                        backgroundSize: '32px 32px',
+                    }}
+                />
+
+                {/* ── Content (unchanged) ── */}
                 <div className="relative z-10 flex flex-col h-full justify-center max-w-lg mx-auto">
                     {/* Logo Area */}
                     <div className="flex items-center gap-3 mb-12">
@@ -127,11 +194,28 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, descrip
                 </div>
             </div>
 
-            {/* Right Panel - Auth Form (Now fully dark mode) */}
-            <div className="w-full lg:w-1/2 flex flex-col p-6 sm:p-12 md:p-16 lg:p-20 overflow-y-auto bg-[#0B0F19] relative">
-
-                {/* Subtle gradient glow in right panel for depth */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-900/10 rounded-full blur-[100px] pointer-events-none"></div>
+            {/* ─────────────────────────────────────────────
+                RIGHT PANEL — Auth Form
+            ───────────────────────────────────────────── */}
+            <div
+                className="w-full lg:w-1/2 flex flex-col p-6 sm:p-12 md:p-16 lg:p-20 overflow-y-auto relative"
+                style={{ background: 'transparent' }}
+            >
+                {/*
+                 * Soft blue glow centred behind the form card.
+                 * Connects right panel visually to the left accent colour
+                 * without competing with the form for attention.
+                 */}
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', top: '50%', left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '480px', height: '480px', borderRadius: '50%', pointerEvents: 'none',
+                        background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.09) 0%, rgba(37,99,235,0.03) 50%, transparent 70%)',
+                        filter: 'blur(60px)',
+                    }}
+                />
 
                 <div className="w-full max-w-[440px] mx-auto my-auto relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Mobile Logo */}
