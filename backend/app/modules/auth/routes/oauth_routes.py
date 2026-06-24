@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import os
 
 from app.core.config import FRONTEND_URL
+from app.modules.auth.constants.roles import TENANT as TENANT_ROLE
 
 from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
@@ -120,7 +121,7 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
 
     access_token = create_access_token(
         user_id=str(user.user_id),
-        role=roles[0] if roles else "TENANT",
+        role=roles[0] if roles else TENANT_ROLE,
         organization_id=org_id
     )
 

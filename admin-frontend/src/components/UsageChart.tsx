@@ -19,8 +19,8 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                         <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Usage Over Time</h3>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">Active users per month</p>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Review Volume Over Time</h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">Reviews processed per month</p>
                     </div>
                 </div>
                 <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 dark:border-slate-600 bg-gray-50/50 dark:bg-slate-700/30 text-sm text-gray-400 dark:text-slate-500">
@@ -57,8 +57,8 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                     <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />
                 </div>
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Platform Usage Over Time</h3>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">Active users per month</p>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Review Volume Over Time</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Reviews processed per month</p>
                 </div>
             </div>
             <div className="flex-1 relative">

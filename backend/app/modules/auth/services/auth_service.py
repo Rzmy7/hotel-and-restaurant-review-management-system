@@ -13,6 +13,7 @@ from app.modules.auth.utils.auth_utils import verify_password
 from app.core.security import create_access_token
 from app.modules.admin.services.subscription_service import set_user_subscription_plan
 from app.core.db_utils import get_connection_string
+from app.modules.auth.constants.roles import SYSTEM_ADMIN, TENANT
 import pyodbc
 from sqlalchemy import text
 from app.modules.auth.models.auth_models import TwoFactorToken
@@ -87,7 +88,7 @@ def login_user(db: Session, email: str, password: str) -> dict:
         pass
 
     is_2fa_enabled = getattr(user, 'is_2fa_enabled', False)
-    if two_fa_feature_enabled and (is_2fa_enabled or (role == "Admin" and require_2fa_for_admins)):
+    if two_fa_feature_enabled and (is_2fa_enabled or (role == SYSTEM_ADMIN and require_2fa_for_admins)):
         code = f"{random.randint(100000, 999999)}"
         expires_at = datetime.utcnow() + timedelta(minutes=10)
         
@@ -115,7 +116,7 @@ def _generate_login_response(db: Session, user, role) -> dict:
     # ----------------------------------------------------
     # Initialize "Free" subscription if they are a Tenant
     # ----------------------------------------------------
-    if role == "Tenant":
+    if role == TENANT:
         try:
             with pyodbc.connect(get_connection_string()) as conn:
                 cursor = conn.cursor()

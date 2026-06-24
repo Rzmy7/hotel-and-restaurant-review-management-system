@@ -953,7 +953,7 @@ export const Scraping: React.FC = () => {
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Start Time</th>
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Reviews</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -981,34 +981,7 @@ export const Scraping: React.FC = () => {
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{formatDateTime(job.startTime, systemTimezone)}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.duration}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.reviews !== null ? job.reviews : '--'}</td>
-                                    <td className="py-4 px-4">
-                                        <div className="flex items-center gap-2">
-                                            {(job.status === 'Running' || job.status === 'Queued') && (
-                                                <button
-                                                    onClick={() => handleStopJob(job)}
-                                                    disabled={stoppingJobIds.has(job.id)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 rounded-lg uppercase transition-all disabled:opacity-50"
-                                                    title="Stop this job"
-                                                >
-                                                    <Square size={12} fill="currentColor" />
-                                                    {stoppingJobIds.has(job.id) ? 'Stopping...' : 'Stop'}
-                                                </button>
-                                            )}
-                                            {job.status === 'Failed' && (
-                                                <>
-                                                    <button className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase">Retry</button>
-                                                    <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
-                                                        <RotateCcw size={14} />
-                                                    </button>
-                                                </>
-                                            )}
-                                            {job.status === 'Completed' && (
-                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
-                                                    <Eye size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
+
                                 </tr>
                             ))}
                         </tbody>
