@@ -210,8 +210,9 @@ const LoginPage = () => {
 
   return (
     <AuthLayout
-      title="Welcome Back"
-      description="Enter your credentials to access your account"
+      type="login"
+      title="Welcome Back 👋"
+      description="Sign in to access your dashboard"
     >
       {error && (
         <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center justify-between mb-6 animate-in fade-in slide-in-from-top-2">
@@ -301,7 +302,7 @@ const LoginPage = () => {
         <>
         <div className="space-y-1.5">
           <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
-            Email Address
+            Work Email
           </label>
           <div className="relative group">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />

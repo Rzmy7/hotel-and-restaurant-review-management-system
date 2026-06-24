@@ -129,8 +129,9 @@ const SignUpPage = () => {
 
   return (
     <AuthLayout 
-      title="Create Account" 
-      description="Join our platform to start managing your reviews"
+      type="signup"
+      title="Create Your Workspace" 
+      description="Start your 14-day free trial. No credit card required."
     >
       {error && (
         <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
@@ -165,7 +166,7 @@ const SignUpPage = () => {
 
         <div className="space-y-1.5">
           <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
-            Email Address
+            Work Email
           </label>
           <div className="relative group">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
