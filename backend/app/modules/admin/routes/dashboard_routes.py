@@ -27,7 +27,7 @@ from app.modules.admin.services.dashboard_service import (
     build_usage_data,
 )
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["Admin - Dashboard"])
 
 
 def _get_cursor():

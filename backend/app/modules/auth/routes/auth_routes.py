@@ -25,7 +25,7 @@ from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
 
 PASSWORD_RESET_EXPIRE_MINUTES = 60
@@ -42,8 +42,9 @@ def as_utc(dt: datetime | None) -> datetime | None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
-@router.post("/signup")
+@router.post("/signup", status_code=201, summary="Register a new user account")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
+    """Create a new tenant user account. Returns a JWT access token on success."""
     validated = validate_signup_payload(payload.name, payload.email, payload.password)
 
     existing_user = get_user_by_email(db, validated["email"])
@@ -121,8 +122,9 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         },
     }
 
-@router.post("/login")
+@router.post("/login", summary="Authenticate and obtain a JWT")
 def login(payload: LoginModel, db: Session = Depends(get_db)):
+    """Validate email/password credentials and return a JWT access token."""
     validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
         db=db,
@@ -134,8 +136,9 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         **result
     }
 
-@router.post("/login/2fa")
+@router.post("/login/2fa", summary="Complete two-factor authentication")
 def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+    """Verify a TOTP/OTP code to complete the 2FA login flow and receive a JWT."""
     normalized_code = validate_login_otp_code(payload.code)
     result = verify_login_2fa(
         db=db,
@@ -153,7 +156,7 @@ class SwitchOrganizationModel(BaseModel):
 
 from app.modules.auth.utils.auth_utils import get_current_user as get_jwt_user
 
-@router.post("/switch-organization")
+@router.post("/switch-organization", summary="Switch active organization context")
 def switch_organization(
     payload: SwitchOrganizationModel,
     db: Session = Depends(get_db),
@@ -182,8 +185,9 @@ def switch_organization(
         "organization_id": payload.organization_id
     }
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", summary="Request a password reset email")
 def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
+    """Send a one-time password-reset link to the provided email address if it exists."""
     try:
         user = get_user_by_email(db, payload.email.lower())
         if not user:
@@ -231,8 +235,9 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Forgot password DB failed: {str(e)}")
 
-@router.post("/reset-password/{token}")
+@router.post("/reset-password/{token}", summary="Set a new password using a reset token")
 def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db)):
+    """Consume a password-reset token and update the user's password."""
     try:
         token_hash = token_sha256(token)
         token_row = db.execute(
@@ -292,7 +297,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Reset password DB failed: {str(e)}")
 
-@router.get("/test-smtp", tags=["Debug"])
+@router.get("/test-smtp", tags=["System"], summary="Test SMTP email delivery")
 def test_smtp():
     try:
         test_email = os.getenv("SMTP_EMAIL")
@@ -303,8 +308,9 @@ def test_smtp():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@router.get("/check-session")
+@router.get("/check-session", summary="Check current session state")
 def check_session(request: Request):
+    """Return the authenticated user object stored in the current session, if any."""
     user = request.session.get("user")
     if user:
         return {"user": user}
@@ -352,6 +358,6 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
-@router.get("/admin/dashboard")
+@router.get("/admin/dashboard", summary="Admin dashboard access check")
 def admin_dashboard(user=Depends(require_admin)):
     return {"message": "Welcome Admin"}

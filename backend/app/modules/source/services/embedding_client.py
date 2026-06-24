@@ -18,7 +18,7 @@ import threading
 import httpx
 import pyodbc
 
-from app.core.pyodbc_connection import get_connection_string
+from app.core.pyodbc_connection import get_raw_connection, retry_on_deadlock
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,19 @@ INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
 _AUTH_HEADERS = {"X-Internal-API-Key": INTERNAL_API_KEY}
 
 
-
+@retry_on_deadlock(max_retries=3)
+def _mark_reviews_embedded_tx(embedded_ids_str: list) -> int:
+    """Update database status for a batch of embedded reviews inside a single transaction with deadlock retries."""
+    with get_raw_connection() as conn:
+        cursor = conn.cursor()
+        placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(embedded_ids_str))
+        sql = f"""
+            UPDATE dbo.processed_review
+            SET is_embedded = 1
+            WHERE id IN ({placeholders})
+        """
+        cursor.execute(sql, *embedded_ids_str)
+        return cursor.rowcount
 
 
 def _embed_source_reviews(source_id: str) -> None:
@@ -44,24 +56,22 @@ def _embed_source_reviews(source_id: str) -> None:
 
     # ── Step 1: Fetch unembedded, processed reviews from ReviewMate DB ────────
     try:
-        conn = pyodbc.connect(get_connection_string())
-        cursor = conn.cursor()
+        with get_raw_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    CAST(id AS VARCHAR(36)) AS review_id,
+                    text,
+                    positive_text,
+                    negative_text
+                FROM dbo.processed_review
+                WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                  AND is_embedded = 0
+                ORDER BY scrapedAt ASC, id ASC
+            """, source_id)
 
-        cursor.execute("""
-            SELECT
-                CAST(id AS VARCHAR(36)) AS review_id,
-                text,
-                positive_text,
-                negative_text
-            FROM dbo.processed_review
-            WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
-              AND is_embedded = 0
-            ORDER BY scrapedAt ASC
-        """, source_id)
-
-        columns = [col[0] for col in cursor.description]
-        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        conn.close()
+            columns = [col[0] for col in cursor.description]
+            rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
     except Exception as e:
         logger.error(f"[EmbeddingClient] Failed to fetch unembedded processed reviews for {source_id}: {e}")
         return
@@ -132,22 +142,10 @@ def _embed_source_reviews(source_id: str) -> None:
     logger.info(f"[EmbeddingClient] Successfully embedded {len(embedded_ids_str)} reviews for source_id={source_id}")
 
     # ── Step 3: Mark reviews as embedded in processed_review table ────────────
+    # Enforce deterministic lock ordering
+    embedded_ids_str.sort()
     try:
-        conn = pyodbc.connect(get_connection_string())
-        cursor = conn.cursor()
-
-        # Build parameterized IN clause
-        placeholders = ",".join(["CAST(? AS UNIQUEIDENTIFIER)"] * len(embedded_ids_str))
-        sql = f"""
-            UPDATE dbo.processed_review
-            SET is_embedded = 1
-            WHERE id IN ({placeholders})
-        """
-        cursor.execute(sql, *embedded_ids_str)
-        updated_count = cursor.rowcount
-        conn.commit()
-        conn.close()
-
+        updated_count = _mark_reviews_embedded_tx(embedded_ids_str)
         logger.info(f"[EmbeddingClient] Marked {updated_count} reviews as embedded in processed_review.")
     except Exception as e:
         logger.error(f"[EmbeddingClient] Failed to mark reviews as embedded in processed_review: {e}")

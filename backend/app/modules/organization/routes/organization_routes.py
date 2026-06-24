@@ -14,11 +14,12 @@ from app.core.exceptions.custom_exceptions import FileValidationException
 from app.core.security import create_access_token
 from app.modules.auth.repositories.roles_repo import get_user_role_names
 from app.core.geo_utils import parse_google_maps_url
+from app.core.tenant_context import resolve_tenant_scope
 
-router = APIRouter(prefix="/api", tags=["organization"])
+router = APIRouter(prefix="/api", tags=["Organizations"])
 
 
-@router.post("/organizations/{tenant_id}")
+@router.post("/organizations/{tenant_id}", status_code=201, summary="Create or upsert an organization")
 def upsert_organization(
     tenant_id: str,
     data: OrganizationCreate,
@@ -205,7 +206,7 @@ def upsert_organization(
     }
 
 
-@router.patch("/organizations/{org_id}")
+@router.patch("/organizations/{org_id}", summary="Update organization fields")
 @router.post("/organizations/{org_id}", include_in_schema=False)  # legacy alias kept for backward compatibility
 def update_organization(
     org_id: str,
@@ -213,14 +214,8 @@ def update_organization(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    # Verify ownership: Organization must belong to user's tenant
-    org = db.execute(
-        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
-        {"org_id": org_id, "tenant_id": user.user_id}
-    ).fetchone()
-
-    if not org:
-        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
 
     def normalize_optional_text(value: Optional[str]) -> Optional[str]:
         if value is None:
@@ -231,7 +226,7 @@ def update_organization(
     provided_fields = data.model_fields_set if hasattr(data, "model_fields_set") else set()
 
     updates = []
-    params = {"org_id": org_id, "tenant_id": user.user_id}
+    params = {"org_id": org_id}
 
     if "organization_name" in provided_fields:
         updates.append("organization_name = :name")
@@ -274,7 +269,7 @@ def update_organization(
     if not updates:
         return {"message": "No updates provided", "organization_id": org_id}
 
-    query = f"UPDATE dbo.organization SET {', '.join(updates)}, updated_at = GETDATE() WHERE organization_id = :org_id AND tenant_id = :tenant_id"
+    query = f"UPDATE dbo.organization SET {', '.join(updates)}, updated_at = GETDATE() WHERE organization_id = :org_id"
     
     db.execute(text(query), params)
     db.commit()
@@ -284,21 +279,15 @@ def update_organization(
         "organization_id": org_id
     }
 
-@router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse)
+@router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse, summary="Upload organization logo")
 async def upload_organization_logo(
     org_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    # Verify ownership
-    org = db.execute(
-        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
-        {"org_id": org_id, "tenant_id": user.user_id}
-    ).fetchone()
-
-    if not org:
-        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
 
     try:
         return await organization_service.upload_organization_logo(db, org_id, file)
@@ -308,20 +297,14 @@ async def upload_organization_logo(
         raise HTTPException(status_code=503, detail=str(e))
 
 
-@router.delete("/organizations/{org_id}")
+@router.delete("/organizations/{org_id}", status_code=200, summary="Delete an organization")
 def delete_organization(
     org_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    # check if organization belongs to the user's tenant
-    existing_org = db.execute(
-        text("SELECT 1 FROM dbo.organization WHERE tenant_id = :tenant_id AND organization_id = :org_id"),
-        {"tenant_id": str(user.user_id), "org_id": org_id}
-    ).fetchone()
-
-    if not existing_org:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this organization")
+    # check ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
 
     # delete rules & regulations if any
     db.execute(
@@ -337,8 +320,8 @@ def delete_organization(
 
     # delete org
     db.execute(
-        text("DELETE FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
-        {"org_id": org_id, "tenant_id": str(user.user_id)}
+        text("DELETE FROM dbo.organization WHERE organization_id = :org_id"),
+        {"org_id": org_id}
     )
 
     db.commit()
@@ -346,34 +329,22 @@ def delete_organization(
     return {"message": "Organization deleted successfully"}
 
 
-@router.delete("/setup/organizations/{org_id}/discard")
+@router.delete("/setup/organizations/{org_id}/discard", summary="Discard an incomplete setup organization")
 def discard_setup_organization(
     org_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
     try:
-        # Check ownership: Organization must belong to user's tenant
-        existing_org = db.execute(
-            text(
-                "SELECT 1 FROM dbo.organization WHERE tenant_id = :tenant_id AND organization_id = :org_id"
-            ),
-            {"tenant_id": user.user_id, "org_id": org_id}
-        ).fetchone()
-
-        if not existing_org:
-            return {
-                "message": "Organization already cleared or not yours",
-                "organization_id": org_id,
-                "discarded": False,
-            }
+        # Check ownership using resolve_tenant_scope
+        resolve_tenant_scope(user, db, org_id)
 
         # Actually delete the organization (since setup organizations are often temporary)
         db.execute(
             text(
-                "DELETE FROM dbo.organization WHERE tenant_id = :tenant_id AND organization_id = :org_id"
+                "DELETE FROM dbo.organization WHERE organization_id = :org_id"
             ),
-            {"tenant_id": user.user_id, "org_id": org_id}
+            {"org_id": org_id}
         )
 
         db.commit()
@@ -383,6 +354,8 @@ def discard_setup_organization(
             "organization_id": org_id,
             "discarded": True,
         }
+    except HTTPException:
+        raise
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to discard setup organization")
@@ -405,14 +378,8 @@ async def upload_organization_rules(
     The file is parsed, sent to Gemini to extract individual rules,
     stored in the database, and dispatched to the embedding service.
     """
-    # Verify ownership
-    org = db.execute(
-        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
-        {"org_id": org_id, "tenant_id": user.user_id},
-    ).fetchone()
-
-    if not org:
-        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
 
     try:
         from app.modules.organization.services.rules_service import process_rules_upload
@@ -433,14 +400,8 @@ def get_organization_rules(
     user=Depends(get_current_user),
 ):
     """Fetch all rules for an organization."""
-    # Verify ownership
-    org = db.execute(
-        text("SELECT organization_id FROM dbo.organization WHERE organization_id = :org_id AND tenant_id = :tenant_id"),
-        {"org_id": org_id, "tenant_id": user.user_id},
-    ).fetchone()
-
-    if not org:
-        raise HTTPException(status_code=404, detail="Organization not found or not owned by you")
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
 
     from app.modules.organization.services.rules_service import get_organization_rules
     return get_organization_rules(db, org_id)

@@ -29,7 +29,7 @@ from app.modules.admin.services.broadcasting_service import (
 )
 from app.modules.admin.services.system_settings_service import get_system_timezone
 
-router = APIRouter(prefix="/broadcasting", tags=["Admin Broadcasting"])
+router = APIRouter(prefix="/broadcasting", tags=["Admin - Settings"])
 
 
 def _parse_scheduled_at_to_utc(value: str | None, timezone_name: str) -> datetime | None:

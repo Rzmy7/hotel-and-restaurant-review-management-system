@@ -54,19 +54,19 @@ export const applySystemTimezone = (timezone: string): void => {
 
 export const settingsService = {
     async getGeneralSettings(): Promise<GeneralSettings> {
-        const settings = await apiClient.get<GeneralSettings>('/admin/settings/general');
+        const settings = await apiClient.get<GeneralSettings>('/api/admin/settings/general');
         applySystemTimezone(settings.timezone);
         return settings;
     },
 
     async updateGeneralSettings(payload: GeneralSettings): Promise<GeneralSettings> {
-        const settings = await apiClient.patch<GeneralSettings>('/admin/settings/general', payload);
+        const settings = await apiClient.patch<GeneralSettings>('/api/admin/settings/general', payload);
         applySystemTimezone(settings.timezone);
         return settings;
     },
 
     async getReplyGenerationSettings(): Promise<ReplyGenerationSettings> {
-        return apiClient.get<ReplyGenerationSettings>('/admin/settings/reply-generation');
+        return apiClient.get<ReplyGenerationSettings>('/api/admin/settings/reply-generation');
     },
 
     async updateReplyGenerationSettings(payload: ReplyGenerationSettings): Promise<ReplyGenerationSettings> {
@@ -76,26 +76,39 @@ export const settingsService = {
             useSimilarReviews: payload.useSimilarReviews,
         };
 
-        return apiClient.patch<ReplyGenerationSettings>('/admin/settings/reply-generation', requestPayload);
+        return apiClient.patch<ReplyGenerationSettings>('/api/admin/settings/reply-generation', requestPayload);
     },
 
     async getAdminProfile(): Promise<AdminProfile> {
-        return apiClient.get<AdminProfile>('/admin/settings/admin-profile');
+        return apiClient.get<AdminProfile>('/api/admin/settings/admin-profile');
     },
 
     async updateAdminProfile(payload: AdminProfile): Promise<AdminProfile> {
-        return apiClient.patch<AdminProfile>('/admin/settings/admin-profile', payload);
+        return apiClient.patch<AdminProfile>('/api/admin/settings/admin-profile', payload);
     },
 
     async changeAdminPassword(payload: AdminPasswordChangePayload): Promise<AdminPasswordChangeResponse> {
-        return apiClient.patch<AdminPasswordChangeResponse>('/admin/settings/admin-profile/password', payload);
+        return apiClient.patch<AdminPasswordChangeResponse>('/api/admin/settings/admin-profile/password', payload);
     },
 
     async getSecuritySettings(): Promise<SecuritySettings> {
-        return apiClient.get<SecuritySettings>('/admin/settings/security');
+        return apiClient.get<SecuritySettings>('/api/admin/settings/security');
     },
 
     async updateSecuritySettings(payload: SecuritySettings): Promise<SecuritySettings> {
-        return apiClient.patch<SecuritySettings>('/admin/settings/security', payload);
+        return apiClient.patch<SecuritySettings>('/api/admin/settings/security', payload);
+    },
+
+    async getSchedulerSettings(): Promise<SchedulerSettings> {
+        return apiClient.get<SchedulerSettings>('/api/admin/settings/scheduler');
+    },
+
+    async updateSchedulerSettings(payload: SchedulerSettings): Promise<SchedulerSettings> {
+        return apiClient.patch<SchedulerSettings>('/api/admin/settings/scheduler', payload);
     },
 };
+
+export interface SchedulerSettings {
+    reviewProcessingIntervalMinutes: number;
+    deduplicationIntervalMinutes: number;
+}

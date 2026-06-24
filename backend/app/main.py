@@ -142,7 +142,9 @@ import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform,
 import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
 import app.modules.organization.models.rules_model  # noqa: F401  (OrganizationRule)
 
+
 # Hansi UserManagement routers
+
 from app.modules.user.routes.profile_routes import router as profile_router
 from app.modules.organization.routes.organization_routes import router as org_router
 from app.modules.organization.routes.onboarding_routes import (
@@ -152,7 +154,6 @@ from app.modules.user.routes.user_routes import router as user_router
 from app.modules.organization.routes.user_organization_routes import (
     router as user_org_router,
 )
-from app.modules.organization.routes.source_routes import router as org_source_router
 from app.modules.auth.routes.auth_routes import router as auth_router
 from app.modules.auth.routes.oauth_routes import router as oauth_router
 
@@ -245,14 +246,13 @@ except ImportError:
 if reviews_router:
     app.include_router(reviews_router)
 # Hansi routers (now standardized under /api)
-app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-app.include_router(oauth_router, prefix="/api/auth", tags=["OAuth"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(oauth_router, prefix="/api/auth")
 app.include_router(profile_router, prefix="/api")
 app.include_router(org_router)  # already declares prefix="/api" internally
 app.include_router(onboarding_router, prefix="/api")
 app.include_router(user_router)  # already declares prefix="/api" internally
 app.include_router(user_org_router)  # already declares prefix="/api" internally
-app.include_router(org_source_router)  # already declares prefix="/api" internally
 
 # User Notifications
 from app.modules.auth.routes.notifications_routes import router as user_notifications_router
@@ -310,12 +310,12 @@ def user_subscription_usage(
 # ----------------------
 
 
-@app.get("/", tags=["Health"])
+@app.get("/", tags=["System"], summary="API health check")
 async def root():
     return {"message": "API is online", "status": "healthy"}
 
 
-@app.get("/api/maintenance/status", tags=["Public"])
+@app.get("/api/maintenance/status", tags=["System"], summary="Public maintenance mode status")
 def public_maintenance_status():
     """Public endpoint to check if maintenance mode is active (no auth required)."""
     import pyodbc
@@ -338,7 +338,7 @@ def public_maintenance_status():
         return {"maintenanceMode": False}
 
 
-@app.get("/api/settings/feature-flags", tags=["Public"])
+@app.get("/api/settings/feature-flags", tags=["System"], summary="Public feature flags list")
 def public_feature_flags():
     """Public endpoint to get active feature flags (no auth required)."""
     import pyodbc
@@ -355,12 +355,12 @@ def public_feature_flags():
         raise HTTPException(status_code=500, detail=f"Unable to load feature flags: {exc}")
 
 
-@app.get("/which-main", tags=["Debug"])
+@app.get("/which-main", tags=["System"], summary="Identify the running main module")
 def which_main():
     return {"message": "backend/app/main.py is running"}
 
 
-@app.get("/db-test", tags=["Debug"])
+@app.get("/db-test", tags=["System"], summary="Verify database connectivity")
 def db_test(db: Session = Depends(get_db)):
     try:
         result = db.execute(text("SELECT 1 AS ok"))

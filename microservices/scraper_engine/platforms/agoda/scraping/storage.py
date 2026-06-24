@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from typing import List
-from platforms.agoda.extractor import Review
+from platforms.agoda.scraping.extractor import Review
 from core.config import setup_logger, config
 
 logger = setup_logger(__name__)

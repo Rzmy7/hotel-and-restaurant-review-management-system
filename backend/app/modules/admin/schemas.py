@@ -469,3 +469,16 @@ class StatisticsResponse(BaseModel):
     sent: int
     scheduled: int
     failed: int
+
+
+# ── Scheduler schemas ───────────────────────────────────────────────
+
+
+class SchedulerSettingsResponse(BaseModel):
+    reviewProcessingIntervalMinutes: int
+    deduplicationIntervalMinutes: int
+
+
+class SchedulerSettingsPayload(BaseModel):
+    reviewProcessingIntervalMinutes: int = Field(..., ge=1, le=1440)  # 1 min to 24 hours
+    deduplicationIntervalMinutes: int = Field(..., ge=1, le=1440)

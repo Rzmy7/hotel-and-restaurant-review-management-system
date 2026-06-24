@@ -4,7 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from playwright.sync_api import Page
 from core.config import setup_logger
-from platforms.agoda.config import agoda_selectors
+from platforms.agoda.scraping.config import agoda_selectors
 
 
 logger = setup_logger("agoda_extractor")

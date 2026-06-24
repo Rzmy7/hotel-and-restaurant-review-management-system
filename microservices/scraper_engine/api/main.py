@@ -25,6 +25,7 @@ from api.endpoints.system import router as system_router
 from api.endpoints.audit import router as audit_router
 from api.endpoints.db_admin import router as db_admin_router
 from api.endpoints.tables import router as tables_router
+from api.endpoints.resolution import router as resolution_router
 from api.websockets.events import router as ws_router
 from api.middleware.audit_middleware import AuditMiddleware
 from core.config import setup_logger, config
@@ -127,6 +128,7 @@ app.include_router(tripadvisor_router, prefix="/api")
 # ── Data Retrieval & Management ──
 app.include_router(sources_router, prefix="/api")
 app.include_router(reviews_router, prefix="/api")
+app.include_router(resolution_router, prefix="/api")
 
 # ── System Monitoring & Audit ──
 app.include_router(system_router, prefix="/api")

@@ -171,7 +171,7 @@ def call(
                 raise ValueError(f"Provider limit reached: {msg}. Try reducing Max Tokens or checking your credits.")
             raise ValueError(f"Provider reported insufficient credits/quota: {msg}")
         
-        if "error code:" in msg.lower():
-             raise ValueError(f"LLM Provider Error: {msg}")
+        if ("error code:" in msg.lower()):
+             raise ValueError(f"LLM Provider Error ({model['model_name']} @ {model['endpoint']}): {msg}")
         
-        raise ValueError(msg)
+        raise ValueError(f"LLM Error ({model['model_name']}): {msg}")

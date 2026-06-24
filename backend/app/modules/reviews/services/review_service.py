@@ -8,11 +8,11 @@ import logging
 import os
 import uuid
 import httpx
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from dateutil import parser as date_parser
 
 import pyodbc
-from app.core.pyodbc_connection import get_connection_string
+from app.core.pyodbc_connection import get_raw_connection, retry_on_deadlock
 from app.modules.reviews.repository import (
     upsert_review_pending,
     insert_review_media,
@@ -47,117 +47,14 @@ def get_all_reviews_from_db(
         raise e
 
 
-async def ingest_from_scraper(
-    source_id: uuid.UUID, organization_id: uuid.UUID, platform_id: int
-) -> int:
-    """
-    Fetches raw review data from the external Scraper Engine (port 8001)
-    and stores them as 'pending' in the database.
-    Respects the user's review_count plan limit — only ingests up to the remaining balance.
-    """
-    from app.core.config import SCRAPER_ENGINE_URL
-    scraper_base = SCRAPER_ENGINE_URL
-    base_scraper_url = f"{scraper_base}/api/reviews/{source_id}"
-    all_reviews_data = []
-    skip = 0
-    batch_size = 1000
-    total_on_server = 0
-
-    async with httpx.AsyncClient() as client:
-        while True:
-            try:
-                current_url = f"{base_scraper_url}?limit={batch_size}&skip={skip}"
-                logger.info(f"Fetching reviews page (skip={skip}) from {current_url}...")
-                response = await client.get(current_url, timeout=60.0)
-                response.raise_for_status()
-                page_data = response.json()
-                
-                batch = page_data.get("data", [])
-                total_on_server = page_data.get("total", 0)
-                
-                if not batch:
-                    break
-                    
-                all_reviews_data.extend(batch)
-                logger.info(f"Received {len(batch)} reviews. Total so far: {len(all_reviews_data)}/{total_on_server}")
-                
-                if len(all_reviews_data) >= total_on_server:
-                    break
-                    
-                skip += batch_size
-            except Exception as e:
-                logger.error(f"!!! Scraper Engine communication FAILED at skip={skip} for source {source_id}: {e}")
-                break # Process what we have so far
-
-    if not all_reviews_data:
-        return 0
-
-    reviews_to_process = all_reviews_data
-
-    # ── Check review_count limit and truncate if needed ──
-    review_balance = None  # None = unlimited
-    tenant_id = None
-    try:
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            tenant_row = cursor.execute(
-                "SELECT tenant_id FROM dbo.organization WHERE organization_id = ?",
-                (str(organization_id),),
-            ).fetchone()
-            if tenant_row and tenant_row[0]:
-                tenant_id = str(tenant_row[0])
-                from app.modules.admin.services.subscription_service import (
-                    check_feature_limit,
-                )
-                limit_info = check_feature_limit(cursor, tenant_id, "review_count")
-                if limit_info["limit"] is not None:
-                    review_balance = limit_info["balance"]
-                    if review_balance <= 0:
-                        from app.modules.admin.services.subscription_service import send_limit_reached_notification
-                        send_limit_reached_notification(tenant_id, limit_info["feature_name"])
-                        logger.info(f"Review count limit reached for tenant {tenant_id}. Skipping ingestion and auto-pausing source {source_id}.")
-                        
-                        # Auto-pause source
-                        try:
-                            from app.database.session import SessionLocal
-                            from app.modules.source.models import Source as SourceSource
-                            from app.modules.source.services.source_service import log_activity
-                            db = SessionLocal()
-                            try:
-                                src = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
-                                if src and src.source_status != 'paused':
-                                    src.source_status = 'paused'
-                                    db.commit()
-                                    log_activity(
-                                        db, 
-                                        source_id, 
-                                        activity_type="SOURCE_AUTO_PAUSED", 
-                                        status="Success",
-                                        activity_details="Source auto-paused due to reaching the maximum review count limit.",
-                                        is_important=True
-                                    )
-                            finally:
-                                db.close()
-                        except Exception as p_err:
-                            logger.error(f"Failed to auto-pause source {source_id}: {p_err}")
-
-                        return 0
-                    elif review_balance < len(reviews_to_process):
-                        logger.info(f"Truncating ingestion from {len(reviews_to_process)} to {review_balance} (limit reached).")
-                        reviews_to_process = reviews_to_process[:review_balance]
-    except Exception as limit_err:
-        logger.warning(f"Review count limit check failed: {limit_err}")
-
-    count = 0
-
-    # Defensive log file for ingestion troubleshooting
-    debug_log_path = "ingest_debug.log"
-
-    with pyodbc.connect(get_connection_string()) as conn:
+@retry_on_deadlock(max_retries=3)
+def _ingest_reviews_chunk_tx(chunk: list, platform_id: Any, source_id: Any, debug_log_path: str) -> int:
+    """Ingests a small chunk of reviews inside a single database transaction with deadlock retries."""
+    chunk_count = 0
+    with get_raw_connection() as conn:
         cursor = conn.cursor()
-        for r_data in reviews_to_process:
+        for r_data in chunk:
             try:
-                logger.info(f"RAW R_DATA: {json.dumps(r_data, indent=2)}")
                 # Handle nested detail from Scraper Engine
                 detail = r_data.get("detail", {})
 
@@ -234,12 +131,125 @@ async def ingest_from_scraper(
                 if photos:
                     insert_review_media(cursor, internal_id, photos)
 
-                count += 1
+                chunk_count += 1
             except Exception as ex:
-                logger.error(f"Failed to ingest review {r_data.get('id')}: {ex}")
+                logger.error(f"Failed to ingest review {r_data.get('id') or r_data.get('review_id')}: {ex}")
                 continue
+    return chunk_count
 
-        conn.commit()
+
+async def ingest_from_scraper(
+    source_id: uuid.UUID, organization_id: uuid.UUID, platform_id: int
+) -> int:
+    """
+    Fetches raw review data from the external Scraper Engine (port 8001)
+    and stores them as 'pending' in the database.
+    Respects the user's review_count plan limit — only ingests up to the remaining balance.
+    """
+    from app.core.config import SCRAPER_ENGINE_URL
+    scraper_base = SCRAPER_ENGINE_URL
+    base_scraper_url = f"{scraper_base}/api/reviews/{source_id}"
+    all_reviews_data = []
+    skip = 0
+    batch_size = 1000
+    total_on_server = 0
+
+    async with httpx.AsyncClient() as client:
+        while True:
+            try:
+                current_url = f"{base_scraper_url}?limit={batch_size}&skip={skip}"
+                logger.info(f"Fetching reviews page (skip={skip}) from {current_url}...")
+                response = await client.get(current_url, timeout=60.0)
+                response.raise_for_status()
+                page_data = response.json()
+                
+                batch = page_data.get("data", [])
+                total_on_server = page_data.get("total", 0)
+                
+                if not batch:
+                    break
+                    
+                all_reviews_data.extend(batch)
+                logger.info(f"Received {len(batch)} reviews. Total so far: {len(all_reviews_data)}/{total_on_server}")
+                
+                if len(all_reviews_data) >= total_on_server:
+                    break
+                    
+                skip += batch_size
+            except Exception as e:
+                logger.error(f"!!! Scraper Engine communication FAILED at skip={skip} for source {source_id}: {e}")
+                break # Process what we have so far
+
+    if not all_reviews_data:
+        return 0
+
+    reviews_to_process = all_reviews_data
+
+    # ── Check review_count limit and truncate if needed ──
+    review_balance = None  # None = unlimited
+    tenant_id = None
+    try:
+        with get_raw_connection() as conn:
+            cursor = conn.cursor()
+            tenant_row = cursor.execute(
+                "SELECT tenant_id FROM dbo.organization WHERE organization_id = ?",
+                (str(organization_id),),
+            ).fetchone()
+            if tenant_row and tenant_row[0]:
+                tenant_id = str(tenant_row[0])
+                from app.modules.admin.services.subscription_service import (
+                    check_feature_limit,
+                )
+                limit_info = check_feature_limit(cursor, tenant_id, "review_count")
+                if limit_info["limit"] is not None:
+                    review_balance = limit_info["balance"]
+                    if review_balance <= 0:
+                        from app.modules.admin.services.subscription_service import send_limit_reached_notification
+                        send_limit_reached_notification(tenant_id, limit_info["feature_name"])
+                        logger.info(f"Review count limit reached for tenant {tenant_id}. Skipping ingestion and auto-pausing source {source_id}.")
+                        
+                        # Auto-pause source
+                        try:
+                            from app.database.session import SessionLocal
+                            from app.modules.source.models import Source as SourceSource
+                            from app.modules.source.services.source_service import log_activity
+                            db = SessionLocal()
+                            try:
+                                src = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+                                if src and src.source_status != 'paused':
+                                    src.source_status = 'paused'
+                                    db.commit()
+                                    log_activity(
+                                        db, 
+                                        source_id, 
+                                        activity_type="SOURCE_AUTO_PAUSED", 
+                                        status="Success",
+                                        activity_details="Source auto-paused due to reaching the maximum review count limit.",
+                                        is_important=True
+                                    )
+                            finally:
+                                db.close()
+                        except Exception as p_err:
+                            logger.error(f"Failed to auto-pause source {source_id}: {p_err}")
+
+                        return 0
+                    elif review_balance < len(reviews_to_process):
+                        logger.info(f"Truncating ingestion from {len(reviews_to_process)} to {review_balance} (limit reached).")
+                        reviews_to_process = reviews_to_process[:review_balance]
+    except Exception as limit_err:
+        logger.warning(f"Review count limit check failed: {limit_err}")
+
+    count = 0
+    debug_log_path = "ingest_debug.log"
+
+    # Enforce deterministic lock ordering
+    reviews_to_process.sort(key=lambda r: str(r.get("review_id") or r.get("id") or ""))
+
+    # Chunk ingestion to prevent lock escalation (chunk size: 100)
+    BATCH_SIZE = 100
+    for i in range(0, len(reviews_to_process), BATCH_SIZE):
+        chunk = reviews_to_process[i:i + BATCH_SIZE]
+        count += _ingest_reviews_chunk_tx(chunk, platform_id, source_id, debug_log_path)
 
     # Send notification if we hit the limit during this ingestion
     if review_balance is not None and tenant_id and count >= review_balance:
@@ -257,7 +267,7 @@ async def ingest_from_scraper(
             platform_name = None
             org_name = None
             try:
-                with pyodbc.connect(get_connection_string()) as conn:
+                with get_raw_connection() as conn:
                     cursor = conn.cursor()
                     info_row = cursor.execute(
                         """
@@ -372,7 +382,7 @@ def get_processing_report(organization_id: str = None) -> dict:
     Returns a report on review processing status (pending, processed, failed).
     """
     try:
-        with pyodbc.connect(get_connection_string()) as conn:
+        with get_raw_connection() as conn:
             cursor = conn.cursor()
             metrics = get_processing_metrics(cursor, organization_id)
 
