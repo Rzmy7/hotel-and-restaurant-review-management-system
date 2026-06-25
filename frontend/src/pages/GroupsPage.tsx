@@ -300,8 +300,11 @@ const GroupsPage: React.FC = () => {
     try {
       const res = await groupsService.acceptInvite(inviteId);
       showToast(res.message, 'success');
-      // Re-fetch both: the accepted org's group may now appear
+      // Optimistically remove the accepted invite from the list
+      setInvites(prev => prev.filter(i => i.invite_id !== inviteId));
+      // Small delay to allow DB commit to settle before re-fetching group list
       if (currentOrg?.id) {
+        await new Promise(resolve => setTimeout(resolve, 600));
         await Promise.all([fetchGroups(currentOrg.id), fetchInvites()]);
       }
     } catch (err: any) {
@@ -507,7 +510,9 @@ const GroupsPage: React.FC = () => {
           onClose={() => setShowSearchModal(false)}
           onJoinSuccess={() => {
             if (currentOrg?.id) {
+              // Re-fetch groups AND invites — delay is already done inside the modal
               fetchGroups(currentOrg.id);
+              fetchInvites();
             }
           }}
         />
