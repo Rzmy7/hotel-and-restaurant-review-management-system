@@ -2,7 +2,7 @@
 Login route — POST /login
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,11 +13,12 @@ router = APIRouter()
 
 
 @router.post("/login")
-def login(payload: LoginModel, db: Session = Depends(get_db)):
+def login(payload: LoginModel, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     result = login_user(
         db=db,
         email=payload.email.lower(),
         password=payload.password,
+        background_tasks=background_tasks,
     )
     # Return 202 if 2FA is needed, otherwise 200
     if result.get("require_2fa"):

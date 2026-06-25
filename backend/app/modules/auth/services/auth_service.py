@@ -32,7 +32,7 @@ def _assert_password_matches_email(password: str, password_hash: str) -> None:
         )
 
 
-def login_user(db: Session, email: str, password: str) -> dict:
+def login_user(db: Session, email: str, password: str, background_tasks = None) -> dict:
     """Authenticate a user by email/password and return a JWT token."""
     # The route/validator normalizes email before this lookup.
     user = get_user_by_email(db, email)  # find user
@@ -103,7 +103,13 @@ def login_user(db: Session, email: str, password: str) -> dict:
         db.add(token)
         db.commit()
         
-        send_2fa_email(user.email, code)
+        if background_tasks:
+            background_tasks.add_task(send_2fa_email, user.email, code)
+        else:
+            try:
+                send_2fa_email(user.email, code)
+            except Exception as e:
+                print(f"[login_user] Failed to send OTP email to {user.email}: {e}")
         
         return {
             "require_2fa": True,
