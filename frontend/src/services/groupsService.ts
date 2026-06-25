@@ -132,6 +132,12 @@ export const groupsService = {
 
   /** List groups for a specific organization (org-scoped). */
   async listGroups(organizationId: string): Promise<{ groups: Group[]; count: number }> {
+    // Silently repair orphaned memberships (stale rows from old wrong-org-id bug)
+    // This is fire-and-forget — we don't await it to avoid slowing down the list fetch
+    apiClient.post(
+      `/groups/repair-memberships?organization_id=${encodeURIComponent(organizationId)}`,
+      {}
+    ).catch(() => { /* ignore repair errors — non-critical */ });
     return apiClient.get('/groups', { organization_id: organizationId });
   },
 
@@ -140,7 +146,12 @@ export const groupsService = {
   },
 
   async joinPublicGroup(groupId: string): Promise<{ message: string; group_id: string }> {
-    return apiClient.post(`/groups/${groupId}/join`, orgScope());
+    // organization_id must be a query param (backend reads it via Query(None))
+    const oid = activeOrgId();
+    const url = oid
+      ? `/groups/${groupId}/join?organization_id=${encodeURIComponent(oid)}`
+      : `/groups/${groupId}/join`;
+    return apiClient.post(url, {});
   },
 
   async createGroup(organizationId: string, data: {
@@ -173,7 +184,12 @@ export const groupsService = {
   },
 
   async leaveGroup(groupId: string, organizationId?: string): Promise<{ message: string }> {
-    return apiClient.post(`/groups/${groupId}/leave`, orgScope({}));
+    // organization_id must be a query param (backend reads it via Query(None))
+    const oid = organizationId ?? activeOrgId();
+    const url = oid
+      ? `/groups/${groupId}/leave?organization_id=${encodeURIComponent(oid)}`
+      : `/groups/${groupId}/leave`;
+    return apiClient.post(url, {});
   },
 
   // ── Members ──────────────────────────────────────────────────────
@@ -208,8 +224,11 @@ export const groupsService = {
   // ── Analytics ────────────────────────────────────────────────────
 
   async getAnalytics(groupId: string, organizationId?: string): Promise<GroupAnalytics> {
+    // Always send organization_id so the backend resolves the caller's org correctly
     const oid = organizationId ?? activeOrgId();
-    return apiClient.get(`/groups/${groupId}/analytics`, oid ? { organization_id: oid } : undefined);
+    const params: Record<string, unknown> = {};
+    if (oid) params.organization_id = oid;
+    return apiClient.get(`/groups/${groupId}/analytics`, Object.keys(params).length ? params : undefined);
   },
 
   // ── Invites ───────────────────────────────────────────────────────

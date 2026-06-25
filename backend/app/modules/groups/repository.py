@@ -247,7 +247,14 @@ def get_group_detail(db: Session, group_id: str, organization_id: str) -> Option
 # ── Members ──────────────────────────────────────────────────────────
 
 def add_member(db: Session, group_id: str, organization_id: str, role: str = "GROUP_MEMBER") -> GroupMember:
-    member = GroupMember(group_id=group_id, organization_id=organization_id, role=role)
+    # Cast to uuid.UUID to prevent UNIQUEIDENTIFIER type mismatch on SQL Server
+    try:
+        gid = uuid.UUID(str(group_id))
+        oid = uuid.UUID(str(organization_id))
+    except (ValueError, AttributeError):
+        gid = group_id
+        oid = organization_id
+    member = GroupMember(group_id=gid, organization_id=oid, role=role)
     db.add(member)
     db.commit()
     db.refresh(member)
@@ -265,6 +272,27 @@ def remove_member(db: Session, group_id: str, organization_id: str) -> bool:
     db.delete(member)
     db.commit()
     return True
+
+
+def cleanup_orphaned_memberships(db: Session, organization_id: str) -> int:
+    """
+    Remove group_member rows for the given org where the group no longer exists.
+    This repairs stale data left by the old wrong-org-id bug.
+    Returns the number of orphaned rows removed.
+    """
+    # Find all group_member rows for this org where the group is missing
+    result = db.execute(
+        text("""
+            DELETE FROM group_member
+            WHERE organization_id = :oid
+              AND group_id NOT IN (
+                  SELECT group_id FROM [group]
+              )
+        """),
+        {"oid": organization_id},
+    )
+    db.commit()
+    return result.rowcount if result.rowcount else 0
 
 
 def get_member(db: Session, group_id: str, organization_id: str) -> Optional[GroupMember]:

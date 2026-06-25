@@ -92,6 +92,22 @@ def get_my_invites(
     return {"invites": invites, "count": len(invites)}
 
 
+@router.post("/repair-memberships")
+def repair_memberships(
+    organization_id: Optional[str] = Query(None),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Remove orphaned group_member rows where the referenced group no longer exists.
+    Also removes any duplicate/stale rows for the caller's organization.
+    Safe self-repair endpoint — only affects the caller's own org memberships.
+    """
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
+    removed = repo.cleanup_orphaned_memberships(db, org_id)
+    return {"message": f"Repaired {removed} orphaned membership(s).", "removed": removed}
+
+
 @router.post("/invites/{invite_id}/accept")
 def accept_invite(
     invite_id: str,
@@ -254,23 +270,29 @@ def search_public_groups(
 @router.post("/{group_id}/join")
 def join_public_group(
     group_id: str,
+    organization_id: Optional[str] = Query(None),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Join a public group."""
-    org_id = _get_current_org_id(current_user, db)
+    """Join a public group. Accepts organization_id so multi-org users hit the right membership."""
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     group = _get_group_or_404(group_id, db)
-    
+
     if group.is_private:
         raise HTTPException(status_code=403, detail="Cannot join a private group directly.")
 
     if repo.get_member(db, group_id, org_id):
-        return {"message": "Your organization is already a member of this group.", "group_id": group_id}
+        return {
+            "message": f"Your organization is already a member of '{group.group_name}'.",
+            "group_id": group_id,
+            "already_member": True,
+        }
 
     repo.add_member(db, group_id, org_id)
     return {
         "message": f"Your organization has joined '{group.group_name}' successfully.",
         "group_id": group_id,
+        "already_member": False,
     }
 
 
@@ -333,7 +355,8 @@ def leave_group(
     db: Session = Depends(get_db),
 ):
     """Leave the group. Members only, owners cannot leave."""
-    org_id = _get_current_org_id(current_user, db, organization_id)
+    # Use resolve_tenant_scope so member orgs (who don't own the group's org) can leave
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     role = repo.get_org_group_role(db, group_id, org_id)
     if not role:
         raise HTTPException(status_code=403, detail="You are not a member of this group.")
@@ -360,7 +383,8 @@ def list_members(
     Return member organizations.
     Owners always have access; members need show_members_to_members = True.
     """
-    org_id = _get_current_org_id(current_user, db, organization_id)
+    # Use resolve_tenant_scope — members own their own org, not the group-owner org
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     role = _require_member(group_id, org_id, db)
     if role == "GROUP_MEMBER":
         group = _get_group_or_404(group_id, db)
@@ -449,14 +473,18 @@ def get_analytics(
     Return group analytics.
     Owners always have access; members need show_analytics_to_members = True.
     """
-    org_id = _get_current_org_id(current_user, db, organization_id)
+    # Use resolve_tenant_scope — members own their own org, not the group-owner's org
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     role = _require_member(group_id, org_id, db)
     if role == "GROUP_MEMBER":
         group = _get_group_or_404(group_id, db)
         from app.modules.groups.repository import _parse_settings
         settings = _parse_settings(group.settings)
         if not settings.show_analytics_to_members:
-            raise HTTPException(status_code=403, detail="Analytics are not visible to members in this group.")
+            raise HTTPException(
+                status_code=403,
+                detail="Analytics are not visible to members in this group."
+            )
 
     return repo.get_group_analytics(db, group_id)
 
@@ -471,10 +499,11 @@ def list_invites(
     db: Session = Depends(get_db),
 ):
     """Return all invites for this group. Owner and permitted members."""
-    org_id = _get_current_org_id(current_user, db, organization_id)
+    # Use resolve_tenant_scope — member orgs can access if settings allow
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     role = _require_member(group_id, org_id, db)
     group = _get_group_or_404(group_id, db)
-    
+
     if role == "GROUP_MEMBER":
         from app.modules.groups.repository import _parse_settings
         settings = _parse_settings(group.settings)
@@ -498,7 +527,8 @@ def send_invite(
     Owner can always invite; members need can_members_invite = True.
     Checks that the TARGET ORGANIZATION is not already a member (not the user).
     """
-    org_id = _get_current_org_id(current_user, db, organization_id)
+    # Use resolve_tenant_scope — members can send invites if settings allow
+    org_id = resolve_tenant_scope(current_user, db, organization_id)
     role = _require_member(group_id, org_id, db)
     group = _get_group_or_404(group_id, db)
 
