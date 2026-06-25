@@ -39,7 +39,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         user = get_user_by_email(db, payload.email.lower())
 
         if not user:
-            return {"message": "If the account exists, a reset link has been sent"}
+            raise HTTPException(status_code=404, detail="No account found with this email address.")
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = _token_sha256(raw_token)

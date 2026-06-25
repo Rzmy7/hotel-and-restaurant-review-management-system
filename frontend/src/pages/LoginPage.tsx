@@ -330,6 +330,7 @@ const LoginPage = () => {
                 </label>
                 <Link
                   to="/forgot-password"
+                  state={{ loginEmail: email }}
                   className="text-[12px] font-bold text-blue-500 hover:text-blue-400 transition-colors"
                 >
                   Forgot password?
