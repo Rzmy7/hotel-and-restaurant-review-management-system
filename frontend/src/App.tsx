@@ -252,7 +252,7 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-        <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route path="/oauth-success" element={<OAuthSuccessPage />} />
         
         {/* Legal Pages */}

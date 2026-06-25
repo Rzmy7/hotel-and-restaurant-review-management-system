@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -17,6 +17,13 @@ const ResetPasswordPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const auth = useAuth();
     const navigate = useNavigate();
+
+    // Silently log out the user if they navigate to this page while still authenticated
+    useEffect(() => {
+        if (auth.user) {
+            auth.persist(null);
+        }
+    }, [auth.user, auth]);
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
