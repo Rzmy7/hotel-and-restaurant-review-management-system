@@ -123,17 +123,16 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         },
     }
 
-from fastapi import BackgroundTasks
+
 
 @router.post("/login", summary="Authenticate and obtain a JWT")
-def login(payload: LoginModel, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def login(payload: LoginModel, db: Session = Depends(get_db)):
     """Validate email/password credentials and return a JWT access token."""
     validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
         db=db,
         email=validated["email"],
-        password=validated["password"],
-        background_tasks=background_tasks
+        password=validated["password"]
     )
     return {
         "message": "Login successful",

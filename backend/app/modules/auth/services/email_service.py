@@ -45,17 +45,76 @@ def send_2fa_email(to_email: str, code: str) -> None:
         print("[2FA-email] WARN: SMTP is not configured (SMTP_EMAIL or SMTP_PASSWORD missing). OTP code:", code)
         return
 
-    body = (
-        "Your Verification Code is:\n\n"
-        f"{code}\n\n"
-        "Please use this code to complete your 2FA setup.\n"
-        "This code expires in 10 minutes."
+    # Professional HTML email body — proper formatting avoids spam filters
+    html_body = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background-color:#f4f4f7;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0"
+             style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:28px 32px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:600;">ReviewMate</h1>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 32px;">
+            <p style="margin:0 0 12px;color:#374151;font-size:16px;">Hello,</p>
+            <p style="margin:0 0 24px;color:#374151;font-size:16px;">
+              Use the verification code below to complete your sign-in. This code is valid for <strong>10 minutes</strong>.
+            </p>
+            <!-- OTP Code Box -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <div style="display:inline-block;background-color:#F3F4F6;border:2px dashed #4F46E5;border-radius:10px;padding:18px 48px;margin:8px 0 24px;">
+                  <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#1F2937;font-family:'Courier New',monospace;">{code}</span>
+                </div>
+              </td></tr>
+            </table>
+            <p style="margin:0 0 8px;color:#6B7280;font-size:14px;">
+              If you did not request this code, you can safely ignore this email. Someone may have entered your email address by mistake.
+            </p>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="background-color:#F9FAFB;padding:20px 32px;text-align:center;border-top:1px solid #E5E7EB;">
+            <p style="margin:0;color:#9CA3AF;font-size:12px;">&copy; 2026 ReviewMate. All rights reserved.</p>
+            <p style="margin:4px 0 0;color:#9CA3AF;font-size:12px;">This is an automated message — please do not reply.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    plain_body = (
+        f"Your ReviewMate verification code is: {code}\n\n"
+        "This code expires in 10 minutes.\n"
+        "If you did not request this, please ignore this email."
     )
 
-    msg = MIMEText(body)
-    msg["Subject"] = "Hotel System 2FA Code"
-    msg["From"] = SMTP_EMAIL
+    # Build a multipart message (HTML + plain text fallback)
+    from email.mime.multipart import MIMEMultipart
+    from email.utils import formataddr, formatdate, make_msgid
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Your ReviewMate verification code: {code}"
+    msg["From"] = formataddr(("ReviewMate", SMTP_EMAIL))
     msg["To"] = to_email
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain="reviewmate.app")
+    msg["Reply-To"] = SMTP_EMAIL
+
+    # Attach plain text first, then HTML (email clients prefer the last part)
+    msg.attach(MIMEText(plain_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
     try:

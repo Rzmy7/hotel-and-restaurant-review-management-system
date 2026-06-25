@@ -32,7 +32,7 @@ def _assert_password_matches_email(password: str, password_hash: str) -> None:
         )
 
 
-def login_user(db: Session, email: str, password: str, background_tasks = None) -> dict:
+def login_user(db: Session, email: str, password: str) -> dict:
     """Authenticate a user by email/password and return a JWT token."""
     # The route/validator normalizes email before this lookup.
     user = get_user_by_email(db, email)  # find user
@@ -89,6 +89,11 @@ def login_user(db: Session, email: str, password: str, background_tasks = None) 
 
     is_2fa_enabled = getattr(user, 'is_2fa_enabled', False)
     role_upper = str(role or "").upper()
+
+    # ── DEBUG: Log every 2FA decision variable ──
+    print(f"[2FA-DEBUG] user={user.email}, is_2fa_enabled={is_2fa_enabled}, "
+          f"two_fa_feature_enabled={two_fa_feature_enabled}, "
+          f"role_upper={role_upper}, require_2fa_for_admins={require_2fa_for_admins}")
     
     if two_fa_feature_enabled and (is_2fa_enabled or (role_upper == "ADMIN" and require_2fa_for_admins)):
         code = f"{random.randint(100000, 999999)}"
@@ -102,20 +107,22 @@ def login_user(db: Session, email: str, password: str, background_tasks = None) 
         )
         db.add(token)
         db.commit()
+
+        print(f"[2FA-DEBUG] OTP code={code} saved to DB for user={user.email}. Now sending email...")
         
-        if background_tasks:
-            background_tasks.add_task(send_2fa_email, user.email, code)
-        else:
-            try:
-                send_2fa_email(user.email, code)
-            except Exception as e:
-                print(f"[login_user] Failed to send OTP email to {user.email}: {e}")
+        try:
+            send_2fa_email(user.email, code)
+            print(f"[2FA-DEBUG] send_2fa_email() returned successfully for {user.email}")
+        except Exception as e:
+            print(f"[2FA-DEBUG] send_2fa_email() FAILED for {user.email}: {type(e).__name__}: {e}")
         
         return {
             "require_2fa": True,
             "message": "A verification code has been sent to your email.",
             "email": user.email
         }
+    else:
+        print(f"[2FA-DEBUG] 2FA condition NOT met — skipping OTP for {user.email}")
 
     return _generate_login_response(db, user, role)
 
