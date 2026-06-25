@@ -1,8 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import ProfileTemplate from "../components/profile/templates/ProfileTemplate";
+import UnsavedChangesModal from "../components/profile/organisms/UnsavedChangesModal";
 import { apiClient } from "../api/client";
+import { useNavigationBlocker } from "../contexts/NavigationBlockerContext";
 
 export interface UserProfile {
     firstName: string;
@@ -16,38 +18,79 @@ export interface UserProfile {
     avatar?: string;
 }
 
+/** Fields the user can actually edit (exclude read-only: email, joinedDate, avatar) */
+const EDITABLE_KEYS: (keyof UserProfile)[] = [
+    "firstName", "lastName", "phone", "jobTitle", "bio", "location",
+];
+
+/** Deep-compare only editable fields to know if the form is dirty */
+const isDirty = (saved: UserProfile, current: UserProfile): boolean =>
+    EDITABLE_KEYS.some(k => (saved[k] ?? "") !== (current[k] ?? ""));
+
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
 
     const token = localStorage.getItem("token");
 
-    const [profile, setProfile] = useState<UserProfile>({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        jobTitle: "",
-        bio: "",
-        location: "",
-        joinedDate: "",
+    // ── The server-saved "clean" snapshot ───────────────────────────────
+    const [savedProfile, setSavedProfile] = useState<UserProfile>({
+        firstName: "", lastName: "", email: "", phone: "",
+        jobTitle: "", bio: "", location: "", joinedDate: "",
     });
+
+    // ── Working (potentially dirty) copy ────────────────────────────────
+    const [profile, setProfile] = useState<UserProfile>({ ...savedProfile });
 
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
-
     const [isUploading, setIsUploading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    /**
-     * Load profile (AUTO-FILL LOGIC)
-     */
+    // ── Navigation blocker (Custom context for BrowserRouter) ──────────────
+    const { setIsDirty, registerBlockHandler, unregisterBlockHandler } = useNavigationBlocker();
+    const [showModal, setShowModal] = useState(false);
+    const [pendingPath, setPendingPath] = useState<string | null>(null);
+
+    // Track whether there are unsaved changes
+    const hasUnsaved = isDirty(savedProfile, profile);
+
+    // Register our dirty state and block handler with the global context
+    useEffect(() => {
+        setIsDirty(hasUnsaved);
+        
+        if (hasUnsaved) {
+            registerBlockHandler((targetPath) => {
+                setPendingPath(targetPath);
+                setShowModal(true);
+            });
+        } else {
+            unregisterBlockHandler();
+        }
+
+        return () => {
+            setIsDirty(false);
+            unregisterBlockHandler();
+        };
+    }, [hasUnsaved, setIsDirty, registerBlockHandler, unregisterBlockHandler]);
+
+    // ── Browser tab close / refresh guard ───────────────────────────────
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsaved) {
+                e.preventDefault();
+                e.returnValue = ""; // triggers the browser's native "Leave site?" dialog
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [hasUnsaved]);
+
+    // ── Load profile ─────────────────────────────────────────────────────
     useEffect(() => {
         const loadProfile = async () => {
             try {
                 const data = await apiClient.get<any>("/users/me");
-
-                setProfile({
+                const loaded: UserProfile = {
                     firstName: data.firstName || "",
                     lastName: data.lastName || "",
                     email: data.email || "",
@@ -57,36 +100,30 @@ const ProfilePage: React.FC = () => {
                     location: data.location || "",
                     joinedDate: data.joinedDate || "",
                     avatar: data.avatar,
-                });
+                };
+                setSavedProfile(loaded);
+                setProfile(loaded);
 
-                //  Show message if profile is empty
                 if (!data.firstName && !data.lastName) {
                     showToast("Please complete your profile", "info");
                 }
-
-            } catch (error) {
+            } catch {
                 showToast("Failed to load profile", "error");
             } finally {
                 setLoading(false);
             }
         };
-
         loadProfile();
     }, [token, showToast]);
 
-    /**
-     * Update form state
-     */
+    // ── Update form state ─────────────────────────────────────────────────
     const handleUpdate = useCallback((updated: UserProfile) => {
         setProfile(updated);
     }, []);
 
-    /**
-     * Save profile
-     */
+    // ── Save profile ──────────────────────────────────────────────────────
     const handleSave = useCallback(async () => {
         setIsSaving(true);
-
         try {
             await apiClient.put<any>("/users/me", {
                 firstName: profile.firstName,
@@ -99,108 +136,119 @@ const ProfilePage: React.FC = () => {
 
             showToast("Profile saved successfully ✅", "success");
 
-            //  Reload profile after save (important)
-            window.location.reload();
+            // Mark as clean
+            setSavedProfile({ ...profile });
+            setIsDirty(false); // Global context update
 
-        } catch (error) {
+            // If we were blocked, navigate to the target now that it's saved
+            if (showModal && pendingPath) {
+                setShowModal(false);
+                navigate(pendingPath);
+            } else {
+                window.location.reload();
+            }
+        } catch {
             showToast("Failed to update profile", "error");
         } finally {
             setIsSaving(false);
         }
-    }, [profile, token, showToast]);
+    }, [profile, showToast, showModal, pendingPath, navigate, setIsDirty]);
 
+    // ── Cancel / Discard ──────────────────────────────────────────────────
     const handleCancel = useCallback(() => {
-        if (confirm("Discard your changes?")) {
+        if (hasUnsaved) {
+            // Trigger blocker manually
+            setPendingPath("/dashboard");
+            setShowModal(true);
+        } else {
             navigate("/dashboard");
         }
-    }, [navigate]);
+    }, [navigate, hasUnsaved]);
 
+    // Modal action: Discard all changes and proceed with navigation
+    const handleDiscard = useCallback(() => {
+        setProfile({ ...savedProfile });
+        setIsDirty(false); // Clear global dirty state immediately
+        setShowModal(false);
+        if (pendingPath) {
+            navigate(pendingPath);
+        }
+    }, [savedProfile, pendingPath, navigate, setIsDirty]);
 
+    // Modal action: Stay on the page and keep editing
+    const handleContinueEditing = useCallback(() => {
+        setShowModal(false);
+        setPendingPath(null);
+    }, []);
+
+    // ── Photo upload ──────────────────────────────────────────────────────
     const handlePhotoChange = useCallback(
         async (file: File) => {
             let previewUrl = "";
-            let previousAvatar = profile.avatar; // store old image
+            const previousAvatar = profile.avatar;
 
             try {
-                // START LOADING
                 setIsUploading(true);
-
-                // STEP 1: Show instant preview (UX)
                 previewUrl = URL.createObjectURL(file);
+                setProfile(prev => ({ ...prev, avatar: previewUrl }));
 
-                setProfile((prev) => ({
-                    ...prev,
-                    avatar: previewUrl,
-                }));
-
-                // STEP 2: Prepare form data
                 const formData = new FormData();
                 formData.append("file", file);
 
-                // STEP 3: Call backend
                 const data = await apiClient.post<any>("/users/me/upload-image", formData as any);
 
-                console.log("UPLOAD RESPONSE:", data);
-
-                // STEP 4: Replace preview with real URL
-                setProfile((prev) => ({
-                    ...prev,
-                    avatar: data.profile_image_url,
-                }));
-
-                //  Clean memory (important)
+                setProfile(prev => ({ ...prev, avatar: data.profile_image_url }));
+                setSavedProfile(prev => ({ ...prev, avatar: data.profile_image_url }));
                 URL.revokeObjectURL(previewUrl);
-
-                // STEP 5: Success message
                 showToast("Profile image updated successfully ✅", "success");
-
             } catch (error) {
                 console.error(error);
-
-                //  RESTORE OLD IMAGE (IMPORTANT UX FIX)
-                setProfile((prev) => ({
-                    ...prev,
-                    avatar: previousAvatar,
-                }));
-
+                setProfile(prev => ({ ...prev, avatar: previousAvatar }));
                 showToast("Failed to upload image", "error");
-
             } finally {
-                // STOP LOADING
                 setIsUploading(false);
             }
         },
-        [token, showToast, profile.avatar]
+        [showToast, profile.avatar]
     );
 
+    // ── Date formatter ────────────────────────────────────────────────────
     const formatMemberSince = (dateString: string) => {
         if (!dateString) return "";
-
-        const cleanDate = dateString.replace(" ", "T"); // fix backend format
+        const cleanDate = dateString.replace(" ", "T");
         const date = new Date(cleanDate);
-
-        return date.toLocaleString("en-US", {
-            month: "long",
-            year: "numeric",
-        });
+        return date.toLocaleString("en-US", { month: "long", year: "numeric" });
     };
 
     const memberSince = formatMemberSince(profile.joinedDate);
 
-    //  Show loading state
     if (loading) return <div>Loading profile...</div>;
 
     return (
-        <ProfileTemplate
-            profile={profile}
-            memberSince={memberSince}
-            onUpdate={handleUpdate}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            onPhotoChange={handlePhotoChange}
-            isSaving={isSaving}
-            isUploading={isUploading}
-        />
+        <>
+            <ProfileTemplate
+                profile={profile}
+                memberSince={memberSince}
+                onUpdate={handleUpdate}
+                onSave={handleSave}
+                onCancel={handleCancel}
+                onPhotoChange={handlePhotoChange}
+                isSaving={isSaving}
+                isUploading={isUploading}
+            />
+
+            {/* "Review Unsaved Changes" modal — shown when navigating away with dirty form */}
+            {showModal && (
+                <UnsavedChangesModal
+                    savedProfile={savedProfile}
+                    currentProfile={profile}
+                    onDiscard={handleDiscard}
+                    onContinueEditing={handleContinueEditing}
+                    onSave={handleSave}
+                    isSaving={isSaving}
+                />
+            )}
+        </>
     );
 };
 
