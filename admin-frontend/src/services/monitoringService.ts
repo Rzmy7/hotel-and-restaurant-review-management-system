@@ -37,12 +37,19 @@ const fetchServerHealth = async (url: string, healthPath: string = '/health', ti
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+        let apiKey = import.meta.env.VITE_INTERNAL_API_KEY || 'dev-internal-secret';
+        if (url.includes(DEFAULT_SCRAPING_URL)) {
+            apiKey = import.meta.env.VITE_SCRAPER_API_KEY || apiKey;
+        } else if (url.includes(DEFAULT_EMBEDDING_URL)) {
+            apiKey = import.meta.env.VITE_EMBEDDING_API_KEY || apiKey;
+        }
+
         const response = await fetch(`${url}${healthPath}`, {
             method: 'GET',
             signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
-                'X-Internal-API-Key': import.meta.env.VITE_INTERNAL_API_KEY || 'dev-internal-secret',
+                'X-Internal-API-Key': apiKey,
             },
         });
 

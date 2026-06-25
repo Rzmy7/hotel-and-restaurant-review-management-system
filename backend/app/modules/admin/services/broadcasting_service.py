@@ -213,6 +213,23 @@ def get_audience_label(audience_type: str, audience_value: Optional[str]) -> str
 
 def to_record(row) -> dict:
     sent_at = row.sent_at or row.scheduled_at or row.created_at
+
+    # Ensure the datetime is serialised as a UTC ISO-8601 string with a 'Z'
+    # suffix so the frontend Date parser treats it as UTC (not local time).
+    def _to_utc_iso(val) -> str:
+        if not val:
+            return ""
+        if isinstance(val, str):
+            s = val.strip().replace(" ", "T")
+            # Strip trailing fractional zeros from MSSQL CAST output
+            if "." in s:
+                s = s.rstrip("0").rstrip(".")
+            if not s.endswith("Z") and "+" not in s and "-" not in s[10:]:
+                s += "Z"
+            return s
+        # datetime object
+        return val.isoformat() + "Z"
+
     return {
         "id": str(row.broadcast_id),
         "subject": row.subject,
@@ -223,7 +240,7 @@ def to_record(row) -> dict:
         "messageType": row.message_type,
         "recipientCount": int(row.recipient_count or 0),
         "status": row.status,
-        "sentAt": (sent_at if isinstance(sent_at, str) else sent_at.isoformat()) if sent_at else "",
+        "sentAt": _to_utc_iso(sent_at),
         "sentBy": row.sent_by or "Admin User",
     }
 

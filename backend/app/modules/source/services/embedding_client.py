@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 # ── Service URLs ─────────────────────────────────────────────────────────────
 from app.core.config import EMBEDDING_SERVICE_URL
 
-# ── Internal API Key (shared secret for service-to-service auth) ─────────────
-INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
-_AUTH_HEADERS = {"X-Internal-API-Key": INTERNAL_API_KEY}
+# ── Internal API Key (service-to-service auth) ─────────────
+from app.core.config import EMBEDDING_API_KEY
+_AUTH_HEADERS = {"X-Internal-API-Key": EMBEDDING_API_KEY}
 
 
 @retry_on_deadlock(max_retries=3)

@@ -33,9 +33,8 @@ logger = logging.getLogger(__name__)
 from app.core.config import EMBEDDING_SERVICE_URL
 
 # ── Internal API Key (shared secret for service-to-service auth) ─────────────
-import os as _os
-_INTERNAL_API_KEY = _os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
-_AUTH_HEADERS = {"X-Internal-API-Key": _INTERNAL_API_KEY}
+from app.core.config import EMBEDDING_API_KEY
+_AUTH_HEADERS = {"X-Internal-API-Key": EMBEDDING_API_KEY}
 
 ALLOWED_EXTENSIONS = {".txt", ".docx", ".pdf"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB

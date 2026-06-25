@@ -32,7 +32,15 @@ from app.modules.admin.services.system_settings_service import get_system_timezo
 router = APIRouter(prefix="/broadcasting", tags=["Admin - Settings"])
 
 
-def _parse_scheduled_at_to_system_time(value: str | None, timezone_name: str) -> datetime | None:
+def _parse_scheduled_at_to_utc(value: str | None, timezone_name: str) -> datetime | None:
+    """Parse the scheduled-at string from the frontend and convert it to UTC.
+
+    The frontend ``datetime-local`` input produces a naive datetime string
+    that is expressed in the *system* timezone (the UI label tells the admin
+    "Interpreted in system timezone: …").  All other datetime columns
+    (``sent_at``, ``created_at``) are stored as UTC, so we convert the
+    user-supplied system-local time to UTC before persisting.
+    """
     if not value:
         return None
 
@@ -41,14 +49,18 @@ def _parse_scheduled_at_to_system_time(value: str | None, timezone_name: str) ->
         return None
 
     try:
-        parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(candidate)
     except ValueError:
         return None
 
     if parsed.tzinfo is None:
-        return parsed
+        # Naive datetime from datetime-local — treat as system timezone.
+        system_tz = ZoneInfo(timezone_name)
+        aware = parsed.replace(tzinfo=system_tz)
+        return aware.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
-    return parsed.astimezone(ZoneInfo(timezone_name)).replace(tzinfo=None)
+    # Already tz-aware — convert to UTC and strip tz.
+    return parsed.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
 
 @router.post("/send")
@@ -67,10 +79,10 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
 
         timezone_name = get_system_timezone(cursor)
         now_utc = datetime.utcnow()
-        scheduled_at = _parse_scheduled_at_to_system_time(payload.scheduledAt, timezone_name)
+        scheduled_at = _parse_scheduled_at_to_utc(payload.scheduledAt, timezone_name)
 
         status = "pending" if payload.scheduleType == "scheduled" else "sent"
-        sent_at = scheduled_at if status == "pending" else now_utc
+        sent_at = now_utc if status == "sent" else None
 
         broadcast_id = str(uuid.uuid4())
         cursor.execute(

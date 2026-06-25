@@ -4,7 +4,7 @@
 
 const DEFAULT_EMBEDDING_SERVICE_URL = import.meta.env.VITE_EMBEDDING_SERVICE_URL || '';
 const STORAGE_KEY = 'embeddingServiceUrl';
-const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY || 'dev-internal-secret';
+const EMBEDDING_API_KEY = import.meta.env.VITE_EMBEDDING_API_KEY || import.meta.env.VITE_INTERNAL_API_KEY || 'dev-internal-secret';
 
 /**
  * Get the current embedding service URL (from localStorage or default)
@@ -18,7 +18,7 @@ const getBaseUrl = (): string => {
  * Get auth headers for embedding service requests
  */
 const getAuthHeaders = (): Record<string, string> => ({
-    'X-Internal-API-Key': INTERNAL_API_KEY,
+    'X-Internal-API-Key': EMBEDDING_API_KEY,
     'Content-Type': 'application/json',
 });
 

@@ -57,7 +57,7 @@ def notify_backend_sync_status(source_id: str, status: str, new_review_count: in
             "new_review_count": new_review_count,
             "error_message": error_message
         }
-        headers = {"X-Internal-API-Key": config.internal_api_key}
+        headers = {"X-Internal-API-Key": config.backend_api_key}
         response = httpx.post(url, json=payload, headers=headers, timeout=10)
         response.raise_for_status()
         logger.info(f"Backend notified successfully for source {source_id} status {status}.")

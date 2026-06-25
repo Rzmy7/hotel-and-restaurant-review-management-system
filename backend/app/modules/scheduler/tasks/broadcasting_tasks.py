@@ -1,8 +1,9 @@
 """Scheduled tasks for processing pending broadcast events."""
 
+import asyncio
 import logging
 from datetime import datetime
-from zoneinfo import ZoneInfo
+
 import pyodbc
 
 from app.core.pyodbc_connection import get_raw_connection
@@ -17,44 +18,16 @@ from app.modules.admin.services.system_settings_service import get_system_timezo
 logger = logging.getLogger(__name__)
 
 
-def _get_timezone_offset(tz_name: str, utc_dt: datetime) -> object:
-    """
-    Get the timedelta offset for a given IANA timezone at a specific UTC time.
-    
-    Args:
-        tz_name: IANA timezone name (e.g., 'Asia/Colombo')
-        utc_dt: UTC datetime to calculate offset for
-    
-    Returns:
-        timedelta representing the offset from UTC
-    """
-    try:
-        tz = ZoneInfo(tz_name)
-        # Create aware datetime in target timezone from UTC
-        aware_dt = utc_dt.replace(tzinfo=None).replace(tzinfo=None)
-        utc_aware = utc_dt.replace(tzinfo=ZoneInfo('UTC'))
-        local_aware = utc_aware.astimezone(tz)
-        # Offset is the difference between the local time and UTC
-        return local_aware.utcoffset()
-    except Exception as e:
-        logger.warning(f"Failed to get timezone offset for {tz_name}: {e}, defaulting to UTC")
-        from datetime import timedelta
-        return timedelta(0)
-
-
-import asyncio
-
 async def process_pending_broadcasts():
     """
     Scheduled task to find pending broadcasts and send them.
     Runs every minute to check for broadcasts with scheduled_at <= now (in system timezone).
-    
-    This function is now async and delegates the blocking DB work to a thread pool.
+
+    This function is async and delegates the blocking DB work to a thread pool.
     """
     logger.info("Running broadcast scheduler check...")
-    
+
     try:
-        # Wrap the entire synchronous logic in a thread to avoid blocking the main loop
         await asyncio.to_thread(_process_broadcasts_sync_worker)
         logger.info("Broadcast processing worker completed successfully.")
     except Exception as e:
