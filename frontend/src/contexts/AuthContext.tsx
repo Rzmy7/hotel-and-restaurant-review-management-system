@@ -94,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const persist = (u: User | null, token?: string) => {
         setUser(u);
 
+        // when user logout clean user's data from local storage
         if (u) {
             localStorage.setItem("authUser", JSON.stringify(u));
         } else {

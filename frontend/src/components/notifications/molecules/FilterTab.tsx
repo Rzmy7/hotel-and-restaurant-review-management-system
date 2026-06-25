@@ -12,7 +12,7 @@ const FilterTab: React.FC<FilterTabProps> = ({ label, count, isActive, onClick }
         <button
             onClick={onClick}
             className={`px-4 py-2 rounded-xl text-[13px] font-bold cursor-pointer transition-all duration-300 border flex items-center gap-2.5 ${isActive
-                ? 'bg-blue-50 text-[#4e80ee] border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30 shadow-sm'
+                ? 'bg-blue-50 text-[#4e80ee] border-blue-200 dark:bg-blue-700/20 dark:text-blue-400 dark:border-blue-800/30 shadow-sm'
                 : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-slate-800/50 dark:hover:text-gray-200'
                 }`}
         >

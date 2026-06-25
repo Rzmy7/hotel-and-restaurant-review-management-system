@@ -49,6 +49,9 @@ async def upload_my_profile_image(
     """
     return await upload_profile_image(db, current_user.user_id, file)
 
+
+
+
 @router.post("/me/password")
 def change_my_password(
     data: PasswordChangeRequest,

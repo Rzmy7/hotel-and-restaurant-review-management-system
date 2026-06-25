@@ -19,7 +19,7 @@ from app.modules.auth.services.email_service import send_reset_email
 
 router = APIRouter()
 
-
+# Creates SHA256 hash of random password reset tokens
 def _token_sha256(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 

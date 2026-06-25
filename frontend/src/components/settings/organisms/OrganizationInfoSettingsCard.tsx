@@ -3,7 +3,9 @@ import { Upload, FileText, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
-import type { HotelInfoSettings } from '../../../types/settings';
+import { Select } from '../../ui/Select';
+import type { OrganizationInfoSettings } from '../../../types/settings';
+import type { OrganizationType } from '../../../api/settingsApi';
 
 interface OrganizationRule {
     rule_id: string;
@@ -13,18 +15,19 @@ interface OrganizationRule {
     source_filename: string | null;
 }
 
-interface HotelInfoSettingsCardProps {
-    data: HotelInfoSettings;
-    onChange: (updates: Partial<HotelInfoSettings>) => void;
+interface OrganizationInfoSettingsCardProps {
+    data: OrganizationInfoSettings;
+    onChange: (updates: Partial<OrganizationInfoSettings>) => void;
     onLogoUpload: () => void;
     onLogoRemove: () => void;
     isUploadingLogo?: boolean;
     onRulesUpload?: () => void;
     isUploadingRules?: boolean;
     organizationRules?: OrganizationRule[];
+    organizationTypes?: OrganizationType[];
 }
 
-export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
+export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCardProps> = ({
     data,
     onChange,
     onLogoUpload,
@@ -33,14 +36,23 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
     onRulesUpload,
     isUploadingRules = false,
     organizationRules = [],
+    organizationTypes = [],
 }) => {
     const rulesFilename = organizationRules.length > 0 ? organizationRules[0]?.source_filename : null;
+
+    const propertyTypeOptions = [
+        { label: 'Select Property Type', value: '' },
+        ...organizationTypes.map(type => ({
+            label: type.type_name,
+            value: type.type_name
+        }))
+    ];
 
     return (
         <div className="flex flex-col">
 
             {/* Logo Upload */}
-            <div className="flex flex-col gap-2 py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
+            <div className="flex flex-col gap-2 py-6 border-b border-gray-100 dark:border-slate-900/50 last:border-b-0">
                 <div className="flex gap-6 items-start max-md:flex-col">
                     <div
                         onClick={onLogoUpload}
@@ -49,13 +61,15 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                         {data.logoUrl ? (
                             <img
                                 src={data.logoUrl}
-                                alt="Hotel logo"
+                                alt="Organization logo"
                                 className="w-full h-full object-cover rounded-2xl"
                             />
                         ) : (
                             <>
                                 <Upload className="text-gray-400 group-hover:text-[#4e80ee] transition-colors" size={32} />
-                                <span className="text-[11px] font-black tracking-widest text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors text-center w-24">Upload Logo</span>
+                                <span className="text-[11px] font-black tracking-widest text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors text-center w-24">
+                                    Upload Logo
+                                </span>
                             </>
                         )}
                     </div>
@@ -63,16 +77,18 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                         <Button variant="outline" size="sm" onClick={onLogoUpload} isLoading={isUploadingLogo}>
                             {data.logoUrl ? 'Change Logo' : 'Upload Logo'}
                         </Button>
-                        <Button variant="danger" size="sm" onClick={onLogoRemove} disabled={isUploadingLogo || !data.logoUrl}>Remove</Button>
+                        <Button variant="danger" size="sm" onClick={onLogoRemove} disabled={isUploadingLogo || !data.logoUrl}>
+                            Remove
+                        </Button>
                         <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mt-2">Recommended 800x800px PNG</p>
                     </div>
                 </div>
             </div>
 
-            <FormField label="Hotel/Brand Name">
+            <FormField label="Organization Name">
                 <Input
-                    value={data.hotelName}
-                    onChange={(e) => onChange({ hotelName: e.target.value })}
+                    value={data.organizationName}
+                    onChange={(e) => onChange({ organizationName: e.target.value })}
                 />
             </FormField>
 
@@ -87,10 +103,11 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                 </FormField>
 
                 <FormField label="Property Type">
-                    <Input
+                    <Select
                         value={data.propertyType}
                         onChange={(e) => onChange({ propertyType: e.target.value })}
-                        placeholder="e.g. Hotel, Resort"
+                        
+                        options={propertyTypeOptions}
                     />
                 </FormField>
             </div>
@@ -110,6 +127,24 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                     onChange={(e) => onChange({ phoneNumber: e.target.value })}
                 />
             </FormField>
+
+            <div className="grid grid-cols-2 gap-6 py-6 border-b border-gray-100 dark:border-slate-700/50 max-md:grid-cols-1">
+                <FormField label="City">
+                    <Input
+                        value={data.city}
+                        onChange={(e) => onChange({ city: e.target.value })}
+                        placeholder="City"
+                    />
+                </FormField>
+
+                <FormField label="Country">
+                    <Input
+                        value={data.country}
+                        onChange={(e) => onChange({ country: e.target.value })}
+                        placeholder="Country"
+                    />
+                </FormField>
+            </div>
 
             <div className="py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
                 <div className="md:col-span-2">
@@ -165,7 +200,7 @@ export const HotelInfoSettingsCard: React.FC<HotelInfoSettingsCardProps> = ({
                                         <span className="text-xs font-bold tracking-wider text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors">
                                             {organizationRules.length > 0 ? 'Replace Rules File' : 'Upload Rules File'}
                                         </span>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-400 text-center">
                                             Supported formats: .txt, .docx, .pdf (max 10MB)
                                         </span>
                                     </>

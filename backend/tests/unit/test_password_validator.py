@@ -12,6 +12,7 @@ from app.core.validations.password_validator import validate_password_strength
 
 
 class TestValidatePasswordStrength:
+    
     """Tests for validate_password_strength()."""
 
     def test_valid_password_passes(self):

@@ -36,7 +36,6 @@ const ProfilePage: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // 🔥 ADD THIS
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -120,10 +119,10 @@ const ProfilePage: React.FC = () => {
     const handlePhotoChange = useCallback(
         async (file: File) => {
             let previewUrl = "";
-            let previousAvatar = profile.avatar; // 🔥 store old image
+            let previousAvatar = profile.avatar; // store old image
 
             try {
-                // 🔄 START LOADING
+                // START LOADING
                 setIsUploading(true);
 
                 // STEP 1: Show instant preview (UX)
@@ -149,7 +148,7 @@ const ProfilePage: React.FC = () => {
                     avatar: data.profile_image_url,
                 }));
 
-                // 🧹 Clean memory (important)
+                //  Clean memory (important)
                 URL.revokeObjectURL(previewUrl);
 
                 // STEP 5: Success message
@@ -158,7 +157,7 @@ const ProfilePage: React.FC = () => {
             } catch (error) {
                 console.error(error);
 
-                // ❌ RESTORE OLD IMAGE (IMPORTANT UX FIX)
+                //  RESTORE OLD IMAGE (IMPORTANT UX FIX)
                 setProfile((prev) => ({
                     ...prev,
                     avatar: previousAvatar,
@@ -167,7 +166,7 @@ const ProfilePage: React.FC = () => {
                 showToast("Failed to upload image", "error");
 
             } finally {
-                // 🔄 STOP LOADING
+                // STOP LOADING
                 setIsUploading(false);
             }
         },

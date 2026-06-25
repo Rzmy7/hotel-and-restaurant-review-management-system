@@ -1,15 +1,15 @@
 import React from 'react';
 
 interface ProfileAvatarProps {
-    src?: string; // 🔹 Image URL from backend (Supabase)
-    initials: string; // 🔹 Fallback text if no image
-    size?: 'sm' | 'md' | 'lg' | 'xl'; // 🔹 Avatar sizes
+    src?: string; //  Image URL from backend (Supabase)
+    initials: string; //  Fallback text if no image
+    size?: 'sm' | 'md' | 'lg' | 'xl'; //  Avatar sizes
 }
 
 const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
     src,
     initials,
-    size = 'md'
+    size = 'sm'
 }) => {
 
     // 🔹 Size styles for different avatar sizes
@@ -20,7 +20,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
         xl: 'w-32 h-32 text-4xl',
     };
 
-    // 🔥 IMPORTANT FIX: Prevent browser cache issue
+    // IMPORTANT FIX: Prevent browser cache issue
     // If we use same URL, browser shows old image
     // So we add timestamp to force reload
     const imageUrl = src ? `${src}?t=${new Date().getTime()}` : null;
@@ -38,7 +38,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
                 bg-gray-100 dark:bg-slate-700
             `}
         >
-            {/* 🔹 If image exists → show image */}
+            {/*  If image exists → show image */}
             {imageUrl ? (
                 <img
                     src={imageUrl}
@@ -46,7 +46,7 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
                     className="w-full h-full object-cover"
                 />
             ) : (
-                // 🔹 If no image → show initials
+                //  If no image → show initials
                 <span className="font-bold text-gray-400 dark:text-slate-500 uppercase">
                     {initials}
                 </span>

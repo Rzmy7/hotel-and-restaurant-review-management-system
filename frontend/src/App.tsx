@@ -47,6 +47,8 @@ const ChooseSchedulePage = React.lazy(() => import('./pages/ChooseSchedulePage')
 const ChoosePlanPage = React.lazy(() => import('./pages/ChoosePlanPage'));
 const FinishSetupPage = React.lazy(() => import('./pages/FinishSetupPage'));
 const OAuthSuccessPage = React.lazy(() => import("./pages/OAuthSuccessPage"));
+const TermsOfServicePage = React.lazy(() => import('./pages/TermsOfServicePage'));
+const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage'));
 
 // Pages - Main Application (Lazy Loaded)
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
@@ -250,8 +252,12 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-        <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route path="/oauth-success" element={<OAuthSuccessPage />} />
+        
+        {/* Legal Pages */}
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
         {/* 
           Initial Setup Workflow

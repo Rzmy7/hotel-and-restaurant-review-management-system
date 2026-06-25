@@ -1,3 +1,5 @@
+// Manage all settings-related logic (fetching, updating, uploading, etc.) in one place.
+
 import { useState, useEffect, useCallback } from 'react';
 import { settingsService } from '../services/settingsService';
 import type { SettingsData } from '../types/settings';
@@ -5,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import type { PasswordChangePayload } from '../api/settingsApi';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 
+// State Management
 export const useSettings = () => {
     const [data, setData] = useState<SettingsData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -47,23 +50,23 @@ export const useSettings = () => {
         }
     };
 
-    const uploadHotelLogo = async (file: File) => {
+    const uploadOrganizationLogo = async (file: File) => {
         try {
-            const logoUrl = await settingsService.uploadHotelLogo(file);
+            const logoUrl = await settingsService.uploadOrganizationLogo(file);
             setData((prev) => {
                 if (!prev) return prev;
                 return {
                     ...prev,
-                    hotelInfo: {
-                        ...prev.hotelInfo,
+                    organizationInfo: {
+                        ...prev.organizationInfo,
                         logoUrl,
                     },
                 };
             });
-            showToast('Hotel logo uploaded successfully', 'success');
+            showToast('Organization logo uploaded successfully', 'success');
             return logoUrl;
         } catch (err) {
-            showToast('Failed to upload hotel logo', 'error');
+            showToast('Failed to upload organization logo', 'error');
             throw err;
         }
     };
@@ -88,6 +91,10 @@ export const useSettings = () => {
         return await settingsService.fetchOrganizationRules();
     };
 
+    const fetchOrganizationTypes = async () => {
+        return await settingsService.fetchOrganizationTypes();
+    };
+
     return {
         data,
         loading,
@@ -95,9 +102,10 @@ export const useSettings = () => {
         error,
         refreshData: loadSettings,
         updateSettings,
-        uploadHotelLogo,
+        uploadOrganizationLogo,
         changePassword,
         uploadRulesFile,
         fetchOrganizationRules,
+        fetchOrganizationTypes,
     };
 };

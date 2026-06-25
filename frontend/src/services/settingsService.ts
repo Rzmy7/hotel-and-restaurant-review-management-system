@@ -1,5 +1,5 @@
 import { settingsApi } from '../api/settingsApi';
-import type { PasswordChangePayload } from '../api/settingsApi';
+import type { PasswordChangePayload, OrganizationType } from '../api/settingsApi';
 import type { SettingsData } from '../types/settings';
 import axios from 'axios';
 
@@ -24,12 +24,12 @@ export const settingsService = {
         }
     },
 
-    uploadHotelLogo: async (file: File): Promise<string> => {
+    uploadOrganizationLogo: async (file: File): Promise<string> => {
         try {
-            return await settingsApi.uploadHotelLogo(file);
+            return await settingsApi.uploadOrganizationLogo(file);
         } catch (error) {
-            console.error('Failed to upload hotel logo:', error);
-            throw new Error('Failed to upload hotel logo');
+            console.error('Failed to upload organization logo:', error);
+            throw new Error('Failed to upload organization logo');
         }
     },
 
@@ -113,6 +113,15 @@ export const settingsService = {
             return await settingsApi.fetchOrganizationRules();
         } catch (error) {
             console.error('Failed to fetch organization rules:', error);
+            return [];
+        }
+    },
+
+    fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
+        try {
+            return await settingsApi.fetchOrganizationTypes();
+        } catch (error) {
+            console.error('Failed to fetch organization types:', error);
             return [];
         }
     },

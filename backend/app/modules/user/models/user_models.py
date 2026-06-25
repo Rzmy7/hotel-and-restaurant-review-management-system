@@ -1,4 +1,6 @@
 # app/modules/user/models/user_models.py
+
+# Database representation for user
 import uuid
 from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -32,6 +34,7 @@ class User(Base):
     is_email_verified = Column(Boolean, nullable=False, default=False)
     is_phone_verified = Column(Boolean, nullable=False, default=False)
     is_2fa_enabled = Column(Boolean, nullable=False, default=False)
+    is_email_notifications_enabled = Column(Boolean, nullable=False, default=True)
 
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 

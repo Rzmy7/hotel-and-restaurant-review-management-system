@@ -145,6 +145,8 @@ const FinishSetupPage = () => {
     }
   };
 
+
+  // center content
   const nextSteps = [
     {
       title: 'Initial Review Fetching',
