@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from typing import Any
 from fastapi import UploadFile, HTTPException
 import os
 from uuid import uuid4
@@ -17,8 +16,7 @@ from app.modules.auth.models.auth_models import TwoFactorToken
 from app.modules.auth.services.email_service import send_2fa_email
 from app.core.validations.otp_validator import validate_otp_format
 from app.modules.user.schemas.profile_schema import TwoFactorVerifyRequest
-import pyodbc
-from app.core.db_utils import get_connection_string
+
 # Get bucket name from .env
 BUCKET_NAME = os.getenv("SUPABASE_BUCKET")
 
@@ -26,6 +24,9 @@ BUCKET_NAME = os.getenv("SUPABASE_BUCKET")
 def _is_2fa_feature_enabled() -> bool:
     """Check whether the admin 2FA feature flag is enabled."""
     try:
+        # pyrefly: ignore [missing-import]
+        import pyodbc  # noqa: PLC0415
+        from app.core.db_utils import get_connection_string  # noqa: PLC0415
         from app.modules.admin.services.system_settings_service import (
             ensure_system_settings_table,
             get_setting,
@@ -170,7 +171,11 @@ def request_2fa(db: Session, user_id: str) -> dict[str, str]:
     db.add(token)
     db.commit()
     
-    send_2fa_email(user.email, code)
+    try:
+        send_2fa_email(user.email, code)
+    except Exception as e:
+        print(f"[request_2fa] Failed to send OTP email to {user.email}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send verification email: {str(e)}")
     
     return {"message": "Verification code sent to your email"}
 

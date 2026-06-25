@@ -39,14 +39,17 @@ def send_reset_email(to_email: str, link: str) -> None:
 
 def send_2fa_email(to_email: str, code: str) -> None:
     """Send a 2-factor authentication code email to the given address."""
+    print(f"[2FA-email] Attempting to send OTP to {to_email}")
+
     if not SMTP_EMAIL or not SMTP_PASSWORD:
-        print("[warn] SMTP is not configured, fake-sending 2FA code:", code)
+        print("[2FA-email] WARN: SMTP is not configured (SMTP_EMAIL or SMTP_PASSWORD missing). OTP code:", code)
         return
 
     body = (
         "Your Verification Code is:\n\n"
         f"{code}\n\n"
-        "Please use this to complete your login or setting up 2FA."
+        "Please use this code to complete your 2FA setup.\n"
+        "This code expires in 10 minutes."
     )
 
     msg = MIMEText(body)
@@ -54,15 +57,24 @@ def send_2fa_email(to_email: str, code: str) -> None:
     msg["From"] = SMTP_EMAIL
     msg["To"] = to_email
 
-    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
     try:
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
         server.ehlo()
         server.starttls()
         server.ehlo()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
-    finally:
         server.quit()
+        print(f"[2FA-email] SUCCESS: OTP sent to {to_email}")
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"[2FA-email] ERROR: SMTP authentication failed: {e}")
+        raise RuntimeError(f"SMTP authentication failed: {e}") from e
+    except smtplib.SMTPException as e:
+        print(f"[2FA-email] ERROR: SMTP error while sending to {to_email}: {e}")
+        raise RuntimeError(f"SMTP error: {e}") from e
+    except Exception as e:
+        print(f"[2FA-email] ERROR: Unexpected error while sending to {to_email}: {e}")
+        raise RuntimeError(f"Email sending failed: {e}") from e
 
 
 # send an email when user enable email notifications
