@@ -31,9 +31,12 @@ class TripAdvisorScrapeRequest(BaseModel):
     pages: Optional[str] = "1"
 
 
+from fastapi import APIRouter, HTTPException, Depends
+from core.security import verify_internal_request
+
 @router.post("/scrape")
 @limiter.limit(config.rate_limit_scrape)
-def trigger_tripadvisor_scrape(request: Request, body: TripAdvisorScrapeRequest):
+def trigger_tripadvisor_scrape(request: Request, body: TripAdvisorScrapeRequest, internal: bool = Depends(verify_internal_request)):
     """
     Upserts the source in the database and submits a scrape job to the
     thread pool. Returns the job_id for real-time monitoring.

@@ -97,7 +97,8 @@ def _get_org_source_ids(source_id: str) -> list[str]:
 def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     import logging
     _logger = logging.getLogger(__name__)
-    _api_key = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+    from app.core.config import EMBEDDING_API_KEY
+    _api_key = EMBEDDING_API_KEY
     try:
         # Get all source IDs belonging to the same organization
         org_source_ids = _get_org_source_ids(source_id) if source_id else []

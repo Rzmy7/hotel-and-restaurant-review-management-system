@@ -728,7 +728,9 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
     scraper_accepted = False
     try:
         # We use a short timeout and fire-and-forget approach for the trigger
-        with httpx.Client() as client:
+        from app.core.config import SCRAPER_API_KEY
+        headers = {"X-Internal-API-Key": SCRAPER_API_KEY}
+        with httpx.Client(headers=headers) as client:
             resp = client.post(endpoint, json=payload, timeout=10.0)
             if resp.status_code in [200, 201, 202]:
                 scraper_accepted = True

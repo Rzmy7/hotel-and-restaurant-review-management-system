@@ -73,7 +73,7 @@ def reconcile_stuck_tasks():
     for attempt in range(1, max_retries + 1):
         try:
             logger.info(f"Reconciling stuck tasks from {url} (Attempt {attempt}/{max_retries})...")
-            headers = {"X-Internal-API-Key": config.internal_api_key}
+            headers = {"X-Internal-API-Key": config.backend_api_key}
             with httpx.Client(timeout=10.0, headers=headers) as client:
                 resp = client.get(url)
                 if resp.status_code == 200:

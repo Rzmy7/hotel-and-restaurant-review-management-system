@@ -27,14 +27,37 @@ from app.config import (
 from app.jobs import add_job, update_job, get_recent_jobs
 from app.embedding import embed_text
 
-# ── Internal API Key ────────────────────────────────────────────────
-INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+import hmac
+import logging
+from fastapi import Request, Header, HTTPException
+from typing import Optional
+import os
 
-def verify_api_key(x_internal_api_key: Optional[str] = Header(None)):
-    """Validate service-to-service communication via shared secret (X-Internal-API-Key header)."""
-    if not x_internal_api_key or x_internal_api_key != INTERNAL_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing Internal API Key")
-    return True
+logger = logging.getLogger(__name__)
+
+# ── Internal API Key (Phase 1: Backward Compatible) ────────────────────────────────────────────────
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+EMBEDDING_API_KEYS = [k.strip() for k in os.getenv("EMBEDDING_API_KEYS", INTERNAL_API_KEY).split(",") if k.strip()]
+
+def verify_api_key(request: Request, x_internal_api_key: Optional[str] = Header(None)):
+    """
+    Validate service-to-service communication.
+    Supports multiple valid keys for zero-downtime rotation.
+    """
+    if not x_internal_api_key:
+        logger.warning(f"event=internal_auth_failure service=embedding-service path={request.url.path} reason=missing_api_key remote_ip={request.client.host if request.client else 'unknown'} message=\"Internal API Key missing in request headers.\"")
+        raise HTTPException(status_code=401, detail="Missing Internal API Key")
+        
+    for valid_key in EMBEDDING_API_KEYS:
+        # Prevent timing attacks
+        if hmac.compare_digest(x_internal_api_key.encode("utf-8"), valid_key.encode("utf-8")):
+            return True
+
+    # Auth failed
+    key_suffix = f"***{x_internal_api_key[-4:]}" if len(x_internal_api_key) > 4 else "***"
+    logger.warning(f"event=internal_auth_failure service=embedding-service path={request.url.path} reason=invalid_api_key remote_ip={request.client.host if request.client else 'unknown'} key_suffix={key_suffix} message=\"Internal API Key rejected. Key mismatch.\"")
+    
+    raise HTTPException(status_code=401, detail="Invalid Internal API Key")
 
 app = FastAPI(title="Embedding Service")
 

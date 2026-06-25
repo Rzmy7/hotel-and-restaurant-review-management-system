@@ -61,6 +61,12 @@ PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
 EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002").rstrip("/")
 
+# Service-to-Service API Keys (Phase 1: Backward Compatible)
+INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+BACKEND_API_KEYS: list[str] = [k.strip() for k in os.getenv("BACKEND_API_KEYS", INTERNAL_API_KEY).split(",") if k.strip()]
+SCRAPER_API_KEY: str = os.getenv("SCRAPER_API_KEY", INTERNAL_API_KEY)
+EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", INTERNAL_API_KEY)
+
 # ── CORS allowed origins ────────────────────────────────────────────
 # Base origins always allowed (constructed from FRONTEND_URL and ADMIN_FRONTEND_URL)
 _base_origins: list[str] = [
