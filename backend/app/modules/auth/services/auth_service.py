@@ -166,12 +166,11 @@ def verify_login_2fa(db: Session, email: str, code: str) -> dict:
         
     token = db.query(TwoFactorToken).filter(
         TwoFactorToken.user_id == user.user_id,
-        TwoFactorToken.code == code,
-        TwoFactorToken.used_at == None,
-        TwoFactorToken.expires_at > datetime.utcnow()
+        TwoFactorToken.code == code.strip(),
+        TwoFactorToken.used_at.is_(None)
     ).first()
     
-    if not token:
+    if not token or token.expires_at.replace(tzinfo=None) < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Invalid or expired verification code"

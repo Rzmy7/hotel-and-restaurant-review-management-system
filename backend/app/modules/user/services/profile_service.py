@@ -190,12 +190,11 @@ def enable_2fa(db: Session, user_id: str, data: TwoFactorVerifyRequest) -> dict[
         
     token = db.query(TwoFactorToken).filter(
         TwoFactorToken.user_id == user.user_id,
-        TwoFactorToken.code == data.code,
-        TwoFactorToken.used_at == None,
-        TwoFactorToken.expires_at > datetime.utcnow()
+        TwoFactorToken.code == data.code.strip(),
+        TwoFactorToken.used_at.is_(None)
     ).first()
     
-    if not token:
+    if not token or token.expires_at.replace(tzinfo=None) < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Invalid or expired verification code")
         
     token.used_at = datetime.utcnow()

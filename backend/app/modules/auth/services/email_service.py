@@ -57,24 +57,19 @@ def send_2fa_email(to_email: str, code: str) -> None:
     msg["From"] = SMTP_EMAIL
     msg["To"] = to_email
 
+    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
     try:
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
         server.ehlo()
         server.starttls()
         server.ehlo()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
-        server.quit()
         print(f"[2FA-email] SUCCESS: OTP sent to {to_email}")
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"[2FA-email] ERROR: SMTP authentication failed: {e}")
-        raise RuntimeError(f"SMTP authentication failed: {e}") from e
-    except smtplib.SMTPException as e:
-        print(f"[2FA-email] ERROR: SMTP error while sending to {to_email}: {e}")
-        raise RuntimeError(f"SMTP error: {e}") from e
     except Exception as e:
         print(f"[2FA-email] ERROR: Unexpected error while sending to {to_email}: {e}")
         raise RuntimeError(f"Email sending failed: {e}") from e
+    finally:
+        server.quit()
 
 
 # send an email when user enable email notifications
