@@ -4,6 +4,8 @@ import NotificationsTemplate from '../components/notifications/templates/Notific
 import type { Notification } from '../components/notifications/templates/NotificationsTemplate';
 import { notificationsService } from '../services/notificationsService';
 
+
+// maps backend type → frontend UI type
 const mapNotificationType = (type: string): Notification['type'] => {
     switch (type) {
         case 'success':
@@ -20,12 +22,17 @@ const mapNotificationType = (type: string): Notification['type'] => {
     }
 };
 
+
+// convert raw data into human readable date and time
 const getDateLabel = (value: string | null): string => {
     if (!value) return 'Unknown';
+
+    // Convert string → Date object
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return 'Unknown';
 
-    const now = new Date();
+    // gets today date without time
+    const now = new Date();   
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const target = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     const diffDays = Math.floor((today.getTime() - target.getTime()) / 86400000);
@@ -54,13 +61,17 @@ const getTimeLabel = (value: string | null): string => {
 const NotificationsPage: React.FC = () => {
     const location = useLocation();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    //Controls: announcement, alert, success, system
     const [activePrimaryFilter, setActivePrimaryFilter] = useState<'all' | 'unread'>('all');
-    const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'system'>('all-types');
+    const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'success' | 'system'>('all-types');
+
 
     const loadNotifications = useCallback(async () => {
         try {
+            // Fetch max 100 notifications from backend
             const result = await notificationsService.getNotifications(100);
             setNotifications(
+                // Convert backend format → frontend format
                 (result.notifications || []).map((item) => ({
                     id: item.notification_id,
                     type: mapNotificationType(item.notification_type),
@@ -91,14 +102,16 @@ const NotificationsPage: React.FC = () => {
             return;
         }
 
-        if (filterParam === 'announcement' || filterParam === 'alert' || filterParam === 'system') {
-            setActiveCategoryFilter(filterParam);
+        if (filterParam === 'announcement' || filterParam === 'alert' || filterParam === 'success' || filterParam === 'system') {
+            setActiveCategoryFilter(filterParam as 'announcement' | 'alert' | 'success' | 'system');
         }
     }, [location.search]);
 
+
+    // Auto Fetch Notifications
     React.useEffect(() => {
         loadNotifications();
-        const intervalId = window.setInterval(loadNotifications, 30000);
+        const intervalId = window.setInterval(loadNotifications, 30000);   // Auto refresh every 30s
         return () => window.clearInterval(intervalId);
     }, [loadNotifications]);
 
@@ -110,6 +123,7 @@ const NotificationsPage: React.FC = () => {
         unread: notifications.filter(n => !n.read).length,
         announcement: notifications.filter(n => n.type === 'announcement').length,
         alert: notifications.filter(n => n.type === 'alert').length,
+        success: notifications.filter(n => n.type === 'success').length,
         system: notifications.filter(n => n.type === 'system').length,
     }), [notifications]);
 
@@ -132,6 +146,8 @@ const NotificationsPage: React.FC = () => {
 
     const isFiltered = activePrimaryFilter !== 'all' || activeCategoryFilter !== 'all-types';
 
+    // primaryLabel= read state (all / unread)
+    // categoryLabel= types based filter
     const activeFilterLabel = useMemo(() => {
         const primaryLabel = activePrimaryFilter === 'all' ? 'all' : 'unread';
         const categoryLabel = activeCategoryFilter === 'all-types'
@@ -172,8 +188,13 @@ const NotificationsPage: React.FC = () => {
      * Removes a notification from the list.
      * @param {number} id - The unique identifier of the notification.
      */
-    const handleDismiss = useCallback((id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+    const handleDismiss = useCallback(async (id: string) => {
+        try {
+            await notificationsService.deleteNotification(id);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+        }
     }, []);
 
     /**

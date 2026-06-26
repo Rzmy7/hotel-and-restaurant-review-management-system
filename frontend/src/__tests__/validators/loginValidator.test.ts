@@ -27,6 +27,9 @@ describe('validateLoginEmail', () => {
     it('rejects invalid email', () => {
         expect(validateLoginEmail('not-an-email')).not.toBeNull();
     });
+    it('rejects invalid format email', () => {
+        expect(validateLoginEmail('abc.@gmail.com')).not.toBeNull();
+    });
 });
 
 
@@ -34,7 +37,7 @@ describe('validateLoginEmail', () => {
 
 describe('validateLoginPassword', () => {
     it('accepts any non-empty password', () => {
-        expect(validateLoginPassword('anypassword')).toBeNull();
+        expect(validateLoginPassword('abc@123')).toBeNull();
     });
 
     it('rejects empty password', () => {

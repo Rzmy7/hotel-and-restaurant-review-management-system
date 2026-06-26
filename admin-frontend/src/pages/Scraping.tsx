@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil, Square } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
-import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform, stopScrapingJob } from '../services/scrapingService';
+import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
@@ -46,7 +46,7 @@ export const Scraping: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
-    const [stoppingJobIds, setStoppingJobIds] = useState<Set<string>>(new Set());
+    // const [stoppingJobIds, setStoppingJobIds] = useState<Set<string>>(new Set());
 
     // Reset modal file state whenever the Add Platform modal closes.
     useEffect(() => {
@@ -395,6 +395,7 @@ export const Scraping: React.FC = () => {
         }
     };
 
+    /*
     const handleStopJob = async (job: ScrapingJob) => {
         if (stoppingJobIds.has(job.id)) return;
         setStoppingJobIds(prev => new Set(prev).add(job.id));
@@ -415,6 +416,7 @@ export const Scraping: React.FC = () => {
             });
         }
     };
+    */
 
     if (loading) {
         return <LoadingSpinner size={32} />;

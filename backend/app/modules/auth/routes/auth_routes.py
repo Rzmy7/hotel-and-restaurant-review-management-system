@@ -53,6 +53,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             status_code=400,
             detail="Email already exists in database"
         )
+    # split the full name into first name and last name
     name_parts = validated["name"].split(" ", 1)
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
@@ -88,8 +89,8 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         {"user_id": str(user.user_id)}
     )
 
-    db.commit()
-    db.refresh(new_tenant)
+    db.commit()   # permanently save changes
+    db.refresh(new_tenant)  # get updated data from DB
 
     # ── Send welcome notification ──
     try:
@@ -121,6 +122,8 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             "tenant_id": str(new_tenant.tenant_id),
         },
     }
+
+
 
 @router.post("/login", summary="Authenticate and obtain a JWT")
 def login(payload: LoginModel, db: Session = Depends(get_db)):
@@ -193,8 +196,8 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         if not user:
             return {"message": "If the account exists, a reset link has been sent"}
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = token_sha256(raw_token)
+        raw_token = secrets.token_urlsafe(32)   #  SECRETS: Generate random token
+        token_hash = token_sha256(raw_token)    #  HASHLIB: Hash the token to store in DB
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
 
@@ -222,6 +225,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         )
         db.commit()
 
+        # generate the reset link 
         reset_link = f"{FRONTEND_URL}/reset-password/{raw_token}"
         try:
             send_reset_email(user.email, reset_link)
@@ -305,6 +309,30 @@ def test_smtp():
             return {"error": "SMTP_EMAIL not configured"}
         send_reset_email(test_email, f"{FRONTEND_URL}/test-link-123")
         return {"success": True, "message": f"Test email sent successfully to {test_email}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.get("/test-welcome-email", tags=["Debug"])
+def test_welcome_email(email: str, db: Session = Depends(get_db)):
+    """
+    Debug endpoint to trigger the full welcome notification flow for an existing user.
+    Usage: GET /api/auth/test-welcome-email?email=user@example.com
+    """
+    try:
+        user = get_user_by_email(db, email.lower())
+        if not user:
+            return {"success": False, "error": f"User with email {email} not found in database"}
+
+        from app.services.notification_helpers import notify_welcome
+        display_name = user.full_name or user.email
+        notify_welcome(str(user.user_id), display_name)
+
+        return {
+            "success": True,
+            "message": f"Welcome notification flow triggered for {email}. Check backend console for [email-notif] logs.",
+            "user_id": str(user.user_id),
+            "email_notifications_enabled": getattr(user, 'is_email_notifications_enabled', 'Unknown')
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 

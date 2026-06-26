@@ -13,7 +13,7 @@ from app.modules.auth.utils.auth_utils import verify_password
 from app.core.security import create_access_token
 from app.modules.admin.services.subscription_service import set_user_subscription_plan
 from app.core.db_utils import get_connection_string
-from app.modules.auth.constants.roles import SYSTEM_ADMIN, TENANT
+# pyrefly: ignore [missing-import]
 import pyodbc
 from sqlalchemy import text
 from app.modules.auth.models.auth_models import TwoFactorToken
@@ -35,7 +35,7 @@ def _assert_password_matches_email(password: str, password_hash: str) -> None:
 def login_user(db: Session, email: str, password: str) -> dict:
     """Authenticate a user by email/password and return a JWT token."""
     # The route/validator normalizes email before this lookup.
-    user = get_user_by_email(db, email)
+    user = get_user_by_email(db, email)  # find user
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -57,7 +57,7 @@ def login_user(db: Session, email: str, password: str) -> dict:
     # This is the account-specific credential check (email + password pair).
     _assert_password_matches_email(password, user.password_hash)
 
-    role = get_user_primary_role(db, user.user_id)
+    role = get_user_primary_role(db, user.user_id)    # get user role
     if not role:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -89,6 +89,11 @@ def login_user(db: Session, email: str, password: str) -> dict:
 
     is_2fa_enabled = getattr(user, 'is_2fa_enabled', False)
     role_upper = str(role or "").upper()
+
+    # ── DEBUG: Log every 2FA decision variable ──
+    print(f"[2FA-DEBUG] user={user.email}, is_2fa_enabled={is_2fa_enabled}, "
+          f"two_fa_feature_enabled={two_fa_feature_enabled}, "
+          f"role_upper={role_upper}, require_2fa_for_admins={require_2fa_for_admins}")
     
     if two_fa_feature_enabled and (is_2fa_enabled or (role_upper == "ADMIN" and require_2fa_for_admins)):
         code = f"{random.randint(100000, 999999)}"
@@ -102,14 +107,22 @@ def login_user(db: Session, email: str, password: str) -> dict:
         )
         db.add(token)
         db.commit()
+
+        print(f"[2FA-DEBUG] OTP code={code} saved to DB for user={user.email}. Now sending email...")
         
-        send_2fa_email(user.email, code)
+        try:
+            send_2fa_email(user.email, code)
+            print(f"[2FA-DEBUG] send_2fa_email() returned successfully for {user.email}")
+        except Exception as e:
+            print(f"[2FA-DEBUG] send_2fa_email() FAILED for {user.email}: {type(e).__name__}: {e}")
         
         return {
             "require_2fa": True,
             "message": "A verification code has been sent to your email.",
             "email": user.email
         }
+    else:
+        print(f"[2FA-DEBUG] 2FA condition NOT met — skipping OTP for {user.email}")
 
     return _generate_login_response(db, user, role)
 
@@ -167,18 +180,17 @@ def verify_login_2fa(db: Session, email: str, code: str) -> dict:
         
     token = db.query(TwoFactorToken).filter(
         TwoFactorToken.user_id == user.user_id,
-        TwoFactorToken.code == code,
-        TwoFactorToken.used_at == None,
-        TwoFactorToken.expires_at > datetime.utcnow()
+        TwoFactorToken.code == code.strip(),
+        TwoFactorToken.used_at.is_(None)
     ).first()
     
-    if not token:
+    if not token or token.expires_at.replace(tzinfo=None) < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Invalid or expired verification code"
         )
         
-    token.used_at = datetime.utcnow()
+    token.used_at = datetime.utcnow()  # type: ignore
     db.commit()
     
     role = get_user_primary_role(db, user.user_id)

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
@@ -8,7 +8,10 @@ import { Button } from '../components/ui/Button';
 
 const ForgotPasswordPage = () => {
   const { forgotPassword } = useAuth();
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const loginEmail = location.state?.loginEmail as string | undefined;
+
+  const [email, setEmail] = useState(loginEmail || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +21,13 @@ const ForgotPasswordPage = () => {
     setLoading(true);
     setError(null);
     setMessage(null);
+
+    // Explicit check requested by user: email must match the one entered in login page
+    if (loginEmail && email !== loginEmail) {
+      setError("Please enter the correct login email.");
+      setLoading(false);
+      return;
+    }
 
     try {
       await forgotPassword(email);

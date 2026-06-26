@@ -17,7 +17,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
     onPhotoChange
 }) => {
 
-    // 🔥 FIX: Prevent crash if name is empty
+    //  FIX: Prevent crash if name is empty
     const initials = `${profile.firstName?.charAt(0) || ""}${profile.lastName?.charAt(0) || ""}`.toUpperCase();
 
     return (
@@ -25,14 +25,14 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
             <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-3xl border border-gray-100 dark:border-slate-800 p-8 shadow-sm text-center relative overflow-hidden transition-all duration-300">
 
                 <div className="relative inline-block mb-6">
-                    {/* 🔥 Avatar display */}
+                    {/*  Avatar display */}
                     <ProfileAvatar
                         src={profile.avatar}
                         initials={initials}
                         size="xl"
                     />
 
-                    {/* 🔥 Upload button */}
+                    {/* Upload button */}
                     <AvatarControl onPhotoChange={onPhotoChange} />
                 </div>
 
@@ -51,7 +51,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                     <InfoItem icon={<Phone size={16} />} label="Phone Number" value={profile.phone} />
                     <InfoItem icon={<MapPin size={16} />} label="Location" value={profile.location} />
 
-                    {/* 🔥 Use formatted memberSince */}
+                    {/*  Use formatted memberSince */}
                     <InfoItem icon={<Calendar size={16} />} label="Joined System" value={memberSince} />
                 </div>
             </div>

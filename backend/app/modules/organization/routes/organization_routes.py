@@ -14,6 +14,7 @@ from app.core.exceptions.custom_exceptions import FileValidationException
 from app.core.security import create_access_token
 from app.modules.auth.repositories.roles_repo import get_user_role_names
 from app.core.geo_utils import parse_google_maps_url
+from app.modules.auth.models import Notification, UserNotification
 from app.core.tenant_context import resolve_tenant_scope
 
 router = APIRouter(prefix="/api", tags=["Organizations"])
@@ -70,8 +71,8 @@ def upsert_organization(
                 INNER JOIN dbo.features f
                     ON f.feature_id = pf.feature_id
                 WHERE t.tenant_id = :tenant_id
-                  AND f.feature_key = 'organizations'
-                  AND pf.is_enabled = 1
+                AND f.feature_key = 'organizations'
+                AND pf.is_enabled = 1
                 """
             ),
             {"tenant_id": tenant_id},
@@ -189,6 +190,30 @@ def upsert_organization(
 
     db.commit()
 
+    # Send notification if organization was created
+    if organization_created:
+        try:
+            notification = Notification(
+                title="Organization Created",
+                message=f"Your organization '{organization_name}' has been successfully created and is now ready to use.",
+                notification_type="success",
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            )
+            db.add(notification)
+            db.flush()
+
+            user_notification = UserNotification(
+                notification_id=notification.notification_id,
+                user_id=user.user_id,
+                is_read=False,
+                delivered_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            )
+            db.add(user_notification)
+            db.commit()
+        except Exception as e:
+            # Log but don't fail the organization creation
+            print(f"Warning: Failed to send organization creation notification: {e}")
+
     # Generate fresh token with the new/updated organization_id
     roles = get_user_role_names(db, user.user_id)
     access_token = create_access_token(
@@ -279,6 +304,7 @@ def update_organization(
         "organization_id": org_id
     }
 
+# logo upload
 @router.post("/organizations/{org_id}/upload-logo", response_model=LogoUploadResponse, summary="Upload organization logo")
 async def upload_organization_logo(
     org_id: str,

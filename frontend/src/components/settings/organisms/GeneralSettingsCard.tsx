@@ -27,8 +27,8 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
     const [isDeletingOrganization, setIsDeletingOrganization] = useState(false);
 
     const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-        setTheme(newTheme);
-        onChange({ themePreference: newTheme });
+        setTheme(newTheme);   // Updates global theme
+        onChange({ themePreference: newTheme });   // Updates local settings state
     };
 
     const syncOrganizationCache = (items: UserOrganizationSummary[]) => {

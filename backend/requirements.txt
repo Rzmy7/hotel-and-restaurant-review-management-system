@@ -23,4 +23,9 @@ python-multipart
 email-validator
 python-docx
 PyPDF2
+python-dateutil
+
+pytest
+
 openai
+

@@ -19,7 +19,7 @@ COMPONENTS = [
         "dir": "backend",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": f"venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000{' --no-access-log --log-level warning' if IS_PROD else ''}",
+        "run_cmd": f"venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000{' --no-access-log --log-level warning' if IS_PROD else ' --reload'}",
         "color": "\033[94m",  # Blue
     },
     {

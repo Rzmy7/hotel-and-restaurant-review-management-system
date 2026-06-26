@@ -7,14 +7,15 @@ export type SignupFormData = {
 };
 
 export type SignupField = 'fullName' | 'email' | 'password' | 'confirmPassword' | 'acceptedTerms';
-export type SignupFieldErrors = Partial<Record<SignupField, string>>;
+export type SignupFieldErrors = Partial<
+Record<SignupField, string>>;
 
 const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]*$/;
 const SYMBOL_PATTERN = /[!@#$%^&*(),.?":{}|<>\-_]/;
 
 // Only the most common generic TLDs
-const COMMON_TLDS = new Set(['com', 'org', 'net', 'edu']);
+const COMMON_TLDS = new Set(['com', 'org', 'net', 'edu','gov', 'io']);
 
 const isRealisticDomain = (domain: string): boolean => {
     const parts = domain.toLowerCase().split('.');
@@ -47,6 +48,7 @@ const isRealisticDomain = (domain: string): boolean => {
     return true;
 };
 
+// validate full name 
 export const validateFullName = (value: string): string | null => {
     const trimmed = value.trim();
 

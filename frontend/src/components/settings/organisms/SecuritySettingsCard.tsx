@@ -46,6 +46,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
     const [isSavingPassword, setIsSavingPassword] = useState(false);
 
+    // password requirements checks
     const passwordChecks = useMemo(() => {
         return {
             minLength: newPassword.length >= 8,
@@ -359,7 +360,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                         {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : (isIssuingOtp ? 'Sending...' : 'Resend Code')}
                                     </Button>
                                 </div>
-                                <p className="text-[11px] text-slate-500">Attempts left: {Math.max(MAX_OTP_ATTEMPTS - otpAttempts, 0)} | OTP is one-time use.</p>
+                                <p className="text-[11px] text-slate-400">Attempts left: {Math.max(MAX_OTP_ATTEMPTS - otpAttempts, 0)} | OTP is one-time use.</p>
                                 {otpError && <p className="text-xs text-rose-400">{otpError}</p>}
                             </div>
                             <div className="flex justify-end gap-3">
@@ -378,6 +379,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
             <Modal
                 isOpen={isPasswordModalOpen}
                 onClose={() => setIsPasswordModalOpen(false)}
+                //  to change color of title : {<span className="text-green-500">Update Password </span>}
                 title="Update Password"
                 description="Keep your account secure by using a strong password"
                 size="md"

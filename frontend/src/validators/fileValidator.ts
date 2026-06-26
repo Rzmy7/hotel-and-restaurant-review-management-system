@@ -1,5 +1,5 @@
 export const validateImage = (file: File) => {
-    const allowedTypes = ["image/jpeg", "image/png"];
+    const allowedTypes = ["image/jpeg", "image/png"];    // to manage supabase storage efficiently
 
     if (!allowedTypes.includes(file.type)) {
         throw new Error("Only JPG and PNG images are allowed");

@@ -19,9 +19,9 @@ export interface Notification {
 interface NotificationsTemplateProps {
     notifications: Notification[];
     activePrimaryFilter: 'all' | 'unread';
-    activeCategoryFilter: 'all-types' | 'announcement' | 'alert' | 'system';
+    activeCategoryFilter: 'all-types' | 'announcement' | 'alert' | 'success' | 'system';
     onPrimaryFilterChange: (filter: 'all' | 'unread') => void;
-    onCategoryFilterChange: (filter: 'all-types' | 'announcement' | 'alert' | 'system') => void;
+    onCategoryFilterChange: (filter: 'all-types' | 'announcement' | 'alert' | 'success' | 'system') => void;
     isFiltered: boolean;
     activeFilterLabel: string;
     counts: Record<string, number>;

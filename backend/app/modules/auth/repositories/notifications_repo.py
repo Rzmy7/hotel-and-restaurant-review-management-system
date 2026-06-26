@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import Notification, UserNotification
+from app.modules.auth.models import Notification, UserNotification, User
+from app.modules.auth.services.email_service import send_notification_email
 
 
 def create_notification(
@@ -12,6 +13,7 @@ def create_notification(
     message: str,
     notification_type: str = "info",
 ) -> UserNotification:
+    # 1. Create Notification record
     notification = Notification(
         title=title,
         message=message,
@@ -19,8 +21,10 @@ def create_notification(
     )
     db.add(notification)
 
-    db.flush()
+    db.flush()   # Get ID without committing
 
+
+    # 2. Create UserNotification (link user to notification)
     user_notification = UserNotification(
         notification_id=notification.notification_id,
         user_id=user_id,
@@ -30,6 +34,21 @@ def create_notification(
 
     db.commit()
     db.refresh(user_notification)
+
+    # Check if the user has email notifications enabled and send email
+    try:
+        user = db.query(User).filter(User.user_id == user_id).first()
+        print(f"[email-notif] user={user.email if user else 'NOT FOUND'}, "
+            f"has_flag={hasattr(user, 'is_email_notifications_enabled') if user else 'N/A'}, "
+            f"flag_value={getattr(user, 'is_email_notifications_enabled', 'MISSING') if user else 'N/A'}")
+        if user and getattr(user, 'is_email_notifications_enabled', False):
+            print(f"[email-notif] Sending email to {user.email} — title: {title}")
+            send_notification_email(user.email, title, message)
+            print(f"[email-notif] Email sent successfully to {user.email}")
+        else:
+            print(f"[email-notif] Skipping email — notifications disabled or user not found")
+    except Exception as e:
+        print(f"[email-notif] ERROR sending email: {e}")
 
     return (
         db.query(UserNotification)

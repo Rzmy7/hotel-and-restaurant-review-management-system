@@ -269,10 +269,15 @@ const OverviewTab: React.FC<{ group: Group; analytics: GroupAnalytics | null; lo
             <StatCard label="Total Reviews" value={analytics.total_reviews.toLocaleString()} icon={<Star size={16} />} />
             <StatCard label="Avg Rating" value={analytics.avg_rating ? `${analytics.avg_rating} ★` : '—'} icon={<TrendingUp size={16} />} />
           </>
+        ) : canSeeAnalytics && loadingAnalytics ? (
+          <>
+            <StatCard label="Total Reviews" value="—" icon={<Star size={16} />} sub="Loading…" />
+            <StatCard label="Avg Rating" value="—" icon={<TrendingUp size={16} />} sub="Loading…" />
+          </>
         ) : (
           <>
-            <StatCard label="Total Reviews" value="—" icon={<Star size={16} />} sub={canSeeAnalytics ? 'Loading…' : 'Restricted'} />
-            <StatCard label="Avg Rating" value="—" icon={<TrendingUp size={16} />} sub={canSeeAnalytics ? 'Loading…' : 'Restricted'} />
+            <StatCard label="Total Reviews" value="—" icon={<Star size={16} />} sub="Restricted by owner" />
+            <StatCard label="Avg Rating" value="—" icon={<TrendingUp size={16} />} sub="Restricted by owner" />
           </>
         )}
       </div>
@@ -400,7 +405,8 @@ const MembersTab: React.FC<{
           const orgName = m.organization_name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email;
           const ownerDisplay = m.email;
           return (
-            <div key={m.user_id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
+            // Use organization_id as key (member entity is an org, not a user)
+            <div key={m.organization_id || m.user_id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
               <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
                 {orgName.slice(0, 2).toUpperCase()}
               </div>
@@ -780,6 +786,7 @@ const SettingsTab: React.FC<{
       });
       await groupsService.updateSettings(group.group_id, settings);
       showToast('Group settings saved!', 'success');
+      // Re-fetch group from server so members immediately see updated permissions
       onGroupUpdated({ ...group, group_name: name.trim(), description: description.trim() || null, is_private: isPrivate, settings });
     } catch (err: any) {
       showToast(err.message || 'Failed to save settings', 'error');
@@ -965,20 +972,23 @@ const GroupDashboardPage: React.FC = () => {
   }, [groupId, organizationId, navigate, showToast]);
 
   const fetchAnalytics = useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || !organizationId) return;
     setLoadingAnalytics(true);
     setAnalyticsRestricted(false);
     try {
-      const a = await groupsService.getAnalytics(groupId);
+      // Pass organizationId so backend resolves member org correctly
+      const a = await groupsService.getAnalytics(groupId, organizationId);
       setAnalytics(a);
     } catch (err: any) {
-      if (err.message?.includes('restricted') || err.message?.includes('not visible')) {
+      // Match the exact backend error messages for analytics restriction
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('not visible') || msg.includes('restricted') || msg.includes('analytics are not')) {
         setAnalyticsRestricted(true);
       }
     } finally {
       setLoadingAnalytics(false);
     }
-  }, [groupId]);
+  }, [groupId, organizationId]);
 
   useEffect(() => { fetchGroup(); }, [fetchGroup]);
   useEffect(() => {
@@ -1086,7 +1096,11 @@ const GroupDashboardPage: React.FC = () => {
         {activeTab === 'settings' && isOwner && (
           <SettingsTab
             group={group}
-            onGroupUpdated={(updated) => setGroup(updated)}
+            onGroupUpdated={(updated) => {
+              setGroup(updated);
+              // Re-evaluate analytics after settings change (visibility might have changed)
+              fetchAnalytics();
+            }}
             onGroupDeleted={() => navigate('/groups')}
           />
         )}

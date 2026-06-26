@@ -7,9 +7,13 @@ export type LoginFormData = {
     password: string;
 };
 
+// Defines all possible fields that can have errors.
 export type LoginField = 'email' | 'password' | 'verificationCode';
+
+//use Partial<Record<>> to represent validation errors dynamically
 export type LoginFieldErrors = Partial<Record<LoginField, string>>;
 
+// reused signup validator for maintain consistancy across signup & login
 export const validateLoginEmail = (value: string): string | null => {
     return validateEmailAddress(value);
 };
@@ -28,6 +32,7 @@ export const validateVerificationCode = (value: string): string | null => {
     return null;
 };
 
+// Full Form Validation
 export const validateLoginForm = (data: LoginFormData): LoginFieldErrors => {
     const errors: LoginFieldErrors = {};
 
@@ -40,10 +45,12 @@ export const validateLoginForm = (data: LoginFormData): LoginFieldErrors => {
     return errors;
 };
 
+// Normalization ensures consistent data format before sending to backend
 export const normalizeLoginPayload = (data: LoginFormData) => ({
     email: data.email.trim().toLowerCase(),
     password: data.password,
 });
+
 
 export const mapBackendLoginErrorToField = (message: string): LoginFieldErrors => {
     const lowered = message.toLowerCase();
