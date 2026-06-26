@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pyodbc
 
@@ -115,3 +116,24 @@ def _process_broadcasts_sync_worker():
             logger.info(f"Worker: Broadcast processing complete: {sent_count} sent, {failed_count} failed.")
     except Exception as e:
         logger.error(f"Error during broadcast worker run: {e}")
+
+
+def _get_timezone_offset(tz_name: str, utc_dt: datetime) -> timedelta:
+    """
+    Calculate the offset of a given timezone for a given UTC datetime.
+    Falls back to UTC (0 offset) on error.
+    """
+    try:
+        if not tz_name:
+            return timedelta(0)
+        
+        utc_aware = utc_dt.replace(tzinfo=ZoneInfo("UTC"))
+        local_aware = utc_aware.astimezone(ZoneInfo(tz_name))
+        
+        offset = local_aware.utcoffset()
+        return offset if offset is not None else timedelta(0)
+    except Exception as e:
+        logger.warning(
+            f"Failed to calculate timezone offset for '{tz_name}': {e}. Defaulting to UTC."
+        )
+        return timedelta(0)

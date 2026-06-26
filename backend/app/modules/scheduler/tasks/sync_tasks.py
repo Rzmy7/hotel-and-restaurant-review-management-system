@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
 from app.modules.source.services.source_service import update_sync_status, log_activity
-from app.core.config import SCRAPER_ENGINE_URL
+from app.core.config import SCRAPER_ENGINE_URL, SCRAPER_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,11 @@ async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) 
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
     
     try:
+        headers = {
+            "X-Internal-API-Key": SCRAPER_API_KEY
+        }
         async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, json=payload, timeout=20.0)
+            response = await client.post(endpoint, json=payload, headers=headers, timeout=20.0)
             response.raise_for_status()
             data = response.json()
             job_id = data.get("job_id")

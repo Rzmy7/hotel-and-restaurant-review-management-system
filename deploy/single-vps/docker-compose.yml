@@ -41,7 +41,7 @@ services:
     environment:
       - DB_DRIVER=ODBC Driver 18 for SQL Server
       - DB_SERVER=${DB_SERVER}
-      - DB_NAME=${DB_NAME}
+      - DB_NAME=ScraperEngine
       - DB_UID=${DB_UID}
       - DB_PWD=${DB_PWD}
       - DB_ENCRYPT=${DB_ENCRYPT:-yes}
