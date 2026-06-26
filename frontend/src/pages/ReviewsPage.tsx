@@ -25,7 +25,8 @@ const ReviewsPageContent = () => {
   const { 
     reviews, 
     pagination, 
-    stats, 
+    stats,
+    filtersConfig, 
     isLoading: loading, 
     refresh 
   } = useReviewsData(organizationId, fetchParams);
@@ -96,7 +97,7 @@ const ReviewsPageContent = () => {
         {stats && <ReviewStats stats={stats} isLoading={loading} />}
 
         {/* Filters Toolbar */}
-        <ReviewsToolbar />
+        <ReviewsToolbar filtersConfig={filtersConfig} pagination={pagination} />
 
         {/* Reviews List */}
         <ReviewsTable reviews={reviews} pagination={pagination} isLoading={loading} />

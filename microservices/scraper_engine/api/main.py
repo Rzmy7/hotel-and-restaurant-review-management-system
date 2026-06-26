@@ -31,7 +31,9 @@ from api.middleware.audit_middleware import AuditMiddleware
 from core.config import setup_logger, config
 from core.database import init_db
 from core.limiter import limiter
+# pyrefly: ignore [missing-import]
 from slowapi.errors import RateLimitExceeded
+# pyrefly: ignore [missing-import]
 from slowapi import _rate_limit_exceeded_handler
 
 logger = setup_logger("api_main")
