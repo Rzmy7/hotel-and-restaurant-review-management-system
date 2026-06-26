@@ -1,0 +1,149 @@
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════════════
+# Single VPS Docker Compose — External Database
+# ═══════════════════════════════════════════════════════════════════
+# Usage:
+#   1. Copy deploy/single-vps/.env.example to project root as .env
+#   2. Copy this file to project root as docker-compose.yml
+#   3. Run: docker compose up -d --build
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+  # 🧠 Embedding Service (ChromaDB + SentenceTransformers)
+  embedding:
+    build:
+      context: ./microservices/embedding-service
+    container_name: reviewmate-embedding
+    restart: unless-stopped
+    environment:
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - EMBEDDING_API_KEYS=${INTERNAL_API_KEY}
+      - ADMIN_FRONTEND_URL=http://${VPS_IP}:5174
+      - PORT=8002
+      - PROD_MODE=true
+    ports:
+      - "8002:8002"
+    volumes:
+      - chroma_data:/app/chroma_data
+
+  # 🕷️ Scraper Engine (Playwright + FastAPI)
+  scraper:
+    build:
+      context: ./microservices/scraper_engine
+    container_name: reviewmate-scraper
+    restart: unless-stopped
+    shm_size: '2gb' # Playwright requires shared memory to prevent browser crashes
+    ports:
+      - "8001:8001"
+    depends_on:
+      - backend
+    environment:
+      - DB_DRIVER=ODBC Driver 18 for SQL Server
+      - DB_SERVER=${DB_SERVER}
+      - DB_NAME=${DB_NAME}
+      - DB_UID=${DB_UID}
+      - DB_PWD=${DB_PWD}
+      - DB_ENCRYPT=${DB_ENCRYPT:-yes}
+      - DB_TRUST_CERT=yes
+      - BACKEND_API_URL=http://backend:8000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - SCRAPER_API_KEYS=${INTERNAL_API_KEY}
+      - BACKEND_API_KEY=${INTERNAL_API_KEY}
+      - PROD_MODE=true
+      - MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-100}
+      - RATE_LIMIT_SCRAPE=${RATE_LIMIT_SCRAPE:-10/minute}
+      - RATE_LIMIT_GLOBAL=${RATE_LIMIT_GLOBAL:-100/minute}
+      - DELAY_GOOGLE=${DELAY_GOOGLE:-30.0}
+      - DELAY_AGODA=${DELAY_AGODA:-20.0}
+      - DELAY_BOOKING=${DELAY_BOOKING:-20.0}
+      - DELAY_TRIPADVISOR=${DELAY_TRIPADVISOR:-40.0}
+
+  # ⚙️ Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+    container_name: reviewmate-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # scripts/ is excluded by .dockerignore — mount it for db_rebuild.py
+      - ./backend/scripts:/app/scripts:ro
+    environment:
+      # ── General ──
+      - SECRET_KEY=${SECRET_KEY}
+      - FRONTEND_URL=http://${VPS_IP}:5173
+      - ADMIN_FRONTEND_URL=http://${VPS_IP}:5174
+      - PROD_MODE=true
+      # ── Database (SQLAlchemy — auth/users/groups) ──
+      - DATABASE_URL=mssql+pyodbc://${DB_UID}:${DB_PWD}@${DB_SERVER}:${DB_PORT:-1433}/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes&Encrypt=${DB_ENCRYPT:-yes}
+      # ── Database (PyODBC — reviews/dashboard/analytics) ──
+      - DB_DRIVER=ODBC Driver 18 for SQL Server
+      - DB_SERVER=${DB_SERVER}
+      - DB_NAME=${DB_NAME}
+      - DB_UID=${DB_UID}
+      - DB_PWD=${DB_PWD}
+      - DB_ENCRYPT=${DB_ENCRYPT:-yes}
+      # ── AI / LLM ──
+      - GENAI_KEY=${GENAI_KEY}
+      - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY}
+      # ── JWT ──
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      # ── SMTP (Password resets) ──
+      - SMTP_EMAIL=${SMTP_EMAIL}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      # ── Google OAuth ──
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # ── Supabase (File storage) ──
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_BUCKET=${SUPABASE_BUCKET}
+      # ── Microservice URLs (Docker service names, NOT localhost) ──
+      - SCRAPER_ENGINE_URL=http://scraper:8001
+      - EMBEDDING_SERVICE_URL=http://embedding:8002
+      # ── Service-to-Service Authentication ──
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - SCRAPER_API_KEY=${INTERNAL_API_KEY}
+      - EMBEDDING_API_KEY=${INTERNAL_API_KEY}
+      - BACKEND_API_KEYS=${INTERNAL_API_KEY}
+      # ── CORS (allowed frontend origins) ──
+      - CORS_ORIGINS=http://${VPS_IP}:5173,http://${VPS_IP}:5174
+
+  # 💻 User Frontend (React + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Build-time args baked into the static JS bundle (resolve in browser)
+        - VITE_MAIN_BACKEND_URL=http://${VPS_IP}:8000
+        - VITE_ADMIN_PANEL_URL=http://${VPS_IP}:5174
+    container_name: reviewmate-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # 🎛️ Admin Frontend (React + Vite)
+  admin-frontend:
+    build:
+      context: ./admin-frontend
+      args:
+        # Build-time args baked into the static JS bundle (resolve in browser)
+        - VITE_MAIN_BACKEND_URL=http://${VPS_IP}:8000
+        - VITE_SCRAPING_URL=http://${VPS_IP}:8001
+        - VITE_EMBEDDING_SERVICE_URL=http://${VPS_IP}:8002
+        - VITE_FRONTEND_URL=http://${VPS_IP}:5173
+    container_name: reviewmate-admin-frontend
+    restart: unless-stopped
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+
+volumes:
+  chroma_data:
