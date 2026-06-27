@@ -500,11 +500,6 @@ def create_user_in_db(cursor: pyodbc.Cursor, conn: pyodbc.Connection, payload: A
     if row is None:
         raise HTTPException(status_code=500, detail="User was created but could not be loaded.")
 
-    if payload.role == "User" and payload.plan:
-        set_user_subscription_plan(cursor, user_id, payload.plan)
-        conn.commit()
-        row = _get_user_row_by_id(cursor, user_id, columns)
-
     user_plan_map = get_user_plan_map(cursor)
     plan_name = user_plan_map.get(user_id)
 

@@ -11,10 +11,6 @@ from app.modules.user.repositories.users_repo import get_user_by_email
 from app.modules.auth.repositories.roles_repo import get_user_primary_role
 from app.modules.auth.utils.auth_utils import verify_password
 from app.core.security import create_access_token
-from app.modules.admin.services.subscription_service import set_user_subscription_plan
-from app.core.db_utils import get_connection_string
-# pyrefly: ignore [missing-import]
-import pyodbc
 from sqlalchemy import text
 from app.modules.auth.models.auth_models import TwoFactorToken
 from app.modules.auth.services.email_service import send_2fa_email
@@ -55,9 +51,16 @@ def login_user(db: Session, email: str, password: str) -> dict:
         )
 
     # This is the account-specific credential check (email + password pair).
-    _assert_password_matches_email(password, user.password_hash)
+    match = verify_password(password, user.password_hash)
+    
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
 
     role = get_user_primary_role(db, user.user_id)    # get user role
+    
     if not role:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -128,19 +131,6 @@ def login_user(db: Session, email: str, password: str) -> dict:
 
 
 def _generate_login_response(db: Session, user, role) -> dict:
-    # ----------------------------------------------------
-    # Initialize "Free" subscription if they are a Tenant
-    # ----------------------------------------------------
-    if str(role or "").upper() == "TENANT":
-        try:
-            with pyodbc.connect(get_connection_string()) as conn:
-                cursor = conn.cursor()
-                set_user_subscription_plan(cursor, str(user.user_id), "Free")
-                conn.commit()
-        except Exception as e:
-            # Don't block login if subscription init fails, but log it
-            print(f"FAILED TO INIT SUBSCRIPTION FOR {user.user_id}: {e}")
-
     # ----------------------------------------------------
     # Get user's default organization
     # ----------------------------------------------------
