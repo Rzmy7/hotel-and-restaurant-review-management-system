@@ -14,7 +14,9 @@ export const UserRow: React.FC<UserRowProps> = ({ user, onUserUpdate, onUserDele
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [menuAbove, setMenuAbove] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -118,14 +120,23 @@ export const UserRow: React.FC<UserRowProps> = ({ user, onUserUpdate, onUserDele
                 <td className="px-6 py-4">
                     <div className="relative" ref={menuRef}>
                         <button 
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            ref={triggerRef}
+                            onClick={() => {
+                                if (!isMenuOpen && triggerRef.current) {
+                                    const rect = triggerRef.current.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    // dropdown is ~180px tall
+                                    setMenuAbove(spaceBelow < 200);
+                                }
+                                setIsMenuOpen(!isMenuOpen);
+                            }}
                             className="p-2 text-gray-400 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg transition-all duration-200 hover:shadow-md"
                         >
                             <MoreVertical size={18} />
                         </button>
                         
                         {isMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className={`absolute right-0 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in duration-200 ${menuAbove ? 'bottom-full mb-2 slide-in-from-bottom-2' : 'top-full mt-2 slide-in-from-top-2'}`}>
                                 <button
                                     onClick={handleViewInfo}
                                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"

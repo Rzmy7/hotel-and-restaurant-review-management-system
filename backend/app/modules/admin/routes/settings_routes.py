@@ -68,6 +68,13 @@ FEATURE_FLAG_DEFINITIONS = {
         "description": "Allow users to enable two-factor authentication for their accounts",
         "status_key": "feature_flag_two_factor_auth",
     },
+    "api_limit_notifications": {
+        "id": "4",
+        "name": "API Limit Notifications",
+        "description": "Inform users via notification when the API hits its quota or limit",
+        "status_key": "feature_flag_api_limit_notifications",
+        "default": "Disabled",
+    },
 }
 
 
@@ -84,7 +91,8 @@ def _load_feature_flags(cursor: pyodbc.Cursor) -> list[FeatureFlagResponse]:
     flags: list[FeatureFlagResponse] = []
 
     for key, definition in FEATURE_FLAG_DEFINITIONS.items():
-        status = _normalize_flag_status(get_setting(cursor, definition["status_key"]))
+        default_status = definition.get("default", "Enabled")
+        status = _normalize_flag_status(get_setting(cursor, definition["status_key"]), default=default_status)
         limit_value: int | None = None
 
         limit_key = definition.get("limit_key")

@@ -531,7 +531,7 @@ export const ReviewProcessing: React.FC = () => {
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Start Time</th>
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Processed</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -565,39 +565,7 @@ export const ReviewProcessing: React.FC = () => {
                                             <span className="text-gray-400 dark:text-slate-500"> / {job.totalReviews}</span>
                                         )}
                                     </td>
-                                    <td className="py-4 px-4">
-                                        <div className="flex items-center gap-2">
-                                            {job.status === 'Failed' && (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleRetryJob(job.id)}
-                                                        disabled={retryingJobId === job.id}
-                                                        className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {retryingJobId === job.id ? 'Retrying...' : 'Retry'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleRetryJob(job.id)}
-                                                        disabled={retryingJobId === job.id}
-                                                        className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        <RotateCcw size={14} className={retryingJobId === job.id ? 'animate-spin' : ''} />
-                                                    </button>
-                                                </>
-                                            )}
-                                            {job.status === 'Completed' && (
-                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded">
-                                                    <Eye size={16} />
-                                                </button>
-                                            )}
-                                            {job.status === 'Running' && (
-                                                <span className="text-xs text-blue-600 font-medium">Processing...</span>
-                                            )}
-                                            {job.status === 'Paused' && (
-                                                <span className="text-xs text-orange-600 font-medium">Paused</span>
-                                            )}
-                                        </div>
-                                    </td>
+
                                 </tr>
                             ))}
                         </tbody>

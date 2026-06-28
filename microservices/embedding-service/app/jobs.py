@@ -96,21 +96,11 @@ def get_recent_jobs(page: int = 1, page_size: int = 10) -> Dict:
         if service_paused and job_copy["status"] == "Running":
             job_copy["status"] = "Paused"
         
-        job_time = datetime.fromisoformat(job_copy["timestamp"])
-        now = datetime.now()
-        diff = (now - job_time).total_seconds()
-        
-        if diff < 60:
-            job_copy["timestamp"] = "Just now"
-        elif diff < 3600:
-            mins = int(diff / 60)
-            job_copy["timestamp"] = f"{mins} mins ago" if mins > 1 else "1 min ago"
-        elif diff < 86400:
-            hours = int(diff / 3600)
-            job_copy["timestamp"] = f"{hours} hours ago" if hours > 1 else "1 hour ago"
-        else:
-            days = int(diff / 86400)
-            job_copy["timestamp"] = f"{days} days ago" if days > 1 else "1 day ago"
+        # Send the raw ISO timestamp - the frontend formatDateTime utility
+        # will format it correctly in the user's timezone.
+        # Ensure the timestamp field is always a valid ISO string.
+        if "timestamp" not in job_copy or not job_copy["timestamp"]:
+            job_copy["timestamp"] = datetime.now().isoformat()
         
         formatted_jobs.append(job_copy)
     

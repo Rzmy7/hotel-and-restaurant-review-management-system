@@ -296,10 +296,11 @@ def notify_source_removed(user_id: str, platform_name: str, org_name: str | None
 
 
 def notify_admin_gemini_quota_exceeded() -> None:
-    """Specialized alert for system admins when Gemini API quota is hit."""
+    """Specialized alert for system admins when Gemini API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
     from app.database.session import SessionLocal
     from app.modules.user.models.user_models import User
     from app.modules.auth.repositories.notifications_repo import create_notification
+    from sqlalchemy import text
 
     try:
         db = SessionLocal()
@@ -308,22 +309,51 @@ def notify_admin_gemini_quota_exceeded() -> None:
             admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
             if not admins:
                 logger.warning("No administrators found to notify about Gemini quota issue.")
-                return
+            else:
+                title = "Gemini API Quota Exceeded"
+                message = "The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits."
 
-            title = "Gemini API Quota Exceeded"
-            message = "The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits."
+                for admin in admins:
+                    try:
+                        create_notification(
+                            db=db,
+                            user_id=admin.user_id,
+                            title=title,
+                            message=message,
+                            notification_type="error",
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to notify admin {admin.user_id}: {e}")
 
-            for admin in admins:
-                try:
-                    create_notification(
-                        db=db,
-                        user_id=admin.user_id,
-                        title=title,
-                        message=message,
-                        notification_type="error",
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to notify admin {admin.user_id}: {e}")
+            # Check if the feature flag for notifying normal users is enabled
+            try:
+                setting_row = db.execute(
+                    text("SELECT setting_value FROM dbo.system_settings WHERE setting_key = 'feature_flag_api_limit_notifications'")
+                ).fetchone()
+
+                is_enabled = setting_row and setting_row[0] and setting_row[0].strip().lower() in ("enabled", "true", "1", "on")
+
+                if is_enabled:
+                    # Find all active non-admin users
+                    normal_users = db.query(User).filter(User.role_id != ADMIN_ROLE_ID, User.is_active == True).all()
+
+                    user_title = "API Limit Reached"
+                    user_message = "The review processing API limit has been reached. Review processing and reply generation are temporarily paused."
+
+                    for user in normal_users:
+                        try:
+                            create_notification(
+                                db=db,
+                                user_id=user.user_id,
+                                title=user_title,
+                                message=user_message,
+                                notification_type="warning",
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to notify normal user {user.user_id}: {e}")
+            except Exception as ff_exc:
+                logger.error(f"Failed to check feature flag or notify normal users: {ff_exc}")
+
         finally:
             db.close()
     except Exception as exc:
