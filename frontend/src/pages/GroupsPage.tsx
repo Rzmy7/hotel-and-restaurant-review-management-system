@@ -8,6 +8,7 @@ import { groupsService, type Group, type GroupInvite } from '../services/groupsS
 import { useToast } from '../contexts/ToastContext';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import SearchPublicGroupsModal from '../components/groups/SearchPublicGroupsModal';
+import GroupsSkeleton from './GroupsSkeleton';
 
 // ── Create Group Modal ────────────────────────────────────────────────
 
@@ -329,6 +330,10 @@ const GroupsPage: React.FC = () => {
 
   const myGroups = groups.filter(g => g.my_role === 'GROUP_OWNER');
   const memberGroups = groups.filter(g => g.my_role === 'GROUP_MEMBER');
+
+  if (loadingGroups && groups.length === 0) {
+    return <GroupsSkeleton />;
+  }
 
   return (
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">

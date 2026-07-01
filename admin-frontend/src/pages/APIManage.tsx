@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Save, Globe, Loader } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
+import APIManageSkeleton from './APIManageSkeleton';
 import { setEmbeddingServiceUrl } from '../services/embeddingService';
 import { getApiBaseUrl, normalizeBackendBaseUrl } from '../config/api';
 
@@ -78,7 +78,7 @@ export const APIManage: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <APIManageSkeleton />;
     }
 
     return (

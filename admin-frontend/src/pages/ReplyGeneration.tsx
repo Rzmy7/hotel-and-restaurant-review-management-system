@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Bot, ExternalLink, Save, Sparkles, Wand2 } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ToggleSwitch } from '../components/ToggleSwitch';
+import ReplyGenerationSkeleton from './ReplyGenerationSkeleton';
 import { settingsService } from '../services/settingsService';
 import type { ReplyGenerationSettings } from '../services/settingsService';
 import { llmModelService } from '../services/llmModelService';
@@ -72,7 +72,7 @@ export const ReplyGeneration: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner />;
+        return <ReplyGenerationSkeleton />;
     }
 
     const assignedModelName = assignments?.reply_generation_model_name;

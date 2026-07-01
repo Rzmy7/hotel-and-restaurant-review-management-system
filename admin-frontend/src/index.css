@@ -12,3 +12,39 @@
     @apply bg-gray-50 dark:bg-slate-900;
   }
 }
+
+/* --- Premium Animations --- */
+
+/* Shimmer effect for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(to right, #f6f7f8 4%, #edeef1 25%, #f6f7f8 36%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(to right, #1e293b 4%, #334155 25%, #1e293b 36%);
+  background-size: 1000px 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer {
+    animation: none !important;
+    background: #e5e7eb !important; /* gray-200 */
+    opacity: 0.6 !important;
+  }
+  .dark .animate-shimmer {
+    background: #1e293b !important; /* slate-800 */
+    opacity: 1 !important;
+  }
+}
+

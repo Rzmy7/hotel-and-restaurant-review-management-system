@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { OrganizationStatsGrid } from '../components/OrganizationStatsGrid';
 import { OrganizationFilters } from '../components/OrganizationFilters';
+import { OrganizationsSkeleton } from './OrganizationsSkeleton';
 import { OrganizationTable } from '../components/OrganizationTable';
 import {
     fetchOrganizations,
@@ -181,7 +181,7 @@ export const Organizations: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <OrganizationsSkeleton />;
     }
 
     return (

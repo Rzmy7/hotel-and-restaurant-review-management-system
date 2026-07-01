@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter, RefreshCw, Play, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
+import Skeleton from '../components/shared/Skeleton';
+import ScrapingSkeleton from './ScrapingSkeleton';
 import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
@@ -419,7 +420,7 @@ export const Scraping: React.FC = () => {
     */
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <ScrapingSkeleton />;
     }
 
     return (
@@ -741,8 +742,34 @@ export const Scraping: React.FC = () => {
                         </div>
 
                         {editPlatformLoading ? (
-                            <div className="p-8 flex items-center justify-center">
-                                <LoadingSpinner size={24} />
+                            <div className="p-5 space-y-5 animate-shimmer">
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-28 rounded" />
+                                    <Skeleton className="h-10 w-full rounded-lg" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-20 rounded" />
+                                    <Skeleton className="h-10 w-full rounded-lg" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-24 rounded" />
+                                    <Skeleton className="h-10 w-full rounded-lg" />
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <Skeleton className="h-4 w-28 rounded" />
+                                        <Skeleton className="h-4 w-16 rounded" />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Skeleton className="h-10 flex-1 rounded-lg" />
+                                        <Skeleton className="h-10 w-32 rounded-lg" />
+                                        <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
+                                    <Skeleton className="h-9 w-20 rounded-lg" />
+                                    <Skeleton className="h-9 w-24 rounded-lg" />
+                                </div>
                             </div>
                         ) : (
                             <form onSubmit={handleUpdatePlatform} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">

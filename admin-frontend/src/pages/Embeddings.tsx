@@ -25,6 +25,7 @@ import { triggerPendingEmbeddings } from '../services/adminDataService';
 import { Alert } from '../components/Alert';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
+import EmbeddingsSkeleton from './EmbeddingsSkeleton';
 
 export const Embeddings: React.FC = () => {
     const systemTimezone = useSystemTimezone();
@@ -224,6 +225,10 @@ export const Embeddings: React.FC = () => {
             setTriggering(false);
         }
     };
+
+    if (loading) {
+        return <EmbeddingsSkeleton />;
+    }
 
     return (
         <div className="space-y-6 pt-4">

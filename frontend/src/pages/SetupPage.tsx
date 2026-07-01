@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hotel, Utensils, FileText, X } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
+import SetupSkeleton from './SetupSkeleton';
 import { apiClient } from '../api/client';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -235,6 +236,10 @@ const SetupPage = () => {
 
         navigate("/no-organization");
     };
+
+    if (isLoading) {
+        return <SetupSkeleton currentStep={1} />;
+    }
 
     return (
         <SetupLayout

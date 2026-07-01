@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, X, KeyRound, Sun, Moon, Monitor } from 'lucide-react';
 import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SettingsSkeleton } from './SettingsSkeleton';
 import { Tabs } from '../components/Tabs';
 import { emitMaintenanceModeUpdated, maintenanceService, onMaintenanceModeUpdated } from '../services/maintenanceService';
 import { settingsService } from '../services/settingsService';
@@ -273,7 +273,7 @@ export const Settings: React.FC = () => {
         }
     };
 
-    if (loading || !settings) return <LoadingSpinner />;
+    if (loading || !settings) return <SettingsSkeleton />;
 
     const timezoneOptionExists = TIMEZONE_OPTIONS.some(option => option.value === settings.timezone);
     const timezoneOptions = timezoneOptionExists

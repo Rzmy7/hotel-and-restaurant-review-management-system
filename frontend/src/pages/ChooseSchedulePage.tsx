@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
+import SetupSkeleton from './SetupSkeleton';
 import { Clock, Calendar, Zap, Sparkles, Loader2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 
@@ -65,6 +66,10 @@ const ChooseSchedulePage = () => {
   const handleBack = () => {
     navigate('/setup/sources');
   };
+
+  if (isLoading) {
+    return <SetupSkeleton currentStep={3} />;
+  }
 
   return (
     <SetupLayout

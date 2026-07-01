@@ -13,6 +13,7 @@ import SyncHistoryPanel from '../components/shared/SyncHistoryPanel';
 import AddSourceModal from '../components/sources/AddSourceModal';
 import EditSourceModal from '../components/sources/EditSourceModal';
 import PageHeader from '../components/shared/PageHeader';
+import ReviewSourcesSkeleton from './ReviewSourcesSkeleton';
 
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
@@ -216,6 +217,10 @@ const ReviewSourcesPage = () => {
   const handleClearReviews = async (id: string | number) => {
     await deleteReviewsMutation.mutateAsync(id);
   };
+
+  if ((isLoadingSources || isLoadingStats) && sources.length === 0) {
+    return <ReviewSourcesSkeleton />;
+  }
 
   return (
     <div className="min-h-full bg-[#F9FAFB] dark:bg-[#121826] flex flex-col">

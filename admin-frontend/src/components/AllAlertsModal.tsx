@@ -3,7 +3,7 @@ import { X, ShieldAlert, CheckCircle2, AlertCircle, AlertTriangle, Info } from '
 import type { SystemAlert } from '../types';
 import { fetchPaginatedAlerts } from '../services/dashboardService';
 import { Pagination } from './Pagination';
-import { LoadingSpinner } from './LoadingSpinner';
+import Skeleton from './shared/Skeleton';
 import { formatDateTime } from '../utils/dateTime';
 
 const getAlertIcon = (type: SystemAlert['type']) => {
@@ -143,8 +143,17 @@ export const AllAlertsModal: React.FC<AllAlertsModalProps> = ({ isOpen, onClose,
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-2">
                     {loading ? (
-                        <div className="py-20 flex justify-center">
-                            <LoadingSpinner size={32} />
+                        <div className="divide-y divide-gray-50 dark:divide-slate-700/50 animate-shimmer">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <div key={i} className="p-4 flex items-start gap-4 mx-2 my-1">
+                                    <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                                    <div className="flex-1 space-y-2 pt-0.5">
+                                        <Skeleton className="h-4 w-48 rounded" />
+                                        <Skeleton className="h-3.5 w-3/4 rounded" />
+                                        <Skeleton className="h-3 w-24 rounded" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : alerts.length === 0 ? (
                         <div className="py-20 text-center text-gray-400 dark:text-slate-500">

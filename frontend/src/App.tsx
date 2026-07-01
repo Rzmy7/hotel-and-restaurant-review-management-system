@@ -15,6 +15,14 @@ import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
 // Components
 import Sidebar from './components/shared/SideBar';
 import ScrapeLauncher from './components/shared/ScrapeLauncher';
+import DashboardSkeleton from './pages/DashboardSkeleton';
+import InsightsSkeleton from './pages/InsightsSkeleton';
+import ReviewsSkeleton from './pages/ReviewsSkeleton';
+import ReviewSourcesSkeleton from './pages/ReviewSourcesSkeleton';
+import SetupSkeleton from './pages/SetupSkeleton';
+import SettingsSkeleton from './pages/SettingsSkeleton';
+import CompetitorsSkeleton from './pages/CompetitorsSkeleton';
+import GroupsSkeleton from './pages/GroupsSkeleton';
 
 // Stores
 import { useOrganizationStore } from './stores/useOrganizationStore';
@@ -263,11 +271,11 @@ const AppContent: React.FC = () => {
           Initial Setup Workflow
           Standalone pages for the first-time user setup experience.
         */}
-        <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
-        <Route path="/setup/sources" element={<RequireAuth><AddSourcesPage /></RequireAuth>} />
-        <Route path="/setup/schedule" element={<RequireAuth><ChooseSchedulePage /></RequireAuth>} />
-        <Route path="/setup/plan" element={<RequireAuth><ChoosePlanPage /></RequireAuth>} />
-        <Route path="/setup/finish" element={<RequireAuth><FinishSetupPage /></RequireAuth>} />
+        <Route path="/setup" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={1} />}><SetupPage /></Suspense></RequireAuth>} />
+        <Route path="/setup/sources" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={2} />}><AddSourcesPage /></Suspense></RequireAuth>} />
+        <Route path="/setup/schedule" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={3} />}><ChooseSchedulePage /></Suspense></RequireAuth>} />
+        <Route path="/setup/plan" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={3} />}><ChoosePlanPage /></Suspense></RequireAuth>} />
+        <Route path="/setup/finish" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={3} />}><FinishSetupPage /></Suspense></RequireAuth>} />
 
 
         {/* Utility/Admin Routes */}
@@ -292,21 +300,21 @@ const AppContent: React.FC = () => {
                   <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
                   
                   {/* Org-dependent feature pages — all require both auth AND an active organization */}
-                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><Suspense fallback={<DashboardSkeleton />}><DashboardPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewsSkeleton />}><ReviewsPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/sources" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewSourcesSkeleton />}><ReviewSourcesPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/insights" element={<RequireAuth><RequireOrganization><Suspense fallback={<InsightsSkeleton />}><InsightsPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><Suspense fallback={<CompetitorsSkeleton />}><CompetitorsPage /></Suspense></RequireOrganization></RequireAuth>} />
                   <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
                   <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
 
                   {/* Group routes — no org requirement */}
-                  <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
+                  <Route path="/groups" element={<RequireAuth><Suspense fallback={<GroupsSkeleton />}><GroupsPage /></Suspense></RequireAuth>} />
                   <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
                   <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
 
                   {/* Pages that don't require an org */}
-                  <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+                  <Route path="/settings" element={<RequireAuth><Suspense fallback={<SettingsSkeleton />}><SettingsPage /></Suspense></RequireAuth>} />
                   <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
                   <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
                   <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />

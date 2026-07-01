@@ -9,6 +9,7 @@ import {
   Loader2
 } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
+import SetupSkeleton from './SetupSkeleton';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { apiClient } from '../api/client';
@@ -97,6 +98,10 @@ const AddSourcesPage = () => {
       [platformId]: url
     }));
   };
+
+  if (isLoading) {
+    return <SetupSkeleton currentStep={2} />;
+  }
 
   return (
     <SetupLayout

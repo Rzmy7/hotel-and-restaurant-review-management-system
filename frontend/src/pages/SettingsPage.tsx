@@ -4,7 +4,7 @@ import { Globe, Lock, Bell, CreditCard, Building } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../hooks/useSettings';
 import { useTheme } from '../contexts/ThemeContext';
-import DashboardSkeleton from '../components/shared/DashboardSkeleton';
+import SettingsSkeleton from './SettingsSkeleton';
 
 // Templates
 import { SettingsTemplate } from '../components/settings/templates/SettingsTemplate';
@@ -93,7 +93,7 @@ const SettingsPage: React.FC = () => {
   }, [activeTab, fetchOrganizationRules, fetchOrganizationTypes, showToast]);
 
   if (loading || !localData) {
-    return <DashboardSkeleton />;
+    return <SettingsSkeleton />;
   }
 
   const getChanges = (): ChangeDetail[] => {

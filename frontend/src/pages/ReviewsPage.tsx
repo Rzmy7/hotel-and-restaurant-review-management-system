@@ -13,6 +13,7 @@ import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
 
 import { useReviewsData } from '../hooks/useReviewsData';
+import ReviewsSkeleton from './ReviewsSkeleton';
 
 const ReviewsPageContent = () => {
   const currentOrg = useOrganizationStore(state => state.currentOrg);
@@ -44,6 +45,10 @@ const ReviewsPageContent = () => {
     setPage(0);
     refresh();
   };
+
+  if (loading && (!reviews || reviews.length === 0)) {
+    return <ReviewsSkeleton />;
+  }
 
   return (
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col">

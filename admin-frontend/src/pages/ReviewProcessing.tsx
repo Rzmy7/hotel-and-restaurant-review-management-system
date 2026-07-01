@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Search, Filter, RefreshCw, Play, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import ReviewProcessingSkeleton from './ReviewProcessingSkeleton';
 import { Alert } from '../components/Alert';
 import {
     fetchReviewProcessingStats,
@@ -8,7 +8,6 @@ import {
     getBatchConfig,
     updateBatchConfig,
     resumeReviewProcessing,
-    retryFailedReviews,
     retryAllFailedReviews,
     testDuplicates,
     cleanupDuplicates,
@@ -44,7 +43,6 @@ export const ReviewProcessing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-    const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
     const [isRetryingAll, setIsRetryingAll] = useState(false);
 
     // Batch size config state
@@ -128,24 +126,7 @@ export const ReviewProcessing: React.FC = () => {
         }
     };
 
-    const handleRetryJob = async (jobId: string) => {
-        const sourceId = jobId.replace(/-failed$/, '');
-        if (!sourceId || sourceId === jobId) {
-            setError('Unable to determine source ID for retry.');
-            return;
-        }
-        try {
-            setRetryingJobId(jobId);
-            setError(null);
-            await retryFailedReviews(sourceId);
-            await handleRefresh();
-        } catch (err) {
-            console.error('Failed to retry failed reviews:', err);
-            setError(err instanceof Error ? err.message : 'Failed to retry failed reviews.');
-        } finally {
-            setRetryingJobId(null);
-        }
-    };
+
 
     const handleRetryAllFailed = async () => {
         if (!window.confirm(`Are you sure you want to retry all ${stats.failedJobs} failed reviews?`)) return;
@@ -247,7 +228,7 @@ export const ReviewProcessing: React.FC = () => {
         }
     };
 
-    if (loading) return <LoadingSpinner size={32} />;
+    if (loading) return <ReviewProcessingSkeleton />;
 
     const batchMin = batchConfig?.min ?? 1;
     const batchMax = batchConfig?.max ?? 20;

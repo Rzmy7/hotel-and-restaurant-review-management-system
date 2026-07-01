@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 import { Alert } from '../components/Alert';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SubscriptionPlansSkeleton } from './SubscriptionPlansSkeleton';
 import {
     createSubscriptionPlan,
     deleteSubscriptionPlan,
@@ -692,7 +692,7 @@ export const SubscriptionPlans: React.FC = () => {
     const deletingPlan = plans.find((plan) => plan.id === deletingId);
 
     if (isLoading) {
-        return <LoadingSpinner />;
+        return <SubscriptionPlansSkeleton />;
     }
 
     return (

@@ -11,6 +11,7 @@ import {
     type Competitor,
 } from '../services/competitorService';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
+import CompetitorsSkeleton from './CompetitorsSkeleton';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -47,6 +48,10 @@ const CompetitorsPage = () => {
         if (!confirm('Remove this competitor from your tracked list?')) return;
         untrackMutation.mutate(competitorId);
     };
+
+    if (loading) {
+        return <CompetitorsSkeleton />;
+    }
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
@@ -89,13 +94,6 @@ const CompetitorsPage = () => {
                         </div>
                     </div>
 
-                    {/* Loading State */}
-                    {loading && (
-                        <div className="flex items-center justify-center py-16">
-                            <Loader2 size={28} className="animate-spin text-blue-500" />
-                            <span className="ml-3 text-gray-500">Loading competitors...</span>
-                        </div>
-                    )}
 
                     {/* Empty State */}
                     {!loading && tracked.length === 0 && (

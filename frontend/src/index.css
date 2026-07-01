@@ -117,6 +117,19 @@ body {
   background-size: 1000px 100%;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer {
+    animation: none !important;
+    background: #e5e7eb !important; /* gray-200 */
+    opacity: 0.6 !important;
+  }
+  .dark .animate-shimmer {
+    background: #1e293b !important; /* slate-800 */
+    opacity: 1 !important;
+  }
+}
+
+
 /* Staggered Entrance */
 @keyframes fadeInUp {
   from {

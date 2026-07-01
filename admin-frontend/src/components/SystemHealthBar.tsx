@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Server, Search, Database, Globe, ChevronRight } from 'lucide-react';
 import type { ServerStatus } from '../types';
+import { Skeleton } from './shared/Skeleton';
 
 interface SystemHealthBarProps {
     servers: ServerStatus[];
@@ -86,12 +87,12 @@ export const SystemHealthBar: React.FC<SystemHealthBarProps> = ({ servers, loadi
                     {[1, 2, 3, 4].map((i) => (
                         <div
                             key={i}
-                            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600 animate-pulse"
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50/50 dark:bg-slate-700/30 border border-gray-100 dark:border-slate-700"
                         >
-                            <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-600" />
-                            <div className="flex-1">
-                                <div className="h-3 w-20 bg-gray-200 dark:bg-slate-600 rounded mb-1.5" />
-                                <div className="h-2.5 w-12 bg-gray-200 dark:bg-slate-600 rounded" />
+                            <Skeleton className="w-8 h-8 rounded-lg shrink-0" />
+                            <div className="flex-1 space-y-1.5">
+                                <Skeleton className="h-3 w-20 rounded" />
+                                <Skeleton className="h-2.5 w-12 rounded" />
                             </div>
                         </div>
                     ))}

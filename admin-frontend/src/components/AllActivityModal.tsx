@@ -19,7 +19,7 @@ import {
 import type { RecentActivity as RecentActivityType } from '../types';
 import { fetchPaginatedActivity } from '../services/dashboardService';
 import { Pagination } from './Pagination';
-import { LoadingSpinner } from './LoadingSpinner';
+import Skeleton from './shared/Skeleton';
 import { formatDateTime } from '../utils/dateTime';
 
 const getActivityIcon = (type: RecentActivityType['type']) => {
@@ -153,8 +153,17 @@ export const AllActivityModal: React.FC<AllActivityModalProps> = ({ isOpen, onCl
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-2">
                     {loading ? (
-                        <div className="py-20 flex justify-center">
-                            <LoadingSpinner size={32} />
+                        <div className="divide-y divide-gray-50 dark:divide-slate-700/50 animate-shimmer">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <div key={i} className="p-4 flex items-start gap-4 mx-2 my-1">
+                                    <Skeleton className="w-11 h-11 rounded-xl flex-shrink-0" />
+                                    <div className="flex-1 space-y-2 pt-0.5">
+                                        <Skeleton className="h-4 w-48 rounded" />
+                                        <Skeleton className="h-3.5 w-3/4 rounded" />
+                                        <Skeleton className="h-3 w-24 rounded" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : activities.length === 0 ? (
                         <div className="py-20 text-center text-gray-400 dark:text-slate-500">

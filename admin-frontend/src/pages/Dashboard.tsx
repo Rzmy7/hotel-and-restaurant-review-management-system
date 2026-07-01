@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, Users, MessageSquare, Bot } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { StatCard } from '../components/StatCard';
 import { SystemHealthBar } from '../components/SystemHealthBar';
 import { UsageChart } from '../components/UsageChart';
@@ -9,6 +8,7 @@ import { AlertsPanel } from '../components/AlertsPanel';
 import { RecentActivity } from '../components/RecentActivity';
 import { AllActivityModal } from '../components/AllActivityModal';
 import { AllAlertsModal } from '../components/AllAlertsModal';
+import { DashboardSkeleton } from './DashboardSkeleton';
 import {
     fetchDashboardStats,
     fetchUsageData,
@@ -104,7 +104,7 @@ export const Dashboard: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <DashboardSkeleton />;
     }
 
     return (
