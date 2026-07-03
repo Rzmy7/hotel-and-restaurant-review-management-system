@@ -146,22 +146,11 @@ def _build_prompt(
     tone = (payload.tone or "standard").strip().lower()
     length = (payload.length or "standard").strip().lower()
 
-<<<<<<< HEAD
-    length_instruction = "standard: 2-4 sentences"
-    if length == "short":
-        length_instruction = "short: 1-2 sentences"
-    elif length == "long":
-        length_instruction = "long: 4-6 sentences"
-
-    hotel_name = (payload.hotelName or "our hotel/restaurant").strip()
-    rating_str = str(payload.rating) if payload.rating is not None else "Not provided"
-=======
     length_instruction = "40 to 90 words" if length == "short" else "120 to 180 words"
     tone_instruction = {
         "professional": "Use a professional and polished tone.",
         "casual": "Use a warm and conversational tone.",
     }.get(tone, "Use a balanced, courteous customer-support tone.")
->>>>>>> minidu-final
 
     language_hint = (payload.language or "").strip()
     language_hint_line = (
@@ -170,45 +159,6 @@ def _build_prompt(
         else ""
     )
 
-<<<<<<< HEAD
-    return f"""You are a professional hotel customer support assistant.
-
-Your task is to write a high-quality reply to a customer review.
-
-Context:
-Hotel Name: {hotel_name}
-Customer Name: {payload.userName}
-Platform: {payload.source or 'Unknown'}
-Rating: {rating_str}/5
-Sentiment: {payload.sentiment or 'Neutral'}
-Review: "{payload.reviewText.strip()}"
-
-Instructions:
-- Be polite, natural, and human-like (not robotic).
-- Start with the customer name if available.
-- Always thank the customer.
-- Match the tone: {tone} (friendly, professional, empathetic).
-- Keep length: {length_instruction}.
-- {language_hint_line} The reply language MUST match the language used in the Original Review text. Do not translate to English unless the Original Review is in English. If the review contains mixed languages, use the dominant language from the review text.
-
-Guidelines:
-- If positive → appreciate and reinforce experience.
-- If neutral → acknowledge and show improvement.
-- If negative → apologize, take responsibility, and reassure.
-
-Special rules:
-- If review is very short (e.g., "Very good"), expand naturally.
-- Do NOT repeat the review.
-- Do NOT include placeholders or explanations.
-- Follow all relevant rules exactly when they apply. Do not mention that you used AI, rules, or similar reviews.
-
-{similar_reviews_section}
-
-{rules_section}
-
-Output:
-Return ONLY the final response text."""
-=======
     return (
         "You are a customer support expert helping a hotel or restaurant reply to customer reviews. "
         "Write only the final reply text, with no markdown, labels, or explanation.\n\n"
@@ -232,7 +182,6 @@ Return ONLY the final response text."""
         "- If the review is negative, acknowledge issues and mention concrete improvement intent.\n"
         "- Do not mention that you used AI, rules, or similar reviews.\n"
     )
->>>>>>> minidu-final
 
 
 def _increment_usage() -> None:
