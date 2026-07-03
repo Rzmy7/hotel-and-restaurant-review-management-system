@@ -80,6 +80,7 @@ When a user requests an AI-generated reply:
 | Endpoint | Method | Input Payload / Params | Output / Status |
 | :--- | :--- | :--- | :--- |
 | `/api/reviews/{organization_id}` | GET | `organization_id` (UUID, path param) | List of `ReviewModel` (JSON), Status 200 |
+| `/api/reviews/{review_id}` | GET | `review_id` (UUID, path param), `organization_id` (UUID, optional query param) | `ReviewModel` (JSON), Status 200 |
 | `/api/reviews/trigger/{source_id}` | POST | `source_id` (UUID, path param) | `{"message": "Processing flow started in background."}`, Status 200 |
 | `/api/reviews/ingest/{source_id}` | POST | `source_id` (UUID, path param) | `{"message": "Ingestion successful", ...}`, Status 200 |
 | `/api/reviews/meta/count` | GET | None | `{"total_reviews": <int>}`, Status 200 |

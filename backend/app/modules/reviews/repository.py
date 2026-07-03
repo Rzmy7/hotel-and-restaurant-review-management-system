@@ -636,3 +636,58 @@ def delete_reviews_by_source_id(source_id: str) -> int:
         
         deleted_count = cursor.rowcount
         return deleted_count
+
+
+def fetch_review_by_id_enriched(review_id: str, organization_id: str, db: Session) -> Optional[dict]:
+    """Fetch a single enriched review by ID, ensuring organization isolation."""
+    from app.modules.reviews.models import ProcessedReview
+    from app.modules.source.models import Source
+    import json
+    
+    rev = db.query(ProcessedReview).join(Source).filter(
+        ProcessedReview.id == review_id,
+        Source.organization_id == organization_id
+    ).first()
+    
+    if not rev:
+        return None
+        
+    row = {
+        "id": str(rev.id),
+        "rating": rev.rating,
+        "reviewerName": rev.reviewerName,
+        "userName": rev.reviewerName or "Guest",
+        "summary": rev.summary or "",
+        "sentiment": rev.sentiment or "Neutral",
+        "sentiment_score": rev.sentiment_score,
+        "language": rev.language or "English",
+        "reviewDate": rev.reviewDate,
+        "date": rev.reviewDate,
+        "scrapedAt": rev.scrapedAt,
+        "status": rev.status,
+        "ai_reply": rev.ai_reply,
+        "source_id": str(rev.source_id),
+        "positive_text": rev.positive_text,
+        "negative_text": rev.negative_text,
+        "heading": rev.heading,
+        "source": rev.source.platform.platform_name if rev.source and rev.source.platform else "Unknown",
+        "photos": [{"id": str(m.media_id), "src": m.src, "alt": m.alt} for m in rev.media]
+    }
+    
+    for field in ["categories", "keyPhrases"]:
+        val = getattr(rev, field)
+        if val:
+            try:
+                parsed = json.loads(val)
+                row[field] = [str(item["name"]) if isinstance(item, dict) and "name" in item else str(item) for item in parsed] if isinstance(parsed, list) else []
+            except:
+                row[field] = []
+        else:
+            row[field] = []
+            
+    text_parts = [rev.text, rev.positive_text, rev.negative_text]
+    row["text"] = "\n\n".join([p for p in text_parts if p]) if any(text_parts) else ""
+    row["reviewText"] = row["text"]
+    
+    return row
+

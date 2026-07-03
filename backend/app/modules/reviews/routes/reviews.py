@@ -35,6 +35,7 @@ from app.modules.reviews.repository import (
     get_review_stats,
     get_full_distribution,
     delete_reviews_by_source_id,
+    fetch_review_by_id_enriched,
 )
 from app.modules.source.services.source_service import get_source_by_id
 from app.modules.source.services.embedding_client import delete_embeddings_for_source
@@ -410,3 +411,25 @@ def delete_reviews_by_source(
     except Exception as e:
         logger.error(f"Failed to delete reviews for source {source_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete reviews.")
+
+
+@router.get("/{review_id}", response_model=ReviewModel)
+def read_review(
+    review_id: uuid.UUID,
+    organization_id: Optional[uuid.UUID] = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Fetch details for a single review by ID with tenant isolation."""
+    try:
+        resolved_org_id = resolve_tenant_scope(current_user, db, str(organization_id) if organization_id else None)
+        review = fetch_review_by_id_enriched(str(review_id), resolved_org_id, db)
+        if not review:
+            raise HTTPException(status_code=404, detail="Review not found.")
+        return review
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch review {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch review details.")
+

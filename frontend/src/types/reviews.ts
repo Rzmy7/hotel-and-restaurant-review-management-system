@@ -21,6 +21,7 @@ export interface Review {
     hasReply?: string;
     isAiReply?: boolean;
     heading?: string;
+    ai_reply?: string;
 }
 
 export interface ReviewStats {

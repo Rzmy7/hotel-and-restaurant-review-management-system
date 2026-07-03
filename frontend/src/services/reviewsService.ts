@@ -33,6 +33,17 @@ class ReviewsService {
     }
 
     /**
+     * Fetch a single review by ID from the server.
+     */
+    async getReviewById(organizationId: string, reviewId: string): Promise<Review> {
+        const response = await apiClient.get<any>(`/reviews/${reviewId}`, {
+            organization_id: organizationId
+        });
+        return this.mapReview(response);
+    }
+
+
+    /**
      * Map backend ReviewModel to frontend Review interface.
      */
     private mapReview(item: any): Review {
@@ -53,9 +64,11 @@ class ReviewsService {
             summary: item.summary || '',
             scraper_review_id: item.scraper_review_id || '',
             platformReviewId: item.scraper_review_id || '', // Shim for compatibility
+            scrapedAt: item.scrapedAt,
+            hasReply: item.hasReply,
+            isAiReply: item.isAiReply ?? (item.status === 'Replied'),
+            ai_reply: item.ai_reply || item.aiReply || '',
             replyStatus: item.ai_reply ? 'Replied' : 'Unreplied',
-            hasReply: item.ai_reply ? 'Yes' : 'No',
-            isAiReply: !!item.ai_reply,
         };
     }
 

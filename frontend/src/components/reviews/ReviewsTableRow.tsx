@@ -1,4 +1,5 @@
-import { Star, CheckCircle2, Bot } from 'lucide-react';
+import { Star, CheckCircle2, Bot, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { Review } from '../../types/reviews';
 
 interface ReviewsTableRowProps {
@@ -9,6 +10,7 @@ interface ReviewsTableRowProps {
 }
 
 const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRowProps) => {
+    const navigate = useNavigate();
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -129,6 +131,20 @@ const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRow
             {/* Status */}
             <td className="px-6 py-5">
                 {getStatusBadge(review.status, review.isAiReply ?? false)}
+            </td>
+
+            {/* Action */}
+            <td className="px-6 py-5">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation(); // prevent modal trigger
+                        navigate(`/reviews/${review.id}`);
+                    }}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-50 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-gray-400 dark:text-slate-500 hover:scale-105 active:scale-95 transition-all border border-gray-200/50 dark:border-slate-700"
+                    title="Open dedicated page"
+                >
+                    <ExternalLink size={14} />
+                </button>
             </td>
         </tr>
     );
