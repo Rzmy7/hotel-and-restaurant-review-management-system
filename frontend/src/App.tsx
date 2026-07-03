@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { maintenanceService } from './services/maintenanceService';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 
 // Providers and Contexts
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,14 @@ import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
 // Components
 import Sidebar from './components/shared/SideBar';
 import ScrapeLauncher from './components/shared/ScrapeLauncher';
+import DashboardSkeleton from './pages/DashboardSkeleton';
+import InsightsSkeleton from './pages/InsightsSkeleton';
+import ReviewsSkeleton from './pages/ReviewsSkeleton';
+import ReviewSourcesSkeleton from './pages/ReviewSourcesSkeleton';
+import SetupSkeleton from './pages/SetupSkeleton';
+import SettingsSkeleton from './pages/SettingsSkeleton';
+import CompetitorsSkeleton from './pages/CompetitorsSkeleton';
+import GroupsSkeleton from './pages/GroupsSkeleton';
 
 // Stores
 import { useOrganizationStore } from './stores/useOrganizationStore';
@@ -47,6 +55,8 @@ const ChooseSchedulePage = React.lazy(() => import('./pages/ChooseSchedulePage')
 const ChoosePlanPage = React.lazy(() => import('./pages/ChoosePlanPage'));
 const FinishSetupPage = React.lazy(() => import('./pages/FinishSetupPage'));
 const OAuthSuccessPage = React.lazy(() => import("./pages/OAuthSuccessPage"));
+const TermsOfServicePage = React.lazy(() => import('./pages/TermsOfServicePage'));
+const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage'));
 
 // Pages - Main Application (Lazy Loaded)
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
@@ -67,6 +77,7 @@ const GroupsPage = React.lazy(() => import('./pages/GroupsPage'));
 const GroupDashboardPage = React.lazy(() => import('./pages/GroupDashboardPage'));
 const GroupInvitePage = React.lazy(() => import('./pages/GroupInvitePage'));
 const NoOrganizationPage = React.lazy(() => import("./pages/NoOrganizationPage"));
+const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 
 // Styles
 import "./App.css";
@@ -143,6 +154,8 @@ const AppContent: React.FC = () => {
   const [maintenanceLoaded, setMaintenanceLoaded] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
   const fetchOrganizations = useOrganizationStore(state => state.fetchOrganizations);
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
 
   useEffect(() => {
     fetchOrganizations();
@@ -153,7 +166,16 @@ const AppContent: React.FC = () => {
 
     const loadMaintenanceStatus = async () => {
       try {
-        const result = await maintenanceService.getStatus();
+        // Safety timeout: assumed no maintenance if backend hangs (e.g. DB connection issues)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Maintenance check timed out')), 5000)
+        );
+
+        const result = await Promise.race([
+          maintenanceService.getStatus(),
+          timeoutPromise
+        ]) as any;
+
         if (mounted) {
           setMaintenanceMode(!!result.maintenanceMode);
         }
@@ -180,6 +202,21 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // Handle scroll-friendly body class for Landing Page vs fixed-height shell for Dashboard
+  useEffect(() => {
+    if (isLandingPage) {
+      document.body.classList.add('landing-scroll');
+      document.documentElement.classList.add('landing-scroll');
+    } else {
+      document.body.classList.remove('landing-scroll');
+      document.documentElement.classList.remove('landing-scroll');
+    }
+    return () => {
+      document.body.classList.remove('landing-scroll');
+      document.documentElement.classList.remove('landing-scroll');
+    };
+  }, [isLandingPage]);
+
   /**
    * Toggles the expanded/collapsed state of the navigation sidebar.
    */
@@ -187,12 +224,19 @@ const AppContent: React.FC = () => {
     setIsSidebarExpanded((prev) => !prev);
   };
 
+  // Log initialization state for debugging purposes
+  if (import.meta.env.DEV && (!maintenanceLoaded || isAuthLoading)) {
+    console.log(`[App] Initializing: maintenanceLoaded=${maintenanceLoaded}, isAuthLoading=${isAuthLoading}, path=${window.location.pathname}`);
+  }
+
   // Show a blank or loading state while maintenance status or auth state is loading
-  if (!maintenanceLoaded || isAuthLoading) {
+  // EXCEPTION: Always allow the Landing Page to render immediately for better UX and resilience.
+  if ((!maintenanceLoaded || isAuthLoading) && !isLandingPage) {
     return (
       <div className="h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-500 mb-4"></div>
         <p className="text-gray-900 dark:text-white text-lg font-medium tracking-wide text-center">Loading application...</p>
+        <p className="text-gray-500 dark:text-slate-400 text-sm mt-2">Connecting to secure services...</p>
       </div>
     );
   }
@@ -208,6 +252,7 @@ const AppContent: React.FC = () => {
       </div>
     }>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         {/* 
           Authentication Routes
           Only accessible when not logged in.
@@ -215,18 +260,22 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-        <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route path="/oauth-success" element={<OAuthSuccessPage />} />
+        
+        {/* Legal Pages */}
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
         {/* 
           Initial Setup Workflow
           Standalone pages for the first-time user setup experience.
         */}
-        <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
-        <Route path="/setup/sources" element={<RequireAuth><AddSourcesPage /></RequireAuth>} />
-        <Route path="/setup/schedule" element={<RequireAuth><ChooseSchedulePage /></RequireAuth>} />
-        <Route path="/setup/plan" element={<RequireAuth><ChoosePlanPage /></RequireAuth>} />
-        <Route path="/setup/finish" element={<RequireAuth><FinishSetupPage /></RequireAuth>} />
+        <Route path="/setup" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={1} />}><SetupPage /></Suspense></RequireAuth>} />
+        <Route path="/setup/sources" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={2} />}><AddSourcesPage /></Suspense></RequireAuth>} />
+        <Route path="/setup/schedule" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={3} />}><ChooseSchedulePage /></Suspense></RequireAuth>} />
+        <Route path="/setup/plan" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={3} />}><ChoosePlanPage /></Suspense></RequireAuth>} />
+        <Route path="/setup/finish" element={<RequireAuth><Suspense fallback={<SetupSkeleton currentStep={3} />}><FinishSetupPage /></Suspense></RequireAuth>} />
 
 
         {/* Utility/Admin Routes */}
@@ -251,21 +300,21 @@ const AppContent: React.FC = () => {
                   <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
                   
                   {/* Org-dependent feature pages — all require both auth AND an active organization */}
-                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><DashboardPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><ReviewsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/sources" element={<RequireAuth><RequireOrganization><ReviewSourcesPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/insights" element={<RequireAuth><RequireOrganization><InsightsPage /></RequireOrganization></RequireAuth>} />
-                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><CompetitorsPage /></RequireOrganization></RequireAuth>} />
+                  <Route path="/dashboard" element={<RequireAuth><RequireOrganization><Suspense fallback={<DashboardSkeleton />}><DashboardPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/reviews" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewsSkeleton />}><ReviewsPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/sources" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewSourcesSkeleton />}><ReviewSourcesPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/insights" element={<RequireAuth><RequireOrganization><Suspense fallback={<InsightsSkeleton />}><InsightsPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/competitors" element={<RequireAuth><RequireOrganization><Suspense fallback={<CompetitorsSkeleton />}><CompetitorsPage /></Suspense></RequireOrganization></RequireAuth>} />
                   <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
                   <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
 
                   {/* Group routes — no org requirement */}
-                  <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
+                  <Route path="/groups" element={<RequireAuth><Suspense fallback={<GroupsSkeleton />}><GroupsPage /></Suspense></RequireAuth>} />
                   <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
                   <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
 
                   {/* Pages that don't require an org */}
-                  <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+                  <Route path="/settings" element={<RequireAuth><Suspense fallback={<SettingsSkeleton />}><SettingsPage /></Suspense></RequireAuth>} />
                   <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
                   <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
                   <Route path="/support" element={<RequireAuth><SupportPage /></RequireAuth>} />
@@ -294,7 +343,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <BrowserRouter>
+        <Router>
           <ToastProvider>
             <NavigationBlockerProvider>
               <AuthProvider>
@@ -302,7 +351,7 @@ function App() {
               </AuthProvider>
             </NavigationBlockerProvider>
           </ToastProvider>
-        </BrowserRouter>
+        </Router>
       </ThemeProvider>
     </QueryClientProvider>
   );

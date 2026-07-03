@@ -5,10 +5,10 @@ from sqlalchemy import text
 from app.database.session import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 
-router = APIRouter(prefix="/api", tags=["user-organizations"])
+router = APIRouter(prefix="/api", tags=["Organizations"])
 
 
-@router.get("/user/organizations")
+@router.get("/user/organizations", summary="List all organizations for the authenticated user")
 def get_user_organizations(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)

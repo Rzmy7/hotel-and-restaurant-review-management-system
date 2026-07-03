@@ -1,16 +1,33 @@
-import os
-from fastapi import Header, HTTPException, status
+import hmac
+import logging
+from fastapi import Header, HTTPException, status, Request
+from app.core import config
 
-def verify_internal_api_key(x_internal_api_key: str = Header(None)):
+logger = logging.getLogger(__name__)
+
+def verify_internal_api_key(request: Request, x_internal_api_key: str = Header(None)):
     """
-    Simple dependency to verify service-to-service communication via a shared secret.
+    Dependency to verify service-to-service communication.
     Expected header: X-Internal-API-Key
+    Supports multiple valid keys for zero-downtime rotation.
     """
-    expected_key = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
-    
-    if not x_internal_api_key or x_internal_api_key != expected_key:
+    if not x_internal_api_key:
+        logger.warning(f"event=internal_auth_failure service=backend path={request.url.path} reason=missing_api_key remote_ip={request.client.host if request.client else 'unknown'} message=\"Internal API Key missing in request headers.\"")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing Internal API Key"
+            detail="Missing Internal API Key"
         )
-    return True
+        
+    for valid_key in config.BACKEND_API_KEYS:
+        # Prevent timing attacks
+        if hmac.compare_digest(x_internal_api_key.encode("utf-8"), valid_key.encode("utf-8")):
+            return True
+
+    # Auth failed
+    key_suffix = f"***{x_internal_api_key[-4:]}" if len(x_internal_api_key) > 4 else "***"
+    logger.warning(f"event=internal_auth_failure service=backend path={request.url.path} reason=invalid_api_key remote_ip={request.client.host if request.client else 'unknown'} key_suffix={key_suffix} message=\"Internal API Key rejected. Key mismatch.\"")
+    
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid Internal API Key"
+    )

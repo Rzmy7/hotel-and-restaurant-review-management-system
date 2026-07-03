@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, Users, MessageSquare, Bot } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { StatCard } from '../components/StatCard';
 import { SystemHealthBar } from '../components/SystemHealthBar';
 import { UsageChart } from '../components/UsageChart';
 import { ReviewsChart } from '../components/ReviewsChart';
 import { AlertsPanel } from '../components/AlertsPanel';
 import { RecentActivity } from '../components/RecentActivity';
+import { AllActivityModal } from '../components/AllActivityModal';
+import { AllAlertsModal } from '../components/AllAlertsModal';
+import { DashboardSkeleton } from './DashboardSkeleton';
 import {
     fetchDashboardStats,
     fetchUsageData,
@@ -35,6 +37,8 @@ export const Dashboard: React.FC = () => {
     const [servers, setServers] = useState<ServerStatus[]>([]);
     const [loading, setLoading] = useState(true);
     const [serversLoading, setServersLoading] = useState(true);
+    const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+    const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -100,7 +104,7 @@ export const Dashboard: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <DashboardSkeleton />;
     }
 
     return (
@@ -154,9 +158,30 @@ export const Dashboard: React.FC = () => {
 
             {/* ─── Activity + Alerts Grid ─── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RecentActivity activities={activities} timezone={systemTimezone} />
-                <AlertsPanel alerts={alerts} timezone={systemTimezone} onDismiss={handleDismissAlert} />
+                <RecentActivity
+                    activities={activities}
+                    timezone={systemTimezone}
+                    onViewAll={() => setIsActivityModalOpen(true)}
+                />
+                <AlertsPanel 
+                    alerts={alerts} 
+                    timezone={systemTimezone} 
+                    onDismiss={handleDismissAlert} 
+                    onViewAll={() => setIsAlertsModalOpen(true)} 
+                />
             </div>
+
+            <AllActivityModal
+                isOpen={isActivityModalOpen}
+                onClose={() => setIsActivityModalOpen(false)}
+                timezone={systemTimezone}
+            />
+
+            <AllAlertsModal
+                isOpen={isAlertsModalOpen}
+                onClose={() => setIsAlertsModalOpen(false)}
+                timezone={systemTimezone}
+            />
         </div>
     );
 };

@@ -11,7 +11,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.modules.auth.constants.roles import SYSTEM_ADMIN
-from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification, UserRole
+from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification
+from app.modules.auth.services.email_service import send_notification_email
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,12 @@ def _ensure_broadcast_events_table(db: Session) -> None:
     db.execute(
         text(
             """
-            IF OBJECT_ID('dbo.broadcast_events', 'U') IS NULL
+            IF OBJECT_ID('dbo.broadcast_event', 'U') IS NULL
             BEGIN
-                CREATE TABLE dbo.broadcast_events (
+                CREATE TABLE dbo.broadcast_event (
                     broadcast_id UNIQUEIDENTIFIER NOT NULL
-                        CONSTRAINT PK_broadcast_events PRIMARY KEY
-                        CONSTRAINT DF_broadcast_events_id DEFAULT NEWID(),
+                        CONSTRAINT PK_broadcast_event PRIMARY KEY
+                        CONSTRAINT DF_broadcast_event_id DEFAULT NEWID(),
                     subject NVARCHAR(120) NOT NULL,
                     body NVARCHAR(MAX) NOT NULL,
                     channel NVARCHAR(20) NOT NULL,
@@ -69,34 +70,35 @@ def _ensure_broadcast_events_table(db: Session) -> None:
                     audience_value NVARCHAR(100) NULL,
                     audience_label NVARCHAR(200) NOT NULL,
                     message_type NVARCHAR(30) NOT NULL,
-                    recipient_count INT NOT NULL CONSTRAINT DF_broadcast_events_recipient_count DEFAULT 0,
-                    status NVARCHAR(20) NOT NULL CONSTRAINT DF_broadcast_events_status DEFAULT 'sent',
-                    schedule_type NVARCHAR(20) NOT NULL CONSTRAINT DF_broadcast_events_schedule_type DEFAULT 'now',
+                    recipient_count INT NOT NULL CONSTRAINT DF_broadcast_event_recipient_count DEFAULT 0,
+                    status NVARCHAR(20) NOT NULL CONSTRAINT DF_broadcast_event_status DEFAULT 'sent',
+                    schedule_type NVARCHAR(20) NOT NULL CONSTRAINT DF_broadcast_event_schedule_type DEFAULT 'now',
                     scheduled_at DATETIME2(7) NULL,
                     sent_at DATETIME2(7) NULL,
                     sent_by NVARCHAR(255) NULL,
                     created_at DATETIME2(7) NOT NULL
-                        CONSTRAINT DF_broadcast_events_created_at DEFAULT SYSUTCDATETIME(),
+                        CONSTRAINT DF_broadcast_event_created_at DEFAULT SYSUTCDATETIME(),
 
-                    CONSTRAINT CK_broadcast_events_channel_valid
+                    CONSTRAINT CK_broadcast_event_channel_valid
                         CHECK (channel IN ('email', 'notification', 'both')),
-                    CONSTRAINT CK_broadcast_events_audience_type_valid
+                    CONSTRAINT CK_broadcast_event_audience_type_valid
                         CHECK (audience_type IN ('all', 'role', 'plan')),
-                    CONSTRAINT CK_broadcast_events_message_type_valid
+                    CONSTRAINT CK_broadcast_event_message_type_valid
                         CHECK (message_type IN ('info', 'warning', 'maintenance', 'announcement')),
-                    CONSTRAINT CK_broadcast_events_schedule_type_valid
+                    CONSTRAINT CK_broadcast_event_schedule_type_valid
                         CHECK (schedule_type IN ('now', 'scheduled')),
-                    CONSTRAINT CK_broadcast_events_status_valid
+                    CONSTRAINT CK_broadcast_event_status_valid
                         CHECK (status IN ('sent', 'failed', 'pending'))
                 );
 
-                CREATE INDEX IX_broadcast_events_created_at
-                    ON dbo.broadcast_events (created_at DESC);
+                CREATE INDEX IX_broadcast_event_created_at
+                    ON dbo.broadcast_event (created_at DESC);
             END;
             """
         )
     )
     db.commit()
+
 
 
 def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -166,8 +168,8 @@ def _derive_plan_bucket(is_admin: bool, is_email_verified: bool, is_phone_verifi
 
 def _get_admin_user_ids(db: Session) -> set[uuid.UUID]:
     rows = (
-        db.query(UserRole.user_id)
-        .join(Role, UserRole.role_id == Role.role_id)
+        db.query(User.user_id)
+        .join(Role, User.role_id == Role.role_id)
         .filter(Role.role_name == SYSTEM_ADMIN)
         .all()
     )
@@ -239,7 +241,7 @@ def get_audience_label(audience_type: str, audience_value: Optional[str] = None)
         return "All Users"
     if audience_type == "role":
         role_labels = {"admin": "Admins only", "user": "Users (non-admin)"}
-        return f"Role: {role_labels.get(audience_value, 'Unknown')}"
+        return f"Role: {role_labels.get(str(audience_value or ''), 'Unknown')}"
     if audience_type == "plan":
         plan_labels = {
             "free": "Free plan",
@@ -247,7 +249,7 @@ def get_audience_label(audience_type: str, audience_value: Optional[str] = None)
             "professional": "Professional plan",
             "enterprise": "Enterprise plan",
         }
-        return f"Plan: {plan_labels.get(audience_value, 'Unknown')}"
+        return f"Plan: {plan_labels.get(str(audience_value or ''), 'Unknown')}"
     return "Unknown"
 
 
@@ -261,9 +263,9 @@ def _event_to_record(event: BroadcastEvent) -> dict:
         "audienceType": event.audience_type,
         "audienceLabel": event.audience_label,
         "messageType": event.message_type,
-        "recipientCount": int(event.recipient_count or 0),
+        "recipientCount": int(str(event.recipient_count or 0)),  # type: ignore
         "status": event.status,
-        "sentAt": _to_iso(sent_at),
+        "sentAt": _to_iso(sent_at),  # type: ignore
         "sentBy": event.sent_by or "Admin User",
     }
 
@@ -298,6 +300,14 @@ def _create_notifications_for_recipients(
         for user_id in recipient_ids
     ]
     db.add_all(user_notifications)
+
+    users_to_email = db.query(User).filter(
+        User.user_id.in_(recipient_ids),
+        User.is_email_notifications_enabled == True
+    ).all()
+
+    for user in users_to_email:
+        send_notification_email(user.email, subject, body)  # type: ignore
 
 
 async def send_broadcast(
@@ -448,23 +458,23 @@ async def resend_broadcast(
             "message": "Broadcast not found",
         }
 
-    recipient_ids = _get_recipient_ids(db, event.audience_type, event.audience_value)
+    recipient_ids = _get_recipient_ids(db, event.audience_type, event.audience_value)  # type: ignore
     now_utc = datetime.utcnow()
 
     if event.channel in {"notification", "both"}:
         _create_notifications_for_recipients(
             db,
             recipient_ids,
-            event.subject,
-            event.body,
-            event.message_type,
+            event.subject,  # type: ignore
+            event.body,  # type: ignore
+            event.message_type,  # type: ignore
             now_utc,
         )
 
-    event.status = "sent"
-    event.sent_at = now_utc
-    event.recipient_count = len(recipient_ids)
-    event.schedule_type = "now"
+    event.status = "sent"  # type: ignore
+    event.sent_at = now_utc  # type: ignore
+    event.recipient_count = len(recipient_ids)  # type: ignore
+    event.schedule_type = "now"  # type: ignore
 
     db.commit()
     db.refresh(event)
@@ -505,13 +515,13 @@ async def cancel_broadcast(
             "message": "Broadcast not found",
         }
 
-    if event.status != "pending":
+    if event.status != "pending":  # type: ignore
         return {
             "success": False,
             "message": "Only scheduled broadcasts can be cancelled",
         }
 
-    event.status = "failed"
+    event.status = "failed"  # type: ignore
     db.commit()
     db.refresh(event)
 

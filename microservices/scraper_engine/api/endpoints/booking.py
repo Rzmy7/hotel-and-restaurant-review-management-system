@@ -31,9 +31,12 @@ class BookingScrapeRequest(BaseModel):
     pages: Optional[str] = "1"
 
 
+from fastapi import APIRouter, HTTPException, Depends
+from core.security import verify_scraper_api_key
+
 @router.post("/scrape")
 @limiter.limit(config.rate_limit_scrape)
-def trigger_booking_scrape(request: Request, body: BookingScrapeRequest):
+def trigger_booking_scrape(request: Request, body: BookingScrapeRequest, internal: bool = Depends(verify_scraper_api_key)):
     """
     Upserts the source in the database and submits a scrape job to the
     thread pool. Returns the job_id for real-time monitoring.

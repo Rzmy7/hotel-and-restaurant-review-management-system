@@ -90,10 +90,10 @@ export const PricingGrid: React.FC = () => {
       setSuccessMessage('Plan allocated successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
-       const message = error instanceof Error ? error.message : 'Failed to update plan';
-       setErrorMessage(message);
+      const message = error instanceof Error ? error.message : 'Failed to update plan';
+      setErrorMessage(message);
     } finally {
-       setIsUpdating(false);
+      setIsUpdating(false);
     }
   };
 

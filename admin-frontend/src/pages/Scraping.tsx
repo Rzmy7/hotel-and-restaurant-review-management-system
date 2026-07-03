@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, Eye, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil, Square } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { Search, Filter, RefreshCw, Play, CheckCircle, XCircle, Grid3X3, Plus, X, Trash2, Upload, Pencil } from 'lucide-react';
 import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
-import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform, stopScrapingJob } from '../services/scrapingService';
+import Skeleton from '../components/shared/Skeleton';
+import ScrapingSkeleton from './ScrapingSkeleton';
+import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createScrapingPlatform, deleteScrapingPlatform, fetchScrapingPlatformDetails, updateScrapingPlatform, uploadPlatformScript, toggleScrapingPlatform } from '../services/scrapingService';
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
@@ -46,7 +47,7 @@ export const Scraping: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
-    const [stoppingJobIds, setStoppingJobIds] = useState<Set<string>>(new Set());
+    // const [stoppingJobIds, setStoppingJobIds] = useState<Set<string>>(new Set());
 
     // Reset modal file state whenever the Add Platform modal closes.
     useEffect(() => {
@@ -395,6 +396,7 @@ export const Scraping: React.FC = () => {
         }
     };
 
+    /*
     const handleStopJob = async (job: ScrapingJob) => {
         if (stoppingJobIds.has(job.id)) return;
         setStoppingJobIds(prev => new Set(prev).add(job.id));
@@ -415,9 +417,10 @@ export const Scraping: React.FC = () => {
             });
         }
     };
+    */
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <ScrapingSkeleton />;
     }
 
     return (
@@ -739,8 +742,34 @@ export const Scraping: React.FC = () => {
                         </div>
 
                         {editPlatformLoading ? (
-                            <div className="p-8 flex items-center justify-center">
-                                <LoadingSpinner size={24} />
+                            <div className="p-5 space-y-5 animate-shimmer">
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-28 rounded" />
+                                    <Skeleton className="h-10 w-full rounded-lg" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-20 rounded" />
+                                    <Skeleton className="h-10 w-full rounded-lg" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-24 rounded" />
+                                    <Skeleton className="h-10 w-full rounded-lg" />
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <Skeleton className="h-4 w-28 rounded" />
+                                        <Skeleton className="h-4 w-16 rounded" />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Skeleton className="h-10 flex-1 rounded-lg" />
+                                        <Skeleton className="h-10 w-32 rounded-lg" />
+                                        <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
+                                    <Skeleton className="h-9 w-20 rounded-lg" />
+                                    <Skeleton className="h-9 w-24 rounded-lg" />
+                                </div>
                             </div>
                         ) : (
                             <form onSubmit={handleUpdatePlatform} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
@@ -953,7 +982,7 @@ export const Scraping: React.FC = () => {
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Start Time</th>
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
                                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Reviews</th>
-                                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -981,34 +1010,7 @@ export const Scraping: React.FC = () => {
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{formatDateTime(job.startTime, systemTimezone)}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.duration}</td>
                                     <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{job.reviews !== null ? job.reviews : '--'}</td>
-                                    <td className="py-4 px-4">
-                                        <div className="flex items-center gap-2">
-                                            {(job.status === 'Running' || job.status === 'Queued') && (
-                                                <button
-                                                    onClick={() => handleStopJob(job)}
-                                                    disabled={stoppingJobIds.has(job.id)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 rounded-lg uppercase transition-all disabled:opacity-50"
-                                                    title="Stop this job"
-                                                >
-                                                    <Square size={12} fill="currentColor" />
-                                                    {stoppingJobIds.has(job.id) ? 'Stopping...' : 'Stop'}
-                                                </button>
-                                            )}
-                                            {job.status === 'Failed' && (
-                                                <>
-                                                    <button className="text-xs font-semibold text-red-600 hover:text-red-700 uppercase">Retry</button>
-                                                    <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
-                                                        <RotateCcw size={14} />
-                                                    </button>
-                                                </>
-                                            )}
-                                            {job.status === 'Completed' && (
-                                                <button className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 dark:text-slate-400 rounded">
-                                                    <Eye size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
+
                                 </tr>
                             ))}
                         </tbody>

@@ -3,9 +3,8 @@
 from app.modules.admin.services.admin_activity_logger import log_admin_activity
 
 import pyodbc
-import requests
 from fastapi import APIRouter, HTTPException, Depends
-from google import genai
+
 
 from app.core.db_utils import get_connection_string
 from app.core.db_utils import execute_query, get_table_columns
@@ -20,23 +19,23 @@ from app.modules.admin.schemas import (
     AdminProfileUpdatePayload,
     FeatureFlagResponse,
     FeatureFlagUpdatePayload,
-    ReplyGenerationApiTestPayload,
-    ReplyGenerationApiTestResponse,
     ReplyGenerationSettingsPayload,
     ReplyGenerationSettingsResponse,
     SecuritySettingsPayload,
     SecuritySettingsResponse,
+    SchedulerSettingsPayload,
+    SchedulerSettingsResponse,
 )
 from app.modules.admin.services.system_settings_service import (
     DEFAULT_ADMIN_SESSION_TIMEOUT_MINUTES,
     DEFAULT_CURRENCY,
     DEFAULT_DATE_FORMAT,
     DEFAULT_LANGUAGE,
-    DEFAULT_REPLY_GOOGLE_MODEL,
-    DEFAULT_REPLY_SELECTED_MODEL,
     DEFAULT_REPLY_USE_EMBEDDING_RULES,
     DEFAULT_REPLY_USE_SIMILAR_REVIEWS,
     DEFAULT_USER_SESSION_TIMEOUT_MINUTES,
+    DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES,
+    DEFAULT_DEDUPLICATION_INTERVAL_MINUTES,
     ensure_system_settings_table,
     get_setting_bool,
     get_setting_int,
@@ -45,8 +44,9 @@ from app.modules.admin.services.system_settings_service import (
     is_valid_timezone,
     set_setting,
 )
+from app.modules.scheduler.services.scheduler_service import reschedule_job_interval
 
-router = APIRouter(prefix="/settings", tags=["Admin Settings"])
+router = APIRouter(prefix="/settings", tags=["Admin - Settings"])
 
 
 FEATURE_FLAG_DEFINITIONS = {
@@ -68,6 +68,13 @@ FEATURE_FLAG_DEFINITIONS = {
         "description": "Allow users to enable two-factor authentication for their accounts",
         "status_key": "feature_flag_two_factor_auth",
     },
+    "api_limit_notifications": {
+        "id": "4",
+        "name": "API Limit Notifications",
+        "description": "Inform users via notification when the API hits its quota or limit",
+        "status_key": "feature_flag_api_limit_notifications",
+        "default": "Disabled",
+    },
 }
 
 
@@ -84,7 +91,8 @@ def _load_feature_flags(cursor: pyodbc.Cursor) -> list[FeatureFlagResponse]:
     flags: list[FeatureFlagResponse] = []
 
     for key, definition in FEATURE_FLAG_DEFINITIONS.items():
-        status = _normalize_flag_status(get_setting(cursor, definition["status_key"]))
+        default_status = definition.get("default", "Enabled")
+        status = _normalize_flag_status(get_setting(cursor, definition["status_key"]), default=default_status)
         limit_value: int | None = None
 
         limit_key = definition.get("limit_key")
@@ -420,11 +428,8 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
             cursor = connection.cursor()
             ensure_system_settings_table(cursor)
 
-            google_api_key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-            selected_model = (get_setting(cursor, "reply_selected_model") or DEFAULT_REPLY_SELECTED_MODEL).strip() or DEFAULT_REPLY_SELECTED_MODEL
             similar_reviews_count = get_similar_reviews_count(cursor)
-            google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
-            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            reply_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
             use_embedding_rules = get_setting_bool(
                 cursor,
                 "reply_use_embedding_rules",
@@ -437,11 +442,8 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
             )
 
             return ReplyGenerationSettingsResponse(
-                googleApiKey=google_api_key,
-                selectedModel=selected_model,
                 similarReviewsCount=similar_reviews_count,
-                googleRequestCount=google_request_count,
-                googleTokenUsage=google_token_usage,
+                replyRequestCount=reply_request_count,
                 useEmbeddingRules=use_embedding_rules,
                 useSimilarReviews=use_similar_reviews,
             )
@@ -451,18 +453,9 @@ def get_reply_generation_settings() -> ReplyGenerationSettingsResponse:
 
 @router.patch("/reply-generation", response_model=ReplyGenerationSettingsResponse)
 def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) -> ReplyGenerationSettingsResponse:
-    google_api_key = payload.googleApiKey.strip()
-    google_api_key = "".join(c for c in google_api_key if ord(c) < 128)
-    selected_model = payload.selectedModel.strip()
     similar_reviews_count = payload.similarReviewsCount
     use_embedding_rules = payload.useEmbeddingRules
     use_similar_reviews = payload.useSimilarReviews
-
-    if not selected_model:
-        raise HTTPException(status_code=400, detail="A model selection is required.")
-
-    if not google_api_key:
-        raise HTTPException(status_code=400, detail="Google API key is required for the selected provider.")
 
     if similar_reviews_count < 1 or similar_reviews_count > 20:
         raise HTTPException(status_code=400, detail="similarReviewsCount must be between 1 and 20.")
@@ -472,27 +465,21 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
             cursor = connection.cursor()
             ensure_system_settings_table(cursor)
 
-            set_setting(cursor, "reply_google_api_key", google_api_key)
-            set_setting(cursor, "reply_selected_model", selected_model)
             set_setting(cursor, "reply_similar_reviews_count", str(similar_reviews_count))
             set_setting(cursor, "reply_use_embedding_rules", "true" if use_embedding_rules else "false")
             set_setting(cursor, "reply_use_similar_reviews", "true" if use_similar_reviews else "false")
-            google_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
-            google_token_usage = get_setting_int(cursor, "reply_google_token_usage", default=0)
+            reply_request_count = get_setting_int(cursor, "reply_google_request_count", default=0)
             connection.commit()
 
             log_admin_activity(
                 "ai_job",
                 "Reply Generation Settings Updated",
-                f"Model: {selected_model}, Similar reviews: {similar_reviews_count}",
+                f"Similar reviews: {similar_reviews_count}, Rules: {use_embedding_rules}, Similar: {use_similar_reviews}",
             )
 
             return ReplyGenerationSettingsResponse(
-                googleApiKey=google_api_key,
-                selectedModel=selected_model,
                 similarReviewsCount=similar_reviews_count,
-                googleRequestCount=google_request_count,
-                googleTokenUsage=google_token_usage,
+                replyRequestCount=reply_request_count,
                 useEmbeddingRules=use_embedding_rules,
                 useSimilarReviews=use_similar_reviews,
             )
@@ -501,52 +488,6 @@ def update_reply_generation_settings(payload: ReplyGenerationSettingsPayload) ->
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to update reply generation settings: {exc}") from exc
 
-
-@router.post("/reply-generation/test", response_model=ReplyGenerationApiTestResponse)
-def test_reply_generation_api_key(payload: ReplyGenerationApiTestPayload) -> ReplyGenerationApiTestResponse:
-    provider = payload.provider.strip().lower()
-    api_key = payload.apiKey.strip()
-    api_key = "".join(c for c in api_key if ord(c) < 128)
-    model = (payload.model or "").strip()
-
-    if provider != "google":
-        raise HTTPException(status_code=400, detail="Provider must be 'google'.")
-
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
-    if not model:
-        model = DEFAULT_REPLY_GOOGLE_MODEL
-
-    try:
-        resolved_google_version = "v1"
-        last_google_error: Exception | None = None
-
-        for api_version in ("v1", "v1beta"):
-            try:
-                client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
-                response = client.models.generate_content(model=model, contents="Reply with exactly: ok")
-                if not (getattr(response, "text", "") or "").strip():
-                    raise ValueError("Google API returned an empty response.")
-                resolved_google_version = api_version
-                last_google_error = None
-                break
-            except Exception as exc:
-                last_google_error = exc
-
-        if last_google_error is not None:
-            raise last_google_error
-
-        return ReplyGenerationApiTestResponse(
-            provider=provider,
-            success=True,
-            message=f"API key is valid and model '{model}' is reachable (Google API {resolved_google_version}).",
-        )
-    except Exception as exc:
-        return ReplyGenerationApiTestResponse(
-            provider=provider,
-            success=False,
-            message=f"API key test failed: {exc}",
-        )
 
 
 @router.get("/feature-flags", response_model=list[FeatureFlagResponse])
@@ -607,3 +548,60 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
         raise HTTPException(status_code=500, detail=f"Unable to update feature flag: {exc}") from exc
 
     raise HTTPException(status_code=500, detail="Feature flag update failed")
+
+
+@router.get("/scheduler", response_model=SchedulerSettingsResponse)
+def get_scheduler_settings() -> SchedulerSettingsResponse:
+    """Return the current background job intervals."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            review_interval = get_setting_int(
+                cursor,
+                "scheduler_review_processing_interval_minutes",
+                default=DEFAULT_REVIEW_PROCESSING_INTERVAL_MINUTES,
+            )
+            dedup_interval = get_setting_int(
+                cursor,
+                "scheduler_deduplication_interval_minutes",
+                default=DEFAULT_DEDUPLICATION_INTERVAL_MINUTES,
+            )
+
+            return SchedulerSettingsResponse(
+                reviewProcessingIntervalMinutes=review_interval,
+                deduplicationIntervalMinutes=dedup_interval,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load scheduler settings: {exc}") from exc
+
+
+@router.patch("/scheduler", response_model=SchedulerSettingsResponse)
+def update_scheduler_settings(payload: SchedulerSettingsPayload) -> SchedulerSettingsResponse:
+    """Update background job intervals and reschedule active jobs."""
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            ensure_system_settings_table(cursor)
+
+            set_setting(cursor, "scheduler_review_processing_interval_minutes", str(payload.reviewProcessingIntervalMinutes))
+            set_setting(cursor, "scheduler_deduplication_interval_minutes", str(payload.deduplicationIntervalMinutes))
+            connection.commit()
+
+            # Reschedule live jobs
+            reschedule_job_interval("process_reviews_job", payload.reviewProcessingIntervalMinutes)
+            reschedule_job_interval("deduplicate_reviews_job", payload.deduplicationIntervalMinutes)
+
+            log_admin_activity(
+                "settings_updated",
+                "Scheduler Intervals Updated",
+                f"Review Processing: {payload.reviewProcessingIntervalMinutes}m, Deduplication: {payload.deduplicationIntervalMinutes}m",
+            )
+
+            return SchedulerSettingsResponse(
+                reviewProcessingIntervalMinutes=payload.reviewProcessingIntervalMinutes,
+                deduplicationIntervalMinutes=payload.deduplicationIntervalMinutes,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to update scheduler settings: {exc}") from exc

@@ -59,7 +59,7 @@ def _mask_key(raw: str) -> str:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/llm-models", tags=["LLM Models"])
+router = APIRouter(prefix="/llm-models", tags=["Admin - LLM Models"])
 
 _PURPOSE_SETTINGS = {
     "review_processing": "llm_review_processing_model_id",

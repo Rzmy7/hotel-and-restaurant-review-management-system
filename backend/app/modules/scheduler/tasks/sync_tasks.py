@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
 from app.modules.source.services.source_service import update_sync_status, log_activity
-from app.core.config import SCRAPER_ENGINE_URL
+from app.core.config import SCRAPER_ENGINE_URL, SCRAPER_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,11 @@ async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) 
     logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
     
     try:
+        headers = {
+            "X-Internal-API-Key": SCRAPER_API_KEY
+        }
         async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, json=payload, timeout=20.0)
+            response = await client.post(endpoint, json=payload, headers=headers, timeout=20.0)
             response.raise_for_status()
             data = response.json()
             job_id = data.get("job_id")
@@ -64,12 +67,12 @@ def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
     """
     try:
         import pyodbc
-        from app.core.db_utils import get_connection_string
+        from app.core.pyodbc_connection import get_raw_connection
         from app.modules.admin.services.subscription_service import (
             check_feature_limit,
             send_limit_reached_notification,
         )
-        with pyodbc.connect(get_connection_string()) as conn:
+        with get_raw_connection() as conn:
             cursor = conn.cursor()
             limit_info = check_feature_limit(cursor, tenant_id, "scraping_frequency")
             if not limit_info["allowed"]:
@@ -172,8 +175,9 @@ async def process_pending_syncs():
             )
 
             if job_id:
-                # Update status to queued to prevent redundant triggers before scraper callback arrives
-                source.source_status = 'queued'
+                # Scraper accepted the job — set status to 'running' immediately
+                # so the frontend shows "Syncing" without waiting for the scraper's callback
+                source.source_status = 'running'
                 db.commit()
                 
                 log_activity(

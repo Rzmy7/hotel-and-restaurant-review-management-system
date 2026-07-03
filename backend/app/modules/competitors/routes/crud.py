@@ -22,6 +22,7 @@ from app.modules.competitors.services.competitor_service import (
     get_competitor_reviews,
 )
 from app.core.dependencies import get_current_user
+from app.core.tenant_context import resolve_tenant_scope
 
 router = APIRouter()
 
@@ -45,23 +46,33 @@ def _get_user_org_id(user, db: Session) -> str | None:
 
 
 @router.get("/")
-def list_competitors(organization_id: str, current_user=Depends(get_current_user)):
+def list_competitors(
+    organization_id: str = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return {"tracked": get_tracked_competitors(organization_id), "available": get_available_competitors(organization_id)}
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        return {
+            "tracked": get_tracked_competitors(resolved_org_id),
+            "available": get_available_competitors(resolved_org_id)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/suggestions")
 def suggested_competitors(
-    organization_id: str,
+    organization_id: str = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Top 6 organizations within 50km of the user's own org,
     excluding the user's org and orgs already in dbo.Competitors. Ordered by review count desc."""
     try:
-        my_org_id = organization_id
+        my_org_id = resolve_tenant_scope(current_user, db, organization_id)
         if not my_org_id:
             return {"status": "no_organization", "suggestions": []}
 
@@ -107,7 +118,7 @@ def suggested_competitors(
                       )) <= 50
                   AND o.organization_type_id = :type_id
                   AND NOT EXISTS (
-                        SELECT 1 FROM dbo.Competitors c WHERE c.competitor_organization_id = o.organization_id AND c.tracking_organization_id = :my_org
+                        SELECT 1 FROM dbo.Competitors c WHERE c.competitor_organization_id = o.organization_id AND c.tracking_organization_id = :my_org AND c.isTracked = 1
                   )
                 GROUP BY o.organization_id, o.organization_name, o.location_url, o.latitude, o.longitude, o.organization_type_id
                 ORDER BY review_count DESC, o.organization_name ASC
@@ -129,6 +140,8 @@ def suggested_competitors(
             for r in rows
         ]
         return {"status": "ok", "suggestions": suggestions}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -136,11 +149,12 @@ def suggested_competitors(
 @router.post("/")
 def create_competitor(
     payload: AddCompetitorRequest,
-    organization_id: str,
+    organization_id: str = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
         # ── Check competitors limit ──
         user_id = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
         try:
@@ -176,7 +190,7 @@ def create_competitor(
             organization_type_id=payload.organization_type_id,
             location_url=payload.location_url,
             sources=[s.model_dump() for s in payload.sources],
-            tracking_organization_id=organization_id,
+            tracking_organization_id=resolved_org_id,
         )
         return {"message": "Competitor registered", "competitor": competitor}
     except HTTPException:
@@ -188,11 +202,13 @@ def create_competitor(
 @router.post("/from-organization")
 def add_from_organization(
     payload: AddFromOrganizationRequest,
-    organization_id: str,
+    organization_id: str = None,
     current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     try:
-        competitor = register_competitor_from_organization(payload.organization_id, organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        competitor = register_competitor_from_organization(payload.organization_id, resolved_org_id)
         if not competitor:
             raise HTTPException(status_code=404, detail="Organization not found")
         return {"message": "Competitor added", "competitor": competitor}
@@ -205,13 +221,20 @@ def add_from_organization(
 @router.post("/track")
 def track_a_competitor(
     payload: TrackCompetitorRequest,
-    organization_id: str,
+    organization_id: str = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        competitor = get_competitor_by_id(payload.competitorId)
+        if not competitor:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+        if competitor.get("tracking_organization_id") != resolved_org_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this competitor.")
+
         user_id = current_user["user_id"] if isinstance(current_user, dict) else str(current_user.user_id)
-        result = track_competitor(payload.competitorId, tracking_organization_id=organization_id, user_id=user_id)
+        result = track_competitor(payload.competitorId, tracking_organization_id=resolved_org_id, user_id=user_id)
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor now tracked", "competitor": result}
@@ -224,12 +247,22 @@ def track_a_competitor(
 @router.post("/untrack")
 def untrack_a_competitor(
     payload: TrackCompetitorRequest,
-    organization_id: str,
+    organization_id: str = None,
     current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     try:
-        untrack_competitor(payload.competitorId, tracking_organization_id=organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        competitor = get_competitor_by_id(payload.competitorId)
+        if not competitor:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+        if competitor.get("tracking_organization_id") != resolved_org_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this competitor.")
+
+        untrack_competitor(payload.competitorId, tracking_organization_id=resolved_org_id)
         return {"message": "Competitor untracked"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -237,12 +270,22 @@ def untrack_a_competitor(
 @router.delete("/{competitor_id}")
 def remove_competitor(
     competitor_id: str, 
-    organization_id: str,
-    current_user=Depends(get_current_user)
+    organization_id: str = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     try:
-        delete_competitor(competitor_id, tracking_organization_id=organization_id)
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        competitor = get_competitor_by_id(competitor_id)
+        if not competitor:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+        if competitor.get("tracking_organization_id") != resolved_org_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this competitor.")
+
+        delete_competitor(competitor_id, tracking_organization_id=resolved_org_id)
         return {"message": "Competitor deleted"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -251,11 +294,19 @@ def remove_competitor(
 def update_competitor(
     competitor_id: str,
     payload: EditCompetitorRequest,
-    organization_id: str,
-    current_user=Depends(get_current_user)
+    organization_id: str = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     try:
-        result = edit_competitor(competitor_id, organization_id, payload.name, payload.location_url)
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        competitor = get_competitor_by_id(competitor_id)
+        if not competitor:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+        if competitor.get("tracking_organization_id") != resolved_org_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this competitor.")
+
+        result = edit_competitor(competitor_id, resolved_org_id, payload.name, payload.location_url)
         if not result:
             raise HTTPException(status_code=404, detail="Competitor not found")
         return {"message": "Competitor updated", "competitor": result}
@@ -268,10 +319,21 @@ def update_competitor(
 @router.get("/{competitor_id}/reviews")
 def get_reviews_for_competitor(
     competitor_id: str,
+    organization_id: str = None,
     current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     try:
+        resolved_org_id = resolve_tenant_scope(current_user, db, organization_id)
+        competitor = get_competitor_by_id(competitor_id)
+        if not competitor:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+        if competitor.get("tracking_organization_id") != resolved_org_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this competitor.")
+
         reviews = get_competitor_reviews(competitor_id)
         return {"reviews": reviews, "total": len(reviews)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

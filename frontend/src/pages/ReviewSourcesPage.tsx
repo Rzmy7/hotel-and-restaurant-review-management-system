@@ -13,6 +13,7 @@ import SyncHistoryPanel from '../components/shared/SyncHistoryPanel';
 import AddSourceModal from '../components/sources/AddSourceModal';
 import EditSourceModal from '../components/sources/EditSourceModal';
 import PageHeader from '../components/shared/PageHeader';
+import ReviewSourcesSkeleton from './ReviewSourcesSkeleton';
 
 const ReviewSourcesPage = () => {
   const { showToast } = useToast();
@@ -120,12 +121,12 @@ const ReviewSourcesPage = () => {
     mutationFn: (id: string | number) => sourcesService.triggerSync(id),
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
-      showToast(`Sync queued for ${source?.platform || 'source'}`, 'success');
+      showToast(`Sync started for ${source?.platform || 'source'}`, 'success');
       
       // Update trigger time to start polling
       setLastSyncTriggeredAt(Date.now());
       
-      // Invalidate immediately to show "In Queue"
+      // Invalidate immediately to show updated status
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     },
     onError: () => showToast('Sync failed', 'error'),
@@ -216,6 +217,10 @@ const ReviewSourcesPage = () => {
   const handleClearReviews = async (id: string | number) => {
     await deleteReviewsMutation.mutateAsync(id);
   };
+
+  if ((isLoadingSources || isLoadingStats) && sources.length === 0) {
+    return <ReviewSourcesSkeleton />;
+  }
 
   return (
     <div className="min-h-full bg-[#F9FAFB] dark:bg-[#121826] flex flex-col">

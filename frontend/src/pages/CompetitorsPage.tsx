@@ -11,6 +11,7 @@ import {
     type Competitor,
 } from '../services/competitorService';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
+import CompetitorsSkeleton from './CompetitorsSkeleton';
 
 const CompetitorsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -48,13 +49,13 @@ const CompetitorsPage = () => {
         untrackMutation.mutate(competitorId);
     };
 
+    if (loading) {
+        return <CompetitorsSkeleton />;
+    }
+
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             <PageHeader title="Competitors" subtitle="Manage your competitor list">
-                <button className="flex items-center justify-between gap-3 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm w-32">
-                    Hotel
-                    <ChevronDown size={16} className="text-gray-400 dark:text-slate-500" />
-                </button>
             </PageHeader>
 
             {/* Main Content */}
@@ -93,13 +94,6 @@ const CompetitorsPage = () => {
                         </div>
                     </div>
 
-                    {/* Loading State */}
-                    {loading && (
-                        <div className="flex items-center justify-center py-16">
-                            <Loader2 size={28} className="animate-spin text-blue-500" />
-                            <span className="ml-3 text-gray-500">Loading competitors...</span>
-                        </div>
-                    )}
 
                     {/* Empty State */}
                     {!loading && tracked.length === 0 && (
@@ -110,6 +104,7 @@ const CompetitorsPage = () => {
                     )}
 
                     {/* Table */}
+                    {!loading && tracked.length > 0 && (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -161,6 +156,7 @@ const CompetitorsPage = () => {
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </div>
 
             </main>

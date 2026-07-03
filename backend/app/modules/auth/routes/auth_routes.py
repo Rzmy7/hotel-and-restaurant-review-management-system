@@ -9,6 +9,7 @@ import secrets
 import os
 
 from app.core.config import FRONTEND_URL
+from app.modules.auth.constants.roles import TENANT as TENANT_ROLE
 
 from app.database.session import get_db
 from app.modules.user.repositories.users_repo import get_user_by_email, create_user
@@ -24,7 +25,7 @@ from app.modules.source.models import Tenant
 from app.modules.auth.dependencies.auth_permissions import require_admin
 import hashlib
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
 
 PASSWORD_RESET_EXPIRE_MINUTES = 60
@@ -41,8 +42,9 @@ def as_utc(dt: datetime | None) -> datetime | None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
-@router.post("/signup")
+@router.post("/signup", status_code=201, summary="Register a new user account")
 def signup(payload: SignupModel, db: Session = Depends(get_db)):
+    """Create a new tenant user account. Returns a JWT access token on success."""
     validated = validate_signup_payload(payload.name, payload.email, payload.password)
 
     existing_user = get_user_by_email(db, validated["email"])
@@ -51,6 +53,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             status_code=400,
             detail="Email already exists in database"
         )
+    # split the full name into first name and last name
     name_parts = validated["name"].split(" ", 1)
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
@@ -86,8 +89,8 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         {"user_id": str(user.user_id)}
     )
 
-    db.commit()
-    db.refresh(new_tenant)
+    db.commit()   # permanently save changes
+    db.refresh(new_tenant)  # get updated data from DB
 
     # ── Send welcome notification ──
     try:
@@ -102,7 +105,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
     # Generate token for the new user (organization_id will be null)
     access_token = create_access_token(
         user_id=str(user.user_id),
-        role=roles[0] if roles else "TENANT",
+        role=roles[0] if roles else TENANT_ROLE,
         organization_id=None
     )
 
@@ -120,8 +123,11 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         },
     }
 
-@router.post("/login")
+
+
+@router.post("/login", summary="Authenticate and obtain a JWT")
 def login(payload: LoginModel, db: Session = Depends(get_db)):
+    """Validate email/password credentials and return a JWT access token."""
     validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
         db=db,
@@ -133,8 +139,9 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         **result
     }
 
-@router.post("/login/2fa")
+@router.post("/login/2fa", summary="Complete two-factor authentication")
 def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+    """Verify a TOTP/OTP code to complete the 2FA login flow and receive a JWT."""
     normalized_code = validate_login_otp_code(payload.code)
     result = verify_login_2fa(
         db=db,
@@ -152,7 +159,7 @@ class SwitchOrganizationModel(BaseModel):
 
 from app.modules.auth.utils.auth_utils import get_current_user as get_jwt_user
 
-@router.post("/switch-organization")
+@router.post("/switch-organization", summary="Switch active organization context")
 def switch_organization(
     payload: SwitchOrganizationModel,
     db: Session = Depends(get_db),
@@ -171,7 +178,7 @@ def switch_organization(
     
     access_token = create_access_token(
         user_id=str(current_user.user_id),
-        role=roles[0] if roles else "TENANT",
+        role=roles[0] if roles else TENANT_ROLE,
         organization_id=payload.organization_id
     )
     
@@ -181,15 +188,16 @@ def switch_organization(
         "organization_id": payload.organization_id
     }
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", summary="Request a password reset email")
 def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
+    """Send a one-time password-reset link to the provided email address if it exists."""
     try:
         user = get_user_by_email(db, payload.email.lower())
         if not user:
             return {"message": "If the account exists, a reset link has been sent"}
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = token_sha256(raw_token)
+        raw_token = secrets.token_urlsafe(32)   #  SECRETS: Generate random token
+        token_hash = token_sha256(raw_token)    #  HASHLIB: Hash the token to store in DB
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
 
@@ -217,6 +225,7 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         )
         db.commit()
 
+        # generate the reset link 
         reset_link = f"{FRONTEND_URL}/reset-password/{raw_token}"
         try:
             send_reset_email(user.email, reset_link)
@@ -230,8 +239,9 @@ def forgot_password(payload: EmailModel, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Forgot password DB failed: {str(e)}")
 
-@router.post("/reset-password/{token}")
+@router.post("/reset-password/{token}", summary="Set a new password using a reset token")
 def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db)):
+    """Consume a password-reset token and update the user's password."""
     try:
         token_hash = token_sha256(token)
         token_row = db.execute(
@@ -291,7 +301,7 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Reset password DB failed: {str(e)}")
 
-@router.get("/test-smtp", tags=["Debug"])
+@router.get("/test-smtp", tags=["System"], summary="Test SMTP email delivery")
 def test_smtp():
     try:
         test_email = os.getenv("SMTP_EMAIL")
@@ -302,8 +312,33 @@ def test_smtp():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@router.get("/check-session")
+@router.get("/test-welcome-email", tags=["Debug"])
+def test_welcome_email(email: str, db: Session = Depends(get_db)):
+    """
+    Debug endpoint to trigger the full welcome notification flow for an existing user.
+    Usage: GET /api/auth/test-welcome-email?email=user@example.com
+    """
+    try:
+        user = get_user_by_email(db, email.lower())
+        if not user:
+            return {"success": False, "error": f"User with email {email} not found in database"}
+
+        from app.services.notification_helpers import notify_welcome
+        display_name = user.full_name or user.email
+        notify_welcome(str(user.user_id), display_name)
+
+        return {
+            "success": True,
+            "message": f"Welcome notification flow triggered for {email}. Check backend console for [email-notif] logs.",
+            "user_id": str(user.user_id),
+            "email_notifications_enabled": getattr(user, 'is_email_notifications_enabled', 'Unknown')
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.get("/check-session", summary="Check current session state")
 def check_session(request: Request):
+    """Return the authenticated user object stored in the current session, if any."""
     user = request.session.get("user")
     if user:
         return {"user": user}
@@ -351,6 +386,6 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
-@router.get("/admin/dashboard")
+@router.get("/admin/dashboard", summary="Admin dashboard access check")
 def admin_dashboard(user=Depends(require_admin)):
     return {"message": "Welcome Admin"}

@@ -12,6 +12,7 @@ import { dashboardService } from '../services/dashboardService';
 import { Button } from '../components/ui/Button';
 import InsightsHeader from '../components/shared/InsightsHeader';
 import SourceBreakdown from '../components/sources/SourceBreakdown';
+import InsightsSkeleton from './InsightsSkeleton';
 
 interface RangeData {
     overallScore: number;
@@ -148,13 +149,17 @@ const InsightsPage: React.FC = () => {
     }
 
     // ✅ 2. Access checking
-    if (hasAccess === null) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
+if (hasAccess === null) {
+<<<<<<< HEAD
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+=======
+    return <InsightsSkeleton />;
+>>>>>>> origin/dev
+}
 
     // ✅ 3. No access
     if (hasAccess === false) {

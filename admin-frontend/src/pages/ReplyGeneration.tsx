@@ -1,51 +1,38 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, KeyRound, Save, Sparkles, Wand2 } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, Bot, ExternalLink, Save, Sparkles, Wand2 } from 'lucide-react';
 import { ToggleSwitch } from '../components/ToggleSwitch';
+import ReplyGenerationSkeleton from './ReplyGenerationSkeleton';
 import { settingsService } from '../services/settingsService';
 import type { ReplyGenerationSettings } from '../services/settingsService';
-
-const GOOGLE_MODELS = [
-    'gemini-2.0-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-flash-latest',
-    'gemini-pro-latest',
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash-lite-preview-09-2025',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite-preview',
-    'gemini-3-pro-preview',
-    'gemini-3.1-pro-preview',
-    'gemini-3.1-pro-preview-customtools',
-    'gemma-3-4b-it',
-    'gemma-3-12b-it',
-    'gemma-3-27b-it',
-];
+import { llmModelService } from '../services/llmModelService';
+import type { LLMAssignments } from '../services/llmModelService';
 
 const defaultSettings: ReplyGenerationSettings = {
-    googleApiKey: '',
-    selectedModel: 'gemini-2.5-flash-lite',
     similarReviewsCount: 3,
-    googleRequestCount: 0,
-    googleTokenUsage: 0,
+    replyRequestCount: 0,
     useEmbeddingRules: true,
     useSimilarReviews: true,
 };
 
 export const ReplyGeneration: React.FC = () => {
+    const navigate = useNavigate();
     const [settings, setSettings] = useState<ReplyGenerationSettings>(defaultSettings);
+    const [assignments, setAssignments] = useState<LLMAssignments | null>(null);
     const [loading, setLoading] = useState(true);
     const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [googleTestState, setGoogleTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-    const [googleTestMessage, setGoogleTestMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        const loadSettings = async () => {
+        const loadAll = async () => {
             setLoading(true);
             try {
-                const data = await settingsService.getReplyGenerationSettings();
+                const [data, assignData] = await Promise.all([
+                    settingsService.getReplyGenerationSettings(),
+                    llmModelService.getAssignments(),
+                ]);
                 setSettings({ ...defaultSettings, ...data });
+                setAssignments(assignData);
             } catch (error) {
                 console.error('Failed to load reply generation settings:', error);
                 setErrorMessage('Failed to load settings. Using defaults until you save.');
@@ -55,41 +42,13 @@ export const ReplyGeneration: React.FC = () => {
             }
         };
 
-        loadSettings();
+        loadAll();
     }, []);
 
     const updateField = <K extends keyof ReplyGenerationSettings>(key: K, value: ReplyGenerationSettings[K]) => {
         setSettings(prev => ({ ...prev, [key]: value }));
         setSaveState('idle');
         setErrorMessage(null);
-        setGoogleTestState('idle');
-        setGoogleTestMessage(null);
-    };
-
-    const handleTestGoogleApiKey = async () => {
-        if (googleTestState === 'testing') {
-            return;
-        }
-
-        const apiKey = settings.googleApiKey.trim();
-        const model = settings.selectedModel;
-        if (!apiKey) {
-            setGoogleTestState('error');
-            setGoogleTestMessage('Please enter a Google API key to test.');
-            return;
-        }
-
-        setGoogleTestState('testing');
-        setGoogleTestMessage(null);
-
-        try {
-            const result = await settingsService.testReplyGenerationApiKey({ provider: 'google', apiKey, model });
-            setGoogleTestState(result.success ? 'success' : 'error');
-            setGoogleTestMessage(result.message);
-        } catch (error) {
-            setGoogleTestState('error');
-            setGoogleTestMessage(error instanceof Error ? error.message : 'Failed to test Google API key.');
-        }
     };
 
     const handleSave = async () => {
@@ -113,8 +72,11 @@ export const ReplyGeneration: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner />;
+        return <ReplyGenerationSkeleton />;
     }
+
+    const assignedModelName = assignments?.reply_generation_model_name;
+    const hasAssignedModel = !!assignments?.reply_generation_model_id;
 
     return (
         <div className="space-y-6 pt-4">
@@ -128,14 +90,18 @@ export const ReplyGeneration: React.FC = () => {
                                 Reply Generation Console
                             </h2>
                             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
-                                Organize model behavior, prompt context depth, and provider credentials from one place.
+                                Configure prompt context depth and embedding behavior for AI-generated replies.
                             </p>
                         </div>
                         <div className="inline-flex items-center gap-2 rounded-full border dark:border-slate-600 px-3 py-1.5 text-xs font-semibold w-fit bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm dark:text-slate-300">
                             <Wand2 size={14} className="text-slate-600 dark:text-slate-400" />
                             Active Provider
-                            <span className="rounded-full border px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50">
-                                Google
+                            <span className={`rounded-full border px-2 py-0.5 ${
+                                hasAssignedModel
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
+                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
+                            }`}>
+                                {hasAssignedModel ? 'LLM Gateway' : 'Not Assigned'}
                             </span>
                         </div>
                     </div>
@@ -144,31 +110,65 @@ export const ReplyGeneration: React.FC = () => {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 <section className="xl:col-span-2 space-y-5">
+                    {/* Active Model Card */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-5">
+                        <div className="flex items-center gap-2">
+                            <Bot size={16} className="text-violet-600 dark:text-violet-400" />
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Assigned Model</h3>
+                        </div>
+
+                        {hasAssignedModel ? (
+                            <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-900/20 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                                            {assignedModelName || 'Unknown Model'}
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            Replies are generated via the LLM Gateway using the assigned model.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate('/llm-models')}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors"
+                                    >
+                                        <ExternalLink size={13} />
+                                        Manage Models
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/20 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                                            No model assigned for reply generation
+                                        </div>
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                            Go to LLM Models to register a model and assign it to reply generation.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate('/llm-models')}
+                                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors shadow-sm"
+                                    >
+                                        <ExternalLink size={13} />
+                                        Configure Model
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Embedding Context Controls */}
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-5">
                         <div className="flex items-center gap-2">
                             <Sparkles size={16} className="text-sky-600 dark:text-sky-400" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Model Settings</h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Reply Model</label>
-                                <select
-                                    value={settings.selectedModel}
-                                    onChange={(event) => updateField('selectedModel', event.target.value)}
-                                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                                >
-                                    {GOOGLE_MODELS.map((model) => (
-                                        <option key={model} value={model}>{model}</option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Select a Google Gemini model for reply generation.</p>
-                            </div>
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Embedding Context Controls</h3>
                         </div>
 
                         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
-                            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Embedding Context Controls</h4>
-                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
                                     <ToggleSwitch
                                         checked={settings.useEmbeddingRules}
@@ -202,40 +202,6 @@ export const ReplyGeneration: React.FC = () => {
                             </div>
                         </div>
                     </div>
-
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-4">
-                        <div className="flex items-center gap-2">
-                            <KeyRound size={16} className="text-sky-600 dark:text-sky-400" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Provider API Key</h3>
-                        </div>
-
-                        <div className="rounded-xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/50 dark:bg-sky-900/20 p-4 space-y-3">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Google API Key</label>
-                                <input
-                                    type="password"
-                                    value={settings.googleApiKey}
-                                    onChange={(event) => updateField('googleApiKey', event.target.value)}
-                                    placeholder="Enter Google API key"
-                                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <button
-                                    onClick={handleTestGoogleApiKey}
-                                    disabled={googleTestState === 'testing'}
-                                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-sky-200 dark:border-sky-800 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-sky-700 dark:hover:text-sky-400 hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors disabled:opacity-70"
-                                >
-                                    {googleTestState === 'testing' ? 'Testing Google...' : 'Test Google Key'}
-                                </button>
-                                {googleTestMessage && (
-                                    <span className={`text-sm ${googleTestState === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                        {googleTestMessage}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
                 </section>
 
                 <aside className="space-y-5">
@@ -247,13 +213,28 @@ export const ReplyGeneration: React.FC = () => {
 
                         <div className="space-y-3">
                             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
-                                <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Google Requests</div>
-                                <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{settings.googleRequestCount}</div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reply Requests</div>
+                                <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{settings.replyRequestCount}</div>
                             </div>
-                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3">
-                                <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Google Token Usage</div>
-                                <div className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{settings.googleTokenUsage}</div>
-                            </div>
+                        </div>
+                    </section>
+
+                    {/* Quick Links */}
+                    <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Bot size={16} className="text-violet-600 dark:text-violet-400" />
+                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Quick Links</h3>
+                        </div>
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => navigate('/llm-models')}
+                                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:border-violet-200 dark:hover:border-violet-800 transition-colors group"
+                            >
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">
+                                    LLM Models & Assignments
+                                </span>
+                                <ExternalLink size={14} className="text-slate-400 group-hover:text-violet-500 transition-colors" />
+                            </button>
                         </div>
                     </section>
                 </aside>
@@ -264,7 +245,7 @@ export const ReplyGeneration: React.FC = () => {
                     {saveState === 'saved' && <p className="text-sm text-emerald-600 dark:text-emerald-400">Reply generation settings saved.</p>}
                     {(saveState === 'error' || errorMessage) && <p className="text-sm text-rose-600 dark:text-rose-400">{errorMessage}</p>}
                     {saveState === 'idle' && !errorMessage && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Save after changing model, context depth, or provider credentials.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Save after changing context depth or embedding settings.</p>
                     )}
                 </div>
                 <button

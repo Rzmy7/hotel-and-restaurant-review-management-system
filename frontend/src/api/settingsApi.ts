@@ -26,8 +26,8 @@ const defaultSettings: SettingsData = {
         plan: 'professional',
         billingEmail: 'billing@grandplazahotel.com',
     },
-    hotelInfo: {
-        hotelName: 'Grand Plaza Hotel & Spa',
+    organizationInfo: {
+        organizationName: 'Grand Plaza Hotel & Spa',
         websiteUrl: 'https://grandplazahotel.com',
         propertyType: 'Hotel',
         primaryEmail: 'reviews@grandplazahotel.com',
@@ -52,7 +52,7 @@ type UserOrganization = {
     location_url?: string | null;
 };
 
-type OrganizationType = {
+export type OrganizationType = {
     type_code: number;
     type_name: string;
 };
@@ -60,6 +60,7 @@ type OrganizationType = {
 type UserProfile = {
     is_2fa_enabled?: boolean;
     is_2fa_feature_enabled?: boolean;
+    is_email_notifications_enabled?: boolean;
 };
 
 export type PasswordChangePayload = {
@@ -120,13 +121,15 @@ const normalizeEmpty = (value?: string | null): string | undefined => {
     return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const mapOrganizationToHotelInfo = (org: UserOrganization): SettingsData['hotelInfo'] => ({
-    hotelName: org.organization_name || currentSettings.hotelInfo.hotelName,
+const mapOrganizationToInfo = (org: UserOrganization): SettingsData['organizationInfo'] => ({
+    organizationName: org.organization_name || currentSettings.organizationInfo.organizationName,
     websiteUrl: org.website_url || '',
-    propertyType: org.organization_type || currentSettings.hotelInfo.propertyType,
+    propertyType: org.organization_type || currentSettings.organizationInfo.propertyType,
     primaryEmail: org.primary_email || '',
     phoneNumber: org.phone_number || '',
     locationUrl: org.location_url || '',
+    city: org.city || '',
+    country: org.country || '',
     logoUrl: org.logo_url || undefined,
 });
 
@@ -153,7 +156,7 @@ const resolveOrganizationTypeId = async (propertyType: string): Promise<number |
     }
 };
 
-const patchHotelInfoToBackend = async (hotelInfoUpdates: Partial<SettingsData['hotelInfo']>) => {
+const patchOrganizationInfoToBackend = async (organizationInfoUpdates: Partial<SettingsData['organizationInfo']>) => {
     const orgId = getActiveOrganizationId();
     if (!orgId) {
         throw new Error('No active organization selected.');
@@ -161,26 +164,32 @@ const patchHotelInfoToBackend = async (hotelInfoUpdates: Partial<SettingsData['h
 
     const payload: Record<string, string | number | null> = {};
 
-    if (hotelInfoUpdates.hotelName !== undefined) {
-        payload.organization_name = normalizeEmpty(hotelInfoUpdates.hotelName) ?? null;
+    if (organizationInfoUpdates.organizationName !== undefined) {
+        payload.organization_name = normalizeEmpty(organizationInfoUpdates.organizationName) ?? null;
     }
-    if (hotelInfoUpdates.websiteUrl !== undefined) {
-        payload.website_url = normalizeEmpty(hotelInfoUpdates.websiteUrl) ?? null;
+    if (organizationInfoUpdates.websiteUrl !== undefined) {
+        payload.website_url = normalizeEmpty(organizationInfoUpdates.websiteUrl) ?? null;
     }
-    if (hotelInfoUpdates.primaryEmail !== undefined) {
-        payload.primary_email = normalizeEmpty(hotelInfoUpdates.primaryEmail) ?? null;
+    if (organizationInfoUpdates.primaryEmail !== undefined) {
+        payload.primary_email = normalizeEmpty(organizationInfoUpdates.primaryEmail) ?? null;
     }
-    if (hotelInfoUpdates.phoneNumber !== undefined) {
-        payload.phone_number = normalizeEmpty(hotelInfoUpdates.phoneNumber) ?? null;
+    if (organizationInfoUpdates.phoneNumber !== undefined) {
+        payload.phone_number = normalizeEmpty(organizationInfoUpdates.phoneNumber) ?? null;
     }
-    if (hotelInfoUpdates.logoUrl !== undefined) {
-        payload.logo_url = normalizeEmpty(hotelInfoUpdates.logoUrl) ?? null;
+    if (organizationInfoUpdates.logoUrl !== undefined) {
+        payload.logo_url = normalizeEmpty(organizationInfoUpdates.logoUrl) ?? null;
     }
-    if (hotelInfoUpdates.locationUrl !== undefined) {
-        payload.location_url = normalizeEmpty(hotelInfoUpdates.locationUrl) ?? null;
+    if (organizationInfoUpdates.locationUrl !== undefined) {
+        payload.location_url = normalizeEmpty(organizationInfoUpdates.locationUrl) ?? null;
     }
-    if (hotelInfoUpdates.propertyType !== undefined) {
-        const organizationTypeId = await resolveOrganizationTypeId(hotelInfoUpdates.propertyType);
+    if (organizationInfoUpdates.city !== undefined) {
+        payload.city = normalizeEmpty(organizationInfoUpdates.city) ?? null;
+    }
+    if (organizationInfoUpdates.country !== undefined) {
+        payload.country = normalizeEmpty(organizationInfoUpdates.country) ?? null;
+    }
+    if (organizationInfoUpdates.propertyType !== undefined) {
+        const organizationTypeId = await resolveOrganizationTypeId(organizationInfoUpdates.propertyType);
         if (organizationTypeId !== undefined) {
             payload.organization_type_id = organizationTypeId;
         }
@@ -191,7 +200,7 @@ const patchHotelInfoToBackend = async (hotelInfoUpdates: Partial<SettingsData['h
     }
 };
 
-const syncOrganizationInStorage = (hotelInfo: SettingsData['hotelInfo']) => {
+const syncOrganizationInStorage = (organizationInfo: SettingsData['organizationInfo']) => {
     const currentOrgId = getActiveOrganizationId();
     if (!currentOrgId) return;
 
@@ -209,13 +218,15 @@ const syncOrganizationInStorage = (hotelInfo: SettingsData['hotelInfo']) => {
 
             return {
                 ...org,
-                organization_name: hotelInfo.hotelName,
-                website_url: hotelInfo.websiteUrl,
-                primary_email: hotelInfo.primaryEmail,
-                phone_number: hotelInfo.phoneNumber,
-                logo_url: hotelInfo.logoUrl ?? null,
-                organization_type: hotelInfo.propertyType,
-                location_url: hotelInfo.locationUrl || null,
+                organization_name: organizationInfo.organizationName,
+                website_url: organizationInfo.websiteUrl,
+                primary_email: organizationInfo.primaryEmail,
+                phone_number: organizationInfo.phoneNumber,
+                logo_url: organizationInfo.logoUrl ?? null,
+                organization_type: organizationInfo.propertyType,
+                location_url: organizationInfo.locationUrl || null,
+                city: organizationInfo.city || null,
+                country: organizationInfo.country || null,
             };
         });
 
@@ -237,7 +248,7 @@ export const settingsApi = {
             if (activeOrg) {
                 currentSettings = {
                     ...currentSettings,
-                    hotelInfo: mapOrganizationToHotelInfo(activeOrg),
+                    organizationInfo: mapOrganizationToInfo(activeOrg),
                 };
             }
         } catch {
@@ -253,6 +264,10 @@ export const settingsApi = {
                     twoFactorAuth: !!profileResponse.data?.is_2fa_enabled,
                     twoFactorFeatureEnabled: profileResponse.data?.is_2fa_feature_enabled !== false,
                 },
+                notifications: {
+                    ...currentSettings.notifications,
+                    emailNotifications: profileResponse.data?.is_email_notifications_enabled ?? true,
+                },
             };
         } catch {
             // Keep existing local security fallback when profile call fails.
@@ -261,25 +276,36 @@ export const settingsApi = {
         return { ...currentSettings };
     },
     updateSettings: async (updates: Partial<SettingsData>): Promise<SettingsData> => {
-        if (updates.hotelInfo) {
-            await patchHotelInfoToBackend(updates.hotelInfo);
+        if (updates.organizationInfo) {
+            await patchOrganizationInfoToBackend(updates.organizationInfo);
+        }
+        
+        if (updates.notifications && updates.notifications.emailNotifications !== undefined) {
+            try {
+                await settingsAxios.put(toApiPath('/users/me'), {
+                    is_email_notifications_enabled: updates.notifications.emailNotifications
+                });
+            } catch (err) {
+                console.error("Failed to update email notifications preference", err);
+            }
         }
 
         currentSettings = {
             ...currentSettings,
             ...updates,
-            hotelInfo: {
-                ...currentSettings.hotelInfo,
-                ...(updates.hotelInfo || {}),
+            organizationInfo: {
+                ...currentSettings.organizationInfo,
+                ...(updates.organizationInfo || {}),
             },
         };
 
-        syncOrganizationInStorage(currentSettings.hotelInfo);
+        syncOrganizationInStorage(currentSettings.organizationInfo);
 
         return { ...currentSettings };
     },
 
-    uploadHotelLogo: async (file: File): Promise<string> => {
+    // Get active org ID from localStorage
+    uploadOrganizationLogo: async (file: File): Promise<string> => {
         const orgId = getActiveOrganizationId();
         if (!orgId) {
             throw new Error('No active organization selected.');
@@ -300,13 +326,13 @@ export const settingsApi = {
 
         currentSettings = {
             ...currentSettings,
-            hotelInfo: {
-                ...currentSettings.hotelInfo,
+            organizationInfo: {
+                ...currentSettings.organizationInfo,
                 logoUrl,
             },
         };
 
-        syncOrganizationInStorage(currentSettings.hotelInfo);
+        syncOrganizationInStorage(currentSettings.organizationInfo);
 
         return logoUrl;
     },
@@ -386,5 +412,10 @@ export const settingsApi = {
         );
 
         return Array.isArray(response.data) ? response.data : [];
+    },
+
+    fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
+        const response = await settingsAxios.get<OrganizationType[]>(toApiPath('/organization-types'));
+        return response.data;
     },
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SearchBar } from '../components/SearchBar';
 import { ToggleSwitch } from '../components/ToggleSwitch';
+import FeatureFlagsSkeleton from './FeatureFlagsSkeleton';
 import { fetchFeatureFlags } from '../services/mockService';
 import { featureFlagsService } from '../services/featureFlagsService';
 import type { FeatureFlag } from '../types';
@@ -53,7 +53,7 @@ export const FeatureFlags: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <FeatureFlagsSkeleton />;
     }
 
     const filteredFlags = flags.filter(flag =>

@@ -39,7 +39,12 @@ const SearchPublicGroupsModal: React.FC<SearchPublicGroupsModalProps> = ({ onClo
     setJoiningId(groupId);
     try {
       const res = await groupsService.joinPublicGroup(groupId);
-      showToast(res.message, 'success');
+      // Determine toast type — "already a member" is informational, not an error
+      const alreadyMember = res.message?.toLowerCase().includes('already a member');
+      showToast(res.message, alreadyMember ? 'info' : 'success');
+      // Always refresh the group list — whether newly joined or already a member
+      // Add a delay so the DB commit is visible before the list re-fetches
+      await new Promise(resolve => setTimeout(resolve, 600));
       onJoinSuccess(groupId);
       onClose();
     } catch (err: any) {

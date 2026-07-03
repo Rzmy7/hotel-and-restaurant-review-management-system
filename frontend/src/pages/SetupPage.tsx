@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hotel, Utensils, FileText, X } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
+import SetupSkeleton from './SetupSkeleton';
 import { apiClient } from '../api/client';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -184,8 +185,8 @@ const SetupPage = () => {
                 name: orgName,
                 type: selectedType,
                 locationUrl: locUrlTrim,
-                hasRulesFile: !!rulesFile,
-                rulesFileName: rulesFile?.name || null,
+                hasRulesFile: !!rulesFile,   // ← Flag indicating file exists
+                rulesFileName: rulesFile?.name || null,   // ← Store file name for display 
             }
         }));
 
@@ -235,6 +236,10 @@ const SetupPage = () => {
 
         navigate("/no-organization");
     };
+
+    if (isLoading) {
+        return <SetupSkeleton currentStep={1} />;
+    }
 
     return (
         <SetupLayout
@@ -342,7 +347,7 @@ const SetupPage = () => {
                         <span className="text-sm text-slate-400 group-hover:text-blue-500 transition-colors">Click to upload .txt, .docx, or .pdf</span>
                     </div>
                 )}
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Upload your property rules. AI will extract individual rules for review reply context.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400 mt-1.5">Upload your property rules. AI will extract individual rules for review reply context.</p>
             </div>
 
             {isLoading ? (

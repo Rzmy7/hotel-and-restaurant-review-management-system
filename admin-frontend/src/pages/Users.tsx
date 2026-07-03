@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { UsersSkeleton } from './UsersSkeleton';
 import { UserStatsGrid } from '../components/UserStatsGrid';
 import { UserFilters } from '../components/UserFilters';
 import { UserTable } from '../components/UserTable';
@@ -150,7 +150,7 @@ export const UsersPage: React.FC = () => {
     };
 
     if (loading) {
-        return <LoadingSpinner size={32} />;
+        return <UsersSkeleton />;
     }
 
     return (

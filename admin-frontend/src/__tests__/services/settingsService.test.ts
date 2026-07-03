@@ -17,8 +17,9 @@ describe('getStoredSystemTimezone', () => {
         localStorage.clear();
     });
 
-    it('returns "UTC" when nothing stored', () => {
-        expect(getStoredSystemTimezone()).toBe('UTC');
+    it('returns default timezone when nothing stored', () => {
+        const defaultTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        expect(getStoredSystemTimezone()).toBe(defaultTz);
     });
 
     it('returns stored timezone', () => {
@@ -42,9 +43,10 @@ describe('applySystemTimezone', () => {
         expect(localStorage.getItem(SYSTEM_TIMEZONE_STORAGE_KEY)).toBe('Asia/Kolkata');
     });
 
-    it('normalizes empty string to UTC', () => {
+    it('normalizes empty string to default timezone', () => {
+        const defaultTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         applySystemTimezone('');
-        expect(localStorage.getItem(SYSTEM_TIMEZONE_STORAGE_KEY)).toBe('UTC');
+        expect(localStorage.getItem(SYSTEM_TIMEZONE_STORAGE_KEY)).toBe(defaultTz);
     });
 
     it('trims whitespace', () => {

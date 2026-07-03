@@ -31,3 +31,15 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_review_sentiment' AND
 BEGIN
     CREATE INDEX idx_review_sentiment ON dbo.processed_review (sentiment);
 END
+
+-- 6. Index for pending reviews queue (status, scrapedAt, id) to support FIFO sorting
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_review_pending_fifo' AND object_id = OBJECT_ID('dbo.processed_review'))
+BEGIN
+    CREATE INDEX idx_review_pending_fifo ON dbo.processed_review (status, scrapedAt, id);
+END
+
+-- 7. Index for embedding checks (source_id, is_embedded) to support embedding service batch queries
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_review_embed_lookup' AND object_id = OBJECT_ID('dbo.processed_review'))
+BEGIN
+    CREATE INDEX idx_review_embed_lookup ON dbo.processed_review (source_id, is_embedded) INCLUDE (scrapedAt, id);
+END

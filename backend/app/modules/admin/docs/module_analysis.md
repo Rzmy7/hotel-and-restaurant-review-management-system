@@ -81,6 +81,10 @@ admin/
 | 3 | GET | `/dashboard/reviews` | Admin JWT | Per-platform review breakdown | `List[ChartDataPoint]` |
 | 4 | GET | `/dashboard/alerts` | Admin JWT | Active system alerts | `List[SystemAlert]` |
 | 5 | GET | `/dashboard/activities` | Admin JWT | Recent platform activity | `List[RecentActivity]` |
+| - | GET | `/dashboard/alerts/paginated` | Admin JWT | Paginated system alerts | `PaginatedAlerts` |
+| - | GET | `/dashboard/activities/paginated` | Admin JWT | Paginated platform activity | `PaginatedActivities` |
+| - | POST | `/dashboard/alerts/{alert_id}/dismiss` | Admin JWT | Dismiss a single alert | `dict` |
+| - | POST | `/dashboard/alerts/dismiss-all` | Admin JWT | Dismiss all alerts | `dict` |
 
 ### 3.2 Admin Routes (`admin_routes.py`)
 
@@ -174,6 +178,7 @@ The admin module interacts with numerous tables but doesn't own most of them. Ke
 | `broadcast_event` | Scheduled broadcasts | SELECT, UPDATE |
 | `feature_flags` | Feature toggle flags | SELECT, UPDATE |
 | `processed_review` | Review data (fallback) | SELECT (for stats) |
+| `system_alert_log` | Persisted system alerts | SELECT, UPDATE |
 
 ### Dynamic Table Creation
 
@@ -195,7 +200,9 @@ The module defines **50+ Pydantic models** in `schemas.py`. Key schema groups:
 | `DashboardStats` | totalOrganizations, organizationsAddedToday, organizationsGrowth, addedTodayGrowth, totalUsers, usersGrowth, totalReviews, reviewsCollectedToday, reviewsGrowth, activeUsersToday, systemUptime, aiJobsProcessed, aiJobsGrowth |
 | `ChartDataPoint` | label, value |
 | `SystemAlert` | id, type, title, message, timestamp, isRead |
+| `PaginatedAlerts` | data, total, page, limit |
 | `RecentActivity` | id, type, title, description, timestamp, user |
+| `PaginatedActivities` | data, total, page, limit |
 
 ### Organization Schemas
 | Schema | Fields |
@@ -346,10 +353,20 @@ The module defines **50+ Pydantic models** in `schemas.py`. Key schema groups:
 - **Purpose**: Active system alerts from database state
 - **Returns**: List of SystemAlert objects
 
+##### `build_paginated_system_alerts(cursor, page, limit)`
+- **Signature**: `(cursor: pyodbc.Cursor, page: int, limit: int) -> dict`
+- **Purpose**: Paginated system alerts
+- **Returns**: Dict with data (list of alerts), total, page, limit
+
 ##### `build_recent_activity(cursor)`
 - **Signature**: `(cursor: pyodbc.Cursor) -> List[dict]`
 - **Purpose**: Recent platform activity from processed_review rows
 - **Returns**: List of RecentActivity objects
+
+##### `build_paginated_recent_activity(cursor, page, limit)`
+- **Signature**: `(cursor: pyodbc.Cursor, page: int, limit: int) -> dict`
+- **Purpose**: Paginated platform activity
+- **Returns**: Dict with data (list of activities), total, page, limit
 
 ### 6.3 Monitoring Service (`monitoring_service.py`)
 
