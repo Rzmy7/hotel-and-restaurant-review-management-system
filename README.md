@@ -22,11 +22,13 @@ The system is built on a **Domain-Driven Modular Monolith** architecture with mi
 
 | Component | Technology | Port | Description |
 |-----------|------------|------|-------------|
-| **Backend API** | FastAPI + SQLAlchemy | 8000 | Core API, auth, scraping orchestration, AI integration |
-| **User Frontend** | React 19 + Vite + TypeScript | 5173 | Customer-facing dashboard for review analytics |
+| **Backend API** | FastAPI + SQLAlchemy | 8000 | Core API, auth, scraping orchestration (RabbitMQ Publisher) |
+| **User Frontend** | React 19 + Vite + TypeScript | 5173 | Customer-facing dashboard for review analytics (DB Polling) |
 | **Admin Frontend** | React 19 + Vite + TypeScript | 5174 | System management, scraper control, monitoring |
-| **Embedding Service** | FastAPI + ChromaDB | 8001 | Semantic search & vector embeddings (Dockerized) |
-| **Scraper Engine** | FastAPI + Playwright | 8001 | Multi-platform review scraping microservice |
+| **Embedding Service** | FastAPI + ChromaDB | 8001/8002 | Semantic search & vector embeddings (Dockerized) |
+| **Scraper Engine** | FastAPI + Playwright | 8001 | Multi-platform review scraping & background RabbitMQ Consumer |
+| **RabbitMQ Broker** | RabbitMQ Message Queue | 5672 (15672 Admin) | Asynchronous task queue & job dispatch broker (local/CloudAMQP) |
+
 
 ```
 hotel-and-restaurant-review-management-system/
@@ -150,8 +152,10 @@ Before setting up the project, ensure you have the following installed:
 - **Python 3.10+**
 - **Node.js 18+** & **npm**
 - **Microsoft SQL Server** with ODBC Driver 18
+- **RabbitMQ** (Local broker or hosted CloudAMQP account)
 - **Docker** (for Embedding Service)
 - **Git**
+
 
 ---
 
@@ -295,15 +299,13 @@ Comprehensive system documentation is available in the **[docs](docs/README.md)*
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/agoda/scrape` | POST | Trigger Agoda scrape |
-| `/api/booking/scrape` | POST | Trigger Booking scrape |
-| `/api/google/scrape` | POST | Trigger Google scrape |
-| `/api/tripadvisor/scrape` | POST | Trigger TripAdvisor scrape |
+| `/api/{platform}/scrape` | POST | Trigger background scrape for Agoda, Booking.com, Google Maps, or TripAdvisor |
 | `/api/reviews` | GET | Query reviews |
 | `/api/sources/{id}/cleanup` | POST | Trigger deep trait-based deduplication |
 | `/api/sources/{id}/integrity` | GET | Detailed database health & consistency report |
 | `/api/system/health` | GET | Health check |
 | `/api/db/stats` | GET | Database statistics |
+
 
 ### Embedding Service (Port 8001)
 
@@ -354,6 +356,9 @@ SMTP_PORT=587
 # Supabase (Optional storage)
 SUPABASE_URL=your-supabase-url
 SUPABASE_KEY=your-supabase-anon-key
+
+# RabbitMQ Broker
+RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 ```
 
 ### Scraper Engine `.env` Variables
@@ -366,8 +371,11 @@ DB_NAME=ScraperEngine
 DB_UID=sa
 DB_PWD=your_password
 
-# Backend notification
+# Backend integration
 BACKEND_API_URL=http://127.0.0.1:8000
+
+# RabbitMQ Broker
+RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 ```
 
 ---

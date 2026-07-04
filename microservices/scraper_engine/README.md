@@ -32,10 +32,7 @@ scraper_engine/
 ├── api/
 │   ├── main.py                       # FastAPI app entry point (prefix: /api)
 │   ├── endpoints/
-│   │   ├── agoda.py                  # POST /api/agoda/scrape
-│   │   ├── booking.py                # POST /api/booking/scrape
-│   │   ├── google.py                 # POST /api/google/scrape
-│   │   ├── tripadvisor.py            # POST /api/tripadvisor/scrape
+│   │   ├── scrape.py                 # POST /api/{platform}/scrape (Unified platform scraper endpoint)
 │   │   ├── sources.py                # GET /api/sources
 │   │   ├── reviews.py                # GET /api/reviews
 │   │   ├── db_admin.py               # Stats, purge, vacuum
@@ -48,7 +45,9 @@ scraper_engine/
 │   ├── database.py                   # SQLAlchemy engine + session
 │   ├── models.py                     # Source-centric unified models
 │   ├── utils.py                      # Notification logic for backend
-│   └── scrape_pool.py                # ThreadPoolExecutor management
+│   ├── scrape_pool.py                # ThreadPoolExecutor management
+│   ├── job_manager.py                # Live job state manager
+│   └── consumer.py                   # Persistent RabbitMQ Background Consumer Thread
 │
 ├── platforms/
 │   ├── agoda/
@@ -133,10 +132,8 @@ The engine uses a **source-centric** model. Each source represents a unique URL 
 
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| `POST` | `/api/agoda/scrape` | Trigger Agoda scrape | `{ source_id, url }` | `{ job_id, status }` |
-| `POST` | `/api/booking/scrape` | Trigger Booking scrape | `{ source_id, url }` | `{ job_id, status }` |
-| `POST` | `/api/google/scrape` | Trigger Google scrape | `{ source_id, url }` | `{ job_id, status }` |
-| `POST` | `/api/tripadvisor/scrape` | Trigger TripAdvisor scrape | `{ source_id, url }` | `{ job_id, status }` |
+| `POST` | `/api/{platform}/scrape` | Trigger a background scrape for the platform (`agoda`, `booking`, `google`, `tripadvisor`) | `{ source_id, url }` | `{ job_id, status }` |
+
 
 ### Data Management
 
@@ -302,6 +299,8 @@ python api/main.py
 ## 💻 Usage Examples
 
 ### Trigger a Scrape
+
+You can trigger a scrape job for a platform dynamically using its name in the unified route (`/api/{platform}/scrape`):
 
 ```bash
 # Booking.com scrape
