@@ -69,6 +69,8 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
             "totalReviewsChange": "0%",
             "avgRating": "0",
             "avgRatingChange": "0%",
+            "responseRate": "0%",
+            "responseRateChange": "0%",
             "sentimentMonths": [],
             "sentimentPositive": [],
             "sentimentNeutral": [],
@@ -127,7 +129,11 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
     rating_counts = Counter(int(r.rating or 0) for r in current_reviews if r.rating)
 
     rating_distribution = [
-        {"rating": i, "count": rating_counts.get(i, 0)}
+        {
+            "rating": i,
+            "count": rating_counts.get(i, 0),
+            "pct": round((rating_counts.get(i, 0) / current_total) * 100, 1) if current_total > 0 else 0,
+        }
         for i in [5, 4, 3, 2, 1]
     ]
 
@@ -211,6 +217,9 @@ def get_insights(range: str = "30d", db: Session = Depends(get_db)):
 
         "avgRating": str(round(current_avg, 1)),
         "avgRatingChange": avg_rating_change,
+
+        "responseRate": "0%",
+        "responseRateChange": "0%",
 
         "sentimentMonths": sentimentMonths,
         "sentimentPositive": sentimentPositive,

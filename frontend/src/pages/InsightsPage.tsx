@@ -104,11 +104,15 @@ const InsightsPage: React.FC = () => {
             setHasAccess(null);
             try {
                 const usage = await fetchSubscriptionUsage(user.user_id);
-                const hasInsights = usage.features.some(f => f.key === 'insights' && f.enabled);
+                const insightsFeature = usage.features.find(f => f.key === 'insights');
+                // Only block if the feature exists AND is explicitly disabled.
+                // If the key isn't present in the plan at all, grant access.
+                const hasInsights = !insightsFeature || insightsFeature.enabled;
                 setHasAccess(hasInsights);
             } catch (err) {
                 console.error('Error checking plan access', err);
-                setHasAccess(false);
+                // Fail open: don't block the page if the subscription check fails.
+                setHasAccess(true);
             }
         };
 
@@ -143,15 +147,15 @@ const InsightsPage: React.FC = () => {
 
 
 
-    // ✅ 1. Loading
-    if (loading || !insightData) {
-        return <div>Loading insights...</div>;
+    // ✅ 1. Access checking (show skeleton while checking)
+    if (hasAccess === null) {
+        return <InsightsSkeleton />;
     }
 
-    // ✅ 2. Access checking
-if (hasAccess === null) {
-    return <InsightsSkeleton />;
-}
+    // ✅ 2. Loading data (show skeleton while loading)
+    if (loading || !insightData) {
+        return <InsightsSkeleton />;  
+    }
 
     // ✅ 3. No access
     if (hasAccess === false) {
