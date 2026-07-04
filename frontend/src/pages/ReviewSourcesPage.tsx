@@ -251,10 +251,10 @@ const ReviewSourcesPage = () => {
       >
           <button
             onClick={() => { queryClient.invalidateQueries({ queryKey: ['sources'] }); }}
-            className={`w-10 h-10 grid place-items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-[#597FE6] dark:hover:border-[#597FE6] hover:text-[#597FE6] hover:shadow-sm active:scale-90 ${isRefreshing ? 'animate-spin border-[#597FE6] dark:border-[#597FE6]' : ''}`}
+            className={`w-10 h-10 grid place-items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-[#597FE6] dark:hover:border-[#597FE6] hover:text-[#597FE6] hover:shadow-sm active:scale-90 ${isRefreshing ? 'border-[#597FE6] dark:border-[#597FE6]' : ''}`}
             title="Refresh System"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
           </button>
 
           <button
@@ -319,6 +319,8 @@ const ReviewSourcesPage = () => {
         <SourcesTable
           sources={filteredSources}
           isLoading={isLoading}
+          hasTotalSources={sources.length > 0}
+          statusFilter={statusFilter}
           onEdit={(source, tab = 'settings') => {
             setSelectedSource(source);
             setActiveModalTab(tab);

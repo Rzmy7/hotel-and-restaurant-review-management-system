@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Activity, PauseCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Database, Activity, PauseCircle, AlertCircle } from 'lucide-react';
 import type { SourceStats as SourceStatsType } from '../../types/sources';
 
 interface SourceStatsProps {
@@ -41,18 +41,10 @@ const SourceStats: React.FC<SourceStatsProps> = ({ stats, isLoading }) => {
             bg: 'bg-rose-50 dark:bg-rose-900/40',
             border: 'hover:border-rose-200 dark:hover:border-rose-800'
         },
-        {
-            label: 'Reviews Fetched',
-            value: stats.totalReviewsFetched.toLocaleString(),
-            icon: RefreshCw,
-            color: 'text-indigo-600 dark:text-indigo-400',
-            bg: 'bg-indigo-50 dark:bg-indigo-900/40',
-            border: 'hover:border-indigo-200 dark:hover:border-indigo-800'
-        },
     ];
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {cards.map((card, index) => (
                 <div
                     key={index}
