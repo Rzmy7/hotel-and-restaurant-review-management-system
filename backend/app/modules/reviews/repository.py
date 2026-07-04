@@ -292,14 +292,10 @@ def fetch_all_reviews_enriched(
                 "photos": [{"id": str(m.media_id), "src": m.src, "alt": m.alt} for m in rev.media]
             }
 
+            from app.core.db_utils import normalize_string_list
             for field in ["categories", "keyPhrases"]:
-                val = getattr(rev, field)
-                if val:
-                    try:
-                        parsed = json.loads(val)
-                        row[field] = [str(item["name"]) if isinstance(item, dict) and "name" in item else str(item) for item in parsed] if isinstance(parsed, list) else []
-                    except: row[field] = []
-                else: row[field] = []
+                row[field] = normalize_string_list(getattr(rev, field))
+
 
             text_parts = [rev.text, rev.positive_text, rev.negative_text]
             row["text"] = "\n\n".join([p for p in text_parts if p]) if any(text_parts) else ""

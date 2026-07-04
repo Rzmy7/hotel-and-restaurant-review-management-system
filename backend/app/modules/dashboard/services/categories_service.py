@@ -50,26 +50,9 @@ def _resolve_icon(category: str) -> str:
 
 
 def _parse_categories(raw) -> list:
-    if not raw:
-        return []
-    try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, list):
-            result = []
-            for c in parsed:
-                if not c:
-                    continue
-                # Handle dict items like {"name": "Comfort", "score": 90}
-                if isinstance(c, dict):
-                    name = c.get("name", "")
-                    if name:
-                        result.append(str(name))
-                else:
-                    result.append(str(c))
-            return result
-    except Exception:
-        pass
-    return []
+    from app.core.db_utils import normalize_string_list
+    return normalize_string_list(raw)
+
 
 
 def _aggregate_all_time_totals(cursor, org_id: str):

@@ -80,12 +80,11 @@ def get_recent_reviews(org_id: str = None, period_days: int = 0) -> dict:
     rows = cursor.fetchall()
     conn.close()
 
+    from app.core.db_utils import normalize_string_list
     results = []
     for row in rows:
-        try:
-            cat_list = json.loads(row.categories) if row.categories else []
-        except json.JSONDecodeError:
-            cat_list = []
+        cat_list = normalize_string_list(row.categories)
+
 
         # Combine text fields — text may be NULL while content is in positive/negative/heading
         text_parts = []

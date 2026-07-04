@@ -18,7 +18,9 @@ from app.core.db_utils import (
     is_valid_sql_identifier,
     to_relative_timestamp,
     to_datetime,
+    normalize_string_list,
 )
+
 
 
 # ── growth() ─────────────────────────────────────────────────────────
@@ -241,3 +243,45 @@ class TestToDatetime:
 
     def test_int_returns_none(self):
         assert to_datetime(12345) is None
+
+
+# ── normalize_string_list() ──────────────────────────────────────────
+
+
+class TestNormalizeStringList:
+    """Tests for normalize_string_list()."""
+
+    def test_none_or_empty_returns_empty_list(self):
+        assert normalize_string_list(None) == []
+        assert normalize_string_list("") == []
+
+    def test_already_list_of_strings(self):
+        """If input is already a list of strings, return it as-is."""
+        assert normalize_string_list(["Cleanliness", "Comfort"]) == ["Cleanliness", "Comfort"]
+
+    def test_already_list_of_mixed_objects_and_strings(self):
+        """Mixed parsed list with dicts and strings should be normalized."""
+        inp = [{"name": "Comfort", "score": 95}, "Cleanliness", None, {"score": 80}]
+        assert normalize_string_list(inp) == ["Comfort", "Cleanliness"]
+
+    def test_json_string_list_of_strings(self):
+        """Stringified JSON representing a list of strings."""
+        assert normalize_string_list('["Cleanliness", "Comfort"]') == ["Cleanliness", "Comfort"]
+
+    def test_json_string_list_of_objects(self):
+        """Stringified JSON representing a list of dict objects."""
+        inp = '[{"name": "Comfort", "score": 90}, {"name": "Staff", "score": 85}]'
+        assert normalize_string_list(inp) == ["Comfort", "Staff"]
+
+    def test_json_string_mixed_objects_and_strings(self):
+        """Stringified JSON representing mixed dicts and strings."""
+        inp = '[{"name": "Comfort", "score": 90}, "Staff", null, {"score": 80}]'
+        assert normalize_string_list(inp) == ["Comfort", "Staff"]
+
+    def test_invalid_json_returns_empty_list(self):
+        assert normalize_string_list('["Cleanliness", "Comfort') == []
+
+    def test_json_not_a_list_returns_empty_list(self):
+        assert normalize_string_list('{"name": "Comfort"}') == []
+        assert normalize_string_list("12345") == []
+

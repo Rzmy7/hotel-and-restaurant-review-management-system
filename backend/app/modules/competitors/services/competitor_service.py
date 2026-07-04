@@ -362,16 +362,12 @@ def get_competitor_reviews(competitor_id: str) -> List[Dict]:
         """, org_id).fetchall()
 
     import json as _json
+    from app.core.db_utils import normalize_string_list
     results = []
     for r in rows:
-        try:
-            cat_list = _json.loads(r.categories) if r.categories else []
-        except Exception:
-            cat_list = []
-        try:
-            phrase_list = _json.loads(r.keyPhrases) if r.keyPhrases else []
-        except Exception:
-            phrase_list = []
+        cat_list = normalize_string_list(r.categories)
+        phrase_list = normalize_string_list(r.keyPhrases)
+
 
         results.append({
             "id": str(r.id),
