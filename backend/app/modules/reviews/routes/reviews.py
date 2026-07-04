@@ -386,6 +386,125 @@ def generate_reply(
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
 
 
+@router.post("/{review_id}/reply", summary="Save an edited AI reply for a review")
+def save_review_reply(
+    review_id: uuid.UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Save or update the AI-generated reply text for a specific review.
+    Body: { "replyText": "..." }
+    """
+    try:
+        from sqlalchemy import text
+
+        # Verify the review exists and belongs to the user's organization
+        review_row = db.execute(
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
+            {"review_id": str(review_id)}
+        ).fetchone()
+
+        if not review_row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+
+        resolve_tenant_scope(current_user, db, str(review_row[0]))
+
+        reply_text = payload.get("replyText", "")
+        if not reply_text or not reply_text.strip():
+            raise HTTPException(status_code=400, detail="replyText is required")
+
+        # Update the ai_reply column
+        db.execute(
+            text("""
+                UPDATE dbo.processed_review
+                SET ai_reply = :reply_text, [status] = 'Replied'
+                WHERE id = :review_id
+            """),
+            {"reply_text": reply_text, "review_id": str(review_id)}
+        )
+        db.commit()
+
+        return {
+            "message": "Reply saved successfully",
+            "review_id": str(review_id),
+            "status": "Replied",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to save reply for review {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save reply.")
+
+
+@router.put("/{review_id}/status", summary="Update the status of a review")
+def update_review_status(
+    review_id: uuid.UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Update the status of a specific review (e.g., mark as "Replied", "Pending").
+    Body: { "status": "Replied" }
+    """
+    try:
+        from sqlalchemy import text
+
+        valid_statuses = {"Pending", "Replied", "AI Draft", "processed", "failed"}
+        new_status = payload.get("status", "")
+
+        if not new_status or new_status not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of: {', '.join(sorted(valid_statuses))}"
+            )
+
+        # Verify the review exists and belongs to the user's organization
+        review_row = db.execute(
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
+            {"review_id": str(review_id)}
+        ).fetchone()
+
+        if not review_row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+
+        resolve_tenant_scope(current_user, db, str(review_row[0]))
+
+        # Update the status
+        db.execute(
+            text("""
+                UPDATE dbo.processed_review
+                SET [status] = :status
+                WHERE id = :review_id
+            """),
+            {"status": new_status, "review_id": str(review_id)}
+        )
+        db.commit()
+
+        return {
+            "message": "Status updated successfully",
+            "review_id": str(review_id),
+            "status": new_status,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update status for review {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update review status.")
+
+
 @router.delete("/source/{source_id}", summary="Delete all reviews for a source")
 def delete_reviews_by_source(
     source_id: uuid.UUID,

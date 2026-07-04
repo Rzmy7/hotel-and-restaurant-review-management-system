@@ -86,10 +86,13 @@ def get_insights(
             prev_score    = round(prev_avg * 20) if prev_avg else 0
 
             # ── Sentiment Time Series ─────────────────────────────────
+            sentiment_series = {"labels": [], "positive": [], "neutral": [], "negative": []}
             try:
                 sentiment_series = get_weekly_sentiment_series(cursor, org_id, period_days=period)
             except Exception as e:
-                raise RuntimeError(f"[get_weekly_sentiment_series] {e}") from e
+                import traceback
+                traceback.print_exc()
+                print(f"[WARN] get_weekly_sentiment_series failed (returning empty): {e}")
 
             # ── Rating Distribution ───────────────────────────────────
             try:
@@ -155,12 +158,15 @@ def get_insights(
                 raise RuntimeError(f"[get_keywords] {e}") from e
 
             # ── Heatmap ──────────────────────────────────────────────
+            heatmap = [[0, 0, 0, 0, 0, 0, 0]]
             try:
-                heatmap = get_review_volume_heatmap(cursor, org_id, period_days=period)
+                heatmap_result = get_review_volume_heatmap(cursor, org_id, period_days=period)
+                if heatmap_result:
+                    heatmap = heatmap_result
             except Exception as e:
-                raise RuntimeError(f"[get_review_volume_heatmap] {e}") from e
-            if not heatmap:
-                heatmap = [[0, 0, 0, 0, 0, 0, 0]]
+                import traceback
+                traceback.print_exc()
+                print(f"[WARN] get_review_volume_heatmap failed (returning empty): {e}")
 
             # ── AI Actions ───────────────────────────────────────────
             try:
