@@ -90,6 +90,9 @@ const ReviewSourcesPage = () => {
   // Mutations
   const addSourceMutation = useMutation({
     mutationFn: (newSourceData: Partial<Source>) => sourcesService.addSource(organizationId, newSourceData as any),
+    onMutate: () => {
+      showToast('Adding source in background...', 'info');
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
@@ -100,6 +103,9 @@ const ReviewSourcesPage = () => {
 
   const updateSourceMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string | number, updates: Partial<Source> }) => sourcesService.updateSource(id, updates),
+    onMutate: () => {
+      showToast('Updating source configurations...', 'info');
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       showToast('Source updated successfully', 'success');
@@ -109,6 +115,9 @@ const ReviewSourcesPage = () => {
 
   const deleteSourceMutation = useMutation({
     mutationFn: (id: string | number) => sourcesService.deleteSource(id),
+    onMutate: () => {
+      showToast('Removing source in background...', 'info');
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
@@ -119,6 +128,9 @@ const ReviewSourcesPage = () => {
 
   const triggerSyncMutation = useMutation({
     mutationFn: (id: string | number) => sourcesService.triggerSync(id),
+    onMutate: () => {
+      showToast('Starting synchronization in background...', 'info');
+    },
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
       showToast(`Sync started for ${source?.platform || 'source'}`, 'success');
@@ -134,6 +146,9 @@ const ReviewSourcesPage = () => {
 
   const stopSyncMutation = useMutation({
     mutationFn: (id: string | number) => sourcesService.stopSync(id),
+    onMutate: () => {
+      showToast('Stopping synchronization...', 'info');
+    },
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
       showToast(`Sync stopped for ${source?.platform || 'source'}`, 'info');
@@ -144,6 +159,9 @@ const ReviewSourcesPage = () => {
   
   const deleteReviewsMutation = useMutation({
     mutationFn: (id: string | number) => sourcesService.deleteSourceReviews(id),
+    onMutate: () => {
+      showToast('Clearing reviews in background...', 'info');
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       queryClient.invalidateQueries({ queryKey: ['sourceStats'] });
@@ -155,6 +173,7 @@ const ReviewSourcesPage = () => {
 
   const handleExportLogs = async () => {
     try {
+      showToast('Preparing activity history export...', 'info');
       await sourcesService.exportSyncLogs(organizationId);
       showToast('Activity history exported successfully.', 'success');
     } catch (error) {
@@ -164,6 +183,7 @@ const ReviewSourcesPage = () => {
 
   const handleClearLogs = async () => {
     try {
+      showToast('Clearing activity history in background...', 'info');
       await sourcesService.clearSyncLogs(organizationId);
       queryClient.invalidateQueries({ queryKey: ['syncLogs', organizationId] });
       showToast('Activity history cleared.', 'success');
