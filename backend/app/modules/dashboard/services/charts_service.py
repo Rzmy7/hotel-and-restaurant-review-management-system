@@ -164,3 +164,114 @@ def get_weekly_review_trends(cursor: pyodbc.Cursor, org_id: str, period_days: in
         "volume": row.volume,
         "sentiment": round(float(row.sentiment_avg or 0))
     } for row in rows]
+
+
+def get_weekly_sentiment_series(
+    cursor: pyodbc.Cursor, org_id: str, period_days: int = 30
+) -> Dict[str, Any]:
+    """
+    Returns separate Positive / Neutral / Negative count arrays for the
+    sentiment-over-time chart on the Insights page.
+    Groups reviews into up to 10 equal time buckets.
+    """
+    if period_days <= 0:
+        cursor.execute("""
+            SELECT MIN(r.reviewDate), DATEDIFF(day, MIN(r.reviewDate), GETDATE())
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ?
+        """, org_id)
+        row = cursor.fetchone()
+        if not row or not row[0]:
+            return {"labels": [], "positive": [], "neutral": [], "negative": []}
+        start_date = row[0]
+        days_span = max(1, row[1])
+    else:
+        start_date = (datetime.utcnow() - timedelta(days=period_days)).date()
+        days_span = period_days
+
+    bucket_size = max(1, days_span // 9)
+
+    cursor.execute(f"""
+        SELECT
+            bucket_index,
+            'Point ' + CAST(bucket_index + 1 AS VARCHAR) AS label,
+            SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) AS pos,
+            SUM(CASE WHEN sentiment = 'Neutral'  THEN 1 ELSE 0 END) AS neu,
+            SUM(CASE WHEN sentiment = 'Negative' THEN 1 ELSE 0 END) AS neg
+        FROM (
+            SELECT
+                DATEDIFF(day, CAST(? AS DATE), r.reviewDate) / {bucket_size} AS bucket_index,
+                r.sentiment
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
+        ) AS Bucketed
+        GROUP BY bucket_index
+        ORDER BY bucket_index ASC
+    """, start_date, org_id, start_date)
+
+    rows = cursor.fetchall()
+    labels, pos_arr, neu_arr, neg_arr = [], [], [], []
+    for row in rows:
+        labels.append(row.label)
+        total = (row.pos or 0) + (row.neu or 0) + (row.neg or 0)
+        if total > 0:
+            pos_arr.append(round((row.pos / total) * 100))
+            neu_arr.append(round((row.neu / total) * 100))
+            neg_arr.append(round((row.neg / total) * 100))
+        else:
+            pos_arr.append(0)
+            neu_arr.append(0)
+            neg_arr.append(0)
+
+    return {"labels": labels, "positive": pos_arr, "neutral": neu_arr, "negative": neg_arr}
+
+
+def get_review_volume_heatmap(
+    cursor: pyodbc.Cursor, org_id: str, period_days: int = 30
+) -> List[List[int]]:
+    """
+    Returns a 7-row (Mon=0 … Sun=6) × N-week grid of review counts.
+    Each outer list is a WEEK column; each inner list has 7 day counts.
+    This matches the InsightsPage heatmap rendering (columns = weeks, rows = days).
+    """
+    if period_days <= 0:
+        period_days = 90  # default all-time fallback
+
+    start_date = (datetime.utcnow() - timedelta(days=period_days)).date()
+
+    # Use a derived table so reviewDate is only referenced in the inner
+    # query (no GROUP BY). The outer query groups by simple column names.
+    cursor.execute("""
+        SELECT
+            week_index,
+            day_of_week,
+            COUNT(*) AS cnt
+        FROM (
+            SELECT
+                DATEDIFF(week, CAST(? AS DATE), CAST(r.reviewDate AS DATE)) AS week_index,
+                (DATEPART(weekday, r.reviewDate) + 5) % 7 AS day_of_week
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ?
+              AND r.reviewDate >= CAST(? AS DATE)
+        ) AS sub
+        GROUP BY week_index, day_of_week
+        ORDER BY week_index, day_of_week
+    """, start_date, org_id, start_date)
+
+    rows = cursor.fetchall()
+    if not rows:
+        return []
+
+    max_week = max(row.week_index for row in rows)
+    # Build grid: weeks as columns, days as rows
+    grid = [[0] * 7 for _ in range(max_week + 1)]
+    for row in rows:
+        wi = int(row.week_index)
+        di = int(row.day_of_week)
+        if 0 <= wi <= max_week and 0 <= di <= 6:
+            grid[wi][di] = row.cnt
+
+    return grid

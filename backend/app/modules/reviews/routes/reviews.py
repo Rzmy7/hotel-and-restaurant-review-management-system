@@ -283,7 +283,12 @@ async def trigger_single_review_processing(
     try:
         from sqlalchemy import text
         review_row = db.execute(
-            text("SELECT organization_id FROM dbo.processed_review WHERE id = :review_id"),
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
             {"review_id": str(review_id)}
         ).fetchone()
         
@@ -319,7 +324,12 @@ def generate_reply(
     try:
         from sqlalchemy import text
         review_row = db.execute(
-            text("SELECT organization_id FROM dbo.processed_review WHERE id = :review_id"),
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
             {"review_id": str(payload.reviewId)}
         ).fetchone()
         
