@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import ConfirmationModal from '../shared/ConfirmationModal';
 import type { Source, SourceStatus, SyncSchedule } from '../../types/sources';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchSubscriptionUsage } from '../../services/subscriptionPlansService';
@@ -32,6 +33,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
   const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('daily');
   const [status, setStatus] = useState<SourceStatus>('Active');
   const [propertyUrl, setPropertyUrl] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const { user } = useAuth();
   const [userPlan, setUserPlan] = useState<string | null>(null);
@@ -108,9 +110,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
   };
 
   const handleClearReviews = () => {
-    if (window.confirm('Are you absolutely sure you want to delete ALL reviews for this source? This will ALSO clear related media and embeddings. Action cannot be undone.')) {
-      onClearReviews?.(source.id);
-    }
+    setShowClearConfirm(true);
   };
 
   const customHeader = (
@@ -339,6 +339,19 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
         </div>
 
       </div>
+      {/* Clear Reviews Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={() => {
+          onClearReviews?.(source.id);
+        }}
+        title="Clear Source Reviews"
+        description="Are you absolutely sure you want to delete ALL reviews for this source? This will ALSO clear related media and embeddings. Action cannot be undone."
+        confirmText="Clear All"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </Modal>
   );
 };

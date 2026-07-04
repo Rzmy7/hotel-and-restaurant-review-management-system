@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import type { Source } from '../../types/sources';
+import ConfirmationModal from '../shared/ConfirmationModal';
 
 // Brand Logos
 import BookingLogo from '../../assets/source-logo/Booking.jpeg';
@@ -144,6 +145,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
   isLoading
 }) => {
   const [page, setPage] = useState(0);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | number | null>(null);
   const [localSyncingIds, setLocalSyncingIds] = useState<Set<string | number>>(new Set());
   const inFlightSyncsRef = useRef<Set<string | number>>(new Set());
 
@@ -330,11 +332,7 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                         <Edit2 size={18} />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to remove this source? All associated data will be archived.')) {
-                            onDelete(source.id);
-                          }
-                        }}
+                        onClick={() => setDeleteTargetId(source.id)}
                         className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 rounded-lg transition-all"
                         title="Remove Source"
                       >
@@ -373,6 +371,21 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
           </div>
         </div>
       )}
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => {
+          if (deleteTargetId !== null) {
+            onDelete(deleteTargetId);
+          }
+        }}
+        title="Remove Source"
+        description="Are you sure you want to remove this source? All associated data will be archived."
+        confirmText="Remove"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };
