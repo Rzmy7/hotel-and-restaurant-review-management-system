@@ -61,6 +61,7 @@ const PrivacyPolicyPage = React.lazy(() => import('./pages/PrivacyPolicyPage'));
 // Pages - Main Application (Lazy Loaded)
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const ReviewsPage = React.lazy(() => import('./pages/ReviewsPage'));
+const ReviewDetailPage = React.lazy(() => import('./pages/ReviewDetailPage'));
 const ReviewSourcesPage = React.lazy(() => import('./pages/ReviewSourcesPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
@@ -302,6 +303,7 @@ const AppContent: React.FC = () => {
                   {/* Org-dependent feature pages — all require both auth AND an active organization */}
                   <Route path="/dashboard" element={<RequireAuth><RequireOrganization><Suspense fallback={<DashboardSkeleton />}><DashboardPage /></Suspense></RequireOrganization></RequireAuth>} />
                   <Route path="/reviews" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewsSkeleton />}><ReviewsPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/reviews/:id" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewsSkeleton />}><ReviewDetailPage /></Suspense></RequireOrganization></RequireAuth>} />
                   <Route path="/sources" element={<RequireAuth><RequireOrganization><Suspense fallback={<ReviewSourcesSkeleton />}><ReviewSourcesPage /></Suspense></RequireOrganization></RequireAuth>} />
                   <Route path="/insights" element={<RequireAuth><RequireOrganization><Suspense fallback={<InsightsSkeleton />}><InsightsPage /></Suspense></RequireOrganization></RequireAuth>} />
                   <Route path="/competitors" element={<RequireAuth><RequireOrganization><Suspense fallback={<CompetitorsSkeleton />}><CompetitorsPage /></Suspense></RequireOrganization></RequireAuth>} />

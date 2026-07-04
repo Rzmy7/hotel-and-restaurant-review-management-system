@@ -2,6 +2,7 @@
 Review Management Routes — API endpoints for listing, deleting, and AI reply generation.
 """
 
+import json
 import uuid
 import logging
 from typing import List, Optional
@@ -9,6 +10,7 @@ from typing import List, Optional
 import pyodbc
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.database import get_db
 from app.core.db_utils import get_connection_string
@@ -248,6 +250,91 @@ def get_total_review_count(current_user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{review_id}", summary="Get a single review by ID")
+def get_single_review(
+    review_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Fetch a single review by its ID with full tenant-scope validation.
+    """
+    try:
+        row = db.execute(
+            text("""
+                SELECT
+                    CAST(r.id AS VARCHAR(36)) AS id,
+                    s.organization_id,
+                    r.rating,
+                    r.reviewerName AS reviewerName,
+                    r.text AS reviewText,
+                    r.heading,
+                    r.summary,
+                    r.sentiment,
+                    r.sentiment_score,
+                    r.categories,
+                    r.keyPhrases,
+                    r.positive_text AS positiveText,
+                    r.negative_text AS negativeText,
+                    r.ai_reply,
+                    r.[status],
+                    r.reviewDate,
+                    r.scrapedAt,
+                    p.platform_name AS source
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                JOIN dbo.platform p ON s.platform_id = p.platform_id
+                WHERE r.id = :review_id
+            """),
+            {"review_id": str(review_id)},
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+
+        resolve_tenant_scope(current_user, db, str(row.organization_id))
+
+        # Parse JSON columns
+        categories = None
+        if row.categories:
+            try:
+                categories = json.loads(row.categories)
+            except Exception:
+                categories = []
+
+        keyPhrases = None
+        if row.keyPhrases:
+            try:
+                keyPhrases = json.loads(row.keyPhrases)
+            except Exception:
+                keyPhrases = []
+
+        return {
+            "id": row.id,
+            "rating": float(row.rating) if row.rating else 0,
+            "reviewerName": row.reviewerName,
+            "reviewText": row.reviewText,
+            "heading": row.heading,
+            "summary": row.summary,
+            "sentiment": row.sentiment or "Neutral",
+            "sentimentScore": float(row.sentiment_score) if row.sentiment_score else 3.0,
+            "categories": categories or [],
+            "keyPhrases": keyPhrases or [],
+            "positiveText": row.positiveText,
+            "negativeText": row.negativeText,
+            "aiReply": row.ai_reply,
+            "status": row.status or "Pending",
+            "date": row.reviewDate.isoformat() if row.reviewDate else None,
+            "scrapedAt": row.scrapedAt.isoformat() if row.scrapedAt else None,
+            "source": row.source or "Unknown",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch review {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch review.")
+
+
 @router.get("/processing/status")
 def get_processing_status(
     organization_id: uuid.UUID = Query(None),
@@ -384,63 +471,6 @@ def generate_reply(
     except Exception as exc:
         logger.error(f"Reply generation failed: {exc}")
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
-
-
-@router.post("/{review_id}/reply", summary="Save an edited AI reply for a review")
-def save_review_reply(
-    review_id: uuid.UUID,
-    payload: dict,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    """
-    Save or update the AI-generated reply text for a specific review.
-    Body: { "replyText": "..." }
-    """
-    try:
-        from sqlalchemy import text
-
-        # Verify the review exists and belongs to the user's organization
-        review_row = db.execute(
-            text("""
-                SELECT s.organization_id
-                FROM dbo.processed_review r
-                JOIN dbo.source s ON r.source_id = s.source_id
-                WHERE r.id = :review_id
-            """),
-            {"review_id": str(review_id)}
-        ).fetchone()
-
-        if not review_row:
-            raise HTTPException(status_code=404, detail="Review not found.")
-
-        resolve_tenant_scope(current_user, db, str(review_row[0]))
-
-        reply_text = payload.get("replyText", "")
-        if not reply_text or not reply_text.strip():
-            raise HTTPException(status_code=400, detail="replyText is required")
-
-        # Update the ai_reply column
-        db.execute(
-            text("""
-                UPDATE dbo.processed_review
-                SET ai_reply = :reply_text, [status] = 'Replied'
-                WHERE id = :review_id
-            """),
-            {"reply_text": reply_text, "review_id": str(review_id)}
-        )
-        db.commit()
-
-        return {
-            "message": "Reply saved successfully",
-            "review_id": str(review_id),
-            "status": "Replied",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to save reply for review {review_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save reply.")
 
 
 @router.put("/{review_id}/status", summary="Update the status of a review")

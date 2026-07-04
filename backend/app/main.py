@@ -245,6 +245,24 @@ except ImportError:
 
 if reviews_router:
     app.include_router(reviews_router)
+
+# Review Replies module — dedicated reply history & management
+try:
+    from app.modules.reviews.routes.review_replies import router as review_replies_router
+except ImportError:
+    review_replies_router = None
+
+if review_replies_router:
+    app.include_router(review_replies_router)
+
+# Sentiment analysis module — standalone sentiment endpoints
+try:
+    from app.modules.reviews.routes.sentiment import router as sentiment_router
+except ImportError:
+    sentiment_router = None
+
+if sentiment_router:
+    app.include_router(sentiment_router)
 # Hansi routers (now standardized under /api)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(oauth_router, prefix="/api/auth")

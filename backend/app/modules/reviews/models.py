@@ -74,6 +74,9 @@ class ProcessedReview(Base):
     category_scores = relationship(
         "ReviewCategory", back_populates="review", cascade="all, delete-orphan"
     )
+    replies = relationship(
+        "ReviewReply", back_populates="review", cascade="all, delete-orphan"
+    )
     source = relationship("Source")
 
 
@@ -113,3 +116,31 @@ class ReviewCategory(Base):
     created_at = Column("created_at", DateTime, server_default=func.now())
 
     review = relationship("ProcessedReview", back_populates="category_scores")
+
+
+class ReviewReply(Base):
+    """
+    Dedicated reply history table.
+    Each row represents one version of a reply to a review.
+    Supports edit history tracking and response-time calculation.
+    """
+
+    __tablename__ = "review_reply"
+
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("processed_review.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    reply_text = Column(String, nullable=False)
+    tone = Column(String(20), nullable=True)  # professional | casual | standard
+    created_at = Column(
+        "created_at", DateTime(timezone=False), server_default=func.now(), nullable=False
+    )
+    updated_at = Column("updated_at", DateTime(timezone=False), nullable=True)
+    created_by = Column("created_by", UNIQUEIDENTIFIER, nullable=True)
+    is_edited = Column(Boolean, nullable=False, default=False, server_default="0")
+
+    review = relationship("ProcessedReview", back_populates="replies")

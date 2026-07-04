@@ -2,18 +2,21 @@ export interface Review {
     id: number | string;
     rating: number;
     userName: string;
+    reviewerName?: string;
     reviewText: string;
+    text?: string;
     sentiment: 'Positive' | 'Neutral' | 'Negative';
     categories: string[];
     source: string;
     date: string;
+    reviewDate?: string;
     status: 'pending' | 'processed' | 'Replied' | 'AI Draft' | 'Archived' | 'Flagged';
     language?: string;
     photos?: { id: number; src: string; alt: string }[];
     keyPhrases?: string[];
     summary?: string;
     scraper_review_id?: string;
-    platformReviewId?: string; // Kept for backward compatibility if needed temporarily
+    platformReviewId?: string;
     replyStatus?: string;
     firstSeen?: string;
     lastUpdated?: string;
@@ -21,6 +24,10 @@ export interface Review {
     hasReply?: string;
     isAiReply?: boolean;
     heading?: string;
+    positiveText?: string;
+    negativeText?: string;
+    sentimentScore?: number;
+    aiReply?: string;
 }
 
 export interface ReviewStats {
