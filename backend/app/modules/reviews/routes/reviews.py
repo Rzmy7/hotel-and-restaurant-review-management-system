@@ -17,6 +17,7 @@ from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.dependencies import get_optional_user
 from app.core.tenant_context import resolve_tenant_scope
+from app.core.redis_client import cache_get, cache_set, invalidate_review_cache
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.modules.reviews.schemas import (
     ReviewModel,
@@ -78,6 +79,18 @@ def read_reviews(
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
+
+        # Redis cache: skip for embedding search or filtered queries
+        cache_key = None
+        if not embedding_search and not search and page == 0:
+            cache_key = (
+                f"reviews:list:{resolved_org_id}:"
+                f"{limit}:{dateFrom or 'any'}:{dateTo or 'any'}"
+            )
+            cached = cache_get(cache_key)
+            if cached:
+                return cached
+
         result = get_all_reviews_from_db(
             resolved_org_id, page=page, limit=limit, filters=filters, db=db
         )
@@ -86,13 +99,19 @@ def read_reviews(
         total = result["total"]
         total_pages = (total + limit - 1) // limit if limit > 0 else 1
 
-        return {
+        response = {
             "data": result["data"],
             "total": total,
             "page": page,
             "limit": limit,
             "totalPages": total_pages,
         }
+
+        # Cache the result (60s TTL for review lists)
+        if cache_key and response["data"]:
+            cache_set(cache_key, response, ttl=60)
+
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -203,6 +222,7 @@ async def trigger_review_sync(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found.")
     resolve_tenant_scope(current_user, db, str(source.organization_id))
+    invalidate_review_cache(str(source.organization_id))  # Clear Redis cache
     background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
     return {"message": "Processing flow started in background."}
 

@@ -139,7 +139,7 @@ import app.modules.auth.models.auth_models  # noqa: F401  (Role, UserRole, Sessi
 import app.modules.auth.models  # noqa: F401  (Notification, UserNotification, BroadcastEvent)
 import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupInvite)
 import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
-import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
+import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia, ReviewReply, AlertRule)
 import app.modules.organization.models.rules_model  # noqa: F401  (OrganizationRule)
 
 
@@ -263,6 +263,15 @@ except ImportError:
 
 if sentiment_router:
     app.include_router(sentiment_router)
+
+# Alert Rules module — configurable review monitoring triggers
+try:
+    from app.modules.reviews.routes.alert_rules import router as alert_rules_router
+except ImportError:
+    alert_rules_router = None
+
+if alert_rules_router:
+    app.include_router(alert_rules_router)
 # Hansi routers (now standardized under /api)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(oauth_router, prefix="/api/auth")
