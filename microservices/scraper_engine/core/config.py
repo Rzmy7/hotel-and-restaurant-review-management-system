@@ -21,6 +21,7 @@ class BaseScraperConfig(BaseModel):
     trust_server_certificate: str = "yes"
     backend_url: str = "http://127.0.0.1:8000"
     internal_api_key: str = "dev-internal-secret"
+    rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
     
     # Service-to-Service API Keys (Phase 1: Backward Compatible)
     scraper_api_keys: list[str] = []
@@ -54,7 +55,7 @@ def setup_logger(name: str) -> logging.Logger:
     logger.addHandler(fh)
     
     return logger
-
+ 
 config = BaseScraperConfig(
     db_driver=os.getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server"),
     db_server=os.getenv("DB_SERVER", ""),
@@ -65,6 +66,7 @@ config = BaseScraperConfig(
     trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes"),
     backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000"),
     internal_api_key=os.getenv("INTERNAL_API_KEY", "dev-internal-secret"),
+    rabbitmq_url=os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
     scraper_api_keys=[k.strip() for k in os.getenv("SCRAPER_API_KEYS", os.getenv("INTERNAL_API_KEY", "dev-internal-secret")).split(",") if k.strip()],
     backend_api_key=os.getenv("BACKEND_API_KEY", os.getenv("INTERNAL_API_KEY", "dev-internal-secret")),
     max_queue_size=int(os.getenv("MAX_QUEUE_SIZE", "100")),
@@ -75,3 +77,4 @@ config = BaseScraperConfig(
     delay_booking=float(os.getenv("DELAY_BOOKING", "20.0")),
     delay_tripadvisor=float(os.getenv("DELAY_TRIPADVISOR", "40.0"))
 )
+

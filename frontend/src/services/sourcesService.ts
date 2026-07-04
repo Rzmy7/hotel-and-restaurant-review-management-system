@@ -133,6 +133,11 @@ class SourcesService {
         await apiClient.post(`/api/source/${id}/sync`);
     }
 
+    async getSource(id: string | number): Promise<Source> {
+        const data = await apiClient.get<any>(`/api/source/${id}`);
+        return this.mapBackendSourceToFrontend(data);
+    }
+
     async deleteSourceReviews(id: string | number): Promise<void> {
         await apiClient.delete(`/api/reviews/source/${id}`);
     }

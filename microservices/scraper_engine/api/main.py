@@ -15,10 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.endpoints.agoda import router as agoda_router
-from api.endpoints.booking import router as booking_router
-from api.endpoints.google import router as google_router
-from api.endpoints.tripadvisor import router as tripadvisor_router
+from api.endpoints.scrape import router as scrape_router
 from api.endpoints.sources import router as sources_router
 from api.endpoints.reviews import router as reviews_router
 from api.endpoints.system import router as system_router
@@ -26,7 +23,7 @@ from api.endpoints.audit import router as audit_router
 from api.endpoints.db_admin import router as db_admin_router
 from api.endpoints.tables import router as tables_router
 from api.endpoints.resolution import router as resolution_router
-from api.websockets.events import router as ws_router
+from core.consumer import run_rabbitmq_consumer
 from api.middleware.audit_middleware import AuditMiddleware
 from core.config import setup_logger, config
 from core.database import init_db
@@ -115,17 +112,18 @@ def startup_event():
     """Create all database tables on first run."""
     init_db()
     
-    # Spawn background reconciliation thread
-    threading.Thread(target=reconcile_stuck_tasks, daemon=True).start()
+    # ponytail: startup reconciliation deactivated so pre-existing queued RabbitMQ tasks are not overwritten during bootup
+    # threading.Thread(target=reconcile_stuck_tasks, daemon=True).start()
+
+    # Spawn background RabbitMQ consumer
+    logger.info("Spawning background RabbitMQ consumer thread...")
+    threading.Thread(target=run_rabbitmq_consumer, daemon=True).start()
 
 
 
-# ── Platform Scrape Endpoints ──
-# Each platform router handles POST /{platform}/scrape
-app.include_router(agoda_router, prefix="/api")
-app.include_router(booking_router, prefix="/api")
-app.include_router(google_router, prefix="/api")
-app.include_router(tripadvisor_router, prefix="/api")
+# ── Centralized Platform Scrape Endpoint ──
+# Handles POST /{platform_name}/scrape dynamically
+app.include_router(scrape_router, prefix="/api")
 
 # ── Data Retrieval & Management ──
 app.include_router(sources_router, prefix="/api")
@@ -138,8 +136,7 @@ app.include_router(audit_router, prefix="/api")
 app.include_router(db_admin_router, prefix="/api")
 app.include_router(tables_router, prefix="/api")
 
-# -- WebSocket Endpoints --
-app.include_router(ws_router)
+
 
 
 @app.get("/")

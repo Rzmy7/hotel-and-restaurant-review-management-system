@@ -67,6 +67,10 @@ BACKEND_API_KEYS: list[str] = [k.strip() for k in os.getenv("BACKEND_API_KEYS", 
 SCRAPER_API_KEY: str = os.getenv("SCRAPER_API_KEY", INTERNAL_API_KEY)
 EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", INTERNAL_API_KEY)
 
+# ── Message Broker ──────────────────────────────────────────────────
+RABBITMQ_URL: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+
+
 # ── CORS allowed origins ────────────────────────────────────────────
 # Base origins always allowed (constructed from FRONTEND_URL and ADMIN_FRONTEND_URL)
 _base_origins: list[str] = [

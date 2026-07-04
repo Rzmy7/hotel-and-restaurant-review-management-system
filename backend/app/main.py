@@ -84,8 +84,8 @@ async def lifespan(app: FastAPI):
         )
         from app.modules.reviews.services.processor import run_analysis_pipeline
 
-        # reconcile_scraper_jobs is async, run it directly via create_task
-        asyncio.create_task(reconcile_scraper_jobs())
+        # ponytail: startup reconciliation deactivated to let RabbitMQ process pre-existing queued tasks normally on boot
+        # asyncio.create_task(reconcile_scraper_jobs())
         # run_analysis_pipeline is async, run it directly via create_task
         asyncio.create_task(run_analysis_pipeline())
 

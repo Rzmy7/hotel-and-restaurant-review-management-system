@@ -6,7 +6,6 @@ import {
   Key,
   Calendar,
   ShieldCheck,
-  RefreshCw,
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -41,7 +40,6 @@ const AddSourceModal = ({
   const [apiKey, setApiKey] = useState("");
   const [schedule, setSchedule] = useState<SyncSchedule>("three_days");
   const [sourceStatus, setSourceStatus] = useState(true);
-  const [isTesting, setIsTesting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { user } = useAuth();
@@ -102,11 +100,6 @@ const AddSourceModal = ({
     setPropertyUrl("");
     setApiKey("");
     setSchedule("three_days");
-  };
-
-  const testConnection = () => {
-    setIsTesting(true);
-    setTimeout(() => setIsTesting(false), 2000);
   };
 
   const filteredPlatforms = platforms.filter((p: any) =>
@@ -265,27 +258,7 @@ const AddSourceModal = ({
         </div>
 
         {/* Toggle & Test */}
-        <div className="pt-4 flex items-center justify-between border-t border-gray-100 dark:border-slate-700">
-          <div className="flex">
-            <Button
-              variant={isTesting ? "outline" : "outline"} // Keeping outline but custom styles
-              type="button"
-              onClick={testConnection}
-              disabled={isTesting || !propertyUrl}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border ${
-                isTesting
-                  ? "bg-gray-50 text-gray-400 border-gray-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-[#4e80ee] hover:text-[#4e80ee] hover:shadow-blue-50 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600"
-              }`}
-            >
-              <RefreshCw
-                size={14}
-                className={isTesting ? "animate-spin" : ""}
-              />
-              {isTesting ? "Checking Link..." : "Test Connection"}
-            </Button>
-          </div>
-
+        <div className="pt-4 flex items-center justify-end border-t border-gray-100 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
               Auto-Sync

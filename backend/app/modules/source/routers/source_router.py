@@ -3,8 +3,6 @@ from fastapi import (
     HTTPException,
     Depends,
     status,
-    WebSocket,
-    WebSocketDisconnect,
     BackgroundTasks,
 )
 from fastapi.responses import StreamingResponse
@@ -33,30 +31,10 @@ from app.modules.source.schemas import (
 from app.modules.source.models import (
     Source as SourceSource,
 )  # alias for backward compat
-from app.modules.scheduler.tasks.sync_tasks import trigger_platform_scrape
 from app.modules.auth.utils.internal_auth import verify_internal_api_key
 
 router = APIRouter()
 
-
-@router.websocket("/{source_id}/progress")
-async def websocket_sync_progress(
-    websocket: WebSocket, source_id: uuid.UUID, token: Optional[str] = None
-):
-    """
-    WebSocket endpoint for the frontend to receive real-time sync progress.
-    Acts as a proxy/relay to the Scraper Engine's internal WebSocket.
-    """
-    from app.modules.source.services.sync_socket_manager import sync_socket_manager
-
-    await sync_socket_manager.connect_frontend(websocket, str(source_id))
-    try:
-        while True:
-            # We just need to keep the connection open.
-            # We don't expect messages from the frontend, but we listen to detect disconnects.
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await sync_socket_manager.disconnect_frontend(websocket, str(source_id))
 
 
 @router.get(
@@ -177,6 +155,20 @@ def delete_source(
     resolve_tenant_scope(user, db, str(source.organization_id))
     source_service.delete_source(db, source_id)
     return None
+
+
+@router.get("/{source_id}", response_model=SourceRead)
+def get_source(
+    source_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Retrieve details and sync status of a specific source."""
+    source = db.query(SourceSource).filter(SourceSource.source_id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    resolve_tenant_scope(user, db, str(source.organization_id))
+    return source_service.get_source_by_id(db, source_id)
 
 
 @router.post("/{source_id}/sync", status_code=status.HTTP_202_ACCEPTED)
