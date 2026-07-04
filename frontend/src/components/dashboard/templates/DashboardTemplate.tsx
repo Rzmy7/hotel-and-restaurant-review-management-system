@@ -1,78 +1,53 @@
 import React from 'react';
+import { SentimentChartSection } from '../organisms/SentimentChartSection';
+import { TrendsChartSection } from '../organisms/TrendsChartSection';
+import { LatestReviewsSection } from '../organisms/LatestReviewsSection';
+import { CategoryPerformanceSection } from '../organisms/CategoryPerformanceSection';
+import { AIInsightsSection } from '../organisms/AIInsightsSection';
+import { AlertsPanelSection } from '../organisms/AlertsPanelSection';
+import { KPIsSection } from '../organisms/KPIsSection';
+import { ReviewRatingDistributionSection } from '../organisms/ReviewRatingDistributionSection';
+import { SourceComparisonSection } from '../organisms/SourceComparisonSection';
 import { DashboardHeader } from '../organisms/DashboardHeader';
-import { MetricCard } from '../molecules/MetricCard';
-import { SentimentChart } from '../organisms/SentimentChart';
-import { TrendsChart } from '../organisms/TrendsChart';
-import { LatestReviews } from '../organisms/LatestReviews';
-import { CategoryPerformance } from '../organisms/CategoryPerformance';
-import { AIInsights } from '../organisms/AIInsights';
-import { AlertsPanel } from '../organisms/AlertsPanel';
-import ReviewRatingDistribution from '../../reviews/ReviewRatingDistribution';
-import SourceComparison from '../../shared/SourceComparison';
-import { Star, Link2, MessageSquare, Frown } from 'lucide-react';
-import type { DashboardResponse } from '../../../types/dashboard';
-
 export interface DashboardTemplateProps {
-    data: DashboardResponse;
     period: number;
     onPeriodChange: (period: number) => void;
 }
 
-export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data, period, onPeriodChange }) => {
+export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ period, onPeriodChange }) => {
     return (
         <>
             <DashboardHeader period={period} onPeriodChange={onPeriodChange} />
 
             <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50 dark:bg-transparent">
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 min-[1200px]:grid-cols-4 gap-4">
-                    <MetricCard
-                        icon={<Star size={20} />}
-                        label="Average Rating"
-                        {...data.metrics.avgRating}
-                    />
-                    <MetricCard
-                        icon={<Link2 size={20} />}
-                        label="All Sources"
-                        {...data.metrics.activeSources}
-                    />
-                    <MetricCard
-                        icon={<MessageSquare size={20} />}
-                        label="Total Reviews"
-                        {...data.metrics.totalReviews}
-                    />
-                    <MetricCard
-                        icon={<Frown size={20} />}
-                        label="Negative Reviews"
-                        {...data.metrics.negativeReviews}
-                    />
-                </div>
+                {/* Metrics Grid (Migrated to independent parallel hydration) */}
+                <KPIsSection period={period} />
 
-                {/* Charts Row */}
+                {/* Charts Row (Migrated to independent parallel hydration) */}
                 <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
-                    <SentimentChart data={data.charts.sentiment} />
-                    <TrendsChart data={data.charts.reviewsOverTime} />
+                    <SentimentChartSection period={period} />
+                    <TrendsChartSection period={period} />
                 </div>
 
                 {/* Reviews and Category Row */}
                 <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
-                    <LatestReviews reviews={data.latestReviews} />
-                    <CategoryPerformance categories={data.categoryPerformance ?? []} />
+                    <LatestReviewsSection period={period} />
+                    <CategoryPerformanceSection period={period} />
                 </div>
 
                 {/* AI Insights and Alerts Row */}
                 <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 gap-5">
-                    <AIInsights data={data.aiInsights} />
+                    <AIInsightsSection period={period} />
                     <div>
-                        <AlertsPanel alerts={data.alerts} />
+                        <AlertsPanelSection />
                         <div className="mt-5">
-                            <ReviewRatingDistribution distribution={data.metrics.ratingDistribution} />
+                            <ReviewRatingDistributionSection period={period} />
                         </div>
                     </div>
                 </div>
 
                 {/* Source Comparison */}
-                <SourceComparison sources={data.sourceComparison} />
+                <SourceComparisonSection period={period} />
             </div>
         </>
     );

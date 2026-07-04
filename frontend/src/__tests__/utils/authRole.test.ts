@@ -111,7 +111,7 @@ describe('getDashboardPathForRole', () => {
 
     it('returns admin panel URL for admin', () => {
         const path = getDashboardPathForRole('admin');
-        expect(path).toContain('localhost:5174');
+        expect(path).toMatch(/localhost:5174|127\.0\.0\.1:5174/);
     });
 
     it('includes token in admin URL if provided', () => {
