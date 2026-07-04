@@ -81,9 +81,16 @@ async function handleResponse(response: Response, requestUrl: string) {
         errorMessage = await readErrorMessage(response, errorMessage);
         throw new Error(errorMessage);
     }
+    if (response.status === 204) {
+        return {} as any; // ponytail: 204 has no body, return empty object to prevent JSON parsing crash
+    }
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.indexOf("application/json") !== -1) {
-        return response.json();
+        try {
+            return await response.json();
+        } catch {
+            return {} as any; // ponytail: fallback for empty or invalid JSON bodies
+        }
     }
     if (contentType && (contentType.indexOf("text/csv") !== -1 || contentType.indexOf("application/octet-stream") !== -1)) {
         return response.blob() as any;

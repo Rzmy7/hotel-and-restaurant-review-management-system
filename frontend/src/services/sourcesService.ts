@@ -100,14 +100,14 @@ class SourcesService {
 
     async addSource(organizationId: string, sourceData: any): Promise<Source> {
         const scheduleMapReverse: Record<string, number> = { 'daily': 1, 'three_days': 2, 'weekly': 3 };
-        const scheduleStr = (sourceData.syncSchedule || 'daily').toLowerCase();
+        const scheduleStr = (sourceData.syncSchedule || 'three_days').toLowerCase();
         
         const newSource = await apiClient.post<any>('/api/source/', {
             organization_id:   organizationId,
             platform_id:       sourceData.platformId,
             source_url:        sourceData.propertyUrl,
             source_status:     sourceData.status.toLowerCase(),
-            fetching_frequency: scheduleMapReverse[scheduleStr] || 1,
+            fetching_frequency: scheduleMapReverse[scheduleStr] || 2,
         });
         return this.mapBackendSourceToFrontend(newSource);
     }
@@ -119,7 +119,7 @@ class SourcesService {
         if (updates.syncSchedule) {
             const scheduleMapReverse: Record<string, number> = { 'daily': 1, 'three_days': 2, 'weekly': 3 };
             const scheduleStr = updates.syncSchedule.toLowerCase();
-            payload.fetching_frequency = scheduleMapReverse[scheduleStr] || 1;
+            payload.fetching_frequency = scheduleMapReverse[scheduleStr] || 2;
         }
         const data = await apiClient.patch<any>(`/api/source/${id}`, payload);
         return this.mapBackendSourceToFrontend(data);

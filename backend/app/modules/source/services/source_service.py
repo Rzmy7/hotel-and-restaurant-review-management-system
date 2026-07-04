@@ -181,7 +181,7 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
         source_url=source_data.source_url,
         source_status=source_data.source_status,
         fetching_frequency=source_data.fetching_frequency,
-        next_synced_at=now  # Set to now to trigger initial sync immediately
+        next_synced_at=now + timedelta(minutes=1)  # Set to trigger initial sync after 1 minute
     )
     
     db.add(new_source)
