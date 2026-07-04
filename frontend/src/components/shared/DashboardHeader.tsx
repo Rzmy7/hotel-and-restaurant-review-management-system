@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, CalendarDays, Sun, Moon } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import NotificationPanel from '../shared/NotificationPanel';
-import ProfileDropdown from '../shared/ProfileDropdown';
 import OrganizationSwitcher from '../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { notificationsService } from '../../services/notificationsService';
@@ -18,10 +17,8 @@ const DashboardHeader: React.FC = () => {
   const switchOrganization = useOrganizationStore(state => state.switchOrganization);
   const { showToast } = useToast();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme, darkModeAllowed } = useTheme();
 
   // Close panels on outside click
@@ -30,15 +27,12 @@ const DashboardHeader: React.FC = () => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifications(false);
       }
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setShowProfile(false);
-      }
     };
-    if (showNotifications || showProfile) {
+    if (showNotifications) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications, showProfile]);
+  }, [showNotifications]);
 
   useEffect(() => {
     const refreshUnreadCount = async () => {
@@ -57,12 +51,6 @@ const DashboardHeader: React.FC = () => {
 
   const toggleNotifications = () => {
     setShowNotifications((prev) => !prev);
-    setShowProfile(false);
-  };
-
-  const toggleProfile = () => {
-    setShowProfile((prev) => !prev);
-    setShowNotifications(false);
   };
 
   return (
@@ -133,23 +121,6 @@ const DashboardHeader: React.FC = () => {
               onClose={() => setShowNotifications(false)}
               onUnreadCountChange={(count) => setUnreadCount(count)}
             />
-          )}
-        </div>
-
-        {/* User Profile - Sophisticated Avatar */}
-        <div className="relative" ref={profileRef}>
-          <button
-            className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${showProfile
-              ? 'bg-blue-600 text-white border-blue-200 ring-4 ring-blue-50 scale-105 dark:border-blue-800 dark:ring-blue-900/50'
-              : 'bg-blue-500 text-white border-transparent hover:scale-105 active:scale-95 dark:bg-blue-600'
-              }`}
-            onClick={toggleProfile}
-          >
-            L
-          </button>
-
-          {showProfile && (
-            <ProfileDropdown onClose={() => setShowProfile(false)} />
           )}
         </div>
       </div>

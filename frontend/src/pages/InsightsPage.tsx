@@ -12,6 +12,7 @@ import { fetchSubscriptionUsage } from '../services/subscriptionPlansService';
 import { Button } from '../components/ui/Button';
 import InsightsHeader from '../components/shared/InsightsHeader';
 import SourceBreakdown from '../components/sources/SourceBreakdown';
+import InsightsSkeleton from './InsightsSkeleton';
 
 // ═══════════════════════════════════════════════════════════════════
 //  MOCK DATA (keyed per time-range)
@@ -330,11 +331,7 @@ const InsightsPage: React.FC = () => {
     const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
 
     if (hasAccess === null) {
-        return (
-            <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
+        return <InsightsSkeleton />;
     }
 
     if (hasAccess === false) {

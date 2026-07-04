@@ -159,11 +159,14 @@ class TestGetRecentJobs:
             assert result["total_pages"] == 4
 
     def test_formats_timestamp_just_now(self, temp_jobs_file):
-        """Recent jobs should show 'Just now'."""
+        """Recent jobs should return a valid ISO timestamp string."""
         with patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
             add_job("recent", "Review")
             result = get_recent_jobs()
-            assert result["jobs"][0]["timestamp"] == "Just now"
+            ts = result["jobs"][0]["timestamp"]
+            # Timestamp should be a valid ISO datetime string, not a relative string
+            from datetime import datetime
+            datetime.fromisoformat(ts)  # Raises if not valid ISO format
 
     def test_paused_service_shows_paused_status(self, temp_jobs_file, temp_config_file):
         """Running jobs should show 'Paused' when service is paused."""

@@ -19,6 +19,38 @@ export const Pagination: React.FC<PaginationProps> = ({
     onPageChange,
     itemLabel = 'items'
 }) => {
+    const getPageNumbers = () => {
+        const pages: (number | string)[] = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            if (currentPage <= 4) {
+                for (let i = 1; i <= 5; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        return pages;
+    };
+
     return (
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700">
             <div className="text-sm text-gray-500 dark:text-slate-400">
@@ -32,18 +64,24 @@ export const Pagination: React.FC<PaginationProps> = ({
                 >
                     Previous
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                        key={page}
-                        className={`w-8 h-8 text-sm rounded-lg transition-colors ${
-                            currentPage === page
-                                ? 'bg-blue-500 text-white'
-                                : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700'
-                        }`}
-                        onClick={() => onPageChange(page)}
-                    >
-                        {page}
-                    </button>
+                {getPageNumbers().map((page, index) => (
+                    typeof page === 'number' ? (
+                        <button
+                            key={index}
+                            className={`w-8 h-8 text-sm rounded-lg transition-colors ${
+                                currentPage === page
+                                    ? 'bg-blue-500 text-white'
+                                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700'
+                            }`}
+                            onClick={() => onPageChange(page)}
+                        >
+                            {page}
+                        </button>
+                    ) : (
+                        <span key={index} className="px-1 text-gray-400 dark:text-slate-500">
+                            {page}
+                        </span>
+                    )
                 ))}
                 <button
                     className="px-3 py-1.5 text-sm text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

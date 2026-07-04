@@ -22,6 +22,10 @@ class BaseScraperConfig(BaseModel):
     backend_url: str = "http://127.0.0.1:8000"
     internal_api_key: str = "dev-internal-secret"
     
+    # Service-to-Service API Keys (Phase 1: Backward Compatible)
+    scraper_api_keys: list[str] = []
+    backend_api_key: str = ""
+    
     # Rate Limiting & Queue Protection
     max_queue_size: int = 100
     rate_limit_scrape: str = "10/minute"
@@ -35,11 +39,14 @@ class BaseScraperConfig(BaseModel):
     
 def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    is_prod = os.getenv("PROD_MODE", "false").lower() == "true"
+    level = logging.WARNING if is_prod else logging.INFO
+    logger.setLevel(level)
     fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     ch = logging.StreamHandler()
     ch.setFormatter(fmt)
+    ch.setLevel(level)
     logger.addHandler(ch)
 
     fh = logging.FileHandler('scraper_debug.log', mode='a', encoding='utf-8')
@@ -58,6 +65,8 @@ config = BaseScraperConfig(
     trust_server_certificate=os.getenv("DB_TRUST_CERT", "yes"),
     backend_url=os.getenv("BACKEND_API_URL", "http://127.0.0.1:8000"),
     internal_api_key=os.getenv("INTERNAL_API_KEY", "dev-internal-secret"),
+    scraper_api_keys=[k.strip() for k in os.getenv("SCRAPER_API_KEYS", os.getenv("INTERNAL_API_KEY", "dev-internal-secret")).split(",") if k.strip()],
+    backend_api_key=os.getenv("BACKEND_API_KEY", os.getenv("INTERNAL_API_KEY", "dev-internal-secret")),
     max_queue_size=int(os.getenv("MAX_QUEUE_SIZE", "100")),
     rate_limit_scrape=os.getenv("RATE_LIMIT_SCRAPE", "10/minute"),
     rate_limit_global=os.getenv("RATE_LIMIT_GLOBAL", "100/minute"),

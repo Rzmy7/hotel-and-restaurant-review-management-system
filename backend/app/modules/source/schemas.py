@@ -149,4 +149,11 @@ class SyncStatusRequest(BaseModel):
     new_review_count: int = 0
     error_message: Optional[str] = None
 
+    @field_validator('status', mode='before')
+    @classmethod
+    def uppercase_status(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
+
 

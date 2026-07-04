@@ -8,6 +8,7 @@ import { groupsService, type Group, type GroupInvite } from '../services/groupsS
 import { useToast } from '../contexts/ToastContext';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import SearchPublicGroupsModal from '../components/groups/SearchPublicGroupsModal';
+import GroupsSkeleton from './GroupsSkeleton';
 
 // ── Create Group Modal ────────────────────────────────────────────────
 
@@ -300,8 +301,11 @@ const GroupsPage: React.FC = () => {
     try {
       const res = await groupsService.acceptInvite(inviteId);
       showToast(res.message, 'success');
-      // Re-fetch both: the accepted org's group may now appear
+      // Optimistically remove the accepted invite from the list
+      setInvites(prev => prev.filter(i => i.invite_id !== inviteId));
+      // Small delay to allow DB commit to settle before re-fetching group list
       if (currentOrg?.id) {
+        await new Promise(resolve => setTimeout(resolve, 600));
         await Promise.all([fetchGroups(currentOrg.id), fetchInvites()]);
       }
     } catch (err: any) {
@@ -326,6 +330,10 @@ const GroupsPage: React.FC = () => {
 
   const myGroups = groups.filter(g => g.my_role === 'GROUP_OWNER');
   const memberGroups = groups.filter(g => g.my_role === 'GROUP_MEMBER');
+
+  if (loadingGroups && groups.length === 0) {
+    return <GroupsSkeleton />;
+  }
 
   return (
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
@@ -507,7 +515,9 @@ const GroupsPage: React.FC = () => {
           onClose={() => setShowSearchModal(false)}
           onJoinSuccess={() => {
             if (currentOrg?.id) {
+              // Re-fetch groups AND invites — delay is already done inside the modal
               fetchGroups(currentOrg.id);
+              fetchInvites();
             }
           }}
         />

@@ -4,16 +4,22 @@ import threading
 import sys
 import time
 import webbrowser
+import argparse
+
+# Parse arguments first
+parser = argparse.ArgumentParser(description="System Launcher")
+parser.add_argument("--prod", action="store_true", help="Run in production mode (minimized logging, built assets)")
+args = parser.parse_args()
+IS_PROD = args.prod
 
 # Define the components and their configurations
-# Note: Changing embedding-service to port 8002 to avoid collision with scraper_engine (8001)
 COMPONENTS = [
     {
         "name": "BACKEND",
         "dir": "backend",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
+        "run_cmd": f"venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000{' --no-access-log --log-level warning' if IS_PROD else ' --reload'}",
         "color": "\033[94m",  # Blue
     },
     {
@@ -21,7 +27,7 @@ COMPONENTS = [
         "dir": "frontend",
         "install_cmd": "npm install",
         "check_path": "node_modules/vite",
-        "run_cmd": "npm run dev -- --port 5173",
+        "run_cmd": f"npm run {'preview' if IS_PROD else 'dev'} -- --port 5173",
         "color": "\033[92m",  # Green
     },
     {
@@ -29,7 +35,7 @@ COMPONENTS = [
         "dir": "admin-frontend",
         "install_cmd": "npm install",
         "check_path": "node_modules/vite",
-        "run_cmd": "npm run dev -- --port 5174",
+        "run_cmd": f"npm run {'preview' if IS_PROD else 'dev'} -- --port 5174",
         "color": "\033[93m",  # Yellow
     },
     {
@@ -37,7 +43,7 @@ COMPONENTS = [
         "dir": "microservices/scraper_engine",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt && venv\\Scripts\\python -m playwright install chromium",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python api/main.py",
+        "run_cmd": f"venv\\Scripts\\python api/main.py{' --prod' if IS_PROD else ''}",
         "color": "\033[95m",  # Magenta
     },
     {
@@ -45,7 +51,7 @@ COMPONENTS = [
         "dir": "microservices/embedding-service",
         "install_cmd": "python -m venv venv && venv\\Scripts\\python -m pip install -r requirements.txt",
         "check_path": "venv",
-        "run_cmd": "venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8002",
+        "run_cmd": f"venv\\Scripts\\python -m uvicorn app.main:app --host 0.0.0.0 --port 8002{' --no-access-log --log-level warning' if IS_PROD else ''}",
         "color": "\033[96m",  # Cyan
     },
 ]
@@ -69,6 +75,8 @@ def print_prefixed(prefix, color, text):
 def stream_output(process, prefix, color):
     """Read output from a process and print it with a prefix."""
     for line in iter(process.stdout.readline, ""):
+        # In prod, we might want to skip some lines even if they come from stdout
+        # But generally uvicorn --no-access-log handles it.
         print_prefixed(prefix, color, line)
 
 
@@ -106,8 +114,6 @@ def check_and_install_dependencies():
             else:
                 db_path = "Scripts/python.exe" if os.name == "nt" else "bin/python"
             target_path = os.path.join(cwd, "venv", db_path)
-
-            # Additional safety: If venv exists but is broken/empty, target_path won't exist.
         else:
             # Handle node_modules/vite or similar unix paths safely on Windows
             target_path = os.path.join(cwd, os.path.normpath(path_str))
@@ -169,14 +175,25 @@ def check_and_install_dependencies():
                 f"{comp['name']} dependencies found. Skipping install.",
             )
 
+        # In production mode, we MUST ensure the frontend is built
+        if IS_PROD and comp["name"] in ["FRONTEND", "ADMIN-UI"]:
+            print_prefixed("SYSTEM", "\033[94m", f"Building {comp['name']} for production...")
+            subprocess.run("npm run build", shell=True, cwd=cwd, check=True)
+
 
 def start_services():
     """Start all services in parallel threads."""
-    print(f"\n\033[1m=== Starting Services ==={RESET_COLOR}")
+    print(f"\n\033[1m=== Starting Services ({'PROD' if IS_PROD else 'DEV'} mode) ==={RESET_COLOR}")
     base_dir = get_base_dir()
 
     for comp in COMPONENTS:
         cwd = os.path.join(base_dir, comp["dir"])
+        
+        # Set environment variables for the child process
+        env = os.environ.copy()
+        if IS_PROD:
+            env["PROD_MODE"] = "true"
+
         # We use shell=True for windows cross-compatibility and complex commands
         process = subprocess.Popen(
             comp["run_cmd"],
@@ -188,6 +205,7 @@ def start_services():
             bufsize=1,  # Line-buffered
             encoding="utf-8",
             errors="replace",
+            env=env
         )
         processes.append(process)
 
@@ -201,17 +219,22 @@ def start_services():
 
 def open_browsers():
     """Wait for servers to start, then open the URLs in default browser."""
+    wait_time = 8 if IS_PROD else 6
     print(
-        "\n\033[96m[SYSTEM]\033[0m Waiting 6 seconds for servers to boot before opening browser tabs..."
+        f"\n\033[96m[SYSTEM]\033[0m Waiting {wait_time} seconds for servers to boot before opening browser tabs..."
     )
-    time.sleep(6)
+    time.sleep(wait_time)
     urls = [
         "http://localhost:5173",  # User Frontend
         "http://localhost:5174",  # Admin Panel
-        "http://127.0.0.1:8000/docs",  # Backend swagger
-        "http://127.0.0.1:8001/docs",  # Scraper swagger
-        "http://127.0.0.1:8002/docs",  # Embedding swagger
     ]
+    if not IS_PROD:
+        urls.extend([
+            "http://127.0.0.1:8000/docs",  # Backend swagger
+            "http://127.0.0.1:8001/docs",  # Scraper swagger
+            "http://127.0.0.1:8002/docs",  # Embedding swagger
+        ])
+    
     for url in urls:
         try:
             webbrowser.open(url)

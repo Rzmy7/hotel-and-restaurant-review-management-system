@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, CalendarDays, ChevronDown, Check } from 'lucide-react';
 import { useToast } from '../../../contexts/ToastContext';
 import NotificationPanel from '../../shared/NotificationPanel';
-import ProfileDropdown from '../../shared/ProfileDropdown';
 import OrganizationSwitcher from '../../shared/OrganizationSwitcher';
 import { useOrganizationStore } from '../../../stores/useOrganizationStore';
 import PageHeader from '../../shared/PageHeader';
@@ -35,11 +34,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ period, onPeri
     const switchOrganization = useOrganizationStore(state => state.switchOrganization);
     const { showToast } = useToast();
     const [showNotifications, setShowNotifications] = useState(false);
-    const [showProfile, setShowProfile] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const notifRef = useRef<HTMLDivElement>(null);
-    const profileRef = useRef<HTMLDivElement>(null);
     const datePickerRef = useRef<HTMLDivElement>(null);
 
     const currentOption = DATE_RANGE_OPTIONS.find(opt => opt.value === period) || DATE_RANGE_OPTIONS[3];
@@ -50,18 +47,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ period, onPeri
             if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
                 setShowNotifications(false);
             }
-            if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-                setShowProfile(false);
-            }
             if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
                 setShowDatePicker(false);
             }
         };
-        if (showNotifications || showProfile || showDatePicker) {
+        if (showNotifications || showDatePicker) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showNotifications, showProfile, showDatePicker]);
+    }, [showNotifications, showDatePicker]);
 
     useEffect(() => {
         const refreshUnreadCount = async () => {
@@ -81,20 +75,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ period, onPeri
 
     const toggleNotifications = () => {
         setShowNotifications((prev) => !prev);
-        setShowProfile(false);
-        setShowDatePicker(false);
-    };
-
-    const toggleProfile = () => {
-        setShowProfile((prev) => !prev);
-        setShowNotifications(false);
         setShowDatePicker(false);
     };
 
     const toggleDatePicker = () => {
         setShowDatePicker((prev) => !prev);
         setShowNotifications(false);
-        setShowProfile(false);
     };
 
     const handleDateRangeSelect = (option: DateRangeOption) => {
@@ -182,23 +168,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ period, onPeri
                             onClose={() => setShowNotifications(false)}
                             onUnreadCountChange={(count) => setUnreadCount(count)}
                         />
-                    )}
-                </div>
-
-                {/* User Profile - Sophisticated Avatar */}
-                <div className="relative" ref={profileRef}>
-                    <button
-                        className={`w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm cursor-pointer border-2 transition-all duration-300 hover:shadow-lg ${showProfile
-                            ? 'bg-blue-600 text-white border-blue-200 ring-4 ring-blue-50 scale-105 dark:border-blue-800 dark:ring-blue-900/50'
-                            : 'bg-blue-500 text-white border-transparent hover:scale-105 active:scale-95 dark:bg-blue-600'
-                            }`}
-                        onClick={toggleProfile}
-                    >
-                        L
-                    </button>
-
-                    {showProfile && (
-                        <ProfileDropdown onClose={() => setShowProfile(false)} />
                     )}
                 </div>
         </PageHeader>

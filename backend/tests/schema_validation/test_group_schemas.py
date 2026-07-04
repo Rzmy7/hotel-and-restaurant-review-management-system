@@ -125,6 +125,8 @@ class TestMemberResponse:
 
     def test_valid(self):
         model = MemberResponse(
+            organization_id="org-123",
+            organization_name="Test Organization",
             user_id="u-1",
             first_name="John",
             last_name="Doe",
@@ -135,9 +137,12 @@ class TestMemberResponse:
         )
         assert model.email == "john@example.com"
         assert model.role == "GROUP_MEMBER"
+        assert model.organization_id == "org-123"
 
     def test_nullable_names(self):
         model = MemberResponse(
+            organization_id="org-456",
+            organization_name="Anon Org",
             user_id="u-2",
             first_name=None,
             last_name=None,
@@ -147,6 +152,7 @@ class TestMemberResponse:
             joined_at="2026-04-15T10:00:00",
         )
         assert model.first_name is None
+        assert model.organization_name == "Anon Org"
 
 
 class TestInviteResponse:

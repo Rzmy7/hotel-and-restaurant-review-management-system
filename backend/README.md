@@ -385,6 +385,8 @@ export PYTHONPATH="."  # Linux/Mac
 - **[Admin Documentation](../admin-frontend/README.md)** - Admin panel
 - **[API Documentation](http://localhost:8000/docs)** - Swagger UI
 - **[ER Diagrams](../docs/ER%20diagrams/)** - Database schema
+- **[Database Schema Reference](docs/database_schema_analysis.md)** - Full table catalog with ORM vs live DB analysis
+- **[Module Analysis Docs](app/modules/)** - Per-domain documentation in `app/modules/<name>/docs/module_analysis.md`
 
 ---
 

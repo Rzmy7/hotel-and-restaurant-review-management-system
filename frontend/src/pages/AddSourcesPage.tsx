@@ -9,6 +9,7 @@ import {
   Loader2
 } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
+import SetupSkeleton from './SetupSkeleton';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { apiClient } from '../api/client';
@@ -98,6 +99,10 @@ const AddSourcesPage = () => {
     }));
   };
 
+  if (isLoading) {
+    return <SetupSkeleton currentStep={2} />;
+  }
+
   return (
     <SetupLayout
       currentStep={2}
@@ -176,7 +181,7 @@ const AddSourcesPage = () => {
           
           {platforms.length === 0 && (
             <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-               <p className="text-slate-500 font-medium italic">No review platforms enabled in the system yet.</p>
+                <p className="text-slate-500 font-medium italic">No review platforms enabled in the system yet.</p>
             </div>
           )}
         </div>

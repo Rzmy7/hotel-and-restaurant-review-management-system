@@ -20,6 +20,8 @@ export function ThemeProvider({
     defaultTheme?: Theme;
     storageKey?: string;
 }) {
+
+    // Theme store in localstorage to persist user preference 
     const [theme, setThemeState] = useState<Theme>(
         () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
     );
@@ -47,6 +49,7 @@ export function ThemeProvider({
             return;
         }
 
+        // set the theme as os theme
         if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
                 .matches

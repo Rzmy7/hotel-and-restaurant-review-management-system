@@ -14,7 +14,7 @@ from app.core.db_utils import get_connection_string
 from app.modules.admin.services.broadcasting_service import ensure_notifications_schema
 from app.modules.admin.services.notifications_service import resolve_target_user_id
 
-router = APIRouter(prefix="/notifications", tags=["Admin Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Admin - Settings"])
 
 
 @router.get("/")
@@ -67,6 +67,79 @@ def get_admin_notifications(
         return {
             "userId": target_user_id,
             "notifications": notifications,
+        }
+    finally:
+        connection.close()
+
+
+@router.get("/paginated")
+def get_paginated_admin_notifications(
+    userId: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+) -> dict:
+    connection = pyodbc.connect(get_connection_string())
+    try:
+        cursor = connection.cursor()
+        ensure_notifications_schema(cursor)
+
+        target_user_id = resolve_target_user_id(cursor, userId)
+        offset = (page - 1) * limit
+
+        # Get total count
+        count_row = cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM dbo.user_notification
+            WHERE user_id = ?
+            """,
+            target_user_id,
+        ).fetchone()
+        total = int(count_row[0] if count_row else 0)
+
+        # Get paginated data
+        rows = cursor.execute(
+            f"""
+            SELECT
+                CAST(un.notification_id AS NVARCHAR(36)) AS notification_id,
+                CAST(un.user_id AS NVARCHAR(36)) AS user_id,
+                n.title,
+                n.message,
+                n.notification_type,
+                CAST(COALESCE(un.is_read, 0) AS BIT) AS is_read,
+                CAST(n.created_at AS DATETIME) AS created_at,
+                CAST(un.read_at AS DATETIME) AS read_at
+            FROM dbo.user_notification AS un
+            INNER JOIN dbo.notification AS n
+                ON n.notification_id = un.notification_id
+            WHERE un.user_id = ?
+            ORDER BY n.created_at DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            """,
+            target_user_id,
+            offset,
+            limit,
+        ).fetchall()
+
+        notifications = [
+            {
+                "notification_id": str(row.notification_id),
+                "user_id": str(row.user_id),
+                "title": str(row.title or ""),
+                "message": str(row.message or ""),
+                "notification_type": str(row.notification_type or "info"),
+                "is_read": bool(row.is_read),
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "read_at": row.read_at.isoformat() if row.read_at else None,
+            }
+            for row in rows
+        ]
+
+        return {
+            "data": notifications,
+            "total": total,
+            "page": page,
+            "limit": limit
         }
     finally:
         connection.close()

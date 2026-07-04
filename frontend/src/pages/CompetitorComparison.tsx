@@ -114,7 +114,7 @@ const CompetitorComparison = () => {
                         <span className="font-bold text-gray-900 dark:text-white text-[17px]">{fmt(kpi.myHotel)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-500 font-medium truncate max-w-[55%]" title={compName}>{compName}</span>
+                        <span className="text-red-500 font-medium truncate max-w-[55%]" title={compName}>{compName}</span>
                         <span className="font-bold text-gray-900 dark:text-white text-[17px]">{fmt(kpi.competitor)}</span>
                     </div>
                     <div className="pt-3 border-t border-gray-50 dark:border-slate-700 flex justify-between items-center text-sm">

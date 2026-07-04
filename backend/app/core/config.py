@@ -61,6 +61,12 @@ PASSWORD_RESET_EXPIRE_MINUTES: int = 60
 SCRAPER_ENGINE_URL: str = os.getenv("SCRAPER_ENGINE_URL", "http://127.0.0.1:8001").rstrip("/")
 EMBEDDING_SERVICE_URL: str = os.getenv("EMBEDDING_SERVICE_URL", "http://127.0.0.1:8002").rstrip("/")
 
+# Service-to-Service API Keys (Phase 1: Backward Compatible)
+INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "dev-internal-secret")
+BACKEND_API_KEYS: list[str] = [k.strip() for k in os.getenv("BACKEND_API_KEYS", INTERNAL_API_KEY).split(",") if k.strip()]
+SCRAPER_API_KEY: str = os.getenv("SCRAPER_API_KEY", INTERNAL_API_KEY)
+EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", INTERNAL_API_KEY)
+
 # ── CORS allowed origins ────────────────────────────────────────────
 # Base origins always allowed (constructed from FRONTEND_URL and ADMIN_FRONTEND_URL)
 _base_origins: list[str] = [
@@ -68,9 +74,18 @@ _base_origins: list[str] = [
     ADMIN_FRONTEND_URL,
 ]
 
+# Add 127.0.0.1/localhost variants to avoid browser blocks if IP vs hostname is used
+_expanded_base = []
+for origin in _base_origins:
+    _expanded_base.append(origin)
+    if "localhost" in origin:
+        _expanded_base.append(origin.replace("localhost", "127.0.0.1"))
+    elif "127.0.0.1" in origin:
+        _expanded_base.append(origin.replace("127.0.0.1", "localhost"))
+
 _cors_from_env = os.getenv("CORS_ORIGINS", "")
 if _cors_from_env.strip():
     _extra = [origin.strip() for origin in _cors_from_env.split(",") if origin.strip()]
-    CORS_ORIGINS: list[str] = list(dict.fromkeys(_base_origins + _extra))
+    CORS_ORIGINS: list[str] = list(dict.fromkeys(_expanded_base + _extra))
 else:
-    CORS_ORIGINS = list(dict.fromkeys(_base_origins))
+    CORS_ORIGINS = list(dict.fromkeys(_expanded_base))

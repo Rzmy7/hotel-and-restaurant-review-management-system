@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from app.modules.auth.constants.roles import SYSTEM_ADMIN, TENANT
-from app.modules.auth.utils.auth_utils import get_current_user
+from app.core.dependencies import get_current_user
 
 
 # ---------------------------------------------------

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
+import SetupSkeleton from './SetupSkeleton';
 import { PricingCard } from '../components/subscription/molecules/PricingCard';
 import { fetchSubscriptionPlans, type SubscriptionPlan } from '../services/subscriptionPlansService';
 
@@ -106,6 +107,10 @@ const ChoosePlanPage = () => {
   const handleBack = () => {
     navigate('/setup/schedule');
   };
+
+  if (isLoading) {
+    return <SetupSkeleton currentStep={3} />;
+  }
 
   return (
     <SetupLayout

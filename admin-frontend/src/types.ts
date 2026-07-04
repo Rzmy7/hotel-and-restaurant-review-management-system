@@ -30,6 +30,13 @@ export interface SystemAlert {
     isRead: boolean;
 }
 
+export interface PaginatedAlerts {
+    data: SystemAlert[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
 export interface RecentActivity {
     id: string;
     type:
@@ -49,6 +56,13 @@ export interface RecentActivity {
     description: string;
     timestamp: string;
     user?: string;
+}
+
+export interface PaginatedActivities {
+    data: RecentActivity[];
+    total: number;
+    page: number;
+    limit: number;
 }
 
 export interface User {

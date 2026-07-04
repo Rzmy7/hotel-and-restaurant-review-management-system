@@ -4,10 +4,13 @@ import { useReviewFilters } from '../../hooks/useReviewFilters';
 import { useEffect, useState } from 'react';
 import type { FilterState } from '../../types/reviews';
 import { featureFlagService } from '../../services/featureFlagService';
-const ReviewsToolbar = () => {
-    const sourceOptions = useReviewsStore(state => state.sourceOptions);
-    const categoryOptions = useReviewsStore(state => state.categoryOptions);
-    const pagination = useReviewsStore(state => state.pagination);
+
+interface ReviewsToolbarProps {
+    filtersConfig: { sources: string[]; categories: string[] };
+    pagination: { total: number };
+}
+
+const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
     const { filters, setSearchQuery, setEmbeddingSearch, toggleFilter } = useReviewFilters();
     
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -45,8 +48,8 @@ const ReviewsToolbar = () => {
     const options = {
         Rating: [5, 4, 3, 2, 1],
         Sentiment: ['Positive', 'Neutral', 'Negative'],
-        Platform: sourceOptions,
-        Category: categoryOptions,
+        Platform: filtersConfig.sources,
+        Category: filtersConfig.categories,
         Status: ['Pending', 'Replied', 'AI Draft']
     };
 

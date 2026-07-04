@@ -54,7 +54,7 @@ class JobManager:
             "reviews_extracted": 0,
             "total_reviews": 0,
             "percentage": 0.0,
-            "created_at": datetime.datetime.now().isoformat(),
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "ended_at": None
         }
         self._save()
@@ -105,7 +105,7 @@ class JobManager:
 
         # Set ended_at when moving to a terminal state
         if job["status"] in [JobStatus.COMPLETED, JobStatus.FAILED] and not job.get("ended_at"):
-            job["ended_at"] = datetime.datetime.now().isoformat()
+            job["ended_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         elif job["status"] not in [JobStatus.COMPLETED, JobStatus.FAILED]:
             # Reset ended_at if for some reason a job moves back to non-terminal
             job["ended_at"] = None

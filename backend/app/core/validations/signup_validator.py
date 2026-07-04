@@ -8,7 +8,7 @@ NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z\s'-]*$")
 EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 # Only the most common generic TLDs
-COMMON_TLDS = {'com', 'org', 'net', 'edu'}
+COMMON_TLDS = {'com', 'org', 'net', 'edu','gov', 'io'}
 
 
 def is_realistic_domain(domain: str) -> bool:

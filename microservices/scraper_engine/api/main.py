@@ -25,12 +25,15 @@ from api.endpoints.system import router as system_router
 from api.endpoints.audit import router as audit_router
 from api.endpoints.db_admin import router as db_admin_router
 from api.endpoints.tables import router as tables_router
+from api.endpoints.resolution import router as resolution_router
 from api.websockets.events import router as ws_router
 from api.middleware.audit_middleware import AuditMiddleware
 from core.config import setup_logger, config
 from core.database import init_db
 from core.limiter import limiter
+# pyrefly: ignore [missing-import]
 from slowapi.errors import RateLimitExceeded
+# pyrefly: ignore [missing-import]
 from slowapi import _rate_limit_exceeded_handler
 
 logger = setup_logger("api_main")
@@ -72,7 +75,7 @@ def reconcile_stuck_tasks():
     for attempt in range(1, max_retries + 1):
         try:
             logger.info(f"Reconciling stuck tasks from {url} (Attempt {attempt}/{max_retries})...")
-            headers = {"X-Internal-API-Key": config.internal_api_key}
+            headers = {"X-Internal-API-Key": config.backend_api_key}
             with httpx.Client(timeout=10.0, headers=headers) as client:
                 resp = client.get(url)
                 if resp.status_code == 200:
@@ -127,6 +130,7 @@ app.include_router(tripadvisor_router, prefix="/api")
 # ── Data Retrieval & Management ──
 app.include_router(sources_router, prefix="/api")
 app.include_router(reviews_router, prefix="/api")
+app.include_router(resolution_router, prefix="/api")
 
 # ── System Monitoring & Audit ──
 app.include_router(system_router, prefix="/api")
@@ -146,11 +150,27 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "api.main:app",
-        host="127.0.0.1",
-        port=8001,
-        reload=True,
-        reload_dirs=["api", "core"],
-        reload_excludes=["output/*", "platforms/*", "*.json"],
-    )
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Scraper Engine")
+    parser.add_argument("--prod", action="store_true", help="Run in production mode")
+    args = parser.parse_args()
+
+    if args.prod:
+        uvicorn.run(
+            "api.main:app",
+            host="127.0.0.1",
+            port=8001,
+            reload=False,
+            access_log=False,
+            log_level="warning",
+        )
+    else:
+        uvicorn.run(
+            "api.main:app",
+            host="127.0.0.1",
+            port=8001,
+            reload=True,
+            reload_dirs=["api", "core"],
+            reload_excludes=["output/*", "platforms/*", "*.json"],
+        )

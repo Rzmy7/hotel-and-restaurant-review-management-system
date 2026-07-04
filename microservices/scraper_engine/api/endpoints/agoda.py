@@ -12,7 +12,7 @@ from core.models import Source
 from core.job_manager import job_manager
 from core.scrape_pool import scrape_pool
 from services.source_service import SourceService
-from platforms.agoda.logic import scrape_agoda
+from platforms.agoda.scraping.logic import scrape_agoda
 from core.limiter import limiter
 from core.config import config, setup_logger
 from core.utils import normalize_url
@@ -31,9 +31,12 @@ class AgodaScrapeRequest(BaseModel):
     pages: Optional[str] = "1"     # Number of pages: "1", "5", "1-10", "*"
 
 
+from fastapi import APIRouter, HTTPException, Depends
+from core.security import verify_scraper_api_key
+
 @router.post("/scrape")
 @limiter.limit(config.rate_limit_scrape)
-def trigger_agoda_scrape(request: Request, body: AgodaScrapeRequest):
+def trigger_agoda_scrape(request: Request, body: AgodaScrapeRequest, internal: bool = Depends(verify_scraper_api_key)):
     """
     Upserts the source in the database and submits a scrape job to the
     thread pool. Returns the job_id for real-time monitoring.

@@ -135,6 +135,7 @@ export const fetchFeatureFlags = (): Promise<FeatureFlag[]> => {
             resolve([
                 { id: '1', name: 'Content Search by Embeddings', key: 'content_search_embeddings', description: 'Enable semantic search across reviews and content using vector embeddings', status: 'Enabled' },
                 { id: '3', name: 'Custom Report Generation', key: 'custom_report_generation', description: 'Allow users to create and export customized reports with selected metrics', status: 'Disabled' },
+                { id: '4', name: 'API Limit Notifications', key: 'api_limit_notifications', description: 'Inform users via notification when the API hits its quota or limit', status: 'Disabled' },
             ]);
         }, 600);
     });

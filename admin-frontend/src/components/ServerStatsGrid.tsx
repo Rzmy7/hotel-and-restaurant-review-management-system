@@ -1,6 +1,7 @@
 import React from 'react';
 import { ServerCard } from './ServerCard';
 import type { ServerStatus } from '../types';
+import { Skeleton } from './shared/Skeleton';
 
 interface ServerStatsGridProps {
     servers: ServerStatus[];
@@ -8,25 +9,25 @@ interface ServerStatsGridProps {
 }
 
 const SkeletonCard: React.FC = () => (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 animate-pulse">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
         <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-200" />
+                <Skeleton className="w-10 h-10 rounded-lg" />
                 <div>
-                    <div className="h-4 w-28 bg-gray-200 rounded mb-1.5" />
-                    <div className="h-3 w-16 bg-gray-200 rounded" />
+                    <Skeleton className="h-4 w-28 rounded mb-1.5" />
+                    <Skeleton className="h-3 w-16 rounded" />
                 </div>
             </div>
-            <div className="h-6 w-16 bg-gray-200 rounded-full" />
+            <Skeleton className="h-6 w-16 rounded-full" />
         </div>
         <div className="space-y-3">
             <div>
-                <div className="h-3 w-20 bg-gray-200 rounded mb-1" />
-                <div className="h-2 w-full bg-gray-200 rounded-full" />
+                <Skeleton className="h-3 w-20 rounded mb-1" />
+                <Skeleton className="h-2 w-full rounded-full" />
             </div>
             <div>
-                <div className="h-3 w-20 bg-gray-200 rounded mb-1" />
-                <div className="h-2 w-full bg-gray-200 rounded-full" />
+                <Skeleton className="h-3 w-20 rounded mb-1" />
+                <Skeleton className="h-2 w-full rounded-full" />
             </div>
         </div>
     </div>

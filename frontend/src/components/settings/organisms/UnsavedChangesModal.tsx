@@ -82,7 +82,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
                 {Object.entries(groupedChanges).length === 0 ? (
                     <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
                         <div className="w-16 h-16 bg-gray-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100 dark:border-slate-700">
-                           <AlertTriangle size={24} className="text-gray-300" />
+                            <AlertTriangle size={24} className="text-gray-300" />
                         </div>
                         <p className="text-gray-500 text-sm font-medium">No changes detected.</p>
                     </div>

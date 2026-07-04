@@ -12,13 +12,15 @@ import {
   EyeOff,
   ChevronDown,
   Save,
-  ExternalLink,
 } from 'lucide-react';
 import {
   llmModelService,
-  LLMModel,
-  LLMAssignments,
 } from '../services/llmModelService';
+import type {
+  LLMModel,
+} from '../services/llmModelService';
+import LLMModelsSkeleton from './LLMModelsSkeleton';
+import Skeleton from '../components/shared/Skeleton';
 
 // ── helpers ──────────────────────────────────────────────────────────
 
@@ -59,12 +61,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ active }) => (
 
 export const LLMModels: React.FC = () => {
   const [models, setModels] = useState<LLMModel[]>([]);
-  const [assignments, setAssignments] = useState<LLMAssignments>({
-    review_processing_model_id: null,
-    reply_generation_model_id: null,
-    review_processing_model_name: null,
-    reply_generation_model_name: null,
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +95,6 @@ export const LLMModels: React.FC = () => {
         llmModelService.getAssignments(),
       ]);
       setModels(modelList);
-      setAssignments(assignData);
       setAssignDraft({
         review_processing: assignData.review_processing_model_id || '',
         reply_generation: assignData.reply_generation_model_id || '',
@@ -245,6 +240,25 @@ export const LLMModels: React.FC = () => {
   };
 
   // ── render ──────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-10 h-10 rounded-xl" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-6 w-32 rounded" />
+              <Skeleton className="h-4 w-64 rounded" />
+            </div>
+          </div>
+          <Skeleton className="w-32 h-10 rounded-xl" />
+        </div>
+        <LLMModelsSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
