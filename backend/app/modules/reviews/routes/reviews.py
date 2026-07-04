@@ -2,6 +2,7 @@
 Review Management Routes — API endpoints for listing, deleting, and AI reply generation.
 """
 
+import json
 import uuid
 import logging
 from typing import List, Optional
@@ -9,12 +10,14 @@ from typing import List, Optional
 import pyodbc
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.database import get_db
 from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.dependencies import get_optional_user
 from app.core.tenant_context import resolve_tenant_scope
+from app.core.redis_client import cache_get, cache_set, invalidate_review_cache
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.modules.reviews.schemas import (
     ReviewModel,
@@ -76,6 +79,18 @@ def read_reviews(
             "dateFrom": dateFrom,
             "dateTo": dateTo,
         }
+
+        # Redis cache: skip for embedding search or filtered queries
+        cache_key = None
+        if not embedding_search and not search and page == 0:
+            cache_key = (
+                f"reviews:list:{resolved_org_id}:"
+                f"{limit}:{dateFrom or 'any'}:{dateTo or 'any'}"
+            )
+            cached = cache_get(cache_key)
+            if cached:
+                return cached
+
         result = get_all_reviews_from_db(
             resolved_org_id, page=page, limit=limit, filters=filters, db=db
         )
@@ -84,13 +99,19 @@ def read_reviews(
         total = result["total"]
         total_pages = (total + limit - 1) // limit if limit > 0 else 1
 
-        return {
+        response = {
             "data": result["data"],
             "total": total,
             "page": page,
             "limit": limit,
             "totalPages": total_pages,
         }
+
+        # Cache the result (60s TTL for review lists)
+        if cache_key and response["data"]:
+            cache_set(cache_key, response, ttl=60)
+
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -201,6 +222,7 @@ async def trigger_review_sync(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found.")
     resolve_tenant_scope(current_user, db, str(source.organization_id))
+    invalidate_review_cache(str(source.organization_id))  # Clear Redis cache
     background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
     return {"message": "Processing flow started in background."}
 
@@ -248,6 +270,91 @@ def get_total_review_count(current_user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{review_id}", summary="Get a single review by ID")
+def get_single_review(
+    review_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Fetch a single review by its ID with full tenant-scope validation.
+    """
+    try:
+        row = db.execute(
+            text("""
+                SELECT
+                    CAST(r.id AS VARCHAR(36)) AS id,
+                    s.organization_id,
+                    r.rating,
+                    r.reviewerName AS reviewerName,
+                    r.text AS reviewText,
+                    r.heading,
+                    r.summary,
+                    r.sentiment,
+                    r.sentiment_score,
+                    r.categories,
+                    r.keyPhrases,
+                    r.positive_text AS positiveText,
+                    r.negative_text AS negativeText,
+                    r.ai_reply,
+                    r.[status],
+                    r.reviewDate,
+                    r.scrapedAt,
+                    p.platform_name AS source
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                JOIN dbo.platform p ON s.platform_id = p.platform_id
+                WHERE r.id = :review_id
+            """),
+            {"review_id": str(review_id)},
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+
+        resolve_tenant_scope(current_user, db, str(row.organization_id))
+
+        # Parse JSON columns
+        categories = None
+        if row.categories:
+            try:
+                categories = json.loads(row.categories)
+            except Exception:
+                categories = []
+
+        keyPhrases = None
+        if row.keyPhrases:
+            try:
+                keyPhrases = json.loads(row.keyPhrases)
+            except Exception:
+                keyPhrases = []
+
+        return {
+            "id": row.id,
+            "rating": float(row.rating) if row.rating else 0,
+            "reviewerName": row.reviewerName,
+            "reviewText": row.reviewText,
+            "heading": row.heading,
+            "summary": row.summary,
+            "sentiment": row.sentiment or "Neutral",
+            "sentimentScore": float(row.sentiment_score) if row.sentiment_score else 3.0,
+            "categories": categories or [],
+            "keyPhrases": keyPhrases or [],
+            "positiveText": row.positiveText,
+            "negativeText": row.negativeText,
+            "aiReply": row.ai_reply,
+            "status": row.status or "Pending",
+            "date": row.reviewDate.isoformat() if row.reviewDate else None,
+            "scrapedAt": row.scrapedAt.isoformat() if row.scrapedAt else None,
+            "source": row.source or "Unknown",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch review {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch review.")
+
+
 @router.get("/processing/status")
 def get_processing_status(
     organization_id: uuid.UUID = Query(None),
@@ -283,7 +390,12 @@ async def trigger_single_review_processing(
     try:
         from sqlalchemy import text
         review_row = db.execute(
-            text("SELECT organization_id FROM dbo.processed_review WHERE id = :review_id"),
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
             {"review_id": str(review_id)}
         ).fetchone()
         
@@ -319,7 +431,12 @@ def generate_reply(
     try:
         from sqlalchemy import text
         review_row = db.execute(
-            text("SELECT organization_id FROM dbo.processed_review WHERE id = :review_id"),
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
             {"review_id": str(payload.reviewId)}
         ).fetchone()
         
@@ -374,6 +491,68 @@ def generate_reply(
     except Exception as exc:
         logger.error(f"Reply generation failed: {exc}")
         raise HTTPException(status_code=500, detail="Failed to generate AI reply.")
+
+
+@router.put("/{review_id}/status", summary="Update the status of a review")
+def update_review_status(
+    review_id: uuid.UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Update the status of a specific review (e.g., mark as "Replied", "Pending").
+    Body: { "status": "Replied" }
+    """
+    try:
+        from sqlalchemy import text
+
+        valid_statuses = {"Pending", "Replied", "AI Draft", "processed", "failed"}
+        new_status = payload.get("status", "")
+
+        if not new_status or new_status not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of: {', '.join(sorted(valid_statuses))}"
+            )
+
+        # Verify the review exists and belongs to the user's organization
+        review_row = db.execute(
+            text("""
+                SELECT s.organization_id
+                FROM dbo.processed_review r
+                JOIN dbo.source s ON r.source_id = s.source_id
+                WHERE r.id = :review_id
+            """),
+            {"review_id": str(review_id)}
+        ).fetchone()
+
+        if not review_row:
+            raise HTTPException(status_code=404, detail="Review not found.")
+
+        resolve_tenant_scope(current_user, db, str(review_row[0]))
+
+        # Update the status
+        db.execute(
+            text("""
+                UPDATE dbo.processed_review
+                SET [status] = :status
+                WHERE id = :review_id
+            """),
+            {"status": new_status, "review_id": str(review_id)}
+        )
+        db.commit()
+
+        return {
+            "message": "Status updated successfully",
+            "review_id": str(review_id),
+            "status": new_status,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update status for review {review_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update review status.")
 
 
 @router.delete("/source/{source_id}", summary="Delete all reviews for a source")

@@ -15,10 +15,71 @@ from app.modules.dashboard.services.categories_service import get_category_perfo
 from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 from app.core.pyodbc_connection import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
+from app.modules.dashboard.services.insights_service import get_keywords, generate_ai_actions
 import pyodbc
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Dashboard"])
+
+
+def _build_ai_insights(metrics: dict, categories: list) -> dict:
+    """
+    Build the aiInsights payload for the main dashboard using the AI engine.
+    Falls back to a template-based summary if the AI call fails.
+    """
+    try:
+        actions = generate_ai_actions(metrics, categories, [], {"positiveKeywords": [], "negativeKeywords": []})
+        if actions:
+            strengths = []
+            issues = []
+            highlight = None
+            for a in actions:
+                item = {
+                    "label": a.get("title", ""),
+                    "impact": "High" if a.get("severity") == "critical" else "Medium",
+                    "freq": "—",
+                }
+                if a.get("severity") == "info":
+                    strengths.append(item)
+                elif a.get("severity") in ("warning", "critical"):
+                    issues.append(item)
+                if highlight is None and a.get("severity") == "critical":
+                    highlight = {
+                        "text": a.get("body", ""),
+                        "correlation": "Strong",
+                    }
+
+            if not strengths:
+                strengths = [{"label": "Review Quality", "impact": "High", "freq": "100%"}]
+            if not highlight:
+                avg = metrics.get("avgRating", {}).get("value", "N/A")
+                highlight = {
+                    "text": f"Average rating stands at {avg} stars — keep up the quality.",
+                    "correlation": "Moderate",
+                }
+
+            return {"strengths": strengths, "issues": issues, "highlight": highlight}
+    except Exception as e:
+        logger.warning(f"AI insights generation failed, using fallback: {e}")
+
+    # Rule-based fallback
+    avg = metrics.get("avgRating", {}).get("value", "N/A")
+    neg = metrics.get("negativeReviews", {}).get("value", "0")
+    return {
+        "strengths": [
+            {"label": "Review Quality", "impact": "High", "freq": "100%"},
+        ],
+        "issues": [
+            {"label": f"{neg} Negative Reviews", "impact": "Low", "freq": "—"},
+        ] if int(str(neg).replace(",", "") or "0") > 0 else [],
+        "highlight": {
+            "text": f"Average rating stands at {avg} stars.",
+            "correlation": "Moderate",
+        },
+    }
 
 
 @router.get("/organizations/{org_id}/dashboard", summary="Get unified organization dashboard")
@@ -98,16 +159,7 @@ def get_unified_dashboard(
                     }
                     for r in recent_reviews[:5]
                 ],
-                "aiInsights": {
-                    "strengths": [
-                        {"label": "Review Quality", "impact": "High", "freq": "100%"},
-                    ],
-                    "issues": [],
-                    "highlight": {
-                        "text": f"Positive reviews stand at {metrics['avgRating']['value']} stars average.",
-                        "correlation": "Strong",
-                    },
-                },
+                "aiInsights": _build_ai_insights(metrics, category_performance),
                 "alerts": alerts_data[:4],
                 "sourceComparison": source_comparison,
                 "categoryPerformance": category_performance,

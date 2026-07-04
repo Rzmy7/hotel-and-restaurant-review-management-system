@@ -71,6 +71,7 @@ def get_negative_count(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[
     cursor.execute(sql, params)
     return cursor.fetchone()[0] or 0
 
+
 def get_all_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Optional[datetime] = None) -> int:
     sql = "SELECT COUNT(*) FROM dbo.source WHERE organization_id = ?"
     params = [org_id]
@@ -81,6 +82,28 @@ def get_all_sources_count(cursor: pyodbc.Cursor, org_id: str, as_of_date: Option
         
     cursor.execute(sql, params)
     return cursor.fetchone()[0] or 0
+
+def get_response_rate(cursor: pyodbc.Cursor, org_id: str, start_date: Optional[datetime] = None) -> str:
+    """Calculates the percentage of reviews that have an AI reply, and period-over-period change."""
+    sql_base = """
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN r.ai_reply IS NOT NULL AND LEN(r.ai_reply) > 0 THEN 1 ELSE 0 END) AS replied
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ?
+    """
+    params = [org_id]
+    if start_date:
+        sql_base += " AND r.reviewDate >= ?"
+        params.append(start_date)
+    cursor.execute(sql_base, params)
+    row = cursor.fetchone()
+    total = row[0] or 0
+    replied = row[1] or 0
+    rate = round((replied / total) * 100) if total > 0 else 0
+    return f"{rate}%"
+
 
 def get_rating_distribution(cursor: pyodbc.Cursor, org_id: str, period_days: int = 0) -> List[Dict[str, Any]]:
     """Calculates rating distribution (1-5 stars) with counts and percentages.

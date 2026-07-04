@@ -74,6 +74,9 @@ class ProcessedReview(Base):
     category_scores = relationship(
         "ReviewCategory", back_populates="review", cascade="all, delete-orphan"
     )
+    replies = relationship(
+        "ReviewReply", back_populates="review", cascade="all, delete-orphan"
+    )
     source = relationship("Source")
 
 
@@ -113,3 +116,67 @@ class ReviewCategory(Base):
     created_at = Column("created_at", DateTime, server_default=func.now())
 
     review = relationship("ProcessedReview", back_populates="category_scores")
+
+
+class ReviewReply(Base):
+    """
+    Dedicated reply history table.
+    Each row represents one version of a reply to a review.
+    Supports edit history tracking and response-time calculation.
+    """
+
+    __tablename__ = "review_reply"
+
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("processed_review.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    reply_text = Column(String, nullable=False)
+    tone = Column(String(20), nullable=True)  # professional | casual | standard
+    created_at = Column(
+        "created_at", DateTime(timezone=False), server_default=func.now(), nullable=False
+    )
+    updated_at = Column("updated_at", DateTime(timezone=False), nullable=True)
+    created_by = Column("created_by", UNIQUEIDENTIFIER, nullable=True)
+    is_edited = Column(Boolean, nullable=False, default=False, server_default="0")
+
+    review = relationship("ProcessedReview", back_populates="replies")
+
+
+class AlertRule(Base):
+    """
+    Configurable alert rule — triggers notifications based on review conditions.
+    Supports: low_rating, negative_sentiment_spike, response_overdue.
+    """
+
+    __tablename__ = "alert_rule"
+
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    organization_id = Column(
+        "organization_id", UNIQUEIDENTIFIER, nullable=False, index=True
+    )
+    name = Column(String(200), nullable=False)
+    description = Column(String(500), nullable=True)
+
+    # Condition
+    condition_type = Column("condition_type", String(50), nullable=False)
+    threshold = Column(Float, nullable=False)
+    lookback_hours = Column("lookback_hours", Integer, nullable=False, default=24)
+
+    # Action
+    action_type = Column("action_type", String(50), nullable=False, default="notification")
+
+    # State
+    is_enabled = Column(Boolean, nullable=False, default=True, server_default="1")
+    last_triggered_at = Column("last_triggered_at", DateTime, nullable=True)
+    trigger_count = Column("trigger_count", Integer, nullable=False, default=0)
+
+    created_at = Column(
+        "created_at", DateTime(timezone=False), server_default=func.now(), nullable=False
+    )
+    updated_at = Column(
+        "updated_at", DateTime(timezone=False), server_default=func.now(), nullable=False
+    )
