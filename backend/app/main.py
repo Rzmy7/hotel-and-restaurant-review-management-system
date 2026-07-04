@@ -272,6 +272,15 @@ except ImportError:
 
 if alert_rules_router:
     app.include_router(alert_rules_router)
+
+# ML Service module — standalone /ml/analyze and /ml/reply endpoints
+try:
+    from app.modules.ml.routes import router as ml_router
+except ImportError:
+    ml_router = None
+
+if ml_router:
+    app.include_router(ml_router)
 # Hansi routers (now standardized under /api)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(oauth_router, prefix="/api/auth")

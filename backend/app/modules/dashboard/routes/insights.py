@@ -32,6 +32,118 @@ def _pct_change(current: float, previous: float) -> str:
     return f"{sign}{change}%"
 
 
+def _get_response_metrics(cursor, org_id: str, curr_start, prev_start, prev_end):
+    """
+    Calculate real response rate trend and average response time
+    using the review_replies table (or falling back to ai_reply column).
+    """
+    # Response rate: current period
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN r.ai_reply IS NOT NULL AND LEN(r.ai_reply) > 0 THEN 1 ELSE 0 END) AS replied
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE)
+        """,
+        org_id, curr_start,
+    )
+    row = cursor.fetchone()
+    curr_total = row.total or 0
+    curr_replied = row.replied or 0
+    curr_rate = round((curr_replied / curr_total) * 100) if curr_total > 0 else 0
+
+    # Response rate: previous period
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN r.ai_reply IS NOT NULL AND LEN(r.ai_reply) > 0 THEN 1 ELSE 0 END) AS replied
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE) AND r.reviewDate < CAST(? AS DATE)
+        """,
+        org_id, prev_start, prev_end,
+    )
+    row = cursor.fetchone()
+    prev_total = row.total or 0
+    prev_replied = row.replied or 0
+    prev_rate = round((prev_replied / prev_total) * 100) if prev_total > 0 else 0
+
+    rate_change = _pct_change(curr_rate, prev_rate) if prev_total > 0 else "0%"
+
+    # Average response time (hours) from review_replies table or ai_reply presence
+    try:
+        cursor.execute(
+            """
+            SELECT AVG(
+                DATEDIFF(hour, r.reviewDate, rr.created_at) * 1.0
+            ) AS avg_hours
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            LEFT JOIN dbo.review_reply rr ON rr.review_id = r.id
+            WHERE s.organization_id = ?
+              AND r.reviewDate >= CAST(? AS DATE)
+              AND rr.created_at IS NOT NULL
+            """,
+            org_id, curr_start,
+        )
+        row = cursor.fetchone()
+        avg_hours = row.avg_hours if row and row.avg_hours else None
+        if avg_hours is not None and avg_hours > 0:
+            if avg_hours < 1:
+                avg_time = f"{round(avg_hours * 60)}m"
+            elif avg_hours < 24:
+                avg_time = f"{round(avg_hours)}h"
+            else:
+                avg_time = f"{round(avg_hours / 24, 1)}d"
+        else:
+            avg_time = "N/A"
+    except Exception:
+        avg_time = "N/A"
+
+    return {
+        "rate": f"{curr_rate}%",
+        "rateChange": rate_change,
+        "avgTime": avg_time,
+    }
+
+
+def _compute_rating_impact(cursor, org_id: str, curr_start) -> str:
+    """
+    Compare average rating of reviews WITH replies vs WITHOUT replies
+    to estimate the positive impact of responding.
+    """
+    try:
+        cursor.execute(
+            """
+            SELECT
+                AVG(CASE WHEN r.ai_reply IS NOT NULL AND LEN(r.ai_reply) > 0
+                    THEN CAST(r.rating AS FLOAT) END) AS replied_avg,
+                AVG(CASE WHEN r.ai_reply IS NULL OR LEN(r.ai_reply) = 0
+                    THEN CAST(r.rating AS FLOAT) END) AS unreplied_avg
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = ?
+              AND r.reviewDate >= CAST(? AS DATE)
+              AND r.rating IS NOT NULL
+            """,
+            org_id, curr_start,
+        )
+        row = cursor.fetchone()
+        replied = float(row.replied_avg or 0)
+        unreplied = float(row.unreplied_avg or 0)
+
+        if replied > 0 and unreplied > 0:
+            diff = round(replied - unreplied, 1)
+            sign = "+" if diff >= 0 else ""
+            return f"{sign}{diff}"
+    except Exception:
+        pass
+    return "N/A"
+
+
 @router.get("/organizations/{org_id}/insights")
 def get_insights(
     org_id: str,
@@ -175,6 +287,11 @@ def get_insights(
                 raise RuntimeError(f"[get_dashboard_metrics] {e}") from e
             ai_actions = generate_ai_actions(metrics_for_ai, categories, sources, keywords)
 
+            # ── Response Metrics (real data from review_replies) ────
+            resp_metrics = _get_response_metrics(
+                cursor, org_id, curr_start, prev_start, prev_end
+            )
+
             return {
                 # KPIs
                 "overallScore": overall_score,
@@ -183,8 +300,8 @@ def get_insights(
                 "totalReviewsChange": _pct_change(curr_total, prev_total),
                 "avgRating": str(round(curr_avg, 1)),
                 "avgRatingChange": _pct_change(curr_avg, prev_avg),
-                "responseRate": response_rate,
-                "responseRateChange": "0%",  # trend requires historical replied-at timestamp
+                "responseRate": resp_metrics["rate"],
+                "responseRateChange": resp_metrics["rateChange"],
 
                 # Sentiment chart
                 "sentimentMonths":   sentiment_series["labels"],
@@ -203,11 +320,11 @@ def get_insights(
                 "positiveKeywords": keywords["positiveKeywords"],
                 "negativeKeywords": keywords["negativeKeywords"],
 
-                # Response metrics
+                # Response metrics (real data)
                 "responseMetrics": {
-                    "avgTime": "N/A",
-                    "rate": response_rate,
-                    "ratingImpact": "+0.2",
+                    "avgTime": resp_metrics["avgTime"],
+                    "rate": resp_metrics["rate"],
+                    "ratingImpact": _compute_rating_impact(cursor, org_id, curr_start),
                 },
 
                 # Heatmap: list of week-columns, each with 7 day values
