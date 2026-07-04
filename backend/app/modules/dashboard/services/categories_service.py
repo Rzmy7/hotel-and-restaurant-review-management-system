@@ -4,7 +4,8 @@ from the processed_review.categories JSON column.
 """
 
 import json
-import pyodbc
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 
 _ICON_MAP = {
@@ -54,19 +55,17 @@ def _parse_categories(raw) -> list:
     return normalize_string_list(raw)
 
 
-
-def _aggregate_all_time_totals(cursor, org_id: str):
+def _aggregate_all_time_totals(db: Session, org_id: str):
     """Return all-time category mention counts."""
-    cursor.execute(
-        """
+    rows = db.execute(
+        text("""
         SELECT r.categories
         FROM   dbo.processed_review r
         JOIN   dbo.source s ON r.source_id = s.source_id
-        WHERE  s.organization_id = ?
-        """,
-        org_id,
-    )
-    rows = cursor.fetchall()
+        WHERE  s.organization_id = :org_id
+        """),
+        {"org_id": org_id},
+    ).fetchall()
     total: dict = {}
     for row in rows:
         cats = _parse_categories(row.categories)
@@ -78,24 +77,21 @@ def _aggregate_all_time_totals(cursor, org_id: str):
     return total
 
 
-def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
+def _aggregate(db: Session, org_id: str, days_from: int, days_to: int):
     """Return (cat_total, cat_positive_count) dicts for a time window."""
-    cursor.execute(
-        """
+    rows = db.execute(
+        text("""
         SELECT r.categories,
                ISNULL(r.sentiment_score, 3.0) as sentiment_score,
                ISNULL(r.sentiment, 'Neutral')  as sentiment
         FROM   dbo.processed_review r
         JOIN   dbo.source s ON r.source_id = s.source_id
-        WHERE  s.organization_id = ?
-          AND  r.reviewDate >= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
-          AND  r.reviewDate <  DATEADD(DAY, ? + 1, CAST(GETDATE() AS DATE))
-        """,
-        org_id,
-        days_from,
-        days_to,
-    )
-    rows = cursor.fetchall()
+        WHERE  s.organization_id = :org_id
+          AND  r.reviewDate >= DATEADD(DAY, :days_from, CAST(GETDATE() AS DATE))
+          AND  r.reviewDate <  DATEADD(DAY, :days_to + 1, CAST(GETDATE() AS DATE))
+        """),
+        {"org_id": org_id, "days_from": days_from, "days_to": days_to},
+    ).fetchall()
     total: dict = {}
     positive_counts: dict = {}
     score_sums: dict = {}
@@ -114,20 +110,19 @@ def _aggregate(cursor, org_id: str, days_from: int, days_to: int):
     return total, positive_counts, score_sums
 
 
-def _aggregate_all_time(cursor, org_id: str):
+def _aggregate_all_time(db: Session, org_id: str):
     """Return per-category totals, positive counts, and score sums for ALL reviews."""
-    cursor.execute(
-        """
+    rows = db.execute(
+        text("""
         SELECT r.categories,
                ISNULL(r.sentiment_score, 3.0) as sentiment_score,
                ISNULL(r.sentiment, 'Neutral')  as sentiment
         FROM   dbo.processed_review r
         JOIN   dbo.source s ON r.source_id = s.source_id
-        WHERE  s.organization_id = ?
-        """,
-        org_id,
-    )
-    rows = cursor.fetchall()
+        WHERE  s.organization_id = :org_id
+        """),
+        {"org_id": org_id},
+    ).fetchall()
     total: dict = {}
     positive_counts: dict = {}
     score_sums: dict = {}
@@ -146,7 +141,7 @@ def _aggregate_all_time(cursor, org_id: str):
     return total, positive_counts, score_sums
 
 
-def get_category_performance(cursor, org_id: str, period_days: int = 0) -> list:
+def get_category_performance(db: Session, org_id: str, period_days: int = 0) -> list:
     """
     Returns up to 4 category objects with score, count, icon, trend, trendType.
     Score = average sentiment_score mapped to 0-100 scale (1.0→0%, 5.0→100%).
@@ -157,13 +152,13 @@ def get_category_performance(cursor, org_id: str, period_days: int = 0) -> list:
 
     if is_all_time:
         # All-time: use all data, no trend comparison
-        data_total, data_pos, data_scores = _aggregate_all_time(cursor, org_id)
+        data_total, data_pos, data_scores = _aggregate_all_time(db, org_id)
     else:
         # Period-filtered: use current period data for scores/counts
-        data_total, data_pos, data_scores = _aggregate(cursor, org_id, -period_days, 0)
+        data_total, data_pos, data_scores = _aggregate(db, org_id, -period_days, 0)
         # Previous period for trend comparison
         prev_total, prev_pos, prev_scores = _aggregate(
-            cursor, org_id, -(period_days * 2), -period_days
+            db, org_id, -(period_days * 2), -period_days
         )
 
     MIN_MENTIONS = 1

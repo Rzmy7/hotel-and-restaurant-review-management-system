@@ -4,12 +4,11 @@ Provides decoupled routes for KPIs, alerts, and latest reviews with strict tenan
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import uuid
+
 from app.database.session import get_db
 from app.core.tenant_context import resolve_tenant_scope
 from app.modules.auth.utils.auth_utils import get_current_user
-from app.core.pyodbc_connection import get_connection_string
-import pyodbc
-import uuid
 
 router = APIRouter(prefix="/organizations/{org_id}/dashboard-granular", tags=["Granular Dashboard"])
 
@@ -72,7 +71,7 @@ def get_granular_alerts(
     from app.modules.dashboard.services.activity_service import get_alerts
 
     try:
-        alerts_data = get_alerts(org_id)["alerts"]
+        alerts_data = get_alerts(db, org_id)["alerts"]
         return alerts_data[:4]
     except Exception as e:
         raise HTTPException(
@@ -106,7 +105,7 @@ def get_granular_reviews(
     from app.modules.dashboard.services.trends_service import get_recent_reviews
 
     try:
-        recent_reviews = get_recent_reviews(org_id, period_days=period)["reviews"]
+        recent_reviews = get_recent_reviews(db, org_id, period_days=period)["reviews"]
         
         # Format mapping strictly conforming to frontend expectations
         return [
@@ -150,18 +149,14 @@ def get_granular_sentiment_chart(
 
     from app.modules.dashboard.services.charts_service import get_sentiment_distribution
 
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
     try:
-        sentiment_charts = get_sentiment_distribution(cursor, org_id, period_days=period)
+        sentiment_charts = get_sentiment_distribution(db, org_id, period_days=period)
         return sentiment_charts
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Error retrieving sentiment chart: {str(e)}"
         )
-    finally:
-        conn.close()
 
 
 @router.get("/charts/trends", summary="Get granular reviews and sentiment trends charts data")
@@ -185,11 +180,9 @@ def get_granular_trends_chart(
         get_weekly_review_trends,
     )
 
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
     try:
-        daily_trends = get_daily_review_trends(cursor, org_id, days=period)
-        weekly_trends = get_weekly_review_trends(cursor, org_id, period_days=period)
+        daily_trends = get_daily_review_trends(db, org_id, days=period)
+        weekly_trends = get_weekly_review_trends(db, org_id, period_days=period)
         return {
             "reviewsOverTime": daily_trends,
             "sentimentTrends": weekly_trends,
@@ -199,8 +192,6 @@ def get_granular_trends_chart(
             status_code=500,
             detail=f"Error retrieving trends charts: {str(e)}"
         )
-    finally:
-        conn.close()
 
 
 @router.get("/category-performance", summary="Get granular category performance breakdown")
@@ -221,18 +212,14 @@ def get_granular_category_performance(
 
     from app.modules.dashboard.services.categories_service import get_category_performance
 
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
     try:
-        category_performance = get_category_performance(cursor, org_id, period_days=period)
+        category_performance = get_category_performance(db, org_id, period_days=period)
         return category_performance
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Error retrieving category performance: {str(e)}"
         )
-    finally:
-        conn.close()
 
 
 @router.get("/ai-insights", summary="Get granular AI-powered dashboard insights")
@@ -290,16 +277,11 @@ def get_granular_source_comparison(
 
     from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
     try:
-        source_comparison = get_source_comparison_metrics(cursor, org_id, period_days=period)
+        source_comparison = get_source_comparison_metrics(db, org_id, period_days=period)
         return source_comparison
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Error retrieving source comparison: {str(e)}"
         )
-    finally:
-        conn.close()
-
