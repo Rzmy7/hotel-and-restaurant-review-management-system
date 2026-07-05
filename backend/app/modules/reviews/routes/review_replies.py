@@ -215,7 +215,7 @@ def save_reply(
         db.execute(
             text("""
                 UPDATE dbo.processed_review
-                SET ai_reply = :reply_text, [status] = 'Replied'
+                SET ai_reply = :reply_text
                 WHERE id = :review_id
             """),
             {"reply_text": reply_text, "review_id": str(review_id)},
@@ -227,7 +227,6 @@ def save_reply(
             "message": "Reply saved successfully",
             "reply_id": str(reply_id),
             "review_id": str(review_id),
-            "status": "Replied",
         }
     except HTTPException:
         raise
@@ -363,7 +362,7 @@ def delete_reply(
             db.execute(
                 text("""
                     UPDATE dbo.processed_review
-                    SET ai_reply = NULL, [status] = 'AI Draft'
+                    SET ai_reply = NULL
                     WHERE id = :review_id
                 """),
                 {"review_id": str(review_id)},

@@ -61,7 +61,7 @@ export const AlertActionType = {
 } as const;
 export type AlertActionType = typeof AlertActionType[keyof typeof AlertActionType];
 
-export type ReviewStatus = 'Pending' | 'Replied' | 'Unresolved';
+export type ReviewStatus = 'pending' | 'processed';
 
 export interface ReviewFilters {
     ratingMax?: number;

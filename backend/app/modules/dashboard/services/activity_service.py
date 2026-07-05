@@ -155,7 +155,7 @@ def detect_operations_alert(db: Session, org_id: Optional[str]) -> Optional[dict
             JOIN dbo.source s ON r.source_id = s.source_id
             WHERE s.organization_id = :org_id
               AND r.rating <= 2
-              AND r.[status] = 'Pending'
+              AND r.[status] = 'pending'
               AND r.reviewDate <= :two_days_ago
         """
         params = {"org_id": org_id, "two_days_ago": two_days_ago}
@@ -164,7 +164,7 @@ def detect_operations_alert(db: Session, org_id: Optional[str]) -> Optional[dict
             SELECT COUNT(*) 
             FROM dbo.processed_review r
             WHERE r.rating <= 2
-              AND r.[status] = 'Pending'
+              AND r.[status] = 'pending'
               AND r.reviewDate <= :two_days_ago
         """
         params = {"two_days_ago": two_days_ago}
@@ -178,7 +178,7 @@ def detect_operations_alert(db: Session, org_id: Optional[str]) -> Optional[dict
             message=f"⏳ {sla_count} negative reviews unanswered for over 48 hours.",
             action_type=AlertActionType.VIEW_REVIEWS,
             priority=80,
-            filters={"ratingMax": 2, "status": "Pending", "slaOverdue": True},
+            filters={"ratingMax": 2, "status": "pending", "slaOverdue": True},
             metadata={
                 "count": sla_count,
                 "detector": "operations",
@@ -262,7 +262,7 @@ def get_activities(db: Session, org_id: str = None) -> dict:
         sql = """
             SELECT TOP 15 
                 r.id, r.reviewerName as userName, r.sentiment, r.rating, 
-                r.reviewDate, r.[status], p.platform_name as platform_id
+                r.reviewDate, r.ai_reply, p.platform_name as platform_id
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             JOIN dbo.platform p ON s.platform_id = p.platform_id
@@ -274,7 +274,7 @@ def get_activities(db: Session, org_id: str = None) -> dict:
         sql = """
             SELECT TOP 15 
                 r.id, r.reviewerName as userName, r.sentiment, r.rating, 
-                r.reviewDate, r.[status], p.platform_name as platform_id
+                r.reviewDate, r.ai_reply, p.platform_name as platform_id
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             JOIN dbo.platform p ON s.platform_id = p.platform_id
@@ -289,8 +289,8 @@ def get_activities(db: Session, org_id: str = None) -> dict:
         activities.append(
             {
                 "id": str(row.id),
-                "type": "scrape_completed" if row.status == "Replied" else "user_joined",
-                "title": "Reply sent" if row.status == "Replied" else "New Review",
+                "type": "scrape_completed" if row.ai_reply else "user_joined",
+                "title": "Reply sent" if row.ai_reply else "New Review",
                 "description": f"By {row.userName} on {row.platform_id}",
                 "timestamp": row.reviewDate.isoformat() if row.reviewDate else datetime.utcnow().isoformat(),
                 "user": row.userName,

@@ -507,7 +507,7 @@ def update_review_status(
     try:
         from sqlalchemy import text
 
-        valid_statuses = {"Pending", "Replied", "AI Draft", "processed", "failed"}
+        valid_statuses = {"pending", "processed", "failed"}
         new_status = payload.get("status", "")
 
         if not new_status or new_status not in valid_statuses:

@@ -238,12 +238,10 @@ def fetch_all_reviews_enriched(
             if filters.get("status"):
                 status_filters = []
                 for s in filters["status"]:
-                    if s == "Pending":
+                    if s.lower() == "pending":
                         status_filters.append(ProcessedReview.status == 'pending')
-                    elif s == "Replied":
-                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
-                    elif s == "AI Draft":
-                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                    elif s.lower() == "processed":
+                        status_filters.append(ProcessedReview.status == 'processed')
                 if status_filters:
                     query = query.filter(or_(*status_filters))
 
@@ -441,12 +439,10 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
             if filters.get("status"):
                 status_filters = []
                 for s in filters["status"]:
-                    if s == "Pending":
+                    if s.lower() == "pending":
                         status_filters.append(ProcessedReview.status == 'pending')
-                    elif s == "Replied":
-                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
-                    elif s == "AI Draft":
-                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                    elif s.lower() == "processed":
+                        status_filters.append(ProcessedReview.status == 'processed')
                 if status_filters:
                     query = query.filter(or_(*status_filters))
 

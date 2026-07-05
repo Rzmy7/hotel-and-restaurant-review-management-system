@@ -136,7 +136,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const handleMarkResolved = async () => {
     setIsResolving(true);
     try {
-      await reviewsService.updateReviewStatus(organizationId, review.id, 'Replied');
+      await reviewsService.updateReviewStatus(organizationId, review.id, 'processed');
       await refreshData();
       onClose();
     } finally {
@@ -242,13 +242,13 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
         <Button
           variant="outline"
           onClick={handleMarkResolved}
-          disabled={isResolving || isSaving || review.status === 'Replied'}
+          disabled={isResolving || isSaving || !!review.ai_reply}
           className="px-6 text-[13px] uppercase flex items-center gap-1.5 shadow-sm active:scale-95 transition-all
             text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300
             dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/60 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
         >
           {isResolving ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-          {review.status === 'Replied' ? 'Resolved' : 'Mark as Resolved'}
+          {review.ai_reply ? 'Resolved' : 'Mark as Resolved'}
         </Button>
         <Button
           onClick={handleSave}

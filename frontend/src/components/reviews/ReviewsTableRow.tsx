@@ -22,20 +22,12 @@ const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRow
         }
     };
 
-    const getStatusBadge = (status: Review['status'], hasReply: boolean) => {
-        if (hasReply) {
-            return (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-800/50">
-                    <CheckCircle2 size={12} /> Replied
-                </span>
-            );
-        }
-
+    const getStatusBadge = (status: Review['status']) => {
         switch (status) {
             case 'processed':
                 return (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 border border-purple-100/50 dark:border-purple-800/50">
-                        <Bot size={12} /> AI Ready
+                        <Bot size={12} /> Processed
                     </span>
                 );
             case 'pending':
@@ -128,7 +120,7 @@ const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRow
 
             {/* Status */}
             <td className="px-6 py-5">
-                {getStatusBadge(review.status, review.isAiReply ?? false)}
+                {getStatusBadge(review.status)}
             </td>
         </tr>
     );

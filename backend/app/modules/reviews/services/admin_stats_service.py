@@ -286,6 +286,7 @@ def get_recent_activity(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
             p.platform_name AS source,
             r.sentiment,
             r.status,
+            r.ai_reply,
             {_ACTIVITY_EXPR} AS activityDate
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
@@ -301,10 +302,11 @@ def get_recent_activity(cursor: "pyodbc.Cursor") -> list[dict[str, Any]]:
         source_name = str(row[3] or "Unknown source")
         sentiment = str(row[4] or "Neutral")
         status = str(row[5] or "Pending").lower()
-        activity_time = to_relative_timestamp(row[6])
+        has_reply = bool(row[6])
+        activity_time = to_relative_timestamp(row[7])
 
-        activity_type = "ai_job" if status == "replied" else "scrape_completed"
-        title = "Review Reply Updated" if status == "replied" else "Review Imported"
+        activity_type = "ai_job" if has_reply else "scrape_completed"
+        title = "Review Reply Updated" if has_reply else "Review Imported"
         description = f"{source_name} review {review_id} processed with {sentiment} sentiment"
 
         activities.append({

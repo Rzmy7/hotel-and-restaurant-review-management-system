@@ -50,7 +50,7 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
         Sentiment: ['Positive', 'Neutral', 'Negative'],
         Platform: filtersConfig.sources,
         Category: filtersConfig.categories,
-        Status: ['Pending', 'Replied', 'AI Draft']
+        Status: ['Pending', 'Processed']
     };
 
     const handleMenuClick = (menu: string) => {
