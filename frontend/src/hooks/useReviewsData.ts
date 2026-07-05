@@ -30,6 +30,7 @@ export function useReviewsData(organizationId: string, params: FetchReviewsParam
     const refresh = () => {
         queryClient.invalidateQueries({ queryKey: ['reviews', organizationId] });
         queryClient.invalidateQueries({ queryKey: ['review-stats', organizationId] });
+        queryClient.invalidateQueries({ queryKey: ['review-options', organizationId] });
     };
 
     const paginatedData = reviewsQuery.data;
