@@ -43,6 +43,9 @@ export const ReviewProcessing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [totalItems, setTotalItems] = useState(0);
+    const [jobsLoading, setJobsLoading] = useState(false);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isRetryingAll, setIsRetryingAll] = useState(false);
 
     // Batch size config state
@@ -57,46 +60,74 @@ export const ReviewProcessing: React.FC = () => {
     const [isCleaningDupes, setIsCleaningDupes] = useState(false);
     const [dupeActionMessage, setDupeActionMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+    // Debounce search query
     useEffect(() => {
-        const loadData = async (isRefresh = false) => {
-            try {
-                if (isRefresh) {
-                    setRefreshing(true);
-                } else {
-                    setLoading(true);
-                }
-                setError(null);
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
 
-                const [statsResult, jobsResult, batchResult] = await Promise.allSettled([
+    // Initial load and background polling for stats
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const [statsResult, batchResult] = await Promise.allSettled([
                     fetchReviewProcessingStats(),
-                    fetchReviewProcessingJobs(),
                     getBatchConfig(),
                 ]);
 
                 if (statsResult.status === 'fulfilled') setStats(statsResult.value);
-                if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
                 if (batchResult.status === 'fulfilled') {
                     setBatchConfig(batchResult.value);
-                    if (!isRefresh) setBatchInput(batchResult.value.batch_size);
+                    setBatchInput(batchResult.value.batch_size);
                 }
 
                 const errors: string[] = [];
                 if (statsResult.status === 'rejected') errors.push('Failed to load review statistics.');
-                if (jobsResult.status === 'rejected') errors.push('Failed to load processing jobs.');
                 if (errors.length > 0) setError(errors.join(' | '));
             } catch (err) {
-                console.error('Failed to load review processing data:', err);
-                setError('Failed to load review processing data. Check admin-backend connectivity.');
+                console.error('Failed to load review processing initial data:', err);
+                setError('Failed to load review processing initial data.');
             } finally {
                 setLoading(false);
-                setRefreshing(false);
             }
         };
 
-        loadData();
-        const interval = setInterval(() => loadData(true), 15000);
+        loadInitialData();
+
+        const interval = setInterval(async () => {
+            try {
+                const statsData = await fetchReviewProcessingStats();
+                setStats(statsData);
+            } catch (err) {
+                console.error('Failed to poll review processing stats:', err);
+            }
+        }, 15000);
+
         return () => clearInterval(interval);
     }, []);
+
+    // Load jobs when page or search changes
+    useEffect(() => {
+        const loadJobs = async () => {
+            try {
+                setJobsLoading(true);
+                const response = await fetchReviewProcessingJobs(currentPage, itemsPerPage, debouncedSearch);
+                setJobs(response.data);
+                setTotalItems(response.total);
+            } catch (err) {
+                console.error('Failed to fetch review processing jobs:', err);
+                setError('Failed to fetch review processing jobs.');
+            } finally {
+                setJobsLoading(false);
+            }
+        };
+
+        loadJobs();
+    }, [currentPage, debouncedSearch]);
 
     const handleRefresh = async () => {
         try {
@@ -104,10 +135,13 @@ export const ReviewProcessing: React.FC = () => {
             setError(null);
             const [statsResult, jobsResult] = await Promise.allSettled([
                 fetchReviewProcessingStats(),
-                fetchReviewProcessingJobs(),
+                fetchReviewProcessingJobs(currentPage, itemsPerPage, debouncedSearch),
             ]);
             if (statsResult.status === 'fulfilled') setStats(statsResult.value);
-            if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
+            if (jobsResult.status === 'fulfilled') {
+                setJobs(jobsResult.value.data);
+                setTotalItems(jobsResult.value.total);
+            }
         } catch (err) {
             console.error('Failed to refresh review processing data:', err);
             setError('Failed to refresh review processing data.');
@@ -201,18 +235,7 @@ export const ReviewProcessing: React.FC = () => {
     const clamp = (v: number) =>
         Math.max(batchConfig?.min ?? 1, Math.min(batchConfig?.max ?? 20, v));
 
-    const filteredJobs = jobs.filter(job => {
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) return true;
-        return (
-            job.jobId.toLowerCase().includes(query)
-            || job.organization.toLowerCase().includes(query)
-            || job.platform.toLowerCase().includes(query)
-        );
-    });
-
-    const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
-    const paginatedJobs = filteredJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     const formatNumber = (num: number): string =>
         num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toLocaleString();
@@ -501,7 +524,7 @@ export const ReviewProcessing: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className={`overflow-x-auto ${jobsLoading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}`}>
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-200 dark:border-slate-700">
@@ -516,7 +539,7 @@ export const ReviewProcessing: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedJobs.map(job => (
+                             {jobs.map(job => (
                                 <tr key={job.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
                                     <td className="py-4 px-4 text-sm font-mono text-gray-500 dark:text-slate-400">{job.jobId}</td>
                                     <td className="py-4 px-4">
@@ -555,7 +578,7 @@ export const ReviewProcessing: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-slate-700">
                     <span className="text-sm text-gray-500 dark:text-slate-400">
-                        Showing {filteredJobs.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
+                        Showing {totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} jobs
                     </span>
                     <div className="flex items-center gap-1">
                         <button

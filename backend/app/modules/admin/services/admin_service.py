@@ -250,42 +250,78 @@ def _load_organization_owner_emails(cursor: pyodbc.Cursor) -> dict[str, str]:
 # ── Load organizations ──────────────────────────────────────────────
 
 
-def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
+def load_organizations(
+    cursor: pyodbc.Cursor,
+    page: int = 1,
+    limit: int = 8,
+    search: str = None,
+) -> dict:
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     if table_exists(cursor, "organization"):
         owner_emails = _load_organization_owner_emails(cursor)
 
-        # Joining with organization_type to get the type name (hotel, restaurant, etc.)
-        select_sql = """
+        where_clause = ""
+        params = []
+        if search:
+            where_clause = "WHERE o.organization_name LIKE ?"
+            params.append(f"%{search}%")
+
+        # 1. Get total count
+        count_sql = f"""
+        SELECT COUNT(*)
+        FROM dbo.organization o
+        {where_clause}
+        """
+        count_row = execute_query(cursor, count_sql, tuple(params)).fetchone()
+        total = count_row[0] if count_row else 0
+
+        # 2. Get paginated rows
+        select_sql = f"""
         SELECT
             o.organization_id, o.organization_name, ot.type_name,
             CAST(o.created_at AS DATETIME2), CAST(o.updated_at AS DATETIME2)
         FROM dbo.organization o
         LEFT JOIN dbo.organization_type ot ON o.organization_type_id = ot.type_code
+        {where_clause}
         ORDER BY COALESCE(CAST(o.updated_at AS DATETIME2), CAST(o.created_at AS DATETIME2)) DESC, o.organization_id DESC
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
         """
-
-        rows = execute_query(cursor, select_sql).fetchall()
+        
+        query_params = list(params) + [offset, limit]
+        rows = execute_query(cursor, select_sql, tuple(query_params)).fetchall()
 
         organizations: list[OrganizationSummary] = []
         for index, row in enumerate(rows, start=1):
-            organization_id = str(row[0]) if row[0] is not None else str(index)
+            organization_id = str(row[0]) if row[0] is not None else str(offset + index)
             organization_name = str(row[1]).strip() if row[1] else f"Organization {organization_id}"
-
-            # All organizations are active now
-            status = "Active"
 
             organizations.append(
                 OrganizationSummary(
                     id=organization_id,
                     name=organization_name,
                     owner=owner_emails.get(organization_id, ""),
-                    usersCount=0, # This can be populated via a separate count if needed
+                    usersCount=0,
                 )
             )
 
-        return organizations
+        return {
+            "data": organizations,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
 
     if table_exists(cursor, "ProcessedReviews"):
+        where_clause = ""
+        params = []
+        if search:
+            where_clause = "WHERE COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown') LIKE ?"
+            params.append(f"%{search}%")
+
+        # Note: Since grouping makes OFFSET FETCH complex without subquery, let's select and slice
         rows = execute_query(
             cursor,
             f"""
@@ -294,56 +330,193 @@ def load_organizations(cursor: pyodbc.Cursor) -> list[OrganizationSummary]:
                 COUNT(DISTINCT NULLIF(LTRIM(RTRIM(userName)), '')) AS usersCount,
                 MAX({PROCESSED_ACTIVITY_EXPR}) AS lastSeen
             FROM dbo.ProcessedReviews
+            {where_clause}
             GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(source)), ''), 'Unknown')
             ORDER BY COUNT(*) DESC
             """,
+            tuple(params)
         ).fetchall()
 
+        total = len(rows)
+        sliced_rows = rows[offset:offset + limit]
+
         organizations = []
-        for index, row in enumerate(rows, start=1):
+        for index, row in enumerate(sliced_rows, start=1):
             name = str(row[0])
             organizations.append(
                 OrganizationSummary(
-                    id=str(index),
+                    id=str(offset + index),
                     name=name,
                     owner="",
                     usersCount=int(row[1]) if row[1] is not None else 0,
                 )
             )
 
-        return organizations
+        return {
+            "data": organizations,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
 
-    return []
+    return {
+        "data": [],
+        "total": 0,
+        "page": page,
+        "limit": limit
+    }
 
 
 # ── Load users ──────────────────────────────────────────────────────
 
 
-def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
+def load_users(
+    cursor: pyodbc.Cursor,
+    page: int = 1,
+    limit: int = 8,
+    search: str = None,
+    role: str = None,
+    plan: str = None,
+    status: str = None,
+) -> dict:
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     if table_exists(cursor, "user"):
-        user_plan_map = get_user_plan_map(cursor)
         columns = get_table_columns(cursor, "user")
         if "updated_at" in columns and "created_at" in columns:
-            order_clause = "ORDER BY COALESCE(updated_at, created_at) DESC"
+            order_by = "ORDER BY COALESCE(u.updated_at, u.created_at) DESC, u.user_id DESC"
         elif "updated_at" in columns:
-            order_clause = "ORDER BY updated_at DESC"
+            order_by = "ORDER BY u.updated_at DESC, u.user_id DESC"
         elif "created_at" in columns:
-            order_clause = "ORDER BY created_at DESC"
+            order_by = "ORDER BY u.created_at DESC, u.user_id DESC"
         else:
-            order_clause = "ORDER BY user_id DESC"
+            order_by = "ORDER BY u.user_id DESC"
 
-        rows = execute_query(cursor, _build_users_select(columns, order_clause=order_clause)).fetchall()
-        return [
+        if "first_name" in columns and "last_name" in columns:
+            name_expr = "LTRIM(RTRIM(COALESCE(u.first_name, '') + ' ' + COALESCE(u.last_name, '')))"
+        else:
+            name_column = pick_existing_column(columns, ["full_name", "name", "username", "display_name"])
+            name_expr = f"u.[{name_column}]" if name_column else "NULL"
+
+        is_active_expr = "u.is_active" if "is_active" in columns else "CAST(0 AS bit)"
+        is_email_verified_expr = "u.is_email_verified" if "is_email_verified" in columns else "CAST(0 AS bit)"
+        is_phone_verified_expr = "u.is_phone_verified" if "is_phone_verified" in columns else "CAST(0 AS bit)"
+        role_id_expr = "u.role_id" if "role_id" in columns else "NULL"
+
+        conditions = []
+        params = []
+
+        if search:
+            conditions.append(f"(u.email LIKE ? OR {name_expr} LIKE ?)")
+            params.append(f"%{search}%")
+            params.append(f"%{search}%")
+
+        if role:
+            if role == "Admin":
+                conditions.append("u.role_id = ?")
+                params.append(ADMIN_ROLE_ID)
+            elif role == "User":
+                conditions.append("u.role_id = ?")
+                params.append(TENANT_ROLE_ID)
+
+        if status:
+            if status == "Active":
+                conditions.append(f"{is_active_expr} = 1")
+            elif status == "Suspended":
+                conditions.append(f"{is_active_expr} = 0")
+
+        has_plan_tables = table_exists(cursor, "tenant") and table_exists(cursor, "plans")
+        if plan and has_plan_tables:
+            conditions.append("pl.name = ?")
+            params.append(plan)
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        # 1. Total Count Query
+        if has_plan_tables:
+            count_sql = f"""
+            SELECT COUNT(*)
+            FROM dbo.[user] u
+            LEFT JOIN dbo.tenant t ON t.tenant_id = u.user_id
+            LEFT JOIN dbo.plans pl ON pl.plan_id = TRY_CAST(t.[plan] AS INT)
+            {where_clause}
+            """
+        else:
+            count_sql = f"""
+            SELECT COUNT(*)
+            FROM dbo.[user] u
+            {where_clause}
+            """
+
+        count_row = execute_query(cursor, count_sql, tuple(params)).fetchone()
+        total = count_row[0] if count_row else 0
+
+        # 2. Paginated Query
+        if has_plan_tables:
+            select_sql = f"""
+            SELECT
+                u.user_id,
+                u.email,
+                {name_expr} AS full_name,
+                {is_active_expr} AS is_active,
+                {is_email_verified_expr} AS is_email_verified,
+                {is_phone_verified_expr} AS is_phone_verified,
+                u.role_id,
+                pl.name AS plan_name
+            FROM dbo.[user] u
+            LEFT JOIN dbo.tenant t ON t.tenant_id = u.user_id
+            LEFT JOIN dbo.plans pl ON pl.plan_id = TRY_CAST(t.[plan] AS INT)
+            {where_clause}
+            {order_by}
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            """
+        else:
+            select_sql = f"""
+            SELECT
+                u.user_id,
+                u.email,
+                {name_expr} AS full_name,
+                {is_active_expr} AS is_active,
+                {is_email_verified_expr} AS is_email_verified,
+                {is_phone_verified_expr} AS is_phone_verified,
+                u.role_id,
+                NULL AS plan_name
+            FROM dbo.[user] u
+            {where_clause}
+            {order_by}
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            """
+
+        query_params = list(params) + [offset, limit]
+        rows = execute_query(cursor, select_sql, tuple(query_params)).fetchall()
+
+        users = [
             _frontend_user_from_db_row(
                 row,
-                index,
-                user_plan_map.get(str(row[0])) if row[0] is not None else None,
+                offset + index,
+                row[7] if row[7] is not None else None,
             )
             for index, row in enumerate(rows, start=1)
         ]
 
+        return {
+            "data": users,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
+
     if not table_exists(cursor, "ProcessedReviews"):
-        return []
+        return {
+            "data": [],
+            "total": 0,
+            "page": page,
+            "limit": limit
+        }
 
     rows = execute_query(
         cursor,
@@ -387,21 +560,42 @@ def load_users(cursor: pyodbc.Cursor) -> list[AdminUser]:
     result: list[AdminUser] = []
     for index, (name, meta) in enumerate(sorted_users, start=1):
         review_count = int(meta["reviewCount"])
-        role = _role_from_count(review_count)
+        role_val = _role_from_count(review_count)
+        status_val = _user_status_from_date(meta["lastActivity"])
+        plan_val = _plan_from_count(review_count) if role_val == "User" else None
+
+        # Apply filters locally on fallback list
+        if search and not (search.lower() in name.lower() or search.lower() in _email_from_name(name, index).lower()):
+            continue
+        if role and role_val != role:
+            continue
+        if status and status_val != status:
+            continue
+        if plan and plan_val != plan:
+            continue
+
         result.append(
             AdminUser(
                 id=str(index),
                 name=name,
                 email=_email_from_name(name, index),
-                role=role,
-                status=_user_status_from_date(meta["lastActivity"]),
-                plan=_plan_from_count(review_count) if role == "User" else None,
+                role=role_val,
+                status=status_val,
+                plan=plan_val,
                 organizations=sorted(list(meta["organizations"])),
                 groups=["Review Team"],
             )
         )
 
-    return result
+    total = len(result)
+    sliced_result = result[offset:offset + limit]
+
+    return {
+        "data": sliced_result,
+        "total": total,
+        "page": page,
+        "limit": limit
+    }
 
 
 # ── Create user ─────────────────────────────────────────────────────

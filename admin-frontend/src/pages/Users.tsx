@@ -16,44 +16,76 @@ export const UsersPage: React.FC = () => {
         todayRegistered: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [usersLoading, setUsersLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState('All Roles');
     const [planFilter, setPlanFilter] = useState('All Plans');
     const [statusFilter, setStatusFilter] = useState('All Status');
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const [showAddModal, setShowAddModal] = useState(false);
     const [availablePlans, setAvailablePlans] = useState<string[]>([]);
+    const [reloadCounter, setReloadCounter] = useState(0);
     const itemsPerPage = 8;
 
+    // Load static filters and stats on mount
     useEffect(() => {
-        const loadData = async () => {
+        const loadInitialData = async () => {
             try {
-                const [userData, statsData] = await Promise.all([
-                    fetchUsers(),
-                    fetchUserStats(),
-                ]);
-                setUsers(userData);
+                const statsData = await fetchUserStats();
                 setStats(statsData);
-
-                try {
-                    const plans = await fetchSubscriptionPlans();
-                    const activePlanNames = plans
-                        .filter(plan => plan.isActive)
-                        .map(plan => plan.name)
-                        .filter(planName => planName.toLowerCase() !== 'basic')
-                        .filter((name, index, all) => all.indexOf(name) === index);
-                    setAvailablePlans(activePlanNames);
-                } catch (error) {
-                    console.error('Failed to load subscription plans for filter:', error);
-                }
             } catch (error) {
-                console.error('Failed to load users data:', error);
+                console.error('Failed to load user stats:', error);
+            }
+
+            try {
+                const plans = await fetchSubscriptionPlans();
+                const activePlanNames = plans
+                    .filter(plan => plan.isActive)
+                    .map(plan => plan.name)
+                    .filter(planName => planName.toLowerCase() !== 'basic')
+                    .filter((name, index, all) => all.indexOf(name) === index);
+                setAvailablePlans(activePlanNames);
+            } catch (error) {
+                console.error('Failed to load subscription plans for filter:', error);
+            }
+        };
+        loadInitialData();
+    }, []);
+
+    // Load paginated/filtered users
+    useEffect(() => {
+        const loadUsersData = async () => {
+            setUsersLoading(true);
+            try {
+                const apiRole = roleFilter === 'All Roles' ? undefined : roleFilter;
+                const apiPlan = planFilter === 'All Plans' ? undefined : planFilter;
+                const apiStatus = statusFilter === 'All Status' ? undefined : statusFilter;
+
+                const paginatedResponse = await fetchUsers(
+                    currentPage,
+                    itemsPerPage,
+                    searchQuery,
+                    apiRole,
+                    apiPlan,
+                    apiStatus
+                );
+                setUsers(paginatedResponse.data);
+                setTotalItems(paginatedResponse.total);
+            } catch (error) {
+                console.error('Failed to load users:', error);
             } finally {
+                setUsersLoading(false);
                 setLoading(false);
             }
         };
-        loadData();
-    }, []);
+
+        const timer = setTimeout(() => {
+            loadUsersData();
+        }, searchQuery ? 300 : 0);
+
+        return () => clearTimeout(timer);
+    }, [currentPage, searchQuery, roleFilter, planFilter, statusFilter, reloadCounter]);
 
     const planOptions = useMemo(() => {
         const assignedPlans = users
@@ -68,21 +100,8 @@ export const UsersPage: React.FC = () => {
     const todayActiveUsers = stats.todayActiveUsers;
     const todayRegistered = stats.todayRegistered;
 
-    // Filter Logic
-    const filteredUsers = users.filter(user => {
-        const matchesSearch =
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === 'All Roles' || user.role === roleFilter;
-        const matchesPlan = planFilter === 'All Plans' || user.plan === planFilter;
-        const matchesStatus = statusFilter === 'All Status' || user.status === statusFilter;
-        return matchesSearch && matchesRole && matchesPlan && matchesStatus;
-    });
-
-    // Pagination Logic
-    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -101,7 +120,7 @@ export const UsersPage: React.FC = () => {
 
     const handleAddUser = async (newAdmin: { name: string; email: string; password: string }) => {
         try {
-            const createdUser = await createUser({
+            await createUser({
                 name: newAdmin.name,
                 email: newAdmin.email,
                 password: newAdmin.password,
@@ -109,7 +128,9 @@ export const UsersPage: React.FC = () => {
                 status: 'Active',
             });
 
-            setUsers(prevUsers => [createdUser, ...prevUsers]);
+            // Re-fetch current page or reset to first page on creation
+            setCurrentPage(1);
+            setReloadCounter(prev => prev + 1);
             await refreshStats();
         } catch (error) {
             console.error('Failed to add user:', error);
@@ -142,7 +163,8 @@ export const UsersPage: React.FC = () => {
     const handleUserDelete = async (userId: string) => {
         try {
             await deleteUser(userId);
-            setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+            // Reload page to maintain count consistency
+            setReloadCounter(prev => prev + 1);
             await refreshStats();
         } catch (error) {
             console.error('Failed to delete user:', error);
@@ -184,17 +206,19 @@ export const UsersPage: React.FC = () => {
             />
 
             {/* Users Table */}
-            <UserTable
-                users={paginatedUsers}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredUsers.length}
-                itemsPerPage={itemsPerPage}
-                startIndex={startIndex}
-                onPageChange={handlePageChange}
-                onUserUpdate={handleUserUpdate}
-                onUserDelete={handleUserDelete}
-            />
+            <div className={usersLoading ? "opacity-50 pointer-events-none transition-opacity duration-200" : "transition-opacity duration-200"}>
+                <UserTable
+                    users={users}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    startIndex={startIndex}
+                    onPageChange={handlePageChange}
+                    onUserUpdate={handleUserUpdate}
+                    onUserDelete={handleUserDelete}
+                />
+            </div>
         </div>
     );
 };

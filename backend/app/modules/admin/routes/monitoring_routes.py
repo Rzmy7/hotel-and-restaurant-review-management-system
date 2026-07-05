@@ -271,13 +271,26 @@ def scraping_stats() -> dict[str, int | float | bool]:
 
 
 @router.get("/scraping/jobs")
-def scraping_jobs() -> list[dict[str, str | int | None]]:
-    """Returns recent scraping jobs from the scraping backend."""
+def scraping_jobs(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+) -> dict:
+    """Returns paginated, recent scraping jobs from the scraping backend."""
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     try:
         payload = scraping_backend_get("/api/system/jobs/all")
     except HTTPException as exc:
         if exc.status_code == 502:
-            return []
+            return {
+                "data": [],
+                "total": 0,
+                "page": page,
+                "limit": limit
+            }
         raise
     
     rows = payload.get("jobs", []) if isinstance(payload, dict) else []
@@ -290,6 +303,17 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
     mapped_jobs: list[dict[str, str | int | None]] = []
     for index, row in enumerate(rows, start=1):
         platform = str(row.get("platform", "Unknown")).strip() or "Unknown"
+        org_name = organization_from_url(row.get("url")) or ""
+        status_ui = job_status_to_ui(str(row.get("status", "")))
+
+        # Filter by search string if provided
+        if search:
+            search_lower = search.lower()
+            if not (search_lower in platform.lower() or 
+                    search_lower in org_name.lower() or 
+                    search_lower in status_ui.lower()):
+                continue
+
         icon, color = platform_visuals(platform)
         job_id = str(row.get("id", index))
         short_id = job_id[-6:].upper() if len(job_id) >= 6 else str(index)
@@ -302,8 +326,8 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
                 "platform": platform.title(),
                 "platformIcon": icon,
                 "platformColor": color,
-                "organization": organization_from_url(row.get("url")),
-                "status": job_status_to_ui(str(row.get("status", ""))),
+                "organization": org_name,
+                "status": status_ui,
                 "startTime": format_job_start_time(row.get("created_at")),
                 "duration": format_duration_from_created_at(
                     row.get("created_at"), 
@@ -313,7 +337,15 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
             }
         )
 
-    return mapped_jobs
+    total = len(mapped_jobs)
+    sliced_jobs = mapped_jobs[offset:offset + limit]
+
+    return {
+        "data": sliced_jobs,
+        "total": total,
+        "page": page,
+        "limit": limit
+    }
 
 
 @router.post("/scraping/jobs/{job_id}/cancel")
@@ -459,8 +491,16 @@ def retry_all_failed_reviews() -> dict:
 
 
 @router.get("/review-processing/jobs")
-def review_processing_jobs() -> list[dict]:
-    """Returns recent review processing activity grouped by source as job-like rows."""
+def review_processing_jobs(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+) -> dict:
+    """Returns paginated review processing activity grouped by source as job-like rows."""
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
@@ -469,7 +509,34 @@ def review_processing_jobs() -> list[dict]:
             from app.modules.admin.services.system_settings_service import get_setting_bool
             is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
 
-            sql = """
+            where_clauses = []
+            params = []
+            if search:
+                search_pattern = f"%{search.strip()}%"
+                where_clauses.append(
+                    "(p.platform_name LIKE ? OR o.organization_name LIKE ? OR r.status LIKE ?)"
+                )
+                params.extend([search_pattern] * 3)
+
+            where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+            # Count query
+            count_sql = f"""
+                SELECT COUNT(*) FROM (
+                    SELECT r.source_id, r.status
+                    FROM dbo.processed_review r
+                    LEFT JOIN dbo.source s ON r.source_id = s.source_id
+                    LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
+                    LEFT JOIN dbo.organization o ON s.organization_id = o.organization_id
+                    {where_sql}
+                    GROUP BY r.source_id, p.platform_name, o.organization_name, r.status
+                ) AS grouped_jobs
+            """
+            cursor.execute(count_sql, params)
+            total = int(cursor.fetchone()[0] or 0)
+
+            # Paginated query
+            sql = f"""
                 SELECT 
                     r.source_id,
                     p.platform_name,
@@ -482,12 +549,17 @@ def review_processing_jobs() -> list[dict]:
                 LEFT JOIN dbo.source s ON r.source_id = s.source_id
                 LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
                 LEFT JOIN dbo.organization o ON s.organization_id = o.organization_id
+                {where_sql}
                 GROUP BY r.source_id, p.platform_name, o.organization_name, r.status
                 ORDER BY 
                     CASE WHEN MAX(r.last_attempt) IS NULL THEN 1 ELSE 0 END DESC, 
-                    MAX(r.last_attempt) DESC
+                    MAX(r.last_attempt) DESC,
+                    r.source_id DESC,
+                    r.status DESC
+                OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
             """
-            rows = execute_query(cursor, sql).fetchall()
+            cursor.execute(sql, params + [offset, limit])
+            rows = cursor.fetchall()
 
             jobs = []
             for idx, row in enumerate(rows, start=1):
@@ -554,7 +626,12 @@ def review_processing_jobs() -> list[dict]:
                     "totalReviews": None,
                 })
 
-            return jobs
+            return {
+                "data": jobs,
+                "total": total,
+                "page": page,
+                "limit": limit
+            }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
 
