@@ -46,12 +46,11 @@ describe('admin apiClient', () => {
             expect(fetchSpy.mock.calls[0][0]).toBe('http://other.com/data');
         });
 
-        it('passes through auth routes without /api prefix', async () => {
+        it('prepends /api for auth routes', async () => {
             const fetchSpy = mockFetch(200, {});
             const { apiClient } = await import('../../api/client');
             await apiClient.get('/auth/me');
-            expect(fetchSpy.mock.calls[0][0]).toContain('/auth/me');
-            expect(fetchSpy.mock.calls[0][0]).not.toContain('/api/auth');
+            expect(fetchSpy.mock.calls[0][0]).toContain('/api/auth/me');
         });
     });
 

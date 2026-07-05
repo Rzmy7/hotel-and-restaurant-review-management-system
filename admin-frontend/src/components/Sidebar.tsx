@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { getFrontendLoginUrl } from '../config/frontend';
 
+import { apiClient } from '../api/client';
+
 export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -69,7 +71,12 @@ export const Sidebar: React.FC = () => {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      console.error("Failed to post logout to backend", e);
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('authUser');
     window.location.href = getFrontendLoginUrl('logout=true');

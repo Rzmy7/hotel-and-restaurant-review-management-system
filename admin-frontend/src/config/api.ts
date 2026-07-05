@@ -43,10 +43,27 @@ export const normalizeBackendBaseUrl = (value: string, fallback: string = FALLBA
     }
 };
 
+export const matchWindowHostname = (urlStr: string): string => {
+    try {
+        if (typeof window === 'undefined' || !window.location) return urlStr;
+        const url = new URL(urlStr);
+        const winHost = window.location.hostname;
+        // ponytail: dynamically swap localhost/127.0.0.1 to match window hostname for secure SameSite cookie delivery
+        if (winHost === 'localhost' && url.hostname === '127.0.0.1') {
+            url.hostname = 'localhost';
+        } else if (winHost === '127.0.0.1' && url.hostname === 'localhost') {
+            url.hostname = '127.0.0.1';
+        }
+        return url.toString().replace(/\/$/, '');
+    } catch {
+        return urlStr;
+    }
+};
+
 /**
  * Return the current backend base URL (no trailing slash).
  */
 export const getApiBaseUrl = (): string => {
     const stored = localStorage.getItem('mainBackendUrl');
-    return normalizeBackendBaseUrl(stored || FALLBACK_BACKEND_URL, FALLBACK_BACKEND_URL);
+    return matchWindowHostname(normalizeBackendBaseUrl(stored || FALLBACK_BACKEND_URL, FALLBACK_BACKEND_URL));
 };

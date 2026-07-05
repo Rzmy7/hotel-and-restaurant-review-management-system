@@ -31,8 +31,6 @@ const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
 
-    const token = localStorage.getItem("token");
-
     // ── The server-saved "clean" snapshot ───────────────────────────────
     const [savedProfile, setSavedProfile] = useState<UserProfile>({
         firstName: "", lastName: "", email: "", phone: "",
@@ -114,7 +112,7 @@ const ProfilePage: React.FC = () => {
             }
         };
         loadProfile();
-    }, [token, showToast]);
+    }, [showToast]);
 
     // ── Update form state ─────────────────────────────────────────────────
     const handleUpdate = useCallback((updated: UserProfile) => {

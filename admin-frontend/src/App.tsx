@@ -17,41 +17,38 @@ import { LLMModels } from './pages/LLMModels';
 import { getFrontendLoginUrl } from './config/frontend';
 import { ThemeProvider } from './contexts/ThemeContext';
 
+import { apiClient } from './api/client';
 import { useEffect, useState } from 'react';
 
 function App() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // --- Token handoff: read token from URL (sent by user-frontend) ---
-    const params = new URLSearchParams(window.location.search);
-    let token = params.get('token');
-    let urlUser = params.get('user');
-    
-    if (token) {
-      localStorage.setItem('token', token);
-      if (urlUser) {
-        localStorage.setItem('authUser', urlUser);
+    const checkAuth = async () => {
+      try {
+        const me = await apiClient.get<any>('/auth/me');
+        if (me && me.user_id) {
+          // ponytail: restrict access strictly to admin roles
+          const roles = Array.isArray(me.roles) ? me.roles : [me.role];
+          const isAdmin = roles.some((r: any) => ['admin', 'system_admin', 'super_admin'].includes(String(r || '').trim().toLowerCase()));
+          if (!isAdmin) {
+            console.warn("Access denied: Not an administrator.");
+            window.location.href = getFrontendLoginUrl();
+            return;
+          }
+          localStorage.setItem('authUser', JSON.stringify(me));
+          setReady(true);
+        } else {
+          window.location.href = getFrontendLoginUrl();
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        // Note: apiClient automatically handles 401 redirects, but we use this fallback
+        window.location.href = getFrontendLoginUrl();
       }
-      
-      // Clean the token and user from the URL without a reload
-      params.delete('token');
-      params.delete('user');
-      const cleanUrl = params.toString()
-        ? `${window.location.pathname}?${params.toString()}`
-        : window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
-    } else {
-      token = localStorage.getItem('token');
-    }
+    };
 
-    // --- Auth guard: redirect to user-frontend login if no token ---
-    if (!token) {
-      window.location.href = getFrontendLoginUrl();
-      return;
-    }
-
-    setReady(true);
+    checkAuth();
   }, []);
 
   if (!ready) {

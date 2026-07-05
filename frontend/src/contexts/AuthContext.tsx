@@ -72,27 +72,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Restore session from localStorage
     // ----------------------------------------------------
     useEffect(() => {
-        const storedUser = localStorage.getItem("authUser");
-        const token = localStorage.getItem("token");
-        const rememberMe = localStorage.getItem("remember_me");
-        
-        if (rememberMe === 'false' && !sessionStorage.getItem("session_active")) {
-            persist(null);
-            setIsLoading(false);
-            return;
-        }
-
-        if (storedUser && token) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch {
+        const restoreSession = async () => {
+            const rememberMe = localStorage.getItem("remember_me");
+            if (rememberMe === 'false' && !sessionStorage.getItem("session_active")) {
                 persist(null);
+                setIsLoading(false);
+                return;
             }
-        } else {
-            // Ensure state is null if no login details found
-            setUser(null);
-        }
-        setIsLoading(false);
+
+            try {
+                const me = await apiClient.get<any>('/auth/me');
+                if (me && me.user_id) {
+                    const normalizedUser: User = {
+                        user_id: me.user_id,
+                        email: me.email,
+                        full_name: me.full_name || `${me.first_name || ""} ${me.last_name || ""}`.trim() || "User",
+                        role: normalizeRole(me.role || me.roles),
+                    };
+                    persist(normalizedUser);
+                } else {
+                    persist(null);
+                }
+            } catch (err) {
+                console.warn("Failed to restore session via /auth/me:", err);
+                persist(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        restoreSession();
     }, []);
 
     // ----------------------------------------------------
@@ -120,10 +129,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.removeItem("current_organization");
             localStorage.removeItem("remember_me");
             sessionStorage.removeItem("session_active");
-        }
-
-        if (token) {
-            localStorage.setItem("token", token);
         }
     };
 
@@ -288,7 +293,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     // LOGOUT
     // ----------------------------------------------------
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await apiClient.post('/auth/logout');
+        } catch (err) {
+            console.error("Failed to call backend logout", err);
+        }
         localStorage.clear();
         setUser(null);
         window.location.href = "/login";
