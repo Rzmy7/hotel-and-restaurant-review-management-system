@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React from 'react';
 import NotificationsHeader from '../organisms/NotificationsHeader';
 import NotificationsToolbar from '../organisms/NotificationsToolbar';
 import NotificationItem from '../organisms/NotificationItem';
@@ -30,9 +29,10 @@ interface NotificationsTemplateProps {
     onDismiss: (id: string) => void;
     onMarkAllRead: () => void;
     onClearAll: () => void;
+    hasMore: boolean;
+    isLoading: boolean;
+    onLoadMore: () => void;
 }
-
-const ITEMS_PER_PAGE = 10;
 
 const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
     notifications,
@@ -48,50 +48,48 @@ const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
     onDismiss,
     onMarkAllRead,
     onClearAll,
+    hasMore,
+    isLoading,
+    onLoadMore,
 }) => {
-    const [currentPage, setCurrentPage] = useState(1);
+    const loaderRef = React.useRef<HTMLDivElement>(null);
+    const lockRef = React.useRef(false);
 
-    // Reset to page 1 when filters change
+    // Sync lock with loading state to prevent double fires
     React.useEffect(() => {
-        setCurrentPage(1);
-    }, [activePrimaryFilter, activeCategoryFilter]);
+        if (isLoading) {
+            lockRef.current = true;
+        } else {
+            lockRef.current = false;
+        }
+    }, [isLoading]);
 
-    const totalPages = Math.max(1, Math.ceil(notifications.length / ITEMS_PER_PAGE));
-    const safePage = Math.min(currentPage, totalPages);
+    // IntersectionObserver to auto-load when sentinel is in view
+    React.useEffect(() => {
+        if (!loaderRef.current || !onLoadMore || !hasMore || isLoading) return;
 
-    const paginatedNotifications = useMemo(() => {
-        const start = (safePage - 1) * ITEMS_PER_PAGE;
-        return notifications.slice(start, start + ITEMS_PER_PAGE);
-    }, [notifications, safePage]);
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && !lockRef.current && !isLoading && hasMore) {
+                    lockRef.current = true;
+                    onLoadMore();
+                }
+            },
+            { threshold: 0.1, rootMargin: '150px' }
+        );
 
-    // Group paginated items by date
-    const grouped = paginatedNotifications.reduce<Record<string, Notification[]>>(
+        observer.observe(loaderRef.current);
+        return () => observer.disconnect();
+    }, [onLoadMore, hasMore, isLoading]);
+
+    // Group all loaded items by date
+    const grouped = notifications.reduce<Record<string, Notification[]>>(
         (acc, n) => {
             (acc[n.date] ??= []).push(n);
             return acc;
         },
         {}
     );
-
-    const startItem = (safePage - 1) * ITEMS_PER_PAGE + 1;
-    const endItem = Math.min(safePage * ITEMS_PER_PAGE, notifications.length);
-
-    // Generate compact page numbers with ellipsis
-    const pageNumbers = useMemo(() => {
-        const pages: (number | '...')[] = [];
-        if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
-        } else {
-            pages.push(1);
-            if (safePage > 3) pages.push('...');
-            const rangeStart = Math.max(2, safePage - 1);
-            const rangeEnd = Math.min(totalPages - 1, safePage + 1);
-            for (let i = rangeStart; i <= rangeEnd; i++) pages.push(i);
-            if (safePage < totalPages - 2) pages.push('...');
-            pages.push(totalPages);
-        }
-        return pages;
-    }, [totalPages, safePage]);
 
     return (
         <div className="min-h-screen bg-[#fcfcfd] dark:bg-slate-900 flex flex-col">
@@ -110,7 +108,7 @@ const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
                     onClearAll={onClearAll}
                 />
 
-                {notifications.length === 0 ? (
+                {notifications.length === 0 && !isLoading ? (
                     <EmptyState
                         isFiltered={isFiltered}
                         activeFilterLabel={activeFilterLabel}
@@ -145,55 +143,19 @@ const NotificationsTemplate: React.FC<NotificationsTemplateProps> = ({
                             ))}
                         </div>
 
-                        {/* ── Pagination Controls ──────────────────────────── */}
-                        {totalPages > 1 && (
-                            <div className="flex items-center justify-between pt-6 border-t border-gray-100 dark:border-slate-800">
-                                {/* Item range label */}
-                                <p className="text-xs font-medium text-gray-400 dark:text-slate-500">
-                                    Showing <span className="font-bold text-gray-600 dark:text-slate-300">{startItem}–{endItem}</span> of{' '}
-                                    <span className="font-bold text-gray-600 dark:text-slate-300">{notifications.length}</span>
-                                </p>
-
-                                {/* Page buttons */}
-                                <div className="flex items-center gap-1.5">
-                                    <button
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                        disabled={safePage === 1}
-                                        className="w-8 h-8 grid place-items-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 transition-all hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-slate-700"
-                                    >
-                                        <ChevronLeft size={16} />
-                                    </button>
-
-                                    {pageNumbers.map((page, idx) =>
-                                        page === '...' ? (
-                                            <span key={`ellipsis-${idx}`} className="w-8 h-8 grid place-items-center text-xs text-gray-400 dark:text-slate-600 select-none">
-                                                …
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={page}
-                                                onClick={() => setCurrentPage(page)}
-                                                className={`w-8 h-8 grid place-items-center rounded-lg text-xs font-bold transition-all ${
-                                                    page === safePage
-                                                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/30'
-                                                        : 'border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500'
-                                                }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        )
-                                    )}
-
-                                    <button
-                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                        disabled={safePage === totalPages}
-                                        className="w-8 h-8 grid place-items-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 transition-all hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-200 dark:disabled:hover:border-slate-700"
-                                    >
-                                        <ChevronRight size={16} />
-                                    </button>
+                        {/* ── Infinite Scroll Sentinel ──────────────────────────── */}
+                        <div ref={loaderRef} className="py-8 flex justify-center items-center">
+                            {isLoading ? (
+                                <div className="flex items-center gap-3 text-sm font-semibold text-gray-400 dark:text-slate-500">
+                                    <span className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+                                    Loading more notifications...
                                 </div>
-                            </div>
-                        )}
+                            ) : !hasMore && notifications.length > 0 ? (
+                                <p className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[2px]">
+                                    You've reached the end
+                                </p>
+                            ) : null}
+                        </div>
                     </>
                 )}
             </main>

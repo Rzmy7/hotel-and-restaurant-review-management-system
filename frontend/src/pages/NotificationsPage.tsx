@@ -58,34 +58,18 @@ const getTimeLabel = (value: string | null): string => {
  * 
  * @returns {React.FC} The redesigned Notifications Page.
  */
+const PAGE_SIZE = 15;
+
 const NotificationsPage: React.FC = () => {
     const location = useLocation();
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    //Controls: announcement, alert, success, system
     const [activePrimaryFilter, setActivePrimaryFilter] = useState<'all' | 'unread'>('all');
     const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'success' | 'system'>('all-types');
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
-
-    const loadNotifications = useCallback(async () => {
-        try {
-            // Fetch max 100 notifications from backend
-            const result = await notificationsService.getNotifications(100);
-            setNotifications(
-                // Convert backend format → frontend format
-                (result.notifications || []).map((item) => ({
-                    id: item.notification_id,
-                    type: mapNotificationType(item.notification_type),
-                    title: item.title || 'Notification',
-                    message: item.message || '',
-                    time: getTimeLabel(item.created_at),
-                    date: getDateLabel(item.created_at),
-                    read: !!item.is_read,
-                }))
-            );
-        } catch (error) {
-            console.error('Failed to load notifications:', error);
-        }
-    }, []);
+    const lockRef = React.useRef(false);
 
     /**
      * Synchronize filter state with URL query parameters.
@@ -107,13 +91,72 @@ const NotificationsPage: React.FC = () => {
         }
     }, [location.search]);
 
-
-    // Auto Fetch Notifications
+    // Reset pagination state and load first page on filter change
     React.useEffect(() => {
-        loadNotifications();
-        const intervalId = window.setInterval(loadNotifications, 30000);   // Auto refresh every 30s
-        return () => window.clearInterval(intervalId);
-    }, [loadNotifications]);
+        const resetAndFetch = async () => {
+            if (lockRef.current) return;
+            lockRef.current = true;
+            setIsLoading(true);
+            try {
+                const isUnread = activePrimaryFilter === 'unread';
+                const result = await notificationsService.getNotifications(PAGE_SIZE, 0, isUnread);
+                const fetched = result.notifications || [];
+                
+                setNotifications(
+                    fetched.map((item) => ({
+                        id: item.notification_id,
+                        type: mapNotificationType(item.notification_type),
+                        title: item.title || 'Notification',
+                        message: item.message || '',
+                        time: getTimeLabel(item.created_at),
+                        date: getDateLabel(item.created_at),
+                        read: !!item.is_read,
+                    }))
+                );
+
+                setOffset(fetched.length);
+                setHasMore(fetched.length === PAGE_SIZE);
+            } catch (error) {
+                console.error('Failed to load notifications on filter change:', error);
+            } finally {
+                setIsLoading(false);
+                lockRef.current = false;
+            }
+        };
+
+        resetAndFetch();
+    }, [activePrimaryFilter]);
+
+    // Infinite scroll loading handler
+    const handleLoadMore = useCallback(async () => {
+        if (lockRef.current || isLoading || !hasMore) return;
+        lockRef.current = true;
+        setIsLoading(true);
+        try {
+            const isUnread = activePrimaryFilter === 'unread';
+            const result = await notificationsService.getNotifications(PAGE_SIZE, offset, isUnread);
+            const fetched = result.notifications || [];
+            
+            const mapped = fetched.map((item) => ({
+                id: item.notification_id,
+                type: mapNotificationType(item.notification_type),
+                title: item.title || 'Notification',
+                message: item.message || '',
+                time: getTimeLabel(item.created_at),
+                date: getDateLabel(item.created_at),
+                read: !!item.is_read,
+            }));
+
+            setNotifications((prev) => [...prev, ...mapped]);
+            setOffset((prevOffset) => prevOffset + fetched.length);
+            setHasMore(fetched.length === PAGE_SIZE);
+        } catch (error) {
+            console.error('Failed to load more notifications:', error);
+        } finally {
+            setIsLoading(false);
+            lockRef.current = false;
+        }
+    }, [isLoading, hasMore, offset, activePrimaryFilter]);
 
     /**
      * Memoized calculation of notification counts for filtering tabs.
@@ -237,6 +280,9 @@ const NotificationsPage: React.FC = () => {
             onDismiss={handleDismiss}
             onMarkAllRead={handleMarkAllRead}
             onClearAll={handleClearAll}
+            hasMore={hasMore}
+            isLoading={isLoading}
+            onLoadMore={handleLoadMore}
         />
     );
 };
