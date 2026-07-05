@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -43,7 +43,7 @@ def as_utc(dt: datetime | None) -> datetime | None:
     return dt.astimezone(timezone.utc)
 
 @router.post("/signup", status_code=201, summary="Register a new user account")
-def signup(payload: SignupModel, db: Session = Depends(get_db)):
+def signup(payload: SignupModel, response: Response, db: Session = Depends(get_db)):
     """Create a new tenant user account. Returns a JWT access token on success."""
     validated = validate_signup_payload(payload.name, payload.email, payload.password)
 
@@ -109,6 +109,9 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         organization_id=None
     )
 
+    from app.core.security import set_auth_cookie
+    set_auth_cookie(response, access_token)
+
     return {
         "message": "User registered successfully in database",
         "access_token": access_token,
@@ -126,7 +129,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
 
 
 @router.post("/login", summary="Authenticate and obtain a JWT")
-def login(payload: LoginModel, db: Session = Depends(get_db)):
+def login(payload: LoginModel, response: Response, db: Session = Depends(get_db)):
     """Validate email/password credentials and return a JWT access token."""
     validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
@@ -134,13 +137,16 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         email=validated["email"],
         password=validated["password"]
     )
+    if "access_token" in result:
+        from app.core.security import set_auth_cookie
+        set_auth_cookie(response, result["access_token"])
     return {
         "message": "Login successful",
         **result
     }
 
 @router.post("/login/2fa", summary="Complete two-factor authentication")
-def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+def verify_login_two_factor(payload: LoginTwoFactorModel, response: Response, db: Session = Depends(get_db)):
     """Verify a TOTP/OTP code to complete the 2FA login flow and receive a JWT."""
     normalized_code = validate_login_otp_code(payload.code)
     result = verify_login_2fa(
@@ -148,6 +154,9 @@ def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(
         email=payload.email.lower(),
         code=normalized_code,
     )
+    if "access_token" in result:
+        from app.core.security import set_auth_cookie
+        set_auth_cookie(response, result["access_token"])
     return {
         "message": "Login successful",
         **result,
@@ -162,6 +171,7 @@ from app.modules.auth.utils.auth_utils import get_current_user as get_jwt_user
 @router.post("/switch-organization", summary="Switch active organization context")
 def switch_organization(
     payload: SwitchOrganizationModel,
+    response: Response,
     db: Session = Depends(get_db),
     current_user = Depends(get_jwt_user)
 ):
@@ -182,10 +192,61 @@ def switch_organization(
         organization_id=payload.organization_id
     )
     
+    from app.core.security import set_auth_cookie
+    set_auth_cookie(response, access_token)
+    
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "organization_id": payload.organization_id
+    }
+
+@router.post("/logout", summary="Log out the current user by clearing the HttpOnly cookie")
+def logout(response: Response):
+    """Clear the access_token HttpOnly cookie on the client."""
+    from app.core.security import clear_auth_cookie
+    clear_auth_cookie(response)
+    return {"message": "Logged out successfully"}
+
+@router.get("/me", summary="Get the current authenticated user's details")
+def get_me(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_jwt_user)
+):
+    roles = get_user_role_names(db, current_user.user_id)
+    
+    # Get active organization context from the cookie/header
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+            
+    organization_id = None
+    if token:
+        try:
+            payload = decode_access_token(token)
+            organization_id = payload.get("organization_id")
+        except Exception:
+            pass
+            
+    if not organization_id:
+        org_query = db.execute(
+            text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"),
+            {"tenant_id": str(current_user.user_id)}
+        ).fetchone()
+        organization_id = str(org_query[0]) if org_query else None
+
+    return {
+        "user_id": str(current_user.user_id),
+        "email": current_user.email,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "full_name": current_user.full_name,
+        "role": roles[0] if roles else TENANT_ROLE,
+        "roles": roles,
+        "organization_id": organization_id,
     }
 
 @router.post("/forgot-password", summary="Request a password reset email")

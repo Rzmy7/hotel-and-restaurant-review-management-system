@@ -44,11 +44,16 @@ async function handleResponse(response: Response, requestUrl: string) {
             throw new Error(backendMessage);
         }
 
-        console.warn("Unauthorized! Clearing session and redirecting to login...");
+        const isAuthMe = requestUrl.includes('/auth/me');
+
+        if (!isAuthMe) {
+            console.warn("Unauthorized! Clearing session and redirecting to login...");
+        }
         localStorage.removeItem("token");
         localStorage.removeItem("authUser");
         // For protected endpoints, 401 means the current session is no longer valid.
-        if (window.location.pathname !== "/login") {
+        // Initial /auth/me check should fail gracefully without a hard page reload redirect.
+        if (window.location.pathname !== "/login" && !isAuthMe) {
             window.location.href = "/login?expired=true";
         }
         throw new Error("Session expired. Please log in again.");
@@ -99,18 +104,24 @@ async function handleResponse(response: Response, requestUrl: string) {
 }
 
 const getHeaders = (customHeaders?: Record<string, string>, isFormData: boolean = false) => {
-    const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
         ...customHeaders
     };
+    
+    // ponytail: restrict localStorage fallback exclusively to unit test runs to prevent production XSS leakage
+    const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') || 
+                      (import.meta.env?.MODE === 'test');
+    if (isTestEnv) {
+        const token = localStorage.getItem('token');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
     
     if (!isFormData) {
         headers['Content-Type'] = 'application/json';
     }
     
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
     return headers;
 };
 
@@ -135,7 +146,8 @@ export const apiClient = {
 
         const response = await fetch(`${fullUrl}${queryString}`, {
             method: 'GET',
-            headers: getHeaders(customHeaders)
+            headers: getHeaders(customHeaders),
+            credentials: 'include'
         });
         return handleResponse(response, fullUrl);
     },
@@ -148,6 +160,7 @@ export const apiClient = {
             method: 'POST',
             headers: getHeaders(customHeaders, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
+            credentials: 'include'
         });
         return handleResponse(response, fullUrl);
     },
@@ -160,6 +173,7 @@ export const apiClient = {
             method: 'PUT',
             headers: getHeaders(customHeaders, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
+            credentials: 'include'
         });
         return handleResponse(response, fullUrl);
     },
@@ -172,6 +186,7 @@ export const apiClient = {
             method: 'PATCH',
             headers: getHeaders(customHeaders, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
+            credentials: 'include'
         });
         return handleResponse(response, fullUrl);
     },
@@ -180,7 +195,8 @@ export const apiClient = {
         const fullUrl = getFullUrl(url);
         const response = await fetch(fullUrl, { 
             method: 'DELETE',
-            headers: getHeaders(customHeaders)
+            headers: getHeaders(customHeaders),
+            credentials: 'include'
         });
         return handleResponse(response, fullUrl);
     }

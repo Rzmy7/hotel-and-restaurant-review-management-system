@@ -133,7 +133,10 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
 
     frontend_url = FRONTEND_URL
 
-    return RedirectResponse(
-        url=f"{frontend_url}/oauth-success?token={access_token}",
+    response = RedirectResponse(
+        url=f"{frontend_url}/oauth-success",
         status_code=302
     )
+    from app.core.security import set_auth_cookie
+    set_auth_cookie(response, access_token)
+    return response

@@ -11,6 +11,7 @@ const queryClient = new QueryClient();
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NavigationBlockerProvider } from './contexts/NavigationBlockerContext';
+import { isAdminRole, getDashboardPathForRole, isExternalDestination } from './utils/authRole';
 
 // Components
 import Sidebar from './components/shared/SideBar';
@@ -124,6 +125,15 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (user === null) {
     // If user is explicitly null, it means we checked and no session exists
     return <Navigate to="/login" replace />;
+  }
+
+  // ponytail: if admin tries to access user frontend, redirect them to admin-frontend
+  if (isAdminRole(user.role)) {
+    const destination = getDashboardPathForRole(user.role);
+    if (isExternalDestination(destination)) {
+      window.location.href = destination;
+      return null;
+    }
   }
 
   return <>{children}</>;

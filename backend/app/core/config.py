@@ -18,6 +18,8 @@ load_dotenv()
 SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret")
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 ADMIN_FRONTEND_URL: str = os.getenv("ADMIN_FRONTEND_URL", "http://localhost:5174")
+ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+SECURE_COOKIES: bool = ENVIRONMENT.lower() == "production"
 
 # ── SQLAlchemy (used by auth / users / groups / roles) ──────────────
 DATABASE_URL: str | None = os.getenv("DATABASE_URL")

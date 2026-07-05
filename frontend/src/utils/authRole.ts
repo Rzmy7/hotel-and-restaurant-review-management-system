@@ -14,23 +14,22 @@ export const normalizeRole = (value: unknown): string => {
 
 const ADMIN_ROLES = new Set(['ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN']);
 
-const getAdminPanelUrl = (providedToken?: string, providedUser?: string): string => {
-    const base = getAdminPanelBaseUrl();
-    const token = providedToken || localStorage.getItem('token');
-    const authUser = providedUser || localStorage.getItem('authUser');
-    
-    if (token) {
-        const params = new URLSearchParams();
-        params.set('token', token);
-        if (authUser) params.set('user', authUser);
-        return `${base}?${params.toString()}`;
-    }
-    return base;
+const getAdminPanelUrl = (): string => {
+    return getAdminPanelBaseUrl();
 };
 
 export const isAdminRole = (value: unknown): boolean => ADMIN_ROLES.has(normalizeRole(value));
 
 export const isExternalDestination = (value: string): boolean => /^https?:\/\//i.test(value);
 
-export const getDashboardPathForRole = (value: unknown, token?: string, userStr?: string): string =>
-    isAdminRole(value) ? getAdminPanelUrl(token, userStr) : '/dashboard';
+export const getDashboardPathForRole = (value: unknown, token?: string, user?: string): string => {
+    if (isAdminRole(value)) {
+        const baseUrl = getAdminPanelUrl();
+        const params = new URLSearchParams();
+        if (token) params.append('token', token);
+        if (user) params.append('user', user);
+        const query = params.toString();
+        return query ? `${baseUrl}?${query}` : baseUrl;
+    }
+    return '/dashboard';
+};

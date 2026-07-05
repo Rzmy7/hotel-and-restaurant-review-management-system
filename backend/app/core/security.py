@@ -10,7 +10,41 @@ from datetime import datetime, timedelta
 from jose import jwt
 import bcrypt
 
-from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+from fastapi import Response
+from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES, SECURE_COOKIES
+
+# ── Cookie management ──────────────────────────────────────────────
+
+def set_auth_cookie(response: Response, token: str):
+    """Set the HttpOnly access token cookie with appropriate security attributes and max_age."""
+    try:
+        payload = decode_access_token(token)
+        exp = payload.get("exp")
+        if exp:
+            max_age = int(exp - datetime.utcnow().timestamp())
+        else:
+            max_age = JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    except Exception:
+        max_age = JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=SECURE_COOKIES,
+        samesite="lax",
+        max_age=max_age if max_age > 0 else None,
+        expires=max_age if max_age > 0 else None,
+        path="/",
+    )
+
+
+def clear_auth_cookie(response: Response):
+    """Clear the access token cookie."""
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+    )
 
 # ── Password hashing ───────────────────────────────────────────────
 

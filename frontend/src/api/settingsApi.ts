@@ -78,15 +78,12 @@ const toApiPath = (path: string): string => {
 
 const settingsAxios = axios.create({
     baseURL: getApiBaseUrl(),
+    withCredentials: true,
 });
 
 settingsAxios.interceptors.request.use((config) => {
     config.baseURL = getApiBaseUrl();
-    const token = localStorage.getItem('token');
     config.headers = config.headers ?? {};
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
 
     if (!(config.data instanceof FormData)) {
         config.headers['Content-Type'] = 'application/json';

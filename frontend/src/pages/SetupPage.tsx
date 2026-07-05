@@ -155,8 +155,6 @@ const SetupPage = () => {
     }, [user?.user_id]);
 
     const handleContinue = async () => {
-        const token = localStorage.getItem("token");
-
         const orgName = organizationName.trim();
         const locUrlTrim = locationUrl.trim();
 
@@ -165,7 +163,7 @@ const SetupPage = () => {
             return;
         }
 
-        if (!token) {
+        if (!user) {
             alert("User not authenticated");
             return;
         }

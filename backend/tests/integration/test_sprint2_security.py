@@ -44,6 +44,7 @@ def security_client():
 
         # Dependency Overrides
         from app.database.session import get_db
+        from app.database import get_db as get_db_core
         from app.core.dependencies import get_current_user as core_get_user
         from app.modules.auth.utils.auth_utils import get_current_user as auth_get_user
 
@@ -67,7 +68,7 @@ def security_client():
                 return MagicMock(fetchone=lambda: (TEST_OWNED_ORG_ID,))
 
             # Review ID lookup check
-            if "select organization_id from dbo.processed_review" in stmt_str:
+            if "dbo.processed_review" in stmt_str:
                 review_id = p.get("review_id")
                 if "44444444" in str(review_id):
                     return MagicMock(fetchone=lambda: (TEST_OWNED_ORG_ID,))
@@ -89,6 +90,7 @@ def security_client():
             return RegularUser
 
         main_module.app.dependency_overrides[get_db] = _override_get_db
+        main_module.app.dependency_overrides[get_db_core] = _override_get_db
         main_module.app.dependency_overrides[core_get_user] = _override_get_user
         main_module.app.dependency_overrides[auth_get_user] = _override_get_user
 

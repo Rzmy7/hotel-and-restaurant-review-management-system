@@ -95,13 +95,7 @@ const FinishSetupPage = () => {
             const formData = new FormData();
             formData.append('file', rulesFile);
 
-            const token = localStorage.getItem('token') || accessToken;
-            const baseUrl = getApiBaseUrl();
-            await fetch(`${baseUrl.replace(/\/$/, '')}/api/organizations/${organizationId}/upload-rules`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` },
-              body: formData,
-            });
+            await apiClient.post(`/organizations/${organizationId}/upload-rules`, formData);
           } catch (rulesErr) {
             console.warn('Rules file upload failed (non-blocking):', rulesErr);
           } finally {

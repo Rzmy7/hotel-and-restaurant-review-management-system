@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Organization } from '../types/dashboard';
+import { apiClient } from '../api/client';
 
 interface OrganizationState {
     organizations: Organization[];
@@ -46,7 +47,36 @@ export const useOrganizationStore = create<OrganizationState>((set, get) => ({
         try {
             set({ loading: true, error: null });
 
-            // AuthContext already fetched and stored these after login — read from localStorage.
+            // Fetch live list of organizations from the backend API
+            const data = await apiClient.get<any>('/user/organizations');
+            const list = Array.isArray(data) ? data : (data.organizations || []);
+
+            const orgs: Organization[] = list.map((o: any) => ({
+                id: o.organization_id ?? o.id ?? '',
+                name: o.organization_name ?? o.name ?? 'My Organization',
+                status: o.status ?? 'Active',
+            }));
+
+            // ponytail: update local storage so that legacy pages reading directly continue to work
+            localStorage.setItem('organizations', JSON.stringify(list));
+            const orgIds = orgs.map(o => o.id);
+            localStorage.setItem('organization_ids', JSON.stringify(orgIds));
+
+            const currentId = localStorage.getItem('current_organization');
+            const currentOrg = orgs.find((o) => o.id === currentId) ?? (orgs.length > 0 ? orgs[0] : null);
+
+            if (currentOrg) {
+                localStorage.setItem('current_organization', currentOrg.id);
+            }
+
+            set({
+                organizations: orgs,
+                currentOrg,
+                hasOrganization: orgs.length > 0,
+                loading: false,
+            });
+        } catch (err) {
+            console.warn("Failed to fetch live organizations; falling back to local storage cache:", err);
             const { organizations, currentOrg } = loadFromStorage();
 
             set({
@@ -55,8 +85,6 @@ export const useOrganizationStore = create<OrganizationState>((set, get) => ({
                 hasOrganization: organizations.length > 0,
                 loading: false,
             });
-        } catch (err) {
-            set({ error: 'Failed to load organizations', loading: false, hasOrganization: false });
         }
     },
 

@@ -38,6 +38,23 @@ const normalizeUrl = (value: string, fallback: string): string => {
     }
 };
 
+const matchWindowHostname = (urlStr: string): string => {
+    try {
+        if (typeof window === 'undefined' || !window.location) return urlStr;
+        const url = new URL(urlStr);
+        const winHost = window.location.hostname;
+        // ponytail: dynamically swap localhost/127.0.0.1 to match window hostname for secure SameSite cookie delivery
+        if (winHost === 'localhost' && url.hostname === '127.0.0.1') {
+            url.hostname = 'localhost';
+        } else if (winHost === '127.0.0.1' && url.hostname === 'localhost') {
+            url.hostname = '127.0.0.1';
+        }
+        return url.toString().replace(/\/$/, '');
+    } catch {
+        return urlStr;
+    }
+};
+
 /**
  * Return the current backend base URL (no trailing slash).
  *
@@ -47,7 +64,7 @@ const normalizeUrl = (value: string, fallback: string): string => {
  */
 export const getApiBaseUrl = (): string => {
     const stored = localStorage.getItem('mainBackendUrl');
-    return normalizeUrl(stored || FALLBACK_BACKEND_URL, FALLBACK_BACKEND_URL);
+    return matchWindowHostname(normalizeUrl(stored || FALLBACK_BACKEND_URL, FALLBACK_BACKEND_URL));
 };
 
 /**
@@ -55,5 +72,5 @@ export const getApiBaseUrl = (): string => {
  */
 export const getAdminPanelUrl = (): string => {
     const stored = localStorage.getItem('adminPanelUrl');
-    return normalizeUrl(stored || FALLBACK_ADMIN_PANEL_URL, FALLBACK_ADMIN_PANEL_URL);
+    return matchWindowHostname(normalizeUrl(stored || FALLBACK_ADMIN_PANEL_URL, FALLBACK_ADMIN_PANEL_URL));
 };

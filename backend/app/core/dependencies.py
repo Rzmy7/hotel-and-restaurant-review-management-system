@@ -12,17 +12,36 @@ from jose import JWTError
 from app.database import get_db  # noqa: F401
 from app.core.security import decode_access_token
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 optional_security = HTTPBearer(auto_error=False)
 
 
-def get_current_user(credentials=Depends(security)):
-    """Extract and validate the current user from a Bearer token."""
-    token = credentials.credentials.strip()
+def get_current_user(request: Request, credentials=Depends(security)):
+    """Extract and validate the current user from a cookie or Bearer token."""
+    token = None
+    
+    if request is not None:
+        if hasattr(request, "cookies"):
+            token = request.cookies.get("access_token")
+        elif hasattr(request, "credentials"):
+            token = request.credentials.strip()
+        elif isinstance(request, str):
+            token = request.strip()
 
-    # Allow accidental "Bearer <token>" paste in auth dialogs.
-    if token.lower().startswith("bearer "):
+    if not token and credentials:
+        if hasattr(credentials, "credentials"):
+            token = credentials.credentials.strip()
+        elif isinstance(credentials, str):
+            token = credentials.strip()
+
+    if token and token.lower().startswith("bearer "):
         token = token[7:].strip()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated. Missing authentication token.",
+        )
 
     if token.count(".") != 2:
         raise HTTPException(
@@ -44,20 +63,32 @@ def get_current_user(credentials=Depends(security)):
         )
 
 
-def get_optional_user(credentials=Depends(optional_security)):
+def get_optional_user(request: Request, credentials=Depends(optional_security)):
     """Return current user dict if a valid JWT is present, otherwise None.
 
     Use this for endpoints that must work both for authenticated frontend
     users AND unauthenticated internal/scheduler callers.
     """
-    if credentials is None:
-        return None
+    token = None
+    
+    if request is not None:
+        if hasattr(request, "cookies"):
+            token = request.cookies.get("access_token")
+        elif hasattr(request, "credentials"):
+            token = request.credentials.strip()
+        elif isinstance(request, str):
+            token = request.strip()
 
-    token = credentials.credentials.strip()
-    if token.lower().startswith("bearer "):
+    if not token and credentials:
+        if hasattr(credentials, "credentials"):
+            token = credentials.credentials.strip()
+        elif isinstance(credentials, str):
+            token = credentials.strip()
+
+    if token and token.lower().startswith("bearer "):
         token = token[7:].strip()
 
-    if token.count(".") != 2:
+    if not token or token.count(".") != 2:
         return None
 
     try:
