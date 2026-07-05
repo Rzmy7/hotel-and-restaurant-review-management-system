@@ -308,7 +308,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.frontend == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
