@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import ProfileTemplate from "../components/profile/templates/ProfileTemplate";
 import UnsavedChangesModal from "../components/profile/organisms/UnsavedChangesModal";
+import ProfileSkeleton from "./ProfileSkeleton";
 import { apiClient } from "../api/client";
 import { useNavigationBlocker } from "../contexts/NavigationBlockerContext";
 
@@ -220,7 +221,7 @@ const ProfilePage: React.FC = () => {
 
     const memberSince = formatMemberSince(profile.joinedDate);
 
-    if (loading) return <div>Loading profile...</div>;
+    if (loading) return <ProfileSkeleton />;
 
     return (
         <>

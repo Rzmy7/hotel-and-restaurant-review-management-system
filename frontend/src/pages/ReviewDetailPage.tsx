@@ -10,6 +10,7 @@ import { reviewsService } from '../services/reviewsService';
 import { apiClient } from '../api/client';
 import type { Review } from '../types/reviews';
 import { Button } from '../components/ui/Button';
+import ReviewDetailSkeleton from './ReviewDetailSkeleton';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const SentimentBadge = ({ sentiment }: { sentiment: string }) => {
@@ -153,14 +154,7 @@ const ReviewDetailPage: React.FC = () => {
 
     // ── Loading ──────────────────────────────────────────────────────────
     if (loading) {
-        return (
-            <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Loading review…</span>
-                </div>
-            </div>
-        );
+        return <ReviewDetailSkeleton />;
     }
 
     // ── Error ────────────────────────────────────────────────────────────
