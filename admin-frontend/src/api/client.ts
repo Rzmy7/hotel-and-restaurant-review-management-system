@@ -52,7 +52,7 @@ const getHeaders = (customHeaders?: Record<string, string>) => {
     };
     
     // ponytail: restrict localStorage fallback exclusively to unit test runs to prevent production XSS leakage
-    const isTestEnv = (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') || 
+    const isTestEnv = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV === 'test') || 
                       (import.meta.env?.MODE === 'test');
     if (isTestEnv) {
         const token = localStorage.getItem('token');

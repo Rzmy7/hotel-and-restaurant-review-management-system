@@ -2,7 +2,7 @@ name: Build & Deploy
 
 on:
   push:
-    branches: [main,dev]
+    branches: [main]
   workflow_dispatch:
     inputs:
       deploy_all:
