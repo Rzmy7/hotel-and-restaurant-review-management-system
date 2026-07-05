@@ -111,7 +111,7 @@ const LoginPage = () => {
 
     try {
       const normalized = normalizeLoginPayload({ email, password });
-      const result = await auth.login(normalized.email, normalized.password);
+      const result = await auth.login(normalized.email, normalized.password, rememberMe);
 
       if ('require_2fa' in result && result.require_2fa) {
         setIsTwoFactorStep(true);
@@ -161,7 +161,7 @@ const LoginPage = () => {
     setError(null);
 
     try {
-      const result = await auth.verifyLogin2fa(email, otpCode);
+      const result = await auth.verifyLogin2fa(email, otpCode, rememberMe);
       const userStr = JSON.stringify({
         user_id: result.user.user_id,
         email: result.user.email,
@@ -191,7 +191,7 @@ const LoginPage = () => {
     }
 
     try {
-      const result = await auth.login(email, password);
+      const result = await auth.login(email, password, rememberMe);
       if ('require_2fa' in result && result.require_2fa) {
         setTwoFactorMessage(result.message || 'A new verification code has been sent to your email.');
       }
