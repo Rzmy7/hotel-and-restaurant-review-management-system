@@ -236,11 +236,11 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     }) => (
         <div className="flex items-center gap-2">
             {isValid ? (
-                <CheckCircle2 size={16} className="text-emerald-400" />
+                <CheckCircle2 size={16} className="text-emerald-500 dark:text-emerald-400" />
             ) : (
-                <XCircle size={16} className="text-slate-500" />
+                <XCircle size={16} className="text-slate-400 dark:text-slate-500" />
             )}
-            <span className={isValid ? 'text-emerald-300 text-xs' : 'text-slate-400 text-xs'}>{label}</span>
+            <span className={isValid ? 'text-emerald-600 dark:text-emerald-300 text-xs' : 'text-slate-500 dark:text-slate-400 text-xs'}>{label}</span>
         </div>
     );
 
@@ -285,22 +285,22 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                 title="Two-Factor Authentication"
                 description="Secure your account with email OTP verification"
                 size="md"
-                className="dark:bg-slate-900 bg-slate-900 text-white border border-slate-700"
+                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700"
             >
                 <div className="p-6 space-y-5">
                     {twoFaStep === 'intro' && (
                         <div className="space-y-4 animate-in fade-in duration-300">
-                            <div className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4">
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-4">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <Shield className="text-blue-400" size={18} />
+                                    <Shield className="text-blue-500 dark:text-blue-400" size={18} />
                                     <h3 className="text-sm font-bold tracking-wide">Step 1</h3>
                                 </div>
-                                <p className="text-sm text-slate-300">
+                                <p className="text-sm text-slate-600 dark:text-slate-300">
                                     A verification code will be sent to your email during login.
                                 </p>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => setIs2faModalOpen(false)} className="dark:border-slate-600 dark:text-slate-300">
+                                <Button variant="outline" onClick={() => setIs2faModalOpen(false)} className="border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-300">
                                     Cancel
                                 </Button>
                                 <Button variant="primary" onClick={() => setTwoFaStep('confirm')}>
@@ -312,17 +312,17 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
 
                     {twoFaStep === 'confirm' && (
                         <div className="space-y-4 animate-in fade-in duration-300">
-                            <div className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4">
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-4">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <Lock className="text-blue-400" size={18} />
+                                    <Lock className="text-blue-500 dark:text-blue-400" size={18} />
                                     <h3 className="text-sm font-bold tracking-wide">Step 2</h3>
                                 </div>
-                                <p className="text-sm text-slate-300">
+                                <p className="text-sm text-slate-600 dark:text-slate-300">
                                     Confirm enabling Two-Factor Authentication for this account.
                                 </p>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => setTwoFaStep('intro')} className="dark:border-slate-600 dark:text-slate-300">
+                                <Button variant="outline" onClick={() => setTwoFaStep('intro')} className="border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-300">
                                     Back
                                 </Button>
                                 <Button variant="primary" onClick={handleConfirmEnable2fa}>
@@ -334,8 +334,8 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
 
                     {twoFaStep === 'otp' && (
                         <div className="space-y-4 animate-in fade-in duration-300">
-                            <div className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 space-y-3">
-                                <p className="text-sm text-slate-300">Enter the code sent to your email</p>
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-4 space-y-3">
+                                <p className="text-sm text-slate-600 dark:text-slate-300">Enter the code sent to your email</p>
                                 <Input
                                     inputMode="numeric"
                                     maxLength={6}
@@ -345,11 +345,11 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                         setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6));
                                     }}
                                     placeholder="123456"
-                                    className="tracking-[0.35em] text-center text-lg font-bold bg-slate-900 border-slate-700 text-slate-100"
+                                    className="tracking-[0.35em] text-center text-lg font-bold bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                                 />
                                 {/* Dev code removed since backend handles generation and emailing */}
                                 <div className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-400">Code expires in: <span className="text-slate-200 font-bold">{formatTimer(otpExpiresIn)}</span></span>
+                                    <span className="text-slate-500 dark:text-slate-400">Code expires in: <span className="text-slate-900 dark:text-slate-200 font-bold">{formatTimer(otpExpiresIn)}</span></span>
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -360,11 +360,11 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                         {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : (isIssuingOtp ? 'Sending...' : 'Resend Code')}
                                     </Button>
                                 </div>
-                                <p className="text-[11px] text-slate-400">Attempts left: {Math.max(MAX_OTP_ATTEMPTS - otpAttempts, 0)} | OTP is one-time use.</p>
-                                {otpError && <p className="text-xs text-rose-400">{otpError}</p>}
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">Attempts left: {Math.max(MAX_OTP_ATTEMPTS - otpAttempts, 0)} | OTP is one-time use.</p>
+                                {otpError && <p className="text-xs text-rose-500 dark:text-rose-400">{otpError}</p>}
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => setTwoFaStep('confirm')} className="dark:border-slate-600 dark:text-slate-300">
+                                <Button variant="outline" onClick={() => setTwoFaStep('confirm')} className="border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-300">
                                     Back
                                 </Button>
                                 <Button variant="primary" onClick={handleVerifyOtp} disabled={isVerifyingOtp} isLoading={isVerifyingOtp}>
@@ -383,10 +383,10 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                 title="Update Password"
                 description="Keep your account secure by using a strong password"
                 size="md"
-                className="dark:bg-slate-900 bg-slate-900 text-white border border-slate-700"
+                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700"
                 footer={
                     <div className="flex items-center justify-end gap-3">
-                        <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)} className="dark:border-slate-600 dark:text-slate-300">
+                        <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)} className="border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-300">
                             Cancel
                         </Button>
                         <Button variant="primary" onClick={handleSavePassword} disabled={!canSavePassword || isSavingPassword} isLoading={isSavingPassword}>
@@ -405,7 +405,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                 setCurrentPassword(e.target.value);
                             }}
                             placeholder="Enter current password"
-                            className="bg-slate-900 border-slate-700 text-slate-100"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                         />
                     </FormField>
 
@@ -418,11 +418,11 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                 setNewPassword(e.target.value);
                             }}
                             placeholder="Enter new password"
-                            className="bg-slate-900 border-slate-700 text-slate-100"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                         />
-                        <div className="mt-3 rounded-xl border border-slate-700 bg-slate-800/70 p-3 space-y-2">
+                        <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-3 space-y-2">
                             <div className="flex items-center justify-between">
-                                <p className="text-xs font-semibold text-slate-300">Password Requirements</p>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Password Requirements</p>
                                 <span className={`text-xs font-semibold ${passwordStrength.className}`}>{passwordStrength.label}</span>
                             </div>
                             <RequirementRow isValid={passwordChecks.minLength} label="At least 8 characters" />
@@ -441,16 +441,16 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                                 setConfirmPassword(e.target.value);
                             }}
                             placeholder="Re-enter new password"
-                            className="bg-slate-900 border-slate-700 text-slate-100"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                         />
                         {confirmPassword.length > 0 && !passwordsMatch && (
-                            <p className="mt-2 text-xs text-rose-400">Passwords do not match.</p>
+                            <p className="mt-2 text-xs text-rose-500 dark:text-rose-400">Passwords do not match.</p>
                         )}
                     </FormField>
 
-                    <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm text-slate-300">
-                            <KeyRound size={16} className="text-blue-400" />
+                    <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-4 py-3">
+                        <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                            <KeyRound size={16} className="text-blue-500 dark:text-blue-400" />
                             Log out all other active sessions
                         </div>
                         <input
@@ -461,7 +461,7 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                         />
                     </div>
 
-                    {passwordError && <p className="text-xs text-rose-400">{passwordError}</p>}
+                    {passwordError && <p className="text-xs text-rose-500 dark:text-rose-400">{passwordError}</p>}
                 </div>
             </Modal>
         </>
