@@ -2,7 +2,7 @@ name: Build & Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main,dev]
   workflow_dispatch:
     inputs:
       deploy_all:
@@ -30,6 +30,14 @@ on:
         required: false
         type: boolean
         default: false
+      runner_type:
+        description: 'Runner to use'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - self-hosted
 
 env:
   REGISTRY: ghcr.io
@@ -43,7 +51,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
 
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     outputs:
       frontend: ${{ steps.check.outputs.frontend }}
       admin-frontend: ${{ steps.check.outputs.admin-frontend }}
@@ -308,7 +316,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -342,7 +350,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs['admin-frontend'] == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -378,7 +386,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -409,7 +417,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.embedding == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -437,7 +445,7 @@ jobs:
   build-scraper:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.scraper == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -488,7 +496,7 @@ jobs:
         needs.build-embedding.result == 'failure' ||
         needs.build-scraper.result == 'failure'
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     steps:
       - uses: appleboy/ssh-action@v1
         with:
