@@ -174,8 +174,15 @@ const buildPaths = (adminPath: string, userPath: string, query = ''): string[] =
 };
 
 export const notificationsService = {
-    async getNotifications(limit = 50): Promise<NotificationsResponse> {
-        const query = buildQuery({ limit: String(limit) });
+    async getNotifications(limit = 20, offset = 0, unreadOnly = false): Promise<NotificationsResponse> {
+        const extraParams: Record<string, string> = {
+            limit: String(limit),
+            offset: String(offset),
+        };
+        if (unreadOnly) {
+            extraParams.unreadOnly = 'true';
+        }
+        const query = buildQuery(extraParams);
         return requestJsonWithFallback<NotificationsResponse>(
             buildPaths('/api/admin/notifications/', '/api/notifications/me', query),
             { method: 'GET' }

@@ -21,6 +21,8 @@ router = APIRouter(prefix="/notifications", tags=["Admin - Settings"])
 def get_admin_notifications(
     userId: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    unreadOnly: bool = Query(False),
 ) -> dict:
     connection = pyodbc.connect(get_connection_string())
     try:
@@ -30,9 +32,14 @@ def get_admin_notifications(
         target_user_id = resolve_target_user_id(cursor, userId)
         safe_limit = max(1, min(limit, 100))
 
+        where_clause = "un.user_id = ?"
+        params = [target_user_id]
+        if unreadOnly:
+            where_clause += " AND COALESCE(un.is_read, 0) = 0"
+
         rows = cursor.execute(
             f"""
-            SELECT TOP {safe_limit}
+            SELECT
                 CAST(un.notification_id AS NVARCHAR(36)) AS notification_id,
                 CAST(un.user_id AS NVARCHAR(36)) AS user_id,
                 n.title,
@@ -44,10 +51,13 @@ def get_admin_notifications(
             FROM dbo.user_notification AS un
             INNER JOIN dbo.notification AS n
                 ON n.notification_id = un.notification_id
-            WHERE un.user_id = ?
-            ORDER BY n.created_at DESC
+            WHERE {where_clause}
+            ORDER BY n.created_at DESC, un.notification_id DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
             """,
-            target_user_id,
+            *params,
+            offset,
+            safe_limit,
         ).fetchall()
 
         notifications = [
