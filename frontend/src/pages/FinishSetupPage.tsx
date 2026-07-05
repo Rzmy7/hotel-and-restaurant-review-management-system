@@ -6,6 +6,7 @@ import { apiClient } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { getApiBaseUrl } from '../config/api';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
@@ -33,6 +34,7 @@ const clearSetupDraftState = () => {
 const FinishSetupPage = () => {
   const navigate = useNavigate();
   const { user, persist } = useAuth();
+  const fetchOrganizations = useOrganizationStore((state) => state.fetchOrganizations);
   const [isFinishing, setIsFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const showUpgradePlanAction =
@@ -129,6 +131,9 @@ const FinishSetupPage = () => {
         localStorage.setItem('setupComplete', 'true');
         
         clearSetupDraftState();
+
+        // Sync the organization store state immediately so that the navigation route checker sees the organization
+        await fetchOrganizations();
         
         // Wait briefly for the "success" feel
         setTimeout(() => {

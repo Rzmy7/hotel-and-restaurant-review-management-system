@@ -5,7 +5,7 @@ import {
     History, BarChart3, Loader2, ArrowRight, RefreshCw as RefreshIcon, Search
 } from 'lucide-react';
 import type { Source, SyncLog } from '../../types/sources';
-import { useSyncProgress } from '../../hooks/useSyncProgress';
+
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -47,71 +47,6 @@ const getActivityIcon = (type?: string, status?: string) => {
     }
 };
 
-const SyncProgressBarItem = ({ 
-    sourceId, 
-    platform, 
-    isOpen 
-}: { 
-    sourceId: string | number; 
-    platform: string; 
-    isOpen: boolean;
-}) => {
-    const { progress } = useSyncProgress(sourceId, isOpen);
-
-    if (!progress) {
-        return (
-            <div className="mx-6 my-3 p-4 rounded-2xl bg-[#597FE6]/5 dark:bg-[#597FE6]/10 border border-[#597FE6]/20 dark:border-[#597FE6]/30">
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-[#597FE6]/10 dark:bg-[#597FE6]/20 rounded-lg">
-                            <RefreshIcon size={14} className="text-[#597FE6] animate-spin" />
-                        </div>
-                        <span className="text-[11px] font-black uppercase tracking-wider text-[#597FE6] dark:text-[#597FE6]">
-                            {platform} Syncing...
-                        </span>
-                    </div>
-                    <span className="text-[13px] font-black text-[#597FE6] tabular-nums">
-                        0%
-                    </span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
-                    <div className="h-full bg-gradient-to-r from-[#597FE6] to-[#80a0f0] w-0 transition-all duration-500 ease-out rounded-full" />
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="mx-6 my-3 p-4 rounded-2xl bg-[#597FE6]/5 dark:bg-[#597FE6]/10 border border-[#597FE6]/20 dark:border-[#597FE6]/30">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-[#597FE6]/10 dark:bg-[#597FE6]/20 rounded-lg">
-                        <RefreshIcon size={14} className="text-[#597FE6] animate-spin" />
-                    </div>
-                    <span className="text-[11px] font-black uppercase tracking-wider text-[#597FE6] dark:text-[#597FE6]">
-                        {platform} Live Sync
-                    </span>
-                </div>
-                <span className="text-[13px] font-black text-[#597FE6] dark:text-[#597FE6] tabular-nums">
-                    {progress.percentage}%
-                </span>
-            </div>
-            
-            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
-                <div 
-                    className="h-full bg-gradient-to-r from-[#597FE6] to-[#80a0f0] transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(89,127,230,0.3)]"
-                    style={{ width: `${progress.percentage}%` }}
-                />
-            </div>
-            
-            <p className="text-[10px] font-bold text-[#597FE6]/70 dark:text-[#597FE6]/70 uppercase tracking-widest flex items-center gap-1.5">
-                <span className="w-1 h-1 bg-[#597FE6] rounded-full animate-ping" />
-                {progress.progress || 'Processing...'}
-            </p>
-        </div>
-    );
-};
-
 const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ 
     isOpen, 
     onClose, 
@@ -133,6 +68,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
     const syncingSources = sources.filter(s => s.status === 'Syncing');
 
 
+
     // Infinite scroll listener
     useEffect(() => {
         const container = scrollContainerRef.current;
@@ -147,7 +83,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
 
         container.addEventListener('scroll', handleScroll);
         return () => container.removeEventListener('scroll', handleScroll);
-    }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+    }, [isOpen, hasNextPage, isFetchingNextPage, onLoadMore]);
 
     if (!isOpen) return null;
 
@@ -234,11 +170,13 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                             { label: 'Syncs', filter: { type: 'SYNC_STARTED,SYNC_COMPLETED' } },
                             { label: 'System', filter: { type: 'SOURCE_ADDED,SOURCE_REMOVED,SYNC_SCHEDULE_UPDATED' } }
                         ].map((tab) => {
-                            const isActive = JSON.stringify(currentFilter) === JSON.stringify(tab.filter);
+                            const isActive = 
+                                (!tab.filter.important && !tab.filter.type && !currentFilter?.important && !currentFilter?.type) ||
+                                (tab.filter.important === currentFilter?.important && tab.filter.type === currentFilter?.type);
                             return (
                                 <button
                                     key={tab.label}
-                                    onClick={() => onFilterChange?.(tab.filter)}
+                                    onClick={() => onFilterChange?.({ ...tab.filter, sourceId: currentFilter?.sourceId })}
                                     className={cn(
                                         "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300",
                                         isActive 
@@ -253,17 +191,26 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                     </div>
                 </div>
 
-                {/* Real-time Progress Bar */}
+                {/* Active Syncing Indicators */}
                 {isOpen && syncingSources.length > 0 && (
-                    <div className="space-y-1">
-                        {syncingSources.map(source => (
-                            <SyncProgressBarItem 
-                                key={source.id} 
-                                sourceId={source.id} 
-                                platform={source.platform} 
-                                isOpen={isOpen} 
-                            />
-                        ))}
+                    <div className="mx-8 mb-6 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100/50 dark:border-blue-900/30 space-y-3">
+                        <h4 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                            Currently Syncing
+                        </h4>
+                        <div className="space-y-2">
+                            {syncingSources.map((source) => (
+                                <div key={source.id} className="flex items-center justify-between py-1">
+                                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight flex items-center gap-2">
+                                        <RefreshIcon size={12} className="text-blue-500 animate-spin" />
+                                        {source.platform}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md">
+                                        In Progress
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 

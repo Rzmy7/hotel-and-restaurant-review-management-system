@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { sourcesService } from '../services/sourcesService';
-import type { Source, SyncLog, SourceStats as SourceStatsType } from '../types/sources';
+import type { Source, SyncLog } from '../types/sources';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 // New Components
@@ -28,7 +28,6 @@ const ReviewSourcesPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
-  const [lastSyncTriggeredAt, setLastSyncTriggeredAt] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
@@ -46,15 +45,7 @@ const ReviewSourcesPage = () => {
   const { data: sources = [], isLoading: isLoadingSources, isRefetching: isRefreshingSources } = useQuery({
     queryKey: ['sources', organizationId],
     queryFn: () => sourcesService.getSources(organizationId),
-    refetchInterval: (query) => {
-      const sources = query.state.data as Source[] | undefined;
-      const hasActiveSync = sources?.some(s => s.status === 'In Queue' || s.status === 'Syncing');
-      
-      // If we just triggered a sync, poll for at least 30 seconds to catch the status change
-      const wasRecentlyTriggered = lastSyncTriggeredAt && (Date.now() - lastSyncTriggeredAt < 30000);
-      
-      return (hasActiveSync || wasRecentlyTriggered) ? 5000 : false;
-    }
+    refetchInterval: 3000,
   });
 
   // React Query: Stats
@@ -75,14 +66,15 @@ const ReviewSourcesPage = () => {
     queryFn: ({ pageParam = 0 }) => sourcesService.getSyncLogs(
       organizationId, 
       pageParam as number, 
-      10, 
+      20, 
       activityFilter.type, 
       activityFilter.important,
       debouncedSearch,
       activityFilter.sourceId
     ),
-    getNextPageParam: (lastPage: SyncLog[], allPages: SyncLog[][]) => lastPage.length === 10 ? allPages.length : undefined,
+    getNextPageParam: (lastPage: SyncLog[], allPages: SyncLog[][]) => lastPage.length === 20 ? allPages.length : undefined,
     initialPageParam: 0,
+    enabled: isHistoryOpen,
   });
 
   const logs = useMemo(() => infiniteLogs?.pages.flat() || [], [infiniteLogs]);
@@ -135,9 +127,6 @@ const ReviewSourcesPage = () => {
       const source = sources.find((s: Source) => s.id === id);
       showToast(`Sync started for ${source?.platform || 'source'}`, 'success');
       
-      // Update trigger time to start polling
-      setLastSyncTriggeredAt(Date.now());
-      
       // Invalidate immediately to show updated status
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     },
@@ -176,7 +165,7 @@ const ReviewSourcesPage = () => {
       showToast('Preparing activity history export...', 'info');
       await sourcesService.exportSyncLogs(organizationId);
       showToast('Activity history exported successfully.', 'success');
-    } catch (error) {
+    } catch {
       showToast('Failed to export activity history.', 'error');
     }
   };
@@ -187,13 +176,13 @@ const ReviewSourcesPage = () => {
       await sourcesService.clearSyncLogs(organizationId);
       queryClient.invalidateQueries({ queryKey: ['syncLogs', organizationId] });
       showToast('Activity history cleared.', 'success');
-    } catch (error) {
+    } catch {
       showToast('Failed to clear activity history.', 'error');
     }
   };
 
   // Combined Loading States
-  const isLoading = isLoadingSources || isLoadingStats || isLoadingLogs;
+  const isLoading = isLoadingSources || isLoadingStats;
   const isRefreshing = isRefreshingSources;
 
   // Filtered Sources

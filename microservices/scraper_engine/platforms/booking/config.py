@@ -7,7 +7,7 @@ class BookingSelectors(BaseModel):
     next_page_button: str = '[aria-label="Next page"]'
 
     # Single Review Locators
-    review_card: str = '[data-testid="review-card"]'
+    review_card: str = '[data-testid="review-card"], [data-testid="review-cards"]'
     review_author: str = '.b08850ce41.f546354b44'
     review_nationality: str = '.fff1944c52.fb14de7f14'
     review_title: str = '[data-testid="review-title"]'
