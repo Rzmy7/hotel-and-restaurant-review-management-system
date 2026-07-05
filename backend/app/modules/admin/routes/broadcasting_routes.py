@@ -183,13 +183,38 @@ def get_statistics() -> StatisticsResponse:
 
 
 @router.get("/history")
-def get_history() -> list[dict]:
+def get_history(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+) -> dict:
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     connection = pyodbc.connect(get_connection_string())
     try:
         cursor = connection.cursor()
         ensure_broadcast_events_table(cursor)
-        rows = cursor.execute(
-            """
+
+        where_clauses = []
+        params = []
+        if search:
+            search_pattern = f"%{search.strip()}%"
+            where_clauses.append(
+                "(subject LIKE ? OR body LIKE ? OR audience_label LIKE ? OR sent_by LIKE ?)"
+            )
+            params.extend([search_pattern] * 4)
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Total count query
+        count_query = f"SELECT COUNT(*) FROM dbo.broadcast_event {where_sql}"
+        cursor.execute(count_query, params)
+        total = int(cursor.fetchone()[0] or 0)
+
+        # Paginated query
+        query = f"""
             SELECT
                 broadcast_id, subject, body, channel,
                 audience_type, audience_value, audience_label,
@@ -200,11 +225,20 @@ def get_history() -> list[dict]:
                 sent_by,
                 CAST(created_at AS NVARCHAR(50)) AS created_at
             FROM dbo.broadcast_event
-            ORDER BY created_at DESC
-            """
-        ).fetchall()
+            {where_sql}
+            ORDER BY created_at DESC, broadcast_id DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """
+        cursor.execute(query, params + [offset, limit])
+        rows = cursor.fetchall()
 
-        return [to_record(row) for row in rows]
+        data = [to_record(row) for row in rows]
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
     finally:
         connection.close()
 

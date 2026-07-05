@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
-import { Alert, AlertCategory, AlertSeverity, AlertActionType, ReviewFilters, InsightFilters } from '../../../types/dashboard';
+import { AlertCategory, AlertSeverity, AlertActionType } from '../../../types/dashboard';
+import type { Alert, ReviewFilters, InsightFilters } from '../../../types/dashboard';
 import { Card } from '../atoms/Card';
 import { SectionHeader } from '../molecules/SectionHeader';
 

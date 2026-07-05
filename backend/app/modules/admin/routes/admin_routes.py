@@ -27,6 +27,8 @@ from app.modules.admin.schemas import (
     OrganizationSummary,
     OrganizationUpdatePayload,
     UserStatsData,
+    PaginatedOrganizations,
+    PaginatedUsers,
 )
 from app.modules.admin.services.admin_service import (
     create_user_in_db,
@@ -44,12 +46,16 @@ router = APIRouter(tags=["Admin - Organizations"])
 # ── Organization endpoints ──────────────────────────────────────────
 
 
-@router.get("/organizations", response_model=list[OrganizationSummary], summary="List all organizations")
-def get_organizations() -> list[OrganizationSummary]:
+@router.get("/organizations", response_model=PaginatedOrganizations, summary="List all organizations")
+def get_organizations(
+    page: int = 1,
+    limit: int = 8,
+    search: str | None = None,
+) -> dict:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            return load_organizations(cursor)
+            return load_organizations(cursor, page=page, limit=limit, search=search)
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch organizations: {error}")
 
@@ -295,12 +301,27 @@ def delete_organization(org_id: str) -> dict:
 # ── User endpoints ──────────────────────────────────────────────────
 
 
-@router.get("/users", response_model=list[AdminUser], tags=["Admin - Users"], summary="List all users")
-def get_users() -> list[AdminUser]:
+@router.get("/users", response_model=PaginatedUsers, tags=["Admin - Users"], summary="List all users")
+def get_users(
+    page: int = 1,
+    limit: int = 8,
+    search: str | None = None,
+    role: str | None = None,
+    plan: str | None = None,
+    status: str | None = None,
+) -> dict:
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            return load_users(cursor)
+            return load_users(
+                cursor,
+                page=page,
+                limit=limit,
+                search=search,
+                role=role,
+                plan=plan,
+                status=status,
+            )
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Unable to fetch users: {error}")
 

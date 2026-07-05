@@ -78,7 +78,28 @@ export const Embeddings: React.FC = () => {
         loadData();
     }, []);
 
-    // Auto-refresh jobs and database stats every 5 seconds
+    // Immediately fetch new page data when jobsPage changes
+    useEffect(() => {
+        const fetchPageData = async () => {
+            setJobsLoading(true);
+            try {
+                const jobsData = await getRecentJobs(jobsPage, JOBS_PAGE_SIZE);
+                setJobs(jobsData.jobs);
+                setJobsTotalPages(jobsData.total_pages);
+                setJobsTotal(jobsData.total);
+            } catch (err) {
+                console.error('Failed to fetch page data:', err);
+            } finally {
+                setJobsLoading(false);
+            }
+        };
+        // Skip on mount since mount loads initial data
+        if (!loading) {
+            fetchPageData();
+        }
+    }, [jobsPage]);
+
+    // Auto-refresh jobs and database stats every 5 seconds (runs silently in background)
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
@@ -93,12 +114,12 @@ export const Embeddings: React.FC = () => {
                 setVectorDb(dbStats);
                 setIsPaused(serviceStatus.isPaused);
             } catch (err) {
-                console.error('Failed to refresh data:', err);
+                console.error('Failed to refresh data silently:', err);
             }
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [jobsPage]);
+    }, [jobsPage, loading]);
 
     // Save thresholds with debouncing
     const handleThresholdChange = (newThresholds: SimilarityThresholds) => {
@@ -468,95 +489,97 @@ export const Embeddings: React.FC = () => {
                     </button>
                 </div>
 
-                {jobs.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500 dark:text-slate-400">
-                        <p>No embedding jobs yet. Jobs will appear here when you start embedding reviews or regulations.</p>
-                    </div>
-                ) : (
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-y border-gray-100 dark:border-slate-700">
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Job ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Progress</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {jobs.map((job) => (
-                                <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors">
-                                    <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-slate-400">{job.jobId}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${job.type === 'Review'
-                                                ? 'bg-purple-100 text-purple-600'
-                                                : 'bg-orange-100 text-orange-600'
-                                            }`}>
-                                            {job.type}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`text-sm font-medium ${job.status === 'Completed' ? 'text-green-600' :
-                                                job.status === 'Failed' ? 'text-red-500' :
-                                                    job.status === 'Paused' ? 'text-yellow-600' :
-                                                        'text-blue-500'
-                                            }`}>
-                                            {job.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full transition-all ${job.status === 'Completed' ? 'bg-green-500' :
-                                                            job.status === 'Failed' ? 'bg-red-500' :
-                                                                job.status === 'Paused' ? 'bg-yellow-500' :
-                                                                    'bg-blue-500'
-                                                        }`}
-                                                    style={{ width: `${job.progress}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-sm text-gray-600 dark:text-slate-400">{job.progress}%</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400">{job.duration}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">{formatDateTime(job.timestamp, systemTimezone)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {/* Pagination */}
-                {jobsTotal > 0 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700">
-                        <span className="text-sm text-gray-500 dark:text-slate-400">
-                            Showing {(jobsPage - 1) * JOBS_PAGE_SIZE + 1} to {Math.min(jobsPage * JOBS_PAGE_SIZE, jobsTotal)} of {jobsTotal} jobs
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setJobsPage(p => Math.max(1, p - 1))}
-                                disabled={jobsPage <= 1}
-                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                <ChevronLeft size={16} />
-                                Prev
-                            </button>
-                            <span className="text-sm font-medium text-gray-700 dark:text-slate-300 px-2">
-                                Page {jobsPage} of {jobsTotalPages}
-                            </span>
-                            <button
-                                onClick={() => setJobsPage(p => Math.min(jobsTotalPages, p + 1))}
-                                disabled={jobsPage >= jobsTotalPages}
-                                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                Next
-                                <ChevronRight size={16} />
-                            </button>
+                <div className={jobsLoading ? "opacity-50 pointer-events-none transition-opacity duration-200" : "transition-opacity duration-200"}>
+                    {jobs.length === 0 ? (
+                        <div className="p-12 text-center text-gray-500 dark:text-slate-400">
+                            <p>No embedding jobs yet. Jobs will appear here when you start embedding reviews or regulations.</p>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-y border-gray-100 dark:border-slate-700">
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Job ID</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Progress</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Duration</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {jobs.map((job) => (
+                                    <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900 transition-colors">
+                                        <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-slate-400">{job.jobId}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${job.type === 'Review'
+                                                    ? 'bg-purple-100 text-purple-600'
+                                                    : 'bg-orange-100 text-orange-600'
+                                                }`}>
+                                                {job.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-sm font-medium ${job.status === 'Completed' ? 'text-green-600' :
+                                                    job.status === 'Failed' ? 'text-red-500' :
+                                                        job.status === 'Paused' ? 'text-yellow-600' :
+                                                            'text-blue-500'
+                                                }`}>
+                                                {job.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all ${job.status === 'Completed' ? 'bg-green-500' :
+                                                                job.status === 'Failed' ? 'bg-red-500' :
+                                                                    job.status === 'Paused' ? 'bg-yellow-500' :
+                                                                        'bg-blue-500'
+                                                            }`}
+                                                        style={{ width: `${job.progress}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-sm text-gray-600 dark:text-slate-400">{job.progress}%</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400">{job.duration}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">{formatDateTime(job.timestamp, systemTimezone)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {/* Pagination */}
+                    {jobsTotal > 0 && (
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700">
+                            <span className="text-sm text-gray-500 dark:text-slate-400">
+                                Showing {(jobsPage - 1) * JOBS_PAGE_SIZE + 1} to {Math.min(jobsPage * JOBS_PAGE_SIZE, jobsTotal)} of {jobsTotal} jobs
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setJobsPage(p => Math.max(1, p - 1))}
+                                    disabled={jobsPage <= 1}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronLeft size={16} />
+                                    Prev
+                                </button>
+                                <span className="text-sm font-medium text-gray-700 dark:text-slate-300 px-2">
+                                    Page {jobsPage} of {jobsTotalPages}
+                                </span>
+                                <button
+                                    onClick={() => setJobsPage(p => Math.min(jobsTotalPages, p + 1))}
+                                    disabled={jobsPage >= jobsTotalPages}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    Next
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

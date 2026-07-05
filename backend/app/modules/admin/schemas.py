@@ -89,6 +89,13 @@ class OrganizationSummary(BaseModel):
     iconUrl: Optional[str] = None
 
 
+class PaginatedOrganizations(BaseModel):
+    data: list[OrganizationSummary]
+    total: int
+    page: int
+    limit: int
+
+
 class OrganizationStats(BaseModel):
     total: int
     addedToday: int
@@ -120,6 +127,13 @@ class AdminUser(BaseModel):
     avatarColor: Optional[str] = None
     organizations: list[str] = Field(default_factory=list)
     groups: list[str] = Field(default_factory=list)
+
+
+class PaginatedUsers(BaseModel):
+    data: list[AdminUser]
+    total: int
+    page: int
+    limit: int
 
 
 class UserStatsData(BaseModel):

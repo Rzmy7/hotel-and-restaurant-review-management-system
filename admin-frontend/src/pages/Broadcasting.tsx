@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Search } from 'lucide-react';
 import { Alert } from '../components/Alert';
 
 import {
@@ -44,12 +44,18 @@ export const Broadcasting: React.FC = () => {
     const [estimatedCount, setEstimatedCount] = useState(0);
     const [showPreview, setShowPreview] = useState(false);
     const [sending, setSending] = useState(false);
-    const [loading, setLoading] = useState(false);
     const [selectedDetail, setSelectedDetail] = useState<BroadcastRecord | null>(null);
 
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const systemTimezone = useSystemTimezone();
+
+    // Pagination & Search state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const itemsPerPage = 10;
 
     const isFormValid = useMemo(() => {
         const hasCoreFields =
@@ -68,20 +74,12 @@ export const Broadcasting: React.FC = () => {
         return true;
     }, [form]);
 
-    const refreshHistoryAndStats = async () => {
-        setLoading(true);
+    const refreshStats = async () => {
         try {
-            const [historyData, statsData] = await Promise.all([
-                broadcastingService.getHistory(),
-                broadcastingService.getStatistics(),
-            ]);
-            setHistory(historyData);
+            const statsData = await broadcastingService.getStatistics();
             setStats(statsData);
         } catch (error) {
-            console.error('Failed to load broadcasting data', error);
-            setErrorMessage('Failed to load broadcasting data');
-        } finally {
-            setLoading(false);
+            console.error('Failed to load broadcast statistics', error);
         }
     };
 
@@ -98,9 +96,39 @@ export const Broadcasting: React.FC = () => {
         }
     };
 
+    // Load stats on mount
     useEffect(() => {
-        void refreshHistoryAndStats();
+        void refreshStats();
     }, []);
+
+    // Load paginated/filtered history dynamically
+    useEffect(() => {
+        if (activeTab !== 'history') return;
+
+        const fetchHistoryData = async () => {
+            setHistoryLoading(true);
+            try {
+                const paginatedResponse = await broadcastingService.getHistory(
+                    currentPage,
+                    itemsPerPage,
+                    searchQuery.trim() || undefined
+                );
+                setHistory(paginatedResponse.data);
+                setTotalItems(paginatedResponse.total);
+            } catch (error) {
+                console.error('Failed to load broadcast history', error);
+                setErrorMessage('Failed to load broadcast history');
+            } finally {
+                setHistoryLoading(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            void fetchHistoryData();
+        }, searchQuery ? 300 : 0);
+
+        return () => clearTimeout(timer);
+    }, [activeTab, currentPage, searchQuery]);
 
     useEffect(() => {
         void refreshEstimatedCount();
@@ -124,7 +152,8 @@ export const Broadcasting: React.FC = () => {
             setShowPreview(false);
             setForm(emptyForm());
             setActiveTab('history');
-            await refreshHistoryAndStats();
+            setCurrentPage(1); // Reset page to 1
+            void refreshStats(); // Refresh stats cards
             window.setTimeout(() => setSuccessMessage(null), 4000);
         } catch (error) {
             console.error('Failed to send broadcast', error);
@@ -248,14 +277,27 @@ export const Broadcasting: React.FC = () => {
 
             {activeTab === 'history' && (
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                    <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Broadcast History</h2>
-                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{history.length} broadcasts total</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{totalItems} broadcasts total</p>
+                        </div>
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                            <input
+                                type="text"
+                                placeholder="Search subject or body..."
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="pl-9 pr-4 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-60 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                         </div>
                     </div>
 
-                    {loading ? (
+                    {historyLoading && history.length === 0 ? (
                         <div className="flex items-center justify-center py-12 text-sm text-gray-500 dark:text-slate-400">Loading history…</div>
                     ) : history.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -263,10 +305,12 @@ export const Broadcasting: React.FC = () => {
                                 <Send size={22} className="text-gray-400 dark:text-slate-500" />
                             </div>
                             <p className="text-sm font-medium text-gray-700 dark:text-slate-200">No broadcasts yet</p>
-                            <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Switch to Compose Message to send your first broadcast.</p>
+                            <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
+                                {searchQuery ? 'Try adjusting your search criteria.' : 'Switch to Compose Message to send your first broadcast.'}
+                            </p>
                         </div>
                     ) : (
-                        <div>
+                        <div className={historyLoading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}>
                             {history.map(record => (
                                 <BroadcastHistoryRow
                                     key={record.id}
@@ -275,6 +319,50 @@ export const Broadcasting: React.FC = () => {
                                     onViewDetail={setSelectedDetail}
                                 />
                             ))}
+                        </div>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {totalItems > 0 && (
+                        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50">
+                            <span className="text-xs text-gray-500 dark:text-slate-400">
+                                Showing {totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} records
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-2.5 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
+                                >
+                                    Previous
+                                </button>
+                                
+                                {Array.from({ length: Math.ceil(totalItems / itemsPerPage) }, (_, i) => i + 1)
+                                    .filter(p => p === 1 || p === Math.ceil(totalItems / itemsPerPage) || Math.abs(p - currentPage) <= 1)
+                                    .map((p, i, arr) => (
+                                        <React.Fragment key={p}>
+                                            {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1 text-xs text-gray-500 dark:text-slate-400">...</span>}
+                                            <button
+                                                onClick={() => setCurrentPage(p)}
+                                                className={`px-2.5 py-1 border rounded-lg text-xs font-medium ${
+                                                    currentPage === p
+                                                        ? 'bg-blue-500 text-white border-blue-500'
+                                                        : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 dark:bg-slate-900'
+                                                }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        </React.Fragment>
+                                    ))}
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalItems / itemsPerPage), p + 1))}
+                                    disabled={currentPage === Math.ceil(totalItems / itemsPerPage) || totalItems === 0}
+                                    className="px-2.5 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-700"
+                                >
+                                    Next
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

@@ -1,4 +1,5 @@
 import { apiClient } from '../api/client';
+import type { PaginatedResponse } from '../types';
 
 export interface ReviewProcessingStats {
     activeJobs: number;
@@ -41,8 +42,18 @@ export const resumeReviewProcessing = (): Promise<{ status: string; message: str
     return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/resume');
 };
 
-export const fetchReviewProcessingJobs = (): Promise<ReviewProcessingJob[]> => {
-    return apiClient.get<ReviewProcessingJob[]>('/admin/monitoring/review-processing/jobs');
+export const fetchReviewProcessingJobs = (
+    page: number,
+    limit: number,
+    search?: string
+): Promise<PaginatedResponse<ReviewProcessingJob>> => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    if (search) {
+        params.append('search', search);
+    }
+    return apiClient.get<PaginatedResponse<ReviewProcessingJob>>(`/admin/monitoring/review-processing/jobs?${params}`);
 };
 
 export const getBatchConfig = (): Promise<BatchConfig> => {

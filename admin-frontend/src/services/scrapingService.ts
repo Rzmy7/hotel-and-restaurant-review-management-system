@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import type { ScrapingJob, ScrapingPlatform, ScrapingStats } from '../types';
+import type { ScrapingJob, ScrapingPlatform, ScrapingStats, PaginatedResponse } from '../types';
 
 interface CreateScrapingPlatformPayload {
     name: string;
@@ -82,8 +82,12 @@ export const fetchScrapingPlatforms = (): Promise<ScrapingPlatform[]> => {
     return apiClient.get<ScrapingPlatform[]>('/admin/monitoring/scraping/platforms');
 };
 
-export const fetchScrapingJobs = (): Promise<ScrapingJob[]> => {
-    return apiClient.get<ScrapingJob[]>('/admin/monitoring/scraping/jobs');
+export const fetchScrapingJobs = (page: number, limit: number, search?: string): Promise<PaginatedResponse<ScrapingJob>> => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    return apiClient.get<PaginatedResponse<ScrapingJob>>(`/admin/monitoring/scraping/jobs?${params}`);
 };
 
 export const createScrapingPlatform = (payload: CreateScrapingPlatformPayload): Promise<ScrapingPlatform> => {
