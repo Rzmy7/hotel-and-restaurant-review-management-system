@@ -43,7 +43,10 @@ class ReviewsService {
             reviewText: item.reviewText || item.text || '',
             heading: item.heading || '',
             sentiment: item.sentiment || 'Neutral',
-            categories: Array.isArray(item.categories) ? item.categories : [],
+            categories: Array.isArray(item.categories) 
+                ? item.categories.map((c: any) => typeof c === 'string' ? c : (c?.name || ''))
+                  .filter(Boolean)
+                : [],
             source: item.source || item.platform || 'Unknown',
             date: item.date || item.reviewDate || new Date().toISOString().split('T')[0],
             status: item.status || 'pending',

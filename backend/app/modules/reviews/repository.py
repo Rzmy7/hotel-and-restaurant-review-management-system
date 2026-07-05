@@ -3,6 +3,9 @@ Reviews repository — standardized SQL operations for the review processing pip
 """
 
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional, Dict
 from datetime import datetime
 
@@ -338,7 +341,7 @@ def get_review_options(organization_id: str, db: Session = None) -> Dict[str, Li
             FROM dbo.review_category rc
             JOIN dbo.processed_review r ON rc.review_id = r.id
             JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE s.organization_id = :org_id AND r.status = 'processed'
+            WHERE s.organization_id = :org_id
         """)
         categories = db.execute(cat_sql, {"org_id": organization_id}).fetchall()
         
@@ -357,6 +360,7 @@ def get_review_options(organization_id: str, db: Session = None) -> Dict[str, Li
             seen.setdefault(key, cleaned)
 
         cat_list = sorted(seen.values(), key=str.casefold)
+        logger.info(f"OPTIONS RETURNED FOR {organization_id}: {cat_list}")
 
         return {
             "sources": sorted(source_list),

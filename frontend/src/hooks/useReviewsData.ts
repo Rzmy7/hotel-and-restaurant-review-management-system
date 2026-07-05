@@ -25,6 +25,7 @@ export function useReviewsData(organizationId: string, params: FetchReviewsParam
         queryKey: ['review-options', organizationId],
         queryFn: () => reviewsService.getOptions(organizationId),
         staleTime: 24 * 60 * 60 * 1000, // 24 hours
+        enabled: !!organizationId,
     });
 
     const refresh = () => {
