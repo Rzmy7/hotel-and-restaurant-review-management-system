@@ -43,7 +43,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
 
   detect-changes:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       frontend: ${{ steps.check.outputs.frontend }}
       admin-frontend: ${{ steps.check.outputs.admin-frontend }}
@@ -342,7 +342,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs['admin-frontend'] == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -378,7 +378,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.backend == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -409,7 +409,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.embedding == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -437,7 +437,7 @@ jobs:
   build-scraper:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.scraper == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -488,7 +488,7 @@ jobs:
         needs.build-embedding.result == 'failure' ||
         needs.build-scraper.result == 'failure'
       )
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
         with:

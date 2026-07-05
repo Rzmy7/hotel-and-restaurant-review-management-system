@@ -34,13 +34,13 @@ type LoginResponse = LoginChallenge | LoginSuccess;
 
 type AuthContextType = {
     user: User | null;
-    login: (email: string, password: string) => Promise<LoginResponse>;
-    verifyLogin2fa: (email: string, code: string) => Promise<LoginSuccess>;
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<LoginResponse>;
+    verifyLogin2fa: (email: string, code: string, rememberMe?: boolean) => Promise<LoginSuccess>;
     signup: (name: string, email: string, password: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, newPassword: string) => Promise<void>;
-    persist: (user: User | null, token?: string) => void;
+    persist: (user: User | null, token?: string, rememberMe?: boolean) => void;
     checkUserOrganizations: () => Promise<void>;
     exchangeTokenForOrganization: (orgId: string) => Promise<void>;
     isLoading: boolean;
@@ -74,7 +74,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     useEffect(() => {
         const storedUser = localStorage.getItem("authUser");
         const token = localStorage.getItem("token");
+        const rememberMe = localStorage.getItem("remember_me");
         
+        if (rememberMe === 'false' && !sessionStorage.getItem("session_active")) {
+            persist(null);
+            setIsLoading(false);
+            return;
+        }
+
         if (storedUser && token) {
             try {
                 setUser(JSON.parse(storedUser));
@@ -91,18 +98,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     // Save user + token
     // ----------------------------------------------------
-    const persist = (u: User | null, token?: string) => {
+    const persist = (u: User | null, token?: string, rememberMe?: boolean) => {
         setUser(u);
 
         // when user logout clean user's data from local storage
         if (u) {
             localStorage.setItem("authUser", JSON.stringify(u));
+            if (rememberMe !== undefined) {
+                localStorage.setItem("remember_me", rememberMe ? "true" : "false");
+                if (!rememberMe) {
+                    sessionStorage.setItem("session_active", "true");
+                }
+            } else if (localStorage.getItem("remember_me") === "false") {
+                sessionStorage.setItem("session_active", "true");
+            }
         } else {
             localStorage.removeItem("authUser");
             localStorage.removeItem("token");
             localStorage.removeItem("organizations");
             localStorage.removeItem("organization_ids");
             localStorage.removeItem("current_organization");
+            localStorage.removeItem("remember_me");
+            sessionStorage.removeItem("session_active");
         }
 
         if (token) {
@@ -178,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     // LOGIN
     // ----------------------------------------------------
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string, rememberMe: boolean = true) => {
         const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
         console.log("Login response:", data);
 
@@ -198,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         // Save user + token if not admin
         if (!isAdminRole(normalizedUser.role)) {
-            persist(normalizedUser, successData.access_token);
+            persist(normalizedUser, successData.access_token, rememberMe);
             console.log("Calling checkUserOrganizations...");
             await checkUserOrganizations();
         }
@@ -206,7 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return successData;
     };
 
-    const verifyLogin2fa = async (email: string, code: string) => {
+    const verifyLogin2fa = async (email: string, code: string, rememberMe: boolean = true) => {
         const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
 
         const backendUser = data.user;
@@ -218,7 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
 
         if (!isAdminRole(normalizedUser.role)) {
-            persist(normalizedUser, data.access_token);
+            persist(normalizedUser, data.access_token, rememberMe);
             await checkUserOrganizations();
         }
 

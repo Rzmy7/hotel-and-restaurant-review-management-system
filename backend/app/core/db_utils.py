@@ -201,3 +201,38 @@ def to_relative_timestamp(value: Any) -> str:
         return f"{hours} hour{'s' if hours != 1 else ''} ago"
     days = hours // 24
     return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+def normalize_string_list(raw_val: Any) -> list[str]:
+    """
+    Standardise a raw JSON string or string representing a list of items (categories/key phrases)
+    into a flat list of strings, handling potential raw dictionary items gracefully.
+    """
+    if not raw_val:
+        return []
+    if isinstance(raw_val, list):
+        parsed = raw_val
+    elif isinstance(raw_val, str):
+        import json
+        try:
+            parsed = json.loads(raw_val)
+        except Exception:
+            return []
+    else:
+        return []
+
+    if isinstance(parsed, list):
+        result = []
+        for item in parsed:
+            if item is None:
+                continue
+            if isinstance(item, dict):
+                name = item.get("name", "")
+                if name:
+                    result.append(str(name))
+            else:
+                result.append(str(item))
+        return result
+    return []
+
+

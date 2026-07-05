@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   ExternalLink,
-  ShieldCheck,
-  TrendingUp,
-  AlertTriangle,
-  Globe
+  AlertTriangle
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import ConfirmationModal from '../shared/ConfirmationModal';
 import type { Source, SourceStatus, SyncSchedule } from '../../types/sources';
+import { useAuth } from '../../contexts/AuthContext';
+import { fetchSubscriptionUsage } from '../../services/subscriptionPlansService';
+
 
 // Brand Logos
 import BookingLogo from '../../assets/source-logo/Booking.jpeg';
@@ -32,6 +33,32 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
   const [syncSchedule, setSyncSchedule] = useState<SyncSchedule>('daily');
   const [status, setStatus] = useState<SourceStatus>('Active');
   const [propertyUrl, setPropertyUrl] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const { user } = useAuth();
+  const [userPlan, setUserPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && user?.user_id) {
+      fetchSubscriptionUsage(user.user_id)
+        .then((usage) => {
+          const plan = (usage.planId || usage.planName || 'free').toLowerCase();
+          setUserPlan(plan);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch subscription usage:', err);
+          setUserPlan('free');
+        });
+    }
+  }, [isOpen, user?.user_id]);
+
+  const isEligibleForDaily = (plan: string | null) => {
+    if (!plan) return false;
+    const normalized = plan.trim().toLowerCase();
+    // ponytail: allow pro, professional, ultra, or enterprise plans
+    return normalized === 'pro' || normalized === 'professional' || normalized === 'ultra' || normalized === 'enterprise';
+  };
+
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -83,9 +110,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
   };
 
   const handleClearReviews = () => {
-    if (window.confirm('Are you absolutely sure you want to delete ALL reviews for this source? This will ALSO clear related media and embeddings. Action cannot be undone.')) {
-      onClearReviews?.(source.id);
-    }
+    setShowClearConfirm(true);
   };
 
   const customHeader = (
@@ -193,8 +218,8 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
                   <input
                     type="text"
                     value={propertyUrl}
-                    onChange={(e) => setPropertyUrl(e.target.value)}
-                    className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl font-bold text-gray-900 dark:text-white focus:ring-4 focus:ring-blue-500/5 focus:border-[#4e80ee] outline-none shadow-sm transition-all"
+                    disabled
+                    className="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-700 rounded-xl font-bold text-gray-500 dark:text-slate-400 outline-none shadow-sm cursor-not-allowed"
                     placeholder="https://..."
                   />
                   <a href={propertyUrl} target="_blank" rel="noreferrer" className="p-3 bg-white border border-gray-200 text-gray-400 hover:text-[#4e80ee] hover:border-[#4e80ee] dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-[#4e80ee] dark:hover:border-[#4e80ee] rounded-xl shadow-sm transition-all">
@@ -210,18 +235,29 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
                     { val: 'daily', label: 'Daily' }, 
                     { val: 'three_days', label: '3 Days' }, 
                     { val: 'weekly', label: 'Weekly' }
-                  ].map((s) => (
-                    <button
-                      key={s.val}
-                      onClick={() => setSyncSchedule(s.val as SyncSchedule)}
-                      className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${syncSchedule === s.val
-                        ? 'bg-blue-50 border-blue-200 text-[#4e80ee] dark:bg-blue-900/30 dark:border-blue-800/50 dark:text-blue-400 shadow-sm'
-                        : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600'
+                  ].map((s) => {
+                    const isDaily = s.val === 'daily';
+                    const isAllowed = !isDaily || isEligibleForDaily(userPlan);
+                    return (
+                      <button
+                        key={s.val}
+                        disabled={!isAllowed}
+                        onClick={() => setSyncSchedule(s.val as SyncSchedule)}
+                        title={!isAllowed ? 'Daily syncing is only available on Pro/Ultra plans' : undefined}
+                        className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-1.5 ${
+                          !isAllowed
+                            ? 'bg-gray-50 border-gray-100 text-gray-300 dark:bg-slate-800/50 dark:border-slate-700/50 dark:text-slate-600 cursor-not-allowed'
+                            : (syncSchedule || '').toLowerCase() === s.val.toLowerCase()
+                              ? 'bg-blue-50 border-blue-200 text-[#4e80ee] dark:bg-blue-900/30 dark:border-blue-800/50 dark:text-blue-400 shadow-sm'
+                              : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600'
                         }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+                      >
+                        {isDaily && !isAllowed && <span className="text-[10px]">🔒</span>}
+                        <span>{s.label}</span>
+                      </button>
+                    );
+                  })}
+
                 </div>
               </div>
 
@@ -268,26 +304,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
             </div>
           ) : (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-blue-50/50 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/30 p-6 rounded-3xl">
-                  <TrendingUp className="text-blue-600 dark:text-blue-400 mb-3" size={24} />
-                  <p className="text-[12px] font-black text-blue-700/60 dark:text-blue-300/60 uppercase tracking-widest">Efficiency</p>
-                  <h3 className="text-4xl font-black text-blue-900 dark:text-white mt-1">{source.successRate}%</h3>
-                  <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-2">Historical success rate</p>
-                </div>
-                <div className="bg-emerald-50/50 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800/30 p-6 rounded-3xl">
-                  <ShieldCheck className="text-emerald-600 dark:text-emerald-400 mb-3" size={24} />
-                  <p className="text-[12px] font-black text-emerald-700/60 dark:text-emerald-300/60 uppercase tracking-widest">Reliability</p>
-                  <h3 className="text-4xl font-black text-emerald-900 dark:text-white mt-1">Excellent</h3>
-                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-2">Stable connection detected</p>
-                </div>
-                <div className="bg-purple-50/50 border border-purple-100 dark:bg-purple-900/20 dark:border-purple-800/30 p-6 rounded-3xl">
-                  <Globe className="text-purple-600 dark:text-purple-400 mb-3" size={24} />
-                  <p className="text-[12px] font-black text-purple-700/60 dark:text-purple-300/60 uppercase tracking-widest">Data Volume</p>
-                  <h3 className="text-4xl font-black text-purple-900 dark:text-white mt-1">428</h3>
-                  <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mt-2">Total reviews retrieved</p>
-                </div>
-              </div>
+
 
               <div className="bg-gray-50 dark:bg-slate-800 rounded-[32px] p-8">
                 <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-6">Synchronization Timeline</h4>
@@ -322,6 +339,19 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
         </div>
 
       </div>
+      {/* Clear Reviews Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={() => {
+          onClearReviews?.(source.id);
+        }}
+        title="Clear Source Reviews"
+        description="Are you absolutely sure you want to delete ALL reviews for this source? This will ALSO clear related media and embeddings. Action cannot be undone."
+        confirmText="Clear All"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </Modal>
   );
 };

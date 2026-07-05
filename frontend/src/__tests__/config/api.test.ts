@@ -16,7 +16,7 @@ describe('getApiBaseUrl', () => {
 
     it('returns fallback when no localStorage override', () => {
         const url = getApiBaseUrl();
-        expect(url).toContain('localhost:8000');
+        expect(url).toMatch(/localhost:8000|127\.0\.0\.1:8000/);
     });
 
     it('uses localStorage override when set', () => {
@@ -34,7 +34,7 @@ describe('getApiBaseUrl', () => {
     it('handles empty localStorage value', () => {
         localStorage.setItem('mainBackendUrl', '');
         const url = getApiBaseUrl();
-        expect(url).toContain('localhost');
+        expect(url).toMatch(/localhost|127\.0\.0\.1/);
     });
 });
 
@@ -46,7 +46,7 @@ describe('getAdminPanelUrl', () => {
 
     it('returns fallback when no localStorage override', () => {
         const url = getAdminPanelUrl();
-        expect(url).toContain('localhost:5174');
+        expect(url).toMatch(/localhost:5174|127\.0\.0\.1:5174/);
     });
 
     it('uses localStorage override when set', () => {

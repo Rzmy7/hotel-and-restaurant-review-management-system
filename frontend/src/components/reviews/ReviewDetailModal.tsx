@@ -7,6 +7,8 @@ import { reviewsService } from '../../services/reviewsService';
 import ReviewDetailLightbox from './ReviewDetailLightbox';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { useReviewDetail } from '../../hooks/useReviewDetail';
+import Skeleton from '../shared/Skeleton';
 
 interface ReviewDetailModalProps {
   isOpen: boolean;
@@ -15,7 +17,42 @@ interface ReviewDetailModalProps {
   allReviews?: Review[];
 }
 
-const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewDetailModalProps) => {
+const BadgesSkeleton: React.FC = () => (
+  <div className="flex flex-wrap gap-1.5 animate-pulse">
+    <Skeleton className="h-6 w-16 rounded-md" />
+    <Skeleton className="h-6 w-20 rounded-md" />
+    <Skeleton className="h-6 w-14 rounded-md" />
+  </div>
+);
+
+const TextParagraphSkeleton: React.FC = () => (
+  <div className="space-y-2 animate-pulse">
+    <Skeleton className="h-3.5 w-full rounded" />
+    <Skeleton className="h-3.5 w-5/6 rounded" />
+    <Skeleton className="h-3.5 w-2/3 rounded" />
+  </div>
+);
+
+const MetadataSkeleton: React.FC = () => (
+  <div className="space-y-3.5 animate-pulse">
+    {[1, 2, 3, 4, 5].map((i) => (
+      <div key={i} className="flex justify-between items-center">
+        <Skeleton className="h-3.5 w-20 rounded" />
+        <Skeleton className="h-5 w-28 rounded" />
+      </div>
+    ))}
+  </div>
+);
+
+const PhotosSkeleton: React.FC = () => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 animate-pulse">
+    {[1, 2].map((i) => (
+      <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-slate-800" />
+    ))}
+  </div>
+);
+
+const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [] }: ReviewDetailModalProps) => {
   const navigateReview = useReviewsStore(state => state.navigateReview);
   const storeReviews = useReviewsStore(state => state.reviews);
   const reviews = allReviews.length > 0 ? allReviews : storeReviews;
@@ -23,6 +60,16 @@ const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewD
   const { fetchParams } = useReviewFilters();
   const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
   const refreshData = () => refreshDataStore(organizationId, fetchParams);
+
+  // Fetch detailed review lazily on modal open
+  const { data: fetchedReview, loading: isDetailLoading } = useReviewDetail(
+    isOpen && propReview?.id ? String(propReview.id) : null,
+    propReview?.userName,
+    propReview?.heading
+  );
+
+  // Combine propReview with fetchedReview details, preferring fetchedReview
+  const review = fetchedReview ? { ...propReview, ...fetchedReview } : propReview;
 
   const [draftReply, setDraftReply] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -249,7 +296,12 @@ const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewD
                 </div>
 
                 {/* Photos */}
-                {review.photos && review.photos.length > 0 && (
+                {isDetailLoading ? (
+                  <div className="mb-6">
+                    <h3 className="text-[11px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-4">Attachments</h3>
+                    <PhotosSkeleton />
+                  </div>
+                ) : review.photos && review.photos.length > 0 ? (
                   <div>
                     <h3 className="text-[11px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-4">Attachments ({review.photos.length})</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -269,7 +321,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewD
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* AI Draft Section */}
                 <div className="bg-white dark:bg-slate-800 rounded-2xl border border-blue-100 dark:border-blue-900/50 overflow-hidden shadow-sm relative z-0">
@@ -364,33 +416,45 @@ const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewD
                     {/* Categories */}
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest block mb-2">Topic Categories</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {review.categories?.length ? review.categories.map((cat, i) => (
-                          <span key={i} className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200 dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600">
-                            {cat}
-                          </span>
-                        )) : <span className="text-xs text-gray-400 dark:text-slate-500 italic">None identified</span>}
-                      </div>
+                      {isDetailLoading ? (
+                        <BadgesSkeleton />
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {review.categories?.length ? review.categories.map((cat, i) => (
+                            <span key={i} className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200 dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600">
+                              {cat}
+                            </span>
+                          )) : <span className="text-xs text-gray-400 dark:text-slate-500 italic">None identified</span>}
+                        </div>
+                      )}
                     </div>
 
                     {/* Key Phrases */}
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest block mb-2">Key Phrases</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {review.keyPhrases?.length ? review.keyPhrases.map((phrase, i) => (
-                          <span key={i} className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-[#4e80ee] border border-blue-100 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800">
-                            "{phrase}"
-                          </span>
-                        )) : <span className="text-xs text-gray-400 dark:text-slate-500 italic">None extracted</span>}
-                      </div>
+                      {isDetailLoading ? (
+                        <BadgesSkeleton />
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {review.keyPhrases?.length ? review.keyPhrases.map((phrase, i) => (
+                            <span key={i} className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-[#4e80ee] border border-blue-100 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800">
+                              "{phrase}"
+                            </span>
+                          )) : <span className="text-xs text-gray-400 dark:text-slate-500 italic">None extracted</span>}
+                        </div>
+                      )}
                     </div>
 
                     {/* Summary */}
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest block mb-2">AI Summary</span>
-                      <p className="text-[13px] text-gray-600 bg-gray-50 border-gray-100 dark:text-gray-300 dark:bg-slate-700 dark:border-slate-600 leading-relaxed font-medium p-3 rounded-xl border">
-                        {review.summary || "Summary not available for this review."}
-                      </p>
+                      {isDetailLoading ? (
+                        <TextParagraphSkeleton />
+                      ) : (
+                        <p className="text-[13px] text-gray-600 bg-gray-50 border-gray-100 dark:text-gray-300 dark:bg-slate-700 dark:border-slate-600 leading-relaxed font-medium p-3 rounded-xl border">
+                          {review.summary || "Summary not available for this review."}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -400,30 +464,34 @@ const ReviewDetailModal = ({ isOpen, onClose, review, allReviews = [] }: ReviewD
                   <h3 className="text-[11px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2">
                     <Clock size={16} /> System Metadata
                   </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-gray-500 font-bold dark:text-slate-400">Review ID</span>
-                      <span className="text-gray-900 bg-gray-50 border-gray-100 dark:text-white dark:bg-slate-700 dark:border-slate-600 font-mono tracking-tighter px-2 py-0.5 rounded border">{review.id}</span>
+                  {isDetailLoading ? (
+                    <MetadataSkeleton />
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-gray-500 font-bold dark:text-slate-400">Review ID</span>
+                        <span className="text-gray-900 bg-gray-50 border-gray-100 dark:text-white dark:bg-slate-700 dark:border-slate-600 font-mono tracking-tighter px-2 py-0.5 rounded border">{review.id}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-gray-500 font-bold dark:text-slate-400">Platform ID</span>
+                        <span className="text-[#4e80ee] bg-blue-50 border-blue-100 dark:text-blue-400 dark:bg-blue-900/40 dark:border-blue-800 font-mono tracking-tighter px-2 py-0.5 rounded border flex items-center gap-1 cursor-pointer hover:underline">
+                          {review.platformReviewId || "N/A"} <ExternalLink size={10} />
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-gray-500 font-bold dark:text-slate-400">Language</span>
+                        <span className="text-gray-900 dark:text-white font-medium">{review.language || "English"}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-gray-500 font-bold dark:text-slate-400">First Seen</span>
+                        <span className="text-gray-900 dark:text-white font-medium">{formatDate(review.firstSeen)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-gray-500 font-bold dark:text-slate-400">Last Scraped</span>
+                        <span className="text-gray-900 dark:text-white font-medium">{formatDate(review.scrapedAt)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-gray-500 font-bold dark:text-slate-400">Platform ID</span>
-                      <span className="text-[#4e80ee] bg-blue-50 border-blue-100 dark:text-blue-400 dark:bg-blue-900/40 dark:border-blue-800 font-mono tracking-tighter px-2 py-0.5 rounded border flex items-center gap-1 cursor-pointer hover:underline">
-                        {review.platformReviewId || "N/A"} <ExternalLink size={10} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-gray-500 font-bold dark:text-slate-400">Language</span>
-                      <span className="text-gray-900 dark:text-white font-medium">{review.language || "English"}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-gray-500 font-bold dark:text-slate-400">First Seen</span>
-                      <span className="text-gray-900 dark:text-white font-medium">{formatDate(review.firstSeen)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-gray-500 font-bold dark:text-slate-400">Last Scraped</span>
-                      <span className="text-gray-900 dark:text-white font-medium">{formatDate(review.scrapedAt)}</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

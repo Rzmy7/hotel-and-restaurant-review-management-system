@@ -84,8 +84,8 @@ async def lifespan(app: FastAPI):
         )
         from app.modules.reviews.services.processor import run_analysis_pipeline
 
-        # reconcile_scraper_jobs is async, run it directly via create_task
-        asyncio.create_task(reconcile_scraper_jobs())
+        # ponytail: startup reconciliation deactivated to let RabbitMQ process pre-existing queued tasks normally on boot
+        # asyncio.create_task(reconcile_scraper_jobs())
         # run_analysis_pipeline is async, run it directly via create_task
         asyncio.create_task(run_analysis_pipeline())
 
@@ -139,7 +139,7 @@ import app.modules.auth.models.auth_models  # noqa: F401  (Role, UserRole, Sessi
 import app.modules.auth.models  # noqa: F401  (Notification, UserNotification, BroadcastEvent)
 import app.modules.groups.models  # noqa: F401  (Group, GroupMember, GroupInvite)
 import app.modules.source.models  # noqa: F401  (Tenant, Organization, Platform, Source, SyncLog)
-import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia)
+import app.modules.reviews.models  # noqa: F401  (ProcessedReview, ReviewMedia, ReviewReply, AlertRule)
 import app.modules.organization.models.rules_model  # noqa: F401  (OrganizationRule)
 
 
@@ -245,6 +245,42 @@ except ImportError:
 
 if reviews_router:
     app.include_router(reviews_router)
+
+# Review Replies module — dedicated reply history & management
+try:
+    from app.modules.reviews.routes.review_replies import router as review_replies_router
+except ImportError:
+    review_replies_router = None
+
+if review_replies_router:
+    app.include_router(review_replies_router)
+
+# Sentiment analysis module — standalone sentiment endpoints
+try:
+    from app.modules.reviews.routes.sentiment import router as sentiment_router
+except ImportError:
+    sentiment_router = None
+
+if sentiment_router:
+    app.include_router(sentiment_router)
+
+# Alert Rules module — configurable review monitoring triggers
+try:
+    from app.modules.reviews.routes.alert_rules import router as alert_rules_router
+except ImportError:
+    alert_rules_router = None
+
+if alert_rules_router:
+    app.include_router(alert_rules_router)
+
+# ML Service module — standalone /ml/analyze and /ml/reply endpoints
+try:
+    from app.modules.ml.routes import router as ml_router
+except ImportError:
+    ml_router = None
+
+if ml_router:
+    app.include_router(ml_router)
 # Hansi routers (now standardized under /api)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(oauth_router, prefix="/api/auth")

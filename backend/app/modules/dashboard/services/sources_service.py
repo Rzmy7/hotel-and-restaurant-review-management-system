@@ -1,8 +1,9 @@
 """Dashboard sources service — aggregate metrics by platform."""
 
-import pyodbc
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 # UI mappings for platforms
 PLATFORM_UI_MAPPING = {
@@ -51,7 +52,7 @@ PLATFORM_UI_MAPPING = {
 
 
 def get_source_comparison_metrics(
-    cursor: pyodbc.Cursor, org_id: str, period_days: int = 0
+    db: Session, org_id: str, period_days: int = 0
 ) -> List[Dict[str, Any]]:
     """
     Retrieves performance metrics (volume, rating, sentiment distribution) broken down by review platform.
@@ -67,8 +68,8 @@ def get_source_comparison_metrics(
 
     # Query stats per platform — LEFT JOIN so sources with no reviews still appear
     if is_all_time:
-        cursor.execute(
-            """
+        curr_rows = db.execute(
+            text("""
             SELECT 
                 p.platform_name,
                 COUNT(r.id) as review_count,
@@ -80,14 +81,14 @@ def get_source_comparison_metrics(
             FROM dbo.source s
             JOIN dbo.platform p ON s.platform_id = p.platform_id
             LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
-            WHERE s.organization_id = ?
+            WHERE s.organization_id = :org_id
             GROUP BY s.source_id, p.platform_name
-        """,
-            org_id,
-        )
+        """),
+            {"org_id": org_id},
+        ).fetchall()
     else:
-        cursor.execute(
-            """
+        curr_rows = db.execute(
+            text("""
             SELECT 
                 p.platform_name,
                 COUNT(r.id) as review_count,
@@ -99,35 +100,30 @@ def get_source_comparison_metrics(
             FROM dbo.source s
             JOIN dbo.platform p ON s.platform_id = p.platform_id
             LEFT JOIN dbo.processed_review r ON r.source_id = s.source_id
-                AND r.reviewDate >= CAST(? AS DATE)
-            WHERE s.organization_id = ?
+                AND r.reviewDate >= CAST(:curr_start AS DATE)
+            WHERE s.organization_id = :org_id
             GROUP BY s.source_id, p.platform_name
-        """,
-            curr_start,
-            org_id,
-        )
-
-    curr_rows = cursor.fetchall()
+        """),
+            {"curr_start": curr_start, "org_id": org_id},
+        ).fetchall()
 
     # Query previous period stats for trend calculation (only when not all-time)
     prev_rows = {}
     if not is_all_time:
-        cursor.execute(
-            """
+        p_rows = db.execute(
+            text("""
             SELECT 
                 s.source_id,
                 AVG(CAST(r.sentiment_score AS FLOAT)) as prev_avg_rating
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE s.organization_id = ? AND r.reviewDate >= CAST(? AS DATE) AND r.reviewDate < CAST(? AS DATE)
+            WHERE s.organization_id = :org_id AND r.reviewDate >= CAST(:prev_start AS DATE) AND r.reviewDate < CAST(:curr_start AS DATE)
             GROUP BY s.source_id
-        """,
-            org_id,
-            prev_start,
-            curr_start,
-        )
+        """),
+            {"org_id": org_id, "prev_start": prev_start, "curr_start": curr_start},
+        ).fetchall()
 
-        prev_rows = {row.source_id: row.prev_avg_rating for row in cursor.fetchall()}
+        prev_rows = {row.source_id: row.prev_avg_rating for row in p_rows}
 
     total_reviews = sum(row.review_count for row in curr_rows)
 

@@ -1,23 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Star, MessageSquare, TrendingUp, Clock, ThumbsUp, ThumbsDown,
     Zap, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight,
     Minus, Lightbulb, Target, BarChart3, Lock
 } from 'lucide-react';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { fetchSubscriptionUsage } from '../services/subscriptionPlansService';
+import { apiClient } from '../api/client';
 import { Button } from '../components/ui/Button';
 import InsightsHeader from '../components/shared/InsightsHeader';
 import SourceBreakdown from '../components/sources/SourceBreakdown';
 import InsightsSkeleton from './InsightsSkeleton';
 
-// ═══════════════════════════════════════════════════════════════════
-//  MOCK DATA (keyed per time-range)
-// ═══════════════════════════════════════════════════════════════════
-
+// ─── Types ──────────────────────────────────────────────────────────────────
 interface RangeData {
     overallScore: number;
     overallScoreChange: string;
@@ -33,7 +30,16 @@ interface RangeData {
     sentimentNegative: number[];
     ratingDistribution: { stars: number; count: number; pct: number }[];
     categories: { name: string; score: number; prev: number }[];
-    sources: { name: string; rating: number; reviews: number; pct: number; color: string }[];
+    sources: {
+        name: string;
+        rating: number;
+        reviews: number;
+        pct: number;
+        color: string;
+        positive: number;
+        neutral: number;
+        negative: number;
+    }[];
     positiveKeywords: { word: string; count: number }[];
     negativeKeywords: { word: string; count: number }[];
     responseMetrics: { avgTime: string; rate: string; ratingImpact: string };
@@ -41,222 +47,11 @@ interface RangeData {
     aiActions: { severity: 'critical' | 'warning' | 'info'; title: string; body: string }[];
 }
 
-const dataByRange: Record<string, RangeData> = {
-    '7d': {
-        overallScore: 82,
-        overallScoreChange: '+3',
-        totalReviews: '47',
-        totalReviewsChange: '+8',
-        avgRating: '4.2',
-        avgRatingChange: '+0.1',
-        responseRate: '94%',
-        responseRateChange: '+2%',
-        sentimentMonths: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        sentimentPositive: [65, 70, 68, 72, 75, 80, 78],
-        sentimentNeutral: [20, 18, 19, 17, 15, 12, 14],
-        sentimentNegative: [15, 12, 13, 11, 10, 8, 8],
-        ratingDistribution: [
-            { stars: 5, count: 19, pct: 40 },
-            { stars: 4, count: 14, pct: 30 },
-            { stars: 3, count: 8, pct: 17 },
-            { stars: 2, count: 4, pct: 9 },
-            { stars: 1, count: 2, pct: 4 },
-        ],
-        categories: [
-            { name: 'Staff', score: 88, prev: 85 },
-            { name: 'Cleanliness', score: 80, prev: 78 },
-            { name: 'Location', score: 93, prev: 93 },
-            { name: 'Value', score: 74, prev: 72 },
-            { name: 'Food', score: 71, prev: 73 },
-            { name: 'Amenities', score: 82, prev: 80 },
-        ],
-        sources: [
-            { name: 'Booking.com', rating: 4.3, reviews: 18, pct: 38, color: '#3b82f6' },
-            { name: 'TripAdvisor', rating: 4.1, reviews: 14, pct: 30, color: '#8b5cf6' },
-            { name: 'Google', rating: 4.4, reviews: 10, pct: 21, color: '#10b981' },
-            { name: 'Expedia', rating: 3.9, reviews: 5, pct: 11, color: '#f59e0b' },
-        ],
-        positiveKeywords: [
-            { word: 'Friendly staff', count: 18 },
-            { word: 'Great location', count: 15 },
-            { word: 'Clean rooms', count: 13 },
-            { word: 'Delicious breakfast', count: 11 },
-            { word: 'Comfortable beds', count: 9 },
-            { word: 'Beautiful view', count: 8 },
-        ],
-        negativeKeywords: [
-            { word: 'Slow Wi-Fi', count: 12 },
-            { word: 'Noisy rooms', count: 8 },
-            { word: 'Small bathroom', count: 6 },
-            { word: 'Expensive parking', count: 5 },
-            { word: 'Limited menu', count: 4 },
-        ],
-        responseMetrics: { avgTime: '1.8h', rate: '94%', ratingImpact: '+0.3' },
-        heatmapWeeks: [
-            [2, 4, 1, 3, 5, 8, 6],
-        ],
-        aiActions: [
-            { severity: 'critical', title: 'Wi-Fi complaints surging', body: '34% of negative reviews this week mention slow Wi-Fi. Upgrade network infrastructure in floors 3-5.' },
-            { severity: 'warning', title: 'Food rating declining', body: 'Restaurant rating dropped from 73% to 71%. Consider rotating menu items and improving breakfast variety.' },
-            { severity: 'info', title: 'Staff performance excels', body: 'Staff mentions are up 12% with 92% positive sentiment. Consider employee recognition program.' },
-        ],
-    },
-    '30d': {
-        overallScore: 79,
-        overallScoreChange: '+5',
-        totalReviews: '189',
-        totalReviewsChange: '+23',
-        avgRating: '4.3',
-        avgRatingChange: '+0.2',
-        responseRate: '91%',
-        responseRateChange: '+4%',
-        sentimentMonths: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        sentimentPositive: [62, 67, 70, 74],
-        sentimentNeutral: [22, 20, 18, 16],
-        sentimentNegative: [16, 13, 12, 10],
-        ratingDistribution: [
-            { stars: 5, count: 72, pct: 38 },
-            { stars: 4, count: 55, pct: 29 },
-            { stars: 3, count: 34, pct: 18 },
-            { stars: 2, count: 18, pct: 10 },
-            { stars: 1, count: 10, pct: 5 },
-        ],
-        categories: [
-            { name: 'Staff', score: 85, prev: 80 },
-            { name: 'Cleanliness', score: 78, prev: 75 },
-            { name: 'Location', score: 92, prev: 92 },
-            { name: 'Value', score: 72, prev: 68 },
-            { name: 'Food', score: 69, prev: 71 },
-            { name: 'Amenities', score: 80, prev: 77 },
-        ],
-        sources: [
-            { name: 'Booking.com', rating: 4.4, reviews: 79, pct: 42, color: '#3b82f6' },
-            { name: 'TripAdvisor', rating: 4.2, reviews: 53, pct: 28, color: '#8b5cf6' },
-            { name: 'Google', rating: 4.5, reviews: 38, pct: 20, color: '#10b981' },
-            { name: 'Expedia', rating: 4.0, reviews: 19, pct: 10, color: '#f59e0b' },
-        ],
-        positiveKeywords: [
-            { word: 'Friendly staff', count: 64 },
-            { word: 'Great location', count: 52 },
-            { word: 'Clean rooms', count: 47 },
-            { word: 'Delicious breakfast', count: 38 },
-            { word: 'Comfortable beds', count: 31 },
-            { word: 'Beautiful view', count: 28 },
-            { word: 'Helpful concierge', count: 22 },
-            { word: 'Spacious suite', count: 18 },
-        ],
-        negativeKeywords: [
-            { word: 'Slow Wi-Fi', count: 41 },
-            { word: 'Noisy rooms', count: 29 },
-            { word: 'Small bathroom', count: 22 },
-            { word: 'Expensive parking', count: 18 },
-            { word: 'Limited menu', count: 14 },
-            { word: 'Old furniture', count: 11 },
-        ],
-        responseMetrics: { avgTime: '2.4h', rate: '91%', ratingImpact: '+0.4' },
-        heatmapWeeks: [
-            [3, 5, 2, 4, 6, 9, 7],
-            [4, 3, 5, 6, 7, 8, 5],
-            [2, 6, 4, 5, 8, 10, 6],
-            [5, 4, 3, 7, 6, 9, 8],
-        ],
-        aiActions: [
-            { severity: 'critical', title: 'Wi-Fi is #1 complaint', body: '34% of negative reviews mention slow Wi-Fi. Upgrade network infrastructure — estimated 0.3-star rating impact.' },
-            { severity: 'critical', title: 'Noise complaints escalating', body: 'Room noise mentions increased 40% month-over-month. Investigate soundproofing in east-wing rooms (201-215).' },
-            { severity: 'warning', title: 'Food quality declining', body: 'Restaurant category dropped from 71% to 69%. Breakfast variety is the top complaint — consider menu refresh.' },
-            { severity: 'warning', title: 'Bathroom size repeatedly cited', body: '22 reviews mention small bathrooms. Consider renovating compact rooms or adding storage solutions.' },
-            { severity: 'info', title: 'Staff excellence recognized', body: 'Staff score rose 5 points to 85%. Top-mentioned employees: Maria (front desk), James (concierge).' },
-            { severity: 'info', title: 'Google rating climbing', body: 'Google Reviews average increased to 4.5 — your highest-rated platform. Consider directing more guests to review on Google.' },
-        ],
-    },
-    '90d': {
-        overallScore: 76,
-        overallScoreChange: '+8',
-        totalReviews: '542',
-        totalReviewsChange: '+67',
-        avgRating: '4.1',
-        avgRatingChange: '+0.3',
-        responseRate: '87%',
-        responseRateChange: '+9%',
-        sentimentMonths: ['Dec', 'Jan', 'Feb'],
-        sentimentPositive: [58, 65, 72],
-        sentimentNeutral: [24, 20, 17],
-        sentimentNegative: [18, 15, 11],
-        ratingDistribution: [
-            { stars: 5, count: 195, pct: 36 },
-            { stars: 4, count: 163, pct: 30 },
-            { stars: 3, count: 98, pct: 18 },
-            { stars: 2, count: 54, pct: 10 },
-            { stars: 1, count: 32, pct: 6 },
-        ],
-        categories: [
-            { name: 'Staff', score: 83, prev: 76 },
-            { name: 'Cleanliness', score: 76, prev: 70 },
-            { name: 'Location', score: 91, prev: 90 },
-            { name: 'Value', score: 70, prev: 64 },
-            { name: 'Food', score: 67, prev: 65 },
-            { name: 'Amenities', score: 78, prev: 73 },
-        ],
-        sources: [
-            { name: 'Booking.com', rating: 4.2, reviews: 228, pct: 42, color: '#3b82f6' },
-            { name: 'TripAdvisor', rating: 4.0, reviews: 152, pct: 28, color: '#8b5cf6' },
-            { name: 'Google', rating: 4.3, reviews: 108, pct: 20, color: '#10b981' },
-            { name: 'Expedia', rating: 3.8, reviews: 54, pct: 10, color: '#f59e0b' },
-        ],
-        positiveKeywords: [
-            { word: 'Friendly staff', count: 187 },
-            { word: 'Great location', count: 149 },
-            { word: 'Clean rooms', count: 132 },
-            { word: 'Delicious breakfast', count: 98 },
-            { word: 'Comfortable beds', count: 85 },
-            { word: 'Beautiful view', count: 72 },
-            { word: 'Helpful concierge', count: 61 },
-            { word: 'Spacious suite', count: 48 },
-        ],
-        negativeKeywords: [
-            { word: 'Slow Wi-Fi', count: 118 },
-            { word: 'Noisy rooms', count: 82 },
-            { word: 'Small bathroom', count: 63 },
-            { word: 'Expensive parking', count: 51 },
-            { word: 'Limited menu', count: 39 },
-            { word: 'Old furniture', count: 32 },
-        ],
-        responseMetrics: { avgTime: '3.1h', rate: '87%', ratingImpact: '+0.5' },
-        heatmapWeeks: [
-            [3, 5, 2, 4, 6, 9, 7],
-            [4, 3, 5, 6, 7, 8, 5],
-            [2, 6, 4, 5, 8, 10, 6],
-            [5, 4, 3, 7, 6, 9, 8],
-            [3, 7, 5, 4, 9, 11, 7],
-            [6, 4, 3, 8, 7, 10, 9],
-            [4, 5, 6, 3, 8, 12, 8],
-            [5, 3, 4, 6, 7, 9, 6],
-            [3, 6, 5, 7, 8, 11, 7],
-            [4, 5, 3, 6, 9, 10, 8],
-            [5, 4, 6, 5, 7, 8, 6],
-            [3, 5, 4, 7, 8, 12, 9],
-            [6, 4, 5, 3, 7, 10, 7],
-        ],
-        aiActions: [
-            { severity: 'critical', title: 'Wi-Fi infrastructure overhaul needed', body: '22% of all reviews mention connectivity. Projected 0.5-star improvement if resolved. ROI on network upgrade: 7 months.' },
-            { severity: 'critical', title: 'Noise insulation project recommended', body: 'East-wing rooms generate 3× more noise complaints. Soundproofing 15 rooms would reduce negative reviews by ~15%.' },
-            { severity: 'warning', title: 'Restaurant needs menu refresh', body: 'Food category is your weakest at 67%. "Limited menu" appears in 39 reviews. A/B test new breakfast options.' },
-            { severity: 'warning', title: 'Parking pricing competitiveness', body: 'Competitors average $18/day vs your $28/day. 51 reviews mention expensive parking — consider loyalty discounts.' },
-            { severity: 'info', title: 'Staff training ROI confirmed', body: 'Staff score improved 7 points (76→83) since Q4 training program. Continue quarterly training investment.' },
-            { severity: 'info', title: 'Response rate driving results', body: 'Properties responding to 90%+ of reviews average 0.4 stars higher. Your rate improved from 78% to 87% this quarter.' },
-        ],
-    },
-};
-
-
-
-// ═══════════════════════════════════════════════════════════════════
-//  HELPER: Change badge
-// ═══════════════════════════════════════════════════════════════════
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 const ChangeBadge = ({ value }: { value: string }) => {
     const num = parseFloat(value);
     const isUp = num > 0;
-    const isNeutral = num === 0;
+    const isNeutral = isNaN(num) || num === 0;
     const colors = isNeutral
         ? 'text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-slate-700'
         : isUp
@@ -271,66 +66,119 @@ const ChangeBadge = ({ value }: { value: string }) => {
     );
 };
 
-// ═══════════════════════════════════════════════════════════════════
-//  HELPER: Heatmap cell color
-// ═══════════════════════════════════════════════════════════════════
 const heatColor = (v: number, max: number) => {
     if (v === 0) return 'bg-gray-100 dark:bg-slate-700';
     const ratio = v / max;
     if (ratio < 0.25) return 'bg-blue-100 dark:bg-blue-900/40';
-    if (ratio < 0.5) return 'bg-blue-200 dark:bg-blue-800/50';
+    if (ratio < 0.5)  return 'bg-blue-200 dark:bg-blue-800/50';
     if (ratio < 0.75) return 'bg-blue-400 dark:bg-blue-600/80';
     return 'bg-blue-600 dark:bg-blue-500';
 };
 
-// ═══════════════════════════════════════════════════════════════════
-//  PAGE COMPONENT
-// ═══════════════════════════════════════════════════════════════════
+// ─── Empty / fallback state ──────────────────────────────────────────────────
+const EMPTY_DATA: RangeData = {
+    overallScore: 0,
+    overallScoreChange: '0%',
+    totalReviews: '0',
+    totalReviewsChange: '0%',
+    avgRating: '0',
+    avgRatingChange: '0%',
+    responseRate: '0%',
+    responseRateChange: '0%',
+    sentimentMonths: [],
+    sentimentPositive: [],
+    sentimentNeutral: [],
+    sentimentNegative: [],
+    ratingDistribution: [],
+    categories: [],
+    sources: [],
+    positiveKeywords: [],
+    negativeKeywords: [],
+    responseMetrics: { avgTime: 'N/A', rate: '0%', ratingImpact: 'N/A' },
+    heatmapWeeks: [[0, 0, 0, 0, 0, 0, 0]],
+    aiActions: [],
+};
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 const InsightsPage: React.FC = () => {
     const [timeRange, setTimeRange] = useState('30d');
     const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+    const [insightData, setInsightData] = useState<RangeData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
     const { user } = useAuth();
     const navigate = useNavigate();
     const currentOrg = useOrganizationStore(state => state.currentOrg);
     const organizationId = currentOrg?.id;
 
+    // ── Subscription access check ────────────────────────────────────────────
     useEffect(() => {
         if (!user?.user_id) return;
 
         const checkAccess = async () => {
-            setHasAccess(null); // Reset access state when org changes to show loading
+            setHasAccess(null);
             try {
                 const usage = await fetchSubscriptionUsage(user.user_id);
-                const hasInsights = usage.features.some(f => f.key === 'insights' && f.enabled);
-                setHasAccess(hasInsights);
+                const insightsFeature = usage.features.find(f => f.key === 'insights');
+                // Only block if the feature exists AND is explicitly disabled
+                const allowed = !insightsFeature || insightsFeature.enabled;
+                setHasAccess(allowed);
             } catch (err) {
                 console.error('Error checking plan access', err);
-                setHasAccess(false);
+                // Fail open: don't block if subscription check fails
+                setHasAccess(true);
             }
         };
 
         checkAccess();
     }, [user?.user_id, organizationId]);
 
-    const d = dataByRange[timeRange];
+    // ── Data fetch ───────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!organizationId || hasAccess === false) return;
 
-    // ── Sentiment chart coordinates ─────────────────────────────
-    const sentLen = d.sentimentMonths.length;
+        const fetchData = async () => {
+            setLoading(true);
+            setFetchError(null);
+            try {
+                const data = await apiClient.get<RangeData>(
+                    `/organizations/${organizationId}/insights`,
+                    { timeRange }
+                );
+                setInsightData(data);
+            } catch (err: any) {
+                console.error('Error fetching insights:', err);
+                setFetchError(err?.message || 'Failed to load insights.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [timeRange, organizationId, hasAccess]);
+
+    // ── Data to render ───────────────────────────────────────────────────────
+    const d: RangeData = insightData ?? EMPTY_DATA;
+
+    // Sentiment chart geometry
+    const sentLen = Math.max(d.sentimentMonths.length, 2);
     const chartW = 600;
     const chartH = 180;
-    const gapX = chartW / (sentLen - 1 || 1);
+    const gapX = chartW / (sentLen - 1);
     const toY = (v: number) => chartH - (v / 100) * chartH;
     const linePoints = (vals: number[]) =>
         vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' ');
     const areaPath = (vals: number[]) => {
+        if (vals.length === 0) return '';
         const pts = vals.map((v, i) => `${i * gapX},${toY(v)}`).join(' L');
         return `M0,${chartH} L${pts} L${(vals.length - 1) * gapX},${chartH} Z`;
     };
 
-    // ── Heatmap max ─────────────────────────────────────────────
     const heatMax = Math.max(...d.heatmapWeeks.flat(), 1);
 
-    if (hasAccess === null) {
+    // ── Guards ───────────────────────────────────────────────────────────────
+    if (hasAccess === null || (loading && !insightData)) {
         return <InsightsSkeleton />;
     }
 
@@ -345,13 +193,9 @@ const InsightsPage: React.FC = () => {
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Upgrade to Premium</h2>
                         <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                            Your current plan does not include access to AI-powered insights and advanced analytics. Upgrade your plan to unlock these features.
+                            Your current plan does not include access to AI-powered insights and advanced analytics.
                         </p>
-                        <Button
-                            className="w-full"
-                            size="lg"
-                            onClick={() => navigate('/subscription')}
-                        >
+                        <Button className="w-full" size="lg" onClick={() => navigate('/subscription')}>
                             View Upgrade Options
                         </Button>
                     </div>
@@ -366,7 +210,23 @@ const InsightsPage: React.FC = () => {
 
             <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
 
-                {/* ═══ 1. KPI METRICS ROW ═══════════════════════════ */}
+                {/* Error Banner */}
+                {fetchError && (
+                    <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
+                        <AlertTriangle size={16} className="shrink-0" />
+                        <span>{fetchError}</span>
+                    </div>
+                )}
+
+                {/* Loading overlay on refresh */}
+                {loading && insightData && (
+                    <div className="flex items-center gap-2 text-[13px] text-gray-400 dark:text-slate-500">
+                        <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        Refreshing data…
+                    </div>
+                )}
+
+                {/* ═══ 1. KPI METRICS ROW ══════════════════════════════ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 min-[1000px]:grid-cols-4 gap-4">
                     {[
                         { icon: <Zap size={20} />, label: 'Overall Score', value: `${d.overallScore}`, change: d.overallScoreChange, bg: 'bg-blue-50 dark:bg-blue-900/40', fg: 'text-blue-500 dark:text-blue-400' },
@@ -387,14 +247,49 @@ const InsightsPage: React.FC = () => {
                     ))}
                 </div>
 
-                {/* ═══ 2. SENTIMENT OVER TIME ════════════════════════ */}
+                {/* ═══ 2. TREND SUMMARY ════════════════════════════════ */}
+                {insightData && (
+                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-7 h-7 grid place-items-center bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500 dark:text-indigo-400 rounded-lg">
+                                <TrendingUp size={15} />
+                            </div>
+                            <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Period Summary</h3>
+                            <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium ml-1">vs previous {timeRange}</span>
+                        </div>
+                        <div className="grid grid-cols-2 min-[700px]:grid-cols-4 gap-3">
+                            {[
+                                { label: 'Reviews', current: d.totalReviews, change: d.totalReviewsChange },
+                                { label: 'Avg Rating', current: `${d.avgRating}★`, change: d.avgRatingChange },
+                                { label: 'Overall Score', current: `${d.overallScore}/100`, change: d.overallScoreChange },
+                                { label: 'Response Rate', current: d.responseRate, change: d.responseRateChange },
+                            ].map(item => {
+                                const num = parseFloat(item.change);
+                                const isUp = num > 0;
+                                const isNeutral = isNaN(num) || num === 0;
+                                return (
+                                    <div key={item.label} className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-slate-700/40 rounded-lg border border-gray-100 dark:border-slate-700">
+                                        <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wide">{item.label}</span>
+                                        <span className="text-lg font-bold text-gray-800 dark:text-white">{item.current}</span>
+                                        <span className={`text-[12px] font-semibold flex items-center gap-0.5 ${isNeutral ? 'text-gray-400' : isUp ? 'text-emerald-500' : 'text-red-500'}`}>
+                                            {isNeutral ? <Minus size={11} /> : isUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                                            {item.change} vs prev
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══ 3. SENTIMENT OVER TIME ══════════════════════════ */}
                 <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                     <div className="flex justify-between items-start mb-1">
                         <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Sentiment Over Time</h3>
                         <div className="flex gap-4">
                             {[
                                 { label: 'Positive', color: 'bg-blue-500' },
-                                { label: 'Neutral', color: 'bg-slate-300 dark:bg-slate-500' },
+                                { label: 'Neutral',  color: 'bg-slate-300 dark:bg-slate-500' },
                                 { label: 'Negative', color: 'bg-red-400' },
                             ].map((l) => (
                                 <div key={l.label} className="flex items-center gap-1.5 text-[13px] text-gray-500 dark:text-gray-400">
@@ -405,59 +300,65 @@ const InsightsPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="mt-4 h-[200px] bg-gradient-to-b from-blue-500/5 dark:from-blue-500/10 to-transparent rounded-lg">
-                        <svg viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" className="w-full h-full">
-                            {/* Grid lines */}
-                            {[0.25, 0.5, 0.75].map((r) => (
-                                <line key={r} x1="0" y1={chartH * r} x2={chartW} y2={chartH * r} className="stroke-gray-100 dark:stroke-slate-700" strokeWidth="1" />
-                            ))}
-                            {/* Positive area */}
-                            <path d={areaPath(d.sentimentPositive)} fill="#3b82f6" opacity="0.12" />
-                            {/* Positive line */}
-                            <polyline fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={linePoints(d.sentimentPositive)} />
-                            {/* Neutral line */}
-                            <polyline fill="none" className="stroke-slate-300 dark:stroke-slate-500" strokeWidth="2" strokeDasharray="4,4" points={linePoints(d.sentimentNeutral)} />
-                            {/* Negative line */}
-                            <polyline fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={linePoints(d.sentimentNegative)} />
-                            {/* Positive dots */}
-                            {d.sentimentPositive.map((v, i) => (
-                                <circle key={i} cx={i * gapX} cy={toY(v)} r="4" fill="#3b82f6" />
-                            ))}
-                        </svg>
+                        {d.sentimentMonths.length < 2 ? (
+                            <div className="h-full flex items-center justify-center text-gray-400 dark:text-slate-500 text-sm">
+                                Not enough data for the selected period
+                            </div>
+                        ) : (
+                            <svg viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" className="w-full h-full">
+                                {[0.25, 0.5, 0.75].map((r) => (
+                                    <line key={r} x1="0" y1={chartH * r} x2={chartW} y2={chartH * r} className="stroke-gray-100 dark:stroke-slate-700" strokeWidth="1" />
+                                ))}
+                                <path d={areaPath(d.sentimentPositive)} fill="#3b82f6" opacity="0.12" />
+                                <polyline fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={linePoints(d.sentimentPositive)} />
+                                <polyline fill="none" className="stroke-slate-300 dark:stroke-slate-500" strokeWidth="2" strokeDasharray="4,4" points={linePoints(d.sentimentNeutral)} />
+                                <polyline fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={linePoints(d.sentimentNegative)} />
+                                {d.sentimentPositive.map((v, i) => (
+                                    <circle key={i} cx={i * gapX} cy={toY(v)} r="4" fill="#3b82f6" />
+                                ))}
+                            </svg>
+                        )}
                     </div>
-                    <div className={`grid text-center text-xs text-gray-400 dark:text-slate-500 mt-2`} style={{ gridTemplateColumns: `repeat(${sentLen}, 1fr)` }}>
-                        {d.sentimentMonths.map((m) => <span key={m}>{m}</span>)}
-                    </div>
+                    {d.sentimentMonths.length >= 2 && (
+                        <div className="grid text-center text-xs text-gray-400 dark:text-slate-500 mt-2" style={{ gridTemplateColumns: `repeat(${d.sentimentMonths.length}, 1fr)` }}>
+                            {d.sentimentMonths.map((m) => <span key={m}>{m}</span>)}
+                        </div>
+                    )}
                 </div>
 
-                {/* ═══ 3 + 4. RATING DISTRIBUTION + CATEGORY PERFORMANCE ═════ */}
+                {/* ═══ 4 + 5. RATING DISTRIBUTION + CATEGORY PERFORMANCE ══ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
 
                     {/* Rating Distribution */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                         <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Rating Distribution</h3>
-                        <div className="flex flex-col gap-3">
-                            {d.ratingDistribution.map((r) => (
-                                <div key={r.stars} className="grid grid-cols-[60px_1fr_70px] items-center gap-3">
-                                    <div className="flex items-center gap-1">
-                                        <Star size={14} className="text-amber-400" fill="#fbbf24" />
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.stars}</span>
+                        {d.ratingDistribution.length === 0 ? (
+                            <p className="text-sm text-gray-400 dark:text-slate-500">No rating data for this period.</p>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {d.ratingDistribution.map((r) => (
+                                    <div key={r.stars} className="grid grid-cols-[60px_1fr_70px] items-center gap-3">
+                                        <div className="flex items-center gap-1">
+                                            <Star size={14} className="text-amber-400" fill="#fbbf24" />
+                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.stars}</span>
+                                        </div>
+                                        <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-500"
+                                                style={{
+                                                    width: `${r.pct}%`,
+                                                    backgroundColor: r.stars >= 4 ? '#3b82f6' : r.stars === 3 ? '#94a3b8' : '#ef4444',
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.count}</span>
+                                            <span className="text-xs text-gray-400 ml-1">({r.pct}%)</span>
+                                        </div>
                                     </div>
-                                    <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full transition-all duration-500"
-                                            style={{
-                                                width: `${r.pct}%`,
-                                                backgroundColor: r.stars >= 4 ? '#3b82f6' : r.stars === 3 ? '#94a3b8' : '#ef4444',
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.count}</span>
-                                        <span className="text-xs text-gray-400 ml-1">({r.pct}%)</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                         <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
                             <span className="text-sm text-gray-500 dark:text-gray-400">Satisfaction Rate</span>
                             <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -469,89 +370,103 @@ const InsightsPage: React.FC = () => {
                     {/* Category Performance */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                         <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Category Performance</h3>
-                        <div className="flex flex-col gap-3.5">
-                            {d.categories.map((c) => {
-                                const delta = c.score - c.prev;
-                                return (
-                                    <div key={c.name} className="grid grid-cols-[100px_1fr_80px] items-center gap-3">
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
-                                        <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: `${c.score}%`,
-                                                    backgroundColor: c.score >= 80 ? '#3b82f6' : c.score >= 60 ? '#f59e0b' : '#ef4444',
-                                                }}
-                                            />
+                        {d.categories.length === 0 ? (
+                            <p className="text-sm text-gray-400 dark:text-slate-500">No category data for this period.</p>
+                        ) : (
+                            <div className="flex flex-col gap-3.5">
+                                {d.categories.map((c) => {
+                                    const delta = c.score - c.prev;
+                                    return (
+                                        <div key={c.name} className="grid grid-cols-[100px_1fr_80px] items-center gap-3">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
+                                            <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-500"
+                                                    style={{
+                                                        width: `${c.score}%`,
+                                                        backgroundColor: c.score >= 80 ? '#3b82f6' : c.score >= 60 ? '#f59e0b' : '#ef4444',
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-1.5 justify-end">
+                                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.score}%</span>
+                                                <span className={`text-[11px] font-semibold ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                    {delta > 0 ? `↑${delta}` : delta < 0 ? `↓${Math.abs(delta)}` : '—'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1.5 justify-end">
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.score}%</span>
-                                            <span className={`text-[11px] font-semibold ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                                                {delta > 0 ? `↑${delta}` : delta < 0 ? `↓${Math.abs(delta)}` : '—'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Top Category</span>
-                            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                {d.categories.reduce((best, c) => (c.score > best.score ? c : best)).name} ({d.categories.reduce((best, c) => (c.score > best.score ? c : best)).score}%)
-                            </span>
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {d.categories.length > 0 && (
+                            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                                <span className="text-sm text-gray-500 dark:text-gray-400">Top Category</span>
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                    {d.categories.reduce((best, c) => (c.score > best.score ? c : best)).name} ({d.categories.reduce((best, c) => (c.score > best.score ? c : best)).score}%)
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* ═══ 5. SOURCE BREAKDOWN ══════════════════════════ */}
-                <SourceBreakdown timeRange={timeRange} />
+                {/* ═══ 6. SOURCE BREAKDOWN (real data via prop) ═════════ */}
+                <SourceBreakdown sources={d.sources} />
 
-                {/* ═══ 6. TOP KEYWORDS ═══════════════════════════════ */}
+                {/* ═══ 7. TOP KEYWORDS (word cloud style) ══════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
-                    {/* Positive keywords */}
+                    {/* Positive */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <ThumbsUp size={16} className="text-emerald-500" />
                             <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Top Positive Keywords</h3>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {d.positiveKeywords.map((kw) => {
-                                const maxCount = d.positiveKeywords[0].count;
-                                const ratio = kw.count / maxCount;
-                                const size = ratio > 0.7 ? 'text-sm px-3 py-1.5' : ratio > 0.4 ? 'text-[13px] px-2.5 py-1' : 'text-xs px-2 py-0.5';
-                                return (
-                                    <span key={kw.word} className={`inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-lg font-medium border border-emerald-100 dark:border-emerald-800/60 ${size}`}>
-                                        {kw.word}
-                                        <span className="text-emerald-500 dark:text-emerald-500 font-normal text-[11px]">{kw.count}</span>
-                                    </span>
-                                );
-                            })}
-                        </div>
+                        {d.positiveKeywords.length === 0 ? (
+                            <p className="text-sm text-gray-400 dark:text-slate-500">No keyword data yet.</p>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {d.positiveKeywords.map((kw) => {
+                                    const maxCount = d.positiveKeywords[0].count;
+                                    const ratio = kw.count / maxCount;
+                                    const size = ratio > 0.7 ? 'text-sm px-3 py-1.5' : ratio > 0.4 ? 'text-[13px] px-2.5 py-1' : 'text-xs px-2 py-0.5';
+                                    return (
+                                        <span key={kw.word} className={`inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-lg font-medium border border-emerald-100 dark:border-emerald-800/60 ${size}`}>
+                                            {kw.word}
+                                            <span className="text-emerald-500 font-normal text-[11px]">{kw.count}</span>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Negative keywords */}
+                    {/* Negative */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <ThumbsDown size={16} className="text-red-500" />
                             <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Top Negative Keywords</h3>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {d.negativeKeywords.map((kw) => {
-                                const maxCount = d.negativeKeywords[0].count;
-                                const ratio = kw.count / maxCount;
-                                const size = ratio > 0.7 ? 'text-sm px-3 py-1.5' : ratio > 0.4 ? 'text-[13px] px-2.5 py-1' : 'text-xs px-2 py-0.5';
-                                return (
-                                    <span key={kw.word} className={`inline-flex items-center gap-1.5 bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-lg font-medium border border-red-100 dark:border-red-800/60 ${size}`}>
-                                        {kw.word}
-                                        <span className="text-red-500 dark:text-red-500 font-normal text-[11px]">{kw.count}</span>
-                                    </span>
-                                );
-                            })}
-                        </div>
+                        {d.negativeKeywords.length === 0 ? (
+                            <p className="text-sm text-gray-400 dark:text-slate-500">No keyword data yet.</p>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {d.negativeKeywords.map((kw) => {
+                                    const maxCount = d.negativeKeywords[0].count;
+                                    const ratio = kw.count / maxCount;
+                                    const size = ratio > 0.7 ? 'text-sm px-3 py-1.5' : ratio > 0.4 ? 'text-[13px] px-2.5 py-1' : 'text-xs px-2 py-0.5';
+                                    return (
+                                        <span key={kw.word} className={`inline-flex items-center gap-1.5 bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-lg font-medium border border-red-100 dark:border-red-800/60 ${size}`}>
+                                            {kw.word}
+                                            <span className="text-red-500 font-normal text-[11px]">{kw.count}</span>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* ═══ 7. RESPONSE METRICS + 8. HEATMAP ══════════════ */}
+                {/* ═══ 8. RESPONSE METRICS + HEATMAP ══════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
 
                     {/* Response Metrics */}
@@ -560,8 +475,8 @@ const InsightsPage: React.FC = () => {
                         <div className="grid grid-cols-3 gap-4">
                             {[
                                 { label: 'Avg Response Time', value: d.responseMetrics.avgTime, icon: <Clock size={18} />, color: 'bg-blue-50 text-blue-500 dark:bg-blue-900/40 dark:text-blue-400' },
-                                { label: 'Response Rate', value: d.responseMetrics.rate, icon: <CheckCircle2 size={18} />, color: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-400' },
-                                { label: 'Rating Impact', value: d.responseMetrics.ratingImpact, icon: <TrendingUp size={18} />, color: 'bg-amber-50 text-amber-500 dark:bg-amber-900/40 dark:text-amber-400' },
+                                { label: 'Response Rate',     value: d.responseMetrics.rate,    icon: <CheckCircle2 size={18} />, color: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-400' },
+                                { label: 'Rating Impact',     value: d.responseMetrics.ratingImpact, icon: <TrendingUp size={18} />, color: 'bg-amber-50 text-amber-500 dark:bg-amber-900/40 dark:text-amber-400' },
                             ].map((m) => (
                                 <div key={m.label} className="flex flex-col items-center text-center p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
                                     <div className={`w-10 h-10 grid place-items-center rounded-xl ${m.color} mb-3`}>{m.icon}</div>
@@ -572,7 +487,7 @@ const InsightsPage: React.FC = () => {
                         </div>
                         <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700">
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 m-0 leading-relaxed">
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">Insight:</span> Responding within 2 hours correlates with
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">Insight:</span> Responding within 2 hours correlates with a
                                 <span className="font-semibold text-blue-600 dark:text-blue-400"> {d.responseMetrics.ratingImpact}</span> star improvement in follow-up ratings.
                             </p>
                         </div>
@@ -592,14 +507,12 @@ const InsightsPage: React.FC = () => {
                                 <span>More</span>
                             </div>
                         </div>
-                        {/* Day labels */}
                         <div className="flex gap-1">
                             <div className="flex flex-col gap-1 shrink-0 mr-1">
                                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
                                     <span key={i} className="text-[10px] text-gray-400 h-3.5 flex items-center justify-end w-4">{day}</span>
                                 ))}
                             </div>
-                            {/* Heatmap grid */}
                             <div className="flex gap-1 flex-1 overflow-x-auto">
                                 {d.heatmapWeeks.map((week, wi) => (
                                     <div key={wi} className="flex flex-col gap-1">
@@ -607,7 +520,7 @@ const InsightsPage: React.FC = () => {
                                             <div
                                                 key={di}
                                                 className={`w-3.5 h-3.5 rounded-sm transition-colors ${heatColor(val, heatMax)}`}
-                                                title={`${val} reviews`}
+                                                title={`${val} review${val !== 1 ? 's' : ''}`}
                                             />
                                         ))}
                                     </div>
@@ -616,12 +529,24 @@ const InsightsPage: React.FC = () => {
                         </div>
                         <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
                             <span className="text-[13px] text-gray-500 dark:text-gray-400">Peak day</span>
-                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Saturdays — avg {Math.round(d.heatmapWeeks.reduce((s, w) => s + w[5], 0) / d.heatmapWeeks.length)} reviews</span>
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                {(() => {
+                                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                    const totals = days.map((_, di) =>
+                                        d.heatmapWeeks.reduce((sum, week) => sum + (week[di] || 0), 0)
+                                    );
+                                    const peakIdx = totals.indexOf(Math.max(...totals));
+                                    const avg = d.heatmapWeeks.length > 0
+                                        ? Math.round(totals[peakIdx] / d.heatmapWeeks.length)
+                                        : 0;
+                                    return `${days[peakIdx]} — avg ${avg} reviews`;
+                                })()}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* ═══ 9. AI RECOMMENDATIONS ═════════════════════════ */}
+                {/* ═══ 9. AI RECOMMENDATIONS ═══════════════════════════ */}
                 <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-5">
                         <div className="w-8 h-8 grid place-items-center bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg">
@@ -632,31 +557,35 @@ const InsightsPage: React.FC = () => {
                             <p className="m-0 text-[11px] text-gray-400 dark:text-gray-500">Actionable insights based on review analysis</p>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-3">
-                        {d.aiActions.map((action, i) => {
-                            const styles = {
-                                critical: { border: 'border-red-200 dark:border-red-800/50', bg: 'bg-red-50 dark:bg-red-900/10', icon: <AlertTriangle size={16} />, iconColor: 'text-red-500', label: 'Critical', labelBg: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' },
-                                warning: { border: 'border-amber-200 dark:border-amber-800/50', bg: 'bg-amber-50 dark:bg-amber-900/10', icon: <Target size={16} />, iconColor: 'text-amber-500', label: 'Action', labelBg: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' },
-                                info: { border: 'border-blue-200 dark:border-blue-800/50', bg: 'bg-blue-50 dark:bg-blue-900/10', icon: <BarChart3 size={16} />, iconColor: 'text-blue-500', label: 'Insight', labelBg: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' },
-                            }[action.severity];
-                            return (
-                                <div key={i} className={`flex items-start gap-3.5 p-4 rounded-xl border ${styles.border} ${styles.bg}`}>
-                                    <div className={`w-8 h-8 grid place-items-center rounded-lg bg-white dark:bg-slate-800 shrink-0 ${styles.iconColor}`}>
-                                        {styles.icon}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${styles.labelBg}`}>
-                                                {styles.label}
-                                            </span>
-                                            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{action.title}</span>
+                    {d.aiActions.length === 0 ? (
+                        <p className="text-sm text-gray-400 dark:text-slate-500">No AI recommendations generated for this period.</p>
+                    ) : (
+                        <div className="flex flex-col gap-3">
+                            {d.aiActions.map((action, i) => {
+                                const styles = {
+                                    critical: { border: 'border-red-200 dark:border-red-800/50',   bg: 'bg-red-50 dark:bg-red-900/10',   icon: <AlertTriangle size={16} />, iconColor: 'text-red-500',   label: 'Critical', labelBg: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' },
+                                    warning:  { border: 'border-amber-200 dark:border-amber-800/50', bg: 'bg-amber-50 dark:bg-amber-900/10', icon: <Target size={16} />,        iconColor: 'text-amber-500', label: 'Action',   labelBg: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' },
+                                    info:     { border: 'border-blue-200 dark:border-blue-800/50',  bg: 'bg-blue-50 dark:bg-blue-900/10',  icon: <BarChart3 size={16} />,     iconColor: 'text-blue-500',  label: 'Insight',  labelBg: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' },
+                                }[action.severity];
+                                return (
+                                    <div key={i} className={`flex items-start gap-3.5 p-4 rounded-xl border ${styles.border} ${styles.bg}`}>
+                                        <div className={`w-8 h-8 grid place-items-center rounded-lg bg-white dark:bg-slate-800 shrink-0 ${styles.iconColor}`}>
+                                            {styles.icon}
                                         </div>
-                                        <p className="text-[13px] text-gray-600 dark:text-gray-400 m-0 leading-relaxed">{action.body}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${styles.labelBg}`}>
+                                                    {styles.label}
+                                                </span>
+                                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{action.title}</span>
+                                            </div>
+                                            <p className="text-[13px] text-gray-600 dark:text-gray-400 m-0 leading-relaxed">{action.body}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
             </div>

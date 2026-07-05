@@ -1,6 +1,9 @@
 """Unified dashboard route — aggregating stats, activities, and trends."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import uuid
+import logging
+
 from app.database.session import get_db
 from app.core.tenant_context import resolve_tenant_scope
 from app.modules.dashboard.services.activity_service import get_alerts, get_activities, get_sentiment_counts
@@ -13,12 +16,69 @@ from app.modules.dashboard.services.charts_service import (
 )
 from app.modules.dashboard.services.categories_service import get_category_performance
 from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
-from app.core.pyodbc_connection import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
-import pyodbc
-import uuid
+from app.modules.dashboard.services.insights_service import get_keywords, generate_ai_actions
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Dashboard"])
+
+
+def _build_ai_insights(metrics: dict, categories: list) -> dict:
+    """
+    Build the aiInsights payload for the main dashboard using the AI engine.
+    Falls back to a template-based summary if the AI call fails.
+    """
+    try:
+        actions = generate_ai_actions(metrics, categories, [], {"positiveKeywords": [], "negativeKeywords": []})
+        if actions:
+            strengths = []
+            issues = []
+            highlight = None
+            for a in actions:
+                item = {
+                    "label": a.get("title", ""),
+                    "impact": "High" if a.get("severity") == "critical" else "Medium",
+                    "freq": "—",
+                }
+                if a.get("severity") == "info":
+                    strengths.append(item)
+                elif a.get("severity") in ("warning", "critical"):
+                    issues.append(item)
+                if highlight is None and a.get("severity") == "critical":
+                    highlight = {
+                        "text": a.get("body", ""),
+                        "correlation": "Strong",
+                    }
+
+            if not strengths:
+                strengths = [{"label": "Review Quality", "impact": "High", "freq": "100%"}]
+            if not highlight:
+                avg = metrics.get("avgRating", {}).get("value", "N/A")
+                highlight = {
+                    "text": f"Average rating stands at {avg} stars — keep up the quality.",
+                    "correlation": "Moderate",
+                }
+
+            return {"strengths": strengths, "issues": issues, "highlight": highlight}
+    except Exception as e:
+        logger.warning(f"AI insights generation failed, using fallback: {e}")
+
+    # Rule-based fallback
+    avg = metrics.get("avgRating", {}).get("value", "N/A")
+    neg = metrics.get("negativeReviews", {}).get("value", "0")
+    return {
+        "strengths": [
+            {"label": "Review Quality", "impact": "High", "freq": "100%"},
+        ],
+        "issues": [
+            {"label": f"{neg} Negative Reviews", "impact": "Low", "freq": "—"},
+        ] if int(str(neg).replace(",", "") or "0") > 0 else [],
+        "highlight": {
+            "text": f"Average rating stands at {avg} stars.",
+            "correlation": "Moderate",
+        },
+    }
 
 
 @router.get("/organizations/{org_id}/dashboard", summary="Get unified organization dashboard")
@@ -44,76 +104,60 @@ def get_unified_dashboard(
     resolve_tenant_scope(user, db, org_id)
 
     try:
-        conn = pyodbc.connect(get_connection_string())
-        cursor = conn.cursor()
+        # Aggregate all atomic data using the same db Session for performance
+        metrics = get_dashboard_metrics(db, org_id, period)
+        sentiment_charts = get_sentiment_distribution(
+            db, org_id, period_days=period
+        )
+        daily_trends = get_daily_review_trends(db, org_id, days=period)
+        weekly_trends = get_weekly_review_trends(db, org_id, period_days=period)
+        category_performance = get_category_performance(
+            db, org_id, period_days=period
+        )
+        source_comparison = get_source_comparison_metrics(
+            db, org_id, period_days=period
+        )
 
-        try:
-            # Aggregate all atomic data using the same cursor for performance
-            metrics = get_dashboard_metrics(org_id, period, cursor=cursor)
-            sentiment_charts = get_sentiment_distribution(
-                cursor, org_id, period_days=period
-            )
-            daily_trends = get_daily_review_trends(cursor, org_id, days=period)
-            weekly_trends = get_weekly_review_trends(cursor, org_id, period_days=period)
-            category_performance = get_category_performance(
-                cursor, org_id, period_days=period
-            )
-            source_comparison = get_source_comparison_metrics(
-                cursor, org_id, period_days=period
-            )
+        recent_reviews = get_recent_reviews(db, org_id, period_days=period)["reviews"]
+        alerts_data = get_alerts(db, org_id)["alerts"]
 
-            # These still use internal connections (can be refactored later)
-            recent_reviews = get_recent_reviews(org_id, period_days=period)["reviews"]
-            alerts_data = get_alerts(org_id)["alerts"]
-
-            return {
-                "hotel": {
-                    "id": org_id,
-                    "name": "Organization Dashboard",
-                    "status": "Active",
-                },
-                "organizations": [
-                    {"id": org_id, "name": "Current Organization", "status": "Active"}
-                ],
-                "currentOrganizationId": org_id,
-                "metrics": metrics,
-                "charts": {
-                    "sentiment": sentiment_charts,
-                    "reviewsOverTime": daily_trends,
-                    "sentimentTrends": weekly_trends,
-                },
-                "latestReviews": [
-                    {
-                        "id": str(r["id"]),
-                        "reviewerName": r["userName"],
-                        "heading": (r.get("text") or "No review text")[:80]
-                        + ("..." if len(r.get("text") or "") > 80 else ""),
-                        "source": r["source"],
-                        "sentiment": r["sentiment"],
-                        "time": "Recent",
-                        "rating": r["rating"],
-                        "date": r["date"],
-                        "reviewText": r.get("text") or "",
-                        "categories": r["categories"],
-                    }
-                    for r in recent_reviews[:5]
-                ],
-                "aiInsights": {
-                    "strengths": [
-                        {"label": "Review Quality", "impact": "High", "freq": "100%"},
-                    ],
-                    "issues": [],
-                    "highlight": {
-                        "text": f"Positive reviews stand at {metrics['avgRating']['value']} stars average.",
-                        "correlation": "Strong",
-                    },
-                },
-                "alerts": alerts_data[:4],
-                "sourceComparison": source_comparison,
-                "categoryPerformance": category_performance,
-            }
-        finally:
-            conn.close()
+        return {
+            "hotel": {
+                "id": org_id,
+                "name": "Organization Dashboard",
+                "status": "Active",
+            },
+            "organizations": [
+                {"id": org_id, "name": "Current Organization", "status": "Active"}
+            ],
+            "currentOrganizationId": org_id,
+            "metrics": metrics,
+            "charts": {
+                "sentiment": sentiment_charts,
+                "reviewsOverTime": daily_trends,
+                "sentimentTrends": weekly_trends,
+            },
+            "latestReviews": [
+                {
+                    "id": str(r["id"]),
+                    "reviewerName": r["userName"],
+                    "heading": (r.get("text") or "No review text")[:80]
+                    + ("..." if len(r.get("text") or "") > 80 else ""),
+                    "source": r["source"],
+                    "sentiment": r["sentiment"],
+                    "time": "Recent",
+                    "rating": r["rating"],
+                    "date": r["date"],
+                    "reviewText": r.get("text") or "",
+                    "categories": r["categories"],
+                }
+                for r in recent_reviews[:5]
+            ],
+            "aiInsights": _build_ai_insights(metrics, category_performance),
+            "alerts": alerts_data[:4],
+            "sourceComparison": source_comparison,
+            "categoryPerformance": category_performance,
+        }
     except Exception as e:
         print(f"Error building unified dashboard: {e}")
         raise HTTPException(status_code=500, detail=str(e))

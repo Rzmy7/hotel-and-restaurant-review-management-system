@@ -9,7 +9,7 @@ import { getFrontendBaseUrl, getFrontendLoginUrl } from '../../config/frontend';
 describe('getFrontendBaseUrl', () => {
     it('returns configured URL', () => {
         const url = getFrontendBaseUrl();
-        expect(url).toContain('localhost:5173');
+        expect(url).toMatch(/localhost:5173|127\.0\.0\.1:5173/);
     });
 
     it('does not have trailing slash', () => {

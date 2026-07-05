@@ -29,3 +29,8 @@ pytest
 
 openai
 
+# Redis cache (optional — falls back gracefully if not installed)
+# redis
+
+pika
+

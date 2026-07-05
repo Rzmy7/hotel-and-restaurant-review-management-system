@@ -79,6 +79,7 @@ backend/app/
 - **Python 3.10+**
 - **Microsoft SQL Server**
 - **ODBC Driver 18 for SQL Server**
+- **RabbitMQ Broker** (Local or hosted CloudAMQP account)
 - **Git**
 
 ### 🚀 Getting Started

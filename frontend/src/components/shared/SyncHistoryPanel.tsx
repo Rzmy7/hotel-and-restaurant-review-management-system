@@ -47,6 +47,71 @@ const getActivityIcon = (type?: string, status?: string) => {
     }
 };
 
+const SyncProgressBarItem = ({ 
+    sourceId, 
+    platform, 
+    isOpen 
+}: { 
+    sourceId: string | number; 
+    platform: string; 
+    isOpen: boolean;
+}) => {
+    const { progress } = useSyncProgress(sourceId, isOpen);
+
+    if (!progress) {
+        return (
+            <div className="mx-6 my-3 p-4 rounded-2xl bg-[#597FE6]/5 dark:bg-[#597FE6]/10 border border-[#597FE6]/20 dark:border-[#597FE6]/30">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-[#597FE6]/10 dark:bg-[#597FE6]/20 rounded-lg">
+                            <RefreshIcon size={14} className="text-[#597FE6] animate-spin" />
+                        </div>
+                        <span className="text-[11px] font-black uppercase tracking-wider text-[#597FE6] dark:text-[#597FE6]">
+                            {platform} Syncing...
+                        </span>
+                    </div>
+                    <span className="text-[13px] font-black text-[#597FE6] tabular-nums">
+                        0%
+                    </span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
+                    <div className="h-full bg-gradient-to-r from-[#597FE6] to-[#80a0f0] w-0 transition-all duration-500 ease-out rounded-full" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mx-6 my-3 p-4 rounded-2xl bg-[#597FE6]/5 dark:bg-[#597FE6]/10 border border-[#597FE6]/20 dark:border-[#597FE6]/30">
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-[#597FE6]/10 dark:bg-[#597FE6]/20 rounded-lg">
+                        <RefreshIcon size={14} className="text-[#597FE6] animate-spin" />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#597FE6] dark:text-[#597FE6]">
+                        {platform} Live Sync
+                    </span>
+                </div>
+                <span className="text-[13px] font-black text-[#597FE6] dark:text-[#597FE6] tabular-nums">
+                    {progress.percentage}%
+                </span>
+            </div>
+            
+            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div 
+                    className="h-full bg-gradient-to-r from-[#597FE6] to-[#80a0f0] transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(89,127,230,0.3)]"
+                    style={{ width: `${progress.percentage}%` }}
+                />
+            </div>
+            
+            <p className="text-[10px] font-bold text-[#597FE6]/70 dark:text-[#597FE6]/70 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-1 h-1 bg-[#597FE6] rounded-full animate-ping" />
+                {progress.progress || 'Processing...'}
+            </p>
+        </div>
+    );
+};
+
 const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({ 
     isOpen, 
     onClose, 
@@ -65,7 +130,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
     onClear
 }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const { progress } = useSyncProgress(activeSyncSourceId || null, isOpen && !!activeSyncSourceId);
+    const syncingSources = sources.filter(s => s.status === 'Syncing');
 
 
     // Infinite scroll listener
@@ -189,33 +254,16 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                 </div>
 
                 {/* Real-time Progress Bar */}
-                {activeSyncSourceId && progress && (
-                    <div className="mx-6 my-6 p-4 rounded-2xl bg-[#597FE6]/5 dark:bg-[#597FE6]/10 border border-[#597FE6]/20 dark:border-[#597FE6]/30">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-[#597FE6]/10 dark:bg-[#597FE6]/20 rounded-lg">
-                                    <RefreshIcon size={14} className="text-[#597FE6] animate-spin" />
-                                </div>
-                                <span className="text-[11px] font-black uppercase tracking-wider text-[#597FE6] dark:text-[#597FE6]">
-                                    Live Sync Progress
-                                </span>
-                            </div>
-                            <span className="text-[13px] font-black text-[#597FE6] dark:text-[#597FE6] tabular-nums">
-                                {progress.percentage}%
-                            </span>
-                        </div>
-                        
-                        <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
-                            <div 
-                                className="h-full bg-gradient-to-r from-[#597FE6] to-[#80a0f0] transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(89,127,230,0.3)]"
-                                style={{ width: `${progress.percentage}%` }}
+                {isOpen && syncingSources.length > 0 && (
+                    <div className="space-y-1">
+                        {syncingSources.map(source => (
+                            <SyncProgressBarItem 
+                                key={source.id} 
+                                sourceId={source.id} 
+                                platform={source.platform} 
+                                isOpen={isOpen} 
                             />
-                        </div>
-                        
-                        <p className="text-[10px] font-bold text-[#597FE6]/70 dark:text-[#597FE6]/70 uppercase tracking-widest flex items-center gap-1.5">
-                            <span className="w-1 h-1 bg-[#597FE6] rounded-full animate-ping" />
-                            {progress.progress || 'Processing...'}
-                        </p>
+                        ))}
                     </div>
                 )}
 

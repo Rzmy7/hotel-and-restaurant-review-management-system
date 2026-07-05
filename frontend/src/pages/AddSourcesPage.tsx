@@ -74,7 +74,7 @@ const AddSourcesPage = () => {
       .map(([id, url]) => ({
         platform_id: parseInt(id),
         source_url: url.trim(),
-        fetching_frequency: 1 // Default to 1 (Daily) for now
+        fetching_frequency: 2 // Default to 2 (Every 3 Days) for now
       }));
 
     const draftStr = localStorage.getItem(SETUP_DRAFT_CONFIG_KEY);

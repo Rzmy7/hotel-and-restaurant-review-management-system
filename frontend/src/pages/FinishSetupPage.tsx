@@ -71,7 +71,7 @@ const FinishSetupPage = () => {
         sources: (draft.sources || []).map((s: any) => ({
           platform_id: s.platform_id,
           source_url: s.source_url,
-          fetching_frequency: draft.schedule || 1
+          fetching_frequency: draft.schedule || 2
         }))
       };
 

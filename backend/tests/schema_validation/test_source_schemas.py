@@ -101,7 +101,7 @@ class TestSourceCreate:
             platform_id=1,
             source_url="https://example.com",
         )
-        assert model.fetching_frequency == 1
+        assert model.fetching_frequency == 2
 
     def test_rejects_missing_organization_id(self):
         with pytest.raises(ValidationError):

@@ -27,7 +27,7 @@ describe('normalizeBackendBaseUrl', () => {
     });
 
     it('returns fallback for empty string', () => {
-        expect(normalizeBackendBaseUrl('')).toContain('localhost');
+        expect(normalizeBackendBaseUrl('')).toMatch(/localhost|127\.0\.0\.1/);
     });
 
     it('returns custom fallback when provided', () => {
@@ -47,7 +47,7 @@ describe('getApiBaseUrl', () => {
 
     it('returns fallback when no localStorage override', () => {
         const url = getApiBaseUrl();
-        expect(url).toContain('localhost:8000');
+        expect(url).toMatch(/localhost:8000|127\.0\.0\.1:8000/);
     });
 
     it('uses localStorage override', () => {

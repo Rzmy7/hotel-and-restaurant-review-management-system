@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 
 from app.database.session import get_db
@@ -171,7 +171,7 @@ def upsert_organization(
 
             if not existing_source:
                 new_source_id = uuid.uuid4()
-                next_sync = calculate_next_sync_time(now, source.fetching_frequency)
+                next_sync = now + timedelta(minutes=1)
                 db.execute(
                     text("""
                         INSERT INTO dbo.source 

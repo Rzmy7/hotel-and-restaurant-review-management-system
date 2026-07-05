@@ -3,7 +3,6 @@ import httpx
 import logging
 from app.database.session import SessionLocal
 from app.modules.source.schemas import SyncStatus, SyncStatusRequest
-from app.modules.source.services.source_service import get_stuck_sources, update_sync_status
 from app.core.config import SCRAPER_ENGINE_URL as _SCRAPER_URL
 
 logger = logging.getLogger(__name__)
@@ -18,6 +17,7 @@ async def reconcile_scraper_jobs():
     cross-references against the Scraper Engine's active jobs list.
     Marks any source not found in the Scraper Engine's active pool as FAILED.
     """
+    from app.modules.source.services.source_service import get_stuck_sources, update_sync_status
     db = SessionLocal()
     try:
         # Run DB query in thread to avoid blocking loop

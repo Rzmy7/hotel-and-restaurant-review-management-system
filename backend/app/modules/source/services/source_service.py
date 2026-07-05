@@ -181,7 +181,7 @@ def create_source(db: Session, source_data: SourceCreate) -> SourceRead:
         source_url=source_data.source_url,
         source_status=source_data.source_status,
         fetching_frequency=source_data.fetching_frequency,
-        next_synced_at=now  # Set to now to trigger initial sync immediately
+        next_synced_at=now + timedelta(minutes=1)  # Set to trigger initial sync after 1 minute
     )
     
     db.add(new_source)
@@ -366,13 +366,15 @@ def get_sync_logs(
     search: Optional[str] = None,
     source_id: Optional[uuid.UUID] = None
 ) -> List[SyncLogRead]:
-    # Fetch logs for sources belonging to this organization
+    # Fetch logs for sources belonging to this organization,
+    # excluding internal/technical logs irrelevant to the source activity page
     query = db.query(SyncLogSource).join(
         SourceSource, SyncLogSource.source_id == SourceSource.source_id
     ).options(
         joinedload(SyncLogSource.source).joinedload(SourceSource.platform)
     ).filter(
-        SourceSource.organization_id == organization_id
+        SourceSource.organization_id == organization_id,
+        SyncLogSource.activity_type.notin_(["AI_ANALYSIS_STARTED", "AI_ANALYSIS_COMPLETED", "INGESTION_COMPLETED"])
     )
 
     if source_id:
@@ -712,49 +714,57 @@ def trigger_sync(db: Session, source_id: uuid.UUID):
         activity_details=f"Manual sync request received. {source.platform.platform_name} placed in high-priority sync queue."
     )
     
-    # Trigger the microservice (async trigger)
-    import httpx
-    from app.core.config import SCRAPER_ENGINE_URL as SCRAPER_API_BASE_URL
+    # Trigger the microservice (async trigger via RabbitMQ)
+    import pika
+    import json
+    from app.core.config import RABBITMQ_URL
+    
+    # Generate job_id locally
+    job_id = str(uuid.uuid4())
     platform_key = source.platform.platform_name.lower().replace(" reviews", "").replace(".com", "")
-    endpoint = f"{SCRAPER_API_BASE_URL}/api/{platform_key}/scrape"
     
     payload = {
+        "job_id": job_id,
         "source_id": str(source.source_id),
         "source_url": source.source_url,
-        "headless": True,
-        "pages": "*"
+        "platform": platform_key
     }
     
-    scraper_accepted = False
+    connection = None
     try:
-        # We use a short timeout and fire-and-forget approach for the trigger
-        from app.core.config import SCRAPER_API_KEY
-        headers = {"X-Internal-API-Key": SCRAPER_API_KEY}
-        with httpx.Client(headers=headers) as client:
-            resp = client.post(endpoint, json=payload, timeout=10.0)
-            if resp.status_code in [200, 201, 202]:
-                scraper_accepted = True
-                data = resp.json()
-                job_id = data.get("job_id")
-                if job_id:
-                    from app.modules.source.services.sync_socket_manager import sync_socket_manager
-                    sync_socket_manager.register_job(str(source_id), job_id)
-    except Exception:
-        # The scraper might be slow to respond or busy, but the status is already 'queued'
-        # The scraper's own reconciliation will pick it up if it failed to receive the POST
-        pass
-
-    # If the scraper accepted the job, update status to 'running' immediately
-    # so the frontend shows "Syncing" instead of waiting for the scraper's callback
-    if scraper_accepted:
-        source.source_status = "running"
-        db.commit()
+        # Establish blocking connection to RabbitMQ
+        connection_params = pika.URLParameters(RABBITMQ_URL)
+        connection = pika.BlockingConnection(connection_params)
+        channel = connection.channel()
+        
+        # Declare queue as durable
+        channel.queue_declare(queue="scraper_jobs", durable=True)
+        
+        # Publish persistent message
+        channel.basic_publish(
+            exchange="",
+            routing_key="scraper_jobs",
+            body=json.dumps(payload),
+            properties=pika.BasicProperties(
+                delivery_mode=2  # Make message persistent
+            )
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to publish scrape job to RabbitMQ: {e}")
+    finally:
+        if connection and connection.is_open:
+            try:
+                connection.close()
+            except Exception:
+                pass
 
     return {
         "message": "Synchronization triggered successfully",
         "source_id": str(source_id),
-        "status": "running" if scraper_accepted else "queued"
+        "status": "queued"
     }
+
 
 def prune_activities(db: Session, organization_id: uuid.UUID):
     """Keep only the latest 100 entries for a given organization."""

@@ -11,7 +11,8 @@ const ForgotPasswordPage = () => {
   const location = useLocation();
   const loginEmail = location.state?.loginEmail as string | undefined;
 
-  const [email, setEmail] = useState(loginEmail || '');
+  const [email, setEmail] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

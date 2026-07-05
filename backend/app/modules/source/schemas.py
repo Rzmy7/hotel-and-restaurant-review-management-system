@@ -59,7 +59,7 @@ class SourceCreate(BaseModel):
     platform_id: int
     source_url: str
     source_status: SourceStatus = SourceStatus.ACTIVE
-    fetching_frequency: int = 1
+    fetching_frequency: int = 2
 
 class SourceUpdate(BaseModel):
     source_url: Optional[str] = None

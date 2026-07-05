@@ -2,32 +2,28 @@
 
 import uuid
 from datetime import datetime, timedelta
+from typing import Dict, Any, List
 
-import pyodbc
-from app.core.pyodbc_connection import get_connection_string
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 
-def get_alerts(org_id: str = None) -> dict:
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
+def get_alerts(db: Session, org_id: str = None) -> dict:
     alerts = []
 
     if org_id:
-        cursor.execute(
-            """
+        sql = """
             SELECT COUNT(*) 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE r.[status] = 'Pending' AND s.organization_id = ?
-        """,
-            org_id,
-        )
+            WHERE r.[status] = 'Pending' AND s.organization_id = :org_id
+        """
+        params = {"org_id": org_id}
     else:
-        cursor.execute(
-            "SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'"
-        )
+        sql = "SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'"
+        params = {}
 
-    pending = cursor.fetchone()[0]
+    pending = db.execute(text(sql), params).scalar() or 0
     if pending > 0:
         alerts.append(
             {
@@ -35,31 +31,26 @@ def get_alerts(org_id: str = None) -> dict:
                 "type": "warning",
                 "title": f"{pending} Pending Reviews",
                 "message": "You have reviews that need attention.",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
                 "isRead": False,
             }
         )
 
-    seven_days_ago = (datetime.now() - timedelta(days=7)).date()
+    seven_days_ago = (datetime.utcnow() - timedelta(days=7)).date()
 
     if org_id:
-        cursor.execute(
-            """
+        sql_neg = """
             SELECT COUNT(*) 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE r.sentiment = 'Negative' AND r.reviewDate >= ? AND s.organization_id = ?
-        """,
-            seven_days_ago,
-            org_id,
-        )
+            WHERE r.sentiment = 'Negative' AND r.reviewDate >= :seven_days_ago AND s.organization_id = :org_id
+        """
+        params_neg = {"seven_days_ago": seven_days_ago, "org_id": org_id}
     else:
-        cursor.execute(
-            "SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= ?",
-            seven_days_ago,
-        )
+        sql_neg = "SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= :seven_days_ago"
+        params_neg = {"seven_days_ago": seven_days_ago}
 
-    neg_count = cursor.fetchone()[0]
+    neg_count = db.execute(text(sql_neg), params_neg).scalar() or 0
     if neg_count > 0:
         alerts.append(
             {
@@ -67,34 +58,29 @@ def get_alerts(org_id: str = None) -> dict:
                 "type": "error",
                 "title": f"{neg_count} Negative Reviews This Week",
                 "message": "New negative reviews require attention.",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
                 "isRead": False,
             }
         )
 
-    conn.close()
     return {"alerts": alerts}
 
 
-def get_activities(org_id: str = None) -> dict:
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
+def get_activities(db: Session, org_id: str = None) -> dict:
     if org_id:
-        cursor.execute(
-            """
+        sql = """
             SELECT TOP 15 
                 r.id, r.reviewerName as userName, r.sentiment, r.rating, 
                 r.reviewDate, r.[status], p.platform_name as platform_id
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
             JOIN dbo.platform p ON s.platform_id = p.platform_id
-            WHERE s.organization_id = ?
+            WHERE s.organization_id = :org_id
             ORDER BY r.reviewDate DESC
-        """,
-            org_id,
-        )
+        """
+        params = {"org_id": org_id}
     else:
-        cursor.execute("""
+        sql = """
             SELECT TOP 15 
                 r.id, r.reviewerName as userName, r.sentiment, r.rating, 
                 r.reviewDate, r.[status], p.platform_name as platform_id
@@ -102,62 +88,48 @@ def get_activities(org_id: str = None) -> dict:
             JOIN dbo.source s ON r.source_id = s.source_id
             JOIN dbo.platform p ON s.platform_id = p.platform_id
             ORDER BY r.reviewDate DESC
-        """)
-    rows = cursor.fetchall()
-    conn.close()
+        """
+        params = {}
+        
+    rows = db.execute(text(sql), params).fetchall()
 
     activities = []
     for row in rows:
         activities.append(
             {
                 "id": str(row.id),
-                "type": "scrape_completed"
-                if row.status == "Replied"
-                else "user_joined",  # Mocking types to match RecentActivity
+                "type": "scrape_completed" if row.status == "Replied" else "user_joined",
                 "title": "Reply sent" if row.status == "Replied" else "New Review",
                 "description": f"By {row.userName} on {row.platform_id}",
-                "timestamp": row.reviewDate.isoformat()
-                if row.reviewDate
-                else datetime.now().isoformat(),
+                "timestamp": row.reviewDate.isoformat() if row.reviewDate else datetime.utcnow().isoformat(),
                 "user": row.userName,
             }
         )
     return {"activities": activities}
 
 
-def get_negative_reviews_for_org(org_id: str) -> dict:
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-
+def get_negative_reviews_for_org(db: Session, org_id: str) -> dict:
     # Get count
-    cursor.execute(
-        """
+    sql_count = """
         SELECT COUNT(*) 
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ? AND r.sentiment = 'Negative'
-    """,
-        org_id,
-    )
-    count = cursor.fetchone()[0]
+        WHERE s.organization_id = :org_id AND r.sentiment = 'Negative'
+    """
+    count = db.execute(text(sql_count), {"org_id": org_id}).scalar() or 0
 
     # Get detailed reviews
-    cursor.execute(
-        """
+    sql_reviews = """
         SELECT 
             r.id, r.reviewerName, r.rating, r.text as reviewText, 
             r.reviewDate, p.platform_name as platform_id, r.sentiment
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
         JOIN dbo.platform p ON s.platform_id = p.platform_id
-        WHERE s.organization_id = ? AND r.sentiment = 'Negative'
+        WHERE s.organization_id = :org_id AND r.sentiment = 'Negative'
         ORDER BY r.reviewDate DESC
-    """,
-        org_id,
-    )
-
-    rows = cursor.fetchall()
-    conn.close()
+    """
+    rows = db.execute(text(sql_reviews), {"org_id": org_id}).fetchall()
 
     reviews = []
     for row in rows:
@@ -176,23 +148,15 @@ def get_negative_reviews_for_org(org_id: str) -> dict:
     return {"count": count, "reviews": reviews}
 
 
-def get_sentiment_counts(org_id: str) -> dict:
-    conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
+def get_sentiment_counts(db: Session, org_id: str) -> dict:
+    sql = """
         SELECT r.sentiment, COUNT(*) as cnt 
         FROM dbo.processed_review r
         JOIN dbo.source s ON r.source_id = s.source_id
-        WHERE s.organization_id = ?
+        WHERE s.organization_id = :org_id
         GROUP BY r.sentiment
-    """,
-        org_id,
-    )
-
-    rows = cursor.fetchall()
-    conn.close()
+    """
+    rows = db.execute(text(sql), {"org_id": org_id}).fetchall()
 
     counts = {"Positive": 0, "Negative": 0, "Neutral": 0}
     for row in rows:

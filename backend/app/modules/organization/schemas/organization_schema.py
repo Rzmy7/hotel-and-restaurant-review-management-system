@@ -5,7 +5,7 @@ from typing import Optional, List
 class SourceCreateNested(BaseModel):
     source_url: str
     platform_id: int
-    fetching_frequency: int = 1
+    fetching_frequency: int = 2
 
 
 class OrganizationCreate(BaseModel):

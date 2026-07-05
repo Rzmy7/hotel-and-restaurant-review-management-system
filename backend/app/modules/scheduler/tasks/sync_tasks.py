@@ -7,7 +7,6 @@ from sqlalchemy.orm import joinedload
 
 from app.database import SessionLocal
 from app.modules.source.models import Source as SourceSource  # alias for backward compat
-from app.modules.source.services.source_service import update_sync_status, log_activity
 from app.core.config import SCRAPER_ENGINE_URL, SCRAPER_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -17,47 +16,54 @@ SCRAPER_API_BASE_URL = SCRAPER_ENGINE_URL
 
 async def trigger_platform_scrape(platform_name: str, url: str, source_id: str) -> Optional[str]:
     """
-    Trigger the scraper microservice for a specific platform.
+    Trigger the scraper microservice for a specific platform via RabbitMQ.
     Returns the job_id if successful, None otherwise.
     """
+    import pika
+    import json
+    import uuid
+    from app.core.config import RABBITMQ_URL
+
     platform_key = platform_name.lower().replace(" reviews", "").replace(".com", "")
+    job_id = str(uuid.uuid4())
     
-    endpoint = f"{SCRAPER_API_BASE_URL}/api/{platform_key}/scrape"
     payload = {
+        "job_id": job_id,
         "source_id": str(source_id),
         "source_url": url,
-        "headless": True,
-        "pages": "*"  # Request full sync for all platforms
+        "platform": platform_key
     }
     
-    logger.info(f"Triggering scheduled scrape for {platform_name} at {endpoint}")
+    logger.info(f"Triggering scheduled scrape for {platform_name} via RabbitMQ queue 'scraper_jobs'")
     
+    connection = None
     try:
-        headers = {
-            "X-Internal-API-Key": SCRAPER_API_KEY
-        }
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, json=payload, headers=headers, timeout=20.0)
-            response.raise_for_status()
-            data = response.json()
-            job_id = data.get("job_id")
-            logger.info(f"Scrape triggered successfully: {data}")
-            
-            # Register job with sync_socket_manager so progress can be tracked
-            if job_id:
-                try:
-                    from app.modules.source.services.sync_socket_manager import sync_socket_manager
-                    sync_socket_manager.register_job(str(source_id), job_id)
-                except Exception as reg_err:
-                    logger.warning(f"Failed to register job for sync progress: {reg_err}")
-                    
-            return job_id or "triggered" # Fallback if no job_id but success
-    except httpx.HTTPError as e:
-         logger.error(f"HTTP error triggering scraper for {platform_name}: {e}")
-         return None
+        connection_params = pika.URLParameters(RABBITMQ_URL)
+        connection = pika.BlockingConnection(connection_params)
+        channel = connection.channel()
+        
+        channel.queue_declare(queue="scraper_jobs", durable=True)
+        
+        channel.basic_publish(
+            exchange="",
+            routing_key="scraper_jobs",
+            body=json.dumps(payload),
+            properties=pika.BasicProperties(
+                delivery_mode=2
+            )
+        )
+        logger.info(f"Scrape job successfully published to RabbitMQ. Job ID: {job_id}")
+        return job_id
     except Exception as e:
-         logger.error(f"Unexpected error triggering scraper: {e}")
+         logger.error(f"Unexpected error publishing scrape job to RabbitMQ: {e}")
          return None
+    finally:
+         if connection and connection.is_open:
+             try:
+                 connection.close()
+             except Exception:
+                 pass
+
 
 
 def _check_scraping_frequency_for_tenant(tenant_id: str) -> bool:
@@ -95,6 +101,7 @@ async def process_pending_syncs():
     Scheduled task to find pending sources and trigger their sync.
     Runs every minute.
     """
+    from app.modules.source.services.source_service import log_activity
     logger.info("Running scheduled sync check...")
     
     try:

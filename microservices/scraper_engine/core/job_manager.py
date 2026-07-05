@@ -60,6 +60,25 @@ class JobManager:
         self._save()
         return job_id
 
+    def create_job_with_id(self, job_id: str, platform: str, url: str) -> Dict[str, Any]:
+        """Initializes a new background task state with a predefined Job ID."""
+        self.jobs[job_id] = {
+            "id": job_id,
+            "platform": platform,
+            "url": url,
+            "status": JobStatus.PENDING,
+            "progress": "Initializing browser...",
+            "current_page": 0,
+            "total_pages": 0,
+            "reviews_extracted": 0,
+            "total_reviews": 0,
+            "percentage": 0.0,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "ended_at": None
+        }
+        self._save()
+        return self.jobs[job_id]
+
     def update_job(self, job_id: str, **kwargs):
         """
         Safely mutates the memory block for a target job.
@@ -70,6 +89,18 @@ class JobManager:
             return
         
         job = self.jobs[job_id]
+        
+        # Ensure default keys are present to avoid KeyError
+        for key, val in {
+            "status": JobStatus.PENDING,
+            "progress": "Initializing...",
+            "current_page": 0,
+            "total_pages": 0,
+            "reviews_extracted": 0,
+            "total_reviews": 0,
+            "percentage": 0.0
+        }.items():
+            job.setdefault(key, val)
         
         if "status" in kwargs and kwargs["status"]:
             job["status"] = kwargs["status"]
