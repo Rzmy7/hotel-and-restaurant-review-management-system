@@ -1,5 +1,5 @@
 $env:ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
-$env:ANTHROPIC_AUTH_TOKEN="sk-868988bbd43847f2ba0682c78a20f33a"
+$env:ANTHROPIC_AUTH_TOKEN="sk-37e2f1a5528344458bdc4b090e996340"
 $env:ANTHROPIC_MODEL="deepseek-v4-pro[1m]"
 $env:ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]"
 $env:ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]"

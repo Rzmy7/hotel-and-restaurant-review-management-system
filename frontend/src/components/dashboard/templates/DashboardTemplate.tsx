@@ -23,7 +23,7 @@ export const DashboardTemplate: React.FC<DashboardTemplateProps> = ({ data, peri
         <>
             <DashboardHeader period={period} onPeriodChange={onPeriodChange} />
 
-            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6 bg-gray-50 dark:bg-transparent">
+            <div className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto flex flex-col gap-6">
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 min-[1200px]:grid-cols-4 gap-4">
                     <MetricCard

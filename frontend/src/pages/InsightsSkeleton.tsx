@@ -2,8 +2,8 @@ import React from 'react';
 import Skeleton from '../components/shared/Skeleton';
 
 const MetricCardSkeleton: React.FC = () => (
-    <div className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl">
-        <Skeleton className="w-11 h-11 rounded-[10px] flex-shrink-0" />
+    <div className="flex items-center gap-3.5 p-5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-sm">
+        <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
         <div className="flex-1 space-y-2">
             <Skeleton className="h-3.5 w-24 rounded" />
             <div className="flex items-center gap-2">
@@ -18,20 +18,20 @@ const InsightsSkeleton: React.FC = () => {
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900">
             {/* Header Skeleton */}
-            <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-2">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+                <div className="space-y-1">
                     <Skeleton className="w-32 h-6 rounded" />
-                    <Skeleton className="w-64 h-4 rounded" />
+                    <Skeleton className="w-64 h-3.5 rounded" />
                 </div>
                 {/* Time range selector pills skeleton */}
-                <div className="flex bg-gray-100 dark:bg-slate-800/80 rounded-lg p-1 border border-transparent dark:border-slate-700/50 w-80 h-10">
+                <div className="flex bg-gray-100 dark:bg-slate-800/80 rounded-lg p-1 w-80 h-10">
                     <Skeleton className="flex-1 h-full rounded-md" />
                     <Skeleton className="flex-1 h-full rounded-md mx-1" />
                     <Skeleton className="flex-1 h-full rounded-md" />
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col gap-6 p-4 md:px-8 md:py-6">
+            <div className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
                 {/* ═══ 1. KPI METRICS ROW ═══════════════════════════ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 min-[1000px]:grid-cols-4 gap-4">
                     <MetricCardSkeleton />
@@ -41,7 +41,7 @@ const InsightsSkeleton: React.FC = () => {
                 </div>
 
                 {/* ═══ 2. SENTIMENT OVER TIME ════════════════════════ */}
-                <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
+                <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
                     <div className="flex justify-between items-center flex-wrap gap-2">
                         <Skeleton className="h-5 w-48 rounded" />
                         <div className="flex gap-4">
@@ -83,7 +83,7 @@ const InsightsSkeleton: React.FC = () => {
                 {/* ═══ 3 + 4. RATING DISTRIBUTION + CATEGORY PERFORMANCE ═════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
                     {/* Rating Distribution Skeleton */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
+                    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
                         <Skeleton className="h-5 w-44 rounded" />
                         <div className="flex flex-col gap-4">
                             {[5, 4, 3, 2, 1].map((stars) => (
@@ -104,7 +104,7 @@ const InsightsSkeleton: React.FC = () => {
                     </div>
 
                     {/* Category Performance Skeleton */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
+                    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
                         <Skeleton className="h-5 w-48 rounded" />
                         <div className="flex flex-col gap-4.5">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -126,7 +126,7 @@ const InsightsSkeleton: React.FC = () => {
                 </div>
 
                 {/* ═══ 5. SOURCE BREAKDOWN ══════════════════════════ */}
-                <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
+                <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2">
                             <Skeleton className="w-8 h-8 rounded-lg" />
@@ -169,7 +169,7 @@ const InsightsSkeleton: React.FC = () => {
                 {/* ═══ 6. TOP KEYWORDS ═══════════════════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
                     {/* Positive Keywords */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
+                    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
                         <div className="flex items-center gap-2">
                             <Skeleton className="w-4 h-4 rounded-full" />
                             <Skeleton className="h-5 w-48 rounded" />
@@ -185,7 +185,7 @@ const InsightsSkeleton: React.FC = () => {
                     </div>
 
                     {/* Negative Keywords */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
+                    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
                         <div className="flex items-center gap-2">
                             <Skeleton className="w-4 h-4 rounded-full" />
                             <Skeleton className="h-5 w-48 rounded" />
@@ -203,7 +203,7 @@ const InsightsSkeleton: React.FC = () => {
                 {/* ═══ 7. RESPONSE METRICS + 8. HEATMAP ══════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
                     {/* Response Metrics */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
+                    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
                         <Skeleton className="h-5 w-36 rounded" />
                         <div className="grid grid-cols-3 gap-4">
                             {[1, 2, 3].map((i) => (
@@ -221,7 +221,7 @@ const InsightsSkeleton: React.FC = () => {
                     </div>
 
                     {/* Review Volume Heatmap */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
+                    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-4">
                         <div className="flex justify-between items-center gap-3">
                             <Skeleton className="h-5 w-32 rounded" />
                             <Skeleton className="h-3.5 w-36 rounded" />
@@ -251,7 +251,7 @@ const InsightsSkeleton: React.FC = () => {
                 </div>
 
                 {/* ═══ 9. AI RECOMMENDATIONS ═════════════════════════ */}
-                <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
+                <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-5">
                     <div className="flex items-center gap-2">
                         <Skeleton className="w-8 h-8 rounded-lg" />
                         <div className="space-y-1.5">

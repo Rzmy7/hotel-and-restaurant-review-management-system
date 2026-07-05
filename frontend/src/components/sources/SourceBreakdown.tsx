@@ -50,7 +50,7 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ sources = [] }) => {
     const maxReviews = Math.max(...coloredSources.map((s) => s.reviews), 1);
 
     return (
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 shadow-sm">
             {/* Header */}
             <div className="flex items-start justify-between mb-5 gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -58,8 +58,8 @@ const SourceBreakdown: React.FC<SourceBreakdownProps> = ({ sources = [] }) => {
                         <BarChart3 size={16} />
                     </div>
                     <div>
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Source Breakdown</h3>
-                        <p className="m-0 text-[11px] text-gray-400 dark:text-slate-400">Per-source performance metrics</p>
+                        <h3 className="m-0 text-[11px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">Source Breakdown</h3>
+                        <p className="m-0 text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">Per-source performance metrics</p>
                     </div>
                 </div>
 
