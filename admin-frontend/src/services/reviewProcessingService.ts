@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import { PaginatedResponse } from '../types';
+import type { PaginatedResponse } from '../types';
 
 export interface ReviewProcessingStats {
     activeJobs: number;

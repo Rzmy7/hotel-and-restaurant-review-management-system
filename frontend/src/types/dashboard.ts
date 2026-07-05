@@ -41,22 +41,25 @@ export interface AIInsightsData {
     };
 }
 
-export enum AlertCategory {
-    REPUTATION = 'reputation',
-    OPERATIONS = 'operations',
-    TREND = 'trend'
-}
+export const AlertCategory = {
+    REPUTATION: 'reputation',
+    OPERATIONS: 'operations',
+    TREND: 'trend'
+} as const;
+export type AlertCategory = typeof AlertCategory[keyof typeof AlertCategory];
 
-export enum AlertSeverity {
-    CRITICAL = 'critical',
-    WARNING = 'warning',
-    INFO = 'info'
-}
+export const AlertSeverity = {
+    CRITICAL: 'critical',
+    WARNING: 'warning',
+    INFO: 'info'
+} as const;
+export type AlertSeverity = typeof AlertSeverity[keyof typeof AlertSeverity];
 
-export enum AlertActionType {
-    VIEW_REVIEWS = 'view_reviews',
-    OPEN_INSIGHTS = 'open_insights'
-}
+export const AlertActionType = {
+    VIEW_REVIEWS: 'view_reviews',
+    OPEN_INSIGHTS: 'open_insights'
+} as const;
+export type AlertActionType = typeof AlertActionType[keyof typeof AlertActionType];
 
 export type ReviewStatus = 'Pending' | 'Replied' | 'Unresolved';
 

@@ -44,7 +44,6 @@ export const Broadcasting: React.FC = () => {
     const [estimatedCount, setEstimatedCount] = useState(0);
     const [showPreview, setShowPreview] = useState(false);
     const [sending, setSending] = useState(false);
-    const [loading, setLoading] = useState(false);
     const [selectedDetail, setSelectedDetail] = useState<BroadcastRecord | null>(null);
 
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
