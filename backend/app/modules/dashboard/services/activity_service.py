@@ -1,69 +1,260 @@
 """Dashboard activity service — alerts and activity feed."""
 
+import re
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 
-def get_alerts(db: Session, org_id: str = None) -> dict:
-    alerts = []
+# ── Alert Namespaces & Configurations ───────────────────────────────
 
+class AlertCategory:
+    REPUTATION = "reputation"
+    OPERATIONS = "operations"
+    TREND = "trend"
+
+
+class AlertSeverity:
+    CRITICAL = "critical"
+    WARNING = "warning"
+    INFO = "info"
+
+
+class AlertActionType:
+    VIEW_REVIEWS = "view_reviews"
+    OPEN_INSIGHTS = "open_insights"
+
+
+CRITICAL_REVIEW_KEYWORDS = [
+    "food poisoning", "bed bug", "poison", "bug", "dirty", "hygiene", "pest", "theft", "scam", "cockroach"
+]
+
+
+ALERT_CONFIG = {
+    "critical_window_hours": 24,
+    "sla_hours": 48,
+    "trend_days_period": 7,
+    "trend_ratio_threshold": 1.5,
+    "trend_min_previous": 3,
+    "trend_min_current": 5,
+}
+
+
+# ── Payload Builder ──────────────────────────────────────────────────
+
+def build_alert_payload(
+    category: str,
+    severity: str,
+    title: str,
+    message: str,
+    action_type: str,
+    priority: int = 50,
+    filters: Optional[dict] = None,
+    metadata: Optional[dict] = None
+) -> dict:
+    """Build a presentation-agnostic Alert payload conforming to frontend contract."""
+    return {
+        "id": f"alert-{category}-{str(uuid.uuid4())[:8]}",
+        "category": category,
+        "severity": severity,
+        "title": title,
+        "message": message,
+        "occurred_at": datetime.utcnow().isoformat() + "Z",
+        "priority": priority,
+        "action": {
+            "type": action_type,
+            "filters": filters or {}
+        },
+        "metadata": metadata or {}
+    }
+
+
+# ── Read-Only Detectors ──────────────────────────────────────────────
+
+def detect_reputation_alert(db: Session, org_id: Optional[str]) -> Optional[dict]:
+    """Check for critical low-rating reviews and hygiene complaints in the last 24h."""
+    one_day_ago = datetime.utcnow() - timedelta(hours=ALERT_CONFIG["critical_window_hours"])
+    
+    if org_id:
+        sql = """
+            SELECT r.id, r.[text]
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE s.organization_id = :org_id 
+              AND r.reviewDate >= :one_day_ago
+              AND r.rating <= 2
+        """
+        params = {"org_id": org_id, "one_day_ago": one_day_ago}
+    else:
+        sql = """
+            SELECT r.id, r.[text]
+            FROM dbo.processed_review r
+            WHERE r.reviewDate >= :one_day_ago
+              AND r.rating <= 2
+        """
+        params = {"one_day_ago": one_day_ago}
+
+    crit_rows = db.execute(text(sql), params).fetchall()
+    crit_count = len(crit_rows)
+
+    if crit_count > 0:
+        matched_keywords = []
+        for row in crit_rows:
+            review_text = (row.text or "").lower()
+            cleaned_text = re.sub(r'[^a-z0-9\s]', ' ', review_text)
+            for k in CRITICAL_REVIEW_KEYWORDS:
+                pattern = r'\b' + re.escape(k) + r'\b'
+                if re.search(pattern, cleaned_text) and k not in matched_keywords:
+                    matched_keywords.append(k)
+
+        if matched_keywords:
+            return build_alert_payload(
+                category=AlertCategory.REPUTATION,
+                severity=AlertSeverity.CRITICAL,
+                title="Critical hygiene/safety complaints",
+                message=f"{crit_count} recent review(s) flagged with hygiene or safety issues (e.g., {', '.join(matched_keywords[:2])}).",
+                action_type=AlertActionType.VIEW_REVIEWS,
+                priority=100,
+                filters={"ratingMax": 2, "keywords": matched_keywords, "dateRange": "24h"},
+                metadata={
+                    "count": crit_count,
+                    "keywords": matched_keywords,
+                    "detector": "reputation",
+                    "rule": "critical_keyword_match"
+                }
+            )
+        else:
+            return build_alert_payload(
+                category=AlertCategory.REPUTATION,
+                severity=AlertSeverity.CRITICAL,
+                title="Critical reviews detected",
+                message=f"⚠️ {crit_count} new critical reviews detected in the last 24 hours.",
+                action_type=AlertActionType.VIEW_REVIEWS,
+                priority=90,
+                filters={"ratingMax": 2, "dateRange": "24h"},
+                metadata={
+                    "count": crit_count,
+                    "detector": "reputation",
+                    "rule": "critical_rating"
+                }
+            )
+    return None
+
+
+def detect_operations_alert(db: Session, org_id: Optional[str]) -> Optional[dict]:
+    """Check for negative reviews waiting for response beyond SLA threshold."""
+    two_days_ago = datetime.utcnow() - timedelta(hours=ALERT_CONFIG["sla_hours"])
+    
     if org_id:
         sql = """
             SELECT COUNT(*) 
             FROM dbo.processed_review r
             JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE r.[status] = 'Pending' AND s.organization_id = :org_id
+            WHERE s.organization_id = :org_id
+              AND r.rating <= 2
+              AND r.[status] = 'Pending'
+              AND r.reviewDate <= :two_days_ago
         """
-        params = {"org_id": org_id}
+        params = {"org_id": org_id, "two_days_ago": two_days_ago}
     else:
-        sql = "SELECT COUNT(*) FROM dbo.processed_review WHERE [status] = 'Pending'"
-        params = {}
-
-    pending = db.execute(text(sql), params).scalar() or 0
-    if pending > 0:
-        alerts.append(
-            {
-                "id": str(uuid.uuid4()),
-                "type": "warning",
-                "title": f"{pending} Pending Reviews",
-                "message": "You have reviews that need attention.",
-                "timestamp": datetime.utcnow().isoformat(),
-                "isRead": False,
-            }
-        )
-
-    seven_days_ago = (datetime.utcnow() - timedelta(days=7)).date()
-
-    if org_id:
-        sql_neg = """
+        sql = """
             SELECT COUNT(*) 
             FROM dbo.processed_review r
-            JOIN dbo.source s ON r.source_id = s.source_id
-            WHERE r.sentiment = 'Negative' AND r.reviewDate >= :seven_days_ago AND s.organization_id = :org_id
+            WHERE r.rating <= 2
+              AND r.[status] = 'Pending'
+              AND r.reviewDate <= :two_days_ago
         """
-        params_neg = {"seven_days_ago": seven_days_ago, "org_id": org_id}
-    else:
-        sql_neg = "SELECT COUNT(*) FROM dbo.processed_review WHERE sentiment = 'Negative' AND reviewDate >= :seven_days_ago"
-        params_neg = {"seven_days_ago": seven_days_ago}
+        params = {"two_days_ago": two_days_ago}
 
-    neg_count = db.execute(text(sql_neg), params_neg).scalar() or 0
-    if neg_count > 0:
-        alerts.append(
-            {
-                "id": str(uuid.uuid4()),
-                "type": "error",
-                "title": f"{neg_count} Negative Reviews This Week",
-                "message": "New negative reviews require attention.",
-                "timestamp": datetime.utcnow().isoformat(),
-                "isRead": False,
+    sla_count = db.execute(text(sql), params).scalar() or 0
+    if sla_count > 0:
+        return build_alert_payload(
+            category=AlertCategory.OPERATIONS,
+            severity=AlertSeverity.WARNING,
+            title="Overdue review responses",
+            message=f"⏳ {sla_count} negative reviews unanswered for over 48 hours.",
+            action_type=AlertActionType.VIEW_REVIEWS,
+            priority=80,
+            filters={"ratingMax": 2, "status": "Pending", "slaOverdue": True},
+            metadata={
+                "count": sla_count,
+                "detector": "operations",
+                "rule": "unanswered_sla_breach"
             }
         )
+    return None
 
-    return {"alerts": alerts}
+
+def detect_trend_alert(db: Session, org_id: Optional[str]) -> Optional[dict]:
+    """Check for surges in low ratings compared to the previous week."""
+    seven_days_ago = (datetime.utcnow() - timedelta(days=ALERT_CONFIG["trend_days_period"])).date()
+    fourteen_days_ago = (datetime.utcnow() - timedelta(days=2 * ALERT_CONFIG["trend_days_period"])).date()
+    
+    if org_id:
+        sql = """
+            SELECT 
+                SUM(CASE WHEN r.reviewDate >= :seven_days_ago THEN 1 ELSE 0 END) as this_week,
+                SUM(CASE WHEN r.reviewDate >= :fourteen_days_ago AND r.reviewDate < :seven_days_ago THEN 1 ELSE 0 END) as last_week
+            FROM dbo.processed_review r
+            JOIN dbo.source s ON r.source_id = s.source_id
+            WHERE r.rating <= 2 AND s.organization_id = :org_id
+        """
+        params = {"seven_days_ago": seven_days_ago, "fourteen_days_ago": fourteen_days_ago, "org_id": org_id}
+    else:
+        sql = """
+            SELECT 
+                SUM(CASE WHEN r.reviewDate >= :seven_days_ago THEN 1 ELSE 0 END) as this_week,
+                SUM(CASE WHEN r.reviewDate >= :fourteen_days_ago AND r.reviewDate < :seven_days_ago THEN 1 ELSE 0 END) as last_week
+            FROM dbo.processed_review r
+            WHERE r.rating <= 2
+        """
+        params = {"seven_days_ago": seven_days_ago, "fourteen_days_ago": fourteen_days_ago}
+
+    result = db.execute(text(sql), params).fetchone()
+    this_week_neg = (result.this_week if result else 0) or 0
+    last_week_neg = (result.last_week if result else 0) or 0
+
+    # Ensure minimum sample sizes to prevent false alarms
+    min_prev = ALERT_CONFIG["trend_min_previous"]
+    min_curr = ALERT_CONFIG["trend_min_current"]
+    
+    if this_week_neg >= min_curr or last_week_neg >= min_prev:
+        ratio = round(this_week_neg / max(last_week_neg, 1), 1)
+        if ratio >= ALERT_CONFIG["trend_ratio_threshold"]:
+            return build_alert_payload(
+                category=AlertCategory.TREND,
+                severity=AlertSeverity.INFO,
+                title="Spike in negative reviews",
+                message=f"📉 Negative reviews increased {ratio}x this week vs last week.",
+                action_type=AlertActionType.OPEN_INSIGHTS,
+                priority=50,
+                filters={"metric": "sentiment", "period": ALERT_CONFIG["trend_days_period"]},
+                metadata={
+                    "count": this_week_neg,
+                    "ratio": ratio,
+                    "detector": "trend",
+                    "rule": "sentiment_surge"
+                }
+            )
+    return None
+
+
+# ── Orchestrator ─────────────────────────────────────────────────────
+
+def get_alerts(db: Session, org_id: str = None) -> dict:
+    """Orchestrate, priority-stack, and cap the active alerts at 3."""
+    raw_alerts = [
+        detect_reputation_alert(db, org_id),
+        detect_operations_alert(db, org_id),
+        detect_trend_alert(db, org_id)
+    ]
+    # Filter out None values and sort by descending priority before slicing to max 3
+    alerts = [a for a in raw_alerts if a]
+    alerts.sort(key=lambda x: x.get("priority", 0), reverse=True)
+    return {"alerts": alerts[:3]}
 
 
 def get_activities(db: Session, org_id: str = None) -> dict:
