@@ -331,23 +331,36 @@ def get_review_options(organization_id: str, db: Session = None) -> Dict[str, Li
         ).distinct().all()
         source_list = [s[0] for s in sources]
 
-        # 2. Get Categories (Using native OPENJSON for performance)
-        # SQLAlchemy doesn't natively support OPENJSON well, so we use a text query for this specific part
+        # 2. Get Categories (Using the dedicated review_category table)
         from sqlalchemy import text
         cat_sql = text("""
-            SELECT DISTINCT 
-                COALESCE(JSON_VALUE(c.value, '$.name'), c.value) as category_name
-            FROM dbo.processed_review r
+            SELECT DISTINCT rc.name as category_name
+            FROM dbo.review_category rc
+            JOIN dbo.processed_review r ON rc.review_id = r.id
             JOIN dbo.source s ON r.source_id = s.source_id
-            CROSS APPLY OPENJSON(r.categories) AS c
             WHERE s.organization_id = :org_id AND r.status = 'processed'
         """)
         categories = db.execute(cat_sql, {"org_id": organization_id}).fetchall()
-        cat_list = [c[0] for c in categories if c[0]]
+        
+        # Strip, casefold-deduplicate, and preserve original display casing
+        seen = {}
+        for c in categories:
+            value = c[0]
+            if not value:
+                continue
+
+            cleaned = value.strip()
+            if not cleaned:
+                continue
+
+            key = cleaned.casefold()
+            seen.setdefault(key, cleaned)
+
+        cat_list = sorted(seen.values(), key=str.casefold)
 
         return {
             "sources": sorted(source_list),
-            "categories": sorted(cat_list)
+            "categories": cat_list
         }
     finally:
         if should_close: db.close()
