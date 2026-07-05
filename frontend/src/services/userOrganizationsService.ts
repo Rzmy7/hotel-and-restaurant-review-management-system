@@ -1,4 +1,5 @@
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 
 export interface UserOrganizationSummary {
     organization_id: string;
@@ -13,5 +14,8 @@ export const fetchUserOrganizations = (): Promise<UserOrganizationSummary[]> => 
 };
 
 export const deleteUserOrganization = (organizationId: string): Promise<{ message: string }> => {
-    return apiClient.delete<{ message: string }>(`/organizations/${encodeURIComponent(organizationId)}`);
+    return apiClient.delete<{ message: string }>(`/organizations/${encodeURIComponent(organizationId)}`, {
+        activity: ActivityMessages.LEAVE_ORG,
+        showSuccess: false
+    });
 };

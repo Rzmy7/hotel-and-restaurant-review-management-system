@@ -61,6 +61,8 @@ const clearSetupTemporaryKeys = () => {
 };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 import { apiClient } from '../api/client';
+import { useToast } from './ToastContext';
+import { ActivityMessages } from '../constants/activityMessages';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
@@ -197,7 +199,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     const exchangeTokenForOrganization = async (orgId: string) => {
         try {
-            const data = await apiClient.post<any>('/auth/switch-organization', { organization_id: orgId });
+            const data = await apiClient.post<any>('/auth/switch-organization', { organization_id: orgId }, {
+                activity: ActivityMessages.SWITCH_ORG,
+                showSuccess: false
+            });
             if (data && data.access_token) {
                 // Update the token in localStorage and state (via persist) without logging out
                 if (user) {
@@ -214,7 +219,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string, rememberMe: boolean = true) => {
-        const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
+        const data = await apiClient.post<LoginResponse>('/auth/login', { email, password }, {
+            activity: ActivityMessages.LOGIN,
+            showSuccess: false
+        });
         console.log("Login response:", data);
 
         if (isLoginChallenge(data)) {
@@ -242,7 +250,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const verifyLogin2fa = async (email: string, code: string, rememberMe: boolean = true) => {
-        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
+        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code }, {
+            activity: ActivityMessages.VERIFY_OTP,
+            showSuccess: false
+        });
 
         const backendUser = data.user;
         const normalizedUser: User = {
@@ -264,7 +275,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // SIGNUP
     // ----------------------------------------------------
     const signup = async (name: string, email: string, password: string) => {
-        const payload = await apiClient.post<any>('/auth/signup', { name, email, password });
+        const payload = await apiClient.post<any>('/auth/signup', { name, email, password }, {
+            activity: ActivityMessages.SIGNUP,
+            showSuccess: false
+        });
         
         console.log("Signup response:", payload);
 
@@ -308,7 +322,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     const logout = async () => {
         try {
-            await apiClient.post('/auth/logout');
+            await apiClient.post('/auth/logout', undefined, {
+                activity: ActivityMessages.LOGOUT,
+                showSuccess: false
+            });
         } catch (err) {
             console.error("Failed to call backend logout", err);
         }
@@ -331,14 +348,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // FORGOT PASSWORD
     // ----------------------------------------------------
     const forgotPassword = async (email: string) => {
-        await apiClient.post<any>('/auth/forgot-password', { email });
+        await apiClient.post<any>('/auth/forgot-password', { email }, {
+            activity: ActivityMessages.FORGOT_PASSWORD,
+            showSuccess: true,
+            successMessage: "Reset link sent"
+        });
     };
 
     // ----------------------------------------------------
     // RESET PASSWORD
     // ----------------------------------------------------
     const resetPassword = async (token: string, newPassword: string) => {
-        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
+        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword }, {
+            activity: ActivityMessages.RESET_PASSWORD,
+            showSuccess: false
+        });
     };
 
     return (

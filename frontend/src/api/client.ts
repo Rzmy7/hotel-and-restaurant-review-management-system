@@ -125,79 +125,92 @@ const getHeaders = (customHeaders?: Record<string, string>, isFormData: boolean 
     return headers;
 };
 
-export const apiClient = {
-    async get<T>(url: string, params?: Record<string, unknown>, customHeaders?: Record<string, string>): Promise<T> {
-        const fullUrl = getFullUrl(url);
-        
-        let queryString = '';
-        if (params) {
-            const searchParams = new URLSearchParams();
-            Object.entries(params).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                    if (Array.isArray(value)) {
-                        value.forEach(v => searchParams.append(key, String(v)));
-                    } else {
-                        searchParams.append(key, String(value));
-                    }
+export interface ApiRequestOptions {
+    headers?: Record<string, string>;
+    activity?: string;
+    successMessage?: string;
+    showSuccess?: boolean;
+}
+
+async function executeRequest<T>(
+    method: string, 
+    url: string, 
+    body?: any, 
+    options?: ApiRequestOptions, 
+    queryParams?: Record<string, unknown>
+): Promise<T> {
+    const fullUrl = getFullUrl(url);
+    const isFormData = body instanceof FormData;
+    
+    let queryString = '';
+    if (queryParams) {
+        const searchParams = new URLSearchParams();
+        Object.entries(queryParams).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                if (Array.isArray(value)) {
+                    value.forEach(v => searchParams.append(key, String(v)));
+                } else {
+                    searchParams.append(key, String(value));
                 }
-            });
-            queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        }
+            }
+        });
+        queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    }
 
+    const activityId = Date.now().toString() + Math.random().toString();
+    let timeoutId: number | undefined;
+    let slowEventFired = false;
+
+    if (options?.activity) {
+        timeoutId = window.setTimeout(() => {
+            slowEventFired = true;
+            window.dispatchEvent(new CustomEvent('activity-start', {
+                detail: { id: activityId, title: options.activity, progress: undefined, status: 'started' }
+            }));
+        }, 1000);
+    }
+
+    try {
         const response = await fetch(`${fullUrl}${queryString}`, {
-            method: 'GET',
-            headers: getHeaders(customHeaders),
-            credentials: 'include'
-        });
-        return handleResponse(response, fullUrl);
-    },
-
-    async post<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
-        const fullUrl = getFullUrl(url);
-        const isFormData = body instanceof FormData;
-        
-        const response = await fetch(fullUrl, {
-            method: 'POST',
-            headers: getHeaders(customHeaders, isFormData),
+            method,
+            headers: getHeaders(options?.headers, isFormData),
             body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
             credentials: 'include'
         });
-        return handleResponse(response, fullUrl);
-    },
-
-    async put<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
-        const fullUrl = getFullUrl(url);
-        const isFormData = body instanceof FormData;
+        const result = await handleResponse(response, fullUrl);
         
-        const response = await fetch(fullUrl, {
-            method: 'PUT',
-            headers: getHeaders(customHeaders, isFormData),
-            body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
-            credentials: 'include'
-        });
-        return handleResponse(response, fullUrl);
-    },
+        if (timeoutId) clearTimeout(timeoutId);
+        if (slowEventFired) {
+            window.dispatchEvent(new CustomEvent('activity-success', {
+                detail: { id: activityId, title: options?.successMessage, status: 'success', showSuccess: options?.showSuccess }
+            }));
+        }
+        return result;
+    } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (slowEventFired) {
+            window.dispatchEvent(new CustomEvent('activity-error', {
+                detail: { id: activityId, error: (error as Error).message, status: 'error' }
+            }));
+        }
+        throw error;
+    }
+}
 
-    async patch<T>(url: string, body?: any, customHeaders?: Record<string, string>): Promise<T> {
-        const fullUrl = getFullUrl(url);
-        const isFormData = body instanceof FormData;
-        
-        const response = await fetch(fullUrl, {
-            method: 'PATCH',
-            headers: getHeaders(customHeaders, isFormData),
-            body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
-            credentials: 'include'
-        });
-        return handleResponse(response, fullUrl);
+export const apiClient = {
+    get<T>(url: string, params?: Record<string, unknown>, options?: ApiRequestOptions): Promise<T> {
+        return executeRequest<T>('GET', url, undefined, options, params);
     },
-
-    async delete<T>(url: string, customHeaders?: Record<string, string>): Promise<T> {
-        const fullUrl = getFullUrl(url);
-        const response = await fetch(fullUrl, { 
-            method: 'DELETE',
-            headers: getHeaders(customHeaders),
-            credentials: 'include'
-        });
-        return handleResponse(response, fullUrl);
+    post<T>(url: string, body?: any, options?: ApiRequestOptions): Promise<T> {
+        return executeRequest<T>('POST', url, body, options);
+    },
+    put<T>(url: string, body?: any, options?: ApiRequestOptions): Promise<T> {
+        return executeRequest<T>('PUT', url, body, options);
+    },
+    patch<T>(url: string, body?: any, options?: ApiRequestOptions): Promise<T> {
+        return executeRequest<T>('PATCH', url, body, options);
+    },
+    delete<T>(url: string, options?: ApiRequestOptions): Promise<T> {
+        return executeRequest<T>('DELETE', url, undefined, options);
     }
 };

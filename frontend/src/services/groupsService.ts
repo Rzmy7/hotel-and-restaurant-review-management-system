@@ -1,4 +1,5 @@
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 
 export interface GroupSettings {
   can_members_invite: boolean;
@@ -160,7 +161,10 @@ export const groupsService = {
     is_private?: boolean;
     settings?: Partial<GroupSettings>;
   }): Promise<{ group_id: string; group_name: string }> {
-    return apiClient.post('/groups', { ...data, organization_id: organizationId });
+    return apiClient.post('/groups', { ...data, organization_id: organizationId }, {
+      activity: ActivityMessages.CREATE_GROUP,
+      showSuccess: false
+    });
   },
 
   async getGroup(groupId: string, organizationId: string): Promise<Group> {
@@ -174,13 +178,19 @@ export const groupsService = {
   }, organizationId?: string): Promise<{ message: string }> {
     const oid = organizationId ?? activeOrgId();
     const url = oid ? `/groups/${groupId}?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}`;
-    return apiClient.put(url, data);
+    return apiClient.put(url, data, {
+        activity: ActivityMessages.UPDATE_GROUP,
+        showSuccess: false
+    });
   },
 
   async deleteGroup(groupId: string, organizationId?: string): Promise<{ message: string }> {
     const oid = organizationId ?? activeOrgId();
     const url = oid ? `/groups/${groupId}?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}`;
-    return apiClient.delete(url);
+    return apiClient.delete(url, {
+      activity: ActivityMessages.DELETE_GROUP,
+      showSuccess: false
+    });
   },
 
   async leaveGroup(groupId: string, organizationId?: string): Promise<{ message: string }> {
@@ -189,7 +199,10 @@ export const groupsService = {
     const url = oid
       ? `/groups/${groupId}/leave?organization_id=${encodeURIComponent(oid)}`
       : `/groups/${groupId}/leave`;
-    return apiClient.post(url, {});
+    return apiClient.post(url, {}, {
+      activity: ActivityMessages.LEAVE_ORG,
+      showSuccess: false
+    });
   },
 
   // ── Members ──────────────────────────────────────────────────────
@@ -205,7 +218,10 @@ export const groupsService = {
     const url = oid
       ? `/groups/${groupId}/members/${memberOrganizationId}?organization_id=${encodeURIComponent(oid)}`
       : `/groups/${groupId}/members/${memberOrganizationId}`;
-    return apiClient.delete(url);
+    return apiClient.delete(url, {
+      activity: ActivityMessages.REMOVE_USER,
+      showSuccess: false
+    });
   },
 
   // ── Settings ─────────────────────────────────────────────────────
@@ -218,7 +234,10 @@ export const groupsService = {
   async updateSettings(groupId: string, settings: GroupSettings, organizationId?: string): Promise<{ message: string }> {
     const oid = organizationId ?? activeOrgId();
     const url = oid ? `/groups/${groupId}/settings?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}/settings`;
-    return apiClient.put(url, settings);
+    return apiClient.put(url, settings, {
+        activity: ActivityMessages.UPDATE_GROUP,
+        showSuccess: false
+    });
   },
 
   // ── Analytics ────────────────────────────────────────────────────
@@ -244,7 +263,10 @@ export const groupsService = {
   }, scopeOrgId?: string): Promise<{ invite_id: string }> {
     const oid = scopeOrgId ?? activeOrgId();
     const url = oid ? `/groups/${groupId}/invites?organization_id=${encodeURIComponent(oid)}` : `/groups/${groupId}/invites`;
-    return apiClient.post(url, data);
+    return apiClient.post(url, data, {
+      activity: ActivityMessages.INVITE_USER,
+      showSuccess: false
+    });
   },
 
   async cancelInvite(groupId: string, inviteId: string, organizationId?: string): Promise<{ message: string }> {
@@ -252,7 +274,10 @@ export const groupsService = {
     const url = oid
       ? `/groups/${groupId}/invites/${inviteId}?organization_id=${encodeURIComponent(oid)}`
       : `/groups/${groupId}/invites/${inviteId}`;
-    return apiClient.delete(url);
+    return apiClient.delete(url, {
+        activity: ActivityMessages.REMOVE_USER,
+        showSuccess: false
+    });
   },
 
   // ── My invites (as invitee) ───────────────────────────────────────
@@ -262,11 +287,17 @@ export const groupsService = {
   },
 
   async acceptInvite(inviteId: string): Promise<{ message: string }> {
-    return apiClient.post(`/groups/invites/${inviteId}/accept`);
+    return apiClient.post(`/groups/invites/${inviteId}/accept`, undefined, {
+        activity: ActivityMessages.ACCEPT_INVITE,
+        showSuccess: false
+    });
   },
 
   async rejectInvite(inviteId: string): Promise<{ message: string }> {
-    return apiClient.post(`/groups/invites/${inviteId}/reject`);
+    return apiClient.post(`/groups/invites/${inviteId}/reject`, undefined, {
+        activity: ActivityMessages.REJECT_INVITE,
+        showSuccess: false
+    });
   },
 
   // ── Invite Links ──────────────────────────────────────────────────
@@ -276,7 +307,10 @@ export const groupsService = {
   },
 
   async joinViaLink(token: string): Promise<{ message: string; group_id: string }> {
-    return apiClient.post(`/groups/join/${token}`);
+    return apiClient.post(`/groups/join/${token}`, undefined, {
+        activity: ActivityMessages.JOIN_GROUP,
+        showSuccess: false
+    });
   },
   // ── Organization search ───────────────────────────────────────────
 

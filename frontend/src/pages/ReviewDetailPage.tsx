@@ -6,8 +6,10 @@ import {
     ArrowLeft, ThumbsUp, Minus, ThumbsDown,
 } from 'lucide-react';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
+import { ReviewRating } from '../components/reviews/ReviewRating';
 import { reviewsService } from '../services/reviewsService';
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 import type { Review } from '../types/reviews';
 import { Button } from '../components/ui/Button';
 import ReviewDetailSkeleton from './ReviewDetailSkeleton';
@@ -55,7 +57,6 @@ const ReviewDetailPage: React.FC = () => {
     const [draftReply, setDraftReply] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [isResolving, setIsResolving] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [tone, setTone] = useState<'professional' | 'casual' | 'standard'>('standard');
     const [replyLength, setReplyLength] = useState<'short' | 'standard'>('standard');
@@ -121,25 +122,15 @@ const ReviewDetailPage: React.FC = () => {
         if (!review || !draftReply.trim()) return;
         setIsSaving(true);
         try {
-            await apiClient.post(`/reviews/${review.id}/reply`, { replyText: draftReply, tone });
+            await apiClient.post(`/reviews/${review.id}/reply`, { replyText: draftReply, tone }, {
+                activity: ActivityMessages.SEND_REPLY,
+                showSuccess: true,
+                successMessage: 'Reply saved successfully'
+            });
         } catch (err: any) {
             console.error('Failed to save reply:', err);
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    // Mark as resolved
-    const handleResolve = async () => {
-        if (!review) return;
-        setIsResolving(true);
-        try {
-            await apiClient.put(`/reviews/${review.id}/status`, { status: 'processed' });
-            setReview(prev => prev ? { ...prev, status: 'processed' } : prev);
-        } catch (err: any) {
-            console.error('Failed to update status:', err);
-        } finally {
-            setIsResolving(false);
         }
     };
 
@@ -386,18 +377,6 @@ const ReviewDetailPage: React.FC = () => {
                                     {isSaving ? 'Saving…' : 'Save Reply'}
                                 </Button>
                             </div>
-                            {!review.ai_reply && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full mt-2"
-                                    onClick={handleResolve}
-                                    disabled={isResolving}
-                                >
-                                    <CheckCircle2 size={14} className="mr-1" />
-                                    {isResolving ? 'Updating…' : 'Mark as Resolved'}
-                                </Button>
-                            )}
                         </div>
                     </div>
 

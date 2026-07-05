@@ -75,7 +75,6 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const [draftReply, setDraftReply] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [tone, setTone] = useState<'professional' | 'casual' | 'standard'>('standard');
@@ -130,17 +129,6 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
-    }
-  };
-
-  const handleMarkResolved = async () => {
-    setIsResolving(true);
-    try {
-      await reviewsService.updateReviewStatus(organizationId, review.id, 'processed');
-      await refreshData();
-      onClose();
-    } finally {
-      setIsResolving(false);
     }
   };
 
@@ -240,19 +228,8 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
       </Button>
       <div className="flex items-center gap-3">
         <Button
-          variant="outline"
-          onClick={handleMarkResolved}
-          disabled={isResolving || isSaving || !!review.ai_reply}
-          className="px-6 text-[13px] uppercase flex items-center gap-1.5 shadow-sm active:scale-95 transition-all
-            text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300
-            dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/60 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
-        >
-          {isResolving ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-          {review.ai_reply ? 'Resolved' : 'Mark as Resolved'}
-        </Button>
-        <Button
           onClick={handleSave}
-          disabled={isSaving || isResolving || !draftReply}
+          disabled={isSaving || !draftReply}
           className="px-8 text-[13px] uppercase shadow-lg active:scale-95 transition-all"
         >
           {isSaving ? <RefreshCw size={16} className="animate-spin" /> : 'Save Changes'}

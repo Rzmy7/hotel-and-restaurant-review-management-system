@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { LogOut, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../api/client';
+import { ActivityMessages } from '../../constants/activityMessages';
 
 interface SetupLayoutProps {
   currentStep: number;
@@ -41,7 +42,10 @@ const SetupLayout: React.FC<SetupLayoutProps> = ({
         }
 
         try {
-            await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`);
+            await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`, {
+                activity: ActivityMessages.DISCARD_SETUP,
+                showSuccess: false
+            });
         } catch (error) {
             console.warn('Failed to discard pending setup organization from backend:', error);
         }

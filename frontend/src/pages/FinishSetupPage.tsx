@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { getApiBaseUrl } from '../config/api';
@@ -77,7 +78,10 @@ const FinishSetupPage = () => {
         }))
       };
 
-      const response = await apiClient.post<any>(`/api/organizations/${tenantId}`, payload);
+      const response = await apiClient.post<any>(`/api/organizations/${tenantId}`, payload, {
+        activity: ActivityMessages.CREATE_ORG,
+        showSuccess: false
+      });
       
       const organizationId = response?.organization_id;
       const accessToken = response?.access_token;
@@ -95,7 +99,10 @@ const FinishSetupPage = () => {
             const formData = new FormData();
             formData.append('file', rulesFile);
 
-            await apiClient.post(`/organizations/${organizationId}/upload-rules`, formData);
+            await apiClient.post(`/organizations/${organizationId}/upload-rules`, formData, {
+              activity: ActivityMessages.UPLOAD_RULES,
+              showSuccess: false
+            });
           } catch (rulesErr) {
             console.warn('Rules file upload failed (non-blocking):', rulesErr);
           } finally {

@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Hotel, Utensils, FileText, X } from 'lucide-react';
 import SetupLayout from '../components/shared/SetupLayout';
 import SetupSkeleton from './SetupSkeleton';
+import { AlertCircle, ArrowLeft, ArrowRight, Building, HelpCircle, ArrowUpRight, Search, Zap, Activity } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ActivityMessages } from '../constants/activityMessages';
 import { fetchSubscriptionUsage, fetchUserOrganizations } from '../services/subscriptionPlansService';
 import { Button } from '../components/ui/Button';
 
@@ -44,7 +46,10 @@ const discardPendingSetupOrganizationIfNeeded = async () => {
     }
 
     try {
-        await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`);
+        await apiClient.delete(`/api/setup/organizations/${pendingOrganizationId}/discard`, {
+            activity: ActivityMessages.DISCARD_SETUP,
+            showSuccess: false
+        });
     } catch (error) {
         console.warn('Failed to discard pending setup organization from backend:', error);
     }

@@ -5,6 +5,7 @@ import ProfileTemplate from "../components/profile/templates/ProfileTemplate";
 import UnsavedChangesModal from "../components/profile/organisms/UnsavedChangesModal";
 import ProfileSkeleton from "./ProfileSkeleton";
 import { apiClient } from "../api/client";
+import { ActivityMessages } from "../constants/activityMessages";
 import { useNavigationBlocker } from "../contexts/NavigationBlockerContext";
 
 export interface UserProfile {
@@ -131,6 +132,8 @@ const ProfilePage: React.FC = () => {
                 jobTitle: profile.jobTitle,
                 bio: profile.bio,
                 location: profile.location,
+            }, {
+                activity: ActivityMessages.UPDATE_PROFILE
             });
 
             showToast("Profile saved successfully ✅", "success");
@@ -194,7 +197,9 @@ const ProfilePage: React.FC = () => {
                 const formData = new FormData();
                 formData.append("file", file);
 
-                const data = await apiClient.post<any>("/users/me/upload-image", formData as any);
+                const data = await apiClient.post<any>("/users/me/upload-image", formData as any, {
+                    activity: ActivityMessages.UPLOAD_IMAGE
+                });
 
                 setProfile(prev => ({ ...prev, avatar: data.profile_image_url }));
                 setSavedProfile(prev => ({ ...prev, avatar: data.profile_image_url }));
