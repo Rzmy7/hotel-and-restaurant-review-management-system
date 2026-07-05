@@ -125,6 +125,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 sessionStorage.setItem("session_active", "true");
             }
         } else {
+            // Hard clean notifications cache and purge storage on user session end
+            try {
+                import('../stores/useNotificationStore').then(({ useNotificationStore }) => {
+                    useNotificationStore.getState().clearCache();
+                    useNotificationStore.persist?.clearStorage();
+                }).catch(e => console.error("Failed to clear notifications on session end:", e));
+            } catch (e) {
+                console.error("Failed to clear notification cache on persist(null):", e);
+            }
+
             localStorage.removeItem("authUser");
             localStorage.removeItem("token");
             localStorage.removeItem("organizations");
@@ -302,6 +312,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         } catch (err) {
             console.error("Failed to call backend logout", err);
         }
+        
+        // Hard clean notifications cache and purge storage
+        try {
+            const { useNotificationStore } = await import('../stores/useNotificationStore');
+            useNotificationStore.getState().clearCache();
+            useNotificationStore.persist?.clearStorage();
+        } catch (e) {
+            console.error("Failed to clear notifications on logout:", e);
+        }
+
         localStorage.clear();
         setUser(null);
         window.location.href = "/login";

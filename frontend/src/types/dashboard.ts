@@ -41,11 +41,57 @@ export interface AIInsightsData {
     };
 }
 
+export enum AlertCategory {
+    REPUTATION = 'reputation',
+    OPERATIONS = 'operations',
+    TREND = 'trend'
+}
+
+export enum AlertSeverity {
+    CRITICAL = 'critical',
+    WARNING = 'warning',
+    INFO = 'info'
+}
+
+export enum AlertActionType {
+    VIEW_REVIEWS = 'view_reviews',
+    OPEN_INSIGHTS = 'open_insights'
+}
+
+export type ReviewStatus = 'Pending' | 'Replied' | 'Unresolved';
+
+export interface ReviewFilters {
+    ratingMax?: number;
+    keywords?: string[];
+    status?: ReviewStatus;
+    slaOverdue?: boolean;
+    dateRange?: '24h' | '7d';
+}
+
+export interface InsightFilters {
+    metric?: 'sentiment';
+    period?: number;
+}
+
 export interface Alert {
-    id: number;
+    id: string;
+    category: AlertCategory;
+    severity: AlertSeverity;
+    title: string;
     message: string;
-    type: 'critical' | 'warning' | 'info';
-    time: string;
+    occurred_at: string;
+    priority: number;
+    action: {
+        type: AlertActionType;
+        filters?: ReviewFilters | InsightFilters;
+    };
+    metadata?: {
+        count: number;
+        keywords?: string[];
+        ratio?: number;
+        detector?: string;
+        rule?: string;
+    };
 }
 
 export interface SourceSentiment {
