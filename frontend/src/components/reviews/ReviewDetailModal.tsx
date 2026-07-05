@@ -61,11 +61,12 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
   const refreshData = () => refreshDataStore(organizationId, fetchParams);
 
-  // Fetch detailed review lazily on modal open
+  // Fetch detailed review lazily on modal open, using propReview as placeholder for instant UI
   const { data: fetchedReview, loading: isDetailLoading } = useReviewDetail(
     isOpen && propReview?.id ? String(propReview.id) : null,
     propReview?.userName,
-    propReview?.heading
+    propReview?.heading,
+    propReview
   );
 
   // Combine propReview with fetchedReview details, preferring fetchedReview
@@ -82,14 +83,14 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
 
   // Initialize draft when review changes
   useEffect(() => {
-    if (review) {
+    if (review?.id) {
       setDraftReply("");
       setIsCopied(false);
       setSelectedPhotoIndex(null);
       setTone('standard');
       setReplyLength('standard');
     }
-  }, [review]);
+  }, [review?.id]);
 
   // Keyboard navigation for image lightbox
   useEffect(() => {
