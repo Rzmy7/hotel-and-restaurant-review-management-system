@@ -123,9 +123,27 @@ Standardized modeling of system behavior and class structures.
 | **Search** | `POST /search` |
 | **Config** | `PUT /model`, `PUT /api-settings` |
 
+
+---
+
+## 🏛️ Architecture Decision Records (ADRs)
+
+We follow the ADR pattern to document key architectural choices, technical constraints, and long-term tech decisions:
+
+*   **[ADR 0001: Receiver-Owned API Keys](./adr/0001-receiver-owned-api-keys.md)** — Architectural design of our inter-service token validations.
+*   **[ADR 0002: Secure HttpOnly Cookie JWT Auth](./adr/0002-secure-httponly-cookie-jwt-auth.md)** — Transition from insecure client-side `localStorage` tokens to secure, backend-managed, HttpOnly cookies.
+*   **[ADR 0003: Sliding Sessions](./adr/0003-sliding-sessions.md)** — High-performance, O(1), stateless automatic session extension for active users.
+
+---
+
+## 🔒 Security Specifications
+
+*   **[Authentication Security Guide](./security/authentication_guide.md)** — Comprehensive threat model, cookie matrices, security mitigations, and sliding sessions UML/Mermaid flows.
+
 ---
 
 ## 📝 Documenting New Features
+
 
 When adding new services or modifying existing architecture, please ensure documentation is updated accordingly:
 
