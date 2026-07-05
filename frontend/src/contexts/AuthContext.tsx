@@ -73,6 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     useEffect(() => {
         const restoreSession = async () => {
+            // ponytail: clean up any legacy, insecure JWT tokens from localStorage
+            localStorage.removeItem("token");
+
             const rememberMe = localStorage.getItem("remember_me");
             if (rememberMe === 'false' && !sessionStorage.getItem("session_active")) {
                 persist(null);

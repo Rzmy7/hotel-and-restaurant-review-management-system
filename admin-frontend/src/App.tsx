@@ -25,6 +25,9 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // ponytail: clean up any legacy, insecure JWT tokens from localStorage
+      localStorage.removeItem('token');
+
       try {
         const me = await apiClient.get<any>('/auth/me');
         if (me && me.user_id) {
