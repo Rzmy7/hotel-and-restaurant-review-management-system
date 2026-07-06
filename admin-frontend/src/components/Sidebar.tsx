@@ -18,6 +18,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { getFrontendLoginUrl } from '../config/frontend';
+import reviewMateLogo from '../assets/reviewMate-logo.png';
 
 import { apiClient } from '../api/client';
 
@@ -86,10 +87,8 @@ export const Sidebar: React.FC = () => {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col shadow-sm transition-colors duration-200">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-100 dark:border-slate-700">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md">
-          <Check size={20} strokeWidth={3} />
-        </div>
-        <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">AdminPanel</span>
+        <img src={reviewMateLogo} alt="ReviewMate Logo" className="w-9 h-9 object-contain" />
+        <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">ReviewMate</span>
       </div>
 
       {/* Navigation */}

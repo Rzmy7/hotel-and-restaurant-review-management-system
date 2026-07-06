@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { Menu, X, Star } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { cn } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
+import reviewMateLogo from '../../assets/reviewMate-logo.png';
 
 export const LandingHeader = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -37,11 +38,9 @@ export const LandingHeader = () => {
     >
       <div className="container mx-auto px-6 flex items-center justify-between">
         <Link to="/" className="flex items-center space-x-2">
-          <div className="bg-blue-600 p-2 rounded-xl">
-            <Star className="text-white h-6 w-6 fill-current" />
-          </div>
+          <img src={reviewMateLogo} alt="ReviewMate Logo" className="w-10 h-10 object-contain" />
           <span className="text-xl font-bold text-gray-900 dark:text-white">
-            ReviewMaster<span className="text-blue-600">AI</span>
+            ReviewMate
           </span>
         </Link>
 

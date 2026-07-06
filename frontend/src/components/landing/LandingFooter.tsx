@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Github, Twitter, Linkedin } from 'lucide-react';
-
+import { Github, Twitter, Linkedin } from 'lucide-react';
+import reviewMateLogo from '../../assets/reviewMate-logo.png';
 export const LandingFooter = () => {
   return (
     <footer className="bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 py-12 md:py-20">
@@ -9,11 +9,9 @@ export const LandingFooter = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center space-x-2 mb-6">
-              <div className="bg-blue-600 p-2 rounded-xl">
-                <Star className="text-white h-5 w-5 fill-current" />
-              </div>
+              <img src={reviewMateLogo} alt="ReviewMate Logo" className="w-9 h-9 object-contain" />
               <span className="text-lg font-bold text-gray-900 dark:text-white">
-                ReviewMaster<span className="text-blue-600">AI</span>
+                ReviewMate
               </span>
             </Link>
             <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6">
@@ -64,7 +62,7 @@ export const LandingFooter = () => {
 
         <div className="pt-12 border-t border-gray-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 md:mb-0">
-            © {new Date().getFullYear()} ReviewMaster AI. All rights reserved.
+            © {new Date().getFullYear()} ReviewMate. All rights reserved.
           </p>
           <div className="flex space-x-6">
             <span className="text-xs text-gray-400 dark:text-gray-500">Built with React & Tailwind</span>
