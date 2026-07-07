@@ -36,7 +36,8 @@ type AuthContextType = {
     user: User | null;
     login: (email: string, password: string, rememberMe?: boolean) => Promise<LoginResponse>;
     verifyLogin2fa: (email: string, code: string, rememberMe?: boolean) => Promise<LoginSuccess>;
-    signup: (name: string, email: string, password: string) => Promise<User>;
+    signup: (name: string, email: string, password: string) => Promise<any>;
+    verifySignup: (signupToken: string, code: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, newPassword: string) => Promise<void>;
@@ -282,6 +283,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         
         console.log("Signup response:", payload);
 
+        if (payload.require_verification) {
+            return payload;
+        }
+
         const backendUser = payload.user || payload;
         const normalizedUser: User = {
             user_id: backendUser.id || backendUser.user_id,
@@ -313,6 +318,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!isAdminRole(normalizedUser.role)) {
             await checkUserOrganizations();
+        }
+        return normalizedUser;
+    };
+
+    const verifySignup = async (signupToken: string, code: string) => {
+        const payload = await apiClient.post<any>('/auth/signup/verify', { signup_token: signupToken, code }, {
+            activity: ActivityMessages.SIGNUP,
+            showSuccess: false
+        });
+
+        console.log("Signup verification response:", payload);
+
+        const backendUser = payload.user || payload;
+        const normalizedUser: User = {
+            user_id: backendUser.id || backendUser.user_id,
+            email: backendUser.email,
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            role: normalizeRole(backendUser.role || backendUser.roles),
+        };
+
+        if (payload.access_token) {
+            if (!isAdminRole(normalizedUser.role)) {
+                persist(normalizedUser, payload.access_token);
+                await checkUserOrganizations();
+            }
         }
         return normalizedUser;
     };
@@ -372,6 +402,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 login,
                 verifyLogin2fa,
                 signup,
+                verifySignup,
                 logout,
                 forgotPassword,
                 resetPassword,

@@ -156,7 +156,7 @@ const JobsTableSkeleton = () => (
 
 export const EmbeddingsSkeleton: React.FC = () => {
     return (
-        <div className="space-y-6 pt-4 font-sans animate-shimmer">
+        <div className="space-y-6 pt-4 font-sans">
             {/* Service Status & Control */}
             <ServiceControlSkeleton />
 

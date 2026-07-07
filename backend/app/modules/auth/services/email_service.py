@@ -932,3 +932,91 @@ def send_weekly_summary_email(
         print(f"[email-summary] FAILED: {e}")
 
 
+# ── Signup Email Verification ─────────────────────────────────────────────────
+
+def send_signup_otp_email(to_email: str, code: str) -> None:
+    """Send a signup email verification code to the given address."""
+    print(f"[signup-email] Attempting to send verification OTP to {to_email}")
+
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print("[signup-email] WARN: SMTP not configured. OTP code:", code)
+        return
+
+    plain = (
+        f"Your {SENDER_NAME} signup verification code is: {code}\n\n"
+        "This code expires in 10 minutes.\n"
+        "Never share this code with anyone.\n"
+        "If you did not request this code, you can safely ignore this email.\n\n"
+        f"— The {SENDER_NAME} Team"
+    )
+
+    rows = (
+        _header_html("Email Verification")
+        + f"""
+        <tr>
+          <td style="padding:36px 32px 28px;">
+            <p style="margin:0 0 8px;color:{_TEXT};font-size:18px;font-weight:700;">
+              Verify Your Email Address
+            </p>
+            <p style="margin:0 0 24px;color:{_TEXT_MUTED};font-size:15px;line-height:1.6;">
+              Use the code below to verify your email and complete your sign-up to
+              <strong style="color:{_TEXT};">{SENDER_NAME}</strong>.
+              This code is valid for
+              <strong style="color:{_TEXT};">10 minutes</strong>.
+            </p>
+
+            <!-- OTP Code box -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center" style="padding:4px 0 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background-color:#EEF2FF;border:2px solid {_BRAND};
+                               border-radius:10px;padding:20px 48px;text-align:center;">
+                      <span style="font-size:38px;font-weight:700;letter-spacing:10px;
+                                   color:{_TEXT};font-family:'Courier New',monospace;">
+                        {code}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td></tr>
+            </table>
+
+            <!-- Security reminders box -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background-color:{_FOOTER_BG};border:1px solid {_BORDER};
+                           border-radius:8px;padding:16px 18px;">
+                  <p style="margin:0 0 8px;color:{_TEXT};font-size:13px;font-weight:600;">
+                    Security reminders
+                  </p>
+                  <p style="margin:0;color:{_TEXT_MUTED};font-size:13px;line-height:1.75;">
+                    &#8226;&nbsp; This code expires in
+                      <strong style="color:{_TEXT};">10 minutes</strong><br>
+                    &#8226;&nbsp; Never share this code with anyone<br>
+                    &#8226;&nbsp; If you didn't request this code, you can safely ignore this email
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>"""
+        + _footer_html("This is an automated verification message — please do not reply.")
+    )
+
+    html = _outer_table(rows)
+    msg = _build_msg(
+        to_email,
+        f"Verify your {SENDER_NAME} email address",
+        plain,
+        html,
+    )
+
+    try:
+        _send(msg, to_email)
+        print(f"[signup-email] SUCCESS: OTP sent to {to_email}")
+    except Exception as e:
+        print(f"[signup-email] ERROR sending to {to_email}: {e}")
+        raise RuntimeError(f"Email sending failed: {e}") from e
+
+

@@ -59,21 +59,7 @@ export default {
           color: '#64748b',          /* slate‑500 */
         },
 
-        /* Scrollbars */
-        '.dark ::-webkit-scrollbar': {
-          width: '8px',
-          height: '8px',
-        },
-        '.dark ::-webkit-scrollbar-track': {
-          background: '#1e293b',
-        },
-        '.dark ::-webkit-scrollbar-thumb': {
-          background: '#475569',
-          borderRadius: '4px',
-        },
-        '.dark ::-webkit-scrollbar-thumb:hover': {
-          background: '#64748b',
-        },
+
       });
     }),
   ],

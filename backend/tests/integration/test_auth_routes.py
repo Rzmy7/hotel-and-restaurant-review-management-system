@@ -122,3 +122,33 @@ class TestLoginValidation:
             "password": "short",
         })
         assert response.status_code == 422
+
+
+class TestSignupVerifyValidation:
+    """Tests for POST /api/auth/signup/verify input validation."""
+
+    def test_missing_all_fields_returns_422(self, client):
+        """Empty body should return 422."""
+        response = client.post("/api/auth/signup/verify", json={})
+        assert response.status_code == 422
+
+    def test_missing_code_returns_422(self, client):
+        """Missing code should return 422."""
+        response = client.post("/api/auth/signup/verify", json={
+            "signup_token": "some-token",
+        })
+        assert response.status_code == 422
+
+    def test_invalid_code_length_returns_422(self, client):
+        """Code not equal to 6 characters should return 422."""
+        response = client.post("/api/auth/signup/verify", json={
+            "signup_token": "some-token",
+            "code": "12345",
+        })
+        assert response.status_code == 422
+        
+        response = client.post("/api/auth/signup/verify", json={
+            "signup_token": "some-token",
+            "code": "1234567",
+        })
+        assert response.status_code == 422

@@ -25,3 +25,8 @@ class EmailModel(BaseModel):
 
 class ResetModel(BaseModel):
     new_password: str = Field(..., min_length=1, max_length=72)
+
+
+class SignupVerifyModel(BaseModel):
+    signup_token: str
+    code: str = Field(..., min_length=6, max_length=6)

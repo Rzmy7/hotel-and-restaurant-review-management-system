@@ -748,7 +748,7 @@ export const Scraping: React.FC = () => {
                         </div>
 
                         {editPlatformLoading ? (
-                            <div className="p-5 space-y-5 animate-shimmer">
+                            <div className="p-5 space-y-5">
                                 <div className="space-y-1.5">
                                     <Skeleton className="h-4 w-28 rounded" />
                                     <Skeleton className="h-10 w-full rounded-lg" />

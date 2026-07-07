@@ -21,7 +21,23 @@ import { apiClient } from './api/client';
 import { useEffect, useState } from 'react';
 
 function App() {
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(() => {
+    const cached = localStorage.getItem('authUser');
+    if (cached) {
+      try {
+        const me = JSON.parse(cached);
+        if (me && me.user_id) {
+          const roles = Array.isArray(me.roles) ? me.roles : [me.role];
+          return roles.some((r: any) =>
+            ['admin', 'system_admin', 'super_admin'].includes(String(r || '').trim().toLowerCase())
+          );
+        }
+      } catch (err) {
+        console.error("Failed to parse cached authUser during init", err);
+      }
+    }
+    return false;
+  });
 
   useEffect(() => {
     const checkAuth = async () => {

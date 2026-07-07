@@ -47,28 +47,37 @@ export const Sidebar: React.FC = () => {
   const [showLogout, setShowLogout] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('authUser');
-    if (storedUser) {
-      try {
-        const payload = JSON.parse(storedUser);
-        const name = payload.full_name || payload.name || 'Admin User';
-        const email = payload.email || 'admin@company.com';
-        
-        let initials = 'AD';
-        if (name) {
-          const parts = name.split(' ');
-          if (parts.length >= 2) {
-            initials = (parts[0][0] + parts[1][0]).toUpperCase();
-          } else {
-            initials = name.substring(0, 2).toUpperCase();
+    const handleProfileUpdate = () => {
+      const storedUser = localStorage.getItem('authUser');
+      if (storedUser) {
+        try {
+          const payload = JSON.parse(storedUser);
+          const name = payload.full_name || payload.name || 'Admin User';
+          const email = payload.email || 'admin@company.com';
+          
+          let initials = 'AD';
+          if (name) {
+            const parts = name.split(' ');
+            if (parts.length >= 2) {
+              initials = (parts[0][0] + parts[1][0]).toUpperCase();
+            } else {
+              initials = name.substring(0, 2).toUpperCase();
+            }
           }
+          
+          setUserProfile({ name, email, initials });
+        } catch (e) {
+          console.error("Failed to parse authUser in sidebar", e);
         }
-        
-        setUserProfile({ name, email, initials });
-      } catch (e) {
-        console.error("Failed to parse authUser in sidebar", e);
       }
-    }
+    };
+
+    handleProfileUpdate();
+
+    window.addEventListener('admin-profile-updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('admin-profile-updated', handleProfileUpdate);
+    };
   }, []);
 
   const handleLogout = async () => {

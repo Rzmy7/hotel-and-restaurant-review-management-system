@@ -3966,18 +3966,18 @@ body,
   animation: slide-in-right 0.3s ease-out forwards;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Hide scrollbar for Chrome, Safari and Opera globally */
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+*::-webkit-scrollbar {
+  display: none !important;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
+/* Hide scrollbar for IE, Edge and Firefox globally */
 
-.no-scrollbar {
-  -ms-overflow-style: none;
+* {
+  -ms-overflow-style: none !important;
   /* IE and Edge */
-  scrollbar-width: none;
+  scrollbar-width: none !important;
   /* Firefox */
 }
 

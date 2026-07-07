@@ -6,7 +6,7 @@ Migrated from admin-backend/app/models.py and inline schemas in the routers.
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 
 # ── Dashboard schemas ───────────────────────────────────────────────
@@ -298,10 +298,12 @@ class SecuritySettingsPayload(BaseModel):
 
 class AdminProfileResponse(BaseModel):
     name: str
+    email: EmailStr
 
 
 class AdminProfileUpdatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    email: EmailStr
 
 
 class AdminPasswordChangePayload(BaseModel):

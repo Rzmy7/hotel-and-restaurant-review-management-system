@@ -65,7 +65,7 @@ const ModelAssignmentsSkeleton = () => (
 
 export const LLMModelsSkeleton: React.FC = () => {
     return (
-        <div className="space-y-6 pt-4 font-sans animate-shimmer">
+        <div className="space-y-6 pt-4 font-sans">
             {/* Model Library */}
             <ModelLibrarySkeleton />
 
