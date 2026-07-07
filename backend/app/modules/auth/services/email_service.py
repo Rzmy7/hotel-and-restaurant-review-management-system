@@ -1,53 +1,69 @@
 """
-Email service — Brevo HTTP API-based email sending for password reset, 2FA, and notifications.
+Email service — SMTP-based email sending for password reset, 2FA, and notifications.
+
+Anti-spam best practices applied:
+  - Proper multipart/alternative with plain-text + HTML
+  - Sender display name matching brand
+  - Date, Message-ID, MIME-Version headers
+  - Message-ID domain matches the FROM email domain (gmail.com)
+  - Subject line does NOT contain the OTP code (avoids spam heuristics)
+  - X-Mailer header to identify the sender
+  - Precedence: transactional header
 """
 
-import requests
-from app.core.config import BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formataddr, formatdate, make_msgid
+
+from app.core.config import SMTP_EMAIL, SMTP_PASSWORD, SMTP_HOST, SMTP_PORT
 
 # Sender display name shown in email clients
-SENDER_NAME = BREVO_SENDER_NAME or "ReviewMate"
+SENDER_NAME = "ReviewMate"
+
+# Domain for Message-ID must match SMTP sender domain (gmail.com here)
+# Using the actual sending domain prevents Gmail's domain-mismatch spam check
+_sender_domain = (SMTP_EMAIL or "gmail.com").split("@")[-1]
 
 
-def _send_via_brevo(to_email: str, subject: str, plain_content: str, html_content: str) -> None:
-    """Send transactional email via Brevo REST API v3."""
-    if not BREVO_API_KEY:
-        raise RuntimeError("Brevo API key is not configured (BREVO_API_KEY is missing)")
-    if not BREVO_SENDER_EMAIL:
-        raise RuntimeError("Brevo sender email is not configured (BREVO_SENDER_EMAIL is missing)")
+def _build_msg(to_email: str, subject: str, plain: str, html: str) -> MIMEMultipart:
+    """Build a properly-headered multipart email message."""
+    msg = MIMEMultipart("alternative")
+    msg["MIME-Version"] = "1.0"
+    msg["Subject"] = subject
+    msg["From"] = formataddr((SENDER_NAME, SMTP_EMAIL))
+    msg["To"] = to_email
+    msg["Date"] = formatdate(localtime=False)          # UTC date (more consistent)
+    msg["Message-ID"] = make_msgid(domain=_sender_domain)
+    msg["Reply-To"] = formataddr((SENDER_NAME, SMTP_EMAIL))
+    # Anti-spam: mark as transactional so filters treat it differently from bulk
+    msg["Precedence"] = "transactional"
+    msg["X-Mailer"] = f"ReviewMate/{SENDER_NAME}"
+    # Plain text first, then HTML — clients prefer the last part
+    msg.attach(MIMEText(plain, "plain", "utf-8"))
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    return msg
 
-    url = "https://api.brevo.com/v3/smtp/email"
-    headers = {
-        "accept": "application/json",
-        "api-key": BREVO_API_KEY,
-        "content-type": "application/json",
-    }
-    payload = {
-        "sender": {
-            "name": SENDER_NAME,
-            "email": BREVO_SENDER_EMAIL,
-        },
-        "to": [
-            {
-                "email": to_email,
-            }
-        ],
-        "subject": subject,
-        "htmlContent": html_content,
-        "textContent": plain_content,
-    }
 
-    response = requests.post(url, json=payload, headers=headers, timeout=10)
-    if response.status_code not in (200, 201, 202):
-        raise RuntimeError(f"Failed to send email via Brevo API: {response.status_code} - {response.text}")
+def _send(msg: MIMEMultipart, to_email: str) -> None:
+    """Open SMTP connection and send the message."""
+    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+    try:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
+    finally:
+        server.quit()
 
 
 # ── Password Reset ───────────────────────────────────────────────────
 
 def send_reset_email(to_email: str, link: str) -> None:
     """Send a password-reset email to the given address."""
-    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
-        raise RuntimeError("Brevo is not configured (BREVO_API_KEY / BREVO_SENDER_EMAIL missing)")
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        raise RuntimeError("SMTP is not configured (SMTP_EMAIL / SMTP_PASSWORD missing)")
 
     plain = (
         "You requested a password reset for your ReviewMate account.\n\n"
@@ -112,7 +128,9 @@ def send_reset_email(to_email: str, link: str) -> None:
 </body>
 </html>"""
 
-    _send_via_brevo(to_email, f"Reset your {SENDER_NAME} password", plain, html)
+    # Subject does NOT contain the link — keeps it clean for spam filters
+    msg = _build_msg(to_email, f"Reset your {SENDER_NAME} password", plain, html)
+    _send(msg, to_email)
 
 
 # ── Two-Factor Authentication ─────────────────────────────────────────
@@ -121,8 +139,8 @@ def send_2fa_email(to_email: str, code: str) -> None:
     """Send a 2-factor authentication code email to the given address."""
     print(f"[2FA-email] Attempting to send OTP to {to_email}")
 
-    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
-        print("[2FA-email] WARN: Brevo not configured. OTP code:", code)
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print("[2FA-email] WARN: SMTP not configured. OTP code:", code)
         return
 
     plain = (
@@ -132,6 +150,8 @@ def send_2fa_email(to_email: str, code: str) -> None:
         f"— The {SENDER_NAME} Team"
     )
 
+    # NOTE: OTP code is NOT in the Subject line — subject with digit codes
+    # triggers spam heuristics on Gmail, Outlook and Yahoo.
     html = f"""\
 <!DOCTYPE html>
 <html lang="en">
@@ -191,8 +211,16 @@ def send_2fa_email(to_email: str, code: str) -> None:
 </body>
 </html>"""
 
+    # Subject: generic wording — no OTP digit in subject (avoids spam triggers)
+    msg = _build_msg(
+        to_email,
+        f"Your {SENDER_NAME} sign-in verification code",
+        plain,
+        html,
+    )
+
     try:
-        _send_via_brevo(to_email, f"Your {SENDER_NAME} sign-in verification code", plain, html)
+        _send(msg, to_email)
         print(f"[2FA-email] SUCCESS: OTP sent to {to_email}")
     except Exception as e:
         print(f"[2FA-email] ERROR sending to {to_email}: {e}")
@@ -203,8 +231,8 @@ def send_2fa_email(to_email: str, code: str) -> None:
 
 def send_notification_email(to_email: str, title: str, message: str) -> None:
     """Send a general notification email to the given address."""
-    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL:
-        print("[email-notif] Brevo is not configured, skipping notification email:", title)
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print("[email-notif] SMTP is not configured, skipping notification email:", title)
         return
 
     try:
@@ -253,7 +281,8 @@ def send_notification_email(to_email: str, title: str, message: str) -> None:
 </body>
 </html>"""
 
-        _send_via_brevo(to_email, f"{SENDER_NAME}: {title}", plain, html)
+        msg = _build_msg(to_email, f"{SENDER_NAME}: {title}", plain, html)
+        _send(msg, to_email)
         print(f"[email-notif] ✓ Email delivered to {to_email} — {title}")
     except Exception as e:
-        print(f"[email-notif] ✗ Brevo API error sending to {to_email}: {e}")
+        print(f"[email-notif] ✗ SMTP error sending to {to_email}: {e}")

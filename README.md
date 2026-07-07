@@ -347,10 +347,11 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 # JWT
 JWT_SECRET_KEY=generate-random-string
 
-# Brevo (Email service for password resets & 2FA)
-BREVO_API_KEY=your-brevo-api-key
-BREVO_SENDER_EMAIL=your-verified-brevo-sender-email@domain.com
-BREVO_SENDER_NAME=ReviewMate
+# SMTP (Password resets)
+SMTP_EMAIL=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 
 # Supabase (Optional storage)
 SUPABASE_URL=your-supabase-url

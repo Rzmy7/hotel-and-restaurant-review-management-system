@@ -365,12 +365,11 @@ def reset_password(token: str, payload: ResetModel, db: Session = Depends(get_db
 @router.get("/test-smtp", tags=["System"], summary="Test SMTP email delivery")
 def test_smtp():
     try:
-        from app.core.config import BREVO_SENDER_EMAIL
-        test_email = BREVO_SENDER_EMAIL
+        test_email = os.getenv("SMTP_EMAIL")
         if not test_email:
-            return {"error": "BREVO_SENDER_EMAIL not configured"}
+            return {"error": "SMTP_EMAIL not configured"}
         send_reset_email(test_email, f"{FRONTEND_URL}/test-link-123")
-        return {"success": True, "message": f"Test email sent successfully via Brevo to {test_email}"}
+        return {"success": True, "message": f"Test email sent successfully to {test_email}"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

@@ -53,10 +53,11 @@ docker compose version
    JWT_SECRET_KEY=your_long_random_jwt_signing_key_here
    SECRET_KEY=your_app_secret_key_here
 
-    # ── Brevo (Email service for password resets & 2FA) ──────────────
-    BREVO_API_KEY=your-brevo-api-key
-    BREVO_SENDER_EMAIL=your-verified-brevo-sender-email@domain.com
-    BREVO_SENDER_NAME=ReviewMate
+   # ── SMTP (Email service for password resets) ─────────────────────
+   SMTP_EMAIL=your-email@gmail.com
+   SMTP_PASSWORD=your-gmail-app-password
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
 
    # ── Google OAuth (Sign in with Google) ───────────────────────────
    GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
@@ -186,10 +187,11 @@ services:
       - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY}
       # ── JWT ──
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      # ── Brevo (Email Service) ──
-      - BREVO_API_KEY=${BREVO_API_KEY}
-      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
-      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-ReviewMate}
+      # ── SMTP (Password resets) ──
+      - SMTP_EMAIL=${SMTP_EMAIL}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
       # ── Google OAuth ──
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -545,9 +547,10 @@ Below is a reference of every environment variable used by each service.
 | `DB_ENCRYPT` | ⚙️ | Encryption setting (default: `yes`) |
 | `JWT_SECRET_KEY` | ✅ | JWT signing key |
 | `GENAI_KEY` | ✅ | Google Gemini API key |
-| `BREVO_API_KEY` | ✅ | Brevo API key |
-| `BREVO_SENDER_EMAIL` | ✅ | Verified sender email in Brevo |
-| `BREVO_SENDER_NAME` | ⚙️ | Sender name display (default: `ReviewMate`) |
+| `SMTP_EMAIL` | ✅ | Sender email for password resets |
+| `SMTP_PASSWORD` | ✅ | Email app password |
+| `SMTP_HOST` | ⚙️ | SMTP host (default: `smtp.gmail.com`) |
+| `SMTP_PORT` | ⚙️ | SMTP port (default: `587`) |
 | `GOOGLE_CLIENT_ID` | ✅ | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | ✅ | Google OAuth client secret |
 | `SUPABASE_URL` | ✅ | Supabase project URL |

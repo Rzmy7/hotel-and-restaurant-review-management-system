@@ -32,10 +32,11 @@ DB_UID: str = os.getenv("DB_UID", "")
 DB_PWD: str = os.getenv("DB_PWD", "")
 DB_ENCRYPT: str = os.getenv("DB_ENCRYPT", "yes")
 
-# ── Brevo (Email Service) ───────────────────────────────────────────
-BREVO_API_KEY: str | None = os.getenv("BREVO_API_KEY")
-BREVO_SENDER_EMAIL: str | None = os.getenv("BREVO_SENDER_EMAIL")
-BREVO_SENDER_NAME: str = os.getenv("BREVO_SENDER_NAME", "ReviewMate")
+# ── SMTP ────────────────────────────────────────────────────────────
+SMTP_EMAIL: str | None = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
+SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
 
 # ── Google OAuth ────────────────────────────────────────────────────
 GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
