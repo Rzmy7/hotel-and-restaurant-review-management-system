@@ -16,14 +16,14 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr, formatdate, make_msgid
 
-from app.core.config import SMTP_EMAIL, SMTP_PASSWORD, SMTP_HOST, SMTP_PORT
+from app.core.config import SMTP_EMAIL, SMTP_PASSWORD, SMTP_HOST, SMTP_PORT, SMTP_FROM_EMAIL
 
 # Sender display name shown in email clients
 SENDER_NAME = "ReviewMate"
 
 # Domain for Message-ID must match SMTP sender domain (gmail.com here)
 # Using the actual sending domain prevents Gmail's domain-mismatch spam check
-_sender_domain = (SMTP_EMAIL or "gmail.com").split("@")[-1]
+_sender_domain = (SMTP_FROM_EMAIL or "gmail.com").split("@")[-1]
 
 
 def _build_msg(to_email: str, subject: str, plain: str, html: str) -> MIMEMultipart:
@@ -31,11 +31,11 @@ def _build_msg(to_email: str, subject: str, plain: str, html: str) -> MIMEMultip
     msg = MIMEMultipart("alternative")
     msg["MIME-Version"] = "1.0"
     msg["Subject"] = subject
-    msg["From"] = formataddr((SENDER_NAME, SMTP_EMAIL))
+    msg["From"] = formataddr((SENDER_NAME, SMTP_FROM_EMAIL))
     msg["To"] = to_email
     msg["Date"] = formatdate(localtime=False)          # UTC date (more consistent)
     msg["Message-ID"] = make_msgid(domain=_sender_domain)
-    msg["Reply-To"] = formataddr((SENDER_NAME, SMTP_EMAIL))
+    msg["Reply-To"] = formataddr((SENDER_NAME, SMTP_FROM_EMAIL))
     # Anti-spam: mark as transactional so filters treat it differently from bulk
     msg["Precedence"] = "transactional"
     msg["X-Mailer"] = f"ReviewMate/{SENDER_NAME}"
@@ -53,7 +53,7 @@ def _send(msg: MIMEMultipart, to_email: str) -> None:
         server.starttls()
         server.ehlo()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
+        server.sendmail(SMTP_FROM_EMAIL, [to_email], msg.as_string())
     finally:
         server.quit()
 
@@ -283,6 +283,6 @@ def send_notification_email(to_email: str, title: str, message: str) -> None:
 
         msg = _build_msg(to_email, f"{SENDER_NAME}: {title}", plain, html)
         _send(msg, to_email)
-        print(f"[email-notif] ✓ Email delivered to {to_email} — {title}")
+        print(f"[email-notif] SUCCESS: Email delivered to {to_email} - {title}")
     except Exception as e:
-        print(f"[email-notif] ✗ SMTP error sending to {to_email}: {e}")
+        print(f"[email-notif] FAILED: SMTP error sending to {to_email}: {e}")

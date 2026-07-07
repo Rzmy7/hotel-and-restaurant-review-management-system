@@ -42,11 +42,11 @@ def create_notification(
             f"has_flag={hasattr(user, 'is_email_notifications_enabled') if user else 'N/A'}, "
             f"flag_value={getattr(user, 'is_email_notifications_enabled', 'MISSING') if user else 'N/A'}")
         if user and getattr(user, 'is_email_notifications_enabled', False):
-            print(f"[email-notif] Sending email to {user.email} — title: {title}")
+            print(f"[email-notif] Sending email to {user.email} - title: {title}")
             send_notification_email(user.email, title, message)
             print(f"[email-notif] Email sent successfully to {user.email}")
         else:
-            print(f"[email-notif] Skipping email — notifications disabled or user not found")
+            print(f"[email-notif] Skipping email - notifications disabled or user not found")
     except Exception as e:
         print(f"[email-notif] ERROR sending email: {e}")
 
