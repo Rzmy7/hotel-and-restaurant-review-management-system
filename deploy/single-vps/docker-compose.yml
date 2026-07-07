@@ -94,11 +94,10 @@ services:
       - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY}
       # ── JWT ──
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      # ── SMTP (Password resets) ──
-      - SMTP_EMAIL=${SMTP_EMAIL}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
-      - SMTP_PORT=${SMTP_PORT:-587}
+      # ── Brevo (Email Service) ──
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL}
+      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-ReviewMate}
       # ── Google OAuth ──
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
