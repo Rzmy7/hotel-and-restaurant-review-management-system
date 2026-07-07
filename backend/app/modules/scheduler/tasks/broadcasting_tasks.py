@@ -15,14 +15,79 @@ from app.modules.admin.services.broadcasting_service import (
     get_recipient_ids,
 )
 from app.modules.admin.services.system_settings_service import get_system_timezone
+from app.modules.auth.services.email_service import send_broadcast_email
 
 logger = logging.getLogger(__name__)
 
+# ── Schema bootstrap (run once at startup, not on every scheduler tick) ───────
+_tables_ensured: bool = False
+
+
+def _ensure_tables_once() -> None:
+    """
+    Create broadcast/notification tables the first time this worker runs.
+    Uses a separate, short-lived connection so DDL schema locks do NOT
+    bleed into the main processing transaction (which caused the lock
+    timeout errors seen in production).
+    """
+    global _tables_ensured
+    if _tables_ensured:
+        return
+    try:
+        with get_raw_connection() as conn:
+            cursor = conn.cursor()
+            ensure_broadcast_events_table(cursor)
+            ensure_notifications_schema(cursor)
+            conn.commit()
+        _tables_ensured = True
+        logger.info("Broadcast scheduler: DB tables verified.")
+    except Exception as exc:
+        logger.warning("Broadcast scheduler: Could not verify tables: %s", exc)
+
+
+def _send_emails_for_broadcast(
+    cursor: pyodbc.Cursor,
+    recipient_ids: list[str],
+    subject: str,
+    body: str,
+    message_type: str,
+) -> None:
+    """
+    Send broadcast emails via SMTP to every recipient who has email
+    notifications enabled.  Best-effort — individual failures are logged
+    but do not abort the broadcast processing loop.
+    """
+    if not recipient_ids:
+        return
+
+    placeholders = ",".join(["?"] * len(recipient_ids))
+    try:
+        rows = cursor.execute(
+            f"""
+            SELECT email
+            FROM dbo.[user]
+            WHERE CAST(user_id AS NVARCHAR(36)) IN ({placeholders})
+              AND is_email_notifications_enabled = 1
+            """,
+            recipient_ids,
+        ).fetchall()
+    except Exception as exc:
+        logger.error("Broadcast scheduler: Failed to fetch emails: %s", exc)
+        return
+
+    for row in rows:
+        email = str(row[0]).strip() if row[0] else ""
+        if email:
+            send_broadcast_email(email, subject, body, message_type)
+
+
+# ── Async entry point ─────────────────────────────────────────────────────────
 
 async def process_pending_broadcasts():
     """
     Scheduled task to find pending broadcasts and send them.
-    Runs every minute to check for broadcasts with scheduled_at <= now (in system timezone).
+    Runs every minute to check for broadcasts with scheduled_at <= now
+    (in system timezone).
 
     This function is async and delegates the blocking DB work to a thread pool.
     """
@@ -37,18 +102,18 @@ async def process_pending_broadcasts():
 
 def _process_broadcasts_sync_worker():
     """Synchronous worker that performs the actual DB transactions."""
+    # Ensure tables exist using a separate connection (avoids DDL lock contention)
+    _ensure_tables_once()
+
     try:
         with get_raw_connection() as connection:
             cursor = connection.cursor()
-            
-            ensure_broadcast_events_table(cursor)
-            ensure_notifications_schema(cursor)
-            
+
             tz_name = get_system_timezone(cursor)
             now_utc = datetime.utcnow()
             tz_offset = _get_timezone_offset(tz_name, now_utc)
             now_in_system_tz = now_utc + tz_offset
-            
+
             pending_rows = cursor.execute(
                 """
                 SELECT
@@ -56,35 +121,35 @@ def _process_broadcasts_sync_worker():
                     audience_type, audience_value, audience_label,
                     message_type, recipient_count, status,
                     schedule_type, scheduled_at, sent_at, sent_by, created_at
-                FROM dbo.broadcast_event
+                FROM dbo.broadcast_event WITH (UPDLOCK, READPAST)
                 WHERE status = 'pending'
-                AND scheduled_at IS NOT NULL
-                AND scheduled_at <= ?
+                  AND scheduled_at IS NOT NULL
+                  AND scheduled_at <= ?
                 ORDER BY scheduled_at ASC
                 """,
-                now_in_system_tz
+                now_in_system_tz,
             ).fetchall()
-            
+
             if not pending_rows:
                 return
-            
+
             logger.info(f"Worker: Found {len(pending_rows)} broadcasts ready to send.")
-            
+
             sent_count = 0
             failed_count = 0
-            
+
             for row in pending_rows:
                 try:
-                    broadcast_id = row[0]
-                    subject = row[1]
-                    body = row[2]
-                    channel = row[3]
+                    broadcast_id  = row[0]
+                    subject       = row[1]
+                    body          = row[2]
+                    channel       = row[3]
                     audience_type = row[4]
                     audience_value = row[5]
-                    message_type = row[7]
-                    
+                    message_type  = row[7]
+
                     recipient_ids = get_recipient_ids(cursor, audience_type, audience_value)
-                    
+
                     if channel in {"notification", "both"} and recipient_ids:
                         create_notifications(
                             cursor,
@@ -94,7 +159,16 @@ def _process_broadcasts_sync_worker():
                             message_type,
                             now_utc,
                         )
-                    
+
+                    if channel in {"email", "both"} and recipient_ids:
+                        _send_emails_for_broadcast(
+                            cursor,
+                            recipient_ids,
+                            subject,
+                            body,
+                            message_type,
+                        )
+
                     cursor.execute(
                         "UPDATE dbo.broadcast_event SET status = 'sent', sent_at = ? WHERE broadcast_id = ?",
                         now_utc,
@@ -112,8 +186,11 @@ def _process_broadcasts_sync_worker():
                         )
                     except Exception:
                         pass
-            
-            logger.info(f"Worker: Broadcast processing complete: {sent_count} sent, {failed_count} failed.")
+
+            connection.commit()
+            logger.info(
+                f"Worker: Broadcast processing complete: {sent_count} sent, {failed_count} failed."
+            )
     except Exception as e:
         logger.error(f"Error during broadcast worker run: {e}")
 
@@ -126,10 +203,10 @@ def _get_timezone_offset(tz_name: str, utc_dt: datetime) -> timedelta:
     try:
         if not tz_name:
             return timedelta(0)
-        
+
         utc_aware = utc_dt.replace(tzinfo=ZoneInfo("UTC"))
         local_aware = utc_aware.astimezone(ZoneInfo(tz_name))
-        
+
         offset = local_aware.utcoffset()
         return offset if offset is not None else timedelta(0)
     except Exception as e:

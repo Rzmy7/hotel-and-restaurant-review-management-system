@@ -6,9 +6,10 @@ export interface GeneralSettings {
 }
 
 export interface NotificationSettings {
-    emailNotifications: boolean;
     newReviewAlerts: boolean;
     weeklySummary: boolean;
+    groupInvitations: boolean;
+    subscriptionChanges: boolean;
 }
 
 export interface SecuritySettings {

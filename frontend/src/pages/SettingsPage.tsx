@@ -120,7 +120,7 @@ const SettingsPage: React.FC = () => {
       twoFactorAuth: 'Two-Factor Authentication', sessionTimeout: 'Session Timeout'
     });
     compareSection('Notifications', serverData.notifications, localData.notifications, {
-      emailNotifications: 'Email Notifications', newReviewAlerts: 'New Review Alerts', weeklySummary: 'Weekly Summary'
+      newReviewAlerts: 'New Review Alerts', weeklySummary: 'Weekly Summary', groupInvitations: 'Group Invitations', subscriptionChanges: 'Subscription Changes'
     });
     compareSection('Subscription', serverData.subscription, localData.subscription, {
       plan: 'Plan', billingEmail: 'Billing Email'

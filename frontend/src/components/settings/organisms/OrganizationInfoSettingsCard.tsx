@@ -234,7 +234,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                                         Extracted Rules ({organizationRules.length})
                                     </h4>
                                 </div>
-                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                <div className="space-y-2 pr-1">
                                     {organizationRules.map((rule) => (
                                         <div
                                             key={rule.rule_id}
