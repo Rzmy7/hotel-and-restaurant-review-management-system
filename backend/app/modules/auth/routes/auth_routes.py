@@ -158,6 +158,12 @@ def signup_verify(payload: SignupVerifyModel, response: Response, db: Session = 
     except Exception:
         pass
 
+    try:
+        from app.modules.auth.services.email_service import send_welcome_email
+        send_welcome_email(user.email, display_name)
+    except Exception as e:
+        print(f"[welcome-email] ERROR: Failed to send welcome email: {e}")
+
     roles = get_user_role_names(db, user.user_id)
     
     # Generate access token

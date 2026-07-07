@@ -190,18 +190,17 @@ const SignUpPage = () => {
       title="Create Your Workspace" 
       description="Start your 14-day free trial. No credit card required."
     >
-      {error && (
-        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
-          <AlertCircle className="w-5 h-5 text-rose-500" />
-          <span className="text-sm font-bold text-rose-700">{error}</span>
+      {error && !isVerificationStep && (
+        <div className="text-sm font-bold text-rose-600 dark:text-rose-400 mb-6 text-center animate-in fade-in slide-in-from-top-2">
+          {error}
         </div>
       )}
 
       {isVerificationStep ? (
         <form onSubmit={handleVerifyEmail} className="space-y-4">
           {verificationMessage && (
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 border-l-4 border-emerald-500 p-4 rounded-xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
-              <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">{verificationMessage}</span>
+            <div className="text-sm font-bold text-emerald-500 dark:text-emerald-400 mb-6 text-center animate-in fade-in slide-in-from-top-2">
+              {verificationMessage}
             </div>
           )}
 
@@ -225,6 +224,11 @@ const SignUpPage = () => {
                 maxLength={6}
               />
             </div>
+            {error && (
+              <div className="text-sm font-bold text-rose-600 dark:text-rose-400 mt-2 text-center animate-in fade-in">
+                {error}
+              </div>
+            )}
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"

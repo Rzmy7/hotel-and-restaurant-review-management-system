@@ -94,6 +94,9 @@ def _footer_html(note: str = "This is an automated message.") -> str:
               &copy; 2026 {SENDER_NAME}. All rights reserved.
             </p>
             <p style="margin:4px 0 0;color:{_TEXT_MUTED};font-size:12px;">{note}</p>
+            <p style="margin:6px 0 0;color:{_TEXT_MUTED};font-size:12px;">
+              Need help? Contact us at <a href="mailto:support@reviewmate.live" style="color:{_BRAND};text-decoration:none;font-weight:600;">support@reviewmate.live</a>
+            </p>
           </td>
         </tr>"""
 
@@ -1018,5 +1021,94 @@ def send_signup_otp_email(to_email: str, code: str) -> None:
     except Exception as e:
         print(f"[signup-email] ERROR sending to {to_email}: {e}")
         raise RuntimeError(f"Email sending failed: {e}") from e
+
+
+def send_welcome_email(to_email: str, user_name: str) -> None:
+    """Send a welcome email to the newly registered user."""
+    print(f"[welcome-email] Attempting to send welcome email to {to_email}")
+
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print("[welcome-email] WARN: SMTP not configured. Welcome mail skipped.")
+        return
+
+    plain = (
+        f"Hi {user_name},\n\n"
+        f"Welcome to {SENDER_NAME}! Your account has been created successfully.\n\n"
+        "Here are your next steps to get started:\n"
+        "1. Add your first organization\n"
+        "2. Create your first group\n\n"
+        "If you need any assistance, feel free to contact us at support@reviewmate.live.\n\n"
+        f"— The {SENDER_NAME} Team"
+    )
+
+    rows = (
+        _header_html("Welcome to ReviewMate")
+        + f"""
+        <tr>
+          <td style="padding:36px 32px 28px;">
+            <p style="margin:0 0 8px;color:{_TEXT};font-size:18px;font-weight:700;">
+              Hi {user_name},
+            </p>
+            <p style="margin:0 0 24px;color:{_TEXT_MUTED};font-size:15px;line-height:1.6;">
+              Welcome to <strong style="color:{_TEXT};">{SENDER_NAME}</strong>!
+              We're thrilled to help you monitor and manage your online reputation.
+              Your account has been created successfully.
+            </p>
+
+            <!-- Steps list -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td style="padding:0 0 12px;">
+                  <strong style="color:{_TEXT};font-size:15px;">Next steps to get started:</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:4px 0;">
+                  <span style="display:inline-block;width:24px;color:{_BRAND};font-weight:bold;">1.</span>
+                  <span style="color:{_TEXT};font-size:14px;">Add your first organization</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:4px 0;">
+                  <span style="display:inline-block;width:24px;color:{_BRAND};font-weight:bold;">2.</span>
+                  <span style="color:{_TEXT};font-size:14px;">Create your first group</span>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Support reminder box -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background-color:{_FOOTER_BG};border:1px solid {_BORDER};
+                           border-radius:8px;padding:16px 18px;">
+                  <p style="margin:0 0 4px;color:{_TEXT};font-size:13px;font-weight:600;">
+                    Need help?
+                  </p>
+                  <p style="margin:0;color:{_TEXT_MUTED};font-size:13px;line-height:1.6;">
+                    Contact us if anything is needed at
+                    <a href="mailto:support@reviewmate.live"
+                       style="color:{_BRAND};text-decoration:none;font-weight:600;">support@reviewmate.live</a>.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>"""
+        + _footer_html("Welcome to the platform!")
+    )
+
+    html = _outer_table(rows)
+    msg = _build_msg(
+        to_email,
+        f"Welcome to {SENDER_NAME}!",
+        plain,
+        html,
+    )
+
+    try:
+        _send(msg, to_email)
+        print(f"[welcome-email] SUCCESS: Welcome email sent to {to_email}")
+    except Exception as e:
+        print(f"[welcome-email] ERROR sending to {to_email}: {e}")
 
 
