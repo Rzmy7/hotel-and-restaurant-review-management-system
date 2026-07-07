@@ -6,7 +6,6 @@ import {
     ArrowLeft, ThumbsUp, Minus, ThumbsDown,
 } from 'lucide-react';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
-import { ReviewRating } from '../components/reviews/ReviewRating';
 import { reviewsService } from '../services/reviewsService';
 import { apiClient } from '../api/client';
 import { ActivityMessages } from '../constants/activityMessages';
