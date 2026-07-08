@@ -294,9 +294,7 @@ def mark_my_notification_read(
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
-    # Adapt standard result to NotificationResponse schema
-    from app.services.notifications_service import _to_response
-    return _to_response(updated)
+    return updated
 
 
 @router.post("/read-all", response_model=MarkAllReadResponse)

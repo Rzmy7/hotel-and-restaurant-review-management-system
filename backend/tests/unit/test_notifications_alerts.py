@@ -135,3 +135,14 @@ def test_delete_my_notification_alert_soft_deletes_with_sentinel(mock_db, mock_c
          assert mock_un.is_read is True
          assert mock_un.read_at == datetime(1970, 1, 1)
          assert mock_db.commit.called
+
+
+def test_mark_my_notification_read_standard(mock_db, mock_current_user):
+    notif_id = uuid.uuid4()
+    notif_id_str = str(notif_id)
+    
+    mock_response = MagicMock()
+    with patch("app.modules.auth.routes.notifications_routes.mark_user_notification_read", return_value=mock_response) as mock_read:
+        res = mark_my_notification_read(notification_id=notif_id_str, db=mock_db, current_user=mock_current_user)
+        assert res == mock_response
+        mock_read.assert_called_once_with(mock_db, notif_id, uuid.UUID(mock_current_user["user_id"]))
