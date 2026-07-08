@@ -82,16 +82,16 @@ body {
   animation: slide-in-right 0.3s ease-out forwards;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Hide scrollbar for Chrome, Safari and Opera globally */
+*::-webkit-scrollbar {
+  display: none !important;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
-.no-scrollbar {
-  -ms-overflow-style: none;
+/* Hide scrollbar for IE, Edge and Firefox globally */
+* {
+  -ms-overflow-style: none !important;
   /* IE and Edge */
-  scrollbar-width: none;
+  scrollbar-width: none !important;
   /* Firefox */
 }
 /* --- Premium Animations --- */

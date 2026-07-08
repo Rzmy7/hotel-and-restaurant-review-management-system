@@ -12,6 +12,7 @@ def create_notification(
     title: str,
     message: str,
     notification_type: str = "info",
+    send_email: bool = True,
 ) -> UserNotification:
     # 1. Create Notification record
     notification = Notification(
@@ -41,12 +42,12 @@ def create_notification(
         print(f"[email-notif] user={user.email if user else 'NOT FOUND'}, "
             f"has_flag={hasattr(user, 'is_email_notifications_enabled') if user else 'N/A'}, "
             f"flag_value={getattr(user, 'is_email_notifications_enabled', 'MISSING') if user else 'N/A'}")
-        if user and getattr(user, 'is_email_notifications_enabled', False):
-            print(f"[email-notif] Sending email to {user.email} — title: {title}")
-            send_notification_email(user.email, title, message)
+        if send_email and user and getattr(user, 'is_email_notifications_enabled', False):
+            print(f"[email-notif] Sending email to {user.email} - title: {title}")
+            send_notification_email(user.email, title, message, notification_type=notification_type)
             print(f"[email-notif] Email sent successfully to {user.email}")
         else:
-            print(f"[email-notif] Skipping email — notifications disabled or user not found")
+            print(f"[email-notif] Skipping email - notifications disabled or user not found")
     except Exception as e:
         print(f"[email-notif] ERROR sending email: {e}")
 

@@ -44,7 +44,6 @@ export const ActivityMessages = {
     UPDATE_PROFILE: "Updating profile...",
     UPLOAD_IMAGE: "Uploading image...",
     CREATE_ORG: "Creating organization...",
-    UPLOAD_RULES: "Uploading rules...",
     UPDATE_PLAN: "Updating subscription plan...",
     LOGOUT: "Logging out...",
     FORGOT_PASSWORD: "Sending reset link...",

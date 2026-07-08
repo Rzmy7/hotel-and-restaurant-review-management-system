@@ -76,7 +76,7 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows
             for c in cats:
                 cur.execute(sql_cats, str(uuid.uuid4()), rev_id, str(c))
     conn.commit()
-    print(f"✓ Saved {len(rows)} competitor reviews to DB.")
+    print(f"[SUCCESS] Saved {len(rows)} competitor reviews to DB.")
 
 
 def _update_competitor_stats(competitor_id: str) -> None:

@@ -20,18 +20,18 @@ def test_raw_pyodbc():
     cs = get_connection_string()
     try:
         conn = pyodbc.connect(cs)
-        print("✓ Raw PyODBC: SUCCESS")
+        print("[OK] Raw PyODBC: SUCCESS")
         conn.close()
         return True
     except Exception as e:
-        print(f"✗ Raw PyODBC: FAILED - {e}")
+        print(f"[FAIL] Raw PyODBC: FAILED - {e}")
         return False
 
 
 def test_sqlalchemy():
     print("Checking SQLAlchemy ORM Connection...")
     if SessionLocal is None:
-        print("✗ SQLAlchemy: FAILED - SessionLocal is None (DATABASE_URL missing)")
+        print("[FAIL] SQLAlchemy: FAILED - SessionLocal is None (DATABASE_URL missing)")
         return False
     
     try:
@@ -39,13 +39,13 @@ def test_sqlalchemy():
             result = conn.execute(text("SELECT 1 AS ok"))
             val = result.fetchone()[0]
             if val == 1:
-                print("✓ SQLAlchemy: SUCCESS")
+                print("[OK] SQLAlchemy: SUCCESS")
                 return True
             else:
-                print(f"✗ SQLAlchemy: FAILED - Unexpected result: {val}")
+                print(f"[FAIL] SQLAlchemy: FAILED - Unexpected result: {val}")
                 return False
     except Exception as e:
-        print(f"✗ SQLAlchemy: FAILED - {e}")
+        print(f"[FAIL] SQLAlchemy: FAILED - {e}")
         return False
 
 

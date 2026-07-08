@@ -3,7 +3,7 @@ import Skeleton from '../components/shared/Skeleton';
 
 export const SettingsSkeleton: React.FC = () => {
     return (
-        <div className="space-y-6 pt-4 font-sans animate-shimmer">
+        <div className="space-y-6 pt-4 font-sans">
             {/* Tabs Skeleton */}
             <div className="flex border-b border-gray-200 dark:border-slate-700 pb-px gap-2">
                 <Skeleton className="h-9 w-20 rounded-md" />

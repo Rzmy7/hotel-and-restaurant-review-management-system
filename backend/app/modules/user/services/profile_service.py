@@ -60,6 +60,10 @@ def get_profile(db: Session, user_id):
         "is_2fa_enabled": bool(user.is_2fa_enabled),
         "is_2fa_feature_enabled": _is_2fa_feature_enabled(),
         "is_email_notifications_enabled": bool(user.is_email_notifications_enabled) if hasattr(user, 'is_email_notifications_enabled') else True,
+        "is_new_review_alerts_enabled": bool(user.is_new_review_alerts_enabled) if hasattr(user, 'is_new_review_alerts_enabled') else True,
+        "is_weekly_summary_enabled": bool(user.is_weekly_summary_enabled) if hasattr(user, 'is_weekly_summary_enabled') else True,
+        "is_group_invitations_enabled": bool(user.is_group_invitations_enabled) if hasattr(user, 'is_group_invitations_enabled') else True,
+        "is_subscription_changes_enabled": bool(user.is_subscription_changes_enabled) if hasattr(user, 'is_subscription_changes_enabled') else True,
         "joinedDate": str(user.created_at),
     }
 
@@ -79,6 +83,10 @@ def update_profile(db: Session, user_id, data):
         bio=data.bio,
         location=data.location,
         is_email_notifications_enabled=data.is_email_notifications_enabled,
+        is_new_review_alerts_enabled=data.is_new_review_alerts_enabled,
+        is_weekly_summary_enabled=data.is_weekly_summary_enabled,
+        is_group_invitations_enabled=data.is_group_invitations_enabled,
+        is_subscription_changes_enabled=data.is_subscription_changes_enabled,
     )
 
 # upload profile image

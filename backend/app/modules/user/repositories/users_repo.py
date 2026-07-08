@@ -77,6 +77,10 @@ def update_user_profile(
     location: str | None = None,
     profile_image_url: str | None = None,
     is_email_notifications_enabled: bool | None = None,
+    is_new_review_alerts_enabled: bool | None = None,
+    is_weekly_summary_enabled: bool | None = None,
+    is_group_invitations_enabled: bool | None = None,
+    is_subscription_changes_enabled: bool | None = None,
 ):
 
     if first_name is not None:
@@ -102,6 +106,18 @@ def update_user_profile(
 
     if is_email_notifications_enabled is not None:
         user.is_email_notifications_enabled = is_email_notifications_enabled
+
+    if is_new_review_alerts_enabled is not None:
+        user.is_new_review_alerts_enabled = is_new_review_alerts_enabled
+
+    if is_weekly_summary_enabled is not None:
+        user.is_weekly_summary_enabled = is_weekly_summary_enabled
+
+    if is_group_invitations_enabled is not None:
+        user.is_group_invitations_enabled = is_group_invitations_enabled
+
+    if is_subscription_changes_enabled is not None:
+        user.is_subscription_changes_enabled = is_subscription_changes_enabled
 
     db.commit()
     db.refresh(user)

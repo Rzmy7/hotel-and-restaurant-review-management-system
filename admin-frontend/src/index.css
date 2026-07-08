@@ -48,3 +48,12 @@
   }
 }
 
+/* Hide scrollbar globally */
+*::-webkit-scrollbar {
+  display: none !important;
+}
+
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}

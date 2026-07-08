@@ -41,7 +41,7 @@ const PlanCardSkeleton = () => (
 
 export const SubscriptionPlansSkeleton: React.FC = () => {
     return (
-        <div className="space-y-6 pt-4 font-sans animate-shimmer">
+        <div className="space-y-6 pt-4 font-sans">
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-4">
                 <StatCardSkeleton />

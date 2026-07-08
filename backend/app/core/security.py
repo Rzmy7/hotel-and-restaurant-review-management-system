@@ -121,3 +121,24 @@ def create_access_token(user_id: str, role: str, organization_id: str | None = N
 def decode_access_token(token: str) -> dict:
     """Decode and verify a JWT access token."""
     return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+
+
+def create_signup_token(email: str, name: str, password_hash: str, otp_hash: str) -> str:
+    """Create a signed, short-lived signup token containing registration details."""
+    payload = {
+        "email": email,
+        "name": name,
+        "password_hash": password_hash,
+        "otp_hash": otp_hash,
+        "exp": datetime.utcnow() + timedelta(minutes=10),
+        "purpose": "signup_verification",
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_signup_token(token: str) -> dict:
+    """Decode and verify a signup token, validating its purpose."""
+    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    if payload.get("purpose") != "signup_verification":
+        raise jwt.JWTError("Invalid token purpose")
+    return payload
