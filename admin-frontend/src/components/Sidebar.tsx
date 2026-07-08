@@ -6,7 +6,6 @@ import {
   Users,
   Flag,
   Settings as SettingsIcon,
-  Check,
   Database,
   Search,
   Activity,
