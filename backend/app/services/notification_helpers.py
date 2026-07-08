@@ -120,6 +120,7 @@ def notify_plan_changed_by_user(user_id: str, plan_name: str) -> None:
             "Your new feature limits are now in effect. Visit the Subscription page to see details."
         ),
         notification_type="success",
+        send_email=False,
     )
     _try_send_subscription_email(user_id, plan_name, changed_by_admin=False)
 
@@ -134,6 +135,7 @@ def notify_plan_changed_by_admin(user_id: str, plan_name: str) -> None:
             "Your feature limits have been adjusted accordingly."
         ),
         notification_type="info",
+        send_email=False,
     )
     _try_send_subscription_email(user_id, plan_name, changed_by_admin=True)
 

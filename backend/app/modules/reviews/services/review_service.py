@@ -85,7 +85,8 @@ def _ingest_reviews_chunk_tx(chunk: list, platform_id: Any, source_id: Any, debu
                     scraped_at_obj = datetime.now()
 
                 # Normalize rating (system standard is 1-5)
-                raw_rating = float(detail.get("rating", 0))
+                rating_val = detail.get("rating")
+                raw_rating = float(rating_val) if rating_val is not None else 0.0
 
                 # Booking.com (2) and Agoda (3) use a 10-point scale
                 if int(platform_id) in [2, 3]:
