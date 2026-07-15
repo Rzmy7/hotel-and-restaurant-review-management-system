@@ -14,7 +14,7 @@ from app.modules.reviews.services.sentiment_service import (
     analyze_single_sentiment,
     batch_analyze_sentiment,
 )
-from app.modules.reviews.services.gemini_client import analyze_reviews_batch
+from app.modules.reviews.services.llm_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
 

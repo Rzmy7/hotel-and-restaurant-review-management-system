@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 import pyodbc
 from app.core.pyodbc_connection import get_connection_string
-from app.modules.reviews.services.gemini_client import analyze_reviews_batch
+from app.modules.reviews.services.llm_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
 

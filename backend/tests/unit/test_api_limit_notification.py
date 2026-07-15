@@ -145,7 +145,7 @@ def test_notify_admin_custom_model_quota_exceeded_flag_enabled(mock_create_notif
 
 
 def test_is_billing_error_keywords():
-    from app.modules.reviews.services.gemini_client import _is_billing_error
+    from app.modules.reviews.services.llm_client import _is_billing_error
     
     # Test valid billing/quota errors for various providers
     assert _is_billing_error("Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details.'}}") is True

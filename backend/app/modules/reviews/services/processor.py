@@ -14,7 +14,7 @@ from datetime import datetime
 import pyodbc
 from app.core.pyodbc_connection import get_raw_connection, retry_on_deadlock
 from app.modules.reviews.repository import get_pending_batch, get_review_by_id
-from app.modules.reviews.services.gemini_client import analyze_reviews_batch
+from app.modules.reviews.services.llm_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
 
