@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Filter, RefreshCw, Play, Pause, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
 import ReviewProcessingSkeleton from './ReviewProcessingSkeleton';
 import { Alert } from '../components/Alert';
 import {
@@ -8,6 +8,7 @@ import {
     getBatchConfig,
     updateBatchConfig,
     resumeReviewProcessing,
+    pauseReviewProcessing,
     retryAllFailedReviews,
     testDuplicates,
     cleanupDuplicates,
@@ -160,6 +161,16 @@ export const ReviewProcessing: React.FC = () => {
         }
     };
 
+    const handlePauseProcessing = async () => {
+        try {
+            await pauseReviewProcessing();
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to pause review processing:', err);
+            setError('Failed to pause review processing.');
+        }
+    };
+
 
 
     const handleRetryAllFailed = async () => {
@@ -260,6 +271,39 @@ export const ReviewProcessing: React.FC = () => {
     return (
         <div className="space-y-6 pt-4">
             {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
+
+            {/* Pipeline Control Widget */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                    <div className="relative flex h-3 w-3 shrink-0">
+                        {!stats.isPaused && (
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        )}
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${stats.isPaused ? 'bg-orange-500' : 'bg-green-500'}`}></span>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            Review Processing: <span className={stats.isPaused ? 'text-orange-500 font-bold' : 'text-green-600 font-bold'}>{stats.isPaused ? 'Paused' : 'Active'}</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            {stats.isPaused 
+                                ? 'The background pipeline is currently paused. New reviews will be stored but not analyzed by AI until resumed.' 
+                                : 'The background pipeline is running normally. New reviews are automatically analyzed in batches using the active LLM.'}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={stats.isPaused ? handleResumeProcessing : handlePauseProcessing}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border shadow-sm shrink-0 ${
+                        stats.isPaused 
+                            ? 'bg-green-600 hover:bg-green-700 text-white border-green-700' 
+                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 hover:text-gray-900 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 dark:border-slate-600 dark:hover:text-white'
+                    }`}
+                >
+                    {stats.isPaused ? <Play size={16} /> : <Pause size={16} />}
+                    {stats.isPaused ? 'Resume Processing' : 'Pause Processing'}
+                </button>
+            </div>
 
             {stats.isPaused && (
                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-4 flex items-start justify-between">

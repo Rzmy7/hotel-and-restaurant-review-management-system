@@ -80,14 +80,29 @@ def repair_json(text: str) -> str:
 def _is_billing_error(s: str) -> bool:
     """Return True if the error string indicates a billing / credit-limit problem."""
     lower = s.lower()
-    return (
-        "402" in s
-        or "429" in s
-        or "RESOURCE_EXHAUSTED" in s
-        or "insufficient_quota" in lower
-        or "insufficient credits" in lower
-        or ("credits" in lower and "max_tokens" in lower)
-    )
+    billing_keywords = [
+        "402",
+        "429",
+        "resource_exhausted",
+        "insufficient_quota",
+        "insufficient credits",
+        "insufficient funds",
+        "insufficient balance",
+        "quota exceeded",
+        "exceeded your current quota",
+        "out of credits",
+        "credits exhausted",
+        "credit limit reached",
+        "billing limit reached",
+        "billing details",
+        "payment required",
+        "rate limit reached",
+        "rate_limit_exceeded",
+        "too many requests",
+    ]
+    if any(keyword in lower for keyword in billing_keywords):
+        return True
+    return ("credits" in lower and "max_tokens" in lower)
 
 
 def is_retryable_exception(e: Exception) -> bool:
@@ -174,6 +189,19 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         err_str = str(e)
         logger.error(f"Review analysis failed: {err_str}")
 
+        # Resolve active model name to make notification and system alert messages dynamic
+        model_name = "AI"
+        try:
+            from app.services.llm_gateway import get_assigned_model
+            model_info = get_assigned_model("review_processing")
+            model_name = model_info.get("name") or model_info.get("model_name") or "AI"
+        except Exception:
+            # Fallback regex check from error string
+            import re
+            match = re.search(r"LLM (?:Provider )?Error \((.*?)(?: @|\))", err_str)
+            if match:
+                model_name = match.group(1)
+
         try:
             from app.modules.admin.services.system_alert_logger import (
                 alert_gemini_quota_exceeded,
@@ -181,11 +209,11 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 alert_gemini_key_missing,
             )
             if _is_billing_error(err_str):
-                alert_gemini_quota_exceeded(err_str[:200])
+                alert_gemini_quota_exceeded(err_str[:200], model_name=model_name)
             elif "No LLM model assigned" in err_str:
-                alert_gemini_key_missing()
+                alert_gemini_key_missing(model_name=model_name)
             else:
-                alert_gemini_api_error(err_str[:300])
+                alert_gemini_api_error(err_str[:300], model_name=model_name)
         except Exception as alert_err:
             logger.debug(f"Failed to log system alert: {alert_err}")
 
@@ -194,7 +222,7 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
             logger.warning("Billing/credit limit detected — auto-pausing review processing.")
             try:
                 from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
-                notify_admin_gemini_quota_exceeded()
+                notify_admin_gemini_quota_exceeded(model_name=model_name)
             except Exception:
                 pass
 

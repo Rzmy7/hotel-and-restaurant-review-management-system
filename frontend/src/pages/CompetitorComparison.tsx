@@ -300,7 +300,7 @@ const CompetitorComparison = () => {
                             )}
                         </>
                     ) : (
-                        <p className="text-sm text-gray-400 dark:text-slate-500">Unable to generate insights — Gemini API may be unavailable.</p>
+                        <p className="text-sm text-gray-400 dark:text-slate-500">Unable to generate insights — AI API may be unavailable.</p>
                     )}
                 </div>
             </main>

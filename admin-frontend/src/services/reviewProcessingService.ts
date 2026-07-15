@@ -42,6 +42,10 @@ export const resumeReviewProcessing = (): Promise<{ status: string; message: str
     return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/resume');
 };
 
+export const pauseReviewProcessing = (): Promise<{ status: string; message: string }> => {
+    return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/pause');
+};
+
 export const fetchReviewProcessingJobs = (
     page: number,
     limit: number,

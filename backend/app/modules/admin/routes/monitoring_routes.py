@@ -433,6 +433,26 @@ def resume_review_processing() -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to resume review processing: {exc}") from exc
 
 
+@router.post("/review-processing/pause")
+def pause_review_processing() -> dict:
+    """Manually pauses review processing."""
+    from app.modules.admin.services.system_settings_service import set_setting
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            set_setting(cursor, "review_processing_paused", "true")
+            conn.commit()
+
+        log_admin_activity(
+            "settings_updated",
+            "Review Processing Paused",
+            "Review processing was manually paused",
+        )
+        return {"status": "success", "message": "Review processing paused."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to pause review processing: {exc}") from exc
+
+
 @router.post("/review-processing/retry/{source_id}")
 def retry_failed_reviews(source_id: str) -> dict:
     """Reset all failed reviews for a source back to 'pending' for reprocessing."""
@@ -544,7 +564,8 @@ def review_processing_jobs(
                     r.status,
                     COUNT(*) AS review_count,
                     MIN(r.last_attempt) AS earliest_attempt,
-                    MAX(r.last_attempt) AS latest_attempt
+                    MAX(r.last_attempt) AS latest_attempt,
+                    (SELECT COUNT(*) FROM dbo.processed_review t WHERE t.source_id = r.source_id) AS total_reviews
                 FROM dbo.processed_review r
                 LEFT JOIN dbo.source s ON r.source_id = s.source_id
                 LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
@@ -570,6 +591,7 @@ def review_processing_jobs(
                 review_count = int(row[4] or 0)
                 earliest = row[5]
                 latest = row[6]
+                total_reviews = int(row[7] or 0)
 
                 icon, color = platform_visuals(platform_name)
                 short_id = source_id[-6:].upper() if len(source_id) >= 6 else str(idx)
@@ -623,7 +645,7 @@ def review_processing_jobs(
                     "startTime": start_time,
                     "duration": duration,
                     "reviewsProcessed": review_count,
-                    "totalReviews": None,
+                    "totalReviews": total_reviews,
                 })
 
             return {

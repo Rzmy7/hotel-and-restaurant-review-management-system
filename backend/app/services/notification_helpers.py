@@ -422,8 +422,8 @@ def notify_source_removed(user_id: str, platform_name: str, org_name: str | None
     )
 
 
-def notify_admin_gemini_quota_exceeded() -> None:
-    """Specialized alert for system admins when Gemini API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
+def notify_admin_gemini_quota_exceeded(model_name: str = "Gemini") -> None:
+    """Specialized alert for system admins when API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
     from app.database.session import SessionLocal
     from app.modules.user.models.user_models import User
     from app.modules.auth.repositories.notifications_repo import create_notification
@@ -435,10 +435,10 @@ def notify_admin_gemini_quota_exceeded() -> None:
             # Find all users with Admin role
             admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
             if not admins:
-                logger.warning("No administrators found to notify about Gemini quota issue.")
+                logger.warning(f"No administrators found to notify about {model_name} quota issue.")
             else:
-                title = "Gemini API Quota Exceeded"
-                message = "The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits."
+                title = f"{model_name} API Quota Exceeded"
+                message = f"The {model_name} API quota has been exceeded for review processing. Please check the API billing or plan limits."
 
                 for admin in admins:
                     try:
