@@ -11,6 +11,7 @@ export interface ReviewProcessingStats {
     reviewsChange: number;
     pendingReviews: number;
     isPaused: boolean;
+    pauseReason?: string;
 }
 
 export interface ReviewProcessingJob {

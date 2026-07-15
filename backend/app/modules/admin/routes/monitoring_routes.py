@@ -395,8 +395,13 @@ def review_processing_stats() -> dict:
             if terminal > 0:
                 success_rate = round((processed / terminal) * 100, 1)
 
-            from app.modules.admin.services.system_settings_service import get_setting_bool
+            from app.modules.admin.services.system_settings_service import get_setting_bool, get_setting
             is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
+            pause_reason = get_setting(cursor, "review_processing_pause_reason")
+            if is_paused and not pause_reason:
+                pause_reason = "manual"
+            elif not is_paused:
+                pause_reason = None
 
             return {
                 "activeJobs": pending,
@@ -408,6 +413,7 @@ def review_processing_stats() -> dict:
                 "reviewsChange": 0,
                 "pendingReviews": pending,
                 "isPaused": is_paused,
+                "pauseReason": pause_reason,
             }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing stats: {exc}") from exc
@@ -421,7 +427,16 @@ def resume_review_processing() -> dict:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             set_setting(cursor, "review_processing_paused", "false")
+            set_setting(cursor, "review_processing_pause_reason", "")
             conn.commit()
+
+        try:
+            from app.modules.scheduler.services.scheduler_service import scheduler
+            if scheduler.get_job('process_reviews_job'):
+                scheduler.resume_job('process_reviews_job')
+                logger.info("Scheduler: Resumed process_reviews_job via API resume call.")
+        except Exception as sched_err:
+            logger.error(f"Failed to resume scheduler job: {sched_err}")
 
         log_admin_activity(
             "settings_updated",
@@ -441,7 +456,16 @@ def pause_review_processing() -> dict:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             set_setting(cursor, "review_processing_paused", "true")
+            set_setting(cursor, "review_processing_pause_reason", "manual")
             conn.commit()
+
+        try:
+            from app.modules.scheduler.services.scheduler_service import scheduler
+            if scheduler.get_job('process_reviews_job'):
+                scheduler.pause_job('process_reviews_job')
+                logger.info("Scheduler: Paused process_reviews_job via API pause call.")
+        except Exception as sched_err:
+            logger.error(f"Failed to pause scheduler job: {sched_err}")
 
         log_admin_activity(
             "settings_updated",

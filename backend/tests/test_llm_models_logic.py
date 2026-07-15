@@ -71,3 +71,20 @@ def test_pause_resume_endpoints(mock_connect):
     data = response.json()
     assert data["status"] == "success"
     assert data["message"] == "Review processing resumed."
+
+
+@patch("pyodbc.connect")
+def test_is_retryable_exception_aborts_on_pause(mock_connect):
+    # Mock database to return True for paused setting
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    
+    # Mock get_setting to return "true" for review_processing_paused
+    from app.modules.reviews.services.llm_client import is_retryable_exception
+    
+    with patch("app.modules.admin.services.system_settings_service.get_setting", return_value="true"):
+        res = is_retryable_exception(Exception("Some random connection error"))
+        assert res is False
+

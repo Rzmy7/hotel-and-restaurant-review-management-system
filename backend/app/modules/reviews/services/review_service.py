@@ -339,25 +339,45 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
                 db.commit()
 
         if ingested_count > 0:
-            # 3. Trigger embedding for newly ingested reviews (before AI analysis)
-            from app.modules.source.services.embedding_client import trigger_embedding_for_source
-            trigger_embedding_for_source(str(source_id))
-            logger.info(f"--- Pipeline: Embedding triggered for source {source_id} ---")
+            # Check if review processing is paused
+            from app.core.pyodbc_connection import get_raw_connection
+            from app.modules.admin.services.system_settings_service import get_setting_bool
+            is_paused = False
+            try:
+                with get_raw_connection() as conn:
+                    is_paused = get_setting_bool(conn.cursor(), "review_processing_paused", default=False)
+            except Exception as _e:
+                logger.warning(f"Could not read review_processing_paused from DB: {_e}")
 
-            logger.info(
-                f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews..."
-            )
-            
-            # Log AI Analysis Start
-            log_activity(db, source_id, activity_type="AI_ANALYSIS_STARTED", status="In Progress")
-            
-            # 4. Process
-            await run_analysis_pipeline()
-            
-            # Log AI Analysis Completion
-            log_activity(db, source_id, activity_type="AI_ANALYSIS_COMPLETED", status="Success")
-            
-            logger.info(f"--- Pipeline COMPLETED for source {source_id} ---")
+            if is_paused:
+                logger.info("Pipeline: Review processing is paused. Skipping AI analysis phase.")
+                log_activity(
+                    db,
+                    source_id,
+                    activity_type="AI_ANALYSIS_SKIPPED",
+                    status="Paused",
+                    activity_details="AI Analysis phase was skipped because review processing is currently paused."
+                )
+            else:
+                # 3. Trigger embedding for newly ingested reviews (before AI analysis)
+                from app.modules.source.services.embedding_client import trigger_embedding_for_source
+                trigger_embedding_for_source(str(source_id))
+                logger.info(f"--- Pipeline: Embedding triggered for source {source_id} ---")
+
+                logger.info(
+                    f"Pipeline: Starting AI ANALYSIS for {ingested_count} reviews..."
+                )
+                
+                # Log AI Analysis Start
+                log_activity(db, source_id, activity_type="AI_ANALYSIS_STARTED", status="In Progress")
+                
+                # 4. Process
+                await run_analysis_pipeline()
+                
+                # Log AI Analysis Completion
+                log_activity(db, source_id, activity_type="AI_ANALYSIS_COMPLETED", status="Success")
+                
+                logger.info(f"--- Pipeline COMPLETED for source {source_id} ---")
         else:
             logger.info("Pipeline: Skipping analysis (0 new reviews ingested).")
 

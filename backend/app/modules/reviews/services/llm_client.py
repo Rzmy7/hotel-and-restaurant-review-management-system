@@ -108,6 +108,17 @@ def _is_billing_error(s: str) -> bool:
 
 def is_retryable_exception(e: Exception) -> bool:
     """Provider-agnostic retry predicate. Billing, rate-limit, and auth errors are not retried."""
+    try:
+        import pyodbc
+        from app.core.pyodbc_connection import get_raw_connection
+        from app.modules.admin.services.system_settings_service import get_setting_bool
+        with get_raw_connection() as conn:
+            if get_setting_bool(conn.cursor(), "review_processing_paused", default=False):
+                logger.warning("Retry check: Review processing is paused. Aborting retries.")
+                return False
+    except Exception as db_err:
+        logger.debug(f"Failed to check paused setting in retry predicate: {db_err}")
+
     s = str(e)
     if _is_billing_error(s):
         return False
@@ -116,6 +127,7 @@ def is_retryable_exception(e: Exception) -> bool:
     if any(code in s for code in ("400", "401", "403")):
         return False
     return True
+
 
 
 @retry(
@@ -233,9 +245,19 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 with pyodbc.connect(get_connection_string()) as conn:
                     cursor = conn.cursor()
                     set_setting(cursor, "review_processing_paused", "true")
+                    set_setting(cursor, "review_processing_pause_reason", "api_limit")
                     conn.commit()
                 logger.info("Review processing has been PAUSED. Resume from Admin → System Settings.")
             except Exception as pause_err:
                 logger.error(f"Failed to pause review processing: {pause_err}")
+
+            try:
+                from app.modules.scheduler.services.scheduler_service import scheduler
+                if scheduler.get_job('process_reviews_job'):
+                    scheduler.pause_job('process_reviews_job')
+                    logger.info("Auto-pause: Paused process_reviews_job in scheduler.")
+            except Exception as sched_err:
+                logger.error(f"Failed to pause scheduler job during auto-pause: {sched_err}")
+
 
         raise e

@@ -32,6 +32,7 @@ const defaultStats: ReviewProcessingStats = {
     reviewsChange: 0,
     pendingReviews: 0,
     isPaused: false,
+    pauseReason: 'manual',
 };
 
 export const ReviewProcessing: React.FC = () => {
@@ -312,8 +313,11 @@ export const ReviewProcessing: React.FC = () => {
                         <div>
                             <h3 className="text-sm font-medium text-yellow-800">Review Processing Paused</h3>
                             <p className="text-sm text-yellow-700 mt-1">
-                                The system paused review processing due to an API rate limit or quota error.
-                                Please check your LLM model configuration, then click below to restart.
+                                {stats.pauseReason === 'manual' ? (
+                                    'Review processing has been manually paused. Click below to resume.'
+                                ) : (
+                                    'The system paused review processing due to an API rate limit or quota error. Please check your LLM model configuration, then click below to restart.'
+                                )}
                             </p>
                         </div>
                     </div>
@@ -322,7 +326,7 @@ export const ReviewProcessing: React.FC = () => {
                         className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors border border-yellow-300"
                     >
                         <Play size={16} />
-                        Restart Processing
+                        {stats.pauseReason === 'manual' ? 'Resume Processing' : 'Restart Processing'}
                     </button>
                 </div>
             )}
