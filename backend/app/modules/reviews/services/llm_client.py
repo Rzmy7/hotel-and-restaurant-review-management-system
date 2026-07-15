@@ -26,6 +26,7 @@ Rules:
 1. Output MUST be ONLY a valid JSON object in the format: {{"reviews": [review1, review2, ...]}}.
 2. IMPORTANT: All string values must be properly escaped for JSON. Specifically, double quotes inside a string MUST be escaped as \\".
 3. For each review, provide:
+   - "id": The exact ID of the review verbatim from the input (critical for mapping).
    - "sentiment": "Positive", "Neutral", "Negative".
    - "sentiment_score": A float from 1.0 (Very Negative) to 5.0 (Very Positive).
    - "categories": List of 1-3 objects from [Cleanliness, Staff, Location, Facilities, Comfort, Value, Noise, Food, Privacy, WiFi, Room Size]. Each object MUST have "name" (tag) and "score" (a score from 1 to 100).
