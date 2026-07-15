@@ -529,6 +529,16 @@ def review_processing_jobs(
             from app.modules.admin.services.system_settings_service import get_setting_bool
             is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
 
+            # Get the single source_id that has the oldest pending review
+            cursor.execute("""
+                SELECT TOP 1 source_id 
+                FROM dbo.processed_review 
+                WHERE status = 'pending' 
+                ORDER BY scrapedAt ASC, id ASC
+            """)
+            row_running = cursor.fetchone()
+            running_source_id = str(row_running[0]) if (row_running and row_running[0]) else None
+
             where_clauses = []
             params = []
             if search:
@@ -565,7 +575,8 @@ def review_processing_jobs(
                     COUNT(*) AS review_count,
                     MIN(r.last_attempt) AS earliest_attempt,
                     MAX(r.last_attempt) AS latest_attempt,
-                    (SELECT COUNT(*) FROM dbo.processed_review t WHERE t.source_id = r.source_id) AS total_reviews
+                    (SELECT COUNT(*) FROM dbo.processed_review t WHERE t.source_id = r.source_id) AS total_reviews,
+                    (SELECT COUNT(*) FROM dbo.processed_review t WHERE t.source_id = r.source_id AND t.status = 'processed') AS processed_reviews
                 FROM dbo.processed_review r
                 LEFT JOIN dbo.source s ON r.source_id = s.source_id
                 LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
@@ -592,6 +603,7 @@ def review_processing_jobs(
                 earliest = row[5]
                 latest = row[6]
                 total_reviews = int(row[7] or 0)
+                processed_reviews = int(row[8] or 0)
 
                 icon, color = platform_visuals(platform_name)
                 short_id = source_id[-6:].upper() if len(source_id) >= 6 else str(idx)
@@ -602,7 +614,10 @@ def review_processing_jobs(
                 elif status_raw == "failed":
                     ui_status = "Failed"
                 elif status_raw == "pending":
-                    ui_status = "Paused" if is_paused else "Running"
+                    if source_id == running_source_id:
+                        ui_status = "Paused" if is_paused else "Running"
+                    else:
+                        ui_status = "Queued"
                 else:
                     ui_status = "Queued"
 
@@ -644,7 +659,7 @@ def review_processing_jobs(
                     "status": ui_status,
                     "startTime": start_time,
                     "duration": duration,
-                    "reviewsProcessed": review_count,
+                    "reviewsProcessed": processed_reviews,
                     "totalReviews": total_reviews,
                 })
 
