@@ -26,5 +26,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-# 2 workers is a safe default; tune per server RAM
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Set workers to 1 to prevent duplicate scheduler instances
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
