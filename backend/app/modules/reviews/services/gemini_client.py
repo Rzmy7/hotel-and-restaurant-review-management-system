@@ -197,7 +197,6 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
             model_name = model_info.get("name") or model_info.get("model_name") or "AI"
         except Exception:
             # Fallback regex check from error string
-            import re
             match = re.search(r"LLM (?:Provider )?Error \((.*?)(?: @|\))", err_str)
             if match:
                 model_name = match.group(1)
