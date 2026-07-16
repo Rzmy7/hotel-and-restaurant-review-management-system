@@ -19,7 +19,13 @@ export const SchedulingOptions: React.FC<SchedulingOptionsProps> = ({
         <div>
             <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">Timing *</label>
             <div className="space-y-3">
-                <label className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer" style={{ borderColor: scheduleType === 'now' ? '#2563eb' : '#e5e7eb' }}>
+                <label
+                    className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        scheduleType === 'now'
+                            ? 'border-blue-500 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
+                    }`}
+                >
                     <input
                         type="radio"
                         name="schedule"
@@ -30,7 +36,13 @@ export const SchedulingOptions: React.FC<SchedulingOptionsProps> = ({
                     <p className="text-sm font-medium text-gray-900 dark:text-white">Send immediately</p>
                 </label>
 
-                <label className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer" style={{ borderColor: scheduleType === 'scheduled' ? '#2563eb' : '#e5e7eb' }}>
+                <label
+                    className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        scheduleType === 'scheduled'
+                            ? 'border-blue-500 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
+                    }`}
+                >
                     <input
                         type="radio"
                         name="schedule"
@@ -46,7 +58,7 @@ export const SchedulingOptions: React.FC<SchedulingOptionsProps> = ({
                                     type="datetime-local"
                                     value={scheduledAt}
                                     onChange={(e) => onScheduledAtChange(e.target.value)}
-                                    className="w-full mt-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full mt-2 px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">Interpreted in system timezone: {timezone}</p>
                             </>

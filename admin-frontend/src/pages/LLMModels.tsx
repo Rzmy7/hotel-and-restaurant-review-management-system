@@ -459,6 +459,7 @@ export const LLMModels: React.FC = () => {
                   value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="e.g. Groq Llama-3 Production"
+                  autoComplete="off"
                   className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
                 />
               </div>
@@ -488,6 +489,7 @@ export const LLMModels: React.FC = () => {
                   value={form.endpoint}
                   onChange={e => setForm(p => ({ ...p, endpoint: e.target.value }))}
                   placeholder="https://api.groq.com/openai/v1"
+                  autoComplete="off"
                   className="w-full mt-2 px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
                 />
               </div>
@@ -500,6 +502,7 @@ export const LLMModels: React.FC = () => {
                   value={form.model_name}
                   onChange={e => setForm(p => ({ ...p, model_name: e.target.value }))}
                   placeholder="e.g. llama-3.3-70b-versatile"
+                  autoComplete="off"
                   className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
                 />
                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
@@ -518,6 +521,7 @@ export const LLMModels: React.FC = () => {
                     value={form.api_key}
                     onChange={e => setForm(p => ({ ...p, api_key: e.target.value }))}
                     placeholder={editingId ? 'Enter new key to replace…' : 'sk-…'}
+                    autoComplete="new-password"
                     className="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
                   />
                   <button

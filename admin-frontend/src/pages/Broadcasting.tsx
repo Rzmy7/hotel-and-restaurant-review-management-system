@@ -187,13 +187,13 @@ export const Broadcasting: React.FC = () => {
                 ))}
             </div>
 
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+            <div className="flex gap-1 bg-gray-100 dark:bg-slate-700 p-1 rounded-xl w-fit">
                 {(['compose', 'history'] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-5 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-                            activeTab === tab ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200'
+                            activeTab === tab ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
                         }`}
                     >
                         {tab === 'compose' ? 'Compose Message' : 'Broadcast History'}
@@ -248,8 +248,8 @@ export const Broadcasting: React.FC = () => {
                             />
 
                             {estimatedCount > 0 && (
-                                <div className="mt-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
-                                    <p className="text-xs text-blue-700">
+                                <div className="mt-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
+                                    <p className="text-xs text-blue-700 dark:text-blue-400">
                                         <span className="font-semibold">~{estimatedCount.toLocaleString()}</span> estimated recipients
                                     </p>
                                 </div>
@@ -301,7 +301,7 @@ export const Broadcasting: React.FC = () => {
                         <div className="flex items-center justify-center py-12 text-sm text-gray-500 dark:text-slate-400">Loading history…</div>
                     ) : history.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
+                            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center mb-3">
                                 <Send size={22} className="text-gray-400 dark:text-slate-500" />
                             </div>
                             <p className="text-sm font-medium text-gray-700 dark:text-slate-200">No broadcasts yet</p>

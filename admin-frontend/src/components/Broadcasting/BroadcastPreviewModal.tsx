@@ -27,7 +27,7 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
             <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-slate-700">
                     <h2 className="text-base font-semibold text-gray-900 dark:text-white">Preview Broadcast</h2>
-                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                         <X size={18} className="text-gray-500 dark:text-slate-400" />
                     </button>
                 </div>
@@ -48,20 +48,20 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
                     {/* Body */}
                     <div>
                         <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">Message</p>
-                        <p className="text-sm text-gray-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">{form.body}</p>
+                        <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{form.body}</p>
                     </div>
 
                     {/* Meta */}
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-slate-700">
                         <div>
                             <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Delivery Channel</p>
-                            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-200">
                                 {CHANNELS.find(c => c.value === form.channel)?.label}
                             </p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Recipients</p>
-                            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{audienceLabel}</p>
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{audienceLabel}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Est. Recipients</p>
@@ -69,17 +69,17 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
                         </div>
                         <div>
                             <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Timing</p>
-                            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-200">
                                 {form.scheduleType === 'now' ? 'Send immediately' : formatDateTime(form.scheduledAt, timezone)}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/70 rounded-b-2xl">
+                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-900/40 rounded-b-2xl">
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
+                        className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded-xl text-sm font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                     >
                         Back to Edit
                     </button>
@@ -91,7 +91,7 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
                         {sending ? (
                             <><Loader2 size={15} className="animate-spin" /> Sending...</>
                         ) : (
-                            <><Send size={15} /> Confirm & Send</>
+                            <><Send size={15} /> Confirm &amp; Send</>
                         )}
                     </button>
                 </div>

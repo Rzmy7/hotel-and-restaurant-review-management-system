@@ -20,16 +20,10 @@ export const ServerCard: React.FC<ServerCardProps> = ({
     icon: Icon, 
     uptime 
 }) => {
-    const getCpuColor = (usage: number) => {
-        if (usage >= 80) return 'text-red-600 bg-red-50';
-        if (usage >= 60) return 'text-yellow-600 bg-yellow-50';
-        return 'text-green-600 bg-green-50';
-    };
-
-    const getRamColor = (usage: number) => {
-        if (usage >= 80) return 'text-red-600 bg-red-50';
-        if (usage >= 60) return 'text-yellow-600 bg-yellow-50';
-        return 'text-green-600 bg-green-50';
+    const getUsageColor = (usage: number) => {
+        if (usage >= 80) return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30';
+        if (usage >= 60) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30';
+        return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30';
     };
 
     const getProgressColor = (usage: number) => {
@@ -43,7 +37,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 dark:text-blue-400">
                         <Icon size={24} />
                     </div>
                     <div>
@@ -63,11 +57,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({
                         <Cpu size={16} className="text-gray-400 dark:text-slate-500" />
                         <span className="text-sm font-medium text-gray-700 dark:text-slate-200">CPU Usage</span>
                     </div>
-                    <span className={`text-sm font-bold px-2 py-1 rounded ${getCpuColor(cpuUsage)}`}>
+                    <span className={`text-sm font-bold px-2 py-1 rounded ${getUsageColor(cpuUsage)}`}>
                         {cpuUsage}%
                     </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
                     <div 
                         className={`h-full rounded-full transition-all duration-500 ${getProgressColor(cpuUsage)}`}
                         style={{ width: `${cpuUsage}%` }}
@@ -82,11 +76,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({
                         <HardDrive size={16} className="text-gray-400 dark:text-slate-500" />
                         <span className="text-sm font-medium text-gray-700 dark:text-slate-200">RAM Usage</span>
                     </div>
-                    <span className={`text-sm font-bold px-2 py-1 rounded ${getRamColor(ramUsage)}`}>
+                    <span className={`text-sm font-bold px-2 py-1 rounded ${getUsageColor(ramUsage)}`}>
                         {ramUsage}%
                     </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
                     <div 
                         className={`h-full rounded-full transition-all duration-500 ${getProgressColor(ramUsage)}`}
                         style={{ width: `${ramUsage}%` }}

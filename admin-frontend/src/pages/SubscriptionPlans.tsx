@@ -718,19 +718,19 @@ export const SubscriptionPlans: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 self-start bg-gray-100 p-1 rounded-xl w-fit">
+                <div className="flex items-center gap-1 self-start bg-gray-100 dark:bg-slate-700 p-1 rounded-xl w-fit">
                     <button
                         onClick={() => setBillingCycle('monthly')}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'monthly' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200'}`}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'monthly' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'}`}
                     >
                         Monthly
                     </button>
                     <button
                         onClick={() => setBillingCycle('annual')}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'annual' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 dark:text-slate-200'}`}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${billingCycle === 'annual' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'}`}
                     >
                         Annual
-                        <span className="ml-1.5 text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+                        <span className="ml-1.5 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded-full">
                             Save up to 20%
                         </span>
                     </button>
