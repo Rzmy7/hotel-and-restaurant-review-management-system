@@ -138,10 +138,33 @@ async def run_analysis_pipeline():
 
         except Exception as e:
             err_msg = str(e)
+            from tenacity import RetryError
+            
+            # Determine if the error is a general API/network/overload error
+            underlying_exc = e
+            if isinstance(e, RetryError):
+                underlying_exc = e.last_attempt.exception() or e
+            
+            underlying_msg = str(underlying_exc)
+            underlying_msg_lower = underlying_msg.lower()
+            
+            is_api_error = any(
+                k in underlying_msg_lower for k in [
+                    "overloaded", "busy", "rate limit", "rate_limit", "quota", 
+                    "credit", "billing", "token limit", "connection", "timeout", 
+                    "platform overloaded", "try again later", "503", "502", "504", "500", "429"
+                ]
+            )
+            
+            is_json_or_parse_error = "JSON" in err_msg or "json" in err_msg
+            is_retry_error = isinstance(e, RetryError)
+            
             # Phase 2 Fallback: If it's a JSON error or Retry error, try single-review processing for this batch
-            if "JSON" in err_msg or "Retry" in err_msg:
+            # BUT only if it is NOT a general API/network/overload error!
+            if (is_json_or_parse_error or is_retry_error) and not is_api_error:
                 logger.warning(f"Batch failed ({err_msg}). Falling back to single-review processing for this batch...")
                 fallback_success = 0
+                stop_run = False
                 for r in pending_reviews:
                     try:
                         single_input = [{
@@ -161,19 +184,44 @@ async def run_analysis_pipeline():
                                 fallback_success += 1
                     except Exception as se:
                         logger.error(f"Fallback failed for review {r['id']}: {se}")
-                        _update_single_review_failure_tx(r["id"], f"Fallback failed: {se}")
+                        
+                        # Inspect exception for API error to stop the loop
+                        se_underlying = se
+                        if isinstance(se, RetryError):
+                            se_underlying = se.last_attempt.exception() or se
+                        
+                        se_msg_lower = str(se_underlying).lower()
+                        se_is_api_error = any(
+                            k in se_msg_lower for k in [
+                                "overloaded", "busy", "rate limit", "rate_limit", "quota", 
+                                "credit", "billing", "token limit", "connection", "timeout", 
+                                "platform overloaded", "try again later", "503", "502", "504", "500", "429"
+                            ]
+                        )
+                        
+                        if se_is_api_error:
+                            logger.error(f"API/network error encountered during single-review fallback, aborting: {se_underlying}")
+                            stop_run = True
+                            break
+                        else:
+                            _update_single_review_failure_tx(r["id"], f"Fallback failed: {se}")
                 
                 total_processed += fallback_success
                 logger.info(f"Fallback completed: {fallback_success}/{len(pending_reviews)} recovered.")
+                if stop_run:
+                    break
                 continue  # Move to next batch instead of breaking the run
+            
+            if is_api_error:
+                logger.error(f"!!! Gemini batch analysis FAILED due to API/network error (no database updates made, will retry next run): {e}", exc_info=True)
+            else:
+                logger.error(f"!!! Gemini batch analysis FAILED: {e}", exc_info=True)
+                # Mark entire pending_reviews batch as failed in small transactions of 10-20
+                for j in range(0, len(pending_reviews), 20):
+                    sub_batch = pending_reviews[j:j + 20]
+                    _update_reviews_batch_tx(sub_batch, {}, error_msg=str(e))
 
-            logger.error(f"!!! Gemini batch analysis FAILED: {e}", exc_info=True)
-            # Mark entire pending_reviews batch as failed in small transactions of 10-20
-            for j in range(0, len(pending_reviews), 20):
-                sub_batch = pending_reviews[j:j + 20]
-                _update_reviews_batch_tx(sub_batch, {}, error_msg=str(e))
-
-            # Stop processing this run if API fails (and not a JSON/Retry error)
+            # Stop processing this run if API fails
             break
 
         # Check time again after heavy AI analysis
