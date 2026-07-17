@@ -25,8 +25,8 @@ logger = logging.getLogger("system_alert_logger")
 
 # ── Alert categories ───────────────────────────────────────────────
 
-ALERT_GEMINI_QUOTA = "gemini_quota_exceeded"
-ALERT_GEMINI_API_ERROR = "gemini_api_error"
+ALERT_LLM_QUOTA = "llm_quota_exceeded"
+ALERT_LLM_API_ERROR = "llm_api_error"
 ALERT_SCRAPING_FAILURE = "scraping_failure"
 ALERT_SCRAPER_ENGINE_DOWN = "scraper_engine_unreachable"
 ALERT_DB_ERROR = "database_error"
@@ -86,7 +86,7 @@ def log_system_alert(
     Parameters
     ----------
     alert_type:
-        Machine-readable category (e.g. ``ALERT_GEMINI_QUOTA``).
+        Machine-readable category (e.g. ``ALERT_LLM_QUOTA``).
     title:
         Short human-readable headline shown in the alerts panel.
     message:
@@ -148,10 +148,10 @@ def log_system_alert(
 # ── Pre-built alert helpers ────────────────────────────────────────
 
 
-def alert_gemini_quota_exceeded(detail: str = "", model_name: str = "Gemini") -> None:
+def alert_llm_quota_exceeded(detail: str = "", model_name: str = "LLM") -> None:
     """Log an alert when the API returns 429 / RESOURCE_EXHAUSTED or billing errors."""
     log_system_alert(
-        alert_type=ALERT_GEMINI_QUOTA,
+        alert_type=ALERT_LLM_QUOTA,
         title=f"{model_name} API Quota Exceeded",
         message=(
             f"The {model_name} API quota/billing limit has been exhausted. Review processing is paused "
@@ -163,10 +163,10 @@ def alert_gemini_quota_exceeded(detail: str = "", model_name: str = "Gemini") ->
     )
 
 
-def alert_gemini_api_error(error_msg: str = "", model_name: str = "Gemini") -> None:
+def alert_llm_api_error(error_msg: str = "", model_name: str = "LLM") -> None:
     """Log an alert for a non-quota API failure."""
     log_system_alert(
-        alert_type=ALERT_GEMINI_API_ERROR,
+        alert_type=ALERT_LLM_API_ERROR,
         title=f"{model_name} API Error",
         message=(
             f"A {model_name} API call failed during review analysis. "
@@ -178,7 +178,7 @@ def alert_gemini_api_error(error_msg: str = "", model_name: str = "Gemini") -> N
     )
 
 
-def alert_gemini_key_missing(model_name: str = "Gemini") -> None:
+def alert_llm_key_missing(model_name: str = "LLM") -> None:
     """Log an alert when no API key/model is configured."""
     log_system_alert(
         alert_type=ALERT_API_KEY_MISSING,
@@ -190,6 +190,7 @@ def alert_gemini_key_missing(model_name: str = "Gemini") -> None:
         severity="warning",
         category="api",
     )
+
 
 
 def alert_scraping_failure(platform: str, error_msg: str = "", org_name: str = "") -> None:

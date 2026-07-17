@@ -33,6 +33,10 @@ export interface BatchConfig {
     min: number;
     max: number;
     default: number;
+    parallel_batches: number;
+    parallel_min: number;
+    parallel_max: number;
+    parallel_default: number;
 }
 
 export const fetchReviewProcessingStats = (): Promise<ReviewProcessingStats> => {
@@ -65,8 +69,11 @@ export const getBatchConfig = (): Promise<BatchConfig> => {
     return apiClient.get<BatchConfig>('/admin/monitoring/review-processing/batch-config');
 };
 
-export const updateBatchConfig = (batchSize: number): Promise<BatchConfig> => {
-    return apiClient.patch<BatchConfig>('/admin/monitoring/review-processing/batch-config', { batch_size: batchSize });
+export const updateBatchConfig = (batchSize: number, parallelBatches: number): Promise<BatchConfig> => {
+    return apiClient.patch<BatchConfig>('/admin/monitoring/review-processing/batch-config', { 
+        batch_size: batchSize, 
+        parallel_batches: parallelBatches 
+    });
 };
 
 export const retryFailedReviews = (sourceId: string): Promise<{ status: string; message: string; count: number }> => {

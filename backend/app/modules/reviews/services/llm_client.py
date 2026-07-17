@@ -216,16 +216,16 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
         try:
             from app.modules.admin.services.system_alert_logger import (
-                alert_gemini_quota_exceeded,
-                alert_gemini_api_error,
-                alert_gemini_key_missing,
+                alert_llm_quota_exceeded,
+                alert_llm_api_error,
+                alert_llm_key_missing,
             )
             if _is_billing_error(err_str):
-                alert_gemini_quota_exceeded(err_str[:200], model_name=model_name)
+                alert_llm_quota_exceeded(err_str[:200], model_name=model_name)
             elif "No LLM model assigned" in err_str:
-                alert_gemini_key_missing(model_name=model_name)
+                alert_llm_key_missing(model_name=model_name)
             else:
-                alert_gemini_api_error(err_str[:300], model_name=model_name)
+                alert_llm_api_error(err_str[:300], model_name=model_name)
         except Exception as alert_err:
             logger.debug(f"Failed to log system alert: {alert_err}")
 
@@ -233,8 +233,8 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         if _is_billing_error(err_str):
             logger.warning("Billing/credit limit detected — auto-pausing review processing.")
             try:
-                from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
-                notify_admin_gemini_quota_exceeded(model_name=model_name)
+                from app.services.notification_helpers import notify_admin_llm_quota_exceeded
+                notify_admin_llm_quota_exceeded(model_name=model_name)
             except Exception:
                 pass
 

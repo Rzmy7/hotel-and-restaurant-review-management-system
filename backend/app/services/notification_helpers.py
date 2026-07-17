@@ -422,7 +422,7 @@ def notify_source_removed(user_id: str, platform_name: str, org_name: str | None
     )
 
 
-def notify_admin_gemini_quota_exceeded(model_name: str = "Gemini") -> None:
+def notify_admin_llm_quota_exceeded(model_name: str = "LLM") -> None:
     """Specialized alert for system admins when API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
     from app.database.session import SessionLocal
     from app.modules.user.models.user_models import User
@@ -439,6 +439,7 @@ def notify_admin_gemini_quota_exceeded(model_name: str = "Gemini") -> None:
             else:
                 title = f"{model_name} API Quota Exceeded"
                 message = f"The {model_name} API quota has been exceeded for review processing. Please check the API billing or plan limits."
+
 
                 for admin in admins:
                     try:

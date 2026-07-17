@@ -175,6 +175,32 @@ def set_review_batch_size(cursor: pyodbc.Cursor, size: int) -> int:
     return clamped
 
 
+# Parallel review processing batches - how many batches of size review_batch_size can run concurrently.
+REVIEW_PARALLEL_BATCHES_DEFAULT = 1
+REVIEW_PARALLEL_BATCHES_MIN = 1
+REVIEW_PARALLEL_BATCHES_MAX = 10
+
+
+def get_review_parallel_batches(cursor: pyodbc.Cursor) -> int:
+    """Return the configured number of parallel review processing batches, clamped to [min, max]."""
+    value = (get_setting(cursor, "review_parallel_batches") or "").strip()
+    if not value:
+        return REVIEW_PARALLEL_BATCHES_DEFAULT
+    try:
+        parsed = int(value)
+    except ValueError:
+        return REVIEW_PARALLEL_BATCHES_DEFAULT
+    return max(REVIEW_PARALLEL_BATCHES_MIN, min(REVIEW_PARALLEL_BATCHES_MAX, parsed))
+
+
+def set_review_parallel_batches(cursor: pyodbc.Cursor, count: int) -> int:
+    """Persist a validated parallel batches count. Returns the clamped value that was saved."""
+    clamped = max(REVIEW_PARALLEL_BATCHES_MIN, min(REVIEW_PARALLEL_BATCHES_MAX, int(count)))
+    set_setting(cursor, "review_parallel_batches", str(clamped))
+    return clamped
+
+
+
 def get_session_timeout_minutes(cursor: pyodbc.Cursor, role: str) -> int:
     """Return the configured session timeout in minutes for a given role.
 

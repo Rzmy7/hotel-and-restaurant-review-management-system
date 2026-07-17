@@ -130,21 +130,34 @@ def insert_review_media(
 
 
 def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
-    """Fetch a batch of reviews that need AI processing."""
+    """Fetch a batch of reviews that need AI processing, atomically marking them as 'processing'."""
     sql = f"""
-        SELECT TOP {limit}
-            id, rating, reviewerName, text, 
-            positive_text, negative_text, heading,
-            CAST(reviewDate AS VARCHAR) as reviewDate, 
-            CAST(scrapedAt AS VARCHAR) as scrapedAt, 
-            source_id
-        FROM dbo.processed_review
-        WHERE status = 'pending'
-        ORDER BY scrapedAt ASC, id ASC
+        WITH CTE AS (
+            SELECT TOP {limit}
+                status,
+                last_attempt
+            FROM dbo.processed_review WITH (rowlock, updlock, readpast)
+            WHERE status = 'pending'
+            ORDER BY scrapedAt ASC, id ASC
+        )
+        UPDATE CTE
+        SET status = 'processing', last_attempt = GETDATE()
+        OUTPUT 
+            inserted.id, 
+            inserted.rating, 
+            inserted.reviewerName, 
+            inserted.text, 
+            inserted.positive_text, 
+            inserted.negative_text, 
+            inserted.heading,
+            CAST(inserted.reviewDate AS VARCHAR) as reviewDate, 
+            CAST(inserted.scrapedAt AS VARCHAR) as scrapedAt, 
+            inserted.source_id
     """
     cursor.execute(sql)
     columns = [column[0] for column in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
 
 
 def fetch_all_reviews_enriched(
@@ -518,7 +531,7 @@ def get_processing_metrics(
     rows = cursor.fetchall()
 
     # Initialize counts
-    metrics = {"pending": 0, "processed": 0, "failed": 0, "total": 0}
+    metrics = {"pending": 0, "processing": 0, "processed": 0, "failed": 0, "total": 0}
 
     for status_str, count in rows:
         status_key = status_str.lower()

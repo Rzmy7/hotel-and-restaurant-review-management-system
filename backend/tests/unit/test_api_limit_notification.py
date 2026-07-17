@@ -1,6 +1,6 @@
 import uuid
 from unittest.mock import MagicMock, patch
-from app.services.notification_helpers import notify_admin_gemini_quota_exceeded
+from app.services.notification_helpers import notify_admin_llm_quota_exceeded
 from app.modules.auth.constants.roles import ADMIN_ROLE_ID, TENANT_ROLE_ID
 
 class MockUser:
@@ -11,7 +11,7 @@ class MockUser:
 
 @patch("app.database.session.SessionLocal")
 @patch("app.modules.auth.repositories.notifications_repo.create_notification")
-def test_notify_admin_gemini_quota_exceeded_flag_disabled(mock_create_notification, mock_session_local):
+def test_notify_admin_llm_quota_exceeded_flag_disabled(mock_create_notification, mock_session_local):
     # Mock DB Session
     db_session = MagicMock()
     mock_session_local.return_value = db_session
@@ -37,7 +37,7 @@ def test_notify_admin_gemini_quota_exceeded_flag_disabled(mock_create_notificati
     db_session.execute.return_value.fetchone.return_value = ("Disabled",)
 
     # Call target function
-    notify_admin_gemini_quota_exceeded()
+    notify_admin_llm_quota_exceeded()
 
     # Assertions:
     # Admin should be notified
@@ -45,8 +45,8 @@ def test_notify_admin_gemini_quota_exceeded_flag_disabled(mock_create_notificati
     mock_create_notification.assert_any_call(
         db=db_session,
         user_id=admin_user.user_id,
-        title="Gemini API Quota Exceeded",
-        message="The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits.",
+        title="LLM API Quota Exceeded",
+        message="The LLM API quota has been exceeded for review processing. Please check the API billing or plan limits.",
         notification_type="error",
     )
 
@@ -58,7 +58,7 @@ def test_notify_admin_gemini_quota_exceeded_flag_disabled(mock_create_notificati
 
 @patch("app.database.session.SessionLocal")
 @patch("app.modules.auth.repositories.notifications_repo.create_notification")
-def test_notify_admin_gemini_quota_exceeded_flag_enabled(mock_create_notification, mock_session_local):
+def test_notify_admin_llm_quota_exceeded_flag_enabled(mock_create_notification, mock_session_local):
     # Mock DB Session
     db_session = MagicMock()
     mock_session_local.return_value = db_session
@@ -84,17 +84,18 @@ def test_notify_admin_gemini_quota_exceeded_flag_enabled(mock_create_notificatio
     db_session.execute.return_value.fetchone.return_value = ("Enabled",)
 
     # Call target function
-    notify_admin_gemini_quota_exceeded()
+    notify_admin_llm_quota_exceeded()
 
     # Assertions:
     # Admin should be notified (error)
     mock_create_notification.assert_any_call(
         db=db_session,
         user_id=admin_user.user_id,
-        title="Gemini API Quota Exceeded",
-        message="The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits.",
+        title="LLM API Quota Exceeded",
+        message="The LLM API quota has been exceeded for review processing. Please check the API billing or plan limits.",
         notification_type="error",
     )
+
 
     # Normal user should be notified (warning) with custom message
     mock_create_notification.assert_any_call(
@@ -131,7 +132,7 @@ def test_notify_admin_custom_model_quota_exceeded_flag_enabled(mock_create_notif
     db_session.execute.return_value.fetchone.return_value = ("Enabled",)
 
     # Call target function with a custom model name
-    notify_admin_gemini_quota_exceeded(model_name="GPT-4")
+    notify_admin_llm_quota_exceeded(model_name="GPT-4")
 
     # Assertions:
     # Admin should be notified with custom model name in title and message

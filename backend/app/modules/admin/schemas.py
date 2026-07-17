@@ -400,10 +400,16 @@ class BatchConfigResponse(BaseModel):
     min: int
     max: int
     default: int
+    parallel_batches: int
+    parallel_min: int
+    parallel_max: int
+    parallel_default: int
 
 
 class BatchConfigUpdatePayload(BaseModel):
     batch_size: int = Field(..., ge=1, le=20, description="Number of reviews per LLM batch (1–20)")
+    parallel_batches: int = Field(..., ge=1, le=10, description="Number of parallel batches running concurrently (1–10)")
+
 
 
 # ── LLM Gateway schemas ────────────────────────────────────────────

@@ -377,6 +377,7 @@ def review_processing_stats() -> dict:
             processed = metrics.get("processed", 0)
             failed = metrics.get("failed", 0)
             pending = metrics.get("pending", 0)
+            processing = metrics.get("processing", 0)
 
             # Completed today: reviews with last_attempt = today and status = 'processed'
             completed_today = 0
@@ -404,7 +405,7 @@ def review_processing_stats() -> dict:
                 pause_reason = None
 
             return {
-                "activeJobs": pending,
+                "activeJobs": processing,
                 "activeJobsChange": 0,
                 "completedToday": completed_today,
                 "successRate": success_rate,
@@ -704,22 +705,31 @@ def review_processing_jobs(
 
 @router.get("/review-processing/batch-config", response_model=BatchConfigResponse)
 def get_batch_config() -> BatchConfigResponse:
-    """Return the current review-processing batch size and its allowed range."""
+    """Return the current review-processing batch size, parallel batches count, and their allowed ranges."""
     from app.modules.admin.services.system_settings_service import (
         get_review_batch_size,
         REVIEW_BATCH_SIZE_DEFAULT,
         REVIEW_BATCH_SIZE_MIN,
         REVIEW_BATCH_SIZE_MAX,
+        get_review_parallel_batches,
+        REVIEW_PARALLEL_BATCHES_DEFAULT,
+        REVIEW_PARALLEL_BATCHES_MIN,
+        REVIEW_PARALLEL_BATCHES_MAX,
     )
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             batch_size = get_review_batch_size(cursor)
+            parallel_batches = get_review_parallel_batches(cursor)
         return BatchConfigResponse(
             batch_size=batch_size,
             min=REVIEW_BATCH_SIZE_MIN,
             max=REVIEW_BATCH_SIZE_MAX,
             default=REVIEW_BATCH_SIZE_DEFAULT,
+            parallel_batches=parallel_batches,
+            parallel_min=REVIEW_PARALLEL_BATCHES_MIN,
+            parallel_max=REVIEW_PARALLEL_BATCHES_MAX,
+            parallel_default=REVIEW_PARALLEL_BATCHES_DEFAULT,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch batch config: {exc}") from exc
@@ -727,29 +737,38 @@ def get_batch_config() -> BatchConfigResponse:
 
 @router.patch("/review-processing/batch-config", response_model=BatchConfigResponse)
 def update_batch_config(payload: BatchConfigUpdatePayload) -> BatchConfigResponse:
-    """Persist a new review-processing batch size (1–20)."""
+    """Persist a new review-processing batch size and parallel batches count."""
     from app.modules.admin.services.system_settings_service import (
         set_review_batch_size,
         REVIEW_BATCH_SIZE_DEFAULT,
         REVIEW_BATCH_SIZE_MIN,
         REVIEW_BATCH_SIZE_MAX,
+        set_review_parallel_batches,
+        REVIEW_PARALLEL_BATCHES_DEFAULT,
+        REVIEW_PARALLEL_BATCHES_MIN,
+        REVIEW_PARALLEL_BATCHES_MAX,
     )
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            saved = set_review_batch_size(cursor, payload.batch_size)
+            saved_size = set_review_batch_size(cursor, payload.batch_size)
+            saved_parallel = set_review_parallel_batches(cursor, payload.parallel_batches)
             conn.commit()
 
         log_admin_activity(
             "settings_updated",
-            "Batch Size Updated",
-            f"Review processing batch size set to {saved}",
+            "Batch Config Updated",
+            f"Review processing batch size set to {saved_size}, parallel batches set to {saved_parallel}",
         )
         return BatchConfigResponse(
-            batch_size=saved,
+            batch_size=saved_size,
             min=REVIEW_BATCH_SIZE_MIN,
             max=REVIEW_BATCH_SIZE_MAX,
             default=REVIEW_BATCH_SIZE_DEFAULT,
+            parallel_batches=saved_parallel,
+            parallel_min=REVIEW_PARALLEL_BATCHES_MIN,
+            parallel_max=REVIEW_PARALLEL_BATCHES_MAX,
+            parallel_default=REVIEW_PARALLEL_BATCHES_DEFAULT,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to update batch config: {exc}") from exc

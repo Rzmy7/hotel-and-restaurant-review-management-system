@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, Pause, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Play, Pause, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
 import ReviewProcessingSkeleton from './ReviewProcessingSkeleton';
 import { Alert } from '../components/Alert';
 import {
@@ -42,17 +42,16 @@ export const ReviewProcessing: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const [totalItems, setTotalItems] = useState(0);
     const [jobsLoading, setJobsLoading] = useState(false);
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isRetryingAll, setIsRetryingAll] = useState(false);
 
     // Batch size config state
     const [batchConfig, setBatchConfig] = useState<BatchConfig | null>(null);
     const [batchInput, setBatchInput] = useState<number>(5);
+    const [parallelInput, setParallelInput] = useState<number>(1);
     const [batchSaveState, setBatchSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [batchSaveMessage, setBatchSaveMessage] = useState<string | null>(null);
     
@@ -62,13 +61,7 @@ export const ReviewProcessing: React.FC = () => {
     const [isCleaningDupes, setIsCleaningDupes] = useState(false);
     const [dupeActionMessage, setDupeActionMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
-    // Debounce search query
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedSearch(searchQuery);
-        }, 300);
-        return () => clearTimeout(handler);
-    }, [searchQuery]);
+
 
     // Initial load and background polling for stats
     useEffect(() => {
@@ -85,6 +78,7 @@ export const ReviewProcessing: React.FC = () => {
                 if (batchResult.status === 'fulfilled') {
                     setBatchConfig(batchResult.value);
                     setBatchInput(batchResult.value.batch_size);
+                    setParallelInput(batchResult.value.parallel_batches);
                 }
 
                 const errors: string[] = [];
@@ -117,7 +111,7 @@ export const ReviewProcessing: React.FC = () => {
         const loadJobs = async () => {
             try {
                 setJobsLoading(true);
-                const response = await fetchReviewProcessingJobs(currentPage, itemsPerPage, debouncedSearch);
+                const response = await fetchReviewProcessingJobs(currentPage, itemsPerPage);
                 setJobs(response.data);
                 setTotalItems(response.total);
             } catch (err) {
@@ -129,7 +123,7 @@ export const ReviewProcessing: React.FC = () => {
         };
 
         loadJobs();
-    }, [currentPage, debouncedSearch]);
+    }, [currentPage]);
 
     const handleRefresh = async () => {
         try {
@@ -137,7 +131,7 @@ export const ReviewProcessing: React.FC = () => {
             setError(null);
             const [statsResult, jobsResult] = await Promise.allSettled([
                 fetchReviewProcessingStats(),
-                fetchReviewProcessingJobs(currentPage, itemsPerPage, debouncedSearch),
+                fetchReviewProcessingJobs(currentPage, itemsPerPage),
             ]);
             if (statsResult.status === 'fulfilled') setStats(statsResult.value);
             if (jobsResult.status === 'fulfilled') {
@@ -194,15 +188,16 @@ export const ReviewProcessing: React.FC = () => {
         setBatchSaveState('saving');
         setBatchSaveMessage(null);
         try {
-            const saved = await updateBatchConfig(batchInput);
+            const saved = await updateBatchConfig(batchInput, parallelInput);
             setBatchConfig(saved);
             setBatchInput(saved.batch_size);
+            setParallelInput(saved.parallel_batches);
             setBatchSaveState('saved');
-            setBatchSaveMessage(`Batch size saved: ${saved.batch_size} reviews per batch.`);
+            setBatchSaveMessage(`Settings saved: ${saved.batch_size} reviews per batch, ${saved.parallel_batches} parallel batches.`);
             setTimeout(() => { setBatchSaveState('idle'); setBatchSaveMessage(null); }, 3000);
         } catch (err) {
             setBatchSaveState('error');
-            setBatchSaveMessage(err instanceof Error ? err.message : 'Failed to save batch size.');
+            setBatchSaveMessage(err instanceof Error ? err.message : 'Failed to save settings.');
         }
     };
 
@@ -267,7 +262,7 @@ export const ReviewProcessing: React.FC = () => {
 
     const batchMin = batchConfig?.min ?? 1;
     const batchMax = batchConfig?.max ?? 20;
-    const isDirty = batchConfig !== null && batchInput !== batchConfig.batch_size;
+    const isDirty = batchConfig !== null && (batchInput !== batchConfig.batch_size || parallelInput !== batchConfig.parallel_batches);
 
     return (
         <div className="space-y-6 pt-4">
@@ -335,7 +330,7 @@ export const ReviewProcessing: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500 dark:text-slate-400">Active Jobs</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Reviews Processing</span>
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Play size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeJobs}</div>
@@ -379,92 +374,154 @@ export const ReviewProcessing: React.FC = () => {
                 </div>
             </div>
 
-            {/* Batch Size Configuration */}
+            {/* Pipeline Performance Configuration */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-                <div className="flex items-start justify-between mb-5">
+                <div className="flex items-start justify-between mb-5 border-b border-gray-100 dark:border-slate-700 pb-4">
                     <div>
                         <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             <Layers size={18} className="text-blue-600" />
-                            Processing Batch Size
+                            Pipeline Performance Configuration
                         </h2>
                         <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
-                            Controls how many reviews are sent to the AI model in a single API call.
-                            Smaller batches reduce truncation risk; larger batches are faster.
+                            Optimize the speed and safety of the background review processing pipeline.
                         </p>
                     </div>
-                    {batchConfig && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 shrink-0">
-                            Current: {batchConfig.batch_size}
-                        </span>
-                    )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                    {/* Stepper */}
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                            Batch Size
-                            <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
-                                ({batchMin}–{batchMax} reviews per batch)
-                            </span>
-                        </label>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setBatchInput(v => clamp(v - 1))}
-                                disabled={batchInput <= batchMin}
-                                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <Minus size={15} />
-                            </button>
-                            <input
-                                type="number"
-                                min={batchMin}
-                                max={batchMax}
-                                value={batchInput}
-                                onChange={e => setBatchInput(clamp(parseInt(e.target.value, 10) || batchMin))}
-                                className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <button
-                                onClick={() => setBatchInput(v => clamp(v + 1))}
-                                disabled={batchInput >= batchMax}
-                                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <Plus size={15} />
-                            </button>
+                <div className="space-y-6">
+                    {/* Row 1: Batch Size */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                                    Processing Batch Size
+                                    <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
+                                        ({batchMin}–{batchMax} reviews per API call)
+                                    </span>
+                                </label>
+                                {batchConfig && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                        Current: {batchConfig.batch_size}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setBatchInput(v => clamp(v - 1))}
+                                    disabled={batchInput <= batchMin}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Minus size={15} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min={batchMin}
+                                    max={batchMax}
+                                    value={batchInput}
+                                    onChange={e => setBatchInput(clamp(parseInt(e.target.value, 10) || batchMin))}
+                                    className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                    onClick={() => setBatchInput(v => clamp(v + 1))}
+                                    disabled={batchInput >= batchMax}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Plus size={15} />
+                                </button>
 
-                            {/* Slider */}
-                            <input
-                                type="range"
-                                min={batchMin}
-                                max={batchMax}
-                                value={batchInput}
-                                onChange={e => setBatchInput(parseInt(e.target.value, 10))}
-                                className="flex-1 accent-blue-500"
-                            />
-                        </div>
+                                {/* Slider */}
+                                <input
+                                    type="range"
+                                    min={batchMin}
+                                    max={batchMax}
+                                    value={batchInput}
+                                    onChange={e => setBatchInput(parseInt(e.target.value, 10))}
+                                    className="flex-1 accent-blue-500"
+                                />
+                            </div>
 
-                        {/* Guidance labels */}
-                        <div className="flex justify-between mt-1.5 text-xs text-gray-400 dark:text-slate-500">
-                            <span>1 — Safest (no truncation)</span>
-                            <span>20 — Fastest (higher risk)</span>
+                            {/* Guidance labels */}
+                            <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-slate-500">
+                                <span>1 — Safest (no truncation)</span>
+                                <span>20 — Fastest (higher risk)</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Save button */}
-                    <div className="flex flex-col gap-1.5">
+                    {/* Row 2: Parallel Batches */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-5 border-t border-gray-100 dark:border-slate-700/50 pt-5">
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                                    Parallel Batch Execution
+                                    <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
+                                        ({batchConfig?.parallel_min ?? 1}–{batchConfig?.parallel_max ?? 10} batches concurrently)
+                                    </span>
+                                </label>
+                                {batchConfig && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                        Current: {batchConfig.parallel_batches}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setParallelInput(v => Math.max(batchConfig?.parallel_min ?? 1, Math.min(batchConfig?.parallel_max ?? 10, v - 1)))}
+                                    disabled={parallelInput <= (batchConfig?.parallel_min ?? 1)}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Minus size={15} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min={batchConfig?.parallel_min ?? 1}
+                                    max={batchConfig?.parallel_max ?? 10}
+                                    value={parallelInput}
+                                    onChange={e => setParallelInput(Math.max(batchConfig?.parallel_min ?? 1, Math.min(batchConfig?.parallel_max ?? 10, parseInt(e.target.value, 10) || (batchConfig?.parallel_min ?? 1))))}
+                                    className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                    onClick={() => setParallelInput(v => Math.max(batchConfig?.parallel_min ?? 1, Math.min(batchConfig?.parallel_max ?? 10, v + 1)))}
+                                    disabled={parallelInput >= (batchConfig?.parallel_max ?? 10)}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Plus size={15} />
+                                </button>
+
+                                {/* Slider */}
+                                <input
+                                    type="range"
+                                    min={batchConfig?.parallel_min ?? 1}
+                                    max={batchConfig?.parallel_max ?? 10}
+                                    value={parallelInput}
+                                    onChange={e => setParallelInput(parseInt(e.target.value, 10))}
+                                    className="flex-1 accent-blue-500"
+                                />
+                            </div>
+
+                            {/* Guidance labels */}
+                            <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-slate-500">
+                                <span>1 — Sequential execution (safe rate limit)</span>
+                                <span>10 — Parallel execution (high throughput)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="border-t border-gray-100 dark:border-slate-700/50 pt-5 flex items-center justify-end gap-3">
+                        {batchSaveMessage && (
+                            <p className={`text-xs ${batchSaveState === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
+                                {batchSaveMessage}
+                            </p>
+                        )}
                         <button
                             onClick={handleSaveBatchSize}
                             disabled={batchSaveState === 'saving' || !isDirty}
                             className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Save size={15} />
-                            {batchSaveState === 'saving' ? 'Saving…' : 'Save'}
+                            {batchSaveState === 'saving' ? 'Saving…' : 'Save Config'}
                         </button>
-                        {batchSaveMessage && (
-                            <p className={`text-xs ${batchSaveState === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
-                                {batchSaveMessage}
-                            </p>
-                        )}
                     </div>
                 </div>
             </div>
@@ -548,20 +605,6 @@ export const ReviewProcessing: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-slate-400">Real-time monitoring of all active and recent review processing jobs.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-                            <input
-                                type="text"
-                                placeholder="Search Job ID or Org..."
-                                value={searchQuery}
-                                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
-                            <Filter size={16} />
-                            Filter
-                        </button>
                         <button
                             onClick={handleRefresh}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600"
