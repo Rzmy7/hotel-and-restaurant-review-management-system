@@ -134,6 +134,16 @@ def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     sql = f"""
         WITH CTE AS (
             SELECT TOP {limit}
+                id,
+                rating,
+                reviewerName,
+                text,
+                positive_text,
+                negative_text,
+                heading,
+                reviewDate,
+                scrapedAt,
+                source_id,
                 status,
                 last_attempt
             FROM dbo.processed_review WITH (rowlock, updlock, readpast)
