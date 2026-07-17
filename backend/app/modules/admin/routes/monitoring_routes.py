@@ -638,11 +638,10 @@ def review_processing_jobs(
                     ui_status = "Completed"
                 elif status_raw == "failed":
                     ui_status = "Failed"
+                elif status_raw == "processing":
+                    ui_status = "Paused" if is_paused else "Running"
                 elif status_raw == "pending":
-                    if source_id == running_source_id:
-                        ui_status = "Paused" if is_paused else "Running"
-                    else:
-                        ui_status = "Queued"
+                    ui_status = "Queued"
                 else:
                     ui_status = "Queued"
 
