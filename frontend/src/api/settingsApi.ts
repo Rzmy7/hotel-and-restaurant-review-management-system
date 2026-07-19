@@ -25,7 +25,6 @@ const defaultSettings: SettingsData = {
     },
     subscription: {
         plan: 'professional',
-        billingEmail: 'billing@grandplazahotel.com',
     },
     organizationInfo: {
         organizationName: 'Grand Plaza Hotel & Spa',
