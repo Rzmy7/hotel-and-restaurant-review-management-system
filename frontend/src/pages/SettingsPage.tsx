@@ -33,7 +33,7 @@ const TABS = [
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: serverData, loading, saving, updateSettings, uploadOrganizationLogo, changePassword, uploadRulesFile, fetchOrganizationRules, fetchOrganizationTypes } = useSettings();
+  const { data: serverData, loading, saving, updateSettings, uploadOrganizationLogo, changePassword, uploadRulesFile, fetchOrganizationRules, addOrganizationRule, deleteOrganizationRule, fetchOrganizationTypes } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -123,7 +123,7 @@ const SettingsPage: React.FC = () => {
       newReviewAlerts: 'New Review Alerts', weeklySummary: 'Weekly Summary', groupInvitations: 'Group Invitations', subscriptionChanges: 'Subscription Changes'
     });
     compareSection('Subscription', serverData.subscription, localData.subscription, {
-      plan: 'Plan', billingEmail: 'Billing Email'
+      plan: 'Plan'
     });
     compareSection('Organization Profile', serverData.organizationInfo, localData.organizationInfo, {
       organizationName: 'Organization Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
@@ -240,6 +240,24 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleAddRule = async (text: string) => {
+    try {
+      const newRule = await addOrganizationRule(text);
+      setOrganizationRules(prev => [...prev, newRule]);
+    } catch {
+      // Error handled by hook/toast
+    }
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    try {
+      await deleteOrganizationRule(ruleId);
+      setOrganizationRules(prev => prev.filter(r => r.rule_id !== ruleId));
+    } catch {
+      // Error handled by hook/toast
+    }
+  };
+
   const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
@@ -277,7 +295,7 @@ const SettingsPage: React.FC = () => {
       >
         <div className="flex flex-col gap-6">
           {/* Horizontal Tab Navigation */}
-          <nav className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-100 dark:border-slate-800/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <nav className="flex flex-wrap lg:flex-nowrap items-center w-full border-b border-gray-100 dark:border-slate-800/50 gap-1.5 lg:gap-0 pb-1.5 lg:pb-0">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -286,12 +304,13 @@ const SettingsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${isActive
-                    ? 'bg-blue-50 text-[#4e80ee] shadow-sm dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white'
-                    }`}
+                  className={`relative flex items-center gap-2.5 px-5 py-3.5 font-bold text-sm transition-all whitespace-nowrap border-b-2 lg:-mb-px ${
+                    isActive
+                      ? 'border-[#4e80ee] text-[#4e80ee] dark:border-blue-400 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-white'
+                  }`}
                 >
-                  <Icon size={18} className={isActive ? 'text-[#4e80ee] dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'} />
+                  <Icon size={16} className={isActive ? 'text-[#4e80ee] dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'} />
                   {tab.label}
                 </button>
               );
@@ -299,7 +318,7 @@ const SettingsPage: React.FC = () => {
           </nav>
 
           {/* Full-Width Content Card */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 md:p-8 min-h-[400px]">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-4 sm:p-6 md:p-8 lg:p-10 min-h-[520px]">
             {/* Active Tab Header */}
             {activeTabData && (
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -351,6 +370,8 @@ const SettingsPage: React.FC = () => {
                   isUploadingRules={isUploadingRules}
                   organizationRules={organizationRules}
                   organizationTypes={organizationTypes}
+                  onAddRule={handleAddRule}
+                  onDeleteRule={handleDeleteRule}
                 />
               )}
             </div>

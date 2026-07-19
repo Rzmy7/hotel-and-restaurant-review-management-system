@@ -20,7 +20,6 @@ export interface SecuritySettings {
 
 export interface SubscriptionSettings {
     plan: string;
-    billingEmail: string;
 }
 
 export interface OrganizationInfoSettings {

@@ -31,7 +31,7 @@ export const SettingsTemplate: React.FC<SettingsTemplateProps> = ({
             </header>
 
             {/* Main Content Area */}
-            <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-6">
+            <main className="flex-1 w-full max-w-[1200px] mx-auto px-4 md:px-8 py-6">
                 {children}
             </main>
 

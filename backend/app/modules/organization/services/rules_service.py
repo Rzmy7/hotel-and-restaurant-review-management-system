@@ -348,3 +348,93 @@ def get_organization_rules(db: Session, organization_id: str) -> list[dict[str, 
         }
         for row in rows
     ]
+
+
+def delete_single_rule(db: Session, organization_id: str, rule_id: str) -> dict[str, Any]:
+    """Delete a single rule from database and from embedding service."""
+    # Check if the rule exists and belongs to this organization
+    row = db.execute(
+        text("SELECT rule_id FROM dbo.organization_rule WHERE rule_id = :rule_id AND organization_id = :org_id"),
+        {"rule_id": rule_id, "org_id": organization_id},
+    ).fetchone()
+    
+    if not row:
+        raise ValueError("Rule not found for this organization.")
+
+    # Call embedding service to delete the rule embedding
+    try:
+        response = requests.delete(
+            f"{EMBEDDING_SERVICE_URL}/delete/rule/{str(rule_id).upper()}",
+            headers=_AUTH_HEADERS,
+            timeout=30,
+        )
+        response.raise_for_status()
+    except Exception as e:
+        logger.warning(f"Failed to delete rule embedding from ChromaDB: {e}")
+
+    # Delete from database
+    db.execute(
+        text("DELETE FROM dbo.organization_rule WHERE rule_id = :rule_id AND organization_id = :org_id"),
+        {"rule_id": rule_id, "org_id": organization_id},
+    )
+    db.commit()
+    
+    return {"message": "Rule deleted successfully", "rule_id": rule_id}
+
+
+def add_single_rule(db: Session, organization_id: str, rule_text: str) -> dict[str, Any]:
+    """Add a single rule manually, insert into DB and send to embedding service directly."""
+    if not rule_text.strip():
+        raise ValueError("Rule text cannot be empty.")
+        
+    rule_id = uuid.uuid4()
+    
+    # Get current max rule_order
+    max_order_row = db.execute(
+        text("SELECT MAX(rule_order) FROM dbo.organization_rule WHERE organization_id = :org_id"),
+        {"org_id": organization_id},
+    ).fetchone()
+    
+    next_order = (max_order_row[0] or 0) + 1 if max_order_row else 1
+    
+    # Insert rule
+    db.execute(
+        text("""
+            INSERT INTO dbo.organization_rule
+            (rule_id, organization_id, rule_text, rule_order, is_embedded, source_filename, created_at)
+            VALUES (:rule_id, :org_id, :rule_text, :rule_order, 0, 'manual', GETDATE())
+        """),
+        {
+            "rule_id": rule_id,
+            "org_id": organization_id,
+            "rule_text": rule_text.strip(),
+            "rule_order": next_order,
+        },
+    )
+    db.commit()
+    
+    # Send to embedding service
+    source_id = _get_source_id_for_org(db, organization_id)
+    is_embedded = False
+    
+    if source_id:
+        inserted_rule = {
+            "rule_id": str(rule_id).upper(),
+            "rule_text": rule_text.strip(),
+            "rule_order": next_order,
+        }
+        embed_result = _send_rules_to_embedding([inserted_rule], source_id)
+        embedded_ids = embed_result.get("embedded_ids", [])
+        if embedded_ids:
+            _mark_rules_as_embedded(db, embedded_ids)
+            db.commit()
+            is_embedded = True
+            
+    return {
+        "rule_id": str(rule_id).upper(),
+        "rule_text": rule_text.strip(),
+        "rule_order": next_order,
+        "is_embedded": is_embedded,
+        "source_filename": "manual",
+        "created_at": None,
+    }

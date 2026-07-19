@@ -1,9 +1,10 @@
 import React from 'react';
-import { Upload, FileText, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, Loader2, Trash2, Plus } from 'lucide-react';
 import { FormField } from '../molecules/FormField';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { Select } from '../../ui/Select';
+import { Modal } from '../../ui/Modal';
 import type { OrganizationInfoSettings } from '../../../types/settings';
 import type { OrganizationType } from '../../../api/settingsApi';
 
@@ -25,6 +26,8 @@ interface OrganizationInfoSettingsCardProps {
     isUploadingRules?: boolean;
     organizationRules?: OrganizationRule[];
     organizationTypes?: OrganizationType[];
+    onAddRule?: (text: string) => Promise<void>;
+    onDeleteRule?: (ruleId: string) => Promise<void>;
 }
 
 export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCardProps> = ({
@@ -37,7 +40,14 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
     isUploadingRules = false,
     organizationRules = [],
     organizationTypes = [],
+    onAddRule,
+    onDeleteRule,
 }) => {
+    const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [newRule, setNewRule] = React.useState('');
+    const [isSavingRule, setIsSavingRule] = React.useState(false);
+    const [deletingIds, setDeletingIds] = React.useState<Record<string, boolean>>({});
+
     const rulesFilename = organizationRules.length > 0 ? organizationRules[0]?.source_filename : null;
 
     const propertyTypeOptions = [
@@ -47,6 +57,28 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
             value: type.type_name
         }))
     ];
+
+    const handleAddRuleClick = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newRule.trim() || !onAddRule) return;
+        try {
+            setIsSavingRule(true);
+            await onAddRule(newRule.trim());
+            setNewRule('');
+        } finally {
+            setIsSavingRule(false);
+        }
+    };
+
+    const handleDeleteRuleClick = async (ruleId: string) => {
+        if (!onDeleteRule) return;
+        try {
+            setDeletingIds(prev => ({ ...prev, [ruleId]: true }));
+            await onDeleteRule(ruleId);
+        } finally {
+            setDeletingIds(prev => ({ ...prev, [ruleId]: false }));
+        }
+    };
 
     return (
         <div className="flex flex-col">
@@ -106,7 +138,6 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                     <Select
                         value={data.propertyType}
                         onChange={(e) => onChange({ propertyType: e.target.value })}
-                        
                         options={propertyTypeOptions}
                     />
                 </FormField>
@@ -208,59 +239,118 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex flex-col gap-2 pt-1 min-w-[130px]">
+                            <div className="flex flex-col gap-2.5 pt-1 min-w-[150px]">
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={onRulesUpload}
                                     isLoading={isUploadingRules}
                                     disabled={isUploadingRules}
+                                    className="w-full"
                                 >
                                     {organizationRules.length > 0 ? 'Replace File' : 'Upload File'}
                                 </Button>
+                                {organizationRules.length > 0 && (
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => setIsModalOpen(true)}
+                                        className="w-full"
+                                    >
+                                        View Rules ({organizationRules.length})
+                                    </Button>
+                                )}
                                 {rulesFilename && (
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[130px]" title={rulesFilename}>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[150px] mt-1" title={rulesFilename}>
                                         📄 {rulesFilename}
                                     </p>
                                 )}
                             </div>
                         </div>
-
-                        {/* Extracted Rules List */}
-                        {organizationRules.length > 0 && (
-                            <div className="mt-2">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <h4 className="text-xs font-black tracking-wider text-slate-600 dark:text-slate-300 uppercase">
-                                        Extracted Rules ({organizationRules.length})
-                                    </h4>
-                                </div>
-                                <div className="space-y-2 pr-1">
-                                    {organizationRules.map((rule) => (
-                                        <div
-                                            key={rule.rule_id}
-                                            className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 transition-all hover:border-slate-200 dark:hover:border-slate-600"
-                                        >
-                                            <span className="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-black mt-0.5">
-                                                {rule.rule_order}
-                                            </span>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
-                                                {rule.rule_text}
-                                            </p>
-                                            <span className="flex-shrink-0 mt-0.5" title={rule.is_embedded ? 'Embedded' : 'Pending embedding'}>
-                                                {rule.is_embedded ? (
-                                                    <CheckCircle2 size={14} className="text-emerald-500" />
-                                                ) : (
-                                                    <Clock size={14} className="text-amber-400" />
-                                                )}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
+
+            {/* Popup Modal Window for Rules Management */}
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={`Rules Management (${organizationRules.length})`}
+                description="Manage your organization rules directly below"
+                size="lg"
+                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700"
+            >
+                <div className="p-6 flex flex-col gap-6">
+                    {/* Add Single Rule Form */}
+                    <form onSubmit={handleAddRuleClick} className="flex gap-3 items-end border-b border-gray-100 dark:border-slate-800 pb-5">
+                        <div className="flex-1">
+                            <label className="block text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                                Add Custom Rule
+                            </label>
+                            <Input
+                                value={newRule}
+                                onChange={(e) => setNewRule(e.target.value)}
+                                placeholder="Enter a single rule (e.g. Check-out time is strictly 11:00 AM)"
+                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                                disabled={isSavingRule}
+                            />
+                        </div>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            disabled={!newRule.trim() || isSavingRule}
+                            isLoading={isSavingRule}
+                            className="flex items-center gap-1.5 h-11 shrink-0 px-4"
+                        >
+                            <Plus size={16} />
+                            Add Rule
+                        </Button>
+                    </form>
+
+                    {/* Scrollable Rules List */}
+                    <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-2 no-scrollbar">
+                        {organizationRules.length === 0 ? (
+                            <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-6">No rules configured for this organization.</p>
+                        ) : (
+                            organizationRules.map((rule) => (
+                                <div
+                                    key={rule.rule_id}
+                                    className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 transition-all hover:border-slate-200 dark:hover:border-slate-600"
+                                >
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-black mt-0.5">
+                                        {rule.rule_order}
+                                    </span>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1 pt-0.5">
+                                        {rule.rule_text}
+                                    </p>
+                                    <div className="flex items-center gap-3 shrink-0 mt-0.5">
+                                        <span title={rule.is_embedded ? 'Embedded' : 'Pending embedding'}>
+                                            {rule.is_embedded ? (
+                                                <CheckCircle2 size={15} className="text-emerald-500" />
+                                            ) : (
+                                                <Clock size={15} className="text-amber-400 animate-pulse" />
+                                            )}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteRuleClick(rule.rule_id)}
+                                            disabled={deletingIds[rule.rule_id]}
+                                            className="text-slate-400 hover:text-red-500 transition-colors duration-150 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/20"
+                                            title="Delete rule"
+                                        >
+                                            {deletingIds[rule.rule_id] ? (
+                                                <Loader2 className="animate-spin text-red-500" size={15} />
+                                            ) : (
+                                                <Trash2 size={15} />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </Modal>
 
         </div>
     );

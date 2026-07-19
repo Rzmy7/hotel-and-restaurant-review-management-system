@@ -594,3 +594,18 @@ def delete_rules_by_source(source_id: str, _auth: bool = Depends(verify_api_key)
     except Exception as e:
         print(f"Error deleting rule embeddings for source {source_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/delete/rule/{rule_id}")
+def delete_single_rule(rule_id: str, _auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
+    """Delete a single rule embedding by rule ID."""
+    try:
+        collection.delete(ids=[rule_id])
+        return {
+            "status": "success",
+            "message": f"Deleted rule embedding for rule_id: {rule_id}",
+            "rule_id": rule_id
+        }
+    except Exception as e:
+        print(f"Error deleting rule embedding for rule {rule_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

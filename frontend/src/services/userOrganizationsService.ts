@@ -7,6 +7,7 @@ export interface UserOrganizationSummary {
     organization_type?: string | null;
     organization_type_id?: string | number | null;
     role?: string | null;
+    logo_url?: string | null;
 }
 
 export const fetchUserOrganizations = (): Promise<UserOrganizationSummary[]> => {

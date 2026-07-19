@@ -431,3 +431,43 @@ def get_organization_rules(
 
     from app.modules.organization.services.rules_service import get_organization_rules
     return get_organization_rules(db, org_id)
+
+
+@router.delete("/organizations/{org_id}/rules/{rule_id}")
+def delete_organization_rule(
+    org_id: str,
+    rule_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Delete a single rule from the organization's rules list and the embedding service."""
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
+
+    try:
+        from app.modules.organization.services.rules_service import delete_single_rule
+        return delete_single_rule(db, org_id, rule_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete rule: {str(e)}")
+
+
+@router.post("/organizations/{org_id}/rules")
+def add_organization_rule(
+    org_id: str,
+    rule_text: str = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Add a single organization rule directly to the DB and embedding engine."""
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
+
+    try:
+        from app.modules.organization.services.rules_service import add_single_rule
+        return add_single_rule(db, org_id, rule_text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add rule: {str(e)}")

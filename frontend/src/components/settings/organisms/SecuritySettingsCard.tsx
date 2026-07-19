@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, KeyRound, Lock, Shield, XCircle } from 'lucide-react';
+import { CheckCircle2, KeyRound, Lock, Mail, Shield, XCircle } from 'lucide-react';
 import { settingsService } from '../../../services/settingsService';
 import { ToggleRow } from '../molecules/ToggleRow';
 import { FormField } from '../molecules/FormField';
@@ -16,12 +16,14 @@ interface SecuritySettingsCardProps {
         newPassword: string;
         confirmPassword?: string;
     }) => Promise<string>;
+    onEmailChange?: (payload: { newEmail: string; currentPassword: string }) => Promise<string>;
 }
 
 export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     data,
     onChange,
-    onPasswordChange
+    onPasswordChange,
+    onEmailChange,
 }) => {
     const MAX_OTP_ATTEMPTS = 5;
     const OTP_TTL_SECONDS = 180;
@@ -45,6 +47,41 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
     const [passwordError, setPasswordError] = useState<string | null>(null);
     const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
     const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [newEmail, setNewEmail] = useState('');
+    const [emailCurrentPassword, setEmailCurrentPassword] = useState('');
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+    const [isSavingEmail, setIsSavingEmail] = useState(false);
+
+    const handleSaveEmail = async () => {
+        if (!newEmail.trim() || !emailCurrentPassword.trim()) {
+            setEmailError('Please fill in all fields.');
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+            setEmailError('Please enter a valid email address.');
+            return;
+        }
+        if (!onEmailChange) {
+            setEmailError('Email change is not available.');
+            return;
+        }
+        try {
+            setIsSavingEmail(true);
+            setEmailError(null);
+            const msg = await onEmailChange({ newEmail: newEmail.trim(), currentPassword: emailCurrentPassword });
+            setIsEmailModalOpen(false);
+            setEmailSuccess(msg || 'Email updated successfully.');
+            setNewEmail('');
+            setEmailCurrentPassword('');
+        } catch (error) {
+            setEmailError(error instanceof Error ? error.message : 'Failed to update email.');
+        } finally {
+            setIsSavingEmail(false);
+        }
+    };
 
     // password requirements checks
     const passwordChecks = useMemo(() => {
@@ -246,15 +283,53 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
 
     return (
         <>
-            <div className="flex flex-col">
-                {(twoFaSuccess || passwordSuccess) && (
-                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 animate-in fade-in duration-300">
-                        {twoFaSuccess || passwordSuccess}
+            <div className="flex flex-col gap-5">
+                {(twoFaSuccess || passwordSuccess || emailSuccess) && (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 animate-in fade-in duration-300">
+                        {twoFaSuccess || passwordSuccess || emailSuccess}
                     </div>
                 )}
 
+                {/* Two-column: Change Email (left) | Change Password (right) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Change Email */}
+                    <div className="flex flex-col gap-4 p-5 rounded-2xl border border-gray-100 dark:border-slate-700/50 bg-gray-50/40 dark:bg-slate-800/40">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                <Mail size={16} className="text-[#4e80ee] dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-gray-800 dark:text-slate-100">Email Address</p>
+                                <p className="text-[11px] font-medium text-gray-400 dark:text-slate-500 mt-0.5">Update your login email</p>
+                            </div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => { setEmailError(null); setIsEmailModalOpen(true); }} className="flex items-center gap-2 w-fit">
+                            <Mail size={13} />
+                            Change Email
+                        </Button>
+                    </div>
+
+                    {/* Change Password */}
+                    <div className="flex flex-col gap-4 p-5 rounded-2xl border border-gray-100 dark:border-slate-700/50 bg-gray-50/40 dark:bg-slate-800/40">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                <KeyRound size={16} className="text-[#4e80ee] dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-gray-800 dark:text-slate-100">Password</p>
+                                <p className="text-[11px] font-medium text-gray-400 dark:text-slate-500 mt-0.5">Update your account password</p>
+                            </div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={openPasswordModal} className="flex items-center gap-2 w-fit">
+                            <KeyRound size={13} />
+                            Change Password
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Two-Factor Authentication — below the credential actions */}
                 {data.twoFactorFeatureEnabled !== false && (
-                    <>
+                    <div className="rounded-2xl border border-gray-100 dark:border-slate-700/50 bg-gray-50/40 dark:bg-slate-800/40 overflow-hidden px-5">
                         <ToggleRow
                             label="Two-Factor Authentication"
                             description="Require a verification code during login"
@@ -264,19 +339,13 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                             }}
                         />
                         {otpError && !is2faModalOpen && (
-                            <p className="mt-2 text-xs text-rose-400">{otpError}</p>
+                            <p className="px-5 pb-3 text-xs text-rose-400">{otpError}</p>
                         )}
                         {isDisabling2fa && (
-                            <p className="mt-2 text-xs text-slate-400">Disabling 2FA...</p>
+                            <p className="px-5 pb-3 text-xs text-slate-400">Disabling 2FA...</p>
                         )}
-                    </>
-                )}
-                <FormField label="Password" orientation="horizontal">
-                    <div className="flex items-center gap-4 w-full">
-                        <span className="text-sm text-gray-400 font-medium tracking-[2px] flex-1">••••••••</span>
-                        <Button variant="ghost" size="sm" onClick={openPasswordModal} className="text-[#4e80ee]">Edit</Button>
                     </div>
-                </FormField>
+                )}
             </div>
 
             <Modal
@@ -462,6 +531,48 @@ export const SecuritySettingsCard: React.FC<SecuritySettingsCardProps> = ({
                     </div>
 
                     {passwordError && <p className="text-xs text-rose-500 dark:text-rose-400">{passwordError}</p>}
+                </div>
+            </Modal>
+
+            {/* Change Email Modal */}
+            <Modal
+                isOpen={isEmailModalOpen}
+                onClose={() => setIsEmailModalOpen(false)}
+                title="Update Email Address"
+                description="Enter your new email and confirm with your current password"
+                size="md"
+                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700"
+                footer={
+                    <div className="flex items-center justify-end gap-3">
+                        <Button variant="outline" onClick={() => setIsEmailModalOpen(false)} className="border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-300">
+                            Cancel
+                        </Button>
+                        <Button variant="primary" onClick={handleSaveEmail} disabled={!newEmail || !emailCurrentPassword || isSavingEmail} isLoading={isSavingEmail}>
+                            Save Email
+                        </Button>
+                    </div>
+                }
+            >
+                <div className="p-6 space-y-4">
+                    <FormField label="New Email Address">
+                        <Input
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => { setEmailError(null); setNewEmail(e.target.value); }}
+                            placeholder="Enter new email address"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                        />
+                    </FormField>
+                    <FormField label="Current Password">
+                        <Input
+                            type="password"
+                            value={emailCurrentPassword}
+                            onChange={(e) => { setEmailError(null); setEmailCurrentPassword(e.target.value); }}
+                            placeholder="Confirm with your current password"
+                            className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                        />
+                    </FormField>
+                    {emailError && <p className="text-xs text-rose-500 dark:text-rose-400">{emailError}</p>}
                 </div>
             </Modal>
         </>

@@ -433,6 +433,38 @@ export const settingsApi = {
         return Array.isArray(response.data) ? response.data : [];
     },
 
+    addOrganizationRule: async (ruleText: string): Promise<{
+        rule_id: string;
+        rule_text: string;
+        rule_order: number;
+        is_embedded: boolean;
+        source_filename: string | null;
+        created_at: string | null;
+    }> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const response = await settingsAxios.post(
+            toApiPath(`/organizations/${orgId}/rules`),
+            { rule_text: ruleText }
+        );
+        return response.data;
+    },
+
+    deleteOrganizationRule: async (ruleId: string): Promise<{ message: string; rule_id: string }> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const response = await settingsAxios.delete(
+            toApiPath(`/organizations/${orgId}/rules/${ruleId}`)
+        );
+        return response.data;
+    },
+
     fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
         const response = await settingsAxios.get<OrganizationType[]>(toApiPath('/organization-types'));
         return response.data;

@@ -35,7 +35,7 @@ export const useSettings = () => {
         loadSettings();
     }, [loadSettings]);
 
-    const updateSettings = async (updates: Partial<SettingsData>) => {
+    const updateSettings = useCallback(async (updates: Partial<SettingsData>) => {
         setSaving(true);
         try {
             const newSettings = await settingsService.updateSettings(updates);
@@ -48,9 +48,9 @@ export const useSettings = () => {
         } finally {
             setSaving(false);
         }
-    };
+    }, [showToast]);
 
-    const uploadOrganizationLogo = async (file: File) => {
+    const uploadOrganizationLogo = useCallback(async (file: File) => {
         try {
             const logoUrl = await settingsService.uploadOrganizationLogo(file);
             setData((prev) => {
@@ -69,14 +69,14 @@ export const useSettings = () => {
             showToast('Failed to upload organization logo', 'error');
             throw err;
         }
-    };
+    }, [showToast]);
 
-    const changePassword = async (payload: PasswordChangePayload) => {
+    const changePassword = useCallback(async (payload: PasswordChangePayload) => {
         const message = await settingsService.changePassword(payload);
         return message;
-    };
+    }, []);
 
-    const uploadRulesFile = async (file: File) => {
+    const uploadRulesFile = useCallback(async (file: File) => {
         try {
             const result = await settingsService.uploadRulesFile(file);
             showToast(`${result.rules_extracted} rules extracted and processed`, 'success');
@@ -85,15 +85,36 @@ export const useSettings = () => {
             showToast(err instanceof Error ? err.message : 'Failed to process rules file', 'error');
             throw err;
         }
-    };
+    }, [showToast]);
 
-    const fetchOrganizationRules = async () => {
+    const fetchOrganizationRules = useCallback(async () => {
         return await settingsService.fetchOrganizationRules();
-    };
+    }, []);
 
-    const fetchOrganizationTypes = async () => {
+    const addOrganizationRule = useCallback(async (ruleText: string) => {
+        try {
+            const rule = await settingsService.addOrganizationRule(ruleText);
+            showToast('Rule added successfully', 'success');
+            return rule;
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to add rule', 'error');
+            throw err;
+        }
+    }, [showToast]);
+
+    const deleteOrganizationRule = useCallback(async (ruleId: string) => {
+        try {
+            await settingsService.deleteOrganizationRule(ruleId);
+            showToast('Rule deleted successfully', 'success');
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to delete rule', 'error');
+            throw err;
+        }
+    }, [showToast]);
+
+    const fetchOrganizationTypes = useCallback(async () => {
         return await settingsService.fetchOrganizationTypes();
-    };
+    }, []);
 
     return {
         data,
@@ -106,6 +127,8 @@ export const useSettings = () => {
         changePassword,
         uploadRulesFile,
         fetchOrganizationRules,
+        addOrganizationRule,
+        deleteOrganizationRule,
         fetchOrganizationTypes,
     };
 };
