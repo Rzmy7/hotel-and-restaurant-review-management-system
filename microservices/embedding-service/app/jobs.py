@@ -7,8 +7,13 @@ from collections import deque
 import json
 import os
 
-# Job storage file
-JOBS_FILE = os.path.join(os.path.dirname(__file__), "..", "jobs.json")
+# Job storage file - store in persistent chroma_data volume if available, fallback to local path
+PERSISTENT_VOLUME_DIR = "/app/chroma_data"
+if os.path.exists(PERSISTENT_VOLUME_DIR) and os.path.isdir(PERSISTENT_VOLUME_DIR):
+    JOBS_FILE = os.path.join(PERSISTENT_VOLUME_DIR, "jobs.json")
+else:
+    # fallback to local development path
+    JOBS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "jobs.json")
 
 # In-memory job storage (persist to file)
 jobs_queue = deque(maxlen=500)  # Keep last 500 jobs

@@ -96,6 +96,11 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown actions
     stop_scheduler()
+    try:
+        from app.modules.source.services.embedding_client import wait_for_active_embeddings
+        wait_for_active_embeddings()
+    except Exception as shutdown_err:
+        logger.warning(f"Error waiting for active embedding threads: {shutdown_err}")
 
 
 # ── Router imports ──────────────────────────────────────────────────

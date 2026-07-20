@@ -270,6 +270,29 @@ def scraping_stats() -> dict[str, int | float | bool]:
     }
 
 
+def normalize_url(url: str | None) -> str:
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        netloc = parsed.netloc or parsed.path
+        netloc = netloc.lower().replace("www.", "").strip()
+        path = parsed.path if parsed.netloc else ""
+        path = path.rstrip("/")
+        normalized = urlunparse((
+            parsed.scheme or "https",
+            netloc,
+            path,
+            "",
+            "",
+            ""
+        ))
+        return normalized
+    except Exception:
+        return url or ""
+
+
 @router.get("/scraping/jobs")
 def scraping_jobs(
     page: int = 1,
@@ -300,10 +323,39 @@ def scraping_jobs(
         reverse=True,
     )
 
+    url_to_org = {}
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            if table_exists(cursor, "source") and table_exists(cursor, "organization"):
+                q = """
+                    SELECT s.source_url, o.organization_name
+                    FROM dbo.source s
+                    JOIN dbo.organization o ON s.organization_id = o.organization_id
+                """
+                db_rows = execute_query(cursor, q).fetchall()
+                for r in db_rows:
+                    if r[0] and r[1]:
+                        raw_url = r[0]
+                        org_name = r[1]
+                        url_to_org[raw_url] = org_name
+                        url_to_org[normalize_url(raw_url)] = org_name
+    except Exception as db_exc:
+        import logging
+        logging.getLogger(__name__).error(f"Error fetching organization names for scraping jobs: {db_exc}")
+
     mapped_jobs: list[dict[str, str | int | None]] = []
     for index, row in enumerate(rows, start=1):
         platform = str(row.get("platform", "Unknown")).strip() or "Unknown"
-        org_name = organization_from_url(row.get("url")) or ""
+        
+        # Get organization name from database lookup, fallback to platform url parsing
+        job_url = row.get("url")
+        org_name = ""
+        if job_url:
+            org_name = url_to_org.get(job_url) or url_to_org.get(normalize_url(job_url))
+        if not org_name:
+            org_name = organization_from_url(job_url) or ""
+
         status_ui = job_status_to_ui(str(row.get("status", "")))
 
         # Filter by search string if provided
