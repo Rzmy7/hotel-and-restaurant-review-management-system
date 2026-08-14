@@ -42,9 +42,17 @@ def send_in_background(fn: Callable, *args, **kwargs) -> concurrent.futures.Futu
 # Sender display name shown in email clients
 SENDER_NAME = "ReviewMate"
 
-# Domain for Message-ID must match SMTP sender domain (gmail.com here)
-# Using the actual sending domain prevents Gmail's domain-mismatch spam check
-_sender_domain = (SMTP_FROM_EMAIL or "gmail.com").split("@")[-1]
+def _get_from_email() -> str:
+    """Return the configured from email or fallback to SMTP login email."""
+    from app.core import config
+    return config.SMTP_FROM_EMAIL or config.SMTP_EMAIL or "noreply@reviewmate.live"
+
+def _get_sender_domain() -> str:
+    """Extract the sending domain for Message-ID and anti-spam verification."""
+    from_addr = _get_from_email()
+    if "@" in from_addr:
+        return from_addr.split("@")[-1]
+    return "reviewmate.live"
 
 
 # ── Design tokens ─────────────────────────────────────────────────────────────
@@ -149,14 +157,15 @@ def _outer_table(inner_rows: str) -> str:
 
 def _build_msg(to_email: str, subject: str, plain: str, html: str) -> MIMEMultipart:
     """Build a properly-headered multipart email message."""
+    from_addr = _get_from_email()
     msg = MIMEMultipart("alternative")
     msg["MIME-Version"] = "1.0"
     msg["Subject"] = subject
-    msg["From"] = formataddr((SENDER_NAME, SMTP_FROM_EMAIL))
+    msg["From"] = formataddr((SENDER_NAME, from_addr))
     msg["To"] = to_email
     msg["Date"] = formatdate(localtime=False)          # UTC date (more consistent)
-    msg["Message-ID"] = make_msgid(domain=_sender_domain)
-    msg["Reply-To"] = formataddr((SENDER_NAME, SMTP_FROM_EMAIL))
+    msg["Message-ID"] = make_msgid(domain=_get_sender_domain())
+    msg["Reply-To"] = formataddr((SENDER_NAME, from_addr))
     # Anti-spam: mark as transactional so filters treat it differently from bulk
     msg["Precedence"] = "transactional"
     msg["X-Mailer"] = f"ReviewMate/{SENDER_NAME}"
@@ -169,6 +178,7 @@ def _build_msg(to_email: str, subject: str, plain: str, html: str) -> MIMEMultip
 def _send(msg: MIMEMultipart, to_email: str) -> None:
     """Open SMTP connection and send the message with strict timeout and SSL/STARTTLS support."""
     server = None
+    from_addr = _get_from_email()
     try:
         if SMTP_PORT == 465:
             server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT)
@@ -179,7 +189,7 @@ def _send(msg: MIMEMultipart, to_email: str) -> None:
             server.starttls()
             server.ehlo()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_FROM_EMAIL, [to_email], msg.as_string())
+        server.sendmail(from_addr, [to_email], msg.as_string())
     finally:
         if server is not None:
             try:
@@ -246,7 +256,7 @@ def send_reset_email(to_email: str, link: str) -> None:
                     <strong style="color:{_TEXT};">Didn't request this?</strong>&nbsp; Your account is safe.
                     Simply ignore this email — your password will remain unchanged.
                     If you're concerned, contact
-                    <a href="mailto:{SMTP_FROM_EMAIL}"
+                    <a href="mailto:{_get_from_email()}"
                        style="color:{_BRAND};text-decoration:none;font-weight:600;">{SENDER_NAME} support</a>.
                   </p>
                 </td>
