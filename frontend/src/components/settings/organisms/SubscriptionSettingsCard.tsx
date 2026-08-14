@@ -156,8 +156,8 @@ export const SubscriptionSettingsCard: React.FC<SubscriptionSettingsCardProps> =
 
     return (
         <div className="flex flex-col gap-6 w-full min-w-0">
-            {/* Two-column layout: plan card (left) + usage (right) */}
-            <div className="grid grid-cols-1 2xl:grid-cols-[1fr_1.6fr] gap-6 items-start w-full min-w-0">
+            {/* Two-column layout: current plan (left) + feature usage & balance (right) side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(300px,360px)_1fr] xl:grid-cols-[minmax(320px,380px)_1fr] gap-8 items-start w-full min-w-0">
 
                 {/* ── LEFT: Current Plan Card ── */}
                 {/* Exact same visual design as PricingCard on the subscription page */}
