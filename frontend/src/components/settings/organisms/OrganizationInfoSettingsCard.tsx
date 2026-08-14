@@ -19,9 +19,6 @@ interface OrganizationRule {
 interface OrganizationInfoSettingsCardProps {
     data: OrganizationInfoSettings;
     onChange: (updates: Partial<OrganizationInfoSettings>) => void;
-    onLogoUpload: () => void;
-    onLogoRemove: () => void;
-    isUploadingLogo?: boolean;
     onRulesUpload?: () => void;
     isUploadingRules?: boolean;
     organizationRules?: OrganizationRule[];
@@ -33,9 +30,6 @@ interface OrganizationInfoSettingsCardProps {
 export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCardProps> = ({
     data,
     onChange,
-    onLogoUpload,
-    onLogoRemove,
-    isUploadingLogo = false,
     onRulesUpload,
     isUploadingRules = false,
     organizationRules = [],
@@ -50,8 +44,8 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
 
     const rulesFilename = organizationRules.length > 0 ? organizationRules[0]?.source_filename : null;
 
-    const propertyTypeOptions = [
-        { label: 'Select Property Type', value: '' },
+    const organizationTypeOptions = [
+        { label: 'Select Organization Type', value: '' },
         ...organizationTypes.map(type => ({
             label: type.type_name,
             value: type.type_name
@@ -83,99 +77,25 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
     return (
         <div className="flex flex-col">
 
-            {/* Logo Upload */}
-            <div className="flex flex-col gap-2 py-6 border-b border-gray-100 dark:border-slate-900/50 last:border-b-0">
-                <div className="flex gap-6 items-start max-md:flex-col">
-                    <div
-                        onClick={onLogoUpload}
-                        className="w-[140px] h-[140px] border-2 border-dashed border-gray-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all bg-gray-50/50 dark:bg-slate-800/50 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group max-md:w-full max-md:max-w-[200px]"
-                    >
-                        {data.logoUrl ? (
-                            <img
-                                src={data.logoUrl}
-                                alt="Organization logo"
-                                className="w-full h-full object-cover rounded-2xl"
-                            />
-                        ) : (
-                            <>
-                                <Upload className="text-gray-400 group-hover:text-[#4e80ee] transition-colors" size={32} />
-                                <span className="text-[11px] font-black tracking-widest text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors text-center w-24">
-                                    Upload Logo
-                                </span>
-                            </>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-3 pt-2">
-                        <Button variant="outline" size="sm" onClick={onLogoUpload} isLoading={isUploadingLogo}>
-                            {data.logoUrl ? 'Change Logo' : 'Upload Logo'}
-                        </Button>
-                        <Button variant="danger" size="sm" onClick={onLogoRemove} disabled={isUploadingLogo || !data.logoUrl}>
-                            Remove
-                        </Button>
-                        <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mt-2">Recommended 800x800px PNG</p>
-                    </div>
-                </div>
-            </div>
-
+            {/* Organization Name */}
             <FormField label="Organization Name">
                 <Input
                     value={data.organizationName}
                     onChange={(e) => onChange({ organizationName: e.target.value })}
+                    placeholder="Enter organization name"
                 />
             </FormField>
 
-            <div className="grid grid-cols-2 gap-6 py-6 border-b border-gray-100 dark:border-slate-700/50 max-md:grid-cols-1">
-                <FormField label="Website URL">
-                    <Input
-                        type="url"
-                        value={data.websiteUrl}
-                        onChange={(e) => onChange({ websiteUrl: e.target.value })}
-                        placeholder="https://"
-                    />
-                </FormField>
-
-                <FormField label="Property Type">
-                    <Select
-                        value={data.propertyType}
-                        onChange={(e) => onChange({ propertyType: e.target.value })}
-                        options={propertyTypeOptions}
-                    />
-                </FormField>
-            </div>
-
-            <FormField label="Primary Email">
-                <Input
-                    type="email"
-                    value={data.primaryEmail}
-                    onChange={(e) => onChange({ primaryEmail: e.target.value })}
+            {/* Organization Type */}
+            <FormField label="Organization Type">
+                <Select
+                    value={data.propertyType || ''}
+                    onChange={(e) => onChange({ propertyType: e.target.value })}
+                    options={organizationTypeOptions}
                 />
             </FormField>
 
-            <FormField label="Phone Number">
-                <Input
-                    type="tel"
-                    value={data.phoneNumber}
-                    onChange={(e) => onChange({ phoneNumber: e.target.value })}
-                />
-            </FormField>
-
-            <div className="grid grid-cols-2 gap-6 py-6 border-b border-gray-100 dark:border-slate-700/50 max-md:grid-cols-1">
-                <FormField label="City">
-                    <Input
-                        value={data.city}
-                        onChange={(e) => onChange({ city: e.target.value })}
-                        placeholder="City"
-                    />
-                </FormField>
-
-                <FormField label="Country">
-                    <Input
-                        value={data.country}
-                        onChange={(e) => onChange({ country: e.target.value })}
-                        placeholder="Country"
-                    />
-                </FormField>
-            </div>
+            {/* Google Maps Location Link */}
 
             <div className="py-6 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
                 <div className="md:col-span-2">

@@ -42,11 +42,9 @@ const SettingsPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingRules, setIsUploadingRules] = useState(false);
   const [organizationRules, setOrganizationRules] = useState<Array<{ rule_id: string; rule_text: string; rule_order: number; is_embedded: boolean; source_filename: string | null }>>([]);
   const [organizationTypes, setOrganizationTypes] = useState<OrganizationType[]>([]);
-  const logoInputRef = useRef<HTMLInputElement | null>(null);
   const rulesInputRef = useRef<HTMLInputElement | null>(null);
 
   const { setIsDirty, registerBlockHandler, unregisterBlockHandler } = useNavigationBlocker();
@@ -126,7 +124,9 @@ const SettingsPage: React.FC = () => {
       plan: 'Plan'
     });
     compareSection('Organization Profile', serverData.organizationInfo, localData.organizationInfo, {
-      organizationName: 'Organization Name', websiteUrl: 'Website URL', propertyType: 'Property Type', primaryEmail: 'Primary Email', phoneNumber: 'Phone Number', city: 'City', country: 'Country', logoUrl: 'Logo URL'
+      organizationName: 'Organization Name',
+      propertyType: 'Organization Type',
+      locationUrl: 'Google Maps Location Link'
     });
 
     return changes;
@@ -195,28 +195,6 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleLogoUploadClick = () => {
-    logoInputRef.current?.click();
-  };
-
-  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-
-    if (!file) return;
-
-    setIsUploadingLogo(true);
-    try {
-      const logoUrl = await uploadOrganizationLogo(file);
-      handleUpdateSection('organizationInfo', { logoUrl });
-      showToast('Logo uploaded successfully', 'success');
-    } catch (error) {
-      showToast('Failed to upload logo', 'error');
-    } finally {
-      setIsUploadingLogo(false);
-    }
-  };
-
   const handleRulesUploadClick = () => {
     rulesInputRef.current?.click();
   };
@@ -262,13 +240,6 @@ const SettingsPage: React.FC = () => {
 
   return (
     <>
-      <input
-        ref={logoInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/jpg,image/webp"
-        className="hidden"
-        onChange={handleLogoFileChange}
-      />
       <input
         ref={rulesInputRef}
         type="file"
@@ -363,9 +334,6 @@ const SettingsPage: React.FC = () => {
                 <OrganizationInfoSettingsCard
                   data={localData.organizationInfo}
                   onChange={(updates) => handleUpdateSection('organizationInfo', updates)}
-                  onLogoUpload={handleLogoUploadClick}
-                  onLogoRemove={() => handleUpdateSection('organizationInfo', { logoUrl: undefined })}
-                  isUploadingLogo={isUploadingLogo}
                   onRulesUpload={handleRulesUploadClick}
                   isUploadingRules={isUploadingRules}
                   organizationRules={organizationRules}
