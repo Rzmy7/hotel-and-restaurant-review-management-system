@@ -27,9 +27,12 @@ python-dateutil
 pytest
 
 openai
+tenacity
+cryptography
 
 # Redis cache (optional — falls back gracefully if not installed)
 # redis
 
 pika
+
 
