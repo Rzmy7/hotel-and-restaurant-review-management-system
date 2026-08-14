@@ -428,3 +428,37 @@ def trigger_pending_embeddings() -> dict:
             }
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Failed to trigger embeddings: {error}")
+
+
+@router.post("/embeddings/re-embed-all", tags=["Admin - Organizations"], summary="Trigger re-embedding for all processed reviews (whether is_embedded is 0 or 1)")
+def re_embed_all_reviews() -> dict:
+    """Manually triggers re-embedding for all processed reviews regardless of is_embedded status."""
+    try:
+        from app.modules.source.services.embedding_client import trigger_embedding_for_source
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            
+            # Find all sources that have any processed reviews (is_embedded = 0 or 1)
+            query = """
+                SELECT DISTINCT CAST(source_id AS VARCHAR(36))
+                FROM dbo.processed_review
+            """
+            rows = execute_query(cursor, query).fetchall()
+            
+            source_ids = [row[0] for row in rows if row[0]]
+            
+            for source_id in source_ids:
+                trigger_embedding_for_source(source_id, force_all=True)
+
+            log_admin_activity(
+                "embeddings_triggered",
+                "Re-Embed All Triggered",
+                f"Triggered re-embedding for {len(source_ids)} source(s) (all reviews)",
+            )
+                
+            return {
+                "triggered_sources_count": len(source_ids),
+                "message": f"Successfully triggered re-embedding for {len(source_ids)} sources"
+            }
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Failed to trigger re-embedding: {error}")

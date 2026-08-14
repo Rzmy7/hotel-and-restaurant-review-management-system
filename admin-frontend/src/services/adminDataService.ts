@@ -96,3 +96,7 @@ export const deleteUser = async (userId: string): Promise<void> => {
 export const triggerPendingEmbeddings = (): Promise<{ triggered_sources_count: number; message: string }> => {
     return apiClient.post<{ triggered_sources_count: number; message: string }>('/admin/embeddings/trigger-pending', {});
 };
+
+export const reEmbedAllReviews = (): Promise<{ triggered_sources_count: number; message: string }> => {
+    return apiClient.post<{ triggered_sources_count: number; message: string }>('/admin/embeddings/re-embed-all', {});
+};

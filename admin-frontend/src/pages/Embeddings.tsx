@@ -7,7 +7,8 @@ import {
     Play,
     Loader,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    RotateCcw
 } from 'lucide-react';
 import {
     getThresholds,
@@ -21,7 +22,7 @@ import {
     getServiceStatus
 } from '../services/embeddingService';
 import type { SimilarityThresholds, EmbeddingJob, VectorDbStats } from '../services/embeddingService';
-import { triggerPendingEmbeddings } from '../services/adminDataService';
+import { triggerPendingEmbeddings, reEmbedAllReviews } from '../services/adminDataService';
 import { Alert } from '../components/Alert';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
@@ -44,6 +45,7 @@ export const Embeddings: React.FC = () => {
     const [isPaused, setIsPaused] = useState(false);
     const [pauseLoading, setPauseLoading] = useState(false);
     const [triggering, setTriggering] = useState(false);
+    const [reEmbedding, setReEmbedding] = useState(false);
     const [jobsPage, setJobsPage] = useState(1);
     const [jobsTotalPages, setJobsTotalPages] = useState(1);
     const [jobsTotal, setJobsTotal] = useState(0);
@@ -247,6 +249,27 @@ export const Embeddings: React.FC = () => {
         }
     };
 
+    const handleReEmbedAll = async () => {
+        const confirmed = window.confirm(
+            'Are you sure you want to re-embed all reviews? ' +
+            'This will re-generate embeddings for all reviews across all sources, including already-embedded reviews (is_embed = 0 or 1).'
+        );
+        if (!confirmed) return;
+
+        try {
+            setReEmbedding(true);
+            setError(null);
+            const response = await reEmbedAllReviews();
+            alert(`Successfully triggered re-embedding for ${response.triggered_sources_count} sources.`);
+            handleRefreshJobs();
+        } catch (err) {
+            console.error('Failed to trigger re-embedding:', err);
+            setError('Failed to trigger re-embedding. Please check the logs.');
+        } finally {
+            setReEmbedding(false);
+        }
+    };
+
     if (loading) {
         return <EmbeddingsSkeleton />;
     }
@@ -366,7 +389,20 @@ export const Embeddings: React.FC = () => {
                             </div>
 
                             {/* Re-index & Force Embed Action buttons */}
-                            <div className="flex items-center justify-end gap-4 mt-6 pt-4 border-t border-gray-100 dark:border-slate-700">
+                            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-slate-700 flex-wrap">
+                                <button
+                                    onClick={handleReEmbedAll}
+                                    disabled={reEmbedding || !vectorDb}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-amber-200/50 dark:border-amber-700/50"
+                                    title="Force re-generate embeddings for all processed reviews (whether is_embedded is 0 or 1)."
+                                >
+                                    {reEmbedding ? (
+                                        <Loader size={16} className="animate-spin" />
+                                    ) : (
+                                        <RotateCcw size={16} />
+                                    )}
+                                    Re-Embed All
+                                </button>
                                 <button
                                     onClick={handleTriggerPending}
                                     disabled={triggering || !vectorDb}

@@ -49,41 +49,53 @@ _active_threads = set()
 _active_threads_lock = threading.Lock()
 
 
-def _embed_source_reviews(source_id: str) -> None:
+def _embed_source_reviews(source_id: str, force_all: bool = False) -> None:
     """
     Core logic (runs in a background thread):
-      1. Fetch unembedded processed reviews from ReviewMate DB
+      1. Fetch processed reviews from ReviewMate DB (unembedded only if force_all=False, or all reviews if force_all=True)
       2. Batch-embed them via Embedding Service
       3. Mark them as embedded in processed_review table
     """
     current_thread = threading.current_thread()
     try:
-        logger.info(f"[EmbeddingClient] Starting embedding pipeline for source_id={source_id}")
+        logger.info(f"[EmbeddingClient] Starting embedding pipeline for source_id={source_id} (force_all={force_all})")
 
-        # ── Step 1: Fetch unembedded, processed reviews from ReviewMate DB ────────
+        # ── Step 1: Fetch processed reviews from ReviewMate DB ────────────────────
         try:
             with get_raw_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT
-                        CAST(id AS VARCHAR(36)) AS review_id,
-                        text,
-                        positive_text,
-                        negative_text
-                    FROM dbo.processed_review
-                    WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
-                      AND is_embedded = 0
-                    ORDER BY scrapedAt ASC, id ASC
-                """, source_id)
+                if force_all:
+                    cursor.execute("""
+                        SELECT
+                            CAST(id AS VARCHAR(36)) AS review_id,
+                            text,
+                            positive_text,
+                            negative_text
+                        FROM dbo.processed_review
+                        WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                        ORDER BY scrapedAt ASC, id ASC
+                    """, source_id)
+                else:
+                    cursor.execute("""
+                        SELECT
+                            CAST(id AS VARCHAR(36)) AS review_id,
+                            text,
+                            positive_text,
+                            negative_text
+                        FROM dbo.processed_review
+                        WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                          AND is_embedded = 0
+                        ORDER BY scrapedAt ASC, id ASC
+                    """, source_id)
 
                 columns = [col[0] for col in cursor.description]
                 rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
         except Exception as e:
-            logger.error(f"[EmbeddingClient] Failed to fetch unembedded processed reviews for {source_id}: {e}")
+            logger.error(f"[EmbeddingClient] Failed to fetch processed reviews for {source_id}: {e}")
             return
 
         if not rows:
-            logger.info(f"[EmbeddingClient] No unembedded processed reviews found for source_id={source_id}. Skipping.")
+            logger.info(f"[EmbeddingClient] No processed reviews found for source_id={source_id} (force_all={force_all}). Skipping.")
             return
 
         # Build review text for embedding (combine text fields)
@@ -160,22 +172,22 @@ def _embed_source_reviews(source_id: str) -> None:
             _active_threads.discard(current_thread)
 
 
-def trigger_embedding_for_source(source_id: str) -> None:
+def trigger_embedding_for_source(source_id: str, force_all: bool = False) -> None:
     """
     Fire-and-forget: launch embedding pipeline in a background thread.
-    Called from review_service after AI analysis pipeline completes.
+    Called from review_service after AI analysis pipeline completes or from admin endpoints.
     Does NOT block the processing pipeline.
     """
     thread = threading.Thread(
         target=_embed_source_reviews,
-        args=(str(source_id).upper(),),
+        args=(str(source_id).upper(), force_all),
         daemon=True,
         name=f"embed-{str(source_id)[:8]}"
     )
     with _active_threads_lock:
         _active_threads.add(thread)
     thread.start()
-    logger.info(f"[EmbeddingClient] Background embedding thread launched for source_id={source_id}")
+    logger.info(f"[EmbeddingClient] Background embedding thread launched for source_id={source_id} (force_all={force_all})")
 
 
 def wait_for_active_embeddings(timeout: float = 8.0) -> None:
