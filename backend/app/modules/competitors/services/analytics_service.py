@@ -12,24 +12,14 @@ from datetime import datetime
 from typing import List, Optional, Dict
 
 import pyodbc
-from google import genai
 
-from app.core.config import GENAI_KEY
 from app.core.pyodbc_connection import get_connection_string
 from app.modules.competitors.ai.prompts import COMPARISON_INSIGHT_PROMPT
 from app.modules.competitors.services.competitor_service import (
     get_competitor_by_id,
     get_tracked_competitors,
 )
-
-_genai_client = None
-
-
-def _get_genai_client():
-    global _genai_client
-    if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
-    return _genai_client
+from app.services.llm_gateway import call as gateway_call
 
 
 def _strip_markdown_fences(text: str) -> str:
@@ -281,8 +271,8 @@ def get_ai_comparison_insights(competitor_id: str, my_org_id: str) -> Dict:
     )
 
     try:
-        response = _get_genai_client().models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
-        return json.loads(_strip_markdown_fences(response.text))
+        response_text = gateway_call("competitor_analysis", prompt)
+        return json.loads(_strip_markdown_fences(response_text))
     except Exception as e:
         print(f"AI Insights Error: {e}")
         return {"strengths": ["Unable to generate insights at this time."],

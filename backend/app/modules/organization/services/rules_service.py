@@ -18,11 +18,11 @@ from typing import Any
 import pyodbc
 import requests
 from fastapi import UploadFile
-from google import genai
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.db_utils import get_connection_string
+from app.services.llm_gateway import call as gateway_call
 from app.modules.admin.services.system_settings_service import (
     ensure_system_settings_table,
     get_setting,
@@ -88,28 +88,7 @@ def _parse_uploaded_file(file_bytes: bytes, filename: str) -> str:
         raise ValueError(f"Unsupported file type: {ext}. Allowed: .txt, .docx, .pdf")
 
 
-# ── Gemini Rule Extraction ──────────────────────────────────────────
-
-def _get_reply_api_key() -> str:
-    """Resolve the Gemini API key using the same source as reply generation."""
-    with pyodbc.connect(get_connection_string()) as conn:
-        cursor = conn.cursor()
-        ensure_system_settings_table(cursor)
-        key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-        if key:
-            return key
-
-    # Fallback to env var
-    env_key = os.getenv("GENAI_KEY", "").strip()
-    if env_key:
-        return env_key
-
-    raise ValueError(
-        "No Gemini API key configured. "
-        "Set it via Admin Panel → Reply Generation → Google API Key, "
-        "or set the GENAI_KEY environment variable."
-    )
-
+# ── LLM Rule Extraction ─────────────────────────────────────────────
 
 RULES_EXTRACTION_PROMPT = """You are a document analyst. Your task is to extract individual rules and regulations from the following document text.
 
@@ -128,38 +107,27 @@ Document Text:
 """
 
 
-def _extract_rules_with_gemini(document_text: str) -> list[str]:
-    """Send document text to Gemini and get back a list of individual rules."""
-    api_key = _get_reply_api_key()
+def _extract_rules_with_llm(document_text: str) -> list[str]:
+    """Send document text to the LLM Gateway and get back a list of individual rules."""
     prompt = RULES_EXTRACTION_PROMPT.format(document_text=document_text)
 
-    last_error: Exception | None = None
-    for api_version in ("v1", "v1beta"):
-        try:
-            client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
-            response = client.models.generate_content(
-                model="gemini-2.5-flash-lite",
-                contents=prompt,
-            )
-            raw_text = getattr(response, "text", "") or ""
-            # Clean markdown fences
-            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-            raw_text = re.sub(r"\s*```$", "", raw_text)
+    try:
+        raw_text = gateway_call("rule_extraction", prompt)
+        # Clean markdown fences
+        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$", "", raw_text)
 
-            rules = json.loads(raw_text)
-            if not isinstance(rules, list):
-                raise ValueError("Gemini returned non-list output for rules extraction.")
+        rules = json.loads(raw_text)
+        if not isinstance(rules, list):
+            raise ValueError("LLM returned non-list output for rules extraction.")
 
-            # Ensure all items are strings and non-empty
-            cleaned = [str(r).strip() for r in rules if str(r).strip()]
-            return cleaned
+        # Ensure all items are strings and non-empty
+        cleaned = [str(r).strip() for r in rules if str(r).strip()]
+        return cleaned
 
-        except Exception as exc:
-            last_error = exc
-
-    if last_error is not None:
-        raise last_error
-    raise ValueError("Gemini rule extraction failed for an unknown reason.")
+    except Exception as exc:
+        logger.error(f"Rule extraction failed: {exc}")
+        raise ValueError(f"Rule extraction failed: {exc}") from exc
 
 
 # ── Database Operations ─────────────────────────────────────────────
@@ -278,10 +246,10 @@ async def process_rules_upload(
     if not document_text.strip():
         raise ValueError("Could not extract any text from the uploaded file.")
 
-    # 3. Send to Gemini for rule extraction
-    rules = _extract_rules_with_gemini(document_text)
+    # 3. Send to LLM Gateway for rule extraction
+    rules = _extract_rules_with_llm(document_text)
     if not rules:
-        raise ValueError("Gemini could not extract any rules from the document.")
+        raise ValueError("Could not extract any rules from the document.")
 
     # 4. Delete old rules for this organization
     deleted_count = _delete_existing_rules(db, organization_id)

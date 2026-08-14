@@ -12,20 +12,10 @@ from typing import List, Dict
 import uuid
 
 import pyodbc
-from google import genai
 
-from app.core.config import GENAI_KEY
 from app.core.pyodbc_connection import get_connection_string
 from app.modules.competitors.ai.prompts import COMPETITOR_PROMPT
-
-_genai_client = None
-
-
-def _get_genai_client():
-    global _genai_client
-    if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
-    return _genai_client
+from app.services.llm_gateway import call as gateway_call
 
 
 def _strip_markdown_fences(text: str) -> str:
@@ -128,11 +118,8 @@ def process_competitor_scrape(competitor_id: str, url: str, headless: bool = Tru
         hotel_data = json.dumps([asdict(r) for r in raw_reviews], ensure_ascii=False)
         prompt = COMPETITOR_PROMPT.format(hotel_data=hotel_data)
 
-        response = _get_genai_client().models.generate_content(
-            model="gemini-2.5-flash-lite", contents=prompt
-        )
-
-        processed_reviews = json.loads(_strip_markdown_fences(response.text))
+        response_text = gateway_call("competitor_analysis", prompt)
+        processed_reviews = json.loads(_strip_markdown_fences(response_text))
         if not isinstance(processed_reviews, list):
             raise ValueError("AI response is not a JSON array")
 

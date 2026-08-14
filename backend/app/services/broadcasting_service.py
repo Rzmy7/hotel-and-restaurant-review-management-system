@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.constants.roles import SYSTEM_ADMIN
 from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification
-from app.modules.auth.services.email_service import send_broadcast_email
+from app.modules.auth.services.email_service import send_broadcast_email, send_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -323,7 +323,7 @@ def _send_broadcast_emails(
     ).all()
 
     for user in users_to_email:
-        send_broadcast_email(user.email, subject, body, message_type)  # type: ignore
+        send_in_background(send_broadcast_email, user.email, subject, body, message_type)  # type: ignore
 
 
 async def send_broadcast(

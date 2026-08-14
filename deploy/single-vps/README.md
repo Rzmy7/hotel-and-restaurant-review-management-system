@@ -46,9 +46,6 @@ docker compose version
    DB_PWD=YourSecureExternalPassword123!
    DB_ENCRYPT=yes
 
-   # ── Google Generative AI (Gemini) API Key ────────────────────────
-   GENAI_KEY=your_gemini_api_key_here
-
    # ── JWT & Security Keys ──────────────────────────────────────────
    JWT_SECRET_KEY=your_long_random_jwt_signing_key_here
    SECRET_KEY=your_app_secret_key_here
@@ -183,7 +180,6 @@ services:
       - DB_PWD=${DB_PWD}
       - DB_ENCRYPT=${DB_ENCRYPT:-yes}
       # ── AI / LLM ──
-      - GENAI_KEY=${GENAI_KEY}
       - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY}
       # ── JWT ──
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
@@ -546,7 +542,6 @@ Below is a reference of every environment variable used by each service.
 | `DB_PWD` | ✅ | Database password |
 | `DB_ENCRYPT` | ⚙️ | Encryption setting (default: `yes`) |
 | `JWT_SECRET_KEY` | ✅ | JWT signing key |
-| `GENAI_KEY` | ✅ | Google Gemini API key |
 | `SMTP_EMAIL` | ✅ | Sender email for password resets |
 | `SMTP_PASSWORD` | ✅ | Email app password |
 | `SMTP_HOST` | ⚙️ | SMTP host (default: `smtp.gmail.com`) |

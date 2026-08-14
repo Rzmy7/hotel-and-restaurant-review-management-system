@@ -126,9 +126,6 @@ DB_NAME=your-database-name
 DB_UID=your-username
 DB_PWD=your-password
 
-# ── Google Generative AI (Gemini) ───────────────────────────────────
-GENAI_KEY=your-gemini-api-key
-
 # ── Google OAuth ────────────────────────────────────────────────────
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
@@ -360,11 +357,11 @@ playwright install chromium --force
 playwright install-deps chromium
 ```
 
-### Google Gemini API Errors
+### LLM Gateway Troubleshooting
 
-1. Verify `GENAI_KEY` in `.env`
-2. Check API quota in Google Cloud Console
-3. Test API key: `curl -X POST https://generativelanguage.googleapis.com/...`
+1. Verify OpenAI-compatible model credentials under Admin Panel → LLM Models.
+2. Ensure at least one active model is configured or assigned.
+3. Test your model endpoint directly using the **Test Model** action in the Admin Panel.
 
 ### Import Errors
 

@@ -90,7 +90,6 @@ services:
       - DB_PWD=${DB_PWD}
       - DB_ENCRYPT=${DB_ENCRYPT:-yes}
       # ── AI / LLM ──
-      - GENAI_KEY=${GENAI_KEY}
       - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY}
       # ── JWT ──
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}

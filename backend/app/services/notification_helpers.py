@@ -152,7 +152,7 @@ def _try_send_subscription_email(
     """
     from sqlalchemy import text
     from app.database.session import SessionLocal
-    from app.modules.auth.services.email_service import send_subscription_email
+    from app.modules.auth.services.email_service import send_subscription_email, send_in_background
 
     try:
         db = SessionLocal()
@@ -214,7 +214,8 @@ def _try_send_subscription_email(
         finally:
             db.close()
 
-        send_subscription_email(
+        send_in_background(
+            send_subscription_email,
             to_email=user_email,
             plan_name=plan_name,
             monthly_price=monthly_price,
@@ -338,7 +339,7 @@ def notify_group_invite(user_id: str, inviter_name: str, group_name: str) -> Non
     # Send custom group invite email if enabled
     from sqlalchemy import text
     from app.database.session import SessionLocal
-    from app.modules.auth.services.email_service import send_group_invite_email
+    from app.modules.auth.services.email_service import send_group_invite_email, send_in_background
 
     try:
         db = SessionLocal()
@@ -352,7 +353,8 @@ def notify_group_invite(user_id: str, inviter_name: str, group_name: str) -> Non
                 {"uid": user_id},
             ).fetchone()
             if user_row and user_row[1]:
-                send_group_invite_email(
+                send_in_background(
+                    send_group_invite_email,
                     to_email=str(user_row[0]),
                     inviter_name=inviter_name,
                     group_name=group_name,

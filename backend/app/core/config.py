@@ -37,6 +37,7 @@ SMTP_EMAIL: str | None = os.getenv("SMTP_EMAIL")
 SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
 SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+SMTP_TIMEOUT: int = int(os.getenv("SMTP_TIMEOUT", "10"))
 SMTP_FROM_EMAIL: str | None = os.getenv("SMTP_FROM_EMAIL") or SMTP_EMAIL
 
 # ── Google OAuth ────────────────────────────────────────────────────
@@ -47,9 +48,6 @@ GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
 JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_SECRET_KEY")
 JWT_ALGORITHM: str = "HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-
-# ── Google Generative AI ────────────────────────────────────────────
-GENAI_KEY: str | None = os.getenv("GENAI_KEY")
 
 # ── LLM Gateway ─────────────────────────────────────────────────────
 # 32-byte AES-256 key, base64-encoded.

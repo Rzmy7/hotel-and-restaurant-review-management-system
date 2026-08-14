@@ -24,11 +24,20 @@ from app.core.db_utils import get_connection_string
 
 logger = logging.getLogger(__name__)
 
-Purpose = Literal["review_processing", "reply_generation"]
+Purpose = Literal[
+    "review_processing",
+    "reply_generation",
+    "insights",
+    "rule_extraction",
+    "competitor_analysis",
+]
 
 _PURPOSE_SETTING: dict[str, str] = {
-    "review_processing": "llm_review_processing_model_id",
-    "reply_generation":  "llm_reply_generation_model_id",
+    "review_processing":   "llm_review_processing_model_id",
+    "reply_generation":    "llm_reply_generation_model_id",
+    "insights":            "llm_review_processing_model_id",
+    "rule_extraction":     "llm_reply_generation_model_id",
+    "competitor_analysis": "llm_review_processing_model_id",
 }
 
 
@@ -76,22 +85,40 @@ def load_model_by_id(model_id: str) -> dict:
     }
 
 
-def get_assigned_model(purpose: Purpose) -> dict:
+def get_assigned_model(purpose: Purpose = "review_processing") -> dict:
     """Return the decrypted model config assigned to *purpose*. Raises ValueError if none."""
     # Lazy import to avoid circular dependency (admin package loads routes which load gateway)
     from app.modules.admin.services.system_settings_service import (
         ensure_system_settings_table,
         get_setting,
     )
-    setting_key = _PURPOSE_SETTING[purpose]
+    setting_key = _PURPOSE_SETTING.get(purpose, "llm_review_processing_model_id")
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
         ensure_system_settings_table(cursor)
         model_id = (get_setting(cursor, setting_key) or "").strip()
+
+        # Fallback 1: If requested specific purpose setting is empty, try review_processing
+        if not model_id and setting_key != "llm_review_processing_model_id":
+            model_id = (get_setting(cursor, "llm_review_processing_model_id") or "").strip()
+
+        # Fallback 2: Try reply_generation
+        if not model_id:
+            model_id = (get_setting(cursor, "llm_reply_generation_model_id") or "").strip()
+
+        # Fallback 3: Pick the first active model from dbo.llm_model
+        if not model_id:
+            _ensure_table(cursor)
+            first_row = cursor.execute(
+                "SELECT TOP 1 id FROM dbo.llm_model WHERE is_active = 1 ORDER BY created_at DESC"
+            ).fetchone()
+            if first_row:
+                model_id = str(first_row[0])
+
     if not model_id:
         raise ValueError(
-            f"No LLM model assigned for '{purpose}'. "
-            "Go to Admin → LLM Models and assign a model."
+            f"No LLM model assigned or available for '{purpose}'. "
+            "Go to Admin → LLM Models and configure an OpenAI-compatible model."
         )
     return load_model_by_id(model_id)
 

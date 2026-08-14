@@ -34,7 +34,8 @@ def test_llm_model_update_schema():
     model = LLMModelUpdate(**payload)
     assert model.max_tokens == 2048
 
-def test_test_connectivity_endpoint_validation():
+@patch("app.modules.admin.routes.llm_models_routes.gateway_call", side_effect=Exception("Connection error"))
+def test_test_connectivity_endpoint_validation(mock_gateway):
     # Test that the endpoint exists and validates input
     response = client.post("/api/admin/llm-models/test-connectivity", json={
         "endpoint": "http://invalid",
@@ -42,7 +43,6 @@ def test_test_connectivity_endpoint_validation():
         "api_key": "invalid",
         "max_tokens": 100
     })
-    # It should fail because the endpoint is invalid, but it should reach the code and return 200 with success=False
     assert response.status_code in [200, 500, 404] 
     if response.status_code == 200:
         data = response.json()
@@ -87,4 +87,62 @@ def test_is_retryable_exception_aborts_on_pause(mock_connect):
     with patch("app.modules.admin.services.system_settings_service.get_setting", return_value="true"):
         res = is_retryable_exception(Exception("Some random connection error"))
         assert res is False
+
+
+def test_fatal_error_detection_and_non_retryable():
+    from app.modules.reviews.services.llm_client import _detect_fatal_error, is_retryable_exception
+
+    # 1. Encryption key error
+    is_fatal, reason = _detect_fatal_error(ValueError("LLM_ENCRYPTION_KEY must decode to exactly 32 bytes (AES-256)."))
+    assert is_fatal is True
+    assert reason == "encryption_key_error"
+    assert is_retryable_exception(ValueError("LLM_ENCRYPTION_KEY must decode to exactly 32 bytes (AES-256).")) is False
+
+    # 2. No model assigned
+    is_fatal, reason = _detect_fatal_error(RuntimeError("No LLM model assigned for task review_processing"))
+    assert is_fatal is True
+    assert reason == "no_model_assigned"
+    assert is_retryable_exception(RuntimeError("No LLM model assigned")) is False
+
+    # 3. Auth error
+    is_fatal, reason = _detect_fatal_error(Exception("401 Unauthorized: Invalid API key provided"))
+    assert is_fatal is True
+    assert reason == "auth_error"
+    assert is_retryable_exception(Exception("401 Unauthorized: Invalid API key")) is False
+
+    # 4. Quota / Billing error
+    is_fatal, reason = _detect_fatal_error(Exception("429 Resource Exhausted: Quota exceeded for model"))
+    assert is_fatal is True
+    assert reason == "api_limit"
+    assert is_retryable_exception(Exception("429 Resource Exhausted: Quota exceeded")) is False
+
+    # 5. General Python syntax/value errors
+    is_fatal, reason = _detect_fatal_error(TypeError("unsupported operand type(s)"))
+    assert is_fatal is True
+    assert is_retryable_exception(TypeError("unsupported operand type(s)")) is False
+
+
+def test_crypto_key_loading():
+    import base64
+    import os
+    from app.core import crypto
+
+    # Test valid 32-byte base64 key
+    valid_bytes = os.urandom(32)
+    b64_key = base64.urlsafe_b64encode(valid_bytes).decode()
+    with patch("app.core.config.LLM_ENCRYPTION_KEY", b64_key):
+        loaded = crypto._load_key()
+        assert loaded == valid_bytes
+
+    # Test valid 32-char plain string
+    plain_32 = "12345678901234567890123456789012"
+    with patch("app.core.config.LLM_ENCRYPTION_KEY", plain_32):
+        loaded = crypto._load_key()
+        assert loaded == plain_32.encode("utf-8")
+
+    # Test invalid short key raises ValueError
+    with patch("app.core.config.LLM_ENCRYPTION_KEY", "too_short"):
+        with pytest.raises(ValueError, match="LLM_ENCRYPTION_KEY must decode to exactly 32 bytes"):
+            crypto._load_key()
+
 

@@ -193,30 +193,33 @@ async def run_analysis_pipeline():
             for chunk, e in chunk_errors:
                 err_msg = str(e)
                 from tenacity import RetryError
-                
+                from app.modules.reviews.services.llm_client import _detect_fatal_error, auto_pause_review_processing
+
                 # Determine if the error is a general API/network/overload error
                 underlying_exc = e
                 if isinstance(e, RetryError):
                     underlying_exc = e.last_attempt.exception() or e
-                
+
                 underlying_msg = str(underlying_exc)
                 underlying_msg_lower = underlying_msg.lower()
-                
-                is_api_error = any(
+
+                is_fatal, fatal_reason = _detect_fatal_error(underlying_exc)
+
+                is_api_error = is_fatal or any(
                     k in underlying_msg_lower for k in [
-                        "overloaded", "busy", "rate limit", "rate_limit", "quota", 
-                        "credit", "billing", "token limit", "connection", "timeout", 
-                        "platform overloaded", "try again later", "503", "502", "504", "500", "429"
+                        "overloaded", "busy", "rate limit", "rate_limit", "quota",
+                        "credit", "billing", "token limit", "connection", "timeout",
+                        "platform overloaded", "try again later", "503", "502", "504", "500", "429",
+                        "encryption", "key"
                     ]
                 )
-                
-                is_json_or_parse_error = "JSON" in err_msg or "json" in err_msg
-                is_retry_error = isinstance(e, RetryError)
-                
-                # Fallback: If it's a JSON error or Retry error, try single-review processing for this chunk
-                # BUT only if it is NOT a general API/network/overload error!
-                if (is_json_or_parse_error or is_retry_error) and not is_api_error:
-                    logger.warning(f"Chunk failed ({err_msg}). Falling back to single-review processing for this chunk...")
+
+                # Pure JSON format error from LLM output (not an API or runtime failure)
+                is_json_parse_error = isinstance(underlying_exc, (json.JSONDecodeError, ValueError)) and ("json" in underlying_msg_lower or "decode" in underlying_msg_lower or "delimiter" in underlying_msg_lower) and not is_api_error
+
+                # Fallback: ONLY attempt single-review processing if it's purely a JSON formatting issue in the batch output
+                if is_json_parse_error and not is_api_error:
+                    logger.warning(f"Chunk JSON parse failed ({err_msg}). Attempting single-review fallback for {len(chunk)} reviews...")
                     fallback_success = 0
                     stop_run = False
                     for r in chunk:
@@ -238,49 +241,33 @@ async def run_analysis_pipeline():
                                     fallback_success += 1
                         except Exception as se:
                             logger.error(f"Fallback failed for review {r['id']}: {se}")
-                            
-                            # Inspect exception for API error to stop the loop
-                            se_underlying = se
-                            if isinstance(se, RetryError):
-                                se_underlying = se.last_attempt.exception() or se
-                            
-                            se_msg_lower = str(se_underlying).lower()
-                            se_is_api_error = any(
-                                k in se_msg_lower for k in [
-                                    "overloaded", "busy", "rate limit", "rate_limit", "quota", 
-                                    "credit", "billing", "token limit", "connection", "timeout", 
-                                    "platform overloaded", "try again later", "503", "502", "504", "500", "429"
-                                ]
-                            )
-                            
-                            if se_is_api_error:
-                                logger.error(f"API/network error encountered during single-review fallback, aborting: {se_underlying}")
-                                stop_run = True
-                                break
-                            else:
-                                _update_single_review_failure_tx(r["id"], f"Fallback failed: {se}")
-                    
+                            stop_run = True
+                            break
+
                     total_processed += fallback_success
                     logger.info(f"Fallback completed: {fallback_success}/{len(chunk)} recovered.")
                     if stop_run:
-                        # Revert remaining unprocessed reviews in this chunk back to pending
                         unprocessed = [r for r in chunk if r["id"] not in [x["id"] for x in chunk[:fallback_success]]]
                         _reset_reviews_to_pending_tx(unprocessed)
                         break
                     continue
-                
-                # If it's a transient API error, revert reviews in this chunk back to pending status
-                if is_api_error:
-                    logger.error(f"!!! LLM chunk analysis FAILED due to API/network error (no database updates made, will retry next run): {e}", exc_info=True)
-                    _reset_reviews_to_pending_tx(chunk)
+
+                # If it's an API error, encryption/config failure, or quota limit:
+                # 1. Revert reviews in this chunk back to pending status
+                # 2. Trigger auto-pause if fatal
+                # 3. Stop current pipeline run immediately
+                _reset_reviews_to_pending_tx(chunk)
+
+                if is_fatal:
+                    logger.warning(f"Fatal/API error in review processing pipeline: {underlying_msg}. Auto-pausing.")
+                    auto_pause_review_processing(
+                        reason=fatal_reason or "api_error",
+                        error_message=underlying_msg,
+                    )
                 else:
-                    logger.error(f"!!! LLM chunk analysis FAILED: {e}", exc_info=True)
-                    # Mark entire failed chunk as failed in database
-                    for j in range(0, len(chunk), 20):
-                        sub_batch = chunk[j:j + 20]
-                        _update_reviews_batch_tx(sub_batch, {}, error_msg=str(e))
-            
-            # Stop execution of the current pipeline run on any chunk failure
+                    logger.error(f"LLM chunk analysis failed due to API/network error: {underlying_msg}")
+
+            # Stop execution of the current pipeline run immediately on chunk failure
             break
 
         logger.info(

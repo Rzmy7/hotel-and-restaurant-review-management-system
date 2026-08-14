@@ -98,13 +98,13 @@ The backend primarily operates under `/api` for domain-specific interfaces:
 - **Pydantic**: Deep payload and configuration validation.
 - **Playwright**: Headless browsing for uncooperative data sources.
 - **APScheduler**: Task orchestration without relying on a full Celery/Redis stack.
-- **google-genai / anthropic**: LLM SDK integrations.
+- **openai / anthropic**: LLM SDK integrations for OpenAI-compatible LLM Gateway.
 
 ### Key Environment Variables
 - `DATABASE_URL`: SQLAlchemy connection string (`mssql+pyodbc://...`).
 - `DB_SERVER`, `DB_NAME`, `DB_UID`, `DB_PWD`: Direct pyodbc credentials.
 - `SECRET_KEY`, `JWT_SECRET_KEY`: Cryptographic signing keys for application sessions and JWTs.
-- `GENAI_KEY`: Authentication key for Google Gemini inferences.
+- `LLM_ENCRYPTION_KEY`: AES-256 key for securing LLM Gateway provider API keys.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Used for `authlib` to process OAuth handshakes.
 - `SMTP_*`: Keys for dispatching emails.
 

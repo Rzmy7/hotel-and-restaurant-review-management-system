@@ -106,10 +106,90 @@ def _is_billing_error(s: str) -> bool:
     return ("credits" in lower and "max_tokens" in lower)
 
 
-def is_retryable_exception(e: Exception) -> bool:
-    """Provider-agnostic retry predicate. Billing, rate-limit, and auth errors are not retried."""
+def _detect_fatal_error(e: Exception | str) -> tuple[bool, str]:
+    """
+    Determine if an exception/error represents an unrecoverable/fatal condition
+    that should NOT be retried and SHOULD auto-pause review processing.
+    Returns (is_fatal, reason_code).
+    """
+    s = str(e)
+    s_lower = s.lower()
+
+    if _is_billing_error(s):
+        return True, "api_limit"
+    if "llm_encryption_key" in s_lower or "encryption" in s_lower:
+        return True, "encryption_key_error"
+    if "no llm model assigned" in s_lower or "no active model" in s_lower:
+        return True, "no_model_assigned"
+    if any(k in s_lower for k in ("unauthorized", "forbidden", "invalid api key", "api key not valid", "permission_denied", "invalid_api_key", "401", "403")):
+        return True, "auth_error"
+    if any(k in s_lower for k in ("unsupported model", "model not found", "model does not exist", "invalid_request_error", "400", "404", "422")):
+        return True, "model_error"
+    if isinstance(e, (ValueError, RuntimeError, KeyError, TypeError, AttributeError)):
+        return True, "configuration_error"
+    return False, ""
+
+
+def auto_pause_review_processing(
+    reason: str = "api_error",
+    error_message: str = "",
+    model_name: str = "AI",
+) -> None:
+    """
+    Auto-pause review processing in the database and APScheduler.
+    Also sends notifications and logs alerts for admin visibility.
+    """
+    logger.warning(f"Auto-pausing review processing. Reason: {reason}. Detail: {error_message[:200]}")
+
+    # 1. Update system settings in DB & reset processing reviews back to pending
     try:
         import pyodbc
+        from app.core.db_utils import get_connection_string
+        from app.modules.admin.services.system_settings_service import set_setting
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            set_setting(cursor, "review_processing_paused", "true")
+            set_setting(cursor, "review_processing_pause_reason", reason)
+            cursor.execute("UPDATE dbo.processed_review SET status = 'pending' WHERE status = 'processing'")
+            conn.commit()
+        logger.info("Review processing has been PAUSED. Resume from Admin → System Settings.")
+    except Exception as pause_err:
+        logger.error(f"Failed to pause review processing in DB: {pause_err}")
+
+    # 2. Pause APScheduler job
+    try:
+        from app.modules.scheduler.services.scheduler_service import scheduler
+        if scheduler.get_job('process_reviews_job'):
+            scheduler.pause_job('process_reviews_job')
+            logger.info("Auto-pause: Paused process_reviews_job in scheduler.")
+    except Exception as sched_err:
+        logger.error(f"Failed to pause scheduler job during auto-pause: {sched_err}")
+
+    # 3. Log alerts and notify admin
+    try:
+        from app.modules.admin.services.system_alert_logger import (
+            alert_llm_quota_exceeded,
+            alert_llm_api_error,
+            alert_llm_key_missing,
+        )
+        from app.services.notification_helpers import notify_admin_llm_quota_exceeded
+
+        if reason == "api_limit":
+            alert_llm_quota_exceeded(error_message[:200], model_name=model_name)
+            notify_admin_llm_quota_exceeded(model_name=model_name)
+        elif reason in ("no_model_assigned", "encryption_key_error"):
+            alert_llm_key_missing(model_name=model_name)
+            notify_admin_llm_quota_exceeded(model_name=f"{model_name} (Config Error)")
+        else:
+            alert_llm_api_error(error_message[:300], model_name=model_name)
+            notify_admin_llm_quota_exceeded(model_name=f"{model_name} (API Error)")
+    except Exception as alert_err:
+        logger.debug(f"Failed to log system alert or notification: {alert_err}")
+
+
+def is_retryable_exception(e: Exception) -> bool:
+    """Provider-agnostic retry predicate. Non-transient errors (auth, config, quota, keys) are not retried."""
+    try:
         from app.core.pyodbc_connection import get_raw_connection
         from app.modules.admin.services.system_settings_service import get_setting_bool
         with get_raw_connection() as conn:
@@ -119,20 +199,19 @@ def is_retryable_exception(e: Exception) -> bool:
     except Exception as db_err:
         logger.debug(f"Failed to check paused setting in retry predicate: {db_err}")
 
+    is_fatal, _ = _detect_fatal_error(e)
+    if is_fatal:
+        return False
+
     s = str(e)
-    if _is_billing_error(s):
-        return False
     if "rate_limit" in s.lower():
-        return False
-    if any(code in s for code in ("400", "401", "403")):
         return False
     return True
 
 
-
 @retry(
-    wait=wait_exponential(multiplier=2, min=2, max=20),
-    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=1, max=3),
+    stop=stop_after_attempt(2),
     retry=retry_if_exception(is_retryable_exception),
     before_sleep=lambda rs: logger.warning(
         f"LLM API busy. Retrying in {rs.next_action.sleep}s (attempt {rs.attempt_number})"
@@ -214,50 +293,18 @@ def analyze_reviews_batch(reviews: List[Dict[str, Any]]) -> List[Dict[str, Any]]
             if match:
                 model_name = match.group(1)
 
-        try:
-            from app.modules.admin.services.system_alert_logger import (
-                alert_llm_quota_exceeded,
-                alert_llm_api_error,
-                alert_llm_key_missing,
+        is_fatal, reason = _detect_fatal_error(e)
+        if is_fatal:
+            auto_pause_review_processing(
+                reason=reason or "api_error",
+                error_message=err_str,
+                model_name=model_name,
             )
-            if _is_billing_error(err_str):
-                alert_llm_quota_exceeded(err_str[:200], model_name=model_name)
-            elif "No LLM model assigned" in err_str:
-                alert_llm_key_missing(model_name=model_name)
-            else:
-                alert_llm_api_error(err_str[:300], model_name=model_name)
-        except Exception as alert_err:
-            logger.debug(f"Failed to log system alert: {alert_err}")
-
-        # Auto-pause review processing on any billing / quota / credit error
-        if _is_billing_error(err_str):
-            logger.warning("Billing/credit limit detected — auto-pausing review processing.")
+        else:
             try:
-                from app.services.notification_helpers import notify_admin_llm_quota_exceeded
-                notify_admin_llm_quota_exceeded(model_name=model_name)
+                from app.modules.admin.services.system_alert_logger import alert_llm_api_error
+                alert_llm_api_error(err_str[:300], model_name=model_name)
             except Exception:
                 pass
-
-            try:
-                import pyodbc
-                from app.core.db_utils import get_connection_string
-                from app.modules.admin.services.system_settings_service import set_setting
-                with pyodbc.connect(get_connection_string()) as conn:
-                    cursor = conn.cursor()
-                    set_setting(cursor, "review_processing_paused", "true")
-                    set_setting(cursor, "review_processing_pause_reason", "api_limit")
-                    conn.commit()
-                logger.info("Review processing has been PAUSED. Resume from Admin → System Settings.")
-            except Exception as pause_err:
-                logger.error(f"Failed to pause review processing: {pause_err}")
-
-            try:
-                from app.modules.scheduler.services.scheduler_service import scheduler
-                if scheduler.get_job('process_reviews_job'):
-                    scheduler.pause_job('process_reviews_job')
-                    logger.info("Auto-pause: Paused process_reviews_job in scheduler.")
-            except Exception as sched_err:
-                logger.error(f"Failed to pause scheduler job during auto-pause: {sched_err}")
-
 
         raise e

@@ -337,9 +337,6 @@ DB_NAME=your-database
 DB_UID=your-username
 DB_PWD=your-password
 
-# Google Generative AI
-GENAI_KEY=your-gemini-api-key
-
 # Google OAuth
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret

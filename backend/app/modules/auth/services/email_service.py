@@ -12,13 +12,32 @@ Anti-spam best practices applied:
   - Precedence: transactional header
 """
 
+import concurrent.futures
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr, formatdate, make_msgid
-from typing import Optional
+from typing import Callable, Optional
 
-from app.core.config import SMTP_EMAIL, SMTP_PASSWORD, SMTP_HOST, SMTP_PORT, SMTP_FROM_EMAIL
+from app.core.config import (
+    SMTP_EMAIL,
+    SMTP_PASSWORD,
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_TIMEOUT,
+    SMTP_FROM_EMAIL,
+)
+
+# Background executor for non-blocking email dispatches
+_email_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=5,
+    thread_name_prefix="email-sender"
+)
+
+
+def send_in_background(fn: Callable, *args, **kwargs) -> concurrent.futures.Future:
+    """Run an email sending function in a non-blocking background thread."""
+    return _email_executor.submit(fn, *args, **kwargs)
 
 # Sender display name shown in email clients
 SENDER_NAME = "ReviewMate"
@@ -148,16 +167,28 @@ def _build_msg(to_email: str, subject: str, plain: str, html: str) -> MIMEMultip
 
 
 def _send(msg: MIMEMultipart, to_email: str) -> None:
-    """Open SMTP connection and send the message."""
-    server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+    """Open SMTP connection and send the message with strict timeout and SSL/STARTTLS support."""
+    server = None
     try:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
+        if SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT)
+            server.ehlo()
+        else:
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_FROM_EMAIL, [to_email], msg.as_string())
     finally:
-        server.quit()
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                try:
+                    server.close()
+                except Exception:
+                    pass
 
 
 # ── Password Reset ────────────────────────────────────────────────────────────

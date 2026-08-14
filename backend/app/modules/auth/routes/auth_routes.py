@@ -159,10 +159,10 @@ def signup_verify(payload: SignupVerifyModel, response: Response, db: Session = 
         pass
 
     try:
-        from app.modules.auth.services.email_service import send_welcome_email
-        send_welcome_email(user.email, display_name)
+        from app.modules.auth.services.email_service import send_welcome_email, send_in_background
+        send_in_background(send_welcome_email, user.email, display_name)
     except Exception as e:
-        print(f"[welcome-email] ERROR: Failed to send welcome email: {e}")
+        print(f"[welcome-email] ERROR: Failed to enqueue welcome email: {e}")
 
     roles = get_user_role_names(db, user.user_id)
     

@@ -15,7 +15,7 @@ from app.modules.admin.services.broadcasting_service import (
     get_recipient_ids,
 )
 from app.modules.admin.services.system_settings_service import get_system_timezone
-from app.modules.auth.services.email_service import send_broadcast_email
+from app.modules.auth.services.email_service import send_broadcast_email, send_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def _send_emails_for_broadcast(
     for row in rows:
         email = str(row[0]).strip() if row[0] else ""
         if email:
-            send_broadcast_email(email, subject, body, message_type)
+            send_in_background(send_broadcast_email, email, subject, body, message_type)
 
 
 # ── Async entry point ─────────────────────────────────────────────────────────
