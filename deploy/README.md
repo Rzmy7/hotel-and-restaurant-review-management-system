@@ -1,127 +1,75 @@
-# Deployment Guide
+# 🚀 Production Deployment & Infrastructure Guide
 
-## Server Architecture
-
-| Server | Directory | Purpose |
-|--------|-----------|---------|
-| `server1-frontends` | `/opt/reviewmate` | User frontend + Admin frontend (Nginx + SSL) |
-| `server2-backend` | `/opt/reviewmate` | FastAPI backend |
-| `server3-embedding` | `/opt/reviewmate` | Embedding microservice |
-| `server4-scraper` | `/opt/reviewmate` | Scraper engine |
+This guide details the deployment options and automated CI/CD configurations for the **Hotel and Restaurant Review Management System**.
 
 ---
 
-## Prerequisites — First-Time Server Setup
+## 🏗️ Deployment Architecture Options
 
-Each VPS must be provisioned **once** before the CI/CD pipeline can deploy to it.
+### Option 1: Single-VPS Deployment (Docker Compose)
+Best suited for staging, single-node production, or streamlined hosting:
+- **Location**: `deploy/single-vps/`
+- **Containers**: User Frontend, Admin Frontend, FastAPI Backend API, ChromaDB Embedding Microservice, Playwright Scraper Engine, RabbitMQ Broker, Nginx Reverse Proxy, Certbot SSL.
 
-### 1. Install Docker CE (Official)
-
-> ⚠️ **Do NOT use `docker.io` from apt.** It is the unofficial, community-maintained package and is often outdated.
->
-> **Issues with `docker.io`:**
-> - Missing modern features (buildx, Compose v2 plugin)
-> - Can cause build failures and auth problems with GHCR
-> - Slower updates and bug fixes
-> - Incompatible with `docker/build-push-action` used in CI/CD
->
-> **Our workflow requires:**
-> - `docker buildx` — for `docker/build-push-action@v6`
-> - `docker compose` (v2 plugin) — for stack orchestration
-> - GHCR authentication — for pulling private images
-
-Install the **official Docker CE** on each server:
-
+#### Setup Instructions:
 ```bash
-# Install official Docker CE (includes buildx + compose plugin)
+# 1. SSH into VPS and navigate to deployment directory
+cd /opt/reviewmate/deploy/single-vps
+
+# 2. Copy and populate environment variables
+cp .env.example .env
+nano .env
+
+# 3. Build and launch all containers
+docker compose up -d --build
+
+# 4. Bootstrap Let's Encrypt SSL certificates (one-time)
+sudo bash init-ssl.sh
+```
+
+---
+
+### Option 2: Distributed Multi-Server Architecture (4 Dedicated Nodes)
+Designed for high availability, isolated browser workload scaling, and enterprise production environments:
+
+| Node | Deployment Path | Services & Containers | Production Domain |
+|---|---|---|---|
+| **Server 1** — Frontends | `deploy/server1-frontends/` | React User UI, React Admin UI, Nginx Reverse Proxy, Certbot | `reviewmate.live`, `admin.reviewmate.live` |
+| **Server 2** — Backend | `deploy/server2-backend/` | FastAPI Core API, RabbitMQ Publisher, Nginx, Certbot | `api.reviewmate.live` |
+| **Server 3** — Embedding | `deploy/server3-embedding/` | ChromaDB Microservice, SentenceTransformers, Nginx, Certbot | `embed.reviewmate.live` |
+| **Server 4** — Scraper | `deploy/server4-scraper/` | Playwright Engine, RabbitMQ Consumer Worker, Nginx, Certbot | `scrape.reviewmate.live` |
+
+---
+
+## 🛠️ Prerequisites & Node Provisioning
+
+Each production VPS must be prepared before CI/CD deployment:
+
+### 1. Install Official Docker CE
+```bash
 curl -fsSL https://get.docker.com | sh
-
-# Add your deploy user to the docker group (replace <username> with your actual user)
-sudo usermod -aG docker <username>
-
-# Log out and back in for group changes to take effect, then verify:
-docker --version          # Docker CE 27.x+
-docker buildx version    # bundled with Docker CE
-docker compose version   # Compose v2 plugin
+sudo usermod -aG docker $USER
 ```
 
-### 2. Create the deployment directory
+### 2. Configure GitHub Secrets for CI/CD
+In your GitHub repository under **Settings → Secrets and variables → Actions**, configure:
 
-> The CI/CD pipeline auto-creates this directory (`mkdir -p`), but you can also create it manually:
-
-```bash
-sudo mkdir -p /opt/reviewmate
-sudo chown <username>:<username> /opt/reviewmate
-```
-
-### 3. Ensure SSH access
-
-The GitHub Actions workflow uses `appleboy/ssh-action` to SSH into each server. Make sure:
-
-- The deploy user exists and matches the `USER` secret in GitHub
-- The SSH key (`SSH_KEY` secret) is added to `~/.ssh/authorized_keys` on the server
-- Port 22 is open in the firewall
+| Secret / Variable | Description |
+|---|---|
+| `SSH_KEY` | Private SSH key for accessing deployment servers |
+| `USER` | SSH deployment username on remote servers |
+| `FRONTEND_HOST` | IPv4 / Hostname of Server 1 (Frontends) |
+| `BACKEND_HOST` | IPv4 / Hostname of Server 2 (Backend API) |
+| `EMBEDDING_HOST` | IPv4 / Hostname of Server 3 (Embedding Service) |
+| `SCRAPING_HOST` | IPv4 / Hostname of Server 4 (Scraper Engine) |
+| `GHCR_TOKEN` | Personal Access Token (`read:packages`) for image pulls |
+| `INTERNAL_API_KEY` | Shared secret for inter-service authentication |
 
 ---
 
-## GitHub Secrets Required
+## 🔄 Automated CI/CD Workflow (`.github/workflows/deploy.yml`)
 
-| Secret | Description |
-|--------|-------------|
-| `SSH_KEY` | Private SSH key for server access |
-| `USER` | SSH username on all servers |
-| `FRONTEND_HOST` | IP/hostname of server1 (frontends) |
-| `BACKEND_HOST` | IP/hostname of server2 (backend) |
-| `EMBEDDING_HOST` | IP/hostname of server3 (embedding) |
-| `SCRAPING_HOST` | IP/hostname of server4 (scraper) |
-| `GITHUB_TOKEN` | Auto-provided by GitHub Actions |
-| `GHCR_TOKEN` | PAT for pulling images and raw files from private repo |
-| `INTERNAL_API_KEY` | API key for inter-service communication |
-
----
-
-## Switching Between Self-Hosted and GitHub-Hosted Runners
-
-In `.github/workflows/deploy.yml`, change the `runs-on` value for each job:
-
-```yaml
-# Self-hosted runner
-runs-on: self-hosted
-
-# GitHub-hosted runner
-runs-on: ubuntu-latest
-```
-
-> **Note:** When using self-hosted runners, make sure Docker CE is installed on the runner machine as well (the build jobs need Docker + buildx to build and push images).
-
----
-
-## CI/CD Pipeline Overview
-
-```
-Push to dev/main
-      │
-      ▼
-┌─────────────┐
-│ Detect       │  ← Checks which components changed
-│ Changes      │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│ Test Jobs    │  ← Runs unit/integration tests per component
-│ (parallel)   │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│ Build Jobs   │  ← Builds Docker images, pushes to GHCR
-│ (parallel)   │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│ Deploy Jobs  │  ← SSHs into VPS, pulls images, starts stack
-│ (parallel)   │
-└─────────────┘
-```
+The deployment pipeline is orchestrated via **GitHub Actions**:
+1. **Path-Based Change Detection**: Analyzes commit diffs using `dorny/paths-filter`. Only modified services trigger build and deployment tasks.
+2. **Container Packaging**: Multi-stage Docker builds push tagged images to **GitHub Container Registry (GHCR)** (`ghcr.io/rzmy7/...`).
+3. **SSH Remote Deployment**: Executes zero-downtime rolling `docker compose pull` and `docker compose up -d` on the appropriate target servers.

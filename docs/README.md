@@ -1,207 +1,49 @@
-# 📚 System Documentation
+# 📚 System Architecture & Engineering Documentation
 
-Welcome to the official documentation for the **Hotel and Restaurant Review Management & Analysis System**. This directory contains architectural blueprints, database schemas, and technical specifications for the entire platform.
-
----
-
-## 🗺️ Documentation Contents
-
-### 🏗️ Architecture Diagrams
-
-Visual representations of the system's component interaction and data flow.
-
-**Location**: [`Architecture diagrams/`](./Architecture%20diagrams/)
-
-| Diagram | Description |
-|---------|-------------|
-| **Component Overview** | High-level system architecture and service relationships |
-| **Data Flow Diagram** | Review data pipeline from scraping to visualization |
-| **Deployment Architecture** | Production deployment topology and networking |
-| **Service Communication** | Inter-service API contracts and callback mechanisms |
+Welcome to the central technical documentation repository for the **Hotel and Restaurant Review Management & Analysis System**. This directory contains architectural blueprints, Architecture Decision Records (ADRs), security guidelines, and entity-relationship models.
 
 ---
 
-### 🗄️ Database Design
-
-Detailed Entity-Relationship (ER) diagrams for the MS SQL Server database.
-
-**Location**: [`ER diagrams/`](./ER%20diagrams/)
-
-| Diagram | Description |
-|---------|-------------|
-| **User & Auth Schema** | Users, roles, organizations, and permissions |
-| **Groups & Collaboration** | Group membership and access control |
-| **Reviews Core Schema** | Central review records and source management |
-| **Platform-Specific Reviews** | Agoda, Booking, Google, TripAdvisor subtypes |
-| **Analytics & Sentiment** | Sentiment scores, themes, and AI summaries |
-| **Audit & System Logs** | System-wide audit trail and event logging |
-
-#### Key Tables Overview
+## 🗺️ Documentation Directory Map
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    DATABASE SCHEMA                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │    users     │  │   roles      │  │ organizations│      │
-│  │──────────────│  │──────────────│  │──────────────│      │
-│  │ id           │  │ id           │  │ id           │      │
-│  │ email        │  │ name         │  │ name         │      │
-│  │ password_hash│  │ permissions  │  │ settings     │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   sources    │──│   reviews    │──│sentiment_scores│    │
-│  │──────────────│  │──────────────│  │──────────────│      │
-│  │ id (UUID)    │  │ id           │  │ id           │      │
-│  │ url          │  │ source_id    │  │ review_id    │      │
-│  │ platform     │  │ rating       │  │ score        │      │
-│  └──────────────┘  │ comment      │  │ themes       │      │
-│                    └──────────────┘  └──────────────┘      │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  audit_log   │  │   sessions   │  │    groups    │      │
-│  │──────────────│  │──────────────│  │──────────────│      │
-│  │ id           │  │ id           │  │ id           │      │
-│  │ timestamp    │  │ user_id      │  │ name         │      │
-│  │ endpoint     │  │ token        │  │ settings     │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+docs/
+├── adr/                                # Architecture Decision Records (ADRs)
+│   ├── 0001-receiver-owned-api-keys.md  # Policy for external LLM key management
+│   ├── 0002-secure-httponly-cookie-jwt-auth.md # Cookie-based token isolation against XSS
+│   └── 0003-sliding-sessions.md        # Session lifetime and sliding window refresh model
+├── security/                           # Application Security & Threat Mitigation
+│   └── authentication_guide.md         # Comprehensive auth & RBAC implementation guide
+├── ER diagrams/                        # Relational Database Schema & Data Dictionaries
+├── Architecture diagrams/              # Microservice Interaction & Sequence Flowcharts
+└── technical_debt_backlog.md           # Engineering enhancements and backlog tracking
 ```
-
----
-
-### 📐 UML Specifications
-
-Standardized modeling of system behavior and class structures.
-
-**Location**: [`UML diagrams/`](./UML%20diagrams/) *(if available)*
-
-| Diagram | Description |
-|---------|-------------|
-| **Use Case Diagram** | User interactions and system functionality |
-| **Class Diagram** | Object-oriented structure and relationships |
-| **Sequence Diagram** | Temporal flow of operations and API calls |
-| **State Machine Diagram** | Object lifecycle and state transitions |
-| **Activity Diagram** | Business process workflows |
-
----
-
-## 📋 API Documentation
-
-### Backend API (Port 8000)
-
-**Interactive Documentation**: http://localhost:8000/docs
-
-| Category | Endpoints |
-|----------|-----------|
-| **Health** | `GET /`, `GET /health`, `GET /db-test` |
-| **Auth** | `POST /auth/login`, `POST /auth/signup`, `GET /oauth/google` |
-| **Reviews** | `GET /api/reviews`, `GET /api/reviews/{id}` |
-| **Dashboard** | `GET /api/dashboard`, `GET /api/dashboard/kpis` |
-| **Admin** | `CRUD /api/admin/users`, `CRUD /api/admin/organizations` |
-| **Groups** | `CRUD /api/groups`, `CRUD /api/groups/{id}/members` |
-
-### Scraper Engine API (Port 8001)
-
-**Interactive Documentation**: http://localhost:8001/docs
-
-| Category | Endpoints |
-|----------|-----------|
-| **Scrapers** | `POST /api/{platform}/scrape` |
-| **Data** | `GET /api/reviews`, `GET /api/sources` |
-| **System** | `GET /api/system/health`, `GET /api/system/jobs` |
-| **Admin** | `POST /api/db/vacuum`, `GET /api/db/stats` |
-
-### Embedding Service API (Port 8001)
-
-| Category | Endpoints |
-|----------|-----------|
-| **Embeddings** | `POST /embed/batch`, `POST /embed/single` |
-| **Search** | `POST /search` |
-| **Config** | `PUT /model`, `PUT /api-settings` |
-
 
 ---
 
 ## 🏛️ Architecture Decision Records (ADRs)
 
-We follow the ADR pattern to document key architectural choices, technical constraints, and long-term tech decisions:
-
-*   **[ADR 0001: Receiver-Owned API Keys](./adr/0001-receiver-owned-api-keys.md)** — Architectural design of our inter-service token validations.
-*   **[ADR 0002: Secure HttpOnly Cookie JWT Auth](./adr/0002-secure-httponly-cookie-jwt-auth.md)** — Transition from insecure client-side `localStorage` tokens to secure, backend-managed, HttpOnly cookies.
-*   **[ADR 0003: Sliding Sessions](./adr/0003-sliding-sessions.md)** — High-performance, O(1), stateless automatic session extension for active users.
-
----
-
-## 🔒 Security Specifications
-
-*   **[Authentication Security Guide](./security/authentication_guide.md)** — Comprehensive threat model, cookie matrices, security mitigations, and sliding sessions UML/Mermaid flows.
+| ADR Reference | Decision Summary & Context |
+|---|---|
+| **[ADR 0001: Receiver-Owned API Keys](adr/0001-receiver-owned-api-keys.md)** | Standardizes system-level API key management with tenant-specific overrides for external LLM providers (Gemini, OpenAI, Qwen, DeepSeek). |
+| **[ADR 0002: HttpOnly Cookie JWT Authentication](adr/0002-secure-httponly-cookie-jwt-auth.md)** | Transitioned from `localStorage` bearer tokens to encrypted `HttpOnly`, `SameSite=Strict` cookies to completely eliminate token exfiltration via client-side XSS. |
+| **[ADR 0003: Sliding Sessions](adr/0003-sliding-sessions.md)** | Implements a sliding window session renewal mechanism that refreshes JWT claims on active requests while enforcing maximum hard session timeouts. |
 
 ---
 
-## 📝 Documenting New Features
+## 🔐 Security & Threat Mitigation Guidelines
 
-
-When adding new services or modifying existing architecture, please ensure documentation is updated accordingly:
-
-### 1. Draft Diagrams
-
-Use tools like:
-- **Mermaid.js** - Markdown-native diagramming
-- **Draw.io** - Free online diagram editor
-- **Lucidchart** - Professional diagramming
-- **PlantUML** - Text-based UML
-
-### 2. Export Files
-
-- **Format**: High-resolution PNG or SVG
-- **Naming**: Use descriptive, kebab-case names
-- **Versioning**: Include version numbers for evolving diagrams
-
-### 3. Commit Documentation
-
-```bash
-git add docs/Architecture\ diagrams/new-diagram.png
-git commit -m "docs: add component interaction diagram"
-```
-
-### 4. Update Index
-
-Update this README if:
-- A new category is created
-- New diagrams are added to existing categories
-- Diagrams are deprecated or replaced
+Detailed security practices are documented in **[`docs/security/authentication_guide.md`](security/authentication_guide.md)**:
+- **Authentication Flow**: Credential validation, Bcrypt password hashing (work factor 12), and JWT claim issuance.
+- **Inter-Service Security**: Secret key tokens (`X-Internal-API-Key`) protecting communication between FastAPI backend, Playwright scraper engine, and ChromaDB vector microservice.
+- **Role-Based Access Control (RBAC)**: Fine-grained middleware authorization for `PLATFORM_ADMIN`, `GROUP_ADMIN`, `GROUP_MANAGER`, and `GROUP_MEMBER`.
 
 ---
 
-## 🔗 Quick Links
+## 🗄️ Relational Database & Entity Relationship Model
 
-| Resource | Location |
-|----------|----------|
-| **Root README** | [`../README.md`](../README.md) |
-| **Backend Docs** | [`../backend/README.md`](../backend/README.md) |
-| **Frontend Docs** | [`../frontend/README.md`](../frontend/README.md) |
-| **Admin Docs** | [`../admin-frontend/README.md`](../admin-frontend/README.md) |
-| **Embedding Service** | [`../microservices/embedding-service/readme.md`](../microservices/embedding-service/readme.md) |
-| **API Calls Reference** | [`../API_CALLS.md`](../API_CALLS.md) |
-| **Monitoring API** | [`../admin-frontend/MONITORING_API.md`](../admin-frontend/MONITORING_API.md) |
-| **Scraper Engine** | [`../microservices/scraper_engine/README.md`](../microservices/scraper_engine/README.md) |
-
----
-
-## 📞 Support
-
-For questions about system architecture or documentation:
-
-1. Check relevant component README
-2. Review ER diagrams for database questions
-3. Consult API documentation at `/docs` endpoints
-4. Open an issue in the project repository
-
----
-
-**License**: Private / Proprietary  
-© 2026 Hotel & Restaurant Review Management System
+The central persistence engine is Microsoft SQL Server managed through SQLAlchemy 2.0. Core entity domains include:
+1. **Tenants & Users**: `organizations`, `users`, `roles`, `groups`, `group_memberships`.
+2. **Sources & Reviews**: `sources`, `reviews`, `review_aspects`, `sentiment_scores`, `review_replies`.
+3. **AI & Vector Mapping**: `hotel_rules`, `vector_sync_logs`, `llm_gateway_configs`.
+4. **Operations & Auditing**: `audit_logs`, `broadcasts`, `system_alerts`, `scheduler_jobs`.

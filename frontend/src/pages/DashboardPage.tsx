@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DashboardTemplate } from '../components/dashboard/templates/DashboardTemplate';
 
 const DashboardPage: React.FC = () => {
-  const [period, setPeriod] = useState<number>(0); // 0 = All Time (default)
+  const [period, setPeriod] = useState<number>(30); // 30 = Last 30 Days (default)
 
   return (
     <DashboardTemplate 

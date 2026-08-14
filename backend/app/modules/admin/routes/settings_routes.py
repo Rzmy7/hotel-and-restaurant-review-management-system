@@ -329,10 +329,6 @@ def update_admin_profile(payload: AdminProfileUpdatePayload, current_user: dict 
     if not name_value:
         raise HTTPException(status_code=400, detail="Name cannot be empty")
 
-    email_value = payload.email.strip().lower()
-    if not email_value:
-        raise HTTPException(status_code=400, detail="Email cannot be empty")
-
     try:
         with pyodbc.connect(get_connection_string()) as connection:
             cursor = connection.cursor()
@@ -341,18 +337,8 @@ def update_admin_profile(payload: AdminProfileUpdatePayload, current_user: dict 
             user_id = row[0]
             current_email = str(row[1] or "").strip().lower()
 
-            if email_value != current_email:
-                cursor.execute("SELECT COUNT(*) FROM dbo.[user] WHERE LOWER(email) = ? AND user_id != ?", email_value, user_id)
-                if cursor.fetchone()[0] > 0:
-                    raise HTTPException(status_code=400, detail="Email already in use by another account")
-
             set_clauses: list[str] = []
             params: list = []
-
-            # Update email if supported
-            if "email" in columns:
-                set_clauses.append("email = ?")
-                params.append(email_value)
 
             if "first_name" in columns:
                 first_name, last_name = _split_name(name_value)
@@ -386,10 +372,10 @@ def update_admin_profile(payload: AdminProfileUpdatePayload, current_user: dict 
             log_admin_activity(
                 "settings_updated",
                 "Admin Profile Updated",
-                f"Name changed to '{name_value}', email changed to '{email_value}'" if email_value != current_email else f"Name changed to '{name_value}'",
+                f"Name changed to '{name_value}'",
             )
 
-            return AdminProfileResponse(name=name_value, email=email_value)
+            return AdminProfileResponse(name=name_value, email=current_email)
     except HTTPException:
         raise
     except Exception as exc:

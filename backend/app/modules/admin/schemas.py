@@ -303,7 +303,7 @@ class AdminProfileResponse(BaseModel):
 
 class AdminProfileUpdatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    email: EmailStr
+    email: Optional[EmailStr] = None
 
 
 class AdminPasswordChangePayload(BaseModel):

@@ -2,7 +2,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { dashboardService } from '../services/dashboardService';
 
-export const useAIInsights = (period: number = 0) => {
+export const useAIInsights = (period: number = 30) => {
     const currentOrg = useOrganizationStore(state => state.currentOrg);
 
     const { data, isLoading, isFetching, error, refetch } = useQuery({

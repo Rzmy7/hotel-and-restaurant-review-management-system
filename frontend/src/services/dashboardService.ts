@@ -5,9 +5,9 @@ class DashboardService {
     /**
      * Fetches the dashboard summary metrics, charts, and insights.
      * @param orgId - Organization ID
-     * @param period - Number of days for the date range. 0 = all time.
+     * @param period - Number of days for the date range (e.g. 30 = last 30 days, 0 = all time).
      */
-    async getDashboardSummary(orgId: string, period: number = 0): Promise<DashboardResponse> {
+    async getDashboardSummary(orgId: string, period: number = 30): Promise<DashboardResponse> {
         const response = await apiClient.get<DashboardResponse>(
             `/api/organizations/${orgId}/dashboard`,
             { period }
@@ -18,7 +18,7 @@ class DashboardService {
     /**
      * Fetches granular KPI metrics and rating distribution.
      */
-    async getKPIs(orgId: string, period: number = 0): Promise<DashboardResponse['metrics']> {
+    async getKPIs(orgId: string, period: number = 30): Promise<DashboardResponse['metrics']> {
         return await apiClient.get<DashboardResponse['metrics']>(
             `/api/organizations/${orgId}/dashboard-granular/kpis`,
             { period }
@@ -37,7 +37,7 @@ class DashboardService {
     /**
      * Fetches latest 5 reviews with structured metadata.
      */
-    async getLatestReviews(orgId: string, period: number = 0): Promise<Review[]> {
+    async getLatestReviews(orgId: string, period: number = 30): Promise<Review[]> {
         return await apiClient.get<Review[]>(
             `/api/organizations/${orgId}/dashboard-granular/reviews/latest`,
             { period }
@@ -47,7 +47,7 @@ class DashboardService {
     /**
      * Fetches and extracts sentiment distribution.
      */
-    async getSentimentDistribution(orgId: string, period: number = 0): Promise<SentimentDistribution> {
+    async getSentimentDistribution(orgId: string, period: number = 30): Promise<SentimentDistribution> {
         return await apiClient.get<SentimentDistribution>(
             `/api/organizations/${orgId}/dashboard-granular/charts/sentiment`,
             { period }
@@ -57,7 +57,7 @@ class DashboardService {
     /**
      * Fetches and extracts daily and weekly review trends.
      */
-    async getTrends(orgId: string, period: number = 0): Promise<{ reviewsOverTime: ChartDataPoint[]; sentimentTrends: ChartDataPoint[] }> {
+    async getTrends(orgId: string, period: number = 30): Promise<{ reviewsOverTime: ChartDataPoint[]; sentimentTrends: ChartDataPoint[] }> {
         return await apiClient.get<{ reviewsOverTime: ChartDataPoint[]; sentimentTrends: ChartDataPoint[] }>(
             `/api/organizations/${orgId}/dashboard-granular/charts/trends`,
             { period }
@@ -67,7 +67,7 @@ class DashboardService {
     /**
      * Fetches and extracts category performance metrics.
      */
-    async getCategoryPerformance(orgId: string, period: number = 0): Promise<CategoryPerformanceItem[]> {
+    async getCategoryPerformance(orgId: string, period: number = 30): Promise<CategoryPerformanceItem[]> {
         return await apiClient.get<CategoryPerformanceItem[]>(
             `/api/organizations/${orgId}/dashboard-granular/category-performance`,
             { period }
@@ -77,7 +77,7 @@ class DashboardService {
     /**
      * Fetches and extracts AI insights (strengths, issues, highlights).
      */
-    async getAIInsights(orgId: string, period: number = 0): Promise<AIInsightsData> {
+    async getAIInsights(orgId: string, period: number = 30): Promise<AIInsightsData> {
         return await apiClient.get<AIInsightsData>(
             `/api/organizations/${orgId}/dashboard-granular/ai-insights`,
             { period }
@@ -87,7 +87,7 @@ class DashboardService {
     /**
      * Fetches and extracts source comparison metrics.
      */
-    async getSourceComparison(orgId: string, period: number = 0): Promise<SourceData[]> {
+    async getSourceComparison(orgId: string, period: number = 30): Promise<SourceData[]> {
         return await apiClient.get<SourceData[]>(
             `/api/organizations/${orgId}/dashboard-granular/source-comparison`,
             { period }

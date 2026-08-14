@@ -1,611 +1,267 @@
 # 🏨 Hotel and Restaurant Review Management & Analysis System
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![React](https://img.shields.io/badge/Frontend-React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS_3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![MSSQL](https://img.shields.io/badge/Database-MS%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
+[![RabbitMQ](https://img.shields.io/badge/Message_Queue-RabbitMQ-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
+[![ChromaDB](https://img.shields.io/badge/Vector_DB-ChromaDB-FFD700?style=for-the-badge&logo=python&logoColor=black)](https://www.trychroma.com/)
 [![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/features/actions)
 
+---
+
 ## 📌 Project Overview
 
-The **Hotel and Restaurant Review Management & Analysis System** is a sophisticated, full-stack enterprise solution designed to revolutionize how hospitality businesses handle customer feedback. By integrating advanced web scraping, AI-powered sentiment analysis, and interactive data visualization, the system provides actionable insights to improve service quality and reputation.
+The **Hotel and Restaurant Review Management & Analysis System** is an enterprise-grade, full-stack intelligence platform engineered to revolutionize how hospitality organizations aggregate, analyze, and act upon customer feedback.
 
-The platform aggregates data from major travel platforms like **Booking.com**, **Agoda**, **Google Maps**, and **TripAdvisor**, processes it using state-of-the-art LLMs (**Google Gemini**), and presents it through intuitive dashboards for both end-users and administrators.
+The platform continuously aggregates guest reviews across major global travel platforms (**Booking.com**, **Agoda**, **Google Maps**, and **TripAdvisor**), normalizes heterogeneous metadata, performs aspect-based sentiment analysis and semantic vector indexing, generates context-grounded AI responses (via **OpenAI**, **Google Gemini**, **Qwen**, and **DeepSeek** models using Retrieval-Augmented Generation / SOP injection), and delivers comparative competitive intelligence through modern React 19 portals for business tenants and platform administrators.
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture & Service Topology
 
-The system is built on a **Domain-Driven Modular Monolith** architecture with microservices for specialized tasks:
+The system is architected as a **Domain-Driven Modular Monolith** coupled with specialized high-performance microservices and asynchronous message brokering:
 
-| Component | Technology | Port | Description |
-|-----------|------------|------|-------------|
-| **Backend API** | FastAPI + SQLAlchemy | 8000 | Core API, auth, scraping orchestration (RabbitMQ Publisher) |
-| **User Frontend** | React 19 + Vite + TypeScript | 5173 | Customer-facing dashboard for review analytics (DB Polling) |
-| **Admin Frontend** | React 19 + Vite + TypeScript | 5174 | System management, scraper control, monitoring |
-| **Embedding Service** | FastAPI + ChromaDB | 8001/8002 | Semantic search & vector embeddings (Dockerized) |
-| **Scraper Engine** | FastAPI + Playwright | 8001 | Multi-platform review scraping & background RabbitMQ Consumer |
-| **RabbitMQ Broker** | RabbitMQ Message Queue | 5672 (15672 Admin) | Asynchronous task queue & job dispatch broker (local/CloudAMQP) |
-
+| Component | Technology | Default Port | Description |
+|---|---|---|---|
+| **Backend API** | FastAPI + SQLAlchemy 2.0 + Pydantic v2 | `8000` | Core API, multi-tenant RBAC, LLM Gateway, RabbitMQ job publisher |
+| **User Frontend** | React 19 + TypeScript + Vite + Tailwind CSS | `5173` | Tenant dashboard for review analytics, aspect insights, AI replies & competitor tracking |
+| **Admin Frontend** | React 19 + TypeScript + Vite + Tailwind CSS | `5174` | Platform administration, scraper orchestration, LLM settings, broadcasting & monitoring |
+| **Embedding Service** | FastAPI + ChromaDB + SentenceTransformers | `8001` / `8002` | Local dense vector embeddings (`all-MiniLM-L6-v2`) and semantic search |
+| **Scraper Engine** | FastAPI + Playwright (Headless Chromium) | `8001` | Multi-platform scraper worker, trait deduplication, and RabbitMQ consumer |
+| **RabbitMQ Broker** | RabbitMQ AMQP Broker | `5672` (Web UI: `15672`) | Asynchronous distributed queue for scraping jobs and event dispatching |
+| **Relational Database** | Microsoft SQL Server (ODBC Driver 18) | `1433` | ACID-compliant relational data store with SQLAlchemy ORM |
 
 ```
 hotel-and-restaurant-review-management-system/
-├── backend/                        # FastAPI backend (Domain-Driven Design)
+├── backend/                        # FastAPI Core Backend (Domain-Driven Design)
 │   ├── app/
-│   │   ├── main.py                 # API entry point & router registration
-│   │   ├── core/                   # Config, database, security, dependencies
-│   │   ├── middleware/             # Auth guards, permission checks
-│   │   ├── modules/                # Business domains (admin, auth, reviews, etc.)
-│   │   ├── repositories/           # Data access layer
-│   │   ├── schemas/                # Pydantic models
-│   │   └── services/               # Business logic services
-│   ├── tests/                      # Integration & connectivity tests
+│   │   ├── core/                   # Config, database engine, security, dependencies
+│   │   ├── middleware/             # Cookie auth guards, permission checks, internal API auth
+│   │   ├── modules/                # Encapsulated Business Domains:
+│   │   │   ├── admin/              # User/Org admin, broadcasting, LLM config, subscriptions
+│   │   │   ├── auth/               # HttpOnly JWT auth, OAuth (Google), sliding sessions
+│   │   │   ├── competitors/        # Competitor tracking, scraping pipeline, comparative analytics
+│   │   │   ├── dashboard/          # Unified & granular KPIs, trends, metrics aggregation
+│   │   │   ├── groups/             # Tenant group hierarchy & member role management
+│   │   │   ├── ml/                 # Machine learning endpoints (aspect analysis & reply generation)
+│   │   │   ├── organization/       # Multi-tenant onboarding, rules/SOP management
+│   │   │   ├── reviews/            # Reviews ingestion, deduplication, sentiment analysis
+│   │   │   ├── scheduler/          # APScheduler background tasks, reconciliation & sync
+│   │   │   ├── source/             # Review source management & embedding synchronization
+│   │   │   └── user/               # User profiles and preferences
+│   │   └── services/               # Shared services (LLM Gateway, Broadcasting, Notifications)
 │   ├── requirements.txt            # Python dependencies
-│   └── .env.example                # Environment template
+│   └── .env.example                # Backend environment template
 │
-├── frontend/                       # User Insight Dashboard
+├── frontend/                       # Tenant User Insight Dashboard
 │   ├── src/
-│   │   ├── api/                    # API wrappers (Axios)
-│   │   ├── components/             # Reusable UI components
-│   │   ├── contexts/               # React Context providers
-│   │   ├── pages/                  # Route components
-│   │   ├── services/               # Business logic layer
-│   │   ├── stores/                 # Zustand state management
-│   │   └── types/                  # TypeScript definitions
+│   │   ├── api/                    # Axios API client with automatic token refreshing
+│   │   ├── components/             # Reusable UI components & aspect visualization charts
+│   │   ├── contexts/               # Theme and Auth context providers
+│   │   ├── pages/                  # Dashboard, Reviews, Insights, Competitors, Settings, Groups
+│   │   ├── services/               # Frontend service layer
+│   │   ├── stores/                 # Zustand state management stores
+│   │   └── types/                  # Strict TypeScript definitions
 │   ├── package.json
 │   └── vite.config.ts
 │
 ├── admin-frontend/                 # System Administration Panel
 │   ├── src/
-│   │   ├── components/             # Admin UI components
-│   │   ├── layouts/                # Dashboard layouts
-│   │   ├── pages/                  # Management views
-│   │   ├── services/               # API service layer
-│   │   └── types.ts                # Type definitions
+│   │   ├── components/             # Admin data tables, system health gauges, broadcasting editor
+│   │   ├── pages/                  # Monitoring, Users, Orgs, Scraping, Embeddings, LLMs, Flags
+│   │   ├── services/               # Admin API service layer
+│   │   └── types.ts                # Administrative TypeScript interfaces
 │   ├── package.json
 │   └── vite.config.ts
 │
 ├── microservices/
-│   ├── embedding-service/          # Vector search & semantic embeddings
-│   │   ├── app/
-│   │   ├── Dockerfile
+│   ├── embedding-service/          # Vector search & semantic embeddings (ChromaDB)
+│   │   ├── app/                    # Chroma client, sentence transformer, batch embedding routes
+│   │   ├── Dockerfile              # Container definition with pre-warmed MiniLM cache
 │   │   └── requirements.txt
-│   └── scraper_engine/             # Multi-platform scraping microservice
-│       ├── api/                    # FastAPI endpoints
-│       ├── platforms/              # Platform-specific scrapers
-│       │   ├── agoda/
-│       │   ├── booking/
-│       │   ├── google/
-│       │   └── tripadvisor/
-│       ├── core/                   # Config, database, utils
+│   └── scraper_engine/             # Universal reviews scraper microservice
+│       ├── api/                    # Scraper REST endpoints and health diagnostics
+│       ├── core/                   # RabbitMQ consumer, ThreadPool scrape pool, deduplication
+│       ├── platforms/              # Platform-specific Playwright engines:
+│       │   ├── agoda/              # Agoda scraper & URL resolver
+│       │   ├── booking/            # Booking.com scraper & URL resolver
+│       │   ├── google/             # Google Maps scraper & authentication logic
+│       │   └── tripadvisor/        # TripAdvisor scraper & URL resolver
+│       ├── Dockerfile              # Container definition with Playwright & Chromium
 │       └── requirements.txt
 │
-└── docs/                           # Architecture diagrams, ER diagrams, UML
+├── deploy/                         # Production deployment configurations
+│   ├── server1-frontends/          # Frontends reverse proxy (Nginx + SSL Certbot)
+│   ├── server2-backend/            # Backend API container & Nginx reverse proxy
+│   ├── server3-embedding/          # ChromaDB Embedding container & Nginx proxy
+│   ├── server4-scraper/            # Playwright Scraper container & Nginx proxy
+│   └── single-vps/                 # Unified single-server docker-compose deployment
+│
+└── docs/                           # Architectural blueprints, ER diagrams, UML, ADRs
 ```
 
 ---
 
-## ✨ Key Features
+## ✨ Key System Capabilities
 
-### Backend
-- **🌐 Domain-Driven Design**: Modular architecture with clear business boundaries
-- **🕷️ Web Scraping**: Playwright-based scraping engine for multiple platforms
-- **🤖 AI Integration**: Google Gemini for sentiment analysis and summarization
-- **🔐 Authentication**: JWT-based auth with OAuth (Google) support
-- **👥 RBAC**: Role-based access control (System & Group levels)
-- **⏰ Scheduler**: APScheduler for background tasks
-- **🏥 Health Monitoring**: Real-time system diagnostics
+### 1. Robust Multi-Platform Review Aggregation
+- **Playwright Automation**: Headless browser scraping capable of bypassing dynamic SPAs and anti-bot measures across **Google Maps**, **TripAdvisor**, **Booking.com**, and **Agoda**.
+- **Asynchronous Message Queueing**: RabbitMQ broker decouples scraper jobs from the backend API, allowing distributed job scheduling, rate limiting, and fault tolerance.
+- **Deep Trait Deduplication**: Normalizes review IDs, author hashes, timestamps, and texts to prevent duplicate records across recurring scraping runs.
 
-### Frontend (User Dashboard)
-- **📊 Performance Overview**: Sentiment trends and KPI charts (Recharts)
-- **📑 Review Management**: Filterable review lists with sentiment highlighting
-- **🧠 AI Summaries**: Quick-read summaries of review clusters
-- **🎨 Type-Safe**: Comprehensive TypeScript definitions
-- **🔄 State Management**: Zustand for global state
+### 2. Multi-Model AI & LLM Gateway
+- **Provider-Agnostic LLM Gateway**: Seamlessly routes prompts across **Google Gemini**, **OpenAI GPT-4o**, **Qwen**, and **DeepSeek** with automatic fallback handling.
+- **Aspect-Based Sentiment Analysis**: Extracts granular sentiment (positive, neutral, negative) and rating scores across dimensions like *Cleanliness*, *Service*, *Location*, *Value*, and *Amenities*.
+- **Retrieval-Augmented Response Generation (RAG)**: Retrieves relevant hotel SOPs and organizational rules from ChromaDB to craft empathetic, policy-compliant draft replies for management approval.
 
-### Admin Panel
-- **🎛️ Scraper Orchestration**: Trigger and monitor scraping jobs
-- **📈 System Health**: CPU, RAM, and database status visualization
-- **⚙️ Configuration Management**: API keys and system settings
-- **🔍 Review Oversight**: Quality control for processed reviews
+### 3. Semantic Vector Search & SOP Grounding
+- **Local Dense Embeddings**: Generates 384-dimensional dense vectors using `sentence-transformers/all-MiniLM-L6-v2` with zero external API fees and sub-15ms embedding times.
+- **ChromaDB Vector Store**: Persists vector embeddings for fast cosine similarity semantic queries over review datasets and property policies.
 
-### Embedding Service
-- **🔍 Semantic Search**: Vector-based review search with filtering
-- **🔄 Model Switching**: Toggle between Gemini (cloud) and MiniLM (local)
-- **📦 Batch Processing**: High-performance embedding generation
-- **🐳 Dockerized**: Ready for containerized deployment
+### 4. Enterprise Security & Multi-Tenancy
+- **Secure HttpOnly Cookie Authentication**: Mitigates XSS vulnerabilities by storing JWT access tokens in encrypted, `HttpOnly`, `SameSite=Strict` cookies.
+- **Sliding Session Renewal**: Auto-renews active user sessions transparently while enforcing strict absolute session lifetimes.
+- **Role-Based Access Control (RBAC)**: Enforces tenant-level boundaries across **Platform Admin**, **Group Admin**, **Group Manager**, and **Group Member** roles.
 
-- **Scraper Engine**
-- **🌍 Multi-Platform**: Agoda, Booking.com, Google Maps, TripAdvisor
-- **🛡️ High Reliability**: Individual review savepoints with a 3-attempt retry logic
-- **🚀 Verified Batching**: Real-time progress updates and crash resilience
-- **🔗 Unified API**: Consistent data format across all sources
-- **📝 Audit Logging**: System-wide API call tracking
-- **🔄 Scalable Ingestion**: Asynchronous pagination support for sources with 5,000+ reviews
-- **📣 Callback Mechanism**: Automatic backend notification on completion
+### 5. Competitive Intelligence & Benchmarking
+- **Competitor Tracking**: Ingests competitor property reviews from configured platforms.
+- **AI Comparative Analytics**: Benchmarks property scores, aspect strengths/weaknesses, and guest sentiment velocity against market rivals.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| **Backend Framework** | FastAPI, SQLAlchemy 2.0, Playwright |
-| **AI/ML** | Google GenAI (Gemini), ChromaDB, SentenceTransformers |
-| **Frontend** | React 19, TypeScript 5.9, Vite 7 |
-| **Styling** | TailwindCSS, Lucide React, Recharts |
-| **State Management** | Zustand, React Query, Context API |
-| **Database** | Microsoft SQL Server (ODBC Driver 18) |
-| **Vector Store** | ChromaDB |
-| **Security** | JWT, Bcrypt, Authlib, Python-JOSE |
-| **Containerization** | Docker |
-| **CI/CD** | GitHub Actions, GHCR, SSH Deployment |
+| Domain | Technology / Library | Description |
+|---|---|---|
+| **Backend Core** | Python 3.11+, FastAPI, Pydantic v2 | High-throughput asynchronous REST API framework |
+| **ORM & Data Layer** | SQLAlchemy 2.0, PyODBC, MS SQL Server | Relational persistence with connection pooling |
+| **Message Broker** | RabbitMQ (pika / aio_pika) | Asynchronous task distribution and job queueing |
+| **Vector Database** | ChromaDB, SentenceTransformers | Local vector store with cosine distance search |
+| **Scraping Engine** | Playwright (Python), Headless Chromium | Resilient DOM automation and network interception |
+| **Frontends** | React 19, TypeScript 5.9, Vite 7 | Modern reactive component architecture |
+| **Styling & UI** | Tailwind CSS 3.4, Lucide React, Recharts | Responsive layout, charts, and dark-mode ready |
+| **State Management** | Zustand, React Query (TanStack Query) | Client-side reactive cache and state stores |
+| **Authentication** | Python-JOSE, Passlib (Bcrypt), Authlib | Secure JWT cookies, OAuth 2.0 with Google |
+| **Container & CI/CD** | Docker, Docker Compose, GitHub Actions | Multi-stage image builds, GHCR registry & SSH deployment |
 
 ---
 
 ## 📋 Prerequisites
 
-Before setting up the project, ensure you have the following installed:
+Ensure the following dependencies are installed on your host machine:
 
-- **Python 3.10+**
-- **Node.js 18+** & **npm**
-- **Microsoft SQL Server** with ODBC Driver 18
-- **RabbitMQ** (Local broker or hosted CloudAMQP account)
-- **Docker** (for Embedding Service)
+- **Python 3.10+** (Python 3.11 recommended)
+- **Node.js 18+** & **npm 9+**
+- **Microsoft SQL Server** (2019+ or Azure SQL) with **ODBC Driver 18 for SQL Server**
+- **RabbitMQ** (Local broker via Docker or hosted CloudAMQP instance)
+- **Docker & Docker Compose** (for containerized execution)
 - **Git**
-
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start Guide
 
 ### 1. Clone the Repository
-
 ```bash
-git clone <repository-url>
+git clone https://github.com/Rzmy7/hotel-and-restaurant-review-management-system.git
 cd hotel-and-restaurant-review-management-system
 ```
 
 ### 2. Backend Setup
-
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+# Windows:
+venv\Scripts\activate
+# Linux/macOS:
+# source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 playwright install chromium
 
-# Configure environment
+# Copy and configure environment variables
 cp .env.example .env
-# Edit .env with your database credentials and API keys
 
-# Run connectivity tests
-$env:PYTHONPATH = ".;$env:PYTHONPATH"; python tests/test_db_connectivity.py
+# Verify database connectivity
+python -c "import tests.test_db_connectivity"
 
-# Start server
-uvicorn app.main:app --reload
+# Start FastAPI backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+- **Interactive OpenAPI Documentation**: `http://localhost:8000/docs`
 
-**API Docs**: http://localhost:8000/docs
-
-### 3. Frontend Setup (User Dashboard)
-
+### 3. User Frontend Setup (Tenant Dashboard)
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
+- **Tenant Portal URL**: `http://localhost:5173`
 
-**Access**: http://localhost:5173
-
-### 4. Admin Frontend Setup
-
+### 4. Admin Frontend Setup (Platform Management)
 ```bash
 cd admin-frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
+- **Admin Portal URL**: `http://localhost:5174`
 
-**Access**: http://localhost:5174
-
-### 5. Embedding Service (Docker)
-
+### 5. Embedding Service Setup (ChromaDB)
 ```bash
 cd microservices/embedding-service
-
-# Build and run
 docker build -t embedding-service .
-docker run -d -p 8001:8000 -v chroma_data:/data/chroma --name embedding_service embedding-service
+docker run -d -p 8002:8000 -v chroma_data:/data/chroma --name reviewmate-embedding embedding-service
 ```
+- **Embedding API Docs**: `http://localhost:8002/docs`
 
 ### 6. Scraper Engine Microservice
-
 ```bash
 cd microservices/scraper_engine
-
-# Install dependencies
 pip install -r requirements.txt
 playwright install chromium
-
-# Configure .env with database and backend URL
-
-# Start service
 python api/main.py
 ```
+- **Scraper API Docs**: `http://localhost:8001/docs`
 
-**API Docs**: http://localhost:8001/docs
-
-### 7. 🚀 Unified System Launcher (Orchestrator)
-
-We have a dedicated python tool to launch all 5 services concurrently saving you the hassle of juggling terminals. It automatically fetches missing dependencies, orchestrates start orders, and separates logs using colored prefixes!
-
-You can run it natively using Python:
+### 7. 🚀 All-in-One System Launcher
+Launch all services simultaneously using the orchestrator:
 ```bash
 python launcher.py
 ```
-
-Or you can use the precompiled standalone executable, located in the dist directory:
+Or execute the pre-built launcher binary:
 ```bash
 .\dist\System-Launcher.exe
 ```
 
-> **Note**: To prevent port collisions when run simultaneously, the launcher automatically starts the **Embedding Service** on **Port 8002** and the **Admin UI** on **Port 5174**.
-
 ---
 
-## 📄 Documentation
+## 🚢 Production Deployment
 
-Comprehensive system documentation is available in the **[docs](docs/README.md)** folder:
+The project supports both single-server containerized deployment and distributed multi-server architectures with automated Let's Encrypt SSL.
 
-- **[Architecture Diagrams](docs/Architecture%20diagrams/)** - Component interaction and data flow
-- **[ER Diagrams](docs/ER%20diagrams/)** - Database schema design
-- **[UML Diagrams](docs/UML%20diagrams/)** - System logic and class structures
-
----
-
-## 🔌 API Endpoints Summary
-
-### Backend (Port 8000)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check |
-| `/health` | GET | System health (CPU, Memory, Uptime) |
-| `/db-test` | GET | Database connectivity test |
-| `/api/reviews` | GET | Fetch reviews |
-| `/api/dashboard` | GET | Dashboard KPIs |
-| `/api/competitors` | GET/POST | Competitor analysis |
-| `/api/admin` | Various | Admin operations |
-| `/api/groups` | Various | Group management |
-| `/auth/*` | Various | Authentication endpoints |
-| `/oauth/*` | Various | OAuth endpoints |
-
-### Scraper Engine (Port 8001)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/{platform}/scrape` | POST | Trigger background scrape for Agoda, Booking.com, Google Maps, or TripAdvisor |
-| `/api/reviews` | GET | Query reviews |
-| `/api/sources/{id}/cleanup` | POST | Trigger deep trait-based deduplication |
-| `/api/sources/{id}/integrity` | GET | Detailed database health & consistency report |
-| `/api/system/health` | GET | Health check |
-| `/api/db/stats` | GET | Database statistics |
-
-
-### Embedding Service (Port 8001)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/embed/batch` | POST | Batch embedding generation |
-| `/search` | POST | Semantic search |
-| `/model` | PUT | Switch embedding model |
-| `/api-settings` | PUT | Update API configuration |
-
----
-
-## ⚙️ Environment Configuration
-
-### Backend `.env` Variables
-
-```env
-# General
-SECRET_KEY=dev-secret-key-change-me
-FRONTEND_URL=http://localhost:5173
-
-# Database (SQLAlchemy)
-DATABASE_URL=mssql+pyodbc://<user>:<pass>@<server>/<db>?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
-
-# PyODBC (Reviews/Dashboard)
-DB_DRIVER=ODBC Driver 18 for SQL Server
-DB_SERVER=your-server
-DB_NAME=your-database
-DB_UID=your-username
-DB_PWD=your-password
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-
-# JWT
-JWT_SECRET_KEY=generate-random-string
-
-# SMTP (Password resets)
-SMTP_EMAIL=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-
-# Supabase (Optional storage)
-SUPABASE_URL=your-supabase-url
-SUPABASE_KEY=your-supabase-anon-key
-
-# RabbitMQ Broker
-RABBITMQ_URL=amqp://guest:guest@localhost:5672/
-```
-
-### Scraper Engine `.env` Variables
-
-```env
-# Database
-DB_DRIVER=ODBC Driver 18 for SQL Server
-DB_SERVER=your_server
-DB_NAME=ScraperEngine
-DB_UID=sa
-DB_PWD=your_password
-
-# Backend integration
-BACKEND_API_URL=http://127.0.0.1:8000
-
-# RabbitMQ Broker
-RABBITMQ_URL=amqp://guest:guest@localhost:5672/
-```
-
----
-
-## 🚢 CI/CD & Deployment
-
-The project uses **GitHub Actions** to automatically build Docker images and deploy them to production servers whenever changes are pushed to the `dev` branch. The pipeline is optimized with **path-based change detection** so only modified services are rebuilt and redeployed.
-
-### Deployment Architecture
-
-Services are distributed across **4 dedicated servers**, each running Docker Compose with Nginx + SSL (Let's Encrypt):
-
-| Server | Services | Domain | Deploy Config |
-|--------|----------|--------|---------------|
-| **Server 1** — Frontends | User Frontend, Admin Frontend, Nginx, Certbot | `reviewmate.live`, `admin.reviewmate.live` | `deploy/server1-frontends/` |
-| **Server 2** — Backend | FastAPI Backend, Nginx, Certbot | `api.reviewmate.live` | `deploy/server2-backend/` |
-| **Server 3** — Embedding | Embedding Service + ChromaDB, Nginx, Certbot | `embed.reviewmate.live` | `deploy/server3-embedding/` |
-| **Server 4** — Scraper | Scraper Engine + Playwright, Nginx, Certbot | `scrape.reviewmate.live` | `deploy/server4-scraper/` |
-
-### Docker Images
-
-All images are built and pushed to the **GitHub Container Registry (GHCR)**:
-
-| Image | Source |
-|-------|--------|
-| `ghcr.io/rzmy7/reviewmate-frontend:latest` | `frontend/Dockerfile` |
-| `ghcr.io/rzmy7/reviewmate-admin-frontend:latest` | `admin-frontend/Dockerfile` |
-| `ghcr.io/rzmy7/reviewmate-backend:latest` | `backend/Dockerfile` |
-| `ghcr.io/rzmy7/reviewmate-embedding:latest` | `microservices/embedding-service/Dockerfile` |
-| `ghcr.io/rzmy7/reviewmate-scraper:latest` | `microservices/scraper_engine/Dockerfile` |
-
-Each image is tagged with both `latest` and the commit SHA (`${{ github.sha }}`) for rollback support.
-
-### Pipeline Flow
-
-```
-Push to 'dev' branch
-        │
-        ▼
-┌─────────────────┐
-│ Detect Changes  │  (dorny/paths-filter)
-│ per service     │
-└────────┬────────┘
-         │ outputs: frontend, admin-frontend, backend, embedding, scraper
-         ▼
-┌────────────────────────────────────────────────────────────────────┐
-│              BUILD (parallel, only changed services)              │
-├────────────┬──────────────┬───────────┬────────────┬──────────────┤
-│  Frontend  │ Admin Front. │  Backend  │ Embedding  │   Scraper    │
-│  (if ∆)    │   (if ∆)     │  (if ∆)   │  (if ∆)    │   (if ∆)     │
-└─────┬──────┴──────┬───────┴─────┬─────┴─────┬──────┴──────┬───────┘
-      │             │             │           │             │
-      ▼             ▼             ▼           ▼             ▼
-┌────────────────────────────────────────────────────────────────────┐
-│              DEPLOY (SSH → docker compose pull & up)              │
-├─────────────────────┬───────────┬────────────┬────────────────────┤
-│  Server 1           │ Server 2  │  Server 3  │     Server 4      │
-│  (if front. or      │ (if back  │ (if embed  │   (if scraper     │
-│   admin built)      │  built)   │  built)    │    built)         │
-└─────────────────────┴───────────┴────────────┴────────────────────┘
-```
-
-### Change Detection Rules
-
-The pipeline uses [`dorny/paths-filter`](https://github.com/dorny/paths-filter) to detect which services have changed:
-
-| Service | Trigger Paths |
-|---------|---------------|
-| Frontend | `frontend/**`, `deploy/server1-frontends/**` |
-| Admin Frontend | `admin-frontend/**`, `deploy/server1-frontends/**` |
-| Backend | `backend/**`, `deploy/server2-backend/**` |
-| Embedding | `microservices/embedding-service/**`, `deploy/server3-embedding/**` |
-| Scraper | `microservices/scraper_engine/**`, `deploy/server4-scraper/**` |
-
-### Required GitHub Secrets & Variables
-
-Configure these in **Settings → Secrets and variables → Actions**:
-
-#### Secrets
-
-| Secret | Description |
-|--------|-------------|
-| `GITHUB_TOKEN` | Automatically provided; used for GHCR authentication during builds |
-| `GHCR_TOKEN` | Personal Access Token with `read:packages` scope for servers to pull images |
-| `SSH_KEY` | Private SSH key for deployment to all servers |
-| `USER` | SSH username on all servers |
-| `FRONTEND_HOST` | IP / hostname of Server 1 (frontends) |
-| `BACKEND_HOST` | IP / hostname of Server 2 (backend) |
-| `EMBEDDING_HOST` | IP / hostname of Server 3 (embedding) |
-| `SCRAPING_HOST` | IP / hostname of Server 4 (scraper) |
-
-#### Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `PROD_API_URL` | Production backend API URL | `https://api.reviewmate.live` |
-| `PROD_SCRAPER_URL` | Production scraper engine URL | `https://scrape.reviewmate.live` |
-| `PROD_EMBEDDING_URL` | Production embedding service URL | `https://embed.reviewmate.live` |
-| `PROD_FRONTEND_URL` | Production frontend URL | `https://reviewmate.live` |
-| `PROD_ADMIN_URL` | Production admin panel URL | `https://admin.reviewmate.live` |
-
-### First-Time Server Setup
-
-Each server requires a one-time setup before the pipeline can deploy to it:
-
+### Option A: Single-VPS Deployment (Docker Compose)
 ```bash
-# 1. Create the application directory
-sudo mkdir -p /opt/reviewmate
-cd /opt/reviewmate
-
-# 2. Copy the corresponding deploy config from this repo
-#    Example for Server 2 (backend):
-scp deploy/server2-backend/docker-compose.yml  user@server:/opt/reviewmate/
-scp deploy/server2-backend/.env.example        user@server:/opt/reviewmate/.env
-
-# 3. Edit the .env file with production credentials
-nano .env
-
-# 4. Authenticate with GHCR (one-time)
-echo "<GHCR_TOKEN>" | docker login ghcr.io -u <github-username> --password-stdin
-
-# 5. Start the services
-docker compose pull
-docker compose up -d
-
-# 6. Set up SSL certificates (one-time)
+cd deploy/single-vps
+cp .env.example .env
+# Edit .env with your domain names and DB connection strings
+docker compose up -d --build
 sudo bash init-ssl.sh
 ```
 
-> **Note**: Each server includes an `init-ssl.sh` script for bootstrapping Let's Encrypt SSL certificates. Run it once after the first deployment. Certificates auto-renew via the `certbot` container.
-
-### Deployment File Structure
-
-```
-deploy/
-├── server1-frontends/
-│   ├── docker-compose.yml     # Frontend + Admin + Nginx + Certbot
-│   ├── nginx.conf             # SSL + domain-based routing
-│   └── init-ssl.sh            # One-time SSL bootstrap script
-├── server2-backend/
-│   ├── docker-compose.yml     # Backend + Nginx + Certbot
-│   ├── nginx.conf             # SSL reverse proxy for api.reviewmate.live
-│   ├── .env.example           # Full environment template
-│   └── init-ssl.sh            # One-time SSL bootstrap script
-├── server3-embedding/
-│   ├── docker-compose.yml     # Embedding + Nginx + Certbot
-│   ├── nginx.conf             # SSL reverse proxy for embed.reviewmate.live
-│   └── init-ssl.sh            # One-time SSL bootstrap script
-└── server4-scraper/
-    ├── docker-compose.yml     # Scraper + Nginx + Certbot
-    ├── nginx.conf             # SSL reverse proxy for scrape.reviewmate.live
-    ├── .env.example           # Scraper env template
-    └── init-ssl.sh            # One-time SSL bootstrap script
-```
+### Option B: Distributed 4-Server Architecture
+| Server Target | Role | Config Location | Domain Example |
+|---|---|---|---|
+| **Server 1** | Frontends (User + Admin + Nginx) | `deploy/server1-frontends/` | `reviewmate.live` / `admin.reviewmate.live` |
+| **Server 2** | Backend API (FastAPI) | `deploy/server2-backend/` | `api.reviewmate.live` |
+| **Server 3** | Embedding Microservice (ChromaDB) | `deploy/server3-embedding/` | `embed.reviewmate.live` |
+| **Server 4** | Scraper Engine (Playwright + Worker) | `deploy/server4-scraper/` | `scrape.reviewmate.live` |
 
 ---
 
-## 🧪 Development Commands
+## 📄 License & Intellectual Property
 
-| Component | Command | Description |
-|-----------|---------|-------------|
-| **Backend** | `uvicorn app.main:app --reload` | Start dev server |
-| **Frontend** | `npm run dev` | Start Vite dev server |
-| **Frontend** | `npm run build` | Production build |
-| **Frontend** | `npm run lint` | ESLint check |
-| **Admin** | `npm run dev` | Start Vite dev server |
-| **Admin** | `npm run build` | Production build |
-| **Embedding** | `docker run -d -p 8001:8000 ...` | Run Docker container |
-| **Scraper** | `python api/main.py` | Start scraper service |
-
----
-
-## 🐛 Troubleshooting
-
-### Database Connection Issues
-- Ensure ODBC Driver 18 is installed
-- Add `TrustServerCertificate=yes` to connection string for local/dev servers
-- Run `python tests/test_db_connectivity.py` to diagnose
-
-### Scraper Issues
-- Run `playwright install chromium` to install browser
-- Check Playwright browser dependencies on your OS
-
-### Embedding Service
-- First startup downloads MiniLM model (~30-90 seconds)
-- Clear `chroma_data` volume when switching models
-- Use Gemini API mode for VPS with <2GB RAM
-
-### Frontend Build Errors
-- Clear `node_modules` and reinstall: `rm -rf node_modules && npm install`
-- Check TypeScript config: `tsconfig.json`
-
----
-
-## 📝 Development Conventions
-
-### Code Style
-- **Python**: Follows PEP 8, uses type hints
-- **TypeScript**: Strict mode enabled, React 19 patterns
-- **Linting**: ESLint (frontend/admin), Flake8 (backend `.flake8` config)
-
-### Testing Practices
-- Backend includes connectivity tests in `tests/`
-- Scraper engine has integration tests in `tests/`
-- Run `python tests/test_db_connectivity.py` to verify setup
-
-### Architecture Patterns
-- **Backend**: Domain-Driven Design with modular monolith structure
-- **Frontend**: Component-based architecture with Context + Zustand
-- **API**: RESTful design with OpenAPI/Swagger documentation
-
-### Git Workflow
-- Feature branches for new development
-- Documentation updates required for architectural changes
-- ER diagrams and UML stored in `docs/`
-
----
-
-## 📄 License
-
-**Private / Proprietary**  
-© 2026 Hotel & Restaurant Review Management System
-
----
-
-## 📞 Support
-
-For questions or issues, please refer to the individual component READMEs:
-
-- **[Backend Documentation](backend/README.md)**
-- **[Frontend Documentation](frontend/README.md)**
-- **[Admin Panel Documentation](admin-frontend/README.md)**
-- **[Embedding Service Documentation](microservices/embedding-service/readme.md)**
-- **[Scraper Engine Documentation](microservices/scraper_engine/README.md)**
-- **[Monitoring API](admin-frontend/MONITORING_API.md)** — Health endpoint specification for system monitoring
-- **[API Calls Reference](API_CALLS.md)** — Complete catalog of frontend/admin API calls
+**Academic & Enterprise Property**  
+© 2026 Hotel and Restaurant Review Management & Analysis System. All rights reserved.

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, KeyRound, Sun, Moon, Monitor, User, Mail } from 'lucide-react';
+import { X, KeyRound, Sun, Moon, Monitor, User } from 'lucide-react';
 import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
 import { SettingsSkeleton } from './SettingsSkeleton';
@@ -73,11 +73,6 @@ export const Settings: React.FC = () => {
     const [tempName, setTempName] = useState('');
     const [nameModalError, setNameModalError] = useState<string | null>(null);
     const [nameModalSaveState, setNameModalSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
-    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-    const [tempEmail, setTempEmail] = useState('');
-    const [emailModalError, setEmailModalError] = useState<string | null>(null);
-    const [emailModalSaveState, setEmailModalSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
@@ -305,54 +300,7 @@ export const Settings: React.FC = () => {
         }
     };
 
-    const handleEmailChangeSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setEmailModalError(null);
 
-        const emailTrimmed = tempEmail.trim().toLowerCase();
-        if (!emailTrimmed) {
-            setEmailModalSaveState('error');
-            setEmailModalError('Admin email cannot be empty.');
-            return;
-        }
-
-        setEmailModalSaveState('saving');
-
-        try {
-            const updated = await settingsService.updateAdminProfile({
-                name: adminProfileName,
-                email: emailTrimmed,
-            });
-
-            setAdminProfileEmail(updated.email);
-
-            // Sync with local storage
-            const storedUser = localStorage.getItem('authUser');
-            if (storedUser) {
-                try {
-                    const user = JSON.parse(storedUser);
-                    user.email = updated.email;
-                    localStorage.setItem('authUser', JSON.stringify(user));
-                    window.dispatchEvent(new Event('admin-profile-updated'));
-                } catch (err) {
-                    console.error("Failed to update authUser email cache", err);
-                }
-            }
-
-            setEmailModalSaveState('saved');
-            window.setTimeout(() => {
-                setIsEmailModalOpen(false);
-                setEmailModalSaveState('idle');
-            }, 1000);
-        } catch (error) {
-            setEmailModalSaveState('error');
-            setEmailModalError(
-                error instanceof Error
-                    ? error.message
-                    : 'Failed to update admin email. Please try again.',
-            );
-        }
-    };
 
     const handleChangePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -776,19 +724,9 @@ export const Settings: React.FC = () => {
                                     <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Admin Email</h3>
                                     <p className="text-base font-semibold text-gray-900 dark:text-white mt-0.5">{adminProfileEmail}</p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setTempEmail(adminProfileEmail);
-                                        setEmailModalError(null);
-                                        setEmailModalSaveState('idle');
-                                        setIsEmailModalOpen(true);
-                                    }}
-                                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                    <Mail size={16} />
-                                    Change Email
-                                </button>
+                                <span className="text-xs font-medium text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700/50 px-2.5 py-1 rounded-md">
+                                    Read-only
+                                </span>
                             </div>
 
                             <div className="border-t border-gray-100 dark:border-slate-700"></div>
@@ -949,59 +887,7 @@ export const Settings: React.FC = () => {
                 </div>
             )}
 
-            {isEmailModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/30">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Change Email</h3>
-                            <button
-                                onClick={() => setIsEmailModalOpen(false)}
-                                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleEmailChangeSubmit}>
-                            <div className="p-6 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">New Email Address</label>
-                                    <input
-                                        type="email"
-                                        value={tempEmail}
-                                        onChange={(e) => setTempEmail(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-900 dark:text-white"
-                                        placeholder="Enter new administrator email"
-                                        required
-                                    />
-                                </div>
 
-                                {emailModalSaveState === 'saved' && (
-                                    <Alert type="success" message="Admin email updated." />
-                                )}
-                                {(emailModalSaveState === 'error' && emailModalError) && (
-                                    <Alert type="error" message={emailModalError} />
-                                )}
-                            </div>
-                            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/30 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEmailModalOpen(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-655 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={emailModalSaveState === 'saving'}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                                >
-                                    {emailModalSaveState === 'saving' ? 'Saving...' : 'Save Email'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

@@ -3,7 +3,7 @@ import type { DashboardResponse } from '../types/dashboard';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { dashboardService } from '../services/dashboardService';
 
-export const useDashboardData = (period: number = 0) => {
+export const useDashboardData = (period: number = 30) => {
     const currentOrg = useOrganizationStore(state => state.currentOrg);
 
     const { data: responseData, isLoading: loading, error } = useQuery({
