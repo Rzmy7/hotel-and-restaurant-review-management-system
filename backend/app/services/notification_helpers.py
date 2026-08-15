@@ -424,6 +424,43 @@ def notify_source_removed(user_id: str, platform_name: str, org_name: str | None
     )
 
 
+def notify_admin_llm_config_error(title: str, message: str) -> None:
+    """Specialized alert for system admins when review processing is paused due to configuration or missing models."""
+    from app.database.session import SessionLocal
+    from app.modules.user.models.user_models import User
+    from app.modules.auth.repositories.notifications_repo import create_notification
+
+    try:
+        db = SessionLocal()
+        try:
+            admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
+            for admin in admins:
+                if not _should_send(str(admin.user_id), f"llm_config_err_{title}", cooldown_seconds=600):
+                    continue
+                try:
+                    create_notification(
+                        db=db,
+                        user_id=admin.user_id,
+                        title=title,
+                        message=message,
+                        notification_type="error",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to notify admin {admin.user_id}: {e}")
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error(f"Failed to process admin LLM config notifications: {exc}")
+
+
+def notify_admin_llm_auth_error(model_name: str = "LLM") -> None:
+    """Specialized alert for system admins when API key authentication fails (401/403)."""
+    notify_admin_llm_config_error(
+        title=f"{model_name} Authentication Failed",
+        message=f"The API key for model '{model_name}' was rejected (401/403 Unauthorized). Please check your API key in Admin → LLM Models.",
+    )
+
+
 def notify_admin_llm_quota_exceeded(model_name: str = "LLM") -> None:
     """Specialized alert for system admins when API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
     from app.database.session import SessionLocal
@@ -442,8 +479,9 @@ def notify_admin_llm_quota_exceeded(model_name: str = "LLM") -> None:
                 title = f"{model_name} API Quota Exceeded"
                 message = f"The {model_name} API quota has been exceeded for review processing. Please check the API billing or plan limits."
 
-
                 for admin in admins:
+                    if not _should_send(str(admin.user_id), f"llm_quota_{model_name}", cooldown_seconds=600):
+                        continue
                     try:
                         create_notification(
                             db=db,
@@ -471,6 +509,8 @@ def notify_admin_llm_quota_exceeded(model_name: str = "LLM") -> None:
                     user_message = "The review processing API limit has been reached. Review processing and reply generation are temporarily paused."
 
                     for user in normal_users:
+                        if not _should_send(str(user.user_id), "normal_user_api_limit", cooldown_seconds=600):
+                            continue
                         try:
                             create_notification(
                                 db=db,

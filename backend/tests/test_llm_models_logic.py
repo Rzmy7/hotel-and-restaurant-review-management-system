@@ -121,10 +121,10 @@ def test_fatal_error_detection_and_non_retryable(mock_get_conn):
     assert reason == "api_limit"
     assert is_retryable_exception(Exception("429 Resource Exhausted: Quota exceeded")) is False
 
-    # 5. General Python syntax/value errors
-    is_fatal, reason = _detect_fatal_error(TypeError("unsupported operand type(s)"))
-    assert is_fatal is True
-    assert is_retryable_exception(TypeError("unsupported operand type(s)")) is False
+    # 5. Non-fatal data/json/formatting errors do not pause processing
+    is_fatal, reason = _detect_fatal_error(ValueError("Expecting value: line 1 column 1 (char 0)"))
+    assert is_fatal is False
+    assert reason == ""
 
 
 def test_crypto_key_loading():
