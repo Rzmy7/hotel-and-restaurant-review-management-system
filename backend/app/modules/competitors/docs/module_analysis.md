@@ -177,11 +177,11 @@ Called when user tracks a competitor, increments plan-based limit.
 |----------|---------|
 | `get_comparison_data(id)` | Full comparison: KPIs, aspects, trends, sentiment |
 | `get_rankings_data()` | Leaderboard with ranks for my hotel + tracked competitors |
-| `get_ai_comparison_insights(id)` | Gemini-powered strengths/weaknesses/recommendations |
+| `get_ai_comparison_insights(id)` | LLM-powered strengths/weaknesses/recommendations |
 
 **AI Integration:**
-- **Model**: `gemini-2.5-flash-lite`
-- **Client**: Singleton via `_get_genai_client()`
+- **Gateway**: `app.services.llm_gateway`
+- **Model**: Provider-agnostic active models configured in `dbo.llm_model`
 - **Prompt**: `COMPARISON_INSIGHT_PROMPT` with structured JSON output
 - **Parsing**: Strips markdown fences, parses JSON
 
@@ -191,7 +191,7 @@ Called when user tracks a competitor, increments plan-based limit.
 ```
 1. SET status = 'Scraping'
 2. scrape_booking_for_competitor(url, headless)  # From reviews.scraper
-3. AI process via Gemini with COMPETITOR_PROMPT
+3. AI process via LLM Gateway with COMPETITOR_PROMPT
 4. DELETE existing CompetitorReviews for competitor
 5. INSERT new reviews
 6. UPDATE Competitors stats (avgRating, sentimentScore, reviewCount, status='Active')
@@ -248,9 +248,9 @@ Called when user tracks a competitor, increments plan-based limit.
 ### Admin Module
 - **Subscription**: Calls `increment_feature_usage` for tracking
 
-### Google Gemini
-- **Analysis**: Uses Gemini for review processing and comparison insights
-- **Model**: `gemini-2.5-flash-lite`
+### LLM Gateway
+- **Analysis**: Uses LLM Gateway for review processing and comparison insights
+- **Supported Models**: Any OpenAI format-compatible model (OpenAI GPT-4o, Qwen 2.5, DeepSeek V3, etc.)
 
 ---
 

@@ -23,8 +23,6 @@ from app.modules.admin.schemas import (
     FeatureFlagUpdatePayload,
     GeneralSettingsPayload,
     ReplyGenerationSettingsPayload,
-    GeminiApiKeySavePayload,
-    GeminiApiKeyTestPayload,
     DashboardStats,
     OrganizationUpdatePayload,
     DeleteUserResponse,

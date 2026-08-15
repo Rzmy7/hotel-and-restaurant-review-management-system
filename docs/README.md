@@ -25,7 +25,7 @@ docs/
 
 | ADR Reference | Decision Summary & Context |
 |---|---|
-| **[ADR 0001: Receiver-Owned API Keys](adr/0001-receiver-owned-api-keys.md)** | Standardizes system-level API key management with tenant-specific overrides for external LLM providers (Gemini, OpenAI, Qwen, DeepSeek). |
+| **[ADR 0001: Receiver-Owned API Keys](adr/0001-receiver-owned-api-keys.md)** | Standardizes system-level API key management with tenant-specific overrides for external LLM providers (OpenAI, Qwen, DeepSeek, and other OpenAI-compatible providers). |
 | **[ADR 0002: HttpOnly Cookie JWT Authentication](adr/0002-secure-httponly-cookie-jwt-auth.md)** | Transitioned from `localStorage` bearer tokens to encrypted `HttpOnly`, `SameSite=Strict` cookies to completely eliminate token exfiltration via client-side XSS. |
 | **[ADR 0003: Sliding Sessions](adr/0003-sliding-sessions.md)** | Implements a sliding window session renewal mechanism that refreshes JWT claims on active requests while enforcing maximum hard session timeouts. |
 

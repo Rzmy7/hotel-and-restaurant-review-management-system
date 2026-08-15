@@ -7,7 +7,7 @@ The `reviews` module is the core intelligence hub of the Hotel and Restaurant Re
 
 It exists to:
 - **Aggregate**: Consolidate reviews from multiple platforms (Booking.com, Google Maps, Agoda, TripAdvisor) via the Scraper Engine.
-- **Analyze**: Perform automated sentiment analysis, categorization, and key phrase extraction using Google Gemini.
+- **Analyze**: Perform automated sentiment analysis, categorization, and key phrase extraction using the multi-provider LLM Gateway.
 - **Engage**: Provide AI-powered drafting of professional responses to guests, utilizing Retrieval-Augmented Generation (RAG) for consistency with brand rules and past high-quality responses.
 - **Visualize**: Provide aggregated metrics and trends for the administrative and organizational dashboards.
 
@@ -41,9 +41,9 @@ The module implements a two-stage background pipeline:
 
 #### Stage 2: AI Analysis (`processor.py`)
 - **Trigger**: Automatically follows ingestion (same background task) or run as standalone task.
-- **Batch Processing**: Fetches `GEMINI_BATCH_SIZE` reviews per batch (default: 10).
+- **Batch Processing**: Fetches reviews per batch based on system batch configuration.
 - **Processing Loop**: The pipeline now processes all pending reviews in a loop (up to 50 consecutive batches) to ensure complete ingestion jobs aren't left partially processed.
-- **AI Processing**: Sends review batch to **Google Gemini** via `gemini_client.py`.
+- **AI Processing**: Sends review batch to the **LLM Gateway** via `llm_client.py`.
 - **Enrichment**: Receives structured JSON containing sentiment, scores, categories, key phrases, and draft replies.
 - **Finalization**: Updates database with enriched fields and sets status to `processed`.
 - **Monitoring**: The current state of this queue can be monitored via the `/api/reviews/processing/status` endpoint.
@@ -67,8 +67,7 @@ When a user requests an AI-generated reply:
    - Retrieve relevant brand rules/guidelines
 3. **Build Prompt**: Combine review text with context, tone, length preferences, and language hints.
 4. **Generate Reply**:
-   - **Google Provider**: Call Gemini API (tries `v1` then `v1beta` for compatibility)
-   - **Claude Provider**: Try SDK call → fallback to HTTP API → try up to 8 model aliases
+   - Calls the LLM Gateway with automatic failover across active OpenAI-compatible models configured in `dbo.llm_model`.
 5. **Handle Failures**: If AI generation fails, return hardcoded fallback reply based on sentiment.
 6. **Track Usage**:
    - Increment provider request count and token usage in system settings
@@ -129,7 +128,7 @@ reviews/
 └── services/
     ├── review_service.py            # Ingestion orchestration, scraper communication
     ├── processor.py                 # AI analysis pipeline, batch processing, retry logic
-    ├── gemini_client.py             # Google Gemini API wrapper for sentiment analysis
+    ├── llm_client.py                # Multi-model LLM abstraction for sentiment analysis
     ├── reply_generation_service.py  # Multi-provider reply generation with RAG
     └── stats_service.py             # Dashboard metrics, trends, activity feeds
 ```
@@ -197,14 +196,12 @@ reviews/
 - **Timeout**: 12 seconds per request.
 - **Feature Toggles**: Controlled by `reply_use_similar_reviews` and `reply_use_embedding_rules` system settings.
 
-#### AI Providers
+#### AI Providers (OpenAI-Compatible LLM Gateway)
 
-**Google Gemini**
-- **Analysis Model**: `gemini-2.5-flash-lite` (hardcoded in `gemini_client.py`)
-- **Reply Model**: Configurable via system settings (default: `gemini-2.5-flash-lite`)
-- **API Versions**: Tries `v1` then `v1beta` for compatibility
-- **Token Tracking**: Request count and token usage stored in system settings
-- **Fallback**: Returns generic reply on failure
+**LLM Models (`dbo.llm_model`)**
+- Configurable dynamic models supporting any OpenAI format-compatible endpoints (OpenAI GPT-4o, Qwen 2.5, DeepSeek V3/R1, etc.)
+- Dynamic priority ordering and fallback routing
+- Encrypted API key storage and customizable max tokens/endpoints
 
 **Anthropic Claude**
 - **Reply Model**: Configurable via system settings (default: `claude-sonnet-4-6`)
@@ -230,16 +227,14 @@ reviews/
 #### Environment Variables
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GEMINI_BATCH_SIZE` | `10` | Number of reviews to process in single Gemini batch |
 | `MAX_RETRY_ATTEMPTS` | `3` | Maximum AI analysis retries before marking review as failed |
 | `EMBEDDING_SERVICE_URL` | `http://localhost:8001` | Base URL for Embedding Service |
-| `GENAI_KEY` | (required) | Google Gemini API key (for analysis) |
 
 #### System Settings (dbo.system_settings)
 | Setting Key | Type | Default | Description |
 |-------------|------|---------|-------------|
-| `reply_selected_model` | string | `gemini-2.5-flash-lite` | Currently selected AI model |
-| `reply_google_api_key` | string | (empty) | Google Gemini API key for replies |
+| `llm_review_processing_model_id` | UUID string | (configured) | Active LLM model ID for review processing |
+| `llm_reply_generation_model_id` | UUID string | (configured) | Active LLM model ID for reply generation |
 | `reply_claude_api_key` | string | (empty) | Anthropic Claude API key for replies |
 | `reply_use_similar_reviews` | bool | `true` | Enable similar review context in prompts |
 | `reply_use_embedding_rules` | bool | `true` | Enable brand rule context in prompts |
@@ -356,24 +351,18 @@ mapping = {
 **Purpose**: Manages AI analysis pipeline with batch processing and retry logic.
 
 **Key Functions**:
-- `run_analysis_pipeline()`: Main entry point; fetches pending reviews, calls Gemini, updates DB.
+- `run_analysis_pipeline()`: Main entry point; fetches pending reviews, calls LLM Gateway, updates DB.
 - `_update_review_success(cursor, review_id, analysis)`: Updates review with AI insights, sets status to `processed`.
 - `_update_review_failure(cursor, review_id, error)`: Increments retry count, marks as `failed` if max retries exceeded.
-- `_mark_batch_as_failed(cursor, batch, error)`: Marks entire batch for retry on Gemini API failure.
+- `_mark_batch_as_failed(cursor, batch, error)`: Marks entire batch for retry on LLM Gateway failure.
 
-**Configuration**:
-- `BATCH_SIZE = int(os.getenv("GEMINI_BATCH_SIZE", 10))`
-- `MAX_RETRIES = int(os.getenv("MAX_RETRY_ATTEMPTS", 3))`
-
-### 5.3 Gemini Client (`gemini_client.py`)
-**Purpose**: Communicates with Google Gemini API for sentiment analysis.
+### 5.3 LLM Client (`llm_client.py`)
+**Purpose**: Communicates with the LLM Gateway for sentiment analysis.
 
 **Key Functions**:
-- `analyze_reviews_batch(reviews)`: Sends batch to Gemini, parses JSON response.
+- `analyze_reviews_batch(reviews)`: Sends batch to LLM Gateway, parses JSON response.
 
 **System Prompt**: Defines role as "Advanced Reputation Analyst" with strict JSON output requirements including sentiment, categories, key phrases, summary, positive/negative extraction, and draft reply.
-
-**Model**: `gemini-2.5-flash-lite` (hardcoded)
 
 **Response Parsing**:
 - Removes markdown code fences (```json)
@@ -382,26 +371,15 @@ mapping = {
 - Raises exception on failure (triggers retry logic)
 
 ### 5.4 Reply Generation Service (`reply_generation_service.py`)
-**Purpose**: Multi-provider AI reply generation with RAG context and fallback mechanisms.
+**Purpose**: AI reply generation with RAG context and LLM Gateway routing.
 
 **Key Functions**:
 - `generate_review_reply(payload)`: Main entry point for reply generation.
-- `_load_reply_generation_settings()`: Fetches provider, model, API keys, toggles from DB.
+- `_load_context_settings()`: Fetches RAG toggles and similar review counts from DB.
 - `_fetch_embedding_context(review_text, source_id, top_k)`: Calls Embedding Service for similar reviews and rules.
 - `_build_prompt(payload, similar_reviews, rules)`: Constructs prompt with tone, length, language hints.
-- `_generate_with_google(api_key, model, prompt)`: Calls Gemini API (tries v1 and v1beta).
-- `_generate_with_claude(api_key, model, prompt)`: Calls Claude API with 8-model fallback chain.
-- `_fallback_reply(payload)`: Returns hardcoded reply based on sentiment (positive/negative/neutral).
-- `_increment_provider_usage(provider, tokens_used)`: Tracks API usage in system settings.
-
-**Provider Inference**:
-```python
-def _infer_provider_from_model(model: str) -> str:
-    normalized = model.strip().lower()
-    if normalized.startswith("claude"):
-        return "claude"
-    return "google"
-```
+- `_fallback_reply(payload)`: Returns hardcoded reply based on sentiment (positive/negative/neutral) if all LLM models fail.
+- `gateway_call("reply_generation", prompt)`: Calls the unified LLM Gateway with automatic fallback.
 
 **Prompt Construction**:
 - **Tone Options**: `standard`, `professional`, `casual`
@@ -463,7 +441,7 @@ The routes use `async def`, but the underlying services often perform synchronou
 
 ### No Validation of AI Output
 > [!WARNING]
-> **Reliability Risk**: Gemini response parsing relies on regex to remove markdown fences, with no JSON schema validation.
+> **Reliability Risk**: LLM response parsing relies on regex to remove markdown fences, with no JSON schema validation.
 - **Risk**: Malformed AI responses can crash the pipeline or corrupt database records.
 - **Recommendation**: Implement Pydantic model validation for AI responses before database insertion.
 
@@ -503,12 +481,12 @@ No protection against excessive API calls to AI providers.
 ### High Priority
 1.  **Distributed Task Queue**: Replace FastAPI `BackgroundTasks` with **Celery + Redis** or **RQ**. This ensures that scraping and AI analysis tasks are persistent and can be retried across service restarts.
 2.  **Configuration Management**: Move hardcoded Scraper Engine URL to environment variable. Add validation for all external service URLs on startup.
-3.  **AI Response Validation**: Implement Pydantic models for Gemini and Claude responses to catch malformed output before database insertion.
+3.  **AI Response Validation**: Implement Pydantic models for LLM responses to catch malformed output before database insertion.
 
 ### Medium Priority
 4.  **Caching Layer**: Implement **Redis caching** for the `stats_service.py` metrics. Dashboard KPIs currently perform heavy aggregate SQL queries on every page load.
 5.  **Schema Evolution**: Move `categories` and `keyPhrases` from serialized strings to a proper junction table or use SQL Server's native JSON support more effectively for better query performance.
-6.  **Batch AI Optimization**: Implement a "Debounce" or "Buffer" in the `processor.py` to group single-review ingestions into larger Gemini batches, reducing API latency and cost.
+6.  **Batch AI Optimization**: Implement a "Debounce" or "Buffer" in the `processor.py` to group single-review ingestions into larger LLM batches, reducing API latency and cost.
 7.  **Rate Limiting**: Add per-user and per-organization rate limits for reply generation to control API costs.
 
 ### Low Priority
@@ -531,7 +509,7 @@ No protection against excessive API calls to AI providers.
 - Test full pipeline flow: trigger sync → ingestion → analysis → processed reviews.
 - Test reply generation with both Google and Claude providers.
 - Test RAG context fetching from Embedding Service.
-- Test error scenarios: Scraper Engine down, Gemini API timeout, Claude API rate limit.
+- Test error scenarios: Scraper Engine down, LLM API timeout, rate limits.
 
 ### Performance Tests
 - Test batch processing with 100+ pending reviews.
@@ -551,7 +529,7 @@ No protection against excessive API calls to AI providers.
 | `routes/reviews.py` | FastAPI route definitions (4 endpoints) |
 | `services/review_service.py` | Ingestion orchestration and scraper communication |
 | `services/processor.py` | AI analysis pipeline with batch processing and retry logic |
-| `services/gemini_client.py` | Google Gemini API wrapper for sentiment analysis |
+| `services/llm_client.py` | LLM Gateway wrapper for sentiment analysis |
 | `services/reply_generation_service.py` | Multi-provider reply generation with RAG and fallbacks |
 | `services/stats_service.py` | Dashboard metrics, trends, and activity feeds |
 
@@ -580,7 +558,7 @@ User Request → Load System Settings
 ### Error Propagation
 ```
 Scraper Engine Failure → Log Error → Return 0 Reviews → Skip Analysis
-Gemini Analysis Failure → Retry (up to MAX_RETRIES) → Mark as Failed
+LLM Analysis Failure → Retry (up to MAX_RETRIES) → Mark as Failed
 Reply Generation Failure → Return Fallback Reply → Include providerError in Response
 Database Error → Log Error → Raise HTTPException (500)
 ```
@@ -644,11 +622,11 @@ Timeout: 12s
 }
 ```
 
-### Google Gemini Request (Analysis)
+### LLM Gateway Request (Analysis)
 ```python
-client.models.generate_content(
-    model="gemini-2.5-flash-lite",
-    contents=SYSTEM_PROMPT.format(batch_json=batch_json)
+llm_gateway.call(
+    task_type="review_processing",
+    prompt=SYSTEM_PROMPT.format(batch_json=batch_json)
 )
 ```
 

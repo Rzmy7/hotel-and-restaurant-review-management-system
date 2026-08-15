@@ -402,8 +402,8 @@
 // Response
 {
   "reply": "Thank you for your feedback. We're glad you enjoyed...",
-  "provider": "google",
-  "model": "gemini-2.0-flash"
+  "provider": "openai",
+  "model": "gpt-4o"
 }
 ```
 
@@ -779,14 +779,10 @@
 ```json
 // Response
 {
-  "googleApiKey": "sk-...",
-  "claudeApiKey": "sk-ant-...",
-  "selectedModel": "gemini-2.0-flash",
+  "selectedModel": "gpt-4o",
   "similarReviewsCount": 5,
-  "googleRequestCount": 100,
-  "claudeRequestCount": 50,
-  "googleTokenUsage": 50000,
-  "claudeTokenUsage": 30000,
+  "requestCount": 100,
+  "tokenUsage": 50000,
   "useEmbeddingRules": true,
   "useSimilarReviews": true
 }
@@ -796,16 +792,16 @@
 ```json
 // Request Body
 {
-  "provider": "google",
+  "provider": "openai",
   "apiKey": "sk-...",
-  "model": "gemini-2.0-flash"
+  "model": "gpt-4o"
 }
 
 // Response
 {
-  "provider": "google",
+  "provider": "openai",
   "success": true,
-  "message": "API key is valid and model 'gemini-2.0-flash' is reachable (Google API v1)."
+  "message": "API key is valid and model 'gpt-4o' is reachable."
 }
 ```
 
@@ -1048,7 +1044,7 @@ HTTP status codes used:
 - **Authentication**: JWT-based with session support for OAuth
 - **Role System**: TENANT (default user), ADMIN (system admin), GROUP_MANAGER, GROUP_MEMBER
 - **Scheduler**: APScheduler for background tasks (sync, reconciliation, broadcasting)
-- **AI Integration**: Google Gemini and Anthropic Claude for reply generation
+- **AI Integration**: Multi-model LLM Gateway for reply generation and sentiment analysis
 - **Vector Search**: ChromaDB embedding service for semantic review search (separate microservice)
 - **Scraper Engine**: Playwright-based multi-platform scraper (separate microservice on port 8001)
 

@@ -372,25 +372,6 @@ class ReviewProcessingJobResponse(BaseModel):
     totalReviews: int | None = None
 
 
-class GeminiApiKeyConfigResponse(BaseModel):
-    apiKey: str = ""
-    isConfigured: bool = False
-    lastTestedAt: str | None = None
-    lastTestResult: str | None = None
-
-
-class GeminiApiKeySavePayload(BaseModel):
-    apiKey: str = Field(..., min_length=1, max_length=512)
-
-
-class GeminiApiKeyTestPayload(BaseModel):
-    apiKey: str = Field(..., min_length=1, max_length=512)
-
-
-class GeminiApiKeyTestResponse(BaseModel):
-    success: bool
-    message: str
-
 
 # ── Batch config schemas ───────────────────────────────────────────
 

@@ -9,10 +9,7 @@ DEFAULT_TIMEZONE = "UTC"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_DATE_FORMAT = "MM/DD/YYYY"
 DEFAULT_CURRENCY = "USD ($)"
-DEFAULT_REPLY_PROVIDER = "google"
 DEFAULT_SIMILAR_REVIEWS_COUNT = 3
-DEFAULT_REPLY_GOOGLE_MODEL = "gemini-2.5-flash-lite"
-DEFAULT_REPLY_SELECTED_MODEL = DEFAULT_REPLY_GOOGLE_MODEL
 DEFAULT_REPLY_USE_EMBEDDING_RULES = True
 DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
 DEFAULT_USER_SESSION_TIMEOUT_MINUTES = 60
@@ -95,13 +92,6 @@ def get_system_timezone(cursor: pyodbc.Cursor) -> str:
     if value and is_valid_timezone(value):
         return value
     return DEFAULT_TIMEZONE
-
-
-def get_reply_provider(cursor: pyodbc.Cursor) -> str:
-    value = (get_setting(cursor, "reply_provider") or "").strip().lower()
-    if value == "google":
-        return value
-    return DEFAULT_REPLY_PROVIDER
 
 
 def get_similar_reviews_count(cursor: pyodbc.Cursor) -> int:

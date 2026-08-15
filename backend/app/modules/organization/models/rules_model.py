@@ -1,7 +1,7 @@
 """
 Organization Rules & Regulations model.
 
-Stores individual rules extracted from uploaded documents via Gemini AI.
+Stores individual rules extracted from uploaded documents via LLM AI.
 Each rule is associated with an organization and optionally embedded
 for semantic search during reply generation.
 """

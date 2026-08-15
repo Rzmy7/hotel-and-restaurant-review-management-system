@@ -259,7 +259,7 @@ Raises ValueError for non-UUID strings but returns 404 instead of 400:
 
 ### High Priority
 1. **Add Caching**: Implement Redis for dashboard data with 5-15min TTL
-2. **Generate Dynamic AI Insights**: Use Gemini for actual insights
+2. **Generate Dynamic AI Insights**: Use LLM Gateway for actual insights
 3. **Fix Error Codes**: Return 400 for invalid UUID, not 404
 
 ### Medium Priority

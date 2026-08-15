@@ -1,5 +1,5 @@
 """
-Competitor scraping pipeline — scrape → Gemini AI → DB.
+Competitor scraping pipeline — scrape → LLM AI → DB.
 Extracted from modules/competitors/service.py (scraping section).
 """
 

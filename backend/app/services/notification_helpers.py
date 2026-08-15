@@ -487,4 +487,4 @@ def notify_admin_llm_quota_exceeded(model_name: str = "LLM") -> None:
         finally:
             db.close()
     except Exception as exc:
-        logger.error(f"Failed to process admin Gemini quota notifications: {exc}")
+        logger.error(f"Failed to process admin LLM quota notifications: {exc}")

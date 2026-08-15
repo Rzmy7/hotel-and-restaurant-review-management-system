@@ -1,7 +1,7 @@
 """
 Rules & Regulations Service.
 
-Handles file parsing (.txt, .docx, .pdf), Gemini-based rule extraction,
+Handles file parsing (.txt, .docx, .pdf), LLM-based rule extraction,
 database persistence, and embedding dispatch.
 """
 
@@ -225,7 +225,7 @@ async def process_rules_upload(
     file: UploadFile,
 ) -> dict[str, Any]:
     """
-    Full pipeline: validate file → parse text → Gemini extraction →
+    Full pipeline: validate file → parse text → LLM extraction →
     store in DB → send to embedding.
     """
     # 1. Validate file

@@ -401,7 +401,7 @@ async def upload_organization_rules(
 ):
     """Upload a rules & regulations file (.txt, .docx, .pdf) for an organization.
     
-    The file is parsed, sent to Gemini to extract individual rules,
+    The file is parsed, sent to LLM to extract individual rules,
     stored in the database, and dispatched to the embedding service.
     """
     # Verify ownership using resolve_tenant_scope

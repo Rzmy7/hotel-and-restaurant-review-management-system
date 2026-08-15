@@ -602,7 +602,7 @@ def review_processing_jobs(
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
 
-            # Check if processing is currently paused (e.g. Gemini API rate limit)
+            # Check if processing is currently paused (e.g. LLM API rate limit)
             from app.modules.admin.services.system_settings_service import get_setting_bool
             is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
 
@@ -749,7 +749,7 @@ def review_processing_jobs(
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
 
 
-# Gemini-specific config endpoints removed — use /api/admin/llm-models instead.
+# Legacy provider-specific config endpoints removed — use /api/admin/llm-models instead.
 
 
 # ── Batch size configuration ────────────────────────────────────────
