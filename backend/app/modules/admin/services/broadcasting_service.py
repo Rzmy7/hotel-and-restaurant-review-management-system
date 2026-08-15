@@ -124,35 +124,44 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _derive_plan_bucket(role_id: int, is_email_verified: bool, is_phone_verified: bool) -> str:
-    if role_id == ADMIN_ROLE_ID:
-        return "enterprise"
-    if is_email_verified and is_phone_verified:
-        return "professional"
-    if is_email_verified:
-        return "starter"
-    return "free"
-
-
-def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, int]]:
+def _get_active_users(cursor: pyodbc.Cursor) -> list[tuple[str, bool, bool, bool, int, str]]:
     if not table_exists(cursor, "user"):
         return []
 
-    rows = cursor.execute(
-        """
-        SELECT
-            CAST(user_id AS NVARCHAR(36)) AS user_id,
-            CAST(COALESCE(is_active, 0) AS BIT) AS is_active,
-            CAST(COALESCE(is_email_verified, 0) AS BIT) AS is_email_verified,
-            CAST(COALESCE(is_phone_verified, 0) AS BIT) AS is_phone_verified,
-            COALESCE(role_id, ?) AS role_id
-        FROM dbo.[user]
-        """,
-        (TENANT_ROLE_ID,)
-    ).fetchall()
+    has_tenant_and_plans = table_exists(cursor, "tenant") and table_exists(cursor, "plans")
+    if has_tenant_and_plans:
+        rows = cursor.execute(
+            """
+            SELECT
+                CAST(u.user_id AS NVARCHAR(36)) AS user_id,
+                CAST(COALESCE(u.is_active, 0) AS BIT) AS is_active,
+                CAST(COALESCE(u.is_email_verified, 0) AS BIT) AS is_email_verified,
+                CAST(COALESCE(u.is_phone_verified, 0) AS BIT) AS is_phone_verified,
+                COALESCE(u.role_id, ?) AS role_id,
+                COALESCE(pl.name, 'Free') AS plan_name
+            FROM dbo.[user] u
+            LEFT JOIN dbo.tenant t ON t.tenant_id = u.user_id
+            LEFT JOIN dbo.plans pl ON pl.plan_id = TRY_CAST(t.[plan] AS INT)
+            """,
+            (TENANT_ROLE_ID,)
+        ).fetchall()
+    else:
+        rows = cursor.execute(
+            """
+            SELECT
+                CAST(u.user_id AS NVARCHAR(36)) AS user_id,
+                CAST(COALESCE(u.is_active, 0) AS BIT) AS is_active,
+                CAST(COALESCE(u.is_email_verified, 0) AS BIT) AS is_email_verified,
+                CAST(COALESCE(u.is_phone_verified, 0) AS BIT) AS is_phone_verified,
+                COALESCE(u.role_id, ?) AS role_id,
+                'Free' AS plan_name
+            FROM dbo.[user] u
+            """,
+            (TENANT_ROLE_ID,)
+        ).fetchall()
 
     return [
-        (str(row[0]), bool(row[1]), bool(row[2]), bool(row[3]), int(row[4]))
+        (str(row[0]), bool(row[1]), bool(row[2]), bool(row[3]), int(row[4]), str(row[5] or "Free"))
         for row in rows
     ]
 
@@ -171,23 +180,18 @@ def get_recipient_ids(
     if audience_type == "role":
         role_value = (audience_value or "").lower()
         if role_value == "admin":
-            return [user_id for user_id, _, _, _, role_id in active_users if role_id == ADMIN_ROLE_ID]
+            return [user_id for user_id, _, _, _, role_id, _ in active_users if role_id == ADMIN_ROLE_ID]
         if role_value == "user":
-            return [user_id for user_id, _, _, _, role_id in active_users if role_id != ADMIN_ROLE_ID]
+            return [user_id for user_id, _, _, _, role_id, _ in active_users if role_id != ADMIN_ROLE_ID]
         return []
 
     if audience_type == "plan":
-        requested_plan = (audience_value or "").lower()
-        if requested_plan not in {"free", "starter", "professional", "enterprise"}:
+        requested_plan = (audience_value or "").strip().lower()
+        if not requested_plan:
             return []
         matched: list[str] = []
-        for user_id, _, is_email_verified, is_phone_verified, role_id in active_users:
-            plan_bucket = _derive_plan_bucket(
-                role_id=role_id,
-                is_email_verified=is_email_verified,
-                is_phone_verified=is_phone_verified,
-            )
-            if plan_bucket == requested_plan:
+        for user_id, _, _, _, _, plan_name in active_users:
+            if plan_name.strip().lower() == requested_plan:
                 matched.append(user_id)
         return matched
 
@@ -201,13 +205,12 @@ def get_audience_label(audience_type: str, audience_value: Optional[str]) -> str
         role_labels = {"admin": "Admins only", "user": "Users (non-admin)"}
         return f"Role: {role_labels.get((audience_value or '').lower(), 'Unknown')}"
     if audience_type == "plan":
-        plan_labels = {
-            "free": "Free plan",
-            "starter": "Starter plan",
-            "professional": "Professional plan",
-            "enterprise": "Enterprise plan",
-        }
-        return f"Plan: {plan_labels.get((audience_value or '').lower(), 'Unknown')}"
+        plan_name = (audience_value or "").strip()
+        if not plan_name:
+            return "Plan: Unknown"
+        if plan_name.lower().endswith("plan"):
+            return f"Plan: {plan_name.title()}"
+        return f"Plan: {plan_name.title()} plan"
     return "Unknown"
 
 

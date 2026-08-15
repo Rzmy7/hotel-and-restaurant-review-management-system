@@ -2,8 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import datetime
 
 import pyodbc
 
@@ -14,7 +13,6 @@ from app.modules.admin.services.broadcasting_service import (
     ensure_notifications_schema,
     get_recipient_ids,
 )
-from app.modules.admin.services.system_settings_service import get_system_timezone
 from app.modules.auth.services.email_service import send_broadcast_email, send_in_background
 
 logger = logging.getLogger(__name__)
@@ -109,10 +107,7 @@ def _process_broadcasts_sync_worker():
         with get_raw_connection() as connection:
             cursor = connection.cursor()
 
-            tz_name = get_system_timezone(cursor)
             now_utc = datetime.utcnow()
-            tz_offset = _get_timezone_offset(tz_name, now_utc)
-            now_in_system_tz = now_utc + tz_offset
 
             pending_rows = cursor.execute(
                 """
@@ -127,7 +122,7 @@ def _process_broadcasts_sync_worker():
                   AND scheduled_at <= ?
                 ORDER BY scheduled_at ASC
                 """,
-                now_in_system_tz,
+                now_utc,
             ).fetchall()
 
             if not pending_rows:
@@ -193,24 +188,3 @@ def _process_broadcasts_sync_worker():
             )
     except Exception as e:
         logger.error(f"Error during broadcast worker run: {e}")
-
-
-def _get_timezone_offset(tz_name: str, utc_dt: datetime) -> timedelta:
-    """
-    Calculate the offset of a given timezone for a given UTC datetime.
-    Falls back to UTC (0 offset) on error.
-    """
-    try:
-        if not tz_name:
-            return timedelta(0)
-
-        utc_aware = utc_dt.replace(tzinfo=ZoneInfo("UTC"))
-        local_aware = utc_aware.astimezone(ZoneInfo(tz_name))
-
-        offset = local_aware.utcoffset()
-        return offset if offset is not None else timedelta(0)
-    except Exception as e:
-        logger.warning(
-            f"Failed to calculate timezone offset for '{tz_name}': {e}. Defaulting to UTC."
-        )
-        return timedelta(0)

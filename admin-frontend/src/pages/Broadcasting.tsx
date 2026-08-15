@@ -14,6 +14,7 @@ import {
 } from '../components/Broadcasting';
 import type { BroadcastRecord, ComposeForm } from '../components/Broadcasting';
 import { broadcastingService } from '../services/broadcastingService';
+import { fetchSubscriptionPlans, type SubscriptionPlan } from '../services/subscriptionPlansService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 
 interface BroadcastStats {
@@ -40,6 +41,7 @@ export const Broadcasting: React.FC = () => {
     const [form, setForm] = useState<ComposeForm>(emptyForm());
     const [history, setHistory] = useState<BroadcastRecord[]>([]);
     const [stats, setStats] = useState<BroadcastStats>({ total: 0, sent: 0, scheduled: 0, failed: 0 });
+    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
     const [estimatedCount, setEstimatedCount] = useState(0);
     const [showPreview, setShowPreview] = useState(false);
@@ -96,9 +98,27 @@ export const Broadcasting: React.FC = () => {
         }
     };
 
-    // Load stats on mount
+    const planOptions = useMemo(() => {
+        return plans
+            .filter(p => p.isActive)
+            .map(p => ({
+                value: p.name.toLowerCase(),
+                label: `${p.name} plan`,
+            }));
+    }, [plans]);
+
+    // Load stats and plans on mount
     useEffect(() => {
         void refreshStats();
+        const loadPlans = async () => {
+            try {
+                const planList = await fetchSubscriptionPlans();
+                setPlans(planList);
+            } catch (error) {
+                console.error('Failed to load subscription plans', error);
+            }
+        };
+        void loadPlans();
     }, []);
 
     // Load paginated/filtered history dynamically
@@ -243,7 +263,11 @@ export const Broadcasting: React.FC = () => {
                             <AudienceSelector
                                 audienceType={form.audienceType}
                                 audienceValue={form.audienceValue}
-                                onAudienceTypeChange={audienceType => updateForm({ audienceType, audienceValue: '' })}
+                                planOptions={planOptions}
+                                onAudienceTypeChange={audienceType => {
+                                    const defaultVal = audienceType === 'plan' ? (planOptions[0]?.value || 'free') : '';
+                                    updateForm({ audienceType, audienceValue: defaultVal });
+                                }}
                                 onAudienceValueChange={audienceValue => updateForm({ audienceValue })}
                             />
 
@@ -373,6 +397,7 @@ export const Broadcasting: React.FC = () => {
                     form={form}
                     estimatedCount={estimatedCount}
                     timezone={systemTimezone}
+                    planOptions={planOptions}
                     onClose={() => setShowPreview(false)}
                     onSend={handleSend}
                     sending={sending}

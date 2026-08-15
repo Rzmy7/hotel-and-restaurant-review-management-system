@@ -272,7 +272,7 @@ def delete_model(model_id: str):
 def test_model(model_id: str):
     try:
         from app.services.llm_gateway import call as gateway_call
-        text = (gateway_call("review_processing", "Reply with exactly: ok", model_id=model_id) or "").strip()
+        text = (gateway_call("review_processing", "Reply with exactly: ok", model_id=model_id, allow_fallback=False) or "").strip()
         if text:
             return LLMModelTestResponse(success=True, message="Model is reachable and responded successfully.")
         return LLMModelTestResponse(success=False, message="Model responded but returned an empty response.")

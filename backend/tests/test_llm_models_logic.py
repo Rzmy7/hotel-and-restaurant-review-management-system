@@ -34,7 +34,7 @@ def test_llm_model_update_schema():
     model = LLMModelUpdate(**payload)
     assert model.max_tokens == 2048
 
-@patch("app.modules.admin.routes.llm_models_routes.gateway_call", side_effect=Exception("Connection error"))
+@patch("app.services.llm_gateway.call", side_effect=Exception("Connection error"))
 def test_test_connectivity_endpoint_validation(mock_gateway):
     # Test that the endpoint exists and validates input
     response = client.post("/api/admin/llm-models/test-connectivity", json={
@@ -89,7 +89,12 @@ def test_is_retryable_exception_aborts_on_pause(mock_connect):
         assert res is False
 
 
-def test_fatal_error_detection_and_non_retryable():
+@patch("app.core.pyodbc_connection.get_raw_connection")
+def test_fatal_error_detection_and_non_retryable(mock_get_conn):
+    mock_conn = MagicMock()
+    mock_get_conn.return_value.__enter__.return_value = mock_conn
+    mock_conn.cursor.return_value = MagicMock()
+
     from app.modules.reviews.services.llm_client import _detect_fatal_error, is_retryable_exception
 
     # 1. Encryption key error

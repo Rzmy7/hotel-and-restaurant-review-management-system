@@ -11,14 +11,18 @@ interface PreviewModalProps {
     onClose: () => void;
     onSend: () => void;
     sending: boolean;
+    planOptions?: { value: string; label: string }[];
 }
 
 const msgTypeMeta = (t: MessageType) => MESSAGE_TYPES.find(m => m.value === t)!;
 
-export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estimatedCount, timezone, onClose, onSend, sending }) => {
+export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estimatedCount, timezone, onClose, onSend, sending, planOptions }) => {
     const mt = msgTypeMeta(form.messageType);
     const audienceOpt = AUDIENCE_OPTIONS.find(a => a.value === form.audienceType)!;
-    const subLabel = audienceOpt.subOptions?.find(s => s.value === form.audienceValue)?.label ?? '';
+    const subOptions = form.audienceType === 'plan' && planOptions && planOptions.length > 0
+        ? planOptions
+        : audienceOpt.subOptions;
+    const subLabel = subOptions?.find(s => s.value === form.audienceValue)?.label ?? form.audienceValue;
     const audienceLabel = form.audienceType === 'all' ? 'All Users' : `${audienceOpt.label}: ${subLabel}`;
 
     return (
