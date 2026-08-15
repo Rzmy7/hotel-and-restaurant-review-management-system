@@ -169,8 +169,10 @@ const AppContent: React.FC = () => {
   const isLandingPage = location.pathname === '/';
 
   useEffect(() => {
-    fetchOrganizations();
-  }, [fetchOrganizations]);
+    if (user) {
+      fetchOrganizations();
+    }
+  }, [user, fetchOrganizations]);
 
   useEffect(() => {
     let mounted = true;
