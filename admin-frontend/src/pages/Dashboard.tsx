@@ -115,7 +115,7 @@ export const Dashboard: React.FC = () => {
                     <StatCard
                         label="Total Organizations"
                         value={stats.totalOrganizations.toLocaleString()}
-                        trend={`+${stats.organizationsGrowth}%`}
+                        trend={stats.organizationsGrowth}
                         icon={Building2}
                         iconColor="text-blue-500"
                         iconBg="bg-blue-50"
@@ -123,7 +123,7 @@ export const Dashboard: React.FC = () => {
                     <StatCard
                         label="Total Users"
                         value={stats.totalUsers.toLocaleString()}
-                        trend={`+${stats.usersGrowth}%`}
+                        trend={stats.usersGrowth}
                         icon={Users}
                         iconColor="text-purple-500"
                         iconBg="bg-purple-50"
@@ -131,7 +131,7 @@ export const Dashboard: React.FC = () => {
                     <StatCard
                         label="Total Reviews"
                         value={stats.totalReviews.toLocaleString()}
-                        trend={`+${stats.reviewsGrowth}%`}
+                        trend={stats.reviewsGrowth}
                         icon={MessageSquare}
                         iconColor="text-emerald-500"
                         iconBg="bg-emerald-50"
@@ -139,7 +139,7 @@ export const Dashboard: React.FC = () => {
                     <StatCard
                         label="Processed Reviews"
                         value={stats.processedReviews.toLocaleString()}
-                        trend={`+${stats.processedReviewsGrowth}%`}
+                        trend={stats.processedReviewsGrowth}
                         icon={Bot}
                         iconColor="text-amber-500"
                         iconBg="bg-amber-50"

@@ -8,6 +8,7 @@ import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createSc
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
+import { formatTrend } from '../utils/format';
 
 type TableAttributeFormRow = {
     name: string;
@@ -445,7 +446,9 @@ export const Scraping: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.activeJobs}</div>
-                    <div className="text-xs text-green-600">+{stats?.activeJobsChange} since last hour</div>
+                    <div className={`text-xs ${(stats?.activeJobsChange || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {(stats?.activeJobsChange || 0) > 0 ? `+${stats?.activeJobsChange}` : stats?.activeJobsChange || 0} since last hour
+                    </div>
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
@@ -478,7 +481,9 @@ export const Scraping: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats?.reviewsIngested || 0)}</div>
-                    <div className="text-xs text-green-600">+{stats?.reviewsChange}% vs last week</div>
+                    <div className={`text-xs ${(stats?.reviewsChange || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {formatTrend(stats?.reviewsChange).text} vs last week
+                    </div>
                 </div>
             </div>
 
