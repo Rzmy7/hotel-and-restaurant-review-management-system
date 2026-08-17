@@ -169,8 +169,10 @@ const AppContent: React.FC = () => {
   const isLandingPage = location.pathname === '/';
 
   useEffect(() => {
-    fetchOrganizations();
-  }, [fetchOrganizations]);
+    if (user) {
+      fetchOrganizations();
+    }
+  }, [user, fetchOrganizations]);
 
   useEffect(() => {
     let mounted = true;
@@ -320,9 +322,9 @@ const AppContent: React.FC = () => {
                   <Route path="/competitors/rankings" element={<RequireAuth><RequireOrganization><CompetitorRankingsPage /></RequireOrganization></RequireAuth>} />
                   <Route path="/competitors/compare" element={<RequireAuth><RequireOrganization><CompetitorComparison /></RequireOrganization></RequireAuth>} />
 
-                  {/* Group routes — no org requirement */}
-                  <Route path="/groups" element={<RequireAuth><Suspense fallback={<GroupsSkeleton />}><GroupsPage /></Suspense></RequireAuth>} />
-                  <Route path="/groups/:groupId" element={<RequireAuth><GroupDashboardPage /></RequireAuth>} />
+                  {/* Group routes — org-scoped pages require an active organization */}
+                  <Route path="/groups" element={<RequireAuth><RequireOrganization><Suspense fallback={<GroupsSkeleton />}><GroupsPage /></Suspense></RequireOrganization></RequireAuth>} />
+                  <Route path="/groups/:groupId" element={<RequireAuth><RequireOrganization><GroupDashboardPage /></RequireOrganization></RequireAuth>} />
                   <Route path="/groups/join/:token" element={<RequireAuth><GroupInvitePage /></RequireAuth>} />
 
                   {/* Pages that don't require an org */}

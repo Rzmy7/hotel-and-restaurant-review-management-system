@@ -1,4 +1,4 @@
-"""Admin insights service — dashboard stats + Gemini AI insights."""
+"""Admin insights service — dashboard stats + LLM AI insights."""
 
 import json
 import re

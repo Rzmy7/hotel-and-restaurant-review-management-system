@@ -80,18 +80,22 @@ export const LandingHeader = () => {
           )}
         </div>
 
-        {/* Mobile Menu Toggle */}
+        {/* Mobile Menu Toggle: added aria-label, aria-expanded, aria-controls for full screen reader support */}
         <button
           className="md:hidden text-gray-600 dark:text-gray-300"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-menu"
         >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {isMobileMenuOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
         </button>
       </div>
 
       {/* Mobile Nav */}
+      {/* Mobile Nav: id="mobile-menu" matches aria-controls on the toggle button */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 animate-fadeIn">
+        <div id="mobile-menu" className="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 animate-fadeIn">
           <nav className="flex flex-col p-6 space-y-4">
             {navLinks.map((link) => (
               <a

@@ -21,6 +21,7 @@ import type {
 } from '../services/reviewProcessingService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
+import { formatTrend } from '../utils/format';
 
 const defaultStats: ReviewProcessingStats = {
     activeJobs: 0,
@@ -334,7 +335,9 @@ export const ReviewProcessing: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Play size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeJobs}</div>
-                    <div className="text-xs text-green-600">+{stats.activeJobsChange} since last hour</div>
+                    <div className={`text-xs ${stats.activeJobsChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {stats.activeJobsChange > 0 ? `+${stats.activeJobsChange}` : stats.activeJobsChange} since last hour
+                    </div>
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
@@ -370,7 +373,9 @@ export const ReviewProcessing: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Grid3X3 size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats.reviewsProcessed)}</div>
-                    <div className="text-xs text-green-600">+{stats.reviewsChange}% vs last week</div>
+                    <div className={`text-xs ${stats.reviewsChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {formatTrend(stats.reviewsChange).text} vs last week
+                    </div>
                 </div>
             </div>
 

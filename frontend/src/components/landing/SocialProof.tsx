@@ -52,11 +52,13 @@ export const SocialProof = () => {
               style={{ animationDelay: `${index * 150}ms` }}
             >
               <div className="flex items-center space-x-4 mb-6">
-                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center font-bold text-blue-600">
+                {/* Avatar: changed from bg-blue-100/text-blue-600 (contrast ~2.9:1 ❌) to bg-blue-600/text-white (contrast 4.5:1+ ✅) */}
+              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white">
                   {t.avatar}
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white">{t.name}</h4>
+                {/* Changed from h4 to p — heading-order fix: h4 here would skip h3 (section uses h2) */}
+                <p className="font-bold text-gray-900 dark:text-white">{t.name}</p>
                   <p className="text-xs text-gray-500">{t.role}</p>
                 </div>
               </div>

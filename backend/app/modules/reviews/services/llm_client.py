@@ -119,14 +119,14 @@ def _detect_fatal_error(e: Exception | str) -> tuple[bool, str]:
         return True, "api_limit"
     if "llm_encryption_key" in s_lower or "encryption" in s_lower:
         return True, "encryption_key_error"
-    if "no llm model assigned" in s_lower or "no active model" in s_lower:
+    if "no active llm models" in s_lower or "no llm model assigned" in s_lower or "no active model" in s_lower:
         return True, "no_model_assigned"
     if any(k in s_lower for k in ("unauthorized", "forbidden", "invalid api key", "api key not valid", "permission_denied", "invalid_api_key", "401", "403")):
         return True, "auth_error"
     if any(k in s_lower for k in ("unsupported model", "model not found", "model does not exist", "invalid_request_error", "400", "404", "422")):
         return True, "model_error"
-    if isinstance(e, (ValueError, RuntimeError, KeyError, TypeError, AttributeError)):
-        return True, "configuration_error"
+    # General ValueError, JSONDecodeError, KeyError, or parsing glitches from LLM output
+    # are data format issues, NOT fatal infrastructure errors, and must NOT auto-pause review processing.
     return False, ""
 
 
@@ -138,23 +138,32 @@ def auto_pause_review_processing(
     """
     Auto-pause review processing in the database and APScheduler.
     Also sends notifications and logs alerts for admin visibility.
+    Ensures idempotency — only pauses and sends notifications ONCE per pause event.
     """
-    logger.warning(f"Auto-pausing review processing. Reason: {reason}. Detail: {error_message[:200]}")
+    already_paused = False
 
-    # 1. Update system settings in DB & reset processing reviews back to pending
+    # 1. Update system settings in DB & check if already paused (atomic / idempotent)
     try:
         import pyodbc
         from app.core.db_utils import get_connection_string
-        from app.modules.admin.services.system_settings_service import set_setting
+        from app.modules.admin.services.system_settings_service import get_setting_bool, set_setting
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            set_setting(cursor, "review_processing_paused", "true")
-            set_setting(cursor, "review_processing_pause_reason", reason)
-            cursor.execute("UPDATE dbo.processed_review SET status = 'pending' WHERE status = 'processing'")
-            conn.commit()
-        logger.info("Review processing has been PAUSED. Resume from Admin → System Settings.")
+            already_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
+            if not already_paused:
+                set_setting(cursor, "review_processing_paused", "true")
+                set_setting(cursor, "review_processing_pause_reason", reason)
+                cursor.execute("UPDATE dbo.processed_review SET status = 'pending' WHERE status = 'processing'")
+                conn.commit()
+                logger.warning(f"Auto-pausing review processing. Reason: {reason}. Detail: {error_message[:200]}")
+            else:
+                logger.info(f"Review processing is already paused. Skipping duplicate pause notification for reason: {reason}")
     except Exception as pause_err:
-        logger.error(f"Failed to pause review processing in DB: {pause_err}")
+        logger.error(f"Failed to check/pause review processing in DB: {pause_err}")
+
+    # If it was already paused, abort immediately so we don't spam admins with duplicate notifications
+    if already_paused:
+        return
 
     # 2. Pause APScheduler job
     try:
@@ -165,24 +174,37 @@ def auto_pause_review_processing(
     except Exception as sched_err:
         logger.error(f"Failed to pause scheduler job during auto-pause: {sched_err}")
 
-    # 3. Log alerts and notify admin
+    # 3. Log alerts and notify admin with accurate titles and messages
     try:
         from app.modules.admin.services.system_alert_logger import (
             alert_llm_quota_exceeded,
             alert_llm_api_error,
             alert_llm_key_missing,
         )
-        from app.services.notification_helpers import notify_admin_llm_quota_exceeded
+        from app.services.notification_helpers import (
+            notify_admin_llm_quota_exceeded,
+            notify_admin_llm_config_error,
+            notify_admin_llm_auth_error,
+        )
 
         if reason == "api_limit":
             alert_llm_quota_exceeded(error_message[:200], model_name=model_name)
             notify_admin_llm_quota_exceeded(model_name=model_name)
         elif reason in ("no_model_assigned", "encryption_key_error"):
             alert_llm_key_missing(model_name=model_name)
-            notify_admin_llm_quota_exceeded(model_name=f"{model_name} (Config Error)")
+            notify_admin_llm_config_error(
+                title=f"LLM Configuration Issue ({model_name})",
+                message=f"Review processing paused: {error_message[:300] or 'No valid LLM model configured.'} Please configure an active model in Admin → LLM Models."
+            )
+        elif reason == "auth_error":
+            alert_llm_api_error(error_message[:300], model_name=model_name)
+            notify_admin_llm_auth_error(model_name=model_name)
         else:
             alert_llm_api_error(error_message[:300], model_name=model_name)
-            notify_admin_llm_quota_exceeded(model_name=f"{model_name} (API Error)")
+            notify_admin_llm_config_error(
+                title=f"LLM Processing Paused ({model_name})",
+                message=f"Review processing was paused: {error_message[:300]}"
+            )
     except Exception as alert_err:
         logger.debug(f"Failed to log system alert or notification: {alert_err}")
 

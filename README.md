@@ -16,7 +16,7 @@
 
 The **Hotel and Restaurant Review Management & Analysis System** is an enterprise-grade, full-stack intelligence platform engineered to revolutionize how hospitality organizations aggregate, analyze, and act upon customer feedback.
 
-The platform continuously aggregates guest reviews across major global travel platforms (**Booking.com**, **Agoda**, **Google Maps**, and **TripAdvisor**), normalizes heterogeneous metadata, performs aspect-based sentiment analysis and semantic vector indexing, generates context-grounded AI responses (via **OpenAI**, **Google Gemini**, **Qwen**, and **DeepSeek** models using Retrieval-Augmented Generation / SOP injection), and delivers comparative competitive intelligence through modern React 19 portals for business tenants and platform administrators.
+The platform continuously aggregates guest reviews across major global travel platforms (**Booking.com**, **Agoda**, **Google Maps**, and **TripAdvisor**), normalizes heterogeneous metadata, performs aspect-based sentiment analysis and semantic vector indexing, generates context-grounded AI responses (via OpenAI-compatible models such as **OpenAI GPT-4o**, **Qwen**, and **DeepSeek** using Retrieval-Augmented Generation / SOP injection), and delivers comparative competitive intelligence through modern React 19 portals for business tenants and platform administrators.
 
 ---
 
@@ -113,7 +113,7 @@ hotel-and-restaurant-review-management-system/
 - **Deep Trait Deduplication**: Normalizes review IDs, author hashes, timestamps, and texts to prevent duplicate records across recurring scraping runs.
 
 ### 2. Multi-Model AI & LLM Gateway
-- **Provider-Agnostic LLM Gateway**: Seamlessly routes prompts across **Google Gemini**, **OpenAI GPT-4o**, **Qwen**, and **DeepSeek** with automatic fallback handling.
+- **Provider-Agnostic LLM Gateway**: Seamlessly routes prompts across OpenAI-compatible providers (**OpenAI GPT-4o**, **Qwen**, **DeepSeek**, etc.) with automatic fallback handling.
 - **Aspect-Based Sentiment Analysis**: Extracts granular sentiment (positive, neutral, negative) and rating scores across dimensions like *Cleanliness*, *Service*, *Location*, *Value*, and *Amenities*.
 - **Retrieval-Augmented Response Generation (RAG)**: Retrieves relevant hotel SOPs and organizational rules from ChromaDB to craft empathetic, policy-compliant draft replies for management approval.
 

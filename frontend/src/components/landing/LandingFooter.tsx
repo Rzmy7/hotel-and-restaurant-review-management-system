@@ -17,21 +17,23 @@ export const LandingFooter = () => {
             <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6">
               The all-in-one AI platform to manage, analyze, and automate your online reviews across all platforms.
             </p>
+            {/* Social links: added aria-label for screen readers; aria-hidden on icon SVGs to avoid duplicate announcements */}
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Twitter size={20} />
+              <a href="#" aria-label="Follow us on Twitter" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <Twitter size={20} aria-hidden="true" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Linkedin size={20} />
+              <a href="#" aria-label="Connect on LinkedIn" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <Linkedin size={20} aria-hidden="true" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Github size={20} />
+              <a href="#" aria-label="View our GitHub" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <Github size={20} aria-hidden="true" />
               </a>
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Product</h4>
+          {/* Heading order fix: changed h4 → h3 (page has h2 section headings; skipping to h4 violates WCAG heading order) */}
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Product</h3>
             <ul className="space-y-4">
               <li><a href="#features" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Features</a></li>
               <li><a href="#pricing" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing</a></li>
@@ -41,7 +43,7 @@ export const LandingFooter = () => {
           </div>
 
           <div>
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Company</h4>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Company</h3>
             <ul className="space-y-4">
               <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">About Us</a></li>
               <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Careers</a></li>
@@ -51,7 +53,7 @@ export const LandingFooter = () => {
           </div>
 
           <div>
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Legal</h4>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Legal</h3>
             <ul className="space-y-4">
               <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</a></li>
               <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</a></li>
@@ -65,7 +67,8 @@ export const LandingFooter = () => {
             © {new Date().getFullYear()} ReviewMate. All rights reserved.
           </p>
           <div className="flex space-x-6">
-            <span className="text-xs text-gray-400 dark:text-gray-500">Built with React & Tailwind</span>
+            {/* Changed text-gray-400/text-gray-500 to text-gray-600/text-gray-400 for sufficient contrast on white/dark backgrounds */}
+            <span className="text-xs text-gray-600 dark:text-gray-400">Built with React &amp; Tailwind</span>
           </div>
         </div>
       </div>

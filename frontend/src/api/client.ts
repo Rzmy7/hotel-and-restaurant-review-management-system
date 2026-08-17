@@ -35,6 +35,20 @@ const readErrorMessage = async (response: Response, fallback: string): Promise<s
     }
 };
 
+const isPublicPage = (pathname: string): boolean => {
+    if (pathname === '/' || pathname === '') return true;
+    const publicPrefixes = [
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/reset-password',
+        '/terms',
+        '/privacy',
+        '/oauth-success'
+    ];
+    return publicPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+};
+
 async function handleResponse(response: Response, requestUrl: string) {
     if (response.status === 401) {
         const backendMessage = await readErrorMessage(response, "Unauthorized");
@@ -52,8 +66,8 @@ async function handleResponse(response: Response, requestUrl: string) {
         localStorage.removeItem("token");
         localStorage.removeItem("authUser");
         // For protected endpoints, 401 means the current session is no longer valid.
-        // Initial /auth/me check should fail gracefully without a hard page reload redirect.
-        if (window.location.pathname !== "/login" && !isAuthMe) {
+        // Initial /auth/me check and public pages should not trigger a hard page reload redirect to login.
+        if (!isPublicPage(window.location.pathname) && !isAuthMe) {
             window.location.href = "/login?expired=true";
         }
         throw new Error("Session expired. Please log in again.");

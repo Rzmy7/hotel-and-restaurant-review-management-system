@@ -31,6 +31,7 @@ const COMMON_ENDPOINTS = [
   { label: 'OpenRouter', value: 'https://openrouter.ai/api/v1' },
   { label: 'Mistral', value: 'https://api.mistral.ai/v1' },
   { label: 'DeepSeek', value: 'https://api.deepseek.com/v1' },
+  { label: 'DigitalOcean GenAI', value: 'https://inference.do-ai.run/v1' },
   { label: 'Custom…', value: '' },
 ];
 

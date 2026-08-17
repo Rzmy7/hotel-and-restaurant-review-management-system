@@ -489,6 +489,9 @@ jobs:
     runs-on: ${{ inputs.runner_type || 'self-hosted' }}
     steps:
       - uses: appleboy/ssh-action@v1
+        env:
+          RAW_BASE: ${{ env.RAW_BASE }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.FRONTEND_HOST }}
           username: ${{ secrets.USER }}
@@ -498,10 +501,18 @@ jobs:
           script: |
             mkdir -p /opt/reviewmate && cd /opt/reviewmate
             # Sync config files from repo (auth required for private repos)
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
-            chmod +x init-ssl.sh
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/docker-compose.yml" -o docker-compose.yml.tmp
+            [ -s docker-compose.yml.tmp ] && mv docker-compose.yml.tmp docker-compose.yml || rm -f docker-compose.yml.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/nginx.conf" -o nginx.conf.tmp
+            [ -s nginx.conf.tmp ] && mv nginx.conf.tmp nginx.conf || rm -f nginx.conf.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server1-frontends/init-ssl.sh" -o init-ssl.sh.tmp
+            [ -s init-ssl.sh.tmp ] && { mv init-ssl.sh.tmp init-ssl.sh; chmod +x init-ssl.sh; } || rm -f init-ssl.sh.tmp
+
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             # Bootstrap SSL if certs don't exist (must run BEFORE docker compose up)
@@ -524,6 +535,9 @@ jobs:
     runs-on: ${{ inputs.runner_type || 'self-hosted' }}
     steps:
       - uses: appleboy/ssh-action@v1
+        env:
+          RAW_BASE: ${{ env.RAW_BASE }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.BACKEND_HOST }}
           username: ${{ secrets.USER }}
@@ -532,10 +546,18 @@ jobs:
           envs: RAW_BASE,GHCR_TOKEN
           script: |
             mkdir -p /opt/reviewmate && cd /opt/reviewmate
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
-            chmod +x init-ssl.sh
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/docker-compose.yml" -o docker-compose.yml.tmp
+            [ -s docker-compose.yml.tmp ] && mv docker-compose.yml.tmp docker-compose.yml || rm -f docker-compose.yml.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/nginx.conf" -o nginx.conf.tmp
+            [ -s nginx.conf.tmp ] && mv nginx.conf.tmp nginx.conf || rm -f nginx.conf.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server2-backend/init-ssl.sh" -o init-ssl.sh.tmp
+            [ -s init-ssl.sh.tmp ] && { mv init-ssl.sh.tmp init-ssl.sh; chmod +x init-ssl.sh; } || rm -f init-ssl.sh.tmp
+
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/api.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
@@ -557,6 +579,9 @@ jobs:
     runs-on: ${{ inputs.runner_type || 'self-hosted' }}
     steps:
       - uses: appleboy/ssh-action@v1
+        env:
+          RAW_BASE: ${{ env.RAW_BASE }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.EMBEDDING_HOST }}
           username: ${{ secrets.USER }}
@@ -565,10 +590,18 @@ jobs:
           envs: RAW_BASE,GHCR_TOKEN
           script: |
             mkdir -p /opt/reviewmate && cd /opt/reviewmate
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
-            chmod +x init-ssl.sh
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/docker-compose.yml" -o docker-compose.yml.tmp
+            [ -s docker-compose.yml.tmp ] && mv docker-compose.yml.tmp docker-compose.yml || rm -f docker-compose.yml.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/nginx.conf" -o nginx.conf.tmp
+            [ -s nginx.conf.tmp ] && mv nginx.conf.tmp nginx.conf || rm -f nginx.conf.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server3-embedding/init-ssl.sh" -o init-ssl.sh.tmp
+            [ -s init-ssl.sh.tmp ] && { mv init-ssl.sh.tmp init-ssl.sh; chmod +x init-ssl.sh; } || rm -f init-ssl.sh.tmp
+
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/embed.reviewmate.live/fullchain.pem && echo "yes" || echo "no")
@@ -590,6 +623,9 @@ jobs:
     runs-on: ${{ inputs.runner_type || 'self-hosted' }}
     steps:
       - uses: appleboy/ssh-action@v1
+        env:
+          RAW_BASE: ${{ env.RAW_BASE }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.SCRAPING_HOST }}
           username: ${{ secrets.USER }}
@@ -598,10 +634,18 @@ jobs:
           envs: RAW_BASE,GHCR_TOKEN
           script: |
             mkdir -p /opt/reviewmate && cd /opt/reviewmate
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf.tmp && mv nginx.conf.tmp nginx.conf
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
-            chmod +x init-ssl.sh
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/docker-compose.yml" -o docker-compose.yml.tmp
+            [ -s docker-compose.yml.tmp ] && mv docker-compose.yml.tmp docker-compose.yml || rm -f docker-compose.yml.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/nginx.conf" -o nginx.conf.tmp
+            [ -s nginx.conf.tmp ] && mv nginx.conf.tmp nginx.conf || rm -f nginx.conf.tmp
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/server4-scraper/init-ssl.sh" -o init-ssl.sh.tmp
+            [ -s init-ssl.sh.tmp ] && { mv init-ssl.sh.tmp init-ssl.sh; chmod +x init-ssl.sh; } || rm -f init-ssl.sh.tmp
+
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             CERT_EXISTS=$(docker run --rm -v reviewmate_certbot_conf:/etc/letsencrypt alpine test -f /etc/letsencrypt/live/scrape.reviewmate.live/fullchain.pem && echo "yes" || echo "no")

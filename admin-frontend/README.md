@@ -22,7 +22,7 @@ The **Admin Frontend** is a mission-control administration interface built for s
 - **Trait Deduplication & Data Scrubbing**: Trigger deep deduplication routines and database vacuuming directly from the UI.
 
 ### 🤖 LLM Model & AI Gateway Management
-- **Multi-Provider Routing**: Configure active LLM providers (Google Gemini, OpenAI GPT-4o, DeepSeek, Qwen) with dynamic failover ordering.
+- **Multi-Provider Routing**: Configure active LLM providers (OpenAI GPT-4o, DeepSeek, Qwen, and custom OpenAI-compatible endpoints) with dynamic failover ordering.
 - **Hyperparameter Tuning**: Adjust model temperature, max token limits, and prompt template parameters per tenant tier.
 - **Vector Search Threshold Tuning**: Configure cosine similarity cutoff thresholds for 1-word, 2-word, and 3+-word semantic queries in ChromaDB.
 

@@ -282,7 +282,7 @@ async def run_analysis_pipeline():
 async def process_single_review(review_id: uuid.UUID) -> dict:
     """
     On-demand AI processing for a single review.
-    Fetches the record, analyzes with Gemini, and updates the database.
+    Fetches the record, analyzes with LLM Gateway, and updates the database.
     """
     logger.info(f"--- Starting Single Review Analysis: {review_id} ---")
 
@@ -297,7 +297,7 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
         logger.error(f"Failed to fetch single review {review_id}: {e}")
         raise e
 
-    # 2. Analyze with Gemini
+    # 2. Analyze with LLM Gateway
     ai_input = [{
         "id": str(review["id"]),
         "rating": review["rating"],

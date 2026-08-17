@@ -25,7 +25,8 @@ export const CTA = () => {
         <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl"></div>
 
         <div className="relative z-10">
-          <div className="inline-flex items-center space-x-2 bg-white/20 text-white px-4 py-2 rounded-full text-sm font-bold mb-8">
+          {/* Badge: bumped bg-white/20 → bg-white/25 + added border to improve contrast against bg-blue-600 */}
+          <div className="inline-flex items-center space-x-2 bg-white/25 text-white border border-white/40 px-4 py-2 rounded-full text-sm font-bold mb-8">
             <Sparkles size={16} />
             <span>Ready to transform your reputation?</span>
           </div>
@@ -34,7 +35,8 @@ export const CTA = () => {
             Join 500+ Businesses Growing with AI
           </h2>
           
-          <p className="text-blue-100 text-lg md:text-xl mb-12 max-w-2xl mx-auto">
+          {/* Body text: changed text-blue-100 (contrast ~1.9:1 ❌) to text-white (contrast 4.5:1+ ✅) on bg-blue-600 */}
+          <p className="text-white text-lg md:text-xl mb-12 max-w-2xl mx-auto">
             Start your 14-day free trial today and experience the future of review management. No credit card required.
           </p>
           

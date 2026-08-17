@@ -54,7 +54,7 @@ backend/app/
 │   └── user/                   # User profile management and preferences
 ├── services/                   # Cross-cutting application services
 │   ├── broadcasting_service.py # System-wide user announcements & broadcast dispatcher
-│   ├── llm_gateway.py          # Multi-provider LLM abstraction (Gemini, Qwen, DeepSeek, OpenAI)
+│   ├── llm_gateway.py          # Multi-provider LLM abstraction (OpenAI, Qwen, DeepSeek, custom OpenAI-compatible)
 │   └── notifications_service.py# In-app and email notification dispatcher
 └── tests/                      # Automated integration and unit tests
 ```
@@ -74,7 +74,7 @@ backend/app/
 
 The backend abstracts Large Language Model interactions through a unified `LLMClient` and `LLMGateway`:
 
-- **Supported Models**: Google Gemini 1.5/2.5, Qwen 2.5, DeepSeek V3/R1, OpenAI GPT-4o.
+- **Supported Models**: OpenAI GPT-4o, Qwen 2.5, DeepSeek V3/R1, and any OpenAI format-compatible endpoints configured via the Admin Portal (`dbo.llm_model`).
 - **Aspect-Based Sentiment Extraction**: Deconstructs raw review prose into aspect-specific ratings (*Cleanliness*, *Staff & Service*, *Location*, *Value for Money*, *Food & Dining*).
 - **Retrieval-Augmented Response Generation (RAG)**: Integrates with the ChromaDB Embedding Microservice to retrieve property-specific standard operating procedures (SOPs), generating responses strictly adhering to hotel policy.
 
@@ -100,8 +100,7 @@ INTERNAL_API_KEY=your-internal-microservice-shared-key
 # RabbitMQ Asynchronous Task Broker
 RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 
-# AI Provider API Keys
-GEMINI_API_KEY=your-google-gemini-api-key
+# AI Provider API Keys (managed dynamically in Admin Portal via dbo.llm_model)
 OPENAI_API_KEY=your-openai-api-key
 DEEPSEEK_API_KEY=your-deepseek-api-key
 QWEN_API_KEY=your-qwen-api-key

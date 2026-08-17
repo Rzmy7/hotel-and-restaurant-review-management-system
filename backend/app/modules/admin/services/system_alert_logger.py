@@ -1,7 +1,7 @@
 """
 System Alert Logger — fire-and-forget logging of system-level alerts.
 
-Records API failures (Gemini quota, scraping errors), system health issues,
+Records API failures (LLM quota, scraping errors), system health issues,
 and other operational events into ``dbo.system_alert_log``. This table is
 consumed by the admin dashboard's System Alerts panel.
 

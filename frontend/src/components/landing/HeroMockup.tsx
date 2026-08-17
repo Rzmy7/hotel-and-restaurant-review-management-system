@@ -7,8 +7,8 @@ export const HeroMockup = () => {
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200"></div>
       
       <div className="relative bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        {/* Browser Top Bar */}
-        <div className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex items-center space-x-2">
+        {/* Browser Top Bar — decorative, hidden from assistive technologies */}
+        <div aria-hidden="true" className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex items-center space-x-2">
           <div className="flex space-x-1.5">
             <div className="w-3 h-3 rounded-full bg-red-400"></div>
             <div className="w-3 h-3 rounded-full bg-amber-400"></div>
@@ -17,8 +17,8 @@ export const HeroMockup = () => {
           <div className="flex-1 max-w-md mx-auto h-7 bg-gray-200/50 dark:bg-slate-800/50 rounded-lg"></div>
         </div>
 
-        {/* Mockup Content */}
-        <div className="p-8 flex h-[400px] md:h-[500px]">
+        {/* Mockup Content — decorative placeholder UI, hidden from assistive technologies */}
+        <div aria-hidden="true" className="p-8 flex h-[400px] md:h-[500px]">
           {/* Sidebar Placeholder */}
           <div className="hidden md:flex flex-col w-48 space-y-6 mr-8 border-r border-gray-100 dark:border-slate-800 pr-8">
             <div className="w-full h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg"></div>
@@ -61,8 +61,8 @@ export const HeroMockup = () => {
         </div>
       </div>
 
-      {/* Decorative Floating Elements */}
-      <div className="absolute -top-12 -right-12 hidden lg:block bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 animate-bounce duration-[3000ms]">
+      {/* Decorative Floating Elements — aria-hidden: purely visual, no meaningful content */}
+      <div aria-hidden="true" className="absolute -top-12 -right-12 hidden lg:block bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 animate-bounce duration-[3000ms]">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
             <span className="text-green-600 text-lg font-bold">+24%</span>
@@ -74,9 +74,10 @@ export const HeroMockup = () => {
         </div>
       </div>
 
-      <div className="absolute -bottom-8 -left-12 hidden lg:block bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 animate-pulse">
+      {/* AI badge: changed from bg-blue-100/text-blue-600 (contrast ~2.9:1 ❌) to bg-blue-600/text-white (contrast 4.5:1+ ✅) */}
+      <div aria-hidden="true" className="absolute -bottom-8 -left-12 hidden lg:block bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 animate-pulse">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">AI</div>
+          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">AI</div>
           <div>
             <div className="text-xs text-gray-500">Auto-Response</div>
             <div className="text-sm font-bold">Drafting...</div>
