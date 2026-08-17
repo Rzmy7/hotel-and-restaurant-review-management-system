@@ -104,12 +104,15 @@ def get_candidate_models(
     """
     Return an ordered, deduplicated list of decrypted active models to check for *purpose*.
 
-    Priority order:
-    1. Explicit primary_model_id (if provided and active)
-    2. Primary model assigned to *purpose* in dbo.system_settings
-    3. Model assigned to the purpose's legacy setting (see _PURPOSE_LEGACY_SETTING)
-    4. Model assigned to alternate purpose (e.g. review_processing / reply_generation)
-    5. All remaining active models from dbo.llm_model (ordered by created_at DESC)
+    An explicit choice is binding. If the caller named a model, or an admin assigned
+    one to *purpose*, that model is the only candidate — a broken key fails loudly
+    instead of silently borrowing another model and reporting success.
+
+    Only an *unassigned* purpose falls back, so installs that never configured the
+    newer purposes keep working:
+    1. Model assigned to the purpose's legacy setting (see _PURPOSE_LEGACY_SETTING)
+    2. Model assigned to alternate purpose (e.g. review_processing / reply_generation)
+    3. All remaining active models from dbo.llm_model (ordered by created_at DESC)
     """
     # Lazy import to avoid circular dependency (admin package loads routes which load gateway)
     from app.modules.admin.services.system_settings_service import (
@@ -153,26 +156,31 @@ def get_candidate_models(
         review_proc_assigned = (get_setting(cursor, "llm_review_processing_model_id") or "").strip()
         reply_gen_assigned = (get_setting(cursor, "llm_reply_generation_model_id") or "").strip()
 
+    # An explicit choice is binding — no fallback. A stale pointer (model deleted
+    # but the setting never cleared) is treated as unassigned rather than a hard
+    # failure, so it degrades to best-effort instead of taking the feature down.
+    explicit = next(
+        (mid for mid in (primary_model_id, purpose_assigned) if mid and mid in active_models_map),
+        None,
+    )
+    if explicit:
+        return [active_models_map[explicit]]
+
+    # Unassigned purpose — best effort, most closely related model first.
     ordered_ids: list[str] = []
 
     def _add_if_active(mid: str | None) -> None:
         if mid and mid in active_models_map and mid not in ordered_ids:
             ordered_ids.append(mid)
 
-    # 1. Explicit primary if specified
-    _add_if_active(primary_model_id)
-
-    # 2. Setting for requested purpose
-    _add_if_active(purpose_assigned)
-
-    # 3. Legacy setting that used to serve this purpose
+    # 1. Legacy setting that used to serve this purpose
     _add_if_active(legacy_assigned)
 
-    # 4. Alternative primary settings
+    # 2. Alternative primary settings
     _add_if_active(review_proc_assigned)
     _add_if_active(reply_gen_assigned)
 
-    # 5. All other active models
+    # 3. All other active models
     for mid in active_models_map:
         _add_if_active(mid)
 

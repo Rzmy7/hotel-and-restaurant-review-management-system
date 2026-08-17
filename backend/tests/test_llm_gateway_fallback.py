@@ -19,7 +19,8 @@ def _build_mock_model(mid: str, name: str, model_name: str, api_key: str = "key"
 
 class TestCandidateModelsResolution:
     @patch("pyodbc.connect")
-    def test_get_candidate_models_priority_order(self, mock_connect):
+    def test_assigned_purpose_is_bound_to_its_model(self, mock_connect):
+        """An assigned purpose must not borrow another model — it fails loudly instead."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
@@ -47,20 +48,15 @@ class TestCandidateModelsResolution:
                 mock_get_setting.side_effect = fake_get_setting
 
                 candidates = llm_gateway.get_candidate_models("review_processing")
-                candidate_ids = [c["id"] for c in candidates]
 
-                # Priority:
-                # 1. m2 (review_processing assigned)
-                # 2. m3 (reply_generation assigned)
-                # 3. m1 (remaining active)
-                assert candidate_ids == ["m2", "m3", "m1"]
+                # review_processing is explicitly assigned to m2, so m2 is the only
+                # candidate — m3 and m1 must not be used as silent substitutes.
+                assert [c["id"] for c in candidates] == ["m2"]
                 assert candidates[0]["name"] == "Qwen 2.5"
-                assert candidates[1]["name"] == "DeepSeek V3"
-                assert candidates[2]["name"] == "OpenAI GPT-4o"
 
     @patch("pyodbc.connect")
     def test_dedicated_purpose_setting_wins(self, mock_connect):
-        """A purpose with its own assignment uses it ahead of the legacy setting."""
+        """A purpose with its own assignment uses it alone, not the legacy setting."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
@@ -86,7 +82,7 @@ class TestCandidateModelsResolution:
                 mock_get_setting.side_effect = fake_get_setting
 
                 candidates = llm_gateway.get_candidate_models("insights")
-                assert [c["id"] for c in candidates] == ["m1", "m2", "m3"]
+                assert [c["id"] for c in candidates] == ["m1"]
 
     @patch("pyodbc.connect")
     def test_unassigned_purpose_falls_back_to_legacy_setting(self, mock_connect):
@@ -118,6 +114,42 @@ class TestCandidateModelsResolution:
                 assert llm_gateway.get_candidate_models("rule_extraction")[0]["id"] == "m3"
                 # competitor_analysis used to be served by the review_processing model
                 assert llm_gateway.get_candidate_models("competitor_analysis")[0]["id"] == "m2"
+
+    @patch("pyodbc.connect")
+    def test_broken_assigned_model_does_not_fall_through(self, mock_connect):
+        """A dead key on an assigned purpose must raise, not quietly succeed elsewhere."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        mock_cursor.execute.return_value.fetchall.return_value = [
+            ("broken", "Bad Key", "https://inference.do-ai.run/v1", "deepseek", "enc_1", 4096),
+            ("good", "Working Model", "https://api.groq.com/openai/v1", "llama-3.3", "enc_2", 4096),
+        ]
+
+        def fake_execute(model, messages, max_tokens=None, json_mode=False):
+            if model["id"] == "broken":
+                raise Exception("Error code: 401 - Unauthorized")
+            return "insights from the working model"
+
+        with patch("app.services.llm_gateway.decrypt_value", side_effect=lambda x: f"dec_{x}"), \
+             patch("app.services.llm_gateway._execute_model_call", side_effect=fake_execute):
+            with patch("app.modules.admin.services.system_settings_service.get_setting") as mock_get_setting:
+                def fake_get_setting(cursor, key):
+                    if key == "llm_competitor_analysis_model_id":
+                        return "broken"
+                    if key == "llm_review_processing_model_id":
+                        return "good"
+                    return ""
+
+                mock_get_setting.side_effect = fake_get_setting
+
+                with pytest.raises(ValueError, match="401"):
+                    llm_gateway.call("competitor_analysis", "compare these hotels")
+
+                # The working model is still used for its own assigned purpose.
+                assert llm_gateway.call("review_processing", "x") == "insights from the working model"
 
     @patch("pyodbc.connect")
     def test_get_candidate_models_empty_raises(self, mock_connect):
