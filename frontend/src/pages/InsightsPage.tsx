@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Star, MessageSquare, TrendingUp, Clock, ThumbsUp, ThumbsDown,
+    TrendingUp, Clock, ThumbsUp, ThumbsDown,
     Zap, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight,
-    Minus, Lightbulb, Target, BarChart3, Lock
+    Minus, Lock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -210,12 +210,10 @@ const InsightsPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* ═══ 1. KPI METRICS ROW ══════════════════════════════ */}
-                <div className="grid grid-cols-1 md:grid-cols-2 min-[1000px]:grid-cols-4 gap-4">
+                {/* ═══ 1. KPI METRICS ROW (overlap with dashboard removed) ═══ */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
                         { icon: <Zap size={20} />, label: 'Overall Score', value: `${d.overallScore}`, change: d.overallScoreChange, bg: 'bg-blue-50 dark:bg-blue-900/40', fg: 'text-blue-500 dark:text-blue-400' },
-                        { icon: <MessageSquare size={20} />, label: 'Total Reviews', value: d.totalReviews, change: d.totalReviewsChange, bg: 'bg-violet-50 dark:bg-violet-900/40', fg: 'text-violet-500 dark:text-violet-400' },
-                        { icon: <Star size={20} />, label: 'Avg Rating', value: d.avgRating, change: d.avgRatingChange, bg: 'bg-amber-50 dark:bg-amber-900/40', fg: 'text-amber-500 dark:text-amber-400' },
                         { icon: <Clock size={20} />, label: 'Response Rate', value: d.responseRate, change: d.responseRateChange, bg: 'bg-emerald-50 dark:bg-emerald-900/40', fg: 'text-emerald-500 dark:text-emerald-400' },
                     ].map((m) => (
                         <div key={m.label} className="flex items-center gap-3.5 p-[18px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
@@ -231,42 +229,7 @@ const InsightsPage: React.FC = () => {
                     ))}
                 </div>
 
-                {/* ═══ 2. TREND SUMMARY ════════════════════════════════ */}
-                {insightData && (
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-7 h-7 grid place-items-center bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500 dark:text-indigo-400 rounded-lg">
-                                <TrendingUp size={15} />
-                            </div>
-                            <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Period Summary</h3>
-                            <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium ml-1">vs previous {timeRange}</span>
-                        </div>
-                        <div className="grid grid-cols-2 min-[700px]:grid-cols-4 gap-3">
-                            {[
-                                { label: 'Reviews', current: d.totalReviews, change: d.totalReviewsChange },
-                                { label: 'Avg Rating', current: `${d.avgRating}★`, change: d.avgRatingChange },
-                                { label: 'Overall Score', current: `${d.overallScore}/100`, change: d.overallScoreChange },
-                                { label: 'Response Rate', current: d.responseRate, change: d.responseRateChange },
-                            ].map(item => {
-                                const num = parseFloat(item.change);
-                                const isUp = num > 0;
-                                const isNeutral = isNaN(num) || num === 0;
-                                return (
-                                    <div key={item.label} className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-slate-700/40 rounded-lg border border-gray-100 dark:border-slate-700">
-                                        <span className="text-[11px] text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wide">{item.label}</span>
-                                        <span className="text-lg font-bold text-gray-800 dark:text-white">{item.current}</span>
-                                        <span className={`text-[12px] font-semibold flex items-center gap-0.5 ${isNeutral ? 'text-gray-400' : isUp ? 'text-emerald-500' : 'text-red-500'}`}>
-                                            {isNeutral ? <Minus size={11} /> : isUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                                            {item.change} vs prev
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* ═══ 3. SENTIMENT OVER TIME ══════════════════════════ */}
+                {/* ═══ 2. SENTIMENT OVER TIME ══════════════════════════ */}
                 <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                     <div className="flex justify-between items-start mb-1">
                         <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">Sentiment Over Time</h3>
@@ -310,7 +273,7 @@ const InsightsPage: React.FC = () => {
                     )}
                 </div>
 
-                {/* ═══ 4. TOP KEYWORDS (word cloud style) ══════════════ */}
+                {/* ═══ 3. TOP KEYWORDS (word cloud style) ══════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
                     {/* Positive */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
@@ -363,7 +326,7 @@ const InsightsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ═══ 5. RESPONSE METRICS + HEATMAP ══════════════════ */}
+                {/* ═══ 4. RESPONSE METRICS + HEATMAP ══════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
 
                     {/* Response Metrics */}
@@ -441,48 +404,6 @@ const InsightsPage: React.FC = () => {
                             </span>
                         </div>
                     </div>
-                </div>
-
-                {/* ═══ 6. AI RECOMMENDATIONS ═══════════════════════════ */}
-                <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                    <div className="flex items-center gap-2 mb-5">
-                        <div className="w-8 h-8 grid place-items-center bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg">
-                            <Lightbulb size={16} className="text-white" />
-                        </div>
-                        <div>
-                            <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white">AI Recommendations</h3>
-                            <p className="m-0 text-[11px] text-gray-400 dark:text-gray-500">Actionable insights based on review analysis</p>
-                        </div>
-                    </div>
-                    {d.aiActions.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-slate-500">No AI recommendations generated for this period.</p>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            {d.aiActions.map((action, i) => {
-                                const styles = {
-                                    critical: { border: 'border-red-200 dark:border-red-800/50',   bg: 'bg-red-50 dark:bg-red-900/10',   icon: <AlertTriangle size={16} />, iconColor: 'text-red-500',   label: 'Critical', labelBg: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' },
-                                    warning:  { border: 'border-amber-200 dark:border-amber-800/50', bg: 'bg-amber-50 dark:bg-amber-900/10', icon: <Target size={16} />,        iconColor: 'text-amber-500', label: 'Action',   labelBg: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' },
-                                    info:     { border: 'border-blue-200 dark:border-blue-800/50',  bg: 'bg-blue-50 dark:bg-blue-900/10',  icon: <BarChart3 size={16} />,     iconColor: 'text-blue-500',  label: 'Insight',  labelBg: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' },
-                                }[action.severity];
-                                return (
-                                    <div key={i} className={`flex items-start gap-3.5 p-4 rounded-xl border ${styles.border} ${styles.bg}`}>
-                                        <div className={`w-8 h-8 grid place-items-center rounded-lg bg-white dark:bg-slate-800 shrink-0 ${styles.iconColor}`}>
-                                            {styles.icon}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${styles.labelBg}`}>
-                                                    {styles.label}
-                                                </span>
-                                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{action.title}</span>
-                                            </div>
-                                            <p className="text-[13px] text-gray-600 dark:text-gray-400 m-0 leading-relaxed">{action.body}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
 
             </div>
