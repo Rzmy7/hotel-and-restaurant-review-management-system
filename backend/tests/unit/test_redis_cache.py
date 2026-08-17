@@ -173,7 +173,6 @@ class TestInsightsFullResponseCache:
         "negativeKeywords": [],
         "responseMetrics": {"avgTime": "12h", "rate": 70, "ratingImpact": 1.5},
         "heatmapWeeks": [[0, 0, 0, 0, 0, 0, 0]],
-        "aiActions": [{"title": "Cached action", "severity": "info"}],
     }
 
     def _patched_call(self, cache_hit):
@@ -211,7 +210,6 @@ class TestInsightsFullResponseCache:
                 insights_route, "get_review_volume_heatmap",
                 return_value=[[0, 0, 0, 0, 0, 0, 0]],
             ),
-            patch.object(insights_route, "get_dashboard_metrics", return_value={}),
             patch.object(
                 insights_route, "_get_response_metrics",
                 return_value={"rate": 0.7, "rateChange": "+2%", "avgTime": "12h"},
@@ -237,26 +235,19 @@ class TestInsightsFullResponseCache:
                 p.stop()
         return result, cache_set_calls
 
-    def test_cache_hit_skips_llm_call(self):
-        from app.modules.dashboard.routes import insights as insights_route
-
-        with patch.object(
-            insights_route, "generate_ai_actions"
-        ) as gen:
-            result, _ = self._patched_call(cache_hit=True)
+    def test_cache_hit_serves_without_compute(self):
+        result, cache_set_calls = self._patched_call(cache_hit=True)
         assert result == self.CANNED_RESPONSE
-        gen.assert_not_called()
+        # Early return — nothing recomputed, so nothing re-set
+        assert cache_set_calls == []
 
     def test_cache_miss_computes_and_sets(self):
         from app.modules.dashboard.routes import insights as insights_route
 
-        generated = [{"title": "Fresh action", "severity": "warning"}]
-        with patch.object(
-            insights_route, "generate_ai_actions", return_value=generated
-        ):
-            result, cache_set_calls = self._patched_call(cache_hit=False)
-        assert result["aiActions"] == generated
+        result, cache_set_calls = self._patched_call(cache_hit=False)
+        assert result["overallScore"] == 80
+        assert result["positiveKeywords"] == []
         assert len(cache_set_calls) == 1
         key, kwargs = cache_set_calls[0].args[0], cache_set_calls[0].kwargs
         assert key == f"insights:full:{self.ORG}:30d"
-        assert kwargs.get("ttl") == 300
+        assert kwargs.get("ttl") == 600

@@ -31,7 +31,6 @@ interface RangeData {
     negativeKeywords: { word: string; count: number }[];
     responseMetrics: { avgTime: string; rate: string; ratingImpact: string };
     heatmapWeeks: number[][];
-    aiActions: { severity: 'critical' | 'warning' | 'info'; title: string; body: string }[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -80,7 +79,6 @@ const EMPTY_DATA: RangeData = {
     negativeKeywords: [],
     responseMetrics: { avgTime: 'N/A', rate: '0%', ratingImpact: 'N/A' },
     heatmapWeeks: [[0, 0, 0, 0, 0, 0, 0]],
-    aiActions: [],
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
