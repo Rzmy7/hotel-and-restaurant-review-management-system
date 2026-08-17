@@ -11,7 +11,6 @@ import { fetchSubscriptionUsage } from '../services/subscriptionPlansService';
 import { apiClient } from '../api/client';
 import { Button } from '../components/ui/Button';
 import InsightsHeader from '../components/shared/InsightsHeader';
-import SourceBreakdown from '../components/sources/SourceBreakdown';
 import InsightsSkeleton from './InsightsSkeleton';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -28,18 +27,6 @@ interface RangeData {
     sentimentPositive: number[];
     sentimentNeutral: number[];
     sentimentNegative: number[];
-    ratingDistribution: { stars: number; count: number; pct: number }[];
-    categories: { name: string; score: number; prev: number }[];
-    sources: {
-        name: string;
-        rating: number;
-        reviews: number;
-        pct: number;
-        color: string;
-        positive: number;
-        neutral: number;
-        negative: number;
-    }[];
     positiveKeywords: { word: string; count: number }[];
     negativeKeywords: { word: string; count: number }[];
     responseMetrics: { avgTime: string; rate: string; ratingImpact: string };
@@ -89,9 +76,6 @@ const EMPTY_DATA: RangeData = {
     sentimentPositive: [],
     sentimentNeutral: [],
     sentimentNegative: [],
-    ratingDistribution: [],
-    categories: [],
-    sources: [],
     positiveKeywords: [],
     negativeKeywords: [],
     responseMetrics: { avgTime: 'N/A', rate: '0%', ratingImpact: 'N/A' },
@@ -326,94 +310,7 @@ const InsightsPage: React.FC = () => {
                     )}
                 </div>
 
-                {/* ═══ 4 + 5. RATING DISTRIBUTION + CATEGORY PERFORMANCE ══ */}
-                <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
-
-                    {/* Rating Distribution */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Rating Distribution</h3>
-                        {d.ratingDistribution.length === 0 ? (
-                            <p className="text-sm text-gray-400 dark:text-slate-500">No rating data for this period.</p>
-                        ) : (
-                            <div className="flex flex-col gap-3">
-                                {d.ratingDistribution.map((r) => (
-                                    <div key={r.stars} className="grid grid-cols-[60px_1fr_70px] items-center gap-3">
-                                        <div className="flex items-center gap-1">
-                                            <Star size={14} className="text-amber-400" fill="#fbbf24" />
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.stars}</span>
-                                        </div>
-                                        <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: `${r.pct}%`,
-                                                    backgroundColor: r.stars >= 4 ? '#3b82f6' : r.stars === 3 ? '#94a3b8' : '#ef4444',
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{r.count}</span>
-                                            <span className="text-xs text-gray-400 ml-1">({r.pct}%)</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Satisfaction Rate</span>
-                            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                {d.ratingDistribution.filter((r) => r.stars >= 4).reduce((a, r) => a + r.pct, 0)}%
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Category Performance */}
-                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                        <h3 className="m-0 text-base font-bold text-gray-800 dark:text-white mb-5">Category Performance</h3>
-                        {d.categories.length === 0 ? (
-                            <p className="text-sm text-gray-400 dark:text-slate-500">No category data for this period.</p>
-                        ) : (
-                            <div className="flex flex-col gap-3.5">
-                                {d.categories.map((c) => {
-                                    const delta = c.score - c.prev;
-                                    return (
-                                        <div key={c.name} className="grid grid-cols-[100px_1fr_80px] items-center gap-3">
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
-                                            <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-500"
-                                                    style={{
-                                                        width: `${c.score}%`,
-                                                        backgroundColor: c.score >= 80 ? '#3b82f6' : c.score >= 60 ? '#f59e0b' : '#ef4444',
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-1.5 justify-end">
-                                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.score}%</span>
-                                                <span className={`text-[11px] font-semibold ${delta > 0 ? 'text-emerald-500' : delta < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                                                    {delta > 0 ? `↑${delta}` : delta < 0 ? `↓${Math.abs(delta)}` : '—'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                        {d.categories.length > 0 && (
-                            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                                <span className="text-sm text-gray-500 dark:text-gray-400">Top Category</span>
-                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                    {d.categories.reduce((best, c) => (c.score > best.score ? c : best)).name} ({d.categories.reduce((best, c) => (c.score > best.score ? c : best)).score}%)
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* ═══ 6. SOURCE BREAKDOWN (real data via prop) ═════════ */}
-                <SourceBreakdown sources={d.sources} />
-
-                {/* ═══ 7. TOP KEYWORDS (word cloud style) ══════════════ */}
+                {/* ═══ 4. TOP KEYWORDS (word cloud style) ══════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
                     {/* Positive */}
                     <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
@@ -466,7 +363,7 @@ const InsightsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ═══ 8. RESPONSE METRICS + HEATMAP ══════════════════ */}
+                {/* ═══ 5. RESPONSE METRICS + HEATMAP ══════════════════ */}
                 <div className="grid grid-cols-1 min-[1000px]:grid-cols-2 gap-5">
 
                     {/* Response Metrics */}
@@ -546,7 +443,7 @@ const InsightsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ═══ 9. AI RECOMMENDATIONS ═══════════════════════════ */}
+                {/* ═══ 6. AI RECOMMENDATIONS ═══════════════════════════ */}
                 <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-5">
                         <div className="w-8 h-8 grid place-items-center bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg">
