@@ -21,7 +21,8 @@ from typing import Dict, List, Optional
 
 import pyodbc
 
-from app.core.pyodbc_connection import get_connection_string
+from app.database.connection import get_connection_string
+from app.utils.url_cleaner import clean_tracking_url
 from app.core.geo_utils import parse_google_maps_url
 
 
@@ -183,7 +184,7 @@ def register_competitor(
         if coords:
             lat, lng = coords
     cleaned = [
-        {"platform_id": int(s["platform_id"]), "source_url": s["source_url"].strip().rstrip("/")}
+        {"platform_id": int(s["platform_id"]), "source_url": clean_tracking_url(s["source_url"])}
         for s in sources
         if s.get("source_url") and s.get("source_url").strip()
     ]

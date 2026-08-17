@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 
 from app.database.session import get_db
+from app.utils.url_cleaner import clean_tracking_url
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.organization.schemas.organization_schema import OrganizationCreate, OrganizationUpdate, OrganizationTypeRead, LogoUploadResponse
 from app.modules.organization.services import organization_service
@@ -161,12 +162,10 @@ def upsert_organization(
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         for source in data.sources:
             # Check if source already exists for this org/platform
+            clean_url = clean_tracking_url(source.source_url)
             existing_source = db.execute(
-                text("""
-                    SELECT 1 FROM dbo.source 
-                    WHERE organization_id = :org_id AND platform_id = :platform_id
-                """),
-                {"org_id": org_id, "platform_id": source.platform_id}
+                text("SELECT source_id FROM dbo.source WHERE organization_id = :org_id AND platform_id = :platform_id AND source_url = :url"),
+                {"org_id": org_id, "platform_id": source.platform_id, "url": clean_url}
             ).fetchone()
 
             if not existing_source:
@@ -182,7 +181,7 @@ def upsert_organization(
                         "source_id": new_source_id,
                         "org_id": org_id,
                         "platform_id": source.platform_id,
-                        "url": source.source_url,
+                        "url": clean_url,
                         "freq": source.fetching_frequency,
                         "next_sync": next_sync
                     }

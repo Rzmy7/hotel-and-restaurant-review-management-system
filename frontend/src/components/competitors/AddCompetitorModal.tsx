@@ -3,6 +3,7 @@ import { X, Link as LinkIcon, Building2, MapPin, Sparkles, Loader2 } from 'lucid
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addCompetitor, fetchSuggestedCompetitors, addCompetitorFromOrganization, type CompetitorSourceInput } from '../../services/competitorService';
 import { useOrganizationStore } from '../../stores/useOrganizationStore';
+import { stripTrackingParams } from '../../utils/sourceValidation';
 
 const PLATFORMS = [
   { id: 2, name: 'Booking.com', placeholder: 'https://www.booking.com/hotel/...' },
@@ -74,13 +75,19 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
     }
 
     const sources: CompetitorSourceInput[] = PLATFORMS
-      .map(p => ({ platform_id: p.id, source_url: (urls[p.id] || '').trim() }))
+      .map(p => {
+        const raw = (urls[p.id] || '').trim();
+        const cleaned = raw ? stripTrackingParams(raw) : '';
+        return { platform_id: p.id, source_url: cleaned };
+      })
       .filter(s => s.source_url.length > 0);
 
     if (sources.length === 0) {
       setError('Enter at least one platform URL.');
       return;
     }
+
+    const cleanedLocationUrl = stripTrackingParams(locationUrl.trim());
 
     setLoading(true);
     setError(null);
@@ -90,7 +97,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
       const res = await addCompetitor(organizationId, {
         name: name.trim(),
         organization_type_id: orgTypeId,
-        location_url: locationUrl.trim(),
+        location_url: cleanedLocationUrl,
         sources,
       });
       const hasData = (res.competitor?.reviewCount ?? 0) > 0;

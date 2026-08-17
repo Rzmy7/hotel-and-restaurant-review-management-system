@@ -10,15 +10,27 @@ export interface ValidationResult {
 }
 
 /**
- * Normalizes a URL by trimming whitespace and prepending https:// if protocol is missing.
+ * Strips tracking query parameters (?aid=...&label=...) and hash fragments (#map...)
  */
-export const normalizeUrl = (url: string): string => {
+export const stripTrackingParams = (url: string): string => {
   const trimmed = url.trim();
   if (!trimmed) return '';
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(withProtocol);
+    // Return scheme + hostname + pathname (dropping search/query and hash)
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    // If parsing fails, fall back to simple string split
+    return withProtocol.split('?')[0].split('#')[0];
   }
-  return `https://${trimmed}`;
+};
+
+/**
+ * Normalizes a URL by trimming whitespace, prepending https:// if missing, and stripping tracking parameters.
+ */
+export const normalizeUrl = (url: string): string => {
+  return stripTrackingParams(url);
 };
 
 /**
