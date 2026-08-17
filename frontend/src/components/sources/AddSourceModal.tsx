@@ -6,6 +6,8 @@ import {
   Key,
   Calendar,
   ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -13,6 +15,7 @@ import type { Source, SyncSchedule } from "../../types/sources";
 import { sourcesService } from "../../services/sourcesService";
 import { useAuth } from "../../contexts/AuthContext";
 import { fetchSubscriptionUsage } from "../../services/subscriptionPlansService";
+import { validatePlatformUrl, normalizeUrl } from "../../utils/sourceValidation";
 
 interface AddSourceModalProps {
   isOpen: boolean;
@@ -37,6 +40,7 @@ const AddSourceModal = ({
     null,
   );
   const [propertyUrl, setPropertyUrl] = useState("");
+  const [urlTouched, setUrlTouched] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [schedule, setSchedule] = useState<SyncSchedule>("three_days");
   const [sourceStatus, setSourceStatus] = useState(true);
@@ -83,14 +87,36 @@ const AddSourceModal = ({
     }
   }, [isOpen, platforms, selectedPlatformId, existingPlatformIds]);
 
+  const selectedPlatform = platforms.find(
+    (p: any) => p.platform_id === selectedPlatformId
+  );
+
+  const urlValidation = validatePlatformUrl(
+    selectedPlatform?.platform_name,
+    propertyUrl
+  );
+
   if (!isOpen) return null;
 
+  const handleBlurUrl = () => {
+    setUrlTouched(true);
+    if (propertyUrl.trim()) {
+      const normalized = normalizeUrl(propertyUrl);
+      if (normalized !== propertyUrl) {
+        setPropertyUrl(normalized);
+      }
+    }
+  };
+
   const handleSubmit = () => {
-    if (!propertyUrl || !selectedPlatformId) return;
+    setUrlTouched(true);
+    if (!propertyUrl || !selectedPlatformId || !urlValidation.isValid) return;
+
+    const finalUrl = urlValidation.normalizedUrl || normalizeUrl(propertyUrl);
 
     onSave({
       platformId: selectedPlatformId,
-      propertyUrl,
+      propertyUrl: finalUrl,
       syncSchedule: schedule,
       status: sourceStatus ? "Active" : "Paused",
     });
@@ -98,6 +124,7 @@ const AddSourceModal = ({
     // Reset form
     setSelectedPlatformId(null);
     setPropertyUrl("");
+    setUrlTouched(false);
     setApiKey("");
     setSchedule("three_days");
   };
@@ -106,18 +133,23 @@ const AddSourceModal = ({
     p.platform_name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const isSubmitDisabled = !propertyUrl || !selectedPlatformId || !urlValidation.isValid;
+
   const footer = (
     <div className="flex items-center justify-end gap-3 w-full">
       <Button
         variant="ghost"
-        onClick={onClose}
+        onClick={() => {
+          setUrlTouched(false);
+          onClose();
+        }}
         className="text-[11px] uppercase tracking-widest px-6"
       >
         Cancel
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={!propertyUrl || !selectedPlatformId}
+        disabled={isSubmitDisabled}
         className="px-8 text-[11px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
       >
         Add Source
@@ -128,7 +160,10 @@ const AddSourceModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        setUrlTouched(false);
+        onClose();
+      }}
       title="Connect Source"
       description="Add a new review channel to your dashboard"
       footer={footer}
@@ -207,17 +242,56 @@ const AddSourceModal = ({
 
         {/* Property URL */}
         <div>
-          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-            <Link size={16} className="text-blue-500" />
-            Property / Listing URL
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Link size={16} className="text-blue-500" />
+              Property / Listing URL
+            </span>
+            {selectedPlatform && (
+              <span className="text-[11px] text-gray-400 font-medium">
+                Expecting {selectedPlatform.platform_name} link
+              </span>
+            )}
           </label>
-          <input
-            type="text"
-            className="w-full px-5 py-3.5 bg-gray-50 dark:bg-slate-700 border-2 border-transparent rounded-2xl text-sm font-medium text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
-            placeholder="https://..."
-            value={propertyUrl}
-            onChange={(e) => setPropertyUrl(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              className={`w-full px-5 py-3.5 pr-11 bg-gray-50 dark:bg-slate-700 border-2 rounded-2xl text-sm font-medium text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 transition-all outline-none ${
+                urlTouched && propertyUrl && !urlValidation.isValid
+                  ? "border-red-400 dark:border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
+                  : propertyUrl && urlValidation.isValid
+                    ? "border-emerald-500 dark:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
+                    : "border-transparent focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5"
+              }`}
+              placeholder={
+                selectedPlatform?.platform_name === "Booking.com"
+                  ? "https://www.booking.com/hotel/..."
+                  : selectedPlatform?.platform_name === "Agoda"
+                    ? "https://www.agoda.com/..."
+                    : selectedPlatform?.platform_name === "TripAdvisor"
+                      ? "https://www.tripadvisor.com/Hotel_Review-..."
+                      : "https://..."
+              }
+              value={propertyUrl}
+              onChange={(e) => setPropertyUrl(e.target.value)}
+              onBlur={handleBlurUrl}
+            />
+            {propertyUrl && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                {urlValidation.isValid ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
+                ) : urlTouched ? (
+                  <AlertCircle className="w-5 h-5 text-red-500 animate-in zoom-in-50 duration-200" />
+                ) : null}
+              </div>
+            )}
+          </div>
+          {urlTouched && propertyUrl && !urlValidation.isValid && (
+            <p className="mt-2 text-xs font-semibold text-red-500 dark:text-red-400 flex items-center gap-1.5 animate-in fade-in duration-200">
+              <AlertCircle size={14} className="shrink-0" />
+              {urlValidation.error}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-6">
@@ -280,3 +354,4 @@ const AddSourceModal = ({
 };
 
 export default AddSourceModal;
+
