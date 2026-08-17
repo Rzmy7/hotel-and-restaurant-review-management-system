@@ -19,6 +19,7 @@ from app.modules.dashboard.services.categories_service import get_category_perfo
 from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 from app.modules.dashboard.services.insights_service import get_keywords, generate_ai_actions
 from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
+from app.core.redis_client import cache_get, cache_set
 from datetime import datetime, timedelta
 import uuid
 
@@ -266,12 +267,17 @@ def get_insights(
             traceback.print_exc()
             print(f"[WARN] get_review_volume_heatmap failed (returning empty): {e}")
 
-        # ── AI Actions ───────────────────────────────────────────
+        # ── AI Actions (cached — the only per-request LLM call on this page) ──
         try:
             metrics_for_ai = get_dashboard_metrics(db, org_id, period)
         except Exception as e:
             raise RuntimeError(f"[get_dashboard_metrics] {e}") from e
-        ai_actions = generate_ai_actions(metrics_for_ai, categories, sources, keywords)
+        ai_cache_key = f"ai:actions:{org_id}:{timeRange}"
+        ai_actions = cache_get(ai_cache_key)
+        if ai_actions is None:
+            ai_actions = generate_ai_actions(metrics_for_ai, categories, sources, keywords)
+            if ai_actions is not None:
+                cache_set(ai_cache_key, ai_actions, ttl=600)
 
         # ── Response Metrics (real data from review_replies) ────
         resp_metrics = _get_response_metrics(

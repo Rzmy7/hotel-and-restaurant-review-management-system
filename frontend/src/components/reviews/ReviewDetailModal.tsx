@@ -1,6 +1,7 @@
 import { Star, MessageSquareText, Cpu, Clock, CalendarDays, ExternalLink, RefreshCw, Copy, CheckCircle2, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Review } from '../../types/reviews';
 import { useReviewsStore } from '../../stores/useReviewsStore';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 import { useReviewFilters } from '../../hooks/useReviewFilters';
 import { useState, useEffect } from 'react';
 import { reviewsService } from '../../services/reviewsService';
@@ -57,9 +58,10 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const storeReviews = useReviewsStore(state => state.reviews);
   const reviews = allReviews.length > 0 ? allReviews : storeReviews;
   const refreshDataStore = useReviewsStore(state => state.refreshData);
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
   const { fetchParams } = useReviewFilters();
-  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
-  const refreshData = () => refreshDataStore(organizationId, fetchParams);
+  const organizationId = currentOrg?.id || '';
+  const refreshData = () => { if (organizationId) refreshDataStore(organizationId, fetchParams); };
 
   // Fetch detailed review lazily on modal open, using propReview as placeholder for instant UI
   const { data: fetchedReview, loading: isDetailLoading } = useReviewDetail(

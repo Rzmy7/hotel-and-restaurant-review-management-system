@@ -381,6 +381,16 @@ async def start_ingestion_and_processing_flow(source_id: uuid.UUID, sync_log_id:
         else:
             logger.info("Pipeline: Skipping analysis (0 new reviews ingested).")
 
+        # Ingested reviews change dashboard counts — invalidate cached org data
+        # (even when AI analysis is paused/skipped)
+        if ingested_count > 0:
+            try:
+                from app.core.redis_client import invalidate_review_cache, invalidate_ai_cache
+                invalidate_review_cache(str(source.organization_id))
+                invalidate_ai_cache(str(source.organization_id))
+            except Exception as e:
+                logger.warning(f"Pipeline: cache invalidation failed for source {source_id}: {e}")
+
     except Exception as e:
         logger.error(
             f"!!! Pipeline CRITICAL FAILURE for source {source_id}: {e}", exc_info=True

@@ -13,7 +13,11 @@ from datetime import datetime
 
 import pyodbc
 from app.core.pyodbc_connection import get_raw_connection, retry_on_deadlock
-from app.modules.reviews.repository import get_pending_batch, get_review_by_id
+from app.modules.reviews.repository import (
+    get_pending_batch,
+    get_review_by_id,
+    get_org_ids_for_reviews,
+)
 from app.modules.reviews.services.llm_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
@@ -105,6 +109,7 @@ async def run_analysis_pipeline():
     total_processed = 0
     max_loops = 50  # Safety cap to prevent infinite processing in one task
     loop_count = 0
+    affected_org_ids: set = set()  # orgs with newly processed reviews (alerts + cache)
 
     while loop_count < max_loops:
         # Check if we have exceeded the time limit for this run
@@ -187,6 +192,17 @@ async def run_analysis_pipeline():
                 chunk_errors.append(err_info)
 
         total_processed += batch_success_count
+
+        # Collect orgs affected by this iteration for post-run alert evaluation + cache invalidation
+        if batch_success_count > 0:
+            try:
+                with get_raw_connection() as conn:
+                    _affected = get_org_ids_for_reviews(
+                        conn.cursor(), [r["id"] for r in pending_reviews]
+                    )
+                affected_org_ids.update(_affected)
+            except Exception as e:
+                logger.warning(f"Pipeline: failed to resolve org ids for batch: {e}")
 
         # Handle any chunk errors
         if chunk_errors:
@@ -277,6 +293,24 @@ async def run_analysis_pipeline():
     if loop_count >= max_loops:
         logger.warning(f"Pipeline reached max_loops ({max_loops}). Some pending reviews may remain.")
 
+    # Post-run: evaluate alert rules and invalidate caches for affected orgs.
+    # Fully guarded so alert/cache failures never break the pipeline.
+    if affected_org_ids:
+        try:
+            from app.modules.reviews.services.alert_rules_service import (
+                run_alert_evaluation_for_orgs,
+            )
+            run_alert_evaluation_for_orgs(list(affected_org_ids), cooldown_minutes=60)
+        except Exception as e:
+            logger.warning(f"Pipeline: alert evaluation failed: {e}")
+        try:
+            from app.core.redis_client import invalidate_review_cache, invalidate_ai_cache
+            for org_id in affected_org_ids:
+                invalidate_review_cache(org_id)
+                invalidate_ai_cache(org_id)
+        except Exception as e:
+            logger.warning(f"Pipeline: cache invalidation failed: {e}")
+
 
 
 async def process_single_review(review_id: uuid.UUID) -> dict:
@@ -325,11 +359,74 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
         if not success:
             raise RuntimeError("Failed to update review record in database.")
         logger.info(f"Single review {review_id} PROCESSED successfully.")
-        return analysis
     except Exception as e:
         logger.error(f"Failed to update single review {review_id}: {e}")
         raise e
 
+    # 4. Post-processing: evaluate alert rules (manual action — no cooldown)
+    #    and invalidate caches for the affected org. Guarded — must not fail the call.
+    try:
+        with get_raw_connection() as conn:
+            org_ids = get_org_ids_for_reviews(conn.cursor(), [review["id"]])
+        if org_ids:
+            from app.modules.reviews.services.alert_rules_service import evaluate_and_notify
+            from app.core.redis_client import invalidate_review_cache, invalidate_ai_cache
+            for org_id in org_ids:
+                evaluate_and_notify(org_id, cooldown_minutes=0)
+                invalidate_review_cache(org_id)
+                invalidate_ai_cache(org_id)
+    except Exception as e:
+        logger.warning(f"Single review: post-processing (alerts/cache) failed: {e}")
+
+    return analysis
+
+
+
+def _sync_category_table(
+    cursor: pyodbc.Cursor, review_id: str, analysis: dict, table_name: str
+) -> None:
+    """
+    Delete + re-insert per-category scores into one dedicated table.
+    Called for both dbo.review_category and dbo.review_aspects (dual-write).
+    table_name comes only from internal literals in this module.
+    """
+    # Using CAST to ensure UNIQUEIDENTIFIER compatibility across drivers
+    cursor.execute(
+        f"DELETE FROM dbo.{table_name} WHERE review_id = CAST(? AS UNIQUEIDENTIFIER)",
+        review_id,
+    )
+
+    raw_list = analysis.get("categories", [])
+    if isinstance(raw_list, list):
+        for cat_item in raw_list:
+            name = ""
+            score = None
+
+            if isinstance(cat_item, dict):
+                name = str(cat_item.get("name", "")).strip()
+                # Support both 'score' and 'value' as keys (AI can be inconsistent)
+                score = cat_item.get("score") or cat_item.get("value")
+            else:
+                name = str(cat_item).strip()
+
+            # Default score if missing (fallback to overall sentiment mapping)
+            if score is None:
+                sentiment_score = analysis.get("sentiment_score", 0.5)
+                score = float(sentiment_score) * 100
+            else:
+                try:
+                    score = float(score)
+                except (ValueError, TypeError):
+                    score = 50.0
+
+            if name:
+                # Explicitly target columns, letting ID and CreatedAt use DB defaults
+                cursor.execute(
+                    f"INSERT INTO dbo.{table_name} (review_id, name, score) VALUES (CAST(? AS UNIQUEIDENTIFIER), ?, ?)",
+                    review_id,
+                    name,
+                    score,
+                )
 
 
 def _update_review_success(
@@ -377,41 +474,13 @@ def _update_review_success(
         original_review["id"],
     )
 
-    # NEW: Sync categories to dedicated dbo.review_category table
+    # NEW: Sync categories to dedicated tables (review_category + review_aspects).
+    # Both are kept in sync via the shared helper; filters read review_category,
+    # review_aspects mirrors it to satisfy the review_aspects table requirement.
     try:
         review_id = original_review["id"]
-        # Using CAST to ensure UNIQUEIDENTIFIER compatibility across drivers
-        cursor.execute("DELETE FROM dbo.review_category WHERE review_id = CAST(? AS UNIQUEIDENTIFIER)", review_id)
-        
-        raw_list = analysis.get("categories", [])
-        if isinstance(raw_list, list):
-            for cat_item in raw_list:
-                name = ""
-                score = None
-                
-                if isinstance(cat_item, dict):
-                    name = str(cat_item.get("name", "")).strip()
-                    # Support both 'score' and 'value' as keys (AI can be inconsistent)
-                    score = cat_item.get("score") or cat_item.get("value")
-                else:
-                    name = str(cat_item).strip()
-                
-                # Default score if missing (fallback to overall sentiment mapping)
-                if score is None:
-                    sentiment_score = analysis.get("sentiment_score", 0.5) 
-                    score = float(sentiment_score) * 100
-                else:
-                    try:
-                        score = float(score)
-                    except (ValueError, TypeError):
-                        score = 50.0
-
-                if name:
-                    # Explicitly target columns, letting ID and CreatedAt use DB defaults
-                    cursor.execute(
-                        "INSERT INTO dbo.review_category (review_id, name, score) VALUES (CAST(? AS UNIQUEIDENTIFIER), ?, ?)",
-                        review_id, name, score
-                    )
+        _sync_category_table(cursor, review_id, analysis, "review_category")
+        _sync_category_table(cursor, review_id, analysis, "review_aspects")
     except Exception as e:
         logger.error(f"Failed to sync categories to table for review {original_review['id']}: {e}")
         # We don't fail the whole update if only the category sync fails

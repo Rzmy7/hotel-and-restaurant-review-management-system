@@ -129,6 +129,31 @@ def insert_review_media(
         cursor.execute(sql, m_id, review_id, pic.get("src"), pic.get("alt", ""))
 
 
+def get_org_ids_for_reviews(cursor: pyodbc.Cursor, review_ids: list) -> List[str]:
+    """
+    Return the distinct organization ids owning the given review ids.
+
+    get_pending_batch rows carry source_id but not org id; this read-only
+    helper resolves orgs via the source join. Used after processing batches
+    for alert evaluation and cache invalidation.
+    """
+    if not review_ids:
+        return []
+
+    ids = [str(review_id) for review_id in review_ids]
+    placeholders = ",".join(["?"] * len(ids))
+    cursor.execute(
+        f"""
+        SELECT DISTINCT CAST(s.organization_id AS VARCHAR(36))
+        FROM dbo.processed_review r
+        JOIN dbo.source s ON r.source_id = s.source_id
+        WHERE r.id IN ({placeholders})
+        """,
+        *ids,
+    )
+    return [str(row[0]) for row in cursor.fetchall()]
+
+
 def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
     """Fetch a batch of reviews that need AI processing, atomically marking them as 'processing'."""
     sql = f"""

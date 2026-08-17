@@ -74,6 +74,9 @@ class ProcessedReview(Base):
     category_scores = relationship(
         "ReviewCategory", back_populates="review", cascade="all, delete-orphan"
     )
+    aspect_scores = relationship(
+        "ReviewAspect", back_populates="review", cascade="all, delete-orphan"
+    )
     replies = relationship(
         "ReviewReply", back_populates="review", cascade="all, delete-orphan"
     )
@@ -116,6 +119,30 @@ class ReviewCategory(Base):
     created_at = Column("created_at", DateTime, server_default=func.now())
 
     review = relationship("ProcessedReview", back_populates="category_scores")
+
+
+class ReviewAspect(Base):
+    """
+    Per-aspect scores, mirroring review_category (dual-write kept in sync).
+    Maps to dbo.review_aspects. Exists to satisfy the review_aspects
+    table requirement of the Reviews/AI/Insights module; filters continue
+    to read from dbo.review_category for backward compatibility.
+    """
+
+    __tablename__ = "review_aspects"
+
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
+    review_id = Column(
+        UNIQUEIDENTIFIER,
+        ForeignKey("processed_review.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = Column(String(100), nullable=False)
+    score = Column(Float, nullable=True)
+    created_at = Column("created_at", DateTime, server_default=func.now())
+
+    review = relationship("ProcessedReview", back_populates="aspect_scores")
 
 
 class ReviewReply(Base):
