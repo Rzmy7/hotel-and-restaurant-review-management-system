@@ -62,16 +62,46 @@ class AgodaExtractor:
             nat_match = re.search(r'data-info-type="reviewer-name"[^>]*>.*?<span>([^<]+)</span></div>', html)
             reviewer_nationality = nat_match.group(1).strip() if nat_match else None
             
-            # 3. Rating Score (Agoda uses Review-comment-leftScore or data-selenium="review-score")
-            rating_match = re.search(r'Review-comment-leftScore[^>]*>([\d.]+)<', html)
+            # 3. Rating Score (0-10)
+            # Check exact styled typography class combinations first
+            rating_match = re.search(r'class="[^"]*sc-aXZVg[^"]*Typographystyled__TypographyStyled-sc-1uoovui-0[^"]*"[^>]*>([\d.]+)<', html)
+            if not rating_match:
+                rating_match = re.search(r'class="[^"]*(?:iiiJNz|eyidZH)[^"]*"[^>]*>([\d.]+)<', html)
+            if not rating_match:
+                rating_match = re.search(r'class="[^"]*Typographystyled__TypographyStyled[^"]*"[^>]*>([\d.]+)<', html)
+            if not rating_match:
+                rating_match = re.search(r'Review-comment-leftScore[^>]*>([\d.]+)<', html)
             if not rating_match:
                 rating_match = re.search(r'data-selenium="review-score"[^>]*>([\d.]+)<', html)
+            if not rating_match:
+                rating_match = re.search(r'<p[^>]*>\s*<span[^>]*>([\d.]+)</span', html)
                 
             rating = 0.0
             if rating_match:
                 try:
-                    rating = float(rating_match.group(1))
+                    r_val = float(rating_match.group(1))
+                    if 0.0 <= r_val <= 10.0:
+                        rating = r_val
                 except ValueError:
+                    pass
+
+            if rating == 0.0:
+                # Direct Playwright locator fallback using exact class selector
+                try:
+                    score_el = container.locator(
+                        'span.sc-aXZVg.Typographystyled__TypographyStyled-sc-1uoovui-0, '
+                        'span.iiiJNz, span.eyidZH, '
+                        'span[class*="Typographystyled"], '
+                        'div.Review-comment-leftScore'
+                    ).first
+                    if score_el.count() > 0:
+                        val_text = score_el.inner_text().strip()
+                        m = re.search(r'([\d.]+)', val_text)
+                        if m:
+                            r_val = float(m.group(1))
+                            if 0.0 <= r_val <= 10.0:
+                                rating = r_val
+                except Exception:
                     pass
             
             # 4. Heading
