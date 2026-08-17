@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 
 import pyodbc
 
-from app.database.connection import get_connection_string
+from app.core.pyodbc_connection import get_connection_string
 from app.utils.url_cleaner import clean_tracking_url
 from app.core.geo_utils import parse_google_maps_url
 

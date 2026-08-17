@@ -35,6 +35,15 @@ Purpose = Literal[
 _PURPOSE_SETTING: dict[str, str] = {
     "review_processing":   "llm_review_processing_model_id",
     "reply_generation":    "llm_reply_generation_model_id",
+    "insights":            "llm_insights_model_id",
+    "rule_extraction":     "llm_rule_extraction_model_id",
+    "competitor_analysis": "llm_competitor_analysis_model_id",
+}
+
+# insights / rule_extraction / competitor_analysis only gained their own settings
+# later. Installs that never assigned them keep using the model that served them
+# before, instead of dropping straight to the generic active-model list.
+_PURPOSE_LEGACY_SETTING: dict[str, str] = {
     "insights":            "llm_review_processing_model_id",
     "rule_extraction":     "llm_reply_generation_model_id",
     "competitor_analysis": "llm_review_processing_model_id",
@@ -95,8 +104,9 @@ def get_candidate_models(
     Priority order:
     1. Explicit primary_model_id (if provided and active)
     2. Primary model assigned to *purpose* in dbo.system_settings
-    3. Model assigned to alternate purpose (e.g. review_processing / reply_generation)
-    4. All remaining active models from dbo.llm_model (ordered by created_at DESC)
+    3. Model assigned to the purpose's legacy setting (see _PURPOSE_LEGACY_SETTING)
+    4. Model assigned to alternate purpose (e.g. review_processing / reply_generation)
+    5. All remaining active models from dbo.llm_model (ordered by created_at DESC)
     """
     # Lazy import to avoid circular dependency (admin package loads routes which load gateway)
     from app.modules.admin.services.system_settings_service import (
@@ -133,6 +143,10 @@ def get_candidate_models(
 
         setting_key = _PURPOSE_SETTING.get(purpose, "llm_review_processing_model_id")
         purpose_assigned = (get_setting(cursor, setting_key) or "").strip()
+
+        legacy_key = _PURPOSE_LEGACY_SETTING.get(purpose)
+        legacy_assigned = (get_setting(cursor, legacy_key) or "").strip() if legacy_key else ""
+
         review_proc_assigned = (get_setting(cursor, "llm_review_processing_model_id") or "").strip()
         reply_gen_assigned = (get_setting(cursor, "llm_reply_generation_model_id") or "").strip()
 
@@ -148,11 +162,14 @@ def get_candidate_models(
     # 2. Setting for requested purpose
     _add_if_active(purpose_assigned)
 
-    # 3. Alternative primary settings
+    # 3. Legacy setting that used to serve this purpose
+    _add_if_active(legacy_assigned)
+
+    # 4. Alternative primary settings
     _add_if_active(review_proc_assigned)
     _add_if_active(reply_gen_assigned)
 
-    # 4. All other active models
+    # 5. All other active models
     for mid in active_models_map:
         _add_if_active(mid)
 

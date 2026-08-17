@@ -235,6 +235,9 @@ reviews/
 |-------------|------|---------|-------------|
 | `llm_review_processing_model_id` | UUID string | (configured) | Active LLM model ID for review processing |
 | `llm_reply_generation_model_id` | UUID string | (configured) | Active LLM model ID for reply generation |
+| `llm_insights_model_id` | UUID string | (empty → falls back to review processing model) | Active LLM model ID for insight generation |
+| `llm_competitor_analysis_model_id` | UUID string | (empty → falls back to review processing model) | Active LLM model ID for competitor insights |
+| `llm_rule_extraction_model_id` | UUID string | (empty → falls back to reply generation model) | Active LLM model ID for rules document separation |
 | `reply_claude_api_key` | string | (empty) | Anthropic Claude API key for replies |
 | `reply_use_similar_reviews` | bool | `true` | Enable similar review context in prompts |
 | `reply_use_embedding_rules` | bool | `true` | Enable brand rule context in prompts |

@@ -17,7 +17,9 @@ import {
   llmModelService,
 } from '../services/llmModelService';
 import type {
+  LLMAssignmentsUpdatePayload,
   LLMModel,
+  LLMPurpose,
 } from '../services/llmModelService';
 import LLMModelsSkeleton from './LLMModelsSkeleton';
 import Skeleton from '../components/shared/Skeleton';
@@ -34,6 +36,21 @@ const COMMON_ENDPOINTS = [
   { label: 'DigitalOcean GenAI', value: 'https://inference.do-ai.run/v1' },
   { label: 'Custom…', value: '' },
 ];
+
+const ASSIGNMENT_PURPOSES: { key: LLMPurpose; label: string; desc: string }[] = [
+  { key: 'review_processing',   label: 'Review Processing',         desc: 'Batch sentiment analysis (runs automatically)' },
+  { key: 'reply_generation',    label: 'Reply Generation',          desc: 'On-demand guest reply generation' },
+  { key: 'insights',            label: 'Insights',                  desc: 'Dashboard and admin insight summaries' },
+  { key: 'competitor_analysis', label: 'Competitor Insights',       desc: 'Competitor scraping and comparison analysis' },
+  { key: 'rule_extraction',     label: 'Rules Document Separation', desc: 'Splitting uploaded rule documents into individual rules' },
+];
+
+type AssignmentDraft = Record<LLMPurpose, string>;
+
+const EMPTY_ASSIGNMENTS = ASSIGNMENT_PURPOSES.reduce(
+  (acc, { key }) => ({ ...acc, [key]: '' }),
+  {} as AssignmentDraft,
+);
 
 interface ModelFormState {
   name: string;
@@ -79,7 +96,7 @@ export const LLMModels: React.FC = () => {
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   // assignment state
-  const [assignDraft, setAssignDraft] = useState({ review_processing: '', reply_generation: '' });
+  const [assignDraft, setAssignDraft] = useState<AssignmentDraft>(EMPTY_ASSIGNMENTS);
   const [savingAssign, setSavingAssign] = useState(false);
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
 
@@ -96,10 +113,12 @@ export const LLMModels: React.FC = () => {
         llmModelService.getAssignments(),
       ]);
       setModels(modelList);
-      setAssignDraft({
-        review_processing: assignData.review_processing_model_id || '',
-        reply_generation: assignData.reply_generation_model_id || '',
-      });
+      setAssignDraft(
+        ASSIGNMENT_PURPOSES.reduce(
+          (acc, { key }) => ({ ...acc, [key]: assignData[`${key}_model_id`] || '' }),
+          {} as AssignmentDraft,
+        ),
+      );
     } catch (e: any) {
       setError(e.message || 'Failed to load models.');
     } finally {
@@ -227,10 +246,12 @@ export const LLMModels: React.FC = () => {
     setSavingAssign(true);
     setAssignMsg(null);
     try {
-      await llmModelService.setAssignments({
-        review_processing_model_id: assignDraft.review_processing || null,
-        reply_generation_model_id: assignDraft.reply_generation || null,
-      });
+      await llmModelService.setAssignments(
+        ASSIGNMENT_PURPOSES.reduce(
+          (acc, { key }) => ({ ...acc, [`${key}_model_id`]: assignDraft[key] || null }),
+          {} as LLMAssignmentsUpdatePayload,
+        ),
+      );
       setAssignMsg('Assignments saved successfully.');
       await load();
     } catch (e: any) {
@@ -399,10 +420,7 @@ export const LLMModels: React.FC = () => {
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Choose which model handles each AI task</p>
         </div>
         <div className="p-6 space-y-5">
-          {([
-            { key: 'review_processing', label: 'Review Processing', desc: 'Batch sentiment analysis (runs automatically)' },
-            { key: 'reply_generation',  label: 'Reply Generation',  desc: 'On-demand guest reply generation' },
-          ] as const).map(({ key, label, desc }) => (
+          {ASSIGNMENT_PURPOSES.map(({ key, label, desc }) => (
             <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="sm:w-56 shrink-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>

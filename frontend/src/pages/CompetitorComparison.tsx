@@ -174,7 +174,7 @@ const CompetitorComparison = () => {
                                     key={c.id}
                                     onClick={() => {
                                         setDropdownOpen(false);
-                                        navigate(`/competitor-comparison?id=${c.id}`);
+                                        navigate(`/competitors/compare?id=${c.id}`);
                                     }}
                                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors
                                         ${c.id === competitorId

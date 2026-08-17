@@ -1,8 +1,9 @@
 """
 LLM Model management routes.
 
-Admins can register any OpenAI-compatible model, test it, and assign it
-to one of two purposes: review_processing or reply_generation.
+Admins can register any OpenAI-compatible model, test it, and assign it to a
+purpose: review_processing, reply_generation, insights, competitor_analysis or
+rule_extraction.
 
 All API keys are stored AES-256-GCM encrypted in dbo.llm_model.
 """
@@ -61,9 +62,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/llm-models", tags=["Admin - LLM Models"])
 
+# Keep in sync with _PURPOSE_SETTING in app.services.llm_gateway.
 _PURPOSE_SETTINGS = {
-    "review_processing": "llm_review_processing_model_id",
-    "reply_generation":  "llm_reply_generation_model_id",
+    "review_processing":   "llm_review_processing_model_id",
+    "reply_generation":    "llm_reply_generation_model_id",
+    "insights":            "llm_insights_model_id",
+    "competitor_analysis": "llm_competitor_analysis_model_id",
+    "rule_extraction":     "llm_rule_extraction_model_id",
 }
 
 
@@ -122,12 +127,11 @@ def create_model(payload: LLMModelCreate):
 @router.get("/assignments", response_model=LLMAssignmentsResponse)
 def get_assignments():
     try:
+        fields: dict[str, str | None] = {}
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             ensure_system_settings_table(cursor)
             ensure_llm_model_table(cursor)
-            rp_id = (get_setting(cursor, "llm_review_processing_model_id") or "").strip() or None
-            rg_id = (get_setting(cursor, "llm_reply_generation_model_id") or "").strip() or None
 
             def _name(mid: str | None) -> str | None:
                 if not mid:
@@ -137,12 +141,12 @@ def get_assignments():
                 ).fetchone()
                 return r[0] if r else None
 
-        return LLMAssignmentsResponse(
-            review_processing_model_id=rp_id,
-            reply_generation_model_id=rg_id,
-            review_processing_model_name=_name(rp_id),
-            reply_generation_model_name=_name(rg_id),
-        )
+            for purpose, key in _PURPOSE_SETTINGS.items():
+                model_id = (get_setting(cursor, key) or "").strip() or None
+                fields[f"{purpose}_model_id"] = model_id
+                fields[f"{purpose}_model_name"] = _name(model_id)
+
+        return LLMAssignmentsResponse(**fields)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to load assignments: {exc}") from exc
 
@@ -155,10 +159,10 @@ def set_assignments(payload: LLMAssignmentsUpdate):
             ensure_system_settings_table(cursor)
             ensure_llm_model_table(cursor)
 
-            if payload.review_processing_model_id is not None:
-                set_setting(cursor, "llm_review_processing_model_id", payload.review_processing_model_id)
-            if payload.reply_generation_model_id is not None:
-                set_setting(cursor, "llm_reply_generation_model_id", payload.reply_generation_model_id)
+            for purpose, key in _PURPOSE_SETTINGS.items():
+                value = getattr(payload, f"{purpose}_model_id")
+                if value is not None:
+                    set_setting(cursor, key, value)
             conn.commit()
 
         log_admin_activity("settings_updated", "LLM Assignments Updated", "Model assignments saved")

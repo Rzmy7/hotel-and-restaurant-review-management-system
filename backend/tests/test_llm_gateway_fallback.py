@@ -59,6 +59,67 @@ class TestCandidateModelsResolution:
                 assert candidates[2]["name"] == "OpenAI GPT-4o"
 
     @patch("pyodbc.connect")
+    def test_dedicated_purpose_setting_wins(self, mock_connect):
+        """A purpose with its own assignment uses it ahead of the legacy setting."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        mock_cursor.execute.return_value.fetchall.return_value = [
+            ("m1", "OpenAI GPT-4o", "https://api.openai.com/v1", "gpt-4o", "enc_key_1", 4096),
+            ("m2", "Qwen 2.5", "https://api.qwen.com/v1", "qwen-2.5-72b", "enc_key_2", 4096),
+            ("m3", "DeepSeek V3", "https://api.deepseek.com/v1", "deepseek-chat", "enc_key_3", 4096),
+        ]
+
+        with patch("app.services.llm_gateway.decrypt_value", side_effect=lambda x: f"dec_{x}"):
+            with patch("app.modules.admin.services.system_settings_service.get_setting") as mock_get_setting:
+                def fake_get_setting(cursor, key):
+                    if key == "llm_insights_model_id":
+                        return "m1"
+                    if key == "llm_review_processing_model_id":
+                        return "m2"
+                    if key == "llm_reply_generation_model_id":
+                        return "m3"
+                    return ""
+
+                mock_get_setting.side_effect = fake_get_setting
+
+                candidates = llm_gateway.get_candidate_models("insights")
+                assert [c["id"] for c in candidates] == ["m1", "m2", "m3"]
+
+    @patch("pyodbc.connect")
+    def test_unassigned_purpose_falls_back_to_legacy_setting(self, mock_connect):
+        """Purposes added later keep using their previous model until assigned."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        mock_cursor.execute.return_value.fetchall.return_value = [
+            ("m1", "OpenAI GPT-4o", "https://api.openai.com/v1", "gpt-4o", "enc_key_1", 4096),
+            ("m2", "Qwen 2.5", "https://api.qwen.com/v1", "qwen-2.5-72b", "enc_key_2", 4096),
+            ("m3", "DeepSeek V3", "https://api.deepseek.com/v1", "deepseek-chat", "enc_key_3", 4096),
+        ]
+
+        with patch("app.services.llm_gateway.decrypt_value", side_effect=lambda x: f"dec_{x}"):
+            with patch("app.modules.admin.services.system_settings_service.get_setting") as mock_get_setting:
+                # Only the two original assignments exist — as in a pre-upgrade install.
+                def fake_get_setting(cursor, key):
+                    if key == "llm_review_processing_model_id":
+                        return "m2"
+                    if key == "llm_reply_generation_model_id":
+                        return "m3"
+                    return ""
+
+                mock_get_setting.side_effect = fake_get_setting
+
+                # rule_extraction used to be served by the reply_generation model
+                assert llm_gateway.get_candidate_models("rule_extraction")[0]["id"] == "m3"
+                # competitor_analysis used to be served by the review_processing model
+                assert llm_gateway.get_candidate_models("competitor_analysis")[0]["id"] == "m2"
+
+    @patch("pyodbc.connect")
     def test_get_candidate_models_empty_raises(self, mock_connect):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()

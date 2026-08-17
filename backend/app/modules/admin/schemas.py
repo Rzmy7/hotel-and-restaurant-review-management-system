@@ -440,13 +440,22 @@ class LLMModelTestResponse(BaseModel):
 class LLMAssignmentsResponse(BaseModel):
     review_processing_model_id: str | None = None
     reply_generation_model_id: str | None = None
+    insights_model_id: str | None = None
+    competitor_analysis_model_id: str | None = None
+    rule_extraction_model_id: str | None = None
     review_processing_model_name: str | None = None
     reply_generation_model_name: str | None = None
+    insights_model_name: str | None = None
+    competitor_analysis_model_name: str | None = None
+    rule_extraction_model_name: str | None = None
 
 
 class LLMAssignmentsUpdate(BaseModel):
     review_processing_model_id: str | None = None
     reply_generation_model_id: str | None = None
+    insights_model_id: str | None = None
+    competitor_analysis_model_id: str | None = None
+    rule_extraction_model_id: str | None = None
 
 
 # ── Broadcasting schemas ────────────────────────────────────────────

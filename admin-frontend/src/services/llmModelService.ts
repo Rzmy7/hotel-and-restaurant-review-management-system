@@ -28,11 +28,32 @@ export interface LLMModelUpdatePayload {
   max_tokens?: number;
 }
 
+export type LLMPurpose =
+  | 'review_processing'
+  | 'reply_generation'
+  | 'insights'
+  | 'competitor_analysis'
+  | 'rule_extraction';
+
 export interface LLMAssignments {
   review_processing_model_id: string | null;
   reply_generation_model_id: string | null;
+  insights_model_id: string | null;
+  competitor_analysis_model_id: string | null;
+  rule_extraction_model_id: string | null;
   review_processing_model_name: string | null;
   reply_generation_model_name: string | null;
+  insights_model_name: string | null;
+  competitor_analysis_model_name: string | null;
+  rule_extraction_model_name: string | null;
+}
+
+export interface LLMAssignmentsUpdatePayload {
+  review_processing_model_id?: string | null;
+  reply_generation_model_id?: string | null;
+  insights_model_id?: string | null;
+  competitor_analysis_model_id?: string | null;
+  rule_extraction_model_id?: string | null;
 }
 
 export interface LLMTestResult {
@@ -62,6 +83,6 @@ export const llmModelService = {
   getAssignments: () =>
     apiClient.get<LLMAssignments>('/admin/llm-models/assignments'),
 
-  setAssignments: (data: { review_processing_model_id?: string | null; reply_generation_model_id?: string | null }) =>
+  setAssignments: (data: LLMAssignmentsUpdatePayload) =>
     apiClient.patch<LLMAssignments>('/admin/llm-models/assignments', data),
 };
