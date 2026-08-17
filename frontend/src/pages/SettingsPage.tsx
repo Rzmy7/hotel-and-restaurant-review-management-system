@@ -17,6 +17,7 @@ import { SubscriptionSettingsCard } from '../components/settings/organisms/Subsc
 import { OrganizationInfoSettingsCard } from '../components/settings/organisms/OrganizationInfoSettingsCard';
 import { UnsavedChangesModal, type ChangeDetail } from '../components/settings/organisms/UnsavedChangesModal';
 import { useNavigationBlocker } from '../contexts/NavigationBlockerContext';
+import { validateRulesFile } from '../validators/fileValidator';
 import type { SettingsData } from '../types/settings';
 import type { OrganizationType } from '../api/settingsApi';
 
@@ -204,6 +205,13 @@ const SettingsPage: React.FC = () => {
     event.target.value = '';
     if (!file) return;
 
+    try {
+      validateRulesFile(file);
+    } catch (validationError: any) {
+      showToast(validationError.message || 'File size must be 10MB or less', 'error');
+      return;
+    }
+
     setIsUploadingRules(true);
     try {
       await uploadRulesFile(file);
@@ -211,8 +219,8 @@ const SettingsPage: React.FC = () => {
       const updatedRules = await fetchOrganizationRules();
       setOrganizationRules(updatedRules);
       showToast('Rules file uploaded successfully', 'success');
-    } catch (error) {
-      showToast('Failed to upload rules file', 'error');
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to upload rules file', 'error');
     } finally {
       setIsUploadingRules(false);
     }

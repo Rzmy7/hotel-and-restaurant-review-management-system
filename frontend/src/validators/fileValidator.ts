@@ -9,3 +9,11 @@ export const validateImage = (file: File) => {
         throw new Error("Image must be less than 2MB");
     }
 };
+
+export const MAX_RULES_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+export const validateRulesFile = (file: File) => {
+    if (file.size > MAX_RULES_FILE_SIZE_BYTES) {
+        throw new Error("File size must be 10MB or less");
+    }
+};
