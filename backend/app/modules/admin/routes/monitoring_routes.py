@@ -304,24 +304,68 @@ def scraping_jobs(
     limit = max(1, limit)
     offset = (page - 1) * limit
 
+    rows = []
     try:
         payload = scraping_backend_get("/api/system/jobs/all")
+        if isinstance(payload, dict):
+            rows = payload.get("jobs", []) or []
     except HTTPException as exc:
-        if exc.status_code == 502:
-            return {
-                "data": [],
-                "total": 0,
-                "page": page,
-                "limit": limit
-            }
-        raise
-    
-    rows = payload.get("jobs", []) if isinstance(payload, dict) else []
+        if exc.status_code not in (502, 503, 504):
+            raise
+    except Exception:
+        rows = []
+
+    # Fallback to dbo.sync_log from main DB if scraper engine has no jobs or is temporarily offline
+    if not rows:
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cur = conn.cursor()
+                if table_exists(cur, "sync_log") and table_exists(cur, "source"):
+                    sync_query = """
+                        SELECT TOP 100
+                            sl.log_id,
+                            p.platform_name,
+                            s.source_url,
+                            sl.status,
+                            sl.timestamp,
+                            sl.duration_ms,
+                            sl.reviews_fetched
+                        FROM dbo.sync_log sl
+                        JOIN dbo.source s ON sl.source_id = s.source_id
+                        LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
+                        ORDER BY sl.timestamp DESC
+                    """
+                    sync_rows = execute_query(cur, sync_query).fetchall()
+                    for sr in sync_rows:
+                        status_str = str(sr[3] or "completed").lower()
+                        if status_str in ["success", "completed"]:
+                            job_status = "completed"
+                        elif status_str in ["failed", "error"]:
+                            job_status = "failed"
+                        elif status_str in ["in progress", "running"]:
+                            job_status = "running"
+                        else:
+                            job_status = "pending"
+
+                        created_dt = sr[4].isoformat() if sr[4] else None
+                        rows.append({
+                            "id": str(sr[0]),
+                            "platform": str(sr[1] or "Unknown").lower(),
+                            "url": str(sr[2] or ""),
+                            "status": job_status,
+                            "reviews_extracted": int(sr[6] or 0),
+                            "created_at": created_dt,
+                        })
+        except Exception as fallback_exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Fallback to sync_log error: {fallback_exc}")
+
     rows = sorted(
         rows,
         key=lambda item: str(item.get("created_at", "")),
         reverse=True,
     )
+
 
     url_to_org = {}
     try:
