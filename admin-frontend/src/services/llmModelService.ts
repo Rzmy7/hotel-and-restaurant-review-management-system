@@ -1,5 +1,15 @@
 import { apiClient } from '../api/client';
 
+/** Outcome of the last connectivity test — this is what the Status column shows. */
+export type LLMTestStatus =
+  | 'untested'
+  | 'ok'
+  | 'auth_error'
+  | 'quota_error'
+  | 'model_error'
+  | 'unreachable'
+  | 'error';
+
 export interface LLMModel {
   id: string;
   name: string;
@@ -7,9 +17,13 @@ export interface LLMModel {
   model_name: string;
   api_key_masked: string;
   max_tokens: number;
+  /** Registration state (soft delete), NOT connectivity. Every listed model is true. */
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  last_test_status: LLMTestStatus;
+  last_test_message: string | null;
+  last_tested_at: string | null;
 }
 
 export interface LLMModelCreatePayload {
@@ -59,6 +73,7 @@ export interface LLMAssignmentsUpdatePayload {
 export interface LLMTestResult {
   success: boolean;
   message: string;
+  status: LLMTestStatus;
 }
 
 export const llmModelService = {

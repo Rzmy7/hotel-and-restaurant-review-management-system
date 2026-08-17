@@ -66,7 +66,10 @@ def _ensure_table(cursor) -> None:
                 max_tokens  INT              NOT NULL DEFAULT 4096,
                 is_active   BIT              NOT NULL DEFAULT 1,
                 created_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME(),
-                updated_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME()
+                updated_at  DATETIME2(7)     NOT NULL DEFAULT SYSUTCDATETIME(),
+                last_test_status  NVARCHAR(30)  NULL,
+                last_test_message NVARCHAR(500) NULL,
+                last_tested_at    DATETIME2(7)  NULL
             )
         END
     """)

@@ -419,9 +419,15 @@ class LLMModelResponse(BaseModel):
     model_name: str
     api_key_masked: str
     max_tokens: int
+    # Registration state (soft delete), NOT connectivity — see last_test_status.
     is_active: bool
     created_at: str
     updated_at: str
+    # Result of the most recent connectivity test:
+    # untested | ok | auth_error | quota_error | model_error | unreachable | error
+    last_test_status: str = "untested"
+    last_test_message: str | None = None
+    last_tested_at: str | None = None
 
 
 class LLMModelTestPayload(BaseModel):
@@ -435,6 +441,7 @@ class LLMModelTestPayload(BaseModel):
 class LLMModelTestResponse(BaseModel):
     success: bool
     message: str
+    status: str = "error"
 
 
 class LLMAssignmentsResponse(BaseModel):

@@ -20,6 +20,7 @@ import type {
   LLMAssignmentsUpdatePayload,
   LLMModel,
   LLMPurpose,
+  LLMTestStatus,
 } from '../services/llmModelService';
 import LLMModelsSkeleton from './LLMModelsSkeleton';
 import Skeleton from '../components/shared/Skeleton';
@@ -64,16 +65,48 @@ const EMPTY_FORM: ModelFormState = { name: '', endpoint: '', model_name: '', api
 
 // ── sub-components ────────────────────────────────────────────────────
 
-interface StatusBadgeProps { active: boolean }
-const StatusBadge: React.FC<StatusBadgeProps> = ({ active }) => (
-  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-    active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-           : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
-  }`}>
-    <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-    {active ? 'Active' : 'Inactive'}
-  </span>
-);
+// The Status column reports the last connectivity test, not registration state —
+// every listed model is registered, so `is_active` could only ever read "Active".
+const STATUS_META: Record<LLMTestStatus, { label: string; dot: string; chip: string }> = {
+  untested:    { label: 'Not Tested',  dot: 'bg-gray-400',    chip: 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400' },
+  ok:          { label: 'Working',     dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  auth_error:  { label: 'Auth Failed', dot: 'bg-red-500',     chip: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  quota_error: { label: 'No Credits',  dot: 'bg-amber-500',   chip: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  model_error: { label: 'Bad Model',   dot: 'bg-amber-500',   chip: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  unreachable: { label: 'Unreachable', dot: 'bg-red-500',     chip: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  error:       { label: 'Failed',      dot: 'bg-red-500',     chip: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+};
+
+const formatTestedAt = (iso: string | null): string => {
+  if (!iso) return 'never tested';
+  // Backend stores UTC without a timezone marker; mark it so the browser localises it.
+  const d = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 1440)}d ago`;
+};
+
+interface StatusBadgeProps { model: LLMModel }
+const StatusBadge: React.FC<StatusBadgeProps> = ({ model }) => {
+  const meta = STATUS_META[model.last_test_status] ?? STATUS_META.error;
+  return (
+    <div className="flex flex-col gap-1 items-start">
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.chip}`}
+        title={model.last_test_message || 'Click Test to check this model'}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+        {meta.label}
+      </span>
+      <span className="text-[10px] text-gray-400 dark:text-slate-500">
+        {formatTestedAt(model.last_tested_at)}
+      </span>
+    </div>
+  );
+};
 
 // ── main component ────────────────────────────────────────────────────
 
@@ -185,6 +218,8 @@ export const LLMModels: React.FC = () => {
     try {
       const result = await llmModelService.test(id);
       setTestResults(prev => ({ ...prev, [id]: result }));
+      // The backend stored this outcome — reload so the Status badge reflects it.
+      await load();
     } catch (e: any) {
       setTestResults(prev => ({ ...prev, [id]: { success: false, message: e.message } }));
     } finally {
@@ -358,7 +393,7 @@ export const LLMModels: React.FC = () => {
                       <span className="text-gray-600 dark:text-slate-300 font-mono text-xs">{model.max_tokens}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge active={model.is_active} />
+                      <StatusBadge model={model} />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
