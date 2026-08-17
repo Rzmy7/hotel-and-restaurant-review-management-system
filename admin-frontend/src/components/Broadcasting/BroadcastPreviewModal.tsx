@@ -2,12 +2,11 @@ import React from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import { CHANNELS, MESSAGE_TYPES, AUDIENCE_OPTIONS } from './types';
 import type { ComposeForm, MessageType } from './types';
-import { formatDateTime } from '../../utils/dateTime';
 
 interface PreviewModalProps {
     form: ComposeForm;
     estimatedCount: number;
-    timezone: string;
+    timezone?: string;
     onClose: () => void;
     onSend: () => void;
     sending: boolean;
@@ -16,7 +15,7 @@ interface PreviewModalProps {
 
 const msgTypeMeta = (t: MessageType) => MESSAGE_TYPES.find(m => m.value === t)!;
 
-export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estimatedCount, timezone, onClose, onSend, sending, planOptions }) => {
+export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estimatedCount, onClose, onSend, sending, planOptions }) => {
     const mt = msgTypeMeta(form.messageType);
     const audienceOpt = AUDIENCE_OPTIONS.find(a => a.value === form.audienceType)!;
     const subOptions = form.audienceType === 'plan' && planOptions && planOptions.length > 0
@@ -74,7 +73,7 @@ export const BroadcastPreviewModal: React.FC<PreviewModalProps> = ({ form, estim
                         <div>
                             <p className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Timing</p>
                             <p className="text-sm font-medium text-gray-800 dark:text-slate-200">
-                                {form.scheduleType === 'now' ? 'Send immediately' : formatDateTime(form.scheduledAt, timezone)}
+                                Send immediately
                             </p>
                         </div>
                     </div>

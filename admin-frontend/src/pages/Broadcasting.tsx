@@ -10,7 +10,6 @@ import {
     ChannelSelector,
     ContentEditor,
     MessageTypeSelector,
-    SchedulingOptions,
 } from '../components/Broadcasting';
 import type { BroadcastRecord, ComposeForm } from '../components/Broadcasting';
 import { broadcastingService } from '../services/broadcastingService';
@@ -60,20 +59,11 @@ export const Broadcasting: React.FC = () => {
     const itemsPerPage = 10;
 
     const isFormValid = useMemo(() => {
-        const hasCoreFields =
+        return (
             form.subject.trim().length > 0 &&
             form.body.trim().length > 0 &&
-            (form.audienceType === 'all' || form.audienceValue !== '');
-
-        if (!hasCoreFields) {
-            return false;
-        }
-
-        if (form.scheduleType === 'scheduled') {
-            return form.scheduledAt.trim().length > 0;
-        }
-
-        return true;
+            (form.audienceType === 'all' || form.audienceValue !== '')
+        );
     }, [form]);
 
     const refreshStats = async () => {
@@ -237,16 +227,6 @@ export const Broadcasting: React.FC = () => {
                                 body={form.body}
                                 onSubjectChange={subject => updateForm({ subject })}
                                 onBodyChange={body => updateForm({ body })}
-                            />
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-                            <SchedulingOptions
-                                scheduleType={form.scheduleType}
-                                scheduledAt={form.scheduledAt}
-                                timezone={systemTimezone}
-                                onScheduleTypeChange={scheduleType => updateForm({ scheduleType })}
-                                onScheduledAtChange={scheduledAt => updateForm({ scheduledAt })}
                             />
                         </div>
                     </div>
