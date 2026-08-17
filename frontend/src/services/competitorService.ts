@@ -32,16 +32,31 @@ export interface KpiData {
     gap:        number;
 }
 
+/** Confidence-adjusted rating KPI — nullable when a side has no reviews at all. */
+export interface AdjustedKpiData {
+    myHotel:    number | null;
+    competitor: number | null;
+    gap:        number | null;
+}
+
 export interface ComparisonData {
     competitor: Competitor;
     myOrganizationName: string;
     kpis: {
         avgRating:       KpiData;
+        /** Volume-weighted Bayesian mean — see backend services/scoring.py */
+        adjustedRating:  AdjustedKpiData;
         reviewCount:     KpiData;
         positivePercent: KpiData;
         negativePercent: KpiData;
     };
-    aspectData:   { subject: string; myHotel: number; competitor: number; fullMark: number }[];
+    /**
+     * Aspect scores. `myHotel`/`competitor` are null when that property has no
+     * reviews mentioning the aspect — absent evidence, not a score of zero, so
+     * the radar leaves a gap instead of plotting the axis at 0.
+     * `delta` is positive when your property leads, null when either side is null.
+     */
+    aspectData:   { subject: string; myHotel: number | null; competitor: number | null; delta: number | null; fullMark: number }[];
     trendData:    { name: string; myHotel: number | null; competitor: number | null }[];
     sentimentData:{ name: string; myHotel: number; competitor: number }[];
 }
@@ -51,6 +66,8 @@ export interface RankingEntry {
     name:      string;
     isYou:     boolean;
     rating:    number;
+    /** Bayesian-adjusted rating — this is what rank is sorted on. */
+    adjustedRating: number | null;
     sentiment: number;
     reviews:   number;
 }
@@ -60,6 +77,8 @@ export interface RankingsData {
     yourRank:         number;
     totalCompetitors: number;
     topPerformer:     RankingEntry | null;
+    /** Population prior the Bayesian adjustment shrank toward. */
+    ratingPrior:      number | null;
 }
 
 export interface AiInsights {
