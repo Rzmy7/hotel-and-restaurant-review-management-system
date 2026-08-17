@@ -59,7 +59,7 @@ const CompetitorsPage = () => {
             </PageHeader>
 
             {/* Main Content */}
-            <main className="w-full px-8 py-8 flex-1 max-w-[1600px] mx-auto">
+            <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex-1 max-w-[1600px] mx-auto">
 
                 {/* Error State */}
                 {errorMessage && (
@@ -74,9 +74,9 @@ const CompetitorsPage = () => {
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
 
                     {/* Card Header */}
-                    <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+                    <div className="px-4 sm:px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-800">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Competitor List</h2>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <Link
                                 to="/competitors/rankings"
                                 className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
@@ -105,8 +105,8 @@ const CompetitorsPage = () => {
 
                     {/* Table */}
                     {!loading && tracked.length > 0 && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto show-scrollbar">
+                        <table className="w-full min-w-[56rem] text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700">
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[25%]">Competitor Name</th>
@@ -126,11 +126,13 @@ const CompetitorsPage = () => {
                                         <td className="px-6 py-5">
                                             <span className="text-gray-500 dark:text-gray-400 text-[15px]">{competitor.location}</span>
                                         </td>
-                                        <td className="px-6 py-5 flex items-center gap-1">
-                                            <span className="font-bold text-gray-900 dark:text-white text-[15px]">{competitor.avgRating}</span>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                            </svg>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-bold text-gray-900 dark:text-white text-[15px]">{competitor.avgRating}</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                                </svg>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5">
                                             <span className="text-gray-700 dark:text-gray-300 font-medium text-[15px]">{competitor.sentimentScore}%</span>

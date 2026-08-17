@@ -72,7 +72,7 @@ const CompetitorRankingsPage = () => {
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             {/* Header */}
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center justify-between gap-3 transition-all duration-300">
                 <div className="flex flex-col">
                     <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
                         Competitor Rankings
@@ -115,7 +115,7 @@ const CompetitorRankingsPage = () => {
             </header>
 
             {/* Main Content */}
-            <main className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
+            <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
 
                 {/* Back */}
                 <Link
@@ -152,15 +152,15 @@ const CompetitorRankingsPage = () => {
 
                 {/* Rankings Table */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden mt-8">
-                    <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+                    <div className="px-4 sm:px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-800">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Rankings Overview</h2>
                         <span className="text-xs font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider">
                             Sorted by: <span className="text-blue-500">{currentSortLabel}</span>
                         </span>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto show-scrollbar">
+                        <table className="w-full min-w-[60rem] text-left border-collapse">
                             <thead>
                                 <tr className="bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[10%]">Rank</th>
