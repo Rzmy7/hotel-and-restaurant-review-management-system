@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.tenant_context import resolve_tenant_scope
+from app.core.redis_client import cache_get, cache_set
 from app.modules.reviews.services.sentiment_service import (
     analyze_single_sentiment,
     get_sentiment_stats,
@@ -42,7 +43,13 @@ def sentiment_stats(
     """
     try:
         resolve_tenant_scope(current_user, db, org_id)
+        cache_key = f"insights:sentiment-stats:{org_id}:{period_days}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         stats = get_sentiment_stats(org_id, period_days=period_days)
+        cache_set(cache_key, stats, ttl=300)
         return stats
     except HTTPException:
         raise
@@ -65,15 +72,22 @@ def sentiment_timeline(
     """
     try:
         resolve_tenant_scope(current_user, db, org_id)
+        cache_key = f"insights:sentiment-timeline:{org_id}:{period_days}:{bucket_days}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         timeline = get_sentiment_timeline(
             org_id, period_days=period_days, bucket_days=bucket_days
         )
-        return {
+        result = {
             "org_id": org_id,
             "period_days": period_days,
             "bucket_days": bucket_days,
             "data": timeline,
         }
+        cache_set(cache_key, result, ttl=300)
+        return result
     except HTTPException:
         raise
     except Exception as e:

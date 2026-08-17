@@ -13,6 +13,7 @@ from app.modules.scheduler.tasks.broadcasting_tasks import process_pending_broad
 from app.modules.scheduler.tasks.reconciliation_tasks import reconcile_scraper_jobs
 from app.modules.reviews.tasks import process_pending_reviews, deduplicate_reviews_task
 from app.modules.scheduler.tasks.resume_tasks import auto_resume_sources
+from app.modules.scheduler.tasks.alert_evaluation_tasks import evaluate_alert_rules_job
 
 def setup_scheduler():
     """
@@ -105,4 +106,17 @@ def setup_scheduler():
         misfire_grace_time=60,
         coalesce=True,
         jitter=60
+    )
+
+    # Alert rules evaluation — 10-min interval; 60-min per-rule cooldown
+    # inside the job prevents persistent conditions from re-alerting.
+    scheduler.add_job(
+        evaluate_alert_rules_job,
+        'interval',
+        minutes=10,
+        id='alert_rules_evaluation_job',
+        replace_existing=True,
+        misfire_grace_time=60,
+        coalesce=True,
+        jitter=10
     )

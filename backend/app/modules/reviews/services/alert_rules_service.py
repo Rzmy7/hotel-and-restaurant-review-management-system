@@ -201,18 +201,35 @@ def _eval_response_overdue(
 # ──────────────────────────────────────────────────────────────────────
 
 
-def evaluate_all_rules_for_org(org_id: str) -> list[dict]:
+def evaluate_all_rules_for_org(org_id: str, cooldown_minutes: int = 0) -> list[dict]:
     """
     Evaluate all enabled rules for an organization.
     Returns a list of triggered alert dicts.
+
+    When cooldown_minutes > 0, rules that fired within that window
+    (via last_triggered_at) are skipped — used by the automatic
+    scheduled evaluation so a persistent condition doesn't re-alert
+    on every run. The manual POST /evaluate path passes 0 (immediate).
     """
     rules = get_rules_for_org(org_id, enabled_only=True)
     if not rules:
         return []
 
+    now = datetime.utcnow()
     triggered = []
     for rule in rules:
         try:
+            if cooldown_minutes > 0:
+                last_fired = rule.get("last_triggered_at")
+                if last_fired:
+                    try:
+                        last_fired_dt = datetime.fromisoformat(last_fired)
+                        if now - last_fired_dt < timedelta(minutes=cooldown_minutes):
+                            continue
+                    except (ValueError, TypeError):
+                        # Unparseable timestamp — treat as expired, evaluate normally
+                        pass
+
             result = evaluate_rule(org_id, rule)
             if result:
                 triggered.append(result)
@@ -223,14 +240,14 @@ def evaluate_all_rules_for_org(org_id: str) -> list[dict]:
     return triggered
 
 
-def evaluate_and_notify(org_id: str):
+def evaluate_and_notify(org_id: str, cooldown_minutes: int = 0):
     """
     Evaluate all rules for an org and dispatch alerts.
     Should be called after new reviews are ingested.
     """
     from app.modules.admin.services.system_alert_logger import log_system_alert
 
-    triggered = evaluate_all_rules_for_org(org_id)
+    triggered = evaluate_all_rules_for_org(org_id, cooldown_minutes=cooldown_minutes)
     for alert in triggered:
         try:
             log_system_alert(
@@ -247,6 +264,41 @@ def evaluate_and_notify(org_id: str):
             logger.error(f"Failed to dispatch alert: {e}")
 
     return triggered
+
+
+def run_alert_evaluation_for_orgs(org_ids: list, cooldown_minutes: int = 60) -> list[dict]:
+    """
+    Evaluate + notify once per org (used by the scheduled alert job).
+
+    Uses a cooldown so persistent conditions don't re-alert on every run.
+    Fully guarded: a failure for one org must not affect the others.
+    """
+    triggered = []
+    for org_id in org_ids:
+        try:
+            triggered.extend(evaluate_and_notify(org_id, cooldown_minutes=cooldown_minutes))
+        except Exception as e:
+            logger.warning(f"Alert evaluation failed for org {org_id}: {e}")
+    return triggered
+
+
+def get_orgs_with_enabled_rules() -> list:
+    """
+    Return the distinct organization ids that have at least one enabled alert rule.
+    """
+    conn = pyodbc.connect(get_connection_string())
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT CAST(organization_id AS VARCHAR(36))
+            FROM dbo.alert_rule
+            WHERE is_enabled = 1
+            """
+        )
+        return [str(row[0]) for row in cursor.fetchall()]
+    finally:
+        conn.close()
 
 
 # ──────────────────────────────────────────────────────────────────────

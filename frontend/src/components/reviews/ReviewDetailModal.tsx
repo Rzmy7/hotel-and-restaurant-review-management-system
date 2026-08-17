@@ -9,6 +9,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useReviewDetail } from '../../hooks/useReviewDetail';
 import Skeleton from '../shared/Skeleton';
+import { useOrganizationStore } from '../../stores/useOrganizationStore';
 
 interface ReviewDetailModalProps {
   isOpen: boolean;
@@ -58,8 +59,9 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const reviews = allReviews.length > 0 ? allReviews : storeReviews;
   const refreshDataStore = useReviewsStore(state => state.refreshData);
   const { fetchParams } = useReviewFilters();
-  const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
-  const refreshData = () => refreshDataStore(organizationId, fetchParams);
+  const currentOrg = useOrganizationStore(state => state.currentOrg);
+  const organizationId = currentOrg?.id || '';
+  const refreshData = () => { if (organizationId) refreshDataStore(organizationId, fetchParams); };
 
   // Fetch detailed review lazily on modal open, using propReview as placeholder for instant UI
   const { data: fetchedReview, loading: isDetailLoading } = useReviewDetail(

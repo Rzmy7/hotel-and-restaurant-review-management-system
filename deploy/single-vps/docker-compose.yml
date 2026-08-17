@@ -78,6 +78,7 @@ services:
     # Note: Ports are internal-only for security; exposed via Nginx
     depends_on:
       - rabbitmq
+      - redis
     volumes:
       # scripts/ is excluded by .dockerignore — mount it for db_rebuild.py
       - ./backend/scripts:/app/scripts:ro
@@ -125,6 +126,8 @@ services:
       # ── CORS (allowed frontend origins) ──
       - CORS_ORIGINS=https://${DOMAIN_NAME:-reviewmate.live},https://admin.${DOMAIN_NAME:-reviewmate.live}
       - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672/}
+      # ── Redis Cache (review lists + AI summaries; falls back gracefully) ──
+      - REDIS_URL=redis://redis:6379/0
 
   # 🐇 Message Broker (RabbitMQ)
   rabbitmq:
@@ -140,6 +143,15 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+
+  # 🗄️ Redis Cache (review lists + AI summaries; internal-only)
+  redis:
+    image: redis:7-alpine
+    container_name: reviewmate-redis
+    restart: unless-stopped
+    # Note: Ports are internal-only — no exposure to the public
+    volumes:
+      - redis_data:/data
 
   # 💻 User Frontend (React + Vite)
   frontend:
@@ -206,5 +218,6 @@ services:
 volumes:
   chroma_data:
   rabbitmq_data:
+  redis_data:
   certbot_conf:
   certbot_www:

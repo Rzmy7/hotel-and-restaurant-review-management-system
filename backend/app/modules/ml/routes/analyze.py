@@ -8,8 +8,9 @@ GET  /ml/analyze/health — Health check
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.modules.auth.utils.internal_auth import verify_internal_api_key
 from app.modules.reviews.services.sentiment_service import (
     analyze_single_sentiment,
     batch_analyze_sentiment,
@@ -28,7 +29,10 @@ def health_check():
 
 
 @router.post("", summary="Analyze review sentiment and extract insights")
-def analyze_review(payload: dict):
+def analyze_review(
+    payload: dict,
+    internal: bool = Depends(verify_internal_api_key),
+):
     """
     Full AI analysis of a single review.
 
@@ -61,7 +65,10 @@ def analyze_review(payload: dict):
 
 
 @router.post("/batch", summary="Batch analyze multiple reviews")
-def analyze_batch(payload: dict):
+def analyze_batch(
+    payload: dict,
+    internal: bool = Depends(verify_internal_api_key),
+):
     """
     Analyze up to 10 reviews in a single request.
 
@@ -101,7 +108,10 @@ def analyze_batch(payload: dict):
 
 
 @router.post("/raw", summary="Raw LLM analysis — returns the full AI response")
-def raw_analysis(payload: dict):
+def raw_analysis(
+    payload: dict,
+    internal: bool = Depends(verify_internal_api_key),
+):
     """
     Pass a review directly to the LLM Gateway and return the raw response.
     For advanced use cases where structured parsing is handled client-side.

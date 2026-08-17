@@ -17,7 +17,12 @@ from app.core.db_utils import get_connection_string
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.dependencies import get_optional_user
 from app.core.tenant_context import resolve_tenant_scope
-from app.core.redis_client import cache_get, cache_set, invalidate_review_cache
+from app.core.redis_client import (
+    cache_get,
+    cache_set,
+    invalidate_review_cache,
+    invalidate_ai_cache,
+)
 from app.modules.admin.services.subscription_service import increment_feature_usage
 from app.modules.reviews.schemas import (
     ReviewModel,
@@ -222,7 +227,9 @@ async def trigger_review_sync(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found.")
     resolve_tenant_scope(current_user, db, str(source.organization_id))
-    invalidate_review_cache(str(source.organization_id))  # Clear Redis cache
+    # Clear Redis caches (review lists + AI summaries)
+    invalidate_review_cache(str(source.organization_id))
+    invalidate_ai_cache(str(source.organization_id))
     background_tasks.add_task(start_ingestion_and_processing_flow, source_id)
     return {"message": "Processing flow started in background."}
 
@@ -578,6 +585,10 @@ def delete_reviews_by_source(
 
         # 3. Clear embeddings for this source
         delete_embeddings_for_source(str(source_id))
+
+        # 4. Invalidate cached review/dashboard/insights data for this org
+        invalidate_review_cache(str(source.organization_id))
+        invalidate_ai_cache(str(source.organization_id))
 
         return {
             "message": "Reviews deleted successfully",

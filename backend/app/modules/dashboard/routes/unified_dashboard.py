@@ -18,17 +18,26 @@ from app.modules.dashboard.services.categories_service import get_category_perfo
 from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.dashboard.services.insights_service import get_keywords, generate_ai_actions
+from app.core.redis_client import cache_get, cache_set
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Dashboard"])
 
 
-def _build_ai_insights(metrics: dict, categories: list) -> dict:
+def _build_ai_insights(metrics: dict, categories: list, org_id: str = "") -> dict:
     """
     Build the aiInsights payload for the main dashboard using the AI engine.
     Falls back to a template-based summary if the AI call fails.
+    Cached per-org (key ai:unified:{org_id}) — invalidated by invalidate_ai_cache.
     """
+    if org_id:
+        # Trailing segment required so invalidate_ai_cache's "ai:*:{org_id}:*" pattern matches
+        cache_key = f"ai:unified:{org_id}:dashboard"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
     try:
         actions = generate_ai_actions(metrics, categories, [], {"positiveKeywords": [], "negativeKeywords": []})
         if actions:
@@ -60,14 +69,17 @@ def _build_ai_insights(metrics: dict, categories: list) -> dict:
                     "correlation": "Moderate",
                 }
 
-            return {"strengths": strengths, "issues": issues, "highlight": highlight}
+            result = {"strengths": strengths, "issues": issues, "highlight": highlight}
+            if org_id:
+                cache_set(cache_key, result, ttl=600)
+            return result
     except Exception as e:
         logger.warning(f"AI insights generation failed, using fallback: {e}")
 
     # Rule-based fallback
     avg = metrics.get("avgRating", {}).get("value", "N/A")
     neg = metrics.get("negativeReviews", {}).get("value", "0")
-    return {
+    result = {
         "strengths": [
             {"label": "Review Quality", "impact": "High", "freq": "100%"},
         ],
@@ -79,6 +91,9 @@ def _build_ai_insights(metrics: dict, categories: list) -> dict:
             "correlation": "Moderate",
         },
     }
+    if org_id:
+        cache_set(cache_key, result, ttl=600)
+    return result
 
 
 @router.get("/organizations/{org_id}/dashboard", summary="Get unified organization dashboard")
@@ -153,7 +168,7 @@ def get_unified_dashboard(
                 }
                 for r in recent_reviews[:5]
             ],
-            "aiInsights": _build_ai_insights(metrics, category_performance),
+            "aiInsights": _build_ai_insights(metrics, category_performance, org_id),
             "alerts": alerts_data[:4],
             "sourceComparison": source_comparison,
             "categoryPerformance": category_performance,

@@ -30,8 +30,8 @@ openai
 tenacity
 cryptography
 
-# Redis cache (optional — falls back gracefully if not installed)
-# redis
+# Redis cache (falls back gracefully if Redis is down)
+redis
 
 pika
 
