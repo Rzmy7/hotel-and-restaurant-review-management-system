@@ -7,11 +7,11 @@ from app.core.validations.password_validator import validate_password_strength
 NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z\s'-]*$")
 EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
-# Only the most common generic TLDs
-COMMON_TLDS = {'com', 'org', 'net', 'edu','gov', 'io'}
-
-
 def is_realistic_domain(domain: str) -> bool:
+    """Validate the domain skeleton structure (allows any valid domain/TLD)."""
+    if not domain or len(domain) > 255:
+        return False
+
     parts = domain.lower().split('.')
     
     # Must have at least 2 parts (domain + TLD)
@@ -20,30 +20,21 @@ def is_realistic_domain(domain: str) -> bool:
     
     tld = parts[-1]
     
-    # TLD must be in common list and at least 2 chars
-    if len(tld) < 2 or tld not in COMMON_TLDS:
-        return False
-    
-    # Domain name part (before TLD) must be realistic
-    domain_name = '.'.join(parts[:-1])
-    
-    # No consecutive dots
-    if '..' in domain_name:
+    # TLD must consist of alphabetic characters only and be at least 2 chars
+    if not re.match(r"^[a-z]{2,}$", tld, re.IGNORECASE):
         return False
     
     # Each label must be 1-63 chars, start/end with alphanumeric
-    labels = domain_name.split('.')
-    for label in labels:
+    for label in parts[:-1]:
         if not label or len(label) > 63:
             return False
-        if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', label, re.IGNORECASE):
-            return False
-        # Domain labels should be at least 4 chars to look realistic
-        # (prevents obviously fake domains like 'kaa.com', 'xyz.net')
-        if len(label) < 4 and len(parts) == 2:
+        if not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", label, re.IGNORECASE):
             return False
     
     return True
+
+
+is_valid_domain_skeleton = is_realistic_domain
 
 
 def normalize_signup_email(email: str) -> str:
@@ -66,10 +57,8 @@ def normalize_signup_email(email: str) -> str:
         raise HTTPException(status_code=400, detail="Invalid email format.")
     
     # Domain checks
-    if not domain:
+    if not domain or not is_realistic_domain(domain):
         raise HTTPException(status_code=400, detail="Invalid email format.")
-    if not is_realistic_domain(domain):
-        raise HTTPException(status_code=400, detail="Please enter a valid email address with a recognized domain.")
     
     return normalized
 

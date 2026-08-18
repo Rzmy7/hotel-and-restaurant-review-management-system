@@ -47,13 +47,11 @@ class TestSignupValidation(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SignupModel(name="   ", email="john@example.com", password="ValidPass1!")
 
-    def test_normalize_signup_email_rejects_unrealistic_domain_kaa(self):
-        """Email with unrealistic TLD (.kaa) should be rejected"""
-        with self.assertRaises(HTTPException) as context:
-            normalize_signup_email("kalani@kaa.com")
-
-        self.assertEqual(context.exception.status_code, 400)
-        self.assertIn("recognized domain", context.exception.detail)
+    def test_normalize_signup_email_accepts_various_tlds_and_short_domains(self):
+        """Email with any valid TLD (.kaa, .ai) or short domain should be accepted."""
+        self.assertEqual(normalize_signup_email("kalani@kaa.com"), "kalani@kaa.com")
+        self.assertEqual(normalize_signup_email("user@startup.ai"), "user@startup.ai")
+        self.assertEqual(normalize_signup_email("user@ab.com"), "user@ab.com")
 
     def test_normalize_signup_email_rejects_unrealistic_short_domain(self):
         """Email with single-letter domain label should be rejected"""
@@ -62,13 +60,12 @@ class TestSignupValidation(unittest.TestCase):
 
         self.assertEqual(context.exception.status_code, 400)
 
-    def test_normalize_signup_email_rejects_non_allowed_tld(self):
-        """Email with a non-whitelisted TLD should be rejected"""
+    def test_normalize_signup_email_rejects_single_letter_tld(self):
+        """Email with a single-letter TLD should be rejected"""
         with self.assertRaises(HTTPException) as context:
-            normalize_signup_email("kalani@example.kaa")
+            normalize_signup_email("user@example.c")
 
         self.assertEqual(context.exception.status_code, 400)
-        self.assertIn("recognized domain", context.exception.detail)
 
     def test_normalize_signup_email_rejects_consecutive_dots(self):
         """Email with consecutive dots should be rejected"""

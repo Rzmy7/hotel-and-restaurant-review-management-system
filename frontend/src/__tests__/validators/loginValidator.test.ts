@@ -20,6 +20,13 @@ describe('validateLoginEmail', () => {
         expect(validateLoginEmail('user@gmail.com')).toBeNull();
     });
 
+    it('accepts various domains and TLDs', () => {
+        expect(validateLoginEmail('user@company.co.uk')).toBeNull();
+        expect(validateLoginEmail('user@startup.ai')).toBeNull();
+        expect(validateLoginEmail('user@ab.com')).toBeNull();
+        expect(validateLoginEmail('user@platform.io')).toBeNull();
+    });
+
     it('rejects empty email', () => {
         expect(validateLoginEmail('')).not.toBeNull();
     });
@@ -27,8 +34,11 @@ describe('validateLoginEmail', () => {
     it('rejects invalid email', () => {
         expect(validateLoginEmail('not-an-email')).not.toBeNull();
     });
+
     it('rejects invalid format email', () => {
         expect(validateLoginEmail('abc.@gmail.com')).not.toBeNull();
+        expect(validateLoginEmail('user@domain.c')).not.toBeNull();
+        expect(validateLoginEmail('user@domain..com')).not.toBeNull();
     });
 });
 

@@ -9,7 +9,6 @@ import {
     Bell,
     User,
     HelpCircle,
-    Mail,
     LogOut
 } from 'lucide-react';
 import type { NavigationConfig } from '../types/navigation';
@@ -94,12 +93,6 @@ export const navigationConfig: NavigationConfig = {
             label: 'Help & Docs',
             icon: <HelpCircle size={20} />,
             path: '/help'
-        },
-        {
-            id: 'contact',
-            label: 'Contact Support',
-            icon: <Mail size={20} />,
-            path: '/support'
         },
         {
             id: 'logout',

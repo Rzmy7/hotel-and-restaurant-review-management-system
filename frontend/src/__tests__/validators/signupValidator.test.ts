@@ -80,6 +80,17 @@ describe('validateEmailAddress', () => {
         expect(validateEmailAddress('admin@company.org')).toBeNull();
     });
 
+    it('accepts short domain name', () => {
+        expect(validateEmailAddress('user@ab.com')).toBeNull();
+    });
+
+    it('accepts various domains and TLDs', () => {
+        expect(validateEmailAddress('user@startup.ai')).toBeNull();
+        expect(validateEmailAddress('user@platform.io')).toBeNull();
+        expect(validateEmailAddress('user@company.co.uk')).toBeNull();
+        expect(validateEmailAddress('user@domain.xyz')).toBeNull();
+    });
+
     it('accepts plus tags', () => {
         expect(validateEmailAddress('user+tag@gmail.com')).toBeNull();
     });
@@ -92,12 +103,20 @@ describe('validateEmailAddress', () => {
         expect(validateEmailAddress('userexample.com')).not.toBeNull();
     });
 
-    it('rejects unrealistic TLD', () => {
-        expect(validateEmailAddress('user@domain.kaa')).not.toBeNull();
+    it('rejects single-character TLD', () => {
+        expect(validateEmailAddress('user@domain.c')).not.toBeNull();
+    });
+
+    it('rejects numeric TLD', () => {
+        expect(validateEmailAddress('user@domain.123')).not.toBeNull();
     });
 
     it('rejects consecutive dots in local part', () => {
         expect(validateEmailAddress('us..er@gmail.com')).not.toBeNull();
+    });
+
+    it('rejects consecutive dots in domain', () => {
+        expect(validateEmailAddress('user@domain..com')).not.toBeNull();
     });
 
     it('rejects leading dot in local part', () => {
@@ -110,10 +129,6 @@ describe('validateEmailAddress', () => {
 
     it('trims whitespace', () => {
         expect(validateEmailAddress('  user@gmail.com  ')).toBeNull();
-    });
-
-    it('rejects short domain', () => {
-        expect(validateEmailAddress('user@ab.com')).not.toBeNull();
     });
 });
 

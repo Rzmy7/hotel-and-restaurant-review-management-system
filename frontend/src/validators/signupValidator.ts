@@ -14,35 +14,24 @@ const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const NAME_PATTERN = /^[A-Za-z][A-Za-z\s'-]*$/;
 const SYMBOL_PATTERN = /[!@#$%^&*(),.?":{}|<>\-_]/;
 
-// Only the most common generic TLDs
-const COMMON_TLDS = new Set(['com', 'org', 'net', 'edu','gov', 'io']);
+const isValidDomainSkeleton = (domain: string): boolean => {
+    if (!domain || domain.length > 255) return false;
 
-const isRealisticDomain = (domain: string): boolean => {
     const parts = domain.toLowerCase().split('.');
     
-    // Must have at least 2 parts (domain + TLD)
+    // Must have at least 2 parts (domain name + TLD)
     if (parts.length < 2) return false;
     
     const tld = parts[parts.length - 1];
     
-    // TLD must be in common list and at least 2 chars
-    if (tld.length < 2 || !COMMON_TLDS.has(tld)) return false;
+    // TLD must consist of alphabetic characters only and be at least 2 characters long
+    if (!/^[a-z]{2,}$/i.test(tld)) return false;
     
-    // Domain name part (before TLD) must be realistic
-    const domainName = parts.slice(0, -1).join('.');
-    
-    // No consecutive dots
-    if (domainName.includes('..')) return false;
-    
-    // Each label must be 1-63 chars, start/end with alphanumeric
-    const labels = domainName.split('.');
-    for (const label of labels) {
+    // Each label must be 1-63 chars, start/end with alphanumeric, contain only alphanumeric and hyphens
+    for (let i = 0; i < parts.length - 1; i++) {
+        const label = parts[i];
         if (!label || label.length > 63) return false;
         if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i.test(label)) return false;
-        // Domain labels should be at least 4 chars to look realistic on simple domains
-        // (prevents obviously fake domains like 'kaa.com', 'xyz.net')
-        // But allow shorter labels in multi-part domains (e.g., co.uk)
-        if (label.length < 4 && parts.length === 2) return false;
     }
     
     return true;
@@ -78,8 +67,7 @@ export const validateEmailAddress = (value: string): string | null => {
     if (localPart.includes('..')) return 'Invalid email format.';
     
     // Domain checks
-    if (!domain) return 'Invalid email format.';
-    if (!isRealisticDomain(domain)) return 'Please enter a valid email address with a recognized domain.';
+    if (!domain || !isValidDomainSkeleton(domain)) return 'Enter a valid email address.';
     
     return null;
 };

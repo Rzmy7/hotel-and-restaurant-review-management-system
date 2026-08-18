@@ -43,12 +43,23 @@ class TestNormalizeSignupEmail:
             normalize_signup_email("usergmail.com")
         assert exc_info.value.status_code == 400
 
-    def test_rejects_unrealistic_tld(self):
-        """TLD not in common list (e.g. .kaa) should be rejected."""
+    def test_accepts_various_domains_and_tlds(self):
+        """Emails with short domain or non-standard TLDs should pass skeleton check."""
+        assert normalize_signup_email("kalani@kaa.com") == "kalani@kaa.com"
+        assert normalize_signup_email("user@startup.ai") == "user@startup.ai"
+        assert normalize_signup_email("user@ab.com") == "user@ab.com"
+
+    def test_rejects_single_letter_tld(self):
+        """Single-letter TLD should be rejected."""
         with pytest.raises(HTTPException) as exc_info:
-            normalize_signup_email("kalani@kaa.com")
+            normalize_signup_email("user@domain.c")
         assert exc_info.value.status_code == 400
-        assert "recognized domain" in exc_info.value.detail
+
+    def test_rejects_numeric_tld(self):
+        """Numeric TLD should be rejected."""
+        with pytest.raises(HTTPException) as exc_info:
+            normalize_signup_email("user@domain.123")
+        assert exc_info.value.status_code == 400
 
     def test_rejects_consecutive_dots_in_local(self):
         """Consecutive dots in local part should be rejected."""
@@ -100,13 +111,23 @@ class TestIsRealisticDomain:
     def test_example_com_is_realistic(self):
         assert is_realistic_domain("example.com") is True
 
-    def test_short_domain_rejected(self):
-        """Single-letter domain labels should be rejected."""
+    def test_short_domain_accepted(self):
+        """Short 2-letter domain labels should be accepted."""
+        assert is_realistic_domain("ab.com") is True
+
+    def test_various_tlds_accepted(self):
+        """Any 2+ character alphabetic TLD should be accepted."""
+        assert is_realistic_domain("example.kaa") is True
+        assert is_realistic_domain("startup.ai") is True
+        assert is_realistic_domain("company.co.uk") is True
+
+    def test_single_letter_tld_rejected(self):
+        """Single-letter TLD should be rejected."""
         assert is_realistic_domain("x.z") is False
 
-    def test_unknown_tld_rejected(self):
-        """Non-common TLD should be rejected."""
-        assert is_realistic_domain("example.kaa") is False
+    def test_numeric_tld_rejected(self):
+        """Numeric TLD should be rejected."""
+        assert is_realistic_domain("example.123") is False
 
     def test_subdomain_accepted(self):
         """Subdomains should be accepted if main domain is valid."""
