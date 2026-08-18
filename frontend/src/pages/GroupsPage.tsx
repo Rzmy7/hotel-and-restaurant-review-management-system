@@ -339,7 +339,7 @@ const GroupsPage: React.FC = () => {
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
 
       {/* Sticky Header */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center justify-between gap-3 transition-all duration-300">
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
@@ -382,7 +382,7 @@ const GroupsPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="w-full px-8 py-8 flex-1 max-w-[1600px] mx-auto space-y-8">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex-1 max-w-[1600px] mx-auto space-y-8">
 
         {/* Pending Invitations */}
         {(invites.length > 0 || loadingInvites) && (

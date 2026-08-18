@@ -106,11 +106,17 @@ def reconcile_stuck_tasks():
         
     logger.error("Reconciliation failed: Exceeded maximum retries contacting backend.")
 
+from core.job_manager import job_manager
+
 # ── Startup ──
 @app.on_event("startup")
 def startup_event():
     """Create all database tables on first run."""
     init_db()
+    try:
+        job_manager._load()
+    except Exception as e:
+        logger.warning(f"Initial job reload warning: {e}")
     
     # ponytail: startup reconciliation deactivated so pre-existing queued RabbitMQ tasks are not overwritten during bootup
     # threading.Thread(target=reconcile_stuck_tasks, daemon=True).start()
@@ -118,6 +124,7 @@ def startup_event():
     # Spawn background RabbitMQ consumer
     logger.info("Spawning background RabbitMQ consumer thread...")
     threading.Thread(target=run_rabbitmq_consumer, daemon=True).start()
+
 
 
 

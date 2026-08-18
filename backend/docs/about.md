@@ -1,7 +1,7 @@
 # Backend System Knowledge Base
 
 ## 1. System Overview
-The backend of the Hotel and Restaurant Review Management System is a production-grade **Domain-Driven Modular Monolith** built with **FastAPI**. Its primary goal is to provide a secure, high-performance API that aggregates, processes, and analyzes review data from various hospitality platforms. The system uses a decoupled architecture where an external **Scraper Engine** provides raw review data via webhooks, which are then analyzed using the **Google Gemini 2.5** asynchronous pipeline.
+The backend of the Hotel and Restaurant Review Management System is a production-grade **Domain-Driven Modular Monolith** built with **FastAPI**. Its primary goal is to provide a secure, high-performance API that aggregates, processes, and analyzes review data from various hospitality platforms. The system uses a decoupled architecture where an external **Scraper Engine** provides raw review data via webhooks, which are then analyzed using an asynchronous **LLM Gateway** pipeline compatible with any OpenAI-format model.
 
 ## 2. Architecture & File Structure
 This project utilizes a **Domain-Driven Design (DDD)** structure, isolating business logic within discrete modules.
@@ -48,7 +48,7 @@ sequenceDiagram
     participant RP as Review Ingestion
     participant DB as SQL Server (PyODBC)
     participant BP as AI Processor (Background)
-    participant AI as Gemini 2.5
+    participant AI as LLM Gateway (OpenAI Compatible)
 
     S->>API: POST /source/tasks/{id}/sync-status (COMPLETED)
     API->>SS: update_sync_status()
@@ -69,7 +69,7 @@ sequenceDiagram
 
 1. **Triggering**: A sync status update is sent from the **Scraper Engine** to the `/sync-status` webhook. If the status is `COMPLETED`, the Review Processing Pipeline is triggered via `BackgroundTasks`.
 2. **Ingestion**: The backend environment communicates back to the engine over port `8001` to fetch the raw review batch. Reviews are stored immediately in the `processed_review` table with a status of `'pending'`. The system uses the **Scraper UUID** directly as the primary key (`id`) to ensure global uniqueness and eliminate mapping columns. Organization/platform mapping is inferred via the `source_id` link.
-3. **AI Enrichment**: A background processor fetches `'pending'` reviews in batches and sends them to **Google Gemini 2.5**. This pipeline runs automatically every 1 minute via the system scheduler and is also triggered immediately upon system boot to clear any backlog.
+3. **AI Enrichment**: A background processor fetches `'pending'` reviews in batches and sends them to the **LLM Gateway**. This pipeline runs automatically every 1 minute via the system scheduler and is also triggered immediately upon system boot to clear any backlog.
 4. **Resilience**: The system tracks `retry_count` and `error_message` for every review. Failed AI calls are retried up to 3 times before being flagged.
 6. **Retrieval**: Enriched data is served via the `/api/reviews` endpoints, providing the frontend with deep insights, photos, and drafted AI replies.
 
@@ -85,7 +85,7 @@ The backend primarily operates under `/api` for domain-specific interfaces:
 - **Data Access**: `/api/competitors`, `/api/dashboard`
 
 ### Consumed APIs / External Connections
-- **Google Generative AI (Gemini)**: Analyzes review text.
+- **LLM Gateway (OpenAI Compatible)**: Analyzes review text and generates drafted replies using configured LLM models.
 - **Google OAuth**: Authenticates users.
 - **Supabase (Storage)**: Optional external cloud storage bucket.
 - **SMTP Relay**: Outbound connections to `smtp.gmail.com` for password reset emails.
@@ -98,13 +98,13 @@ The backend primarily operates under `/api` for domain-specific interfaces:
 - **Pydantic**: Deep payload and configuration validation.
 - **Playwright**: Headless browsing for uncooperative data sources.
 - **APScheduler**: Task orchestration without relying on a full Celery/Redis stack.
-- **google-genai / anthropic**: LLM SDK integrations.
+- **openai / anthropic**: LLM SDK integrations for OpenAI-compatible LLM Gateway.
 
 ### Key Environment Variables
 - `DATABASE_URL`: SQLAlchemy connection string (`mssql+pyodbc://...`).
 - `DB_SERVER`, `DB_NAME`, `DB_UID`, `DB_PWD`: Direct pyodbc credentials.
 - `SECRET_KEY`, `JWT_SECRET_KEY`: Cryptographic signing keys for application sessions and JWTs.
-- `GENAI_KEY`: Authentication key for Google Gemini inferences.
+- `LLM_ENCRYPTION_KEY`: AES-256 key for securing LLM Gateway provider API keys.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Used for `authlib` to process OAuth handshakes.
 - `SMTP_*`: Keys for dispatching emails.
 

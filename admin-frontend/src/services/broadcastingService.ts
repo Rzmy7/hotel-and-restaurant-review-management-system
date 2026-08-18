@@ -1,9 +1,14 @@
 import { apiClient } from '../api/client';
 import type { BroadcastRecord, ComposeForm } from '../components/Broadcasting/types';
+import type { PaginatedResponse } from '../types';
 
 export const broadcastingService = {
-    async getHistory(): Promise<BroadcastRecord[]> {
-        return apiClient.get<BroadcastRecord[]>('/admin/broadcasting/history');
+    async getHistory(page: number = 1, limit: number = 10, search?: string): Promise<PaginatedResponse<BroadcastRecord>> {
+        const params = new URLSearchParams();
+        params.append('page', String(page));
+        params.append('limit', String(limit));
+        if (search) params.append('search', search);
+        return apiClient.get<PaginatedResponse<BroadcastRecord>>(`/admin/broadcasting/history?${params}`);
     },
 
     async sendBroadcast(form: ComposeForm): Promise<{ success: boolean; broadcastId: string; message: string }> {

@@ -8,8 +8,10 @@ import {
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 import { reviewsService } from '../services/reviewsService';
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 import type { Review } from '../types/reviews';
 import { Button } from '../components/ui/Button';
+import ReviewDetailSkeleton from './ReviewDetailSkeleton';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const SentimentBadge = ({ sentiment }: { sentiment: string }) => {
@@ -54,7 +56,6 @@ const ReviewDetailPage: React.FC = () => {
     const [draftReply, setDraftReply] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [isResolving, setIsResolving] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [tone, setTone] = useState<'professional' | 'casual' | 'standard'>('standard');
     const [replyLength, setReplyLength] = useState<'short' | 'standard'>('standard');
@@ -120,25 +121,15 @@ const ReviewDetailPage: React.FC = () => {
         if (!review || !draftReply.trim()) return;
         setIsSaving(true);
         try {
-            await apiClient.post(`/reviews/${review.id}/reply`, { replyText: draftReply, tone });
+            await apiClient.post(`/reviews/${review.id}/reply`, { replyText: draftReply, tone }, {
+                activity: ActivityMessages.SEND_REPLY,
+                showSuccess: true,
+                successMessage: 'Reply saved successfully'
+            });
         } catch (err: any) {
             console.error('Failed to save reply:', err);
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    // Mark as resolved
-    const handleResolve = async () => {
-        if (!review) return;
-        setIsResolving(true);
-        try {
-            await apiClient.put(`/reviews/${review.id}/status`, { status: 'Replied' });
-            setReview(prev => prev ? { ...prev, status: 'Replied' } : prev);
-        } catch (err: any) {
-            console.error('Failed to update status:', err);
-        } finally {
-            setIsResolving(false);
         }
     };
 
@@ -153,14 +144,7 @@ const ReviewDetailPage: React.FC = () => {
 
     // ── Loading ──────────────────────────────────────────────────────────
     if (loading) {
-        return (
-            <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Loading review…</span>
-                </div>
-            </div>
-        );
+        return <ReviewDetailSkeleton />;
     }
 
     // ── Error ────────────────────────────────────────────────────────────
@@ -215,11 +199,11 @@ const ReviewDetailPage: React.FC = () => {
                                 <div className="flex items-center gap-2">
                                     <SentimentBadge sentiment={review.sentiment} />
                                     <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
-                                        review.status === 'Replied'
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                        review.status === 'processed'
+                                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
                                             : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
                                     }`}>
-                                        {review.status || 'Pending'}
+                                        {review.status === 'processed' ? 'Processed' : 'Pending'}
                                     </span>
                                 </div>
                             </div>
@@ -318,7 +302,7 @@ const ReviewDetailPage: React.FC = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-gray-800 dark:text-white">AI Reply Editor</h3>
-                                    <p className="text-[11px] text-gray-400 dark:text-slate-500">{review.status === 'Replied' ? 'Reply sent' : 'Generate a response'}</p>
+                                    <p className="text-[11px] text-gray-400 dark:text-slate-500">{review.ai_reply ? 'Reply sent' : 'Generate a response'}</p>
                                 </div>
                             </div>
 
@@ -392,18 +376,6 @@ const ReviewDetailPage: React.FC = () => {
                                     {isSaving ? 'Saving…' : 'Save Reply'}
                                 </Button>
                             </div>
-                            {review.status !== 'Replied' && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full mt-2"
-                                    onClick={handleResolve}
-                                    disabled={isResolving}
-                                >
-                                    <CheckCircle2 size={14} className="mr-1" />
-                                    {isResolving ? 'Updating…' : 'Mark as Resolved'}
-                                </Button>
-                            )}
                         </div>
                     </div>
 

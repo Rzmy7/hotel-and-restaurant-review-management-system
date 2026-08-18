@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models import Notification, UserNotification, User
-from app.modules.auth.services.email_service import send_notification_email
+from app.modules.auth.services.email_service import send_notification_email, send_in_background
 
 
 def create_notification(
@@ -12,6 +12,7 @@ def create_notification(
     title: str,
     message: str,
     notification_type: str = "info",
+    send_email: bool = True,
 ) -> UserNotification:
     # 1. Create Notification record
     notification = Notification(
@@ -35,20 +36,25 @@ def create_notification(
     db.commit()
     db.refresh(user_notification)
 
-    # Check if the user has email notifications enabled and send email
+    # Check if the user has email notifications enabled and send email in background
     try:
         user = db.query(User).filter(User.user_id == user_id).first()
         print(f"[email-notif] user={user.email if user else 'NOT FOUND'}, "
             f"has_flag={hasattr(user, 'is_email_notifications_enabled') if user else 'N/A'}, "
             f"flag_value={getattr(user, 'is_email_notifications_enabled', 'MISSING') if user else 'N/A'}")
-        if user and getattr(user, 'is_email_notifications_enabled', False):
-            print(f"[email-notif] Sending email to {user.email} — title: {title}")
-            send_notification_email(user.email, title, message)
-            print(f"[email-notif] Email sent successfully to {user.email}")
+        if send_email and user and getattr(user, 'is_email_notifications_enabled', False):
+            print(f"[email-notif] Enqueuing email delivery to {user.email} - title: {title}")
+            send_in_background(
+                send_notification_email,
+                user.email,
+                title,
+                message,
+                notification_type=notification_type,
+            )
         else:
-            print(f"[email-notif] Skipping email — notifications disabled or user not found")
+            print(f"[email-notif] Skipping email - notifications disabled or user not found")
     except Exception as e:
-        print(f"[email-notif] ERROR sending email: {e}")
+        print(f"[email-notif] ERROR enqueuing email: {e}")
 
     return (
         db.query(UserNotification)

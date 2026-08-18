@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, RefreshCw, Play, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Play, Pause, RotateCcw, CheckCircle, XCircle, Grid3X3, Layers, Save, Minus, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
 import ReviewProcessingSkeleton from './ReviewProcessingSkeleton';
 import { Alert } from '../components/Alert';
 import {
@@ -8,6 +8,7 @@ import {
     getBatchConfig,
     updateBatchConfig,
     resumeReviewProcessing,
+    pauseReviewProcessing,
     retryAllFailedReviews,
     testDuplicates,
     cleanupDuplicates,
@@ -20,6 +21,7 @@ import type {
 } from '../services/reviewProcessingService';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
+import { formatTrend } from '../utils/format';
 
 const defaultStats: ReviewProcessingStats = {
     activeJobs: 0,
@@ -31,6 +33,7 @@ const defaultStats: ReviewProcessingStats = {
     reviewsChange: 0,
     pendingReviews: 0,
     isPaused: false,
+    pauseReason: 'manual',
 };
 
 export const ReviewProcessing: React.FC = () => {
@@ -40,14 +43,16 @@ export const ReviewProcessing: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [totalItems, setTotalItems] = useState(0);
+    const [jobsLoading, setJobsLoading] = useState(false);
     const [isRetryingAll, setIsRetryingAll] = useState(false);
 
     // Batch size config state
     const [batchConfig, setBatchConfig] = useState<BatchConfig | null>(null);
     const [batchInput, setBatchInput] = useState<number>(5);
+    const [parallelInput, setParallelInput] = useState<number>(1);
     const [batchSaveState, setBatchSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [batchSaveMessage, setBatchSaveMessage] = useState<string | null>(null);
     
@@ -57,46 +62,69 @@ export const ReviewProcessing: React.FC = () => {
     const [isCleaningDupes, setIsCleaningDupes] = useState(false);
     const [dupeActionMessage, setDupeActionMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
-    useEffect(() => {
-        const loadData = async (isRefresh = false) => {
-            try {
-                if (isRefresh) {
-                    setRefreshing(true);
-                } else {
-                    setLoading(true);
-                }
-                setError(null);
 
-                const [statsResult, jobsResult, batchResult] = await Promise.allSettled([
+
+    // Initial load and background polling for stats
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const [statsResult, batchResult] = await Promise.allSettled([
                     fetchReviewProcessingStats(),
-                    fetchReviewProcessingJobs(),
                     getBatchConfig(),
                 ]);
 
                 if (statsResult.status === 'fulfilled') setStats(statsResult.value);
-                if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
                 if (batchResult.status === 'fulfilled') {
                     setBatchConfig(batchResult.value);
-                    if (!isRefresh) setBatchInput(batchResult.value.batch_size);
+                    setBatchInput(batchResult.value.batch_size);
+                    setParallelInput(batchResult.value.parallel_batches);
                 }
 
                 const errors: string[] = [];
                 if (statsResult.status === 'rejected') errors.push('Failed to load review statistics.');
-                if (jobsResult.status === 'rejected') errors.push('Failed to load processing jobs.');
                 if (errors.length > 0) setError(errors.join(' | '));
             } catch (err) {
-                console.error('Failed to load review processing data:', err);
-                setError('Failed to load review processing data. Check admin-backend connectivity.');
+                console.error('Failed to load review processing initial data:', err);
+                setError('Failed to load review processing initial data.');
             } finally {
                 setLoading(false);
-                setRefreshing(false);
             }
         };
 
-        loadData();
-        const interval = setInterval(() => loadData(true), 15000);
+        loadInitialData();
+
+        const interval = setInterval(async () => {
+            try {
+                const statsData = await fetchReviewProcessingStats();
+                setStats(statsData);
+            } catch (err) {
+                console.error('Failed to poll review processing stats:', err);
+            }
+        }, 15000);
+
         return () => clearInterval(interval);
     }, []);
+
+    // Load jobs when page or search changes
+    useEffect(() => {
+        const loadJobs = async () => {
+            try {
+                setJobsLoading(true);
+                const response = await fetchReviewProcessingJobs(currentPage, itemsPerPage);
+                setJobs(response.data);
+                setTotalItems(response.total);
+            } catch (err) {
+                console.error('Failed to fetch review processing jobs:', err);
+                setError('Failed to fetch review processing jobs.');
+            } finally {
+                setJobsLoading(false);
+            }
+        };
+
+        loadJobs();
+    }, [currentPage]);
 
     const handleRefresh = async () => {
         try {
@@ -104,10 +132,13 @@ export const ReviewProcessing: React.FC = () => {
             setError(null);
             const [statsResult, jobsResult] = await Promise.allSettled([
                 fetchReviewProcessingStats(),
-                fetchReviewProcessingJobs(),
+                fetchReviewProcessingJobs(currentPage, itemsPerPage),
             ]);
             if (statsResult.status === 'fulfilled') setStats(statsResult.value);
-            if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
+            if (jobsResult.status === 'fulfilled') {
+                setJobs(jobsResult.value.data);
+                setTotalItems(jobsResult.value.total);
+            }
         } catch (err) {
             console.error('Failed to refresh review processing data:', err);
             setError('Failed to refresh review processing data.');
@@ -123,6 +154,16 @@ export const ReviewProcessing: React.FC = () => {
         } catch (err) {
             console.error('Failed to resume review processing:', err);
             setError('Failed to resume review processing.');
+        }
+    };
+
+    const handlePauseProcessing = async () => {
+        try {
+            await pauseReviewProcessing();
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to pause review processing:', err);
+            setError('Failed to pause review processing.');
         }
     };
 
@@ -148,15 +189,16 @@ export const ReviewProcessing: React.FC = () => {
         setBatchSaveState('saving');
         setBatchSaveMessage(null);
         try {
-            const saved = await updateBatchConfig(batchInput);
+            const saved = await updateBatchConfig(batchInput, parallelInput);
             setBatchConfig(saved);
             setBatchInput(saved.batch_size);
+            setParallelInput(saved.parallel_batches);
             setBatchSaveState('saved');
-            setBatchSaveMessage(`Batch size saved: ${saved.batch_size} reviews per batch.`);
+            setBatchSaveMessage(`Settings saved: ${saved.batch_size} reviews per batch, ${saved.parallel_batches} parallel batches.`);
             setTimeout(() => { setBatchSaveState('idle'); setBatchSaveMessage(null); }, 3000);
         } catch (err) {
             setBatchSaveState('error');
-            setBatchSaveMessage(err instanceof Error ? err.message : 'Failed to save batch size.');
+            setBatchSaveMessage(err instanceof Error ? err.message : 'Failed to save settings.');
         }
     };
 
@@ -201,18 +243,7 @@ export const ReviewProcessing: React.FC = () => {
     const clamp = (v: number) =>
         Math.max(batchConfig?.min ?? 1, Math.min(batchConfig?.max ?? 20, v));
 
-    const filteredJobs = jobs.filter(job => {
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) return true;
-        return (
-            job.jobId.toLowerCase().includes(query)
-            || job.organization.toLowerCase().includes(query)
-            || job.platform.toLowerCase().includes(query)
-        );
-    });
-
-    const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
-    const paginatedJobs = filteredJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     const formatNumber = (num: number): string =>
         num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toLocaleString();
@@ -232,11 +263,44 @@ export const ReviewProcessing: React.FC = () => {
 
     const batchMin = batchConfig?.min ?? 1;
     const batchMax = batchConfig?.max ?? 20;
-    const isDirty = batchConfig !== null && batchInput !== batchConfig.batch_size;
+    const isDirty = batchConfig !== null && (batchInput !== batchConfig.batch_size || parallelInput !== batchConfig.parallel_batches);
 
     return (
         <div className="space-y-6 pt-4">
             {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
+
+            {/* Pipeline Control Widget */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                    <div className="relative flex h-3 w-3 shrink-0">
+                        {!stats.isPaused && (
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        )}
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${stats.isPaused ? 'bg-orange-500' : 'bg-green-500'}`}></span>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            Review Processing: <span className={stats.isPaused ? 'text-orange-500 font-bold' : 'text-green-600 font-bold'}>{stats.isPaused ? 'Paused' : 'Active'}</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            {stats.isPaused 
+                                ? 'The background pipeline is currently paused. New reviews will be stored but not analyzed by AI until resumed.' 
+                                : 'The background pipeline is running normally. New reviews are automatically analyzed in batches using the active LLM.'}
+                        </p>
+                    </div>
+                </div>
+                <button
+                    onClick={stats.isPaused ? handleResumeProcessing : handlePauseProcessing}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border shadow-sm shrink-0 ${
+                        stats.isPaused 
+                            ? 'bg-green-600 hover:bg-green-700 text-white border-green-700' 
+                            : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 hover:text-gray-900 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 dark:border-slate-600 dark:hover:text-white'
+                    }`}
+                >
+                    {stats.isPaused ? <Play size={16} /> : <Pause size={16} />}
+                    {stats.isPaused ? 'Resume Processing' : 'Pause Processing'}
+                </button>
+            </div>
 
             {stats.isPaused && (
                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-4 flex items-start justify-between">
@@ -245,8 +309,11 @@ export const ReviewProcessing: React.FC = () => {
                         <div>
                             <h3 className="text-sm font-medium text-yellow-800">Review Processing Paused</h3>
                             <p className="text-sm text-yellow-700 mt-1">
-                                The system paused review processing due to an API rate limit or quota error.
-                                Please check your LLM model configuration, then click below to restart.
+                                {stats.pauseReason === 'manual' ? (
+                                    'Review processing has been manually paused. Click below to resume.'
+                                ) : (
+                                    'The system paused review processing due to an API rate limit or quota error. Please check your LLM model configuration, then click below to restart.'
+                                )}
                             </p>
                         </div>
                     </div>
@@ -255,7 +322,7 @@ export const ReviewProcessing: React.FC = () => {
                         className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors border border-yellow-300"
                     >
                         <Play size={16} />
-                        Restart Processing
+                        {stats.pauseReason === 'manual' ? 'Resume Processing' : 'Restart Processing'}
                     </button>
                 </div>
             )}
@@ -264,11 +331,13 @@ export const ReviewProcessing: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500 dark:text-slate-400">Active Jobs</span>
+                        <span className="text-sm text-gray-500 dark:text-slate-400">Reviews Processing</span>
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Play size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeJobs}</div>
-                    <div className="text-xs text-green-600">+{stats.activeJobsChange} since last hour</div>
+                    <div className={`text-xs ${stats.activeJobsChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {stats.activeJobsChange > 0 ? `+${stats.activeJobsChange}` : stats.activeJobsChange} since last hour
+                    </div>
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
                     <div className="flex items-center justify-between mb-2">
@@ -304,96 +373,160 @@ export const ReviewProcessing: React.FC = () => {
                         <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Grid3X3 size={16} /></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats.reviewsProcessed)}</div>
-                    <div className="text-xs text-green-600">+{stats.reviewsChange}% vs last week</div>
+                    <div className={`text-xs ${stats.reviewsChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {formatTrend(stats.reviewsChange).text} vs last week
+                    </div>
                 </div>
             </div>
 
-            {/* Batch Size Configuration */}
+            {/* Pipeline Performance Configuration */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-                <div className="flex items-start justify-between mb-5">
+                <div className="flex items-start justify-between mb-5 border-b border-gray-100 dark:border-slate-700 pb-4">
                     <div>
                         <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             <Layers size={18} className="text-blue-600" />
-                            Processing Batch Size
+                            Pipeline Performance Configuration
                         </h2>
                         <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
-                            Controls how many reviews are sent to the AI model in a single API call.
-                            Smaller batches reduce truncation risk; larger batches are faster.
+                            Optimize the speed and safety of the background review processing pipeline.
                         </p>
                     </div>
-                    {batchConfig && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 shrink-0">
-                            Current: {batchConfig.batch_size}
-                        </span>
-                    )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                    {/* Stepper */}
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">
-                            Batch Size
-                            <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
-                                ({batchMin}–{batchMax} reviews per batch)
-                            </span>
-                        </label>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setBatchInput(v => clamp(v - 1))}
-                                disabled={batchInput <= batchMin}
-                                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <Minus size={15} />
-                            </button>
-                            <input
-                                type="number"
-                                min={batchMin}
-                                max={batchMax}
-                                value={batchInput}
-                                onChange={e => setBatchInput(clamp(parseInt(e.target.value, 10) || batchMin))}
-                                className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <button
-                                onClick={() => setBatchInput(v => clamp(v + 1))}
-                                disabled={batchInput >= batchMax}
-                                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <Plus size={15} />
-                            </button>
+                <div className="space-y-6">
+                    {/* Row 1: Batch Size */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                                    Processing Batch Size
+                                    <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
+                                        ({batchMin}–{batchMax} reviews per API call)
+                                    </span>
+                                </label>
+                                {batchConfig && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                        Current: {batchConfig.batch_size}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setBatchInput(v => clamp(v - 1))}
+                                    disabled={batchInput <= batchMin}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Minus size={15} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min={batchMin}
+                                    max={batchMax}
+                                    value={batchInput}
+                                    onChange={e => setBatchInput(clamp(parseInt(e.target.value, 10) || batchMin))}
+                                    className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                    onClick={() => setBatchInput(v => clamp(v + 1))}
+                                    disabled={batchInput >= batchMax}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Plus size={15} />
+                                </button>
 
-                            {/* Slider */}
-                            <input
-                                type="range"
-                                min={batchMin}
-                                max={batchMax}
-                                value={batchInput}
-                                onChange={e => setBatchInput(parseInt(e.target.value, 10))}
-                                className="flex-1 accent-blue-500"
-                            />
-                        </div>
+                                {/* Slider */}
+                                <input
+                                    type="range"
+                                    min={batchMin}
+                                    max={batchMax}
+                                    value={batchInput}
+                                    onChange={e => setBatchInput(parseInt(e.target.value, 10))}
+                                    className="flex-1 accent-blue-500"
+                                />
+                            </div>
 
-                        {/* Guidance labels */}
-                        <div className="flex justify-between mt-1.5 text-xs text-gray-400 dark:text-slate-500">
-                            <span>1 — Safest (no truncation)</span>
-                            <span>20 — Fastest (higher risk)</span>
+                            {/* Guidance labels */}
+                            <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-slate-500">
+                                <span>1 — Safest (no truncation)</span>
+                                <span>20 — Fastest (higher risk)</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Save button */}
-                    <div className="flex flex-col gap-1.5">
+                    {/* Row 2: Parallel Batches */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-5 border-t border-gray-100 dark:border-slate-700/50 pt-5">
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                                    Parallel Batch Execution
+                                    <span className="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">
+                                        ({batchConfig?.parallel_min ?? 1}–{batchConfig?.parallel_max ?? 10} batches concurrently)
+                                    </span>
+                                </label>
+                                {batchConfig && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                        Current: {batchConfig.parallel_batches}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setParallelInput(v => Math.max(batchConfig?.parallel_min ?? 1, Math.min(batchConfig?.parallel_max ?? 10, v - 1)))}
+                                    disabled={parallelInput <= (batchConfig?.parallel_min ?? 1)}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Minus size={15} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min={batchConfig?.parallel_min ?? 1}
+                                    max={batchConfig?.parallel_max ?? 10}
+                                    value={parallelInput}
+                                    onChange={e => setParallelInput(Math.max(batchConfig?.parallel_min ?? 1, Math.min(batchConfig?.parallel_max ?? 10, parseInt(e.target.value, 10) || (batchConfig?.parallel_min ?? 1))))}
+                                    className="w-20 text-center px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                    onClick={() => setParallelInput(v => Math.max(batchConfig?.parallel_min ?? 1, Math.min(batchConfig?.parallel_max ?? 10, v + 1)))}
+                                    disabled={parallelInput >= (batchConfig?.parallel_max ?? 10)}
+                                    className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Plus size={15} />
+                                </button>
+
+                                {/* Slider */}
+                                <input
+                                    type="range"
+                                    min={batchConfig?.parallel_min ?? 1}
+                                    max={batchConfig?.parallel_max ?? 10}
+                                    value={parallelInput}
+                                    onChange={e => setParallelInput(parseInt(e.target.value, 10))}
+                                    className="flex-1 accent-blue-500"
+                                />
+                            </div>
+
+                            {/* Guidance labels */}
+                            <div className="flex justify-between mt-1 text-xs text-gray-400 dark:text-slate-500">
+                                <span>1 — Sequential execution (safe rate limit)</span>
+                                <span>10 — Parallel execution (high throughput)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="border-t border-gray-100 dark:border-slate-700/50 pt-5 flex items-center justify-end gap-3">
+                        {batchSaveMessage && (
+                            <p className={`text-xs ${batchSaveState === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
+                                {batchSaveMessage}
+                            </p>
+                        )}
                         <button
                             onClick={handleSaveBatchSize}
                             disabled={batchSaveState === 'saving' || !isDirty}
                             className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Save size={15} />
-                            {batchSaveState === 'saving' ? 'Saving…' : 'Save'}
+                            {batchSaveState === 'saving' ? 'Saving…' : 'Save Config'}
                         </button>
-                        {batchSaveMessage && (
-                            <p className={`text-xs ${batchSaveState === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
-                                {batchSaveMessage}
-                            </p>
-                        )}
                     </div>
                 </div>
             </div>
@@ -477,20 +610,6 @@ export const ReviewProcessing: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-slate-400">Real-time monitoring of all active and recent review processing jobs.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-                            <input
-                                type="text"
-                                placeholder="Search Job ID or Org..."
-                                value={searchQuery}
-                                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
-                            <Filter size={16} />
-                            Filter
-                        </button>
                         <button
                             onClick={handleRefresh}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600"
@@ -501,7 +620,7 @@ export const ReviewProcessing: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className={`overflow-x-auto ${jobsLoading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}`}>
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-200 dark:border-slate-700">
@@ -516,7 +635,7 @@ export const ReviewProcessing: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedJobs.map(job => (
+                             {jobs.map(job => (
                                 <tr key={job.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
                                     <td className="py-4 px-4 text-sm font-mono text-gray-500 dark:text-slate-400">{job.jobId}</td>
                                     <td className="py-4 px-4">
@@ -555,7 +674,7 @@ export const ReviewProcessing: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-slate-700">
                     <span className="text-sm text-gray-500 dark:text-slate-400">
-                        Showing {filteredJobs.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
+                        Showing {totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} jobs
                     </span>
                     <div className="flex items-center gap-1">
                         <button

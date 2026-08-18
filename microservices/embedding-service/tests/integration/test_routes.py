@@ -6,6 +6,7 @@ collection to test all endpoints end-to-end without real ML models
 or persistent vector storage.
 """
 
+import os
 from unittest.mock import MagicMock, patch
 from datetime import datetime
 
@@ -35,7 +36,7 @@ def client(mock_collection, temp_config_file, temp_jobs_file):
          patch("app.config.CONFIG_FILE", temp_config_file), \
          patch("app.jobs.JOBS_FILE", str(temp_jobs_file)):
         with TestClient(app) as c:
-            c.headers.update({"X-Internal-API-Key": "dev-internal-secret"})
+            c.headers.update({"X-Internal-API-Key": os.getenv("INTERNAL_API_KEY", "dev-internal-secret")})
             yield c
 
 

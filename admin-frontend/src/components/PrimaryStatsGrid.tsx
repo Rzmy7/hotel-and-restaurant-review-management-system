@@ -13,25 +13,25 @@ export const PrimaryStatsGrid: React.FC<PrimaryStatsGridProps> = ({ stats }) => 
             <StatCard
                 label="Total Organizations"
                 value={stats.totalOrganizations.toLocaleString()}
-                trend={`+${stats.organizationsGrowth}%`}
+                trend={stats.organizationsGrowth}
                 icon={Building2}
             />
             <StatCard
                 label="Total Users"
                 value={stats.totalUsers.toLocaleString()}
-                trend={`+${stats.usersGrowth}%`}
+                trend={stats.usersGrowth}
                 icon={Users}
             />
             <StatCard
                 label="Organizations Added Today"
                 value={stats.organizationsAddedToday.toLocaleString()}
-                trend={`+${stats.addedTodayGrowth}%`}
+                trend={stats.addedTodayGrowth}
                 icon={Building}
             />
             <StatCard
                 label="Total Reviews"
                 value={stats.totalReviews.toLocaleString()}
-                trend={`+${stats.reviewsGrowth}%`}
+                trend={stats.reviewsGrowth}
                 icon={MessageSquare}
             />
         </div>

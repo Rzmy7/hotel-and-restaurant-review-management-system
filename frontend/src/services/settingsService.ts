@@ -117,6 +117,36 @@ export const settingsService = {
         }
     },
 
+    addOrganizationRule: async (ruleText: string) => {
+        try {
+            return await settingsApi.addOrganizationRule(ruleText);
+        } catch (error) {
+            console.error('Failed to add organization rule:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string' && detail.trim()) {
+                    throw new Error(detail);
+                }
+            }
+            throw new Error('Failed to add organization rule');
+        }
+    },
+
+    deleteOrganizationRule: async (ruleId: string) => {
+        try {
+            return await settingsApi.deleteOrganizationRule(ruleId);
+        } catch (error) {
+            console.error('Failed to delete organization rule:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string' && detail.trim()) {
+                    throw new Error(detail);
+                }
+            }
+            throw new Error('Failed to delete organization rule');
+        }
+    },
+
     fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
         try {
             return await settingsApi.fetchOrganizationTypes();

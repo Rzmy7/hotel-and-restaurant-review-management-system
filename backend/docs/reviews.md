@@ -6,12 +6,12 @@ The `backend\app\modules\reviews` module is responsible for orchestrating the li
 
 ## 🚀 Overview
 
-This module consolidates reviews from various sources (via a Scraper Engine), analyzes them using Google Gemini to extract sentiment and insights, and provides tools for management and AI-assisted replies.
+This module consolidates reviews from various sources (via a Scraper Engine), analyzes them using the LLM Gateway to extract sentiment and insights, and provides tools for management and AI-assisted replies.
 
 ### Key Capabilities
 - **Automated Ingestion**: Fetching raw data from external scraping services.
 - **AI Analysis Pipeline**: Categorizing reviews, scoring sentiment, and summarizing content.
-- **Multi-Provider AI Replies**: Generating context-aware responses using Gemini or Claude.
+- **Multi-Provider AI Replies**: Generating context-aware responses using configured OpenAI-compatible LLM models.
 - **RAG Integration**: Utilizing similar reviews and business rules for personalized AI replies.
 - **Usage Tracking**: Monitoring AI feature consumption and token usage.
 
@@ -26,8 +26,8 @@ backend\app\modules\reviews\
 ├── services/
 │   ├── review_service.py   # Main orchestration logic
 │   ├── processor.py        # AI Analysis background worker
-│   ├── gemini_client.py    # AI model communication (Google)
-│   ├── reply_service.py    # Reply generation logic (RAG-enabled)
+│   ├── llm_client.py       # Multi-model LLM abstraction via LLM Gateway
+│   ├── reply_generation_service.py # Reply generation logic (RAG-enabled)
 │   └── stats_service.py    # Review statistics calculations
 ├── repository.py           # SQL operations (pyodbc)
 ├── models.py               # SQLAlchemy database models
@@ -52,8 +52,8 @@ This is a two-stage background process that moves a review from "Raw Data" to "P
 ### 2. AI Analysis Phase
 **Trigger**: Automatically triggered after ingestion or via background worker.
 
-1.  **Batching**: The `processor` fetches a batch of `pending` reviews (default: 10).
-2.  **AI Call**: The text is sent to the `gemini_client` for a unified analysis.
+1.  **Batching**: The `processor` fetches a batch of `pending` reviews (configurable via admin).
+2.  **AI Call**: The text is sent to the `llm_client` / `llm_gateway` for a unified analysis.
     *   **Input**: Review text, rating, and metadata.
     *   **Output**: Sentiment (Positive/Negative/Neutral), Sentiment Score (1-5), Language, Summary, Key Phrases, Categories, and an initial AI Suggestion.
 3.  **Updating**: The database record is updated:
@@ -69,7 +69,7 @@ This is a real-time, on-demand flow used by managers to respond to reviews.
 
 **Trigger**: UI call to `POST /api/reviews/generate-reply`.
 
-1.  **Setting Retrieval**: Load provider settings (Google vs Claude), API keys, and model preferences.
+1.  **Setting Retrieval**: Load active LLM models configured in `dbo.llm_model` via the LLM Gateway.
 2.  **Context Enrichment (RAG)**:
     *   If enabled, it calls the **Embedding Service** to find "Similar Reviews" and "Business Rules" relevant to the current review text.
 3.  **Prompt Construction**: Builds a highly detailed prompt including:
@@ -79,9 +79,9 @@ This is a real-time, on-demand flow used by managers to respond to reviews.
     *   Relevant business guidelines/rules.
     *   Tone (Professional/Casual) and Length (Short/Standard) requirements.
 4.  **Inference**:
-    *   Calls Google Gemini or Anthropic Claude based on configuration.
+    *   Calls the LLM Gateway with automatic failover across active OpenAI-compatible models.
     *   Handles language matching (ensuring the reply matches the review language).
-5.  **Return**: Returns the generated text, along with metadata on which provider was used and how many rules/reviews influenced the result.
+5.  **Return**: Returns the generated text, along with metadata on which model was used and how many rules/reviews influenced the result.
 6.  **Usage Tracking**: Increments the `feature_usage` table for the user's subscription limits.
 
 ---

@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Bot, ExternalLink, Save, Sparkles, Wand2 } from 'lucide-react';
+import { BarChart3, Bot, ExternalLink, Save, Sparkles } from 'lucide-react';
 import { ToggleSwitch } from '../components/ToggleSwitch';
 import ReplyGenerationSkeleton from './ReplyGenerationSkeleton';
 import { settingsService } from '../services/settingsService';
 import type { ReplyGenerationSettings } from '../services/settingsService';
-import { llmModelService } from '../services/llmModelService';
-import type { LLMAssignments } from '../services/llmModelService';
 
 const defaultSettings: ReplyGenerationSettings = {
     similarReviewsCount: 3,
@@ -18,7 +16,6 @@ const defaultSettings: ReplyGenerationSettings = {
 export const ReplyGeneration: React.FC = () => {
     const navigate = useNavigate();
     const [settings, setSettings] = useState<ReplyGenerationSettings>(defaultSettings);
-    const [assignments, setAssignments] = useState<LLMAssignments | null>(null);
     const [loading, setLoading] = useState(true);
     const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -27,12 +24,8 @@ export const ReplyGeneration: React.FC = () => {
         const loadAll = async () => {
             setLoading(true);
             try {
-                const [data, assignData] = await Promise.all([
-                    settingsService.getReplyGenerationSettings(),
-                    llmModelService.getAssignments(),
-                ]);
+                const data = await settingsService.getReplyGenerationSettings();
                 setSettings({ ...defaultSettings, ...data });
-                setAssignments(assignData);
             } catch (error) {
                 console.error('Failed to load reply generation settings:', error);
                 setErrorMessage('Failed to load settings. Using defaults until you save.');
@@ -75,9 +68,6 @@ export const ReplyGeneration: React.FC = () => {
         return <ReplyGenerationSkeleton />;
     }
 
-    const assignedModelName = assignments?.reply_generation_model_name;
-    const hasAssignedModel = !!assignments?.reply_generation_model_id;
-
     return (
         <div className="space-y-6 pt-4">
             <section className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
@@ -93,73 +83,12 @@ export const ReplyGeneration: React.FC = () => {
                                 Configure prompt context depth and embedding behavior for AI-generated replies.
                             </p>
                         </div>
-                        <div className="inline-flex items-center gap-2 rounded-full border dark:border-slate-600 px-3 py-1.5 text-xs font-semibold w-fit bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm dark:text-slate-300">
-                            <Wand2 size={14} className="text-slate-600 dark:text-slate-400" />
-                            Active Provider
-                            <span className={`rounded-full border px-2 py-0.5 ${
-                                hasAssignedModel
-                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
-                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
-                            }`}>
-                                {hasAssignedModel ? 'LLM Gateway' : 'Not Assigned'}
-                            </span>
-                        </div>
                     </div>
                 </div>
             </section>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 <section className="xl:col-span-2 space-y-5">
-                    {/* Active Model Card */}
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-5">
-                        <div className="flex items-center gap-2">
-                            <Bot size={16} className="text-violet-600 dark:text-violet-400" />
-                            <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-700 dark:text-slate-300">Assigned Model</h3>
-                        </div>
-
-                        {hasAssignedModel ? (
-                            <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-900/20 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                                            {assignedModelName || 'Unknown Model'}
-                                        </div>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                            Replies are generated via the LLM Gateway using the assigned model.
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => navigate('/llm-models')}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors"
-                                    >
-                                        <ExternalLink size={13} />
-                                        Manage Models
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/20 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                                            No model assigned for reply generation
-                                        </div>
-                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                                            Go to LLM Models to register a model and assign it to reply generation.
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => navigate('/llm-models')}
-                                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors shadow-sm"
-                                    >
-                                        <ExternalLink size={13} />
-                                        Configure Model
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
                     {/* Embedding Context Controls */}
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 md:p-6 shadow-sm space-y-5">
                         <div className="flex items-center gap-2">
@@ -260,3 +189,4 @@ export const ReplyGeneration: React.FC = () => {
         </div>
     );
 };
+

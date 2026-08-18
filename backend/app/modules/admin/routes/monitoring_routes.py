@@ -270,26 +270,146 @@ def scraping_stats() -> dict[str, int | float | bool]:
     }
 
 
+def normalize_url(url: str | None) -> str:
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        netloc = parsed.netloc or parsed.path
+        netloc = netloc.lower().replace("www.", "").strip()
+        path = parsed.path if parsed.netloc else ""
+        path = path.rstrip("/")
+        normalized = urlunparse((
+            parsed.scheme or "https",
+            netloc,
+            path,
+            "",
+            "",
+            ""
+        ))
+        return normalized
+    except Exception:
+        return url or ""
+
+
 @router.get("/scraping/jobs")
-def scraping_jobs() -> list[dict[str, str | int | None]]:
-    """Returns recent scraping jobs from the scraping backend."""
+def scraping_jobs(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+) -> dict:
+    """Returns paginated, recent scraping jobs from the scraping backend."""
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
+    rows = []
     try:
         payload = scraping_backend_get("/api/system/jobs/all")
+        if isinstance(payload, dict):
+            rows = payload.get("jobs", []) or []
     except HTTPException as exc:
-        if exc.status_code == 502:
-            return []
-        raise
-    
-    rows = payload.get("jobs", []) if isinstance(payload, dict) else []
+        if exc.status_code not in (502, 503, 504):
+            raise
+    except Exception:
+        rows = []
+
+    # Fallback to dbo.sync_log from main DB if scraper engine has no jobs or is temporarily offline
+    if not rows:
+        try:
+            with pyodbc.connect(get_connection_string()) as conn:
+                cur = conn.cursor()
+                if table_exists(cur, "sync_log") and table_exists(cur, "source"):
+                    sync_query = """
+                        SELECT TOP 100
+                            sl.log_id,
+                            p.platform_name,
+                            s.source_url,
+                            sl.status,
+                            sl.timestamp,
+                            sl.duration_ms,
+                            sl.reviews_fetched
+                        FROM dbo.sync_log sl
+                        JOIN dbo.source s ON sl.source_id = s.source_id
+                        LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
+                        ORDER BY sl.timestamp DESC
+                    """
+                    sync_rows = execute_query(cur, sync_query).fetchall()
+                    for sr in sync_rows:
+                        status_str = str(sr[3] or "completed").lower()
+                        if status_str in ["success", "completed"]:
+                            job_status = "completed"
+                        elif status_str in ["failed", "error"]:
+                            job_status = "failed"
+                        elif status_str in ["in progress", "running"]:
+                            job_status = "running"
+                        else:
+                            job_status = "pending"
+
+                        created_dt = sr[4].isoformat() if sr[4] else None
+                        rows.append({
+                            "id": str(sr[0]),
+                            "platform": str(sr[1] or "Unknown").lower(),
+                            "url": str(sr[2] or ""),
+                            "status": job_status,
+                            "reviews_extracted": int(sr[6] or 0),
+                            "created_at": created_dt,
+                        })
+        except Exception as fallback_exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Fallback to sync_log error: {fallback_exc}")
+
     rows = sorted(
         rows,
         key=lambda item: str(item.get("created_at", "")),
         reverse=True,
     )
 
+
+    url_to_org = {}
+    try:
+        with pyodbc.connect(get_connection_string()) as connection:
+            cursor = connection.cursor()
+            if table_exists(cursor, "source") and table_exists(cursor, "organization"):
+                q = """
+                    SELECT s.source_url, o.organization_name
+                    FROM dbo.source s
+                    JOIN dbo.organization o ON s.organization_id = o.organization_id
+                """
+                db_rows = execute_query(cursor, q).fetchall()
+                for r in db_rows:
+                    if r[0] and r[1]:
+                        raw_url = r[0]
+                        org_name = r[1]
+                        url_to_org[raw_url] = org_name
+                        url_to_org[normalize_url(raw_url)] = org_name
+    except Exception as db_exc:
+        import logging
+        logging.getLogger(__name__).error(f"Error fetching organization names for scraping jobs: {db_exc}")
+
     mapped_jobs: list[dict[str, str | int | None]] = []
     for index, row in enumerate(rows, start=1):
         platform = str(row.get("platform", "Unknown")).strip() or "Unknown"
+        
+        # Get organization name from database lookup, fallback to platform url parsing
+        job_url = row.get("url")
+        org_name = ""
+        if job_url:
+            org_name = url_to_org.get(job_url) or url_to_org.get(normalize_url(job_url))
+        if not org_name:
+            org_name = organization_from_url(job_url) or ""
+
+        status_ui = job_status_to_ui(str(row.get("status", "")))
+
+        # Filter by search string if provided
+        if search:
+            search_lower = search.lower()
+            if not (search_lower in platform.lower() or 
+                    search_lower in org_name.lower() or 
+                    search_lower in status_ui.lower()):
+                continue
+
         icon, color = platform_visuals(platform)
         job_id = str(row.get("id", index))
         short_id = job_id[-6:].upper() if len(job_id) >= 6 else str(index)
@@ -302,8 +422,8 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
                 "platform": platform.title(),
                 "platformIcon": icon,
                 "platformColor": color,
-                "organization": organization_from_url(row.get("url")),
-                "status": job_status_to_ui(str(row.get("status", ""))),
+                "organization": org_name,
+                "status": status_ui,
                 "startTime": format_job_start_time(row.get("created_at")),
                 "duration": format_duration_from_created_at(
                     row.get("created_at"), 
@@ -313,7 +433,15 @@ def scraping_jobs() -> list[dict[str, str | int | None]]:
             }
         )
 
-    return mapped_jobs
+    total = len(mapped_jobs)
+    sliced_jobs = mapped_jobs[offset:offset + limit]
+
+    return {
+        "data": sliced_jobs,
+        "total": total,
+        "page": page,
+        "limit": limit
+    }
 
 
 @router.post("/scraping/jobs/{job_id}/cancel")
@@ -345,6 +473,7 @@ def review_processing_stats() -> dict:
             processed = metrics.get("processed", 0)
             failed = metrics.get("failed", 0)
             pending = metrics.get("pending", 0)
+            processing = metrics.get("processing", 0)
 
             # Completed today: reviews with last_attempt = today and status = 'processed'
             completed_today = 0
@@ -363,11 +492,16 @@ def review_processing_stats() -> dict:
             if terminal > 0:
                 success_rate = round((processed / terminal) * 100, 1)
 
-            from app.modules.admin.services.system_settings_service import get_setting_bool
+            from app.modules.admin.services.system_settings_service import get_setting_bool, get_setting
             is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
+            pause_reason = get_setting(cursor, "review_processing_pause_reason")
+            if is_paused and not pause_reason:
+                pause_reason = "manual"
+            elif not is_paused:
+                pause_reason = None
 
             return {
-                "activeJobs": pending,
+                "activeJobs": processing,
                 "activeJobsChange": 0,
                 "completedToday": completed_today,
                 "successRate": success_rate,
@@ -376,6 +510,7 @@ def review_processing_stats() -> dict:
                 "reviewsChange": 0,
                 "pendingReviews": pending,
                 "isPaused": is_paused,
+                "pauseReason": pause_reason,
             }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing stats: {exc}") from exc
@@ -389,7 +524,16 @@ def resume_review_processing() -> dict:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             set_setting(cursor, "review_processing_paused", "false")
+            set_setting(cursor, "review_processing_pause_reason", "")
             conn.commit()
+
+        try:
+            from app.modules.scheduler.services.scheduler_service import scheduler
+            if scheduler.get_job('process_reviews_job'):
+                scheduler.resume_job('process_reviews_job')
+                logger.info("Scheduler: Resumed process_reviews_job via API resume call.")
+        except Exception as sched_err:
+            logger.error(f"Failed to resume scheduler job: {sched_err}")
 
         log_admin_activity(
             "settings_updated",
@@ -399,6 +543,35 @@ def resume_review_processing() -> dict:
         return {"status": "success", "message": "Review processing resumed."}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to resume review processing: {exc}") from exc
+
+
+@router.post("/review-processing/pause")
+def pause_review_processing() -> dict:
+    """Manually pauses review processing."""
+    from app.modules.admin.services.system_settings_service import set_setting
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            set_setting(cursor, "review_processing_paused", "true")
+            set_setting(cursor, "review_processing_pause_reason", "manual")
+            conn.commit()
+
+        try:
+            from app.modules.scheduler.services.scheduler_service import scheduler
+            if scheduler.get_job('process_reviews_job'):
+                scheduler.pause_job('process_reviews_job')
+                logger.info("Scheduler: Paused process_reviews_job via API pause call.")
+        except Exception as sched_err:
+            logger.error(f"Failed to pause scheduler job: {sched_err}")
+
+        log_admin_activity(
+            "settings_updated",
+            "Review Processing Paused",
+            "Review processing was manually paused",
+        )
+        return {"status": "success", "message": "Review processing paused."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to pause review processing: {exc}") from exc
 
 
 @router.post("/review-processing/retry/{source_id}")
@@ -459,17 +632,62 @@ def retry_all_failed_reviews() -> dict:
 
 
 @router.get("/review-processing/jobs")
-def review_processing_jobs() -> list[dict]:
-    """Returns recent review processing activity grouped by source as job-like rows."""
+def review_processing_jobs(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+) -> dict:
+    """Returns paginated review processing activity grouped by source as job-like rows."""
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
 
-            # Check if processing is currently paused (e.g. Gemini API rate limit)
+            # Check if processing is currently paused (e.g. LLM API rate limit)
             from app.modules.admin.services.system_settings_service import get_setting_bool
             is_paused = get_setting_bool(cursor, "review_processing_paused", default=False)
 
-            sql = """
+            # Get the single source_id that has the oldest pending review
+            cursor.execute("""
+                SELECT TOP 1 source_id 
+                FROM dbo.processed_review 
+                WHERE status = 'pending' 
+                ORDER BY scrapedAt ASC, id ASC
+            """)
+            row_running = cursor.fetchone()
+            running_source_id = str(row_running[0]) if (row_running and row_running[0]) else None
+
+            where_clauses = []
+            params = []
+            if search:
+                search_pattern = f"%{search.strip()}%"
+                where_clauses.append(
+                    "(p.platform_name LIKE ? OR o.organization_name LIKE ? OR r.status LIKE ?)"
+                )
+                params.extend([search_pattern] * 3)
+
+            where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+            # Count query
+            count_sql = f"""
+                SELECT COUNT(*) FROM (
+                    SELECT r.source_id, r.status
+                    FROM dbo.processed_review r
+                    LEFT JOIN dbo.source s ON r.source_id = s.source_id
+                    LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
+                    LEFT JOIN dbo.organization o ON s.organization_id = o.organization_id
+                    {where_sql}
+                    GROUP BY r.source_id, p.platform_name, o.organization_name, r.status
+                ) AS grouped_jobs
+            """
+            cursor.execute(count_sql, params)
+            total = int(cursor.fetchone()[0] or 0)
+
+            # Paginated query
+            sql = f"""
                 SELECT 
                     r.source_id,
                     p.platform_name,
@@ -477,17 +695,24 @@ def review_processing_jobs() -> list[dict]:
                     r.status,
                     COUNT(*) AS review_count,
                     MIN(r.last_attempt) AS earliest_attempt,
-                    MAX(r.last_attempt) AS latest_attempt
+                    MAX(r.last_attempt) AS latest_attempt,
+                    (SELECT COUNT(*) FROM dbo.processed_review t WHERE t.source_id = r.source_id) AS total_reviews,
+                    (SELECT COUNT(*) FROM dbo.processed_review t WHERE t.source_id = r.source_id AND t.status = 'processed') AS processed_reviews
                 FROM dbo.processed_review r
                 LEFT JOIN dbo.source s ON r.source_id = s.source_id
                 LEFT JOIN dbo.platform p ON s.platform_id = p.platform_id
                 LEFT JOIN dbo.organization o ON s.organization_id = o.organization_id
+                {where_sql}
                 GROUP BY r.source_id, p.platform_name, o.organization_name, r.status
                 ORDER BY 
                     CASE WHEN MAX(r.last_attempt) IS NULL THEN 1 ELSE 0 END DESC, 
-                    MAX(r.last_attempt) DESC
+                    MAX(r.last_attempt) DESC,
+                    r.source_id DESC,
+                    r.status DESC
+                OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
             """
-            rows = execute_query(cursor, sql).fetchall()
+            cursor.execute(sql, params + [offset, limit])
+            rows = cursor.fetchall()
 
             jobs = []
             for idx, row in enumerate(rows, start=1):
@@ -498,6 +723,8 @@ def review_processing_jobs() -> list[dict]:
                 review_count = int(row[4] or 0)
                 earliest = row[5]
                 latest = row[6]
+                total_reviews = int(row[7] or 0)
+                processed_reviews = int(row[8] or 0)
 
                 icon, color = platform_visuals(platform_name)
                 short_id = source_id[-6:].upper() if len(source_id) >= 6 else str(idx)
@@ -507,8 +734,10 @@ def review_processing_jobs() -> list[dict]:
                     ui_status = "Completed"
                 elif status_raw == "failed":
                     ui_status = "Failed"
-                elif status_raw == "pending":
+                elif status_raw == "processing":
                     ui_status = "Paused" if is_paused else "Running"
+                elif status_raw == "pending":
+                    ui_status = "Queued"
                 else:
                     ui_status = "Queued"
 
@@ -550,38 +779,52 @@ def review_processing_jobs() -> list[dict]:
                     "status": ui_status,
                     "startTime": start_time,
                     "duration": duration,
-                    "reviewsProcessed": review_count,
-                    "totalReviews": None,
+                    "reviewsProcessed": processed_reviews,
+                    "totalReviews": total_reviews,
                 })
 
-            return jobs
+            return {
+                "data": jobs,
+                "total": total,
+                "page": page,
+                "limit": limit
+            }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch review processing jobs: {exc}") from exc
 
 
-# Gemini-specific config endpoints removed — use /api/admin/llm-models instead.
+# Legacy provider-specific config endpoints removed — use /api/admin/llm-models instead.
 
 
 # ── Batch size configuration ────────────────────────────────────────
 
 @router.get("/review-processing/batch-config", response_model=BatchConfigResponse)
 def get_batch_config() -> BatchConfigResponse:
-    """Return the current review-processing batch size and its allowed range."""
+    """Return the current review-processing batch size, parallel batches count, and their allowed ranges."""
     from app.modules.admin.services.system_settings_service import (
         get_review_batch_size,
         REVIEW_BATCH_SIZE_DEFAULT,
         REVIEW_BATCH_SIZE_MIN,
         REVIEW_BATCH_SIZE_MAX,
+        get_review_parallel_batches,
+        REVIEW_PARALLEL_BATCHES_DEFAULT,
+        REVIEW_PARALLEL_BATCHES_MIN,
+        REVIEW_PARALLEL_BATCHES_MAX,
     )
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
             batch_size = get_review_batch_size(cursor)
+            parallel_batches = get_review_parallel_batches(cursor)
         return BatchConfigResponse(
             batch_size=batch_size,
             min=REVIEW_BATCH_SIZE_MIN,
             max=REVIEW_BATCH_SIZE_MAX,
             default=REVIEW_BATCH_SIZE_DEFAULT,
+            parallel_batches=parallel_batches,
+            parallel_min=REVIEW_PARALLEL_BATCHES_MIN,
+            parallel_max=REVIEW_PARALLEL_BATCHES_MAX,
+            parallel_default=REVIEW_PARALLEL_BATCHES_DEFAULT,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch batch config: {exc}") from exc
@@ -589,29 +832,38 @@ def get_batch_config() -> BatchConfigResponse:
 
 @router.patch("/review-processing/batch-config", response_model=BatchConfigResponse)
 def update_batch_config(payload: BatchConfigUpdatePayload) -> BatchConfigResponse:
-    """Persist a new review-processing batch size (1–20)."""
+    """Persist a new review-processing batch size and parallel batches count."""
     from app.modules.admin.services.system_settings_service import (
         set_review_batch_size,
         REVIEW_BATCH_SIZE_DEFAULT,
         REVIEW_BATCH_SIZE_MIN,
         REVIEW_BATCH_SIZE_MAX,
+        set_review_parallel_batches,
+        REVIEW_PARALLEL_BATCHES_DEFAULT,
+        REVIEW_PARALLEL_BATCHES_MIN,
+        REVIEW_PARALLEL_BATCHES_MAX,
     )
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            saved = set_review_batch_size(cursor, payload.batch_size)
+            saved_size = set_review_batch_size(cursor, payload.batch_size)
+            saved_parallel = set_review_parallel_batches(cursor, payload.parallel_batches)
             conn.commit()
 
         log_admin_activity(
             "settings_updated",
-            "Batch Size Updated",
-            f"Review processing batch size set to {saved}",
+            "Batch Config Updated",
+            f"Review processing batch size set to {saved_size}, parallel batches set to {saved_parallel}",
         )
         return BatchConfigResponse(
-            batch_size=saved,
+            batch_size=saved_size,
             min=REVIEW_BATCH_SIZE_MIN,
             max=REVIEW_BATCH_SIZE_MAX,
             default=REVIEW_BATCH_SIZE_DEFAULT,
+            parallel_batches=saved_parallel,
+            parallel_min=REVIEW_PARALLEL_BATCHES_MIN,
+            parallel_max=REVIEW_PARALLEL_BATCHES_MAX,
+            parallel_default=REVIEW_PARALLEL_BATCHES_DEFAULT,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to update batch config: {exc}") from exc

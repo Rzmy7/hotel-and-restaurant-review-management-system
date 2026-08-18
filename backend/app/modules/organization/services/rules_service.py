@@ -1,7 +1,7 @@
 """
 Rules & Regulations Service.
 
-Handles file parsing (.txt, .docx, .pdf), Gemini-based rule extraction,
+Handles file parsing (.txt, .docx, .pdf), LLM-based rule extraction,
 database persistence, and embedding dispatch.
 """
 
@@ -18,11 +18,11 @@ from typing import Any
 import pyodbc
 import requests
 from fastapi import UploadFile
-from google import genai
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.db_utils import get_connection_string
+from app.services.llm_gateway import call as gateway_call
 from app.modules.admin.services.system_settings_service import (
     ensure_system_settings_table,
     get_setting,
@@ -88,28 +88,7 @@ def _parse_uploaded_file(file_bytes: bytes, filename: str) -> str:
         raise ValueError(f"Unsupported file type: {ext}. Allowed: .txt, .docx, .pdf")
 
 
-# ── Gemini Rule Extraction ──────────────────────────────────────────
-
-def _get_reply_api_key() -> str:
-    """Resolve the Gemini API key using the same source as reply generation."""
-    with pyodbc.connect(get_connection_string()) as conn:
-        cursor = conn.cursor()
-        ensure_system_settings_table(cursor)
-        key = (get_setting(cursor, "reply_google_api_key") or "").strip()
-        if key:
-            return key
-
-    # Fallback to env var
-    env_key = os.getenv("GENAI_KEY", "").strip()
-    if env_key:
-        return env_key
-
-    raise ValueError(
-        "No Gemini API key configured. "
-        "Set it via Admin Panel → Reply Generation → Google API Key, "
-        "or set the GENAI_KEY environment variable."
-    )
-
+# ── LLM Rule Extraction ─────────────────────────────────────────────
 
 RULES_EXTRACTION_PROMPT = """You are a document analyst. Your task is to extract individual rules and regulations from the following document text.
 
@@ -128,38 +107,27 @@ Document Text:
 """
 
 
-def _extract_rules_with_gemini(document_text: str) -> list[str]:
-    """Send document text to Gemini and get back a list of individual rules."""
-    api_key = _get_reply_api_key()
+def _extract_rules_with_llm(document_text: str) -> list[str]:
+    """Send document text to the LLM Gateway and get back a list of individual rules."""
     prompt = RULES_EXTRACTION_PROMPT.format(document_text=document_text)
 
-    last_error: Exception | None = None
-    for api_version in ("v1", "v1beta"):
-        try:
-            client = genai.Client(api_key=api_key, http_options={"api_version": api_version})
-            response = client.models.generate_content(
-                model="gemini-2.5-flash-lite",
-                contents=prompt,
-            )
-            raw_text = getattr(response, "text", "") or ""
-            # Clean markdown fences
-            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-            raw_text = re.sub(r"\s*```$", "", raw_text)
+    try:
+        raw_text = gateway_call("rule_extraction", prompt)
+        # Clean markdown fences
+        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$", "", raw_text)
 
-            rules = json.loads(raw_text)
-            if not isinstance(rules, list):
-                raise ValueError("Gemini returned non-list output for rules extraction.")
+        rules = json.loads(raw_text)
+        if not isinstance(rules, list):
+            raise ValueError("LLM returned non-list output for rules extraction.")
 
-            # Ensure all items are strings and non-empty
-            cleaned = [str(r).strip() for r in rules if str(r).strip()]
-            return cleaned
+        # Ensure all items are strings and non-empty
+        cleaned = [str(r).strip() for r in rules if str(r).strip()]
+        return cleaned
 
-        except Exception as exc:
-            last_error = exc
-
-    if last_error is not None:
-        raise last_error
-    raise ValueError("Gemini rule extraction failed for an unknown reason.")
+    except Exception as exc:
+        logger.error(f"Rule extraction failed: {exc}")
+        raise ValueError(f"Rule extraction failed: {exc}") from exc
 
 
 # ── Database Operations ─────────────────────────────────────────────
@@ -200,13 +168,15 @@ def _insert_rules(db: Session, organization_id: str, rules: list[str], filename:
     return inserted
 
 
-def _get_source_id_for_org(db: Session, organization_id: str) -> str | None:
-    """Get the first source_id for an organization (used for embedding namespace)."""
+def _get_source_id_for_org(db: Session, organization_id: str) -> str:
+    """Get the first source_id for an organization, or fallback to organization_id."""
     row = db.execute(
         text("SELECT TOP 1 source_id FROM dbo.source WHERE organization_id = :org_id"),
         {"org_id": organization_id},
     ).fetchone()
-    return str(row[0]).upper() if row else None  # Uppercase for ChromaDB consistency
+    if row and row[0]:
+        return str(row[0]).upper()
+    return str(organization_id).upper()
 
 
 # ── Embedding Dispatch ──────────────────────────────────────────────
@@ -251,22 +221,22 @@ def _mark_rules_as_embedded(db: Session, rule_ids: list[str]) -> None:
 
 # ── Main Service Function ──────────────────────────────────────────
 
-async def process_rules_upload(
+def process_rules_upload_bytes(
     db: Session,
     organization_id: str,
-    file: UploadFile,
+    filename: str,
+    file_bytes: bytes,
 ) -> dict[str, Any]:
     """
-    Full pipeline: validate file → parse text → Gemini extraction →
-    store in DB → send to embedding.
+    Synchronous worker pipeline: validate -> parse text -> LLM extraction ->
+    store in DB -> send to embedding.
+    Runs inside worker thread to avoid blocking FastAPI's asyncio event loop.
     """
     # 1. Validate file
-    filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ValueError(f"Unsupported file type: {ext}. Allowed: .txt, .docx, .pdf")
 
-    file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise ValueError(f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
 
@@ -278,10 +248,10 @@ async def process_rules_upload(
     if not document_text.strip():
         raise ValueError("Could not extract any text from the uploaded file.")
 
-    # 3. Send to Gemini for rule extraction
-    rules = _extract_rules_with_gemini(document_text)
+    # 3. Send to LLM Gateway for rule extraction
+    rules = _extract_rules_with_llm(document_text)
     if not rules:
-        raise ValueError("Gemini could not extract any rules from the document.")
+        raise ValueError("Could not extract any rules from the document.")
 
     # 4. Delete old rules for this organization
     deleted_count = _delete_existing_rules(db, organization_id)
@@ -292,7 +262,7 @@ async def process_rules_upload(
 
     # 6. Send to embedding service
     source_id = _get_source_id_for_org(db, organization_id)
-    embed_result = {"embedded_count": 0, "skipped": True, "reason": "no_source"}
+    embed_result = {"embedded_count": 0, "skipped": True}
 
     if source_id:
         # 6a. Delete old rule embeddings from ChromaDB before re-embedding
@@ -302,6 +272,16 @@ async def process_rules_upload(
                 headers=_AUTH_HEADERS,
                 timeout=30,
             )
+            # Also clear by organization_id if different
+            if source_id != str(organization_id).upper():
+                try:
+                    requests.delete(
+                        f"{EMBEDDING_SERVICE_URL}/delete/source/{str(organization_id).upper()}/rules",
+                        headers=_AUTH_HEADERS,
+                        timeout=15,
+                    )
+                except Exception:
+                    pass
             logger.info(f"Cleared old rule embeddings for source_id={source_id}")
         except Exception as e:
             logger.warning(f"Failed to clear old rule embeddings: {e}")
@@ -323,6 +303,24 @@ async def process_rules_upload(
         "embedding_result": embed_result,
         "rules": [{"rule_id": r["rule_id"], "text": r["rule_text"], "order": r["rule_order"]} for r in inserted_rules],
     }
+
+
+async def process_rules_upload(
+    db: Session,
+    organization_id: str,
+    file: UploadFile,
+) -> dict[str, Any]:
+    """Full pipeline: reads file asynchronously and offloads processing to threadpool."""
+    from starlette.concurrency import run_in_threadpool
+    filename = file.filename or "unknown"
+    file_bytes = await file.read()
+    return await run_in_threadpool(
+        process_rules_upload_bytes,
+        db,
+        organization_id,
+        filename,
+        file_bytes,
+    )
 
 
 def get_organization_rules(db: Session, organization_id: str) -> list[dict[str, Any]]:
@@ -348,3 +346,93 @@ def get_organization_rules(db: Session, organization_id: str) -> list[dict[str, 
         }
         for row in rows
     ]
+
+
+def delete_single_rule(db: Session, organization_id: str, rule_id: str) -> dict[str, Any]:
+    """Delete a single rule from database and from embedding service."""
+    # Check if the rule exists and belongs to this organization
+    row = db.execute(
+        text("SELECT rule_id FROM dbo.organization_rule WHERE rule_id = :rule_id AND organization_id = :org_id"),
+        {"rule_id": rule_id, "org_id": organization_id},
+    ).fetchone()
+    
+    if not row:
+        raise ValueError("Rule not found for this organization.")
+
+    # Call embedding service to delete the rule embedding
+    try:
+        response = requests.delete(
+            f"{EMBEDDING_SERVICE_URL}/delete/rule/{str(rule_id).upper()}",
+            headers=_AUTH_HEADERS,
+            timeout=30,
+        )
+        response.raise_for_status()
+    except Exception as e:
+        logger.warning(f"Failed to delete rule embedding from ChromaDB: {e}")
+
+    # Delete from database
+    db.execute(
+        text("DELETE FROM dbo.organization_rule WHERE rule_id = :rule_id AND organization_id = :org_id"),
+        {"rule_id": rule_id, "org_id": organization_id},
+    )
+    db.commit()
+    
+    return {"message": "Rule deleted successfully", "rule_id": rule_id}
+
+
+def add_single_rule(db: Session, organization_id: str, rule_text: str) -> dict[str, Any]:
+    """Add a single rule manually, insert into DB and send to embedding service directly."""
+    if not rule_text.strip():
+        raise ValueError("Rule text cannot be empty.")
+        
+    rule_id = uuid.uuid4()
+    
+    # Get current max rule_order
+    max_order_row = db.execute(
+        text("SELECT MAX(rule_order) FROM dbo.organization_rule WHERE organization_id = :org_id"),
+        {"org_id": organization_id},
+    ).fetchone()
+    
+    next_order = (max_order_row[0] or 0) + 1 if max_order_row else 1
+    
+    # Insert rule
+    db.execute(
+        text("""
+            INSERT INTO dbo.organization_rule
+            (rule_id, organization_id, rule_text, rule_order, is_embedded, source_filename, created_at)
+            VALUES (:rule_id, :org_id, :rule_text, :rule_order, 0, 'manual', GETDATE())
+        """),
+        {
+            "rule_id": rule_id,
+            "org_id": organization_id,
+            "rule_text": rule_text.strip(),
+            "rule_order": next_order,
+        },
+    )
+    db.commit()
+    
+    # Send to embedding service
+    source_id = _get_source_id_for_org(db, organization_id)
+    is_embedded = False
+    
+    if source_id:
+        inserted_rule = {
+            "rule_id": str(rule_id).upper(),
+            "rule_text": rule_text.strip(),
+            "rule_order": next_order,
+        }
+        embed_result = _send_rules_to_embedding([inserted_rule], source_id)
+        embedded_ids = embed_result.get("embedded_ids", [])
+        if embedded_ids:
+            _mark_rules_as_embedded(db, embedded_ids)
+            db.commit()
+            is_embedded = True
+            
+    return {
+        "rule_id": str(rule_id).upper(),
+        "rule_text": rule_text.strip(),
+        "rule_order": next_order,
+        "is_embedded": is_embedded,
+        "source_filename": "manual",
+        "created_at": None,
+    }

@@ -8,6 +8,7 @@ import { fetchScrapingStats, fetchScrapingPlatforms, fetchScrapingJobs, createSc
 import type { ScrapingStats, ScrapingPlatform, ScrapingJob } from '../types';
 import { useSystemTimezone } from '../hooks/useSystemTimezone';
 import { formatDateTime } from '../utils/dateTime';
+import { formatTrend } from '../utils/format';
 
 type TableAttributeFormRow = {
     name: string;
@@ -30,6 +31,7 @@ export const Scraping: React.FC = () => {
     const [jobs, setJobs] = useState<ScrapingJob[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [jobsLoading, setJobsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isAddPlatformOpen, setIsAddPlatformOpen] = useState(false);
     const [addPlatformSubmitting, setAddPlatformSubmitting] = useState(false);
@@ -45,6 +47,8 @@ export const Scraping: React.FC = () => {
     const [editPlatformFile, setEditPlatformFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const [reloadCounter, setReloadCounter] = useState(0);
     const itemsPerPage = 10;
     const [globalFrequency, setGlobalFrequency] = useState('Daily (24h)');
     // const [stoppingJobIds, setStoppingJobIds] = useState<Set<string>>(new Set());
@@ -68,68 +72,83 @@ export const Scraping: React.FC = () => {
         }
     }, [isEditPlatformOpen]);
 
+    // Load static components (stats & platforms)
     useEffect(() => {
-        const loadData = async (isRefresh = false) => {
+        const loadStaticData = async (isSilent = false) => {
             try {
-                if (isRefresh) {
-                    setRefreshing(true);
-                } else {
+                if (!isSilent) {
                     setLoading(true);
                 }
-                setError(null);
-
-                const [statsResult, platformsResult, jobsResult] = await Promise.allSettled([
+                const [statsResult, platformsResult] = await Promise.allSettled([
                     fetchScrapingStats(),
                     fetchScrapingPlatforms(),
-                    fetchScrapingJobs(),
                 ]);
 
                 if (statsResult.status === 'fulfilled') setStats(statsResult.value);
                 if (platformsResult.status === 'fulfilled') setPlatforms(platformsResult.value);
-                if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
 
-                // Surface an error only when platforms specifically fail — that's a DB issue worth flagging.
                 const errors: string[] = [];
                 if (platformsResult.status === 'rejected') {
                     errors.push(`Platforms: ${platformsResult.reason instanceof Error ? platformsResult.reason.message : 'failed to load'}`);
                 }
-                if (statsResult.status === 'rejected' && jobsResult.status === 'rejected') {
-                    errors.push('Scraping service is unreachable (stats and jobs unavailable).');
+                if (statsResult.status === 'rejected') {
+                    errors.push('Scraping service is unreachable (stats unavailable).');
                 }
                 if (errors.length > 0) setError(errors.join(' | '));
             } catch (err) {
-                console.error('Failed to load scraping data:', err);
+                console.error('Failed to load static scraping data:', err);
                 setError('Failed to load scraping data. Check admin-backend connectivity.');
             } finally {
                 setLoading(false);
-                setRefreshing(false);
             }
         };
 
-        loadData();
+        loadStaticData();
 
         const interval = setInterval(() => {
-            loadData(true);
+            loadStaticData(true);
+            setReloadCounter(prev => prev + 1);
         }, 15000);
 
         return () => clearInterval(interval);
     }, []);
 
+    // Load paginated & filtered jobs
+    useEffect(() => {
+        const loadJobsData = async () => {
+            setJobsLoading(true);
+            try {
+                const response = await fetchScrapingJobs(currentPage, itemsPerPage, searchQuery.trim() || undefined);
+                setJobs(response.data);
+                setTotalItems(response.total);
+            } catch (err) {
+                console.error('Failed to load scraping jobs:', err);
+            } finally {
+                setJobsLoading(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            loadJobsData();
+        }, searchQuery ? 300 : 0);
+
+        return () => clearTimeout(timer);
+    }, [currentPage, searchQuery, reloadCounter]);
+
     const handleRefresh = async () => {
         try {
             setRefreshing(true);
             setError(null);
-            const [statsResult, platformsResult, jobsResult] = await Promise.allSettled([
+            const [statsResult, platformsResult] = await Promise.allSettled([
                 fetchScrapingStats(),
                 fetchScrapingPlatforms(),
-                fetchScrapingJobs(),
             ]);
             if (statsResult.status === 'fulfilled') setStats(statsResult.value);
             if (platformsResult.status === 'fulfilled') setPlatforms(platformsResult.value);
-            if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value);
             if (platformsResult.status === 'rejected') {
                 setError(`Platforms: ${platformsResult.reason instanceof Error ? platformsResult.reason.message : 'failed to load'}`);
             }
+            setReloadCounter(prev => prev + 1);
         } catch (err) {
             console.error('Failed to refresh scraping data:', err);
             setError('Failed to refresh scraping data.');
@@ -364,20 +383,8 @@ export const Scraping: React.FC = () => {
         }
     };
 
-    const filteredJobs = jobs.filter(job => {
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) {
-            return true;
-        }
-        return (
-            job.jobId.toLowerCase().includes(query)
-            || job.organization.toLowerCase().includes(query)
-            || job.platform.toLowerCase().includes(query)
-        );
-    });
-
-    const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
-    const paginatedJobs = filteredJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const paginatedJobs = jobs;
 
     const formatNumber = (num: number): string => {
         if (num >= 1000) {
@@ -439,7 +446,9 @@ export const Scraping: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.activeJobs}</div>
-                    <div className="text-xs text-green-600">+{stats?.activeJobsChange} since last hour</div>
+                    <div className={`text-xs ${(stats?.activeJobsChange || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {(stats?.activeJobsChange || 0) > 0 ? `+${stats?.activeJobsChange}` : stats?.activeJobsChange || 0} since last hour
+                    </div>
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
@@ -472,7 +481,9 @@ export const Scraping: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatNumber(stats?.reviewsIngested || 0)}</div>
-                    <div className="text-xs text-green-600">+{stats?.reviewsChange}% vs last week</div>
+                    <div className={`text-xs ${(stats?.reviewsChange || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {formatTrend(stats?.reviewsChange).text} vs last week
+                    </div>
                 </div>
             </div>
 
@@ -742,7 +753,7 @@ export const Scraping: React.FC = () => {
                         </div>
 
                         {editPlatformLoading ? (
-                            <div className="p-5 space-y-5 animate-shimmer">
+                            <div className="p-5 space-y-5">
                                 <div className="space-y-1.5">
                                     <Skeleton className="h-4 w-28 rounded" />
                                     <Skeleton className="h-10 w-full rounded-lg" />
@@ -953,7 +964,10 @@ export const Scraping: React.FC = () => {
                                 type="text"
                                 placeholder="Search Job ID or Org..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                                 className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -971,7 +985,7 @@ export const Scraping: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className={`overflow-x-auto ${jobsLoading ? 'opacity-50 pointer-events-none transition-opacity duration-200' : 'transition-opacity duration-200'}`}>
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-200 dark:border-slate-700">
@@ -1019,7 +1033,7 @@ export const Scraping: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-slate-700">
                     <span className="text-sm text-gray-500 dark:text-slate-400">
-                        Showing {filteredJobs.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
+                        Showing {totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} jobs
                     </span>
                     <div className="flex items-center gap-1">
                         <button

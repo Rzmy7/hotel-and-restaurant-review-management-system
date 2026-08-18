@@ -7,13 +7,16 @@ interface UsageChartProps {
 }
 
 export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
-    const width = 600;
-    const height = 250;
-    const padding = 40;
+    const width    = 600;
+    const height   = 320;
+    const leftPad  = 52;   // room for Y-axis labels
+    const rightPad = 12;   // minimal — just enough so the last dot isn't clipped
+    const topPad   = 20;
+    const bottomPad = 48;  // room for X-axis labels
 
     if (data.length === 0) {
         return (
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[350px] transition-colors duration-200">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[320px] transition-colors duration-200">
                 <div className="flex items-center gap-2.5 mb-4">
                     <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
                         <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />
@@ -36,22 +39,23 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
         Math.round((maxVal / (ySteps - 1)) * i)
     );
 
-    const getPoints = () => {
-        return data.map((d, i) => {
-            const x = padding + (i * ((width - padding * 2) / Math.max(data.length - 1, 1)));
-            const y = height - padding - ((d.value / maxVal) * (height - padding * 2));
-            return { x, y, value: d.value, label: d.label };
-        });
-    };
+    const plotW = width  - leftPad - rightPad;
+    const plotH = height - topPad  - bottomPad;
+
+    const getPoints = () =>
+        data.map((d, i) => ({
+            x: leftPad + (i * (plotW / Math.max(data.length - 1, 1))),
+            y: topPad  + plotH - ((d.value / maxVal) * plotH),
+            value: d.value,
+            label: d.label,
+        }));
 
     const chartPoints = getPoints();
-
-    // Build smooth area path
-    const linePath = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
-    const areaPath = `${linePath} L ${chartPoints[chartPoints.length - 1].x},${height - padding} L ${chartPoints[0].x},${height - padding} Z`;
+    const linePath  = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+    const areaPath  = `${linePath} L ${chartPoints[chartPoints.length - 1].x},${topPad + plotH} L ${chartPoints[0].x},${topPad + plotH} Z`;
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[350px] group hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col h-full min-h-[320px] group hover:shadow-md hover:border-gray-200 dark:border-slate-700 dark:hover:border-slate-600 transition-all duration-200">
             <div className="flex items-center gap-2.5 mb-4">
                 <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
                     <BarChart3 size={18} className="text-blue-500 dark:text-blue-400" />
@@ -61,26 +65,28 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                     <p className="text-xs text-gray-500 dark:text-slate-400">Reviews processed per month</p>
                 </div>
             </div>
+
             <div className="flex-1 relative">
                 <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-64" preserveAspectRatio="xMidYMid meet">
                     {/* Gradient fill */}
                     <defs>
                         <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
+                            <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.15" />
                             <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
                         </linearGradient>
                     </defs>
 
                     {/* Y Axis Labels */}
                     {yAxisValues.map((val, i) => {
-                        const y = height - padding - ((val / maxVal) * (height - padding * 2));
+                        const y = topPad + plotH - ((val / maxVal) * plotH);
                         return (
                             <text
                                 key={i}
-                                x={padding - 10}
+                                x={leftPad - 8}
                                 y={y + 4}
                                 textAnchor="end"
-                                className="text-xs fill-gray-400 dark:fill-slate-500"
+                                fontSize="11"
+                                className="fill-gray-400 dark:fill-slate-500"
                             >
                                 {val.toLocaleString()}
                             </text>
@@ -89,13 +95,13 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
 
                     {/* Horizontal Grid Lines */}
                     {yAxisValues.map((val, i) => {
-                        const y = height - padding - ((val / maxVal) * (height - padding * 2));
+                        const y = topPad + plotH - ((val / maxVal) * plotH);
                         return (
                             <line
                                 key={i}
-                                x1={padding}
+                                x1={leftPad}
                                 y1={y}
-                                x2={width - padding}
+                                x2={width - rightPad}
                                 y2={y}
                                 className="stroke-gray-100 dark:stroke-slate-700"
                                 strokeWidth="1"
@@ -106,7 +112,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                     {/* Area fill */}
                     <path d={areaPath} fill="url(#usageGradient)" />
 
-                    {/* The Line */}
+                    {/* Line */}
                     <polyline
                         points={chartPoints.map((p) => `${p.x},${p.y}`).join(' ')}
                         fill="none"
@@ -131,7 +137,8 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => {
                             x={p.x}
                             y={height - 10}
                             textAnchor="middle"
-                            className="text-xs fill-gray-400 dark:fill-slate-500"
+                            fontSize="11"
+                            className="fill-gray-400 dark:fill-slate-500"
                         >
                             {p.label}
                         </text>

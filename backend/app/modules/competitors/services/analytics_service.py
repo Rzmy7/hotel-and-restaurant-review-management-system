@@ -12,24 +12,26 @@ from datetime import datetime
 from typing import List, Optional, Dict
 
 import pyodbc
-from google import genai
 
-from app.core.config import GENAI_KEY
 from app.core.pyodbc_connection import get_connection_string
 from app.modules.competitors.ai.prompts import COMPARISON_INSIGHT_PROMPT
 from app.modules.competitors.services.competitor_service import (
     get_competitor_by_id,
     get_tracked_competitors,
 )
+from app.modules.competitors.services.scoring import (
+    aspect_delta,
+    bayesian_mean,
+    population_mean,
+)
+from app.services.llm_gateway import call as gateway_call
 
-_genai_client = None
-
-
-def _get_genai_client():
-    global _genai_client
-    if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
-    return _genai_client
+# NOTE ON SCALES
+# processed_review.rating is already on the standardized 1.0-5.0 float space —
+# app/modules/reviews/services/review_service.py converts 10-point platforms
+# (Booking, Agoda) at ingestion. Do NOT re-normalize here or scores are halved
+# twice. Scoring helpers for scale conversion live in services/scoring.py and
+# belong on the ingestion path, not this read path.
 
 
 def _strip_markdown_fences(text: str) -> str:
@@ -149,12 +151,16 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
     my_categories = get_category_scores(my_org_id)
     comp_categories = get_category_scores(comp_org_id)
 
+    # Aspects present for either property. Missing values stay None rather than
+    # collapsing to 0 — an aspect nobody reviewed is absent evidence, and plotting
+    # it as a zero would fabricate a gap on the radar.
     all_cats = sorted(set(list(my_categories.keys()) + list(comp_categories.keys())))
     aspect_data = [
         {
             "subject": cat,
-            "myHotel": my_categories.get(cat, 0),
-            "competitor": comp_categories.get(cat, 0),
+            "myHotel": my_categories.get(cat),
+            "competitor": comp_categories.get(cat),
+            "delta": aspect_delta(my_categories.get(cat), comp_categories.get(cat)),
             "fullMark": 5,
         }
         for cat in all_cats
@@ -190,12 +196,23 @@ def get_comparison_data(competitor_id: str, my_org_id: str) -> Optional[Dict]:
         ).fetchone()
     my_org_name = row.organization_name if row else "My Organization"
 
+    # Confidence-adjusted ratings for this head-to-head pair, so a competitor with
+    # very few reviews cannot appear to lead on raw average alone.
+    pair_prior = population_mean([
+        (my_stats["avgRating"], my_stats["reviewCount"]),
+        (comp_stats["avgRating"], comp_stats["reviewCount"]),
+    ])
+    my_adjusted = bayesian_mean(my_stats["avgRating"], my_stats["reviewCount"], pair_prior)
+    comp_adjusted = bayesian_mean(comp_stats["avgRating"], comp_stats["reviewCount"], pair_prior)
+
     return {
         "competitor": competitor,
         "myOrganizationName": my_org_name,
         "kpis": {
             "avgRating": {"myHotel": my_stats["avgRating"], "competitor": comp_stats["avgRating"],
                           "gap": round(my_stats["avgRating"] - comp_stats["avgRating"], 2)},
+            "adjustedRating": {"myHotel": my_adjusted, "competitor": comp_adjusted,
+                               "gap": aspect_delta(my_adjusted, comp_adjusted)},
             "reviewCount": {"myHotel": my_stats["reviewCount"], "competitor": comp_stats["reviewCount"],
                             "gap": my_stats["reviewCount"] - comp_stats["reviewCount"]},
             "positivePercent": {"myHotel": my_stats["positivePercent"], "competitor": comp_stats["positivePercent"],
@@ -248,7 +265,18 @@ def get_rankings_data(my_org_id: str) -> Dict:
             "reviews": stats["reviewCount"],
         })
 
-    entries.sort(key=lambda x: x["rating"], reverse=True)
+    # Rank on a volume-weighted Bayesian mean rather than the raw average, so a
+    # property with a handful of glowing reviews does not outrank one with
+    # hundreds of consistently strong ones. The prior is derived from this
+    # comparison set, not hardcoded.
+    prior = population_mean((e["rating"], e["reviews"]) for e in entries)
+    for entry in entries:
+        entry["adjustedRating"] = bayesian_mean(entry["rating"], entry["reviews"], prior)
+
+    entries.sort(
+        key=lambda x: (x["adjustedRating"] if x["adjustedRating"] is not None else 0.0),
+        reverse=True,
+    )
     for i, entry in enumerate(entries):
         entry["rank"] = i + 1
 
@@ -258,6 +286,7 @@ def get_rankings_data(my_org_id: str) -> Dict:
         "yourRank": your_rank,
         "totalCompetitors": len(tracked),
         "topPerformer": entries[0] if entries else None,
+        "ratingPrior": prior,
     }
 
 
@@ -281,8 +310,8 @@ def get_ai_comparison_insights(competitor_id: str, my_org_id: str) -> Dict:
     )
 
     try:
-        response = _get_genai_client().models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
-        return json.loads(_strip_markdown_fences(response.text))
+        response_text = gateway_call("competitor_analysis", prompt)
+        return json.loads(_strip_markdown_fences(response_text))
     except Exception as e:
         print(f"AI Insights Error: {e}")
         return {"strengths": ["Unable to generate insights at this time."],

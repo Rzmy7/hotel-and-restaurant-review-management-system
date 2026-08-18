@@ -6,7 +6,7 @@ Migrated from admin-backend/app/models.py and inline schemas in the routers.
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 
 # ── Dashboard schemas ───────────────────────────────────────────────
@@ -89,6 +89,13 @@ class OrganizationSummary(BaseModel):
     iconUrl: Optional[str] = None
 
 
+class PaginatedOrganizations(BaseModel):
+    data: list[OrganizationSummary]
+    total: int
+    page: int
+    limit: int
+
+
 class OrganizationStats(BaseModel):
     total: int
     addedToday: int
@@ -120,6 +127,13 @@ class AdminUser(BaseModel):
     avatarColor: Optional[str] = None
     organizations: list[str] = Field(default_factory=list)
     groups: list[str] = Field(default_factory=list)
+
+
+class PaginatedUsers(BaseModel):
+    data: list[AdminUser]
+    total: int
+    page: int
+    limit: int
 
 
 class UserStatsData(BaseModel):
@@ -284,10 +298,12 @@ class SecuritySettingsPayload(BaseModel):
 
 class AdminProfileResponse(BaseModel):
     name: str
+    email: EmailStr
 
 
 class AdminProfileUpdatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    email: Optional[EmailStr] = None
 
 
 class AdminPasswordChangePayload(BaseModel):
@@ -356,25 +372,6 @@ class ReviewProcessingJobResponse(BaseModel):
     totalReviews: int | None = None
 
 
-class GeminiApiKeyConfigResponse(BaseModel):
-    apiKey: str = ""
-    isConfigured: bool = False
-    lastTestedAt: str | None = None
-    lastTestResult: str | None = None
-
-
-class GeminiApiKeySavePayload(BaseModel):
-    apiKey: str = Field(..., min_length=1, max_length=512)
-
-
-class GeminiApiKeyTestPayload(BaseModel):
-    apiKey: str = Field(..., min_length=1, max_length=512)
-
-
-class GeminiApiKeyTestResponse(BaseModel):
-    success: bool
-    message: str
-
 
 # ── Batch config schemas ───────────────────────────────────────────
 
@@ -384,10 +381,16 @@ class BatchConfigResponse(BaseModel):
     min: int
     max: int
     default: int
+    parallel_batches: int
+    parallel_min: int
+    parallel_max: int
+    parallel_default: int
 
 
 class BatchConfigUpdatePayload(BaseModel):
     batch_size: int = Field(..., ge=1, le=20, description="Number of reviews per LLM batch (1–20)")
+    parallel_batches: int = Field(..., ge=1, le=10, description="Number of parallel batches running concurrently (1–10)")
+
 
 
 # ── LLM Gateway schemas ────────────────────────────────────────────
@@ -416,9 +419,15 @@ class LLMModelResponse(BaseModel):
     model_name: str
     api_key_masked: str
     max_tokens: int
+    # Registration state (soft delete), NOT connectivity — see last_test_status.
     is_active: bool
     created_at: str
     updated_at: str
+    # Result of the most recent connectivity test:
+    # untested | ok | auth_error | quota_error | model_error | unreachable | error
+    last_test_status: str = "untested"
+    last_test_message: str | None = None
+    last_tested_at: str | None = None
 
 
 class LLMModelTestPayload(BaseModel):
@@ -432,18 +441,28 @@ class LLMModelTestPayload(BaseModel):
 class LLMModelTestResponse(BaseModel):
     success: bool
     message: str
+    status: str = "error"
 
 
 class LLMAssignmentsResponse(BaseModel):
     review_processing_model_id: str | None = None
     reply_generation_model_id: str | None = None
+    insights_model_id: str | None = None
+    competitor_analysis_model_id: str | None = None
+    rule_extraction_model_id: str | None = None
     review_processing_model_name: str | None = None
     reply_generation_model_name: str | None = None
+    insights_model_name: str | None = None
+    competitor_analysis_model_name: str | None = None
+    rule_extraction_model_name: str | None = None
 
 
 class LLMAssignmentsUpdate(BaseModel):
     review_processing_model_id: str | None = None
     reply_generation_model_id: str | None = None
+    insights_model_id: str | None = None
+    competitor_analysis_model_id: str | None = None
+    rule_extraction_model_id: str | None = None
 
 
 # ── Broadcasting schemas ────────────────────────────────────────────

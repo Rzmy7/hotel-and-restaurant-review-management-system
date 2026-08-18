@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, X, KeyRound, Sun, Moon, Monitor } from 'lucide-react';
+import { X, KeyRound, Sun, Moon, Monitor, User } from 'lucide-react';
 import { Alert } from '../components/Alert';
 import { ToggleSwitch } from '../components/ToggleSwitch';
 import { SettingsSkeleton } from './SettingsSkeleton';
@@ -63,11 +63,16 @@ export const Settings: React.FC = () => {
     const [generalSaveState, setGeneralSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [generalSaveError, setGeneralSaveError] = useState<string | null>(null);
     const [adminProfileName, setAdminProfileName] = useState('System Admin');
+    const [adminProfileEmail, setAdminProfileEmail] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
-    const [adminProfileSaveState, setAdminProfileSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const [adminProfileError, setAdminProfileError] = useState<string | null>(null);
+
+
+    const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+    const [tempName, setTempName] = useState('');
+    const [nameModalError, setNameModalError] = useState<string | null>(null);
+    const [nameModalSaveState, setNameModalSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
@@ -108,6 +113,7 @@ export const Settings: React.FC = () => {
                     currency: data.currency,
                 });
                 setAdminProfileName(profile.name || 'System Admin');
+                setAdminProfileEmail(profile.email || '');
                 setSecuritySettings(security);
                 setSchedulerSettings(scheduler);
 
@@ -149,14 +155,15 @@ export const Settings: React.FC = () => {
         }
     };
 
-    const handleGeneralSettingChange = (key: keyof AdminSettings, value: string) => {
+    const handleGeneralSettingUpdateState = (key: keyof AdminSettings, value: string) => {
         setSettings(prev => (prev ? { ...prev, [key]: value } : prev));
         setGeneralSaveState('idle');
         setGeneralSaveError(null);
     };
 
-    const handleSaveGeneralSettings = async () => {
-        if (!settings || generalSaveState === 'saving') {
+    const saveGeneralSettingsInstantly = async (updatedSettings?: AdminSettings) => {
+        const targetSettings = updatedSettings || settings;
+        if (!targetSettings || generalSaveState === 'saving') {
             return;
         }
 
@@ -165,10 +172,10 @@ export const Settings: React.FC = () => {
 
         try {
             const saved = await settingsService.updateGeneralSettings({
-                timezone: settings.timezone,
-                language: settings.language,
-                dateFormat: settings.dateFormat,
-                currency: settings.currency,
+                timezone: targetSettings.timezone,
+                language: targetSettings.language,
+                dateFormat: targetSettings.dateFormat,
+                currency: targetSettings.currency,
             });
 
             setSettings(prev => (
@@ -186,7 +193,6 @@ export const Settings: React.FC = () => {
             setGeneralSaveState('saved');
             window.setTimeout(() => setGeneralSaveState('idle'), 2500);
         } catch (error) {
-            console.error('Failed to save general settings:', error);
             setGeneralSaveState('error');
             setGeneralSaveError(
                 error instanceof Error
@@ -196,38 +202,105 @@ export const Settings: React.FC = () => {
         }
     };
 
-    const handleSaveAdminProfile = async () => {
-        if (adminProfileSaveState === 'saving') {
-            return;
-        }
-
-        setAdminProfileError(null);
-
-        if (!adminProfileName.trim()) {
-            setAdminProfileSaveState('error');
-            setAdminProfileError('Admin name cannot be empty.');
-            return;
-        }
-
-        setAdminProfileSaveState('saving');
-
+    const saveSecuritySettingsInstantly = async (updatedSettings: SecuritySettings) => {
+        setSecuritySaveState('saving');
+        setSecuritySaveError(null);
         try {
-            const updated = await settingsService.updateAdminProfile({
-                name: adminProfileName.trim(),
-            });
-
-            setAdminProfileName(updated.name);
-            setAdminProfileSaveState('saved');
-            window.setTimeout(() => setAdminProfileSaveState('idle'), 2500);
+            const saved = await settingsService.updateSecuritySettings(updatedSettings);
+            setSecuritySettings(saved);
+            setSecuritySaveState('saved');
+            window.setTimeout(() => setSecuritySaveState('idle'), 2500);
         } catch (error) {
-            setAdminProfileSaveState('error');
-            setAdminProfileError(
+            setSecuritySaveState('error');
+            setSecuritySaveError(
                 error instanceof Error
                     ? error.message
-                    : 'Failed to save admin profile. Please try again.',
+                    : 'Failed to save security settings. Please try again.',
             );
         }
     };
+
+    const handleNotificationToggle = (key: keyof AdminSettings) => {
+        if (!settings) return;
+        const newSettings = { ...settings, [key]: !settings[key] as any };
+        setSettings(newSettings);
+        
+        setGeneralSaveState('saving');
+        setTimeout(() => {
+            setGeneralSaveState('saved');
+            setTimeout(() => setGeneralSaveState('idle'), 1500);
+        }, 300);
+    };
+
+    const saveSchedulerSettingsInstantly = async (updatedSettings: SchedulerSettings) => {
+        setSchedulerSaveState('saving');
+        setSchedulerSaveError(null);
+        try {
+            const saved = await settingsService.updateSchedulerSettings(updatedSettings);
+            setSchedulerSettings(saved);
+            setSchedulerSaveState('saved');
+            window.setTimeout(() => setSchedulerSaveState('idle'), 2500);
+        } catch (error) {
+            setSchedulerSaveState('error');
+            setSchedulerSaveError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to save scheduler settings. Please try again.',
+            );
+        }
+    };
+
+    const handleNameChangeSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setNameModalError(null);
+
+        const nameTrimmed = tempName.trim();
+        if (!nameTrimmed) {
+            setNameModalSaveState('error');
+            setNameModalError('Admin name cannot be empty.');
+            return;
+        }
+
+        setNameModalSaveState('saving');
+
+        try {
+            const updated = await settingsService.updateAdminProfile({
+                name: nameTrimmed,
+                email: adminProfileEmail,
+            });
+
+            setAdminProfileName(updated.name);
+            
+            // Sync with local storage
+            const storedUser = localStorage.getItem('authUser');
+            if (storedUser) {
+                try {
+                    const user = JSON.parse(storedUser);
+                    user.name = updated.name;
+                    user.full_name = updated.name;
+                    localStorage.setItem('authUser', JSON.stringify(user));
+                    window.dispatchEvent(new Event('admin-profile-updated'));
+                } catch (err) {
+                    console.error("Failed to update authUser name cache", err);
+                }
+            }
+
+            setNameModalSaveState('saved');
+            window.setTimeout(() => {
+                setIsNameModalOpen(false);
+                setNameModalSaveState('idle');
+            }, 1000);
+        } catch (error) {
+            setNameModalSaveState('error');
+            setNameModalError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to update admin name. Please try again.',
+            );
+        }
+    };
+
+
 
     const handleChangePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -304,30 +377,23 @@ export const Settings: React.FC = () => {
                             <p className="text-sm text-gray-500 dark:text-slate-400">Configure basic platform settings and preferences</p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">System Timezone</label>
-                                <select
-                                    value={settings.timezone}
-                                    onChange={(event) => handleGeneralSettingChange('timezone', event.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    {timezoneOptions.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Currency</label>
-                                <input
-                                    type="text"
-                                    value={settings.currency}
-                                    onChange={(event) => handleGeneralSettingChange('currency', event.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
+                        <div className="max-w-md">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">System Timezone</label>
+                            <select
+                                value={settings.timezone}
+                                onChange={(event) => {
+                                    const val = event.target.value;
+                                    handleGeneralSettingUpdateState('timezone', val);
+                                    saveGeneralSettingsInstantly({ ...settings, timezone: val });
+                                }}
+                                className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                {timezoneOptions.map(option => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -381,21 +447,12 @@ export const Settings: React.FC = () => {
                         <Alert type="error" message={maintenanceError} />
                     )}
 
-                    {generalSaveError && (
+                    {generalSaveState === 'saved' && (
+                        <Alert type="success" message="General settings saved successfully." />
+                    )}
+                    {generalSaveState === 'error' && generalSaveError && (
                         <Alert type="error" message={generalSaveError} />
                     )}
-
-                    {/* Save Button */}
-                    <div className="flex justify-end">
-                        <button
-                            onClick={handleSaveGeneralSettings}
-                            disabled={generalSaveState === 'saving'}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                        >
-                            <Save size={16} />
-                            {generalSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
                 </div>
             )}
 
@@ -416,9 +473,9 @@ export const Settings: React.FC = () => {
                                 <ToggleSwitch
                                     checked={securitySettings.requireTwoFactorAuth}
                                     onChange={(checked) => {
-                                        setSecuritySettings(prev => ({ ...prev, requireTwoFactorAuth: checked }));
-                                        setSecuritySaveState('idle');
-                                        setSecuritySaveError(null);
+                                        const newSettings = { ...securitySettings, requireTwoFactorAuth: checked };
+                                        setSecuritySettings(newSettings);
+                                        saveSecuritySettingsInstantly(newSettings);
                                     }}
                                 />
                             </div>
@@ -433,9 +490,10 @@ export const Settings: React.FC = () => {
                                     id="user-session-timeout"
                                     value={securitySettings.userSessionTimeoutMinutes}
                                     onChange={(e) => {
-                                        setSecuritySettings(prev => ({ ...prev, userSessionTimeoutMinutes: Number(e.target.value) }));
-                                        setSecuritySaveState('idle');
-                                        setSecuritySaveError(null);
+                                        const val = Number(e.target.value);
+                                        const newSettings = { ...securitySettings, userSessionTimeoutMinutes: val };
+                                        setSecuritySettings(newSettings);
+                                        saveSecuritySettingsInstantly(newSettings);
                                     }}
                                     className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
@@ -462,9 +520,10 @@ export const Settings: React.FC = () => {
                                     id="admin-session-timeout"
                                     value={securitySettings.adminSessionTimeoutMinutes}
                                     onChange={(e) => {
-                                        setSecuritySettings(prev => ({ ...prev, adminSessionTimeoutMinutes: Number(e.target.value) }));
-                                        setSecuritySaveState('idle');
-                                        setSecuritySaveError(null);
+                                        const val = Number(e.target.value);
+                                        const newSettings = { ...securitySettings, adminSessionTimeoutMinutes: val };
+                                        setSecuritySettings(newSettings);
+                                        saveSecuritySettingsInstantly(newSettings);
                                     }}
                                     className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
@@ -489,34 +548,6 @@ export const Settings: React.FC = () => {
                     {(securitySaveState === 'error' && securitySaveError) && (
                         <Alert type="error" message={securitySaveError} />
                     )}
-
-                    <div className="flex justify-end">
-                        <button
-                            onClick={async () => {
-                                if (securitySaveState === 'saving') return;
-                                setSecuritySaveState('saving');
-                                setSecuritySaveError(null);
-                                try {
-                                    const saved = await settingsService.updateSecuritySettings(securitySettings);
-                                    setSecuritySettings(saved);
-                                    setSecuritySaveState('saved');
-                                    window.setTimeout(() => setSecuritySaveState('idle'), 2500);
-                                } catch (error) {
-                                    setSecuritySaveState('error');
-                                    setSecuritySaveError(
-                                        error instanceof Error
-                                            ? error.message
-                                            : 'Failed to save security settings. Please try again.',
-                                    );
-                                }
-                            }}
-                            disabled={securitySaveState === 'saving'}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                        >
-                            <Save size={16} />
-                            {securitySaveState === 'saving' ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
                 </div>
             )}
 
@@ -536,7 +567,7 @@ export const Settings: React.FC = () => {
                                 </div>
                                 <ToggleSwitch
                                     checked={settings.notifyApiLimitReaching}
-                                    onChange={() => {}}
+                                    onChange={() => handleNotificationToggle('notifyApiLimitReaching')}
                                 />
                             </div>
 
@@ -549,7 +580,7 @@ export const Settings: React.FC = () => {
                                 </div>
                                 <ToggleSwitch
                                     checked={settings.notifyServerOverloading}
-                                    onChange={() => {}}
+                                    onChange={() => handleNotificationToggle('notifyServerOverloading')}
                                 />
                             </div>
 
@@ -562,7 +593,7 @@ export const Settings: React.FC = () => {
                                 </div>
                                 <ToggleSwitch
                                     checked={settings.notifyServerConnectionFailed}
-                                    onChange={() => {}}
+                                    onChange={() => handleNotificationToggle('notifyServerConnectionFailed')}
                                 />
                             </div>
 
@@ -575,21 +606,15 @@ export const Settings: React.FC = () => {
                                 </div>
                                 <ToggleSwitch
                                     checked={settings.notifyScrapingFailures}
-                                    onChange={() => {}}
+                                    onChange={() => handleNotificationToggle('notifyScrapingFailures')}
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex justify-end">
-                        <button
-                            onClick={() => alert('Settings saved successfully!')}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                        >
-                            <Save size={16} />
-                            Save Changes
-                        </button>
-                    </div>
+                    {generalSaveState === 'saved' && (
+                        <Alert type="success" message="Notification preferences updated." />
+                    )}
                 </div>
             )}
 
@@ -609,9 +634,10 @@ export const Settings: React.FC = () => {
                                 <select
                                     value={schedulerSettings.reviewProcessingIntervalMinutes}
                                     onChange={(e) => {
-                                        setSchedulerSettings(prev => ({ ...prev, reviewProcessingIntervalMinutes: Number(e.target.value) }));
-                                        setSchedulerSaveState('idle');
-                                        setSchedulerSaveError(null);
+                                        const val = Number(e.target.value);
+                                        const newSettings = { ...schedulerSettings, reviewProcessingIntervalMinutes: val };
+                                        setSchedulerSettings(newSettings);
+                                        saveSchedulerSettingsInstantly(newSettings);
                                     }}
                                     className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
@@ -634,9 +660,10 @@ export const Settings: React.FC = () => {
                                 <select
                                     value={schedulerSettings.deduplicationIntervalMinutes}
                                     onChange={(e) => {
-                                        setSchedulerSettings(prev => ({ ...prev, deduplicationIntervalMinutes: Number(e.target.value) }));
-                                        setSchedulerSaveState('idle');
-                                        setSchedulerSaveError(null);
+                                        const val = Number(e.target.value);
+                                        const newSettings = { ...schedulerSettings, deduplicationIntervalMinutes: val };
+                                        setSchedulerSettings(newSettings);
+                                        saveSchedulerSettingsInstantly(newSettings);
                                     }}
                                     className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
@@ -658,34 +685,6 @@ export const Settings: React.FC = () => {
                     {(schedulerSaveState === 'error' && schedulerSaveError) && (
                         <Alert type="error" message={schedulerSaveError} />
                     )}
-
-                    <div className="flex justify-end">
-                        <button
-                            onClick={async () => {
-                                if (schedulerSaveState === 'saving') return;
-                                setSchedulerSaveState('saving');
-                                setSchedulerSaveError(null);
-                                try {
-                                    const saved = await settingsService.updateSchedulerSettings(schedulerSettings);
-                                    setSchedulerSettings(saved);
-                                    setSchedulerSaveState('saved');
-                                    window.setTimeout(() => setSchedulerSaveState('idle'), 2500);
-                                } catch (error) {
-                                    setSchedulerSaveState('error');
-                                    setSchedulerSaveError(
-                                        error instanceof Error
-                                            ? error.message
-                                            : 'Failed to save scheduler settings. Please try again.',
-                                    );
-                                }
-                            }}
-                            disabled={schedulerSaveState === 'saving'}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                        >
-                            <Save size={16} />
-                            {schedulerSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
                 </div>
             )}
 
@@ -698,55 +697,55 @@ export const Settings: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">Admin Name</label>
-                                <input
-                                    type="text"
-                                    value={adminProfileName}
-                                    onChange={(event) => {
-                                        setAdminProfileName(event.target.value);
-                                        setAdminProfileError(null);
-                                        setAdminProfileSaveState('idle');
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Admin Name</h3>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white mt-0.5">{adminProfileName}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTempName(adminProfileName);
+                                        setNameModalError(null);
+                                        setNameModalSaveState('idle');
+                                        setIsNameModalOpen(true);
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
+                                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <User size={16} />
+                                    Change Name
+                                </button>
                             </div>
 
                             <div className="border-t border-gray-100 dark:border-slate-700"></div>
 
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Admin Password</h3>
-                                    <p className="text-sm text-gray-500 dark:text-slate-400">Change your administrator account password</p>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Admin Email</h3>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white mt-0.5">{adminProfileEmail}</p>
+                                </div>
+                                <span className="text-xs font-medium text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700/50 px-2.5 py-1 rounded-md">
+                                    Read-only
+                                </span>
+                            </div>
+
+                            <div className="border-t border-gray-100 dark:border-slate-700"></div>
+
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-slate-400">Admin Password</h3>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white mt-0.5">••••••••</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setIsPasswordModalOpen(true)}
-                                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-2"
+                                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
                                 >
                                     <KeyRound size={16} />
                                     Change Password
                                 </button>
                             </div>
                         </div>
-                    </div>
-
-                    {adminProfileSaveState === 'saved' && (
-                        <Alert type="success" message="Admin profile saved." />
-                    )}
-                    {(adminProfileSaveState === 'error' && adminProfileError) && (
-                        <Alert type="error" message={adminProfileError} />
-                    )}
-
-                    <div className="flex justify-end">
-                        <button
-                            onClick={handleSaveAdminProfile}
-                            disabled={adminProfileSaveState === 'saving'}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                        >
-                            <Save size={16} />
-                            {adminProfileSaveState === 'saving' ? 'Saving...' : 'Save Changes'}
-                        </button>
                     </div>
                 </div>
             )}
@@ -833,6 +832,62 @@ export const Settings: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {isNameModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/30">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Change Name</h3>
+                            <button
+                                onClick={() => setIsNameModalOpen(false)}
+                                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleNameChangeSubmit}>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1.5">New Name</label>
+                                    <input
+                                        type="text"
+                                        value={tempName}
+                                        onChange={(e) => setTempName(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-900 dark:text-white"
+                                        placeholder="Enter new administrator name"
+                                        required
+                                    />
+                                </div>
+
+                                {nameModalSaveState === 'saved' && (
+                                    <Alert type="success" message="Admin name updated." />
+                                )}
+                                {(nameModalSaveState === 'error' && nameModalError) && (
+                                    <Alert type="error" message={nameModalError} />
+                                )}
+                            </div>
+                            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/30 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsNameModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-655 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={nameModalSaveState === 'saving'}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                >
+                                    {nameModalSaveState === 'saving' ? 'Saving...' : 'Save Name'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+
         </div>
     );
 };

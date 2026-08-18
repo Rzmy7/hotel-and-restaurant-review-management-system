@@ -3,49 +3,19 @@ import { getApiBaseUrl } from '../config/api';
 
 const getBaseUrl = (): string => getApiBaseUrl();
 
-type JwtPayload = {
-    user_id?: string;
-    id?: string;
-    sub?: string;
-    email?: string;
-    role?: string;
-    roles?: string[] | string;
-};
-
 type CurrentUser = {
     userId: string | null;
     email: string | null;
     role: string | null;
 };
 
-const parseJwtPayload = (): JwtPayload | null => {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
-
-    const parts = token.split('.');
-    if (parts.length < 2) return null;
-
-    try {
-        const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
-        const decoded = atob(padded);
-        return JSON.parse(decoded) as JwtPayload;
-    } catch {
-        return null;
-    }
-};
-
 const getCurrentUser = (): CurrentUser => {
     const raw = localStorage.getItem('authUser');
-    const tokenPayload = parseJwtPayload();
-
     if (!raw) {
         return {
-            userId: tokenPayload?.user_id || tokenPayload?.id || tokenPayload?.sub || null,
-            email: tokenPayload?.email || null,
-            role: tokenPayload?.role ||
-                (Array.isArray(tokenPayload?.roles) ? tokenPayload?.roles[0] : tokenPayload?.roles) ||
-                null,
+            userId: null,
+            email: null,
+            role: null,
         };
     }
 
@@ -59,21 +29,17 @@ const getCurrentUser = (): CurrentUser => {
         };
 
         return {
-            userId: parsed.user_id || parsed.id || tokenPayload?.user_id || tokenPayload?.id || tokenPayload?.sub || null,
-            email: parsed.email || tokenPayload?.email || null,
+            userId: parsed.user_id || parsed.id || null,
+            email: parsed.email || null,
             role: parsed.role ||
                 (Array.isArray(parsed.roles) ? parsed.roles[0] : parsed.roles) ||
-                tokenPayload?.role ||
-                (Array.isArray(tokenPayload?.roles) ? tokenPayload?.roles[0] : tokenPayload?.roles) ||
                 null,
         };
     } catch {
         return {
-            userId: tokenPayload?.user_id || tokenPayload?.id || tokenPayload?.sub || null,
-            email: tokenPayload?.email || null,
-            role: tokenPayload?.role ||
-                (Array.isArray(tokenPayload?.roles) ? tokenPayload?.roles[0] : tokenPayload?.roles) ||
-                null,
+            userId: null,
+            email: null,
+            role: null,
         };
     }
 };
@@ -88,17 +54,13 @@ class ApiRequestError extends Error {
 }
 
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-    const token = localStorage.getItem('token');
     const headers = new Headers(init?.headers);
     headers.set('Content-Type', 'application/json');
-
-    if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-    }
 
     const response = await fetch(`${getBaseUrl()}${path}`, {
         ...init,
         headers,
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -174,8 +136,15 @@ const buildPaths = (adminPath: string, userPath: string, query = ''): string[] =
 };
 
 export const notificationsService = {
-    async getNotifications(limit = 50): Promise<NotificationsResponse> {
-        const query = buildQuery({ limit: String(limit) });
+    async getNotifications(limit = 20, offset = 0, unreadOnly = false): Promise<NotificationsResponse> {
+        const extraParams: Record<string, string> = {
+            limit: String(limit),
+            offset: String(offset),
+        };
+        if (unreadOnly) {
+            extraParams.unreadOnly = 'true';
+        }
+        const query = buildQuery(extraParams);
         return requestJsonWithFallback<NotificationsResponse>(
             buildPaths('/api/admin/notifications/', '/api/notifications/me', query),
             { method: 'GET' }

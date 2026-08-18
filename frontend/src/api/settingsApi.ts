@@ -14,9 +14,10 @@ const defaultSettings: SettingsData = {
         themePreference: savedTheme,
     },
     notifications: {
-        emailNotifications: true,
         newReviewAlerts: true,
-        weeklySummary: false,
+        weeklySummary: true,
+        groupInvitations: true,
+        subscriptionChanges: true,
     },
     security: {
         twoFactorAuth: true,
@@ -24,7 +25,6 @@ const defaultSettings: SettingsData = {
     },
     subscription: {
         plan: 'professional',
-        billingEmail: 'billing@grandplazahotel.com',
     },
     organizationInfo: {
         organizationName: 'Grand Plaza Hotel & Spa',
@@ -61,6 +61,10 @@ type UserProfile = {
     is_2fa_enabled?: boolean;
     is_2fa_feature_enabled?: boolean;
     is_email_notifications_enabled?: boolean;
+    is_new_review_alerts_enabled?: boolean;
+    is_weekly_summary_enabled?: boolean;
+    is_group_invitations_enabled?: boolean;
+    is_subscription_changes_enabled?: boolean;
 };
 
 export type PasswordChangePayload = {
@@ -78,15 +82,12 @@ const toApiPath = (path: string): string => {
 
 const settingsAxios = axios.create({
     baseURL: getApiBaseUrl(),
+    withCredentials: true,
 });
 
 settingsAxios.interceptors.request.use((config) => {
     config.baseURL = getApiBaseUrl();
-    const token = localStorage.getItem('token');
     config.headers = config.headers ?? {};
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
 
     if (!(config.data instanceof FormData)) {
         config.headers['Content-Type'] = 'application/json';
@@ -266,7 +267,10 @@ export const settingsApi = {
                 },
                 notifications: {
                     ...currentSettings.notifications,
-                    emailNotifications: profileResponse.data?.is_email_notifications_enabled ?? true,
+                    newReviewAlerts: profileResponse.data?.is_new_review_alerts_enabled ?? true,
+                    weeklySummary: profileResponse.data?.is_weekly_summary_enabled ?? true,
+                    groupInvitations: profileResponse.data?.is_group_invitations_enabled ?? true,
+                    subscriptionChanges: profileResponse.data?.is_subscription_changes_enabled ?? true,
                 },
             };
         } catch {
@@ -280,13 +284,27 @@ export const settingsApi = {
             await patchOrganizationInfoToBackend(updates.organizationInfo);
         }
         
-        if (updates.notifications && updates.notifications.emailNotifications !== undefined) {
-            try {
-                await settingsAxios.put(toApiPath('/users/me'), {
-                    is_email_notifications_enabled: updates.notifications.emailNotifications
-                });
-            } catch (err) {
-                console.error("Failed to update email notifications preference", err);
+        if (updates.notifications) {
+            const payload: Record<string, boolean> = {};
+            if (updates.notifications.newReviewAlerts !== undefined) {
+                payload.is_new_review_alerts_enabled = updates.notifications.newReviewAlerts;
+            }
+            if (updates.notifications.weeklySummary !== undefined) {
+                payload.is_weekly_summary_enabled = updates.notifications.weeklySummary;
+            }
+            if (updates.notifications.groupInvitations !== undefined) {
+                payload.is_group_invitations_enabled = updates.notifications.groupInvitations;
+            }
+            if (updates.notifications.subscriptionChanges !== undefined) {
+                payload.is_subscription_changes_enabled = updates.notifications.subscriptionChanges;
+            }
+
+            if (Object.keys(payload).length > 0) {
+                try {
+                    await settingsAxios.put(toApiPath('/users/me'), payload);
+                } catch (err) {
+                    console.error("Failed to update email notifications preference", err);
+                }
             }
         }
 
@@ -412,6 +430,38 @@ export const settingsApi = {
         );
 
         return Array.isArray(response.data) ? response.data : [];
+    },
+
+    addOrganizationRule: async (ruleText: string): Promise<{
+        rule_id: string;
+        rule_text: string;
+        rule_order: number;
+        is_embedded: boolean;
+        source_filename: string | null;
+        created_at: string | null;
+    }> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const response = await settingsAxios.post(
+            toApiPath(`/organizations/${orgId}/rules`),
+            { rule_text: ruleText }
+        );
+        return response.data;
+    },
+
+    deleteOrganizationRule: async (ruleId: string): Promise<{ message: string; rule_id: string }> => {
+        const orgId = getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const response = await settingsAxios.delete(
+            toApiPath(`/organizations/${orgId}/rules/${ruleId}`)
+        );
+        return response.data;
     },
 
     fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { validateImage } from '../../validators/fileValidator';
+import { validateImage, validateRulesFile } from '../../validators/fileValidator';
 
 
 describe('validateImage', () => {
@@ -52,3 +52,31 @@ describe('validateImage', () => {
         expect(() => validateImage(file)).not.toThrow();
     });
 });
+
+describe('validateRulesFile', () => {
+    const createMockFile = (sizeBytes: number, name = 'rules.pdf'): File => {
+        const buffer = new ArrayBuffer(sizeBytes);
+        return new File([buffer], name, { type: 'application/pdf' });
+    };
+
+    it('accepts rules file under 10MB', () => {
+        const file = createMockFile(5 * 1024 * 1024); // 5MB
+        expect(() => validateRulesFile(file)).not.toThrow();
+    });
+
+    it('accepts rules file exactly 10MB', () => {
+        const file = createMockFile(10 * 1024 * 1024); // 10MB
+        expect(() => validateRulesFile(file)).not.toThrow();
+    });
+
+    it('rejects rules file over 10MB', () => {
+        const file = createMockFile(10 * 1024 * 1024 + 1); // 10MB + 1 byte
+        expect(() => validateRulesFile(file)).toThrow('File size must be 10MB or less');
+    });
+
+    it('rejects 15MB rules file', () => {
+        const file = createMockFile(15 * 1024 * 1024); // 15MB
+        expect(() => validateRulesFile(file)).toThrow('File size must be 10MB or less');
+    });
+});
+

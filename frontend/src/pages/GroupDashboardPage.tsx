@@ -1010,7 +1010,7 @@ const GroupDashboardPage: React.FC = () => {
     <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
 
       {/* Sticky Header */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-[40] px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center justify-between gap-3 transition-all duration-300">
         <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={() => navigate('/groups')}
@@ -1061,7 +1061,7 @@ const GroupDashboardPage: React.FC = () => {
       </header>
 
       {/* Tabs bar */}
-      <div className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-8">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
           {visibleTabs.map(tab => (
             <button
@@ -1080,7 +1080,7 @@ const GroupDashboardPage: React.FC = () => {
       </div>
 
       {/* Tab content */}
-      <main className="w-full px-8 py-8 flex-1 max-w-[1600px] mx-auto">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex-1 max-w-[1600px] mx-auto">
         {activeTab === 'overview' && (
           <OverviewTab group={group} analytics={analytics} loadingAnalytics={loadingAnalytics} />
         )}

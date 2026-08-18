@@ -37,7 +37,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile, onUpdate, onSave, on
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField label="Email" name="email" value={profile.email} type="email" onChange={handleChange} placeholder="sarah.j@example.com" />
+                    <FormField label="Email Address" name="email" value={profile.email} type="email" onChange={handleChange} placeholder="sarah.j@example.com" readOnly />
                     <FormField label="Phone" name="phone" value={profile.phone} onChange={handleChange} placeholder="+1 (555) 000-0000" />
                 </div>
 

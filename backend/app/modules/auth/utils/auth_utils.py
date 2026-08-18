@@ -1,5 +1,5 @@
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import JWTError
@@ -44,23 +44,40 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # JWT Authentication
 # --------------------------------------------------
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ):
     """
-    Extract current user from JWT token
+    Extract current user from JWT token (via HttpOnly cookie or Authorization header fallback)
     """
+    token = None
+    if request is not None:
+        if hasattr(request, "cookies"):
+            token = request.cookies.get("access_token")
+        elif hasattr(request, "credentials"):
+            token = request.credentials.strip()
+        elif isinstance(request, str):
+            token = request.strip()
 
-    token = credentials.credentials.strip()
+    if not token and credentials:
+        if hasattr(credentials, "credentials"):
+            token = credentials.credentials.strip()
+        elif isinstance(credentials, str):
+            token = credentials.strip()
 
-    # Swagger users sometimes paste "Bearer <token>" into the authorize modal.
-    # HTTPBearer already handles the scheme, so strip it defensively if present.
-    if token.lower().startswith("bearer "):
+    if token and token.lower().startswith("bearer "):
         token = token[7:].strip()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated. Missing authentication token.",
+        )
 
     # A valid JWT has three dot-separated segments.
     if token.count(".") != 2:

@@ -3,6 +3,9 @@ Reviews repository — standardized SQL operations for the review processing pip
 """
 
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional, Dict
 from datetime import datetime
 
@@ -127,21 +130,44 @@ def insert_review_media(
 
 
 def get_pending_batch(cursor: pyodbc.Cursor, limit: int = 10) -> List[dict]:
-    """Fetch a batch of reviews that need AI processing."""
+    """Fetch a batch of reviews that need AI processing, atomically marking them as 'processing'."""
     sql = f"""
-        SELECT TOP {limit}
-            id, rating, reviewerName, text, 
-            positive_text, negative_text, heading,
-            CAST(reviewDate AS VARCHAR) as reviewDate, 
-            CAST(scrapedAt AS VARCHAR) as scrapedAt, 
-            source_id
-        FROM dbo.processed_review
-        WHERE status = 'pending'
-        ORDER BY scrapedAt ASC, id ASC
+        WITH CTE AS (
+            SELECT TOP {limit}
+                id,
+                rating,
+                reviewerName,
+                text,
+                positive_text,
+                negative_text,
+                heading,
+                reviewDate,
+                scrapedAt,
+                source_id,
+                status,
+                last_attempt
+            FROM dbo.processed_review WITH (rowlock, updlock, readpast)
+            WHERE status = 'pending'
+            ORDER BY scrapedAt ASC, id ASC
+        )
+        UPDATE CTE
+        SET status = 'processing', last_attempt = GETDATE()
+        OUTPUT 
+            inserted.id, 
+            inserted.rating, 
+            inserted.reviewerName, 
+            inserted.text, 
+            inserted.positive_text, 
+            inserted.negative_text, 
+            inserted.heading,
+            CAST(inserted.reviewDate AS VARCHAR) as reviewDate, 
+            CAST(inserted.scrapedAt AS VARCHAR) as scrapedAt, 
+            inserted.source_id
     """
     cursor.execute(sql)
     columns = [column[0] for column in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
 
 
 def fetch_all_reviews_enriched(
@@ -235,12 +261,10 @@ def fetch_all_reviews_enriched(
             if filters.get("status"):
                 status_filters = []
                 for s in filters["status"]:
-                    if s == "Pending":
+                    if s.lower() == "pending":
                         status_filters.append(ProcessedReview.status == 'pending')
-                    elif s == "Replied":
-                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
-                    elif s == "AI Draft":
-                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                    elif s.lower() == "processed":
+                        status_filters.append(ProcessedReview.status == 'processed')
                 if status_filters:
                     query = query.filter(or_(*status_filters))
 
@@ -331,23 +355,37 @@ def get_review_options(organization_id: str, db: Session = None) -> Dict[str, Li
         ).distinct().all()
         source_list = [s[0] for s in sources]
 
-        # 2. Get Categories (Using native OPENJSON for performance)
-        # SQLAlchemy doesn't natively support OPENJSON well, so we use a text query for this specific part
+        # 2. Get Categories (Using the dedicated review_category table)
         from sqlalchemy import text
         cat_sql = text("""
-            SELECT DISTINCT 
-                COALESCE(JSON_VALUE(c.value, '$.name'), c.value) as category_name
-            FROM dbo.processed_review r
+            SELECT DISTINCT rc.name as category_name
+            FROM dbo.review_category rc
+            JOIN dbo.processed_review r ON rc.review_id = r.id
             JOIN dbo.source s ON r.source_id = s.source_id
-            CROSS APPLY OPENJSON(r.categories) AS c
-            WHERE s.organization_id = :org_id AND r.status = 'processed'
+            WHERE s.organization_id = :org_id
         """)
         categories = db.execute(cat_sql, {"org_id": organization_id}).fetchall()
-        cat_list = [c[0] for c in categories if c[0]]
+        
+        # Strip, casefold-deduplicate, and preserve original display casing
+        seen = {}
+        for c in categories:
+            value = c[0]
+            if not value:
+                continue
+
+            cleaned = value.strip()
+            if not cleaned:
+                continue
+
+            key = cleaned.casefold()
+            seen.setdefault(key, cleaned)
+
+        cat_list = sorted(seen.values(), key=str.casefold)
+        logger.info(f"OPTIONS RETURNED FOR {organization_id}: {cat_list}")
 
         return {
             "sources": sorted(source_list),
-            "categories": sorted(cat_list)
+            "categories": cat_list
         }
     finally:
         if should_close: db.close()
@@ -424,12 +462,10 @@ def get_review_stats(organization_id: str, filters: Optional[dict] = None, db: S
             if filters.get("status"):
                 status_filters = []
                 for s in filters["status"]:
-                    if s == "Pending":
+                    if s.lower() == "pending":
                         status_filters.append(ProcessedReview.status == 'pending')
-                    elif s == "Replied":
-                        status_filters.append(ProcessedReview.ai_reply.isnot(None))
-                    elif s == "AI Draft":
-                        status_filters.append(and_(ProcessedReview.status == 'processed', ProcessedReview.ai_reply.is_(None)))
+                    elif s.lower() == "processed":
+                        status_filters.append(ProcessedReview.status == 'processed')
                 if status_filters:
                     query = query.filter(or_(*status_filters))
 
@@ -505,7 +541,7 @@ def get_processing_metrics(
     rows = cursor.fetchall()
 
     # Initialize counts
-    metrics = {"pending": 0, "processed": 0, "failed": 0, "total": 0}
+    metrics = {"pending": 0, "processing": 0, "processed": 0, "failed": 0, "total": 0}
 
     for status_str, count in rows:
         status_key = status_str.lower()

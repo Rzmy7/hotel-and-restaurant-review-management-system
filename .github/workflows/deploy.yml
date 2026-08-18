@@ -30,6 +30,14 @@ on:
         required: false
         type: boolean
         default: false
+      runner_type:
+        description: 'Runner to use'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - self-hosted
 
 env:
   REGISTRY: ghcr.io
@@ -43,7 +51,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════
 
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     outputs:
       frontend: ${{ steps.check.outputs.frontend }}
       admin-frontend: ${{ steps.check.outputs.admin-frontend }}
@@ -54,6 +62,7 @@ jobs:
       deploy-backend: ${{ steps.check.outputs.deploy-backend }}
       deploy-embedding: ${{ steps.check.outputs.deploy-embedding }}
       deploy-scraper: ${{ steps.check.outputs.deploy-scraper }}
+      deploy-single-vps: ${{ steps.check.outputs.deploy-single-vps }}
     steps:
       - name: Fix workspace permissions
         run: docker run --rm -v "${{ github.workspace }}:/workspace" alpine sh -c "chown -R $(id -u):$(id -g) /workspace" || true
@@ -76,6 +85,7 @@ jobs:
             echo "deploy-backend=true" >> $GITHUB_OUTPUT
             echo "deploy-embedding=true" >> $GITHUB_OUTPUT
             echo "deploy-scraper=true" >> $GITHUB_OUTPUT
+            echo "deploy-single-vps=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -136,6 +146,9 @@ jobs:
             check_path "scraper" "microservices/scraper_engine/"
             check_path "deploy-scraper" "deploy/server4-scraper/"
           fi
+
+          # Single VPS configs
+          check_path "deploy-single-vps" "deploy/single-vps/"
 
   # ═══════════════════════════════════════════════════════════════════
   # TEST GATES — run tests before building (only for changed components)
@@ -308,7 +321,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -342,7 +355,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs['admin-frontend'] == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -378,7 +391,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -409,7 +422,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.outputs.embedding == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -437,7 +450,7 @@ jobs:
   build-scraper:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.scraper == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
@@ -479,7 +492,8 @@ jobs:
         needs.detect-changes.outputs.deploy-frontends == 'true' ||
         needs.detect-changes.outputs.deploy-backend == 'true' ||
         needs.detect-changes.outputs.deploy-embedding == 'true' ||
-        needs.detect-changes.outputs.deploy-scraper == 'true'
+        needs.detect-changes.outputs.deploy-scraper == 'true' ||
+        needs.detect-changes.outputs['deploy-single-vps'] == 'true'
       ) &&
       !(
         needs.build-frontend.result == 'failure' ||
@@ -488,9 +502,12 @@ jobs:
         needs.build-embedding.result == 'failure' ||
         needs.build-scraper.result == 'failure'
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_type || 'ubuntu-latest' }}
     steps:
       - uses: appleboy/ssh-action@v1
+        env:
+          RAW_BASE: ${{ env.RAW_BASE }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.SINGLE_VPS_HOST || secrets.FRONTEND_HOST }}
           username: ${{ secrets.USER }}
@@ -502,10 +519,34 @@ jobs:
             cd /opt/reviewmate
             
             # Sync config files from repo (auth required for private repos)
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/docker-compose.yml" -o docker-compose.yml.tmp && mv docker-compose.yml.tmp docker-compose.yml
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/nginx/nginx.conf" -o deploy/single-vps/nginx/nginx.conf.tmp && mv deploy/single-vps/nginx/nginx.conf.tmp deploy/single-vps/nginx/nginx.conf
-            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/init-ssl.sh" -o init-ssl.sh.tmp && mv init-ssl.sh.tmp init-ssl.sh
-            chmod +x init-ssl.sh
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/docker-compose.yml" -o docker-compose.yml.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/docker-compose.yml" -o docker-compose.yml.tmp
+            if [ -s docker-compose.yml.tmp ]; then
+              mv docker-compose.yml.tmp docker-compose.yml
+              echo "docker-compose.yml updated successfully"
+            else
+              echo "Warning: docker-compose.yml download failed or is empty"
+              rm -f docker-compose.yml.tmp
+            fi
+            
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/nginx/nginx.conf" -o deploy/single-vps/nginx/nginx.conf.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/nginx/nginx.conf" -o deploy/single-vps/nginx/nginx.conf.tmp
+            if [ -s deploy/single-vps/nginx/nginx.conf.tmp ]; then
+              mv deploy/single-vps/nginx/nginx.conf.tmp deploy/single-vps/nginx/nginx.conf
+              echo "nginx.conf updated successfully"
+            else
+              rm -f deploy/single-vps/nginx/nginx.conf.tmp
+            fi
+
+            curl -sfL -H "Authorization: Bearer $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/init-ssl.sh" -o init-ssl.sh.tmp || \
+            curl -sfL -H "Authorization: token $GHCR_TOKEN" "$RAW_BASE/deploy/single-vps/init-ssl.sh" -o init-ssl.sh.tmp
+            if [ -s init-ssl.sh.tmp ]; then
+              mv init-ssl.sh.tmp init-ssl.sh
+              chmod +x init-ssl.sh
+              echo "init-ssl.sh updated successfully"
+            else
+              rm -f init-ssl.sh.tmp
+            fi
             
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull

@@ -19,11 +19,10 @@ from app.modules.admin.schemas import (
     AdminUserUpdatePayload,
     AdminPasswordChangePayload,
     AdminProfileUpdatePayload,
+    AdminProfileResponse,
     FeatureFlagUpdatePayload,
     GeneralSettingsPayload,
     ReplyGenerationSettingsPayload,
-    GeminiApiKeySavePayload,
-    GeminiApiKeyTestPayload,
     DashboardStats,
     OrganizationUpdatePayload,
     DeleteUserResponse,
@@ -414,3 +413,29 @@ class TestStatisticsResponse:
     def test_valid(self):
         model = StatisticsResponse(total=100, sent=80, scheduled=10, failed=10)
         assert model.total == 100
+
+
+class TestAdminProfileSchemas:
+    """Tests for AdminProfileResponse and AdminProfileUpdatePayload schemas."""
+
+    def test_valid_profile_response(self):
+        model = AdminProfileResponse(name="Test Admin", email="admin@test.com")
+        assert model.name == "Test Admin"
+        assert model.email == "admin@test.com"
+
+    def test_invalid_email_profile_response(self):
+        with pytest.raises(ValidationError):
+            AdminProfileResponse(name="Test Admin", email="invalid-email")
+
+    def test_valid_profile_update(self):
+        model = AdminProfileUpdatePayload(name="New Name", email="new@test.com")
+        assert model.name == "New Name"
+        assert model.email == "new@test.com"
+
+    def test_invalid_name_profile_update(self):
+        with pytest.raises(ValidationError):
+            AdminProfileUpdatePayload(name="", email="new@test.com")
+
+        with pytest.raises(ValidationError):
+            AdminProfileUpdatePayload(name="a" * 201, email="new@test.com")
+

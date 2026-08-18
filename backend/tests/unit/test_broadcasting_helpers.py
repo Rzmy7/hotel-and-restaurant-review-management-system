@@ -25,13 +25,12 @@ def get_audience_label(audience_type: str, audience_value=None) -> str:
         role_labels = {"admin": "Admins only", "user": "Users (non-admin)"}
         return f"Role: {role_labels.get(audience_value, 'Unknown')}"
     if audience_type == "plan":
-        plan_labels = {
-            "free": "Free plan",
-            "starter": "Starter plan",
-            "professional": "Professional plan",
-            "enterprise": "Enterprise plan",
-        }
-        return f"Plan: {plan_labels.get(audience_value, 'Unknown')}"
+        plan_name = (audience_value or "").strip()
+        if not plan_name:
+            return "Plan: Unknown"
+        if plan_name.lower().endswith("plan"):
+            return f"Plan: {plan_name.title()}"
+        return f"Plan: {plan_name.title()} plan"
     return "Unknown"
 
 
@@ -94,9 +93,11 @@ class TestGetAudienceLabel:
     def test_plan_enterprise(self):
         assert get_audience_label("plan", "enterprise") == "Plan: Enterprise plan"
 
-    def test_plan_unknown(self):
-        result = get_audience_label("plan", "premium")
-        assert "Unknown" in result
+    def test_plan_custom(self):
+        assert get_audience_label("plan", "diamond") == "Plan: Diamond plan"
+
+    def test_plan_empty(self):
+        assert get_audience_label("plan", "") == "Plan: Unknown"
 
     def test_unknown_audience_type(self):
         assert get_audience_label("custom") == "Unknown"

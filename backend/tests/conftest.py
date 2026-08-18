@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # ── Patch env vars BEFORE any app code is imported ──────────────────
-os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
+os.environ["DATABASE_URL"] = "sqlite:///test.db"
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-unit-tests")
 os.environ.setdefault("SECRET_KEY", "test-session-secret")
 os.environ.setdefault("DB_SERVER", "localhost")

@@ -58,6 +58,19 @@ class SourceService:
         try:
             # 1. Broadly find all sources for this URL
             all_sources = session.query(Source).filter_by(source_url=url).all()
+            source_ids = {str(s.source_id) for s in all_sources}
+            
+            if primary_source_id not in source_ids:
+                # Ensure primary source is present in iteration
+                primary_src = session.query(Source).filter_by(source_id=primary_source_id).first()
+                if primary_src:
+                    all_sources.append(primary_src)
+                else:
+                    # Create dummy/auto source for standalone API call
+                    primary_src = Source(source_id=primary_source_id, platform_name="agoda", source_url=url, status="RUNNING")
+                    session.add(primary_src)
+                    session.commit()
+                    all_sources.append(primary_src)
             
             for source in all_sources:
                 sid = str(source.source_id)

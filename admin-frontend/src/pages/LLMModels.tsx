@@ -17,7 +17,10 @@ import {
   llmModelService,
 } from '../services/llmModelService';
 import type {
+  LLMAssignmentsUpdatePayload,
   LLMModel,
+  LLMPurpose,
+  LLMTestStatus,
 } from '../services/llmModelService';
 import LLMModelsSkeleton from './LLMModelsSkeleton';
 import Skeleton from '../components/shared/Skeleton';
@@ -31,8 +34,24 @@ const COMMON_ENDPOINTS = [
   { label: 'OpenRouter', value: 'https://openrouter.ai/api/v1' },
   { label: 'Mistral', value: 'https://api.mistral.ai/v1' },
   { label: 'DeepSeek', value: 'https://api.deepseek.com/v1' },
+  { label: 'DigitalOcean GenAI', value: 'https://inference.do-ai.run/v1' },
   { label: 'Custom…', value: '' },
 ];
+
+const ASSIGNMENT_PURPOSES: { key: LLMPurpose; label: string; desc: string }[] = [
+  { key: 'review_processing',   label: 'Review Processing',         desc: 'Batch sentiment analysis (runs automatically)' },
+  { key: 'reply_generation',    label: 'Reply Generation',          desc: 'On-demand guest reply generation' },
+  { key: 'insights',            label: 'Insights',                  desc: 'Dashboard and admin insight summaries' },
+  { key: 'competitor_analysis', label: 'Competitor Insights',       desc: 'Competitor scraping and comparison analysis' },
+  { key: 'rule_extraction',     label: 'Rules Document Separation', desc: 'Splitting uploaded rule documents into individual rules' },
+];
+
+type AssignmentDraft = Record<LLMPurpose, string>;
+
+const EMPTY_ASSIGNMENTS = ASSIGNMENT_PURPOSES.reduce(
+  (acc, { key }) => ({ ...acc, [key]: '' }),
+  {} as AssignmentDraft,
+);
 
 interface ModelFormState {
   name: string;
@@ -46,16 +65,48 @@ const EMPTY_FORM: ModelFormState = { name: '', endpoint: '', model_name: '', api
 
 // ── sub-components ────────────────────────────────────────────────────
 
-interface StatusBadgeProps { active: boolean }
-const StatusBadge: React.FC<StatusBadgeProps> = ({ active }) => (
-  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-    active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-           : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
-  }`}>
-    <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-    {active ? 'Active' : 'Inactive'}
-  </span>
-);
+// The Status column reports the last connectivity test, not registration state —
+// every listed model is registered, so `is_active` could only ever read "Active".
+const STATUS_META: Record<LLMTestStatus, { label: string; dot: string; chip: string }> = {
+  untested:    { label: 'Not Tested',  dot: 'bg-gray-400',    chip: 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400' },
+  ok:          { label: 'Working',     dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  auth_error:  { label: 'Auth Failed', dot: 'bg-red-500',     chip: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  quota_error: { label: 'No Credits',  dot: 'bg-amber-500',   chip: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  model_error: { label: 'Bad Model',   dot: 'bg-amber-500',   chip: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  unreachable: { label: 'Unreachable', dot: 'bg-red-500',     chip: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  error:       { label: 'Failed',      dot: 'bg-red-500',     chip: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+};
+
+const formatTestedAt = (iso: string | null): string => {
+  if (!iso) return 'never tested';
+  // Backend stores UTC without a timezone marker; mark it so the browser localises it.
+  const d = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 1440)}d ago`;
+};
+
+interface StatusBadgeProps { model: LLMModel }
+const StatusBadge: React.FC<StatusBadgeProps> = ({ model }) => {
+  const meta = STATUS_META[model.last_test_status] ?? STATUS_META.error;
+  return (
+    <div className="flex flex-col gap-1 items-start">
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.chip}`}
+        title={model.last_test_message || 'Click Test to check this model'}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+        {meta.label}
+      </span>
+      <span className="text-[10px] text-gray-400 dark:text-slate-500">
+        {formatTestedAt(model.last_tested_at)}
+      </span>
+    </div>
+  );
+};
 
 // ── main component ────────────────────────────────────────────────────
 
@@ -78,7 +129,7 @@ export const LLMModels: React.FC = () => {
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   // assignment state
-  const [assignDraft, setAssignDraft] = useState({ review_processing: '', reply_generation: '' });
+  const [assignDraft, setAssignDraft] = useState<AssignmentDraft>(EMPTY_ASSIGNMENTS);
   const [savingAssign, setSavingAssign] = useState(false);
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
 
@@ -95,10 +146,12 @@ export const LLMModels: React.FC = () => {
         llmModelService.getAssignments(),
       ]);
       setModels(modelList);
-      setAssignDraft({
-        review_processing: assignData.review_processing_model_id || '',
-        reply_generation: assignData.reply_generation_model_id || '',
-      });
+      setAssignDraft(
+        ASSIGNMENT_PURPOSES.reduce(
+          (acc, { key }) => ({ ...acc, [key]: assignData[`${key}_model_id`] || '' }),
+          {} as AssignmentDraft,
+        ),
+      );
     } catch (e: any) {
       setError(e.message || 'Failed to load models.');
     } finally {
@@ -165,6 +218,8 @@ export const LLMModels: React.FC = () => {
     try {
       const result = await llmModelService.test(id);
       setTestResults(prev => ({ ...prev, [id]: result }));
+      // The backend stored this outcome — reload so the Status badge reflects it.
+      await load();
     } catch (e: any) {
       setTestResults(prev => ({ ...prev, [id]: { success: false, message: e.message } }));
     } finally {
@@ -226,10 +281,12 @@ export const LLMModels: React.FC = () => {
     setSavingAssign(true);
     setAssignMsg(null);
     try {
-      await llmModelService.setAssignments({
-        review_processing_model_id: assignDraft.review_processing || null,
-        reply_generation_model_id: assignDraft.reply_generation || null,
-      });
+      await llmModelService.setAssignments(
+        ASSIGNMENT_PURPOSES.reduce(
+          (acc, { key }) => ({ ...acc, [`${key}_model_id`]: assignDraft[key] || null }),
+          {} as LLMAssignmentsUpdatePayload,
+        ),
+      );
       setAssignMsg('Assignments saved successfully.');
       await load();
     } catch (e: any) {
@@ -336,7 +393,7 @@ export const LLMModels: React.FC = () => {
                       <span className="text-gray-600 dark:text-slate-300 font-mono text-xs">{model.max_tokens}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge active={model.is_active} />
+                      <StatusBadge model={model} />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -398,10 +455,7 @@ export const LLMModels: React.FC = () => {
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Choose which model handles each AI task</p>
         </div>
         <div className="p-6 space-y-5">
-          {([
-            { key: 'review_processing', label: 'Review Processing', desc: 'Batch sentiment analysis (runs automatically)' },
-            { key: 'reply_generation',  label: 'Reply Generation',  desc: 'On-demand guest reply generation' },
-          ] as const).map(({ key, label, desc }) => (
+          {ASSIGNMENT_PURPOSES.map(({ key, label, desc }) => (
             <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="sm:w-56 shrink-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
@@ -459,6 +513,7 @@ export const LLMModels: React.FC = () => {
                   value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="e.g. Groq Llama-3 Production"
+                  autoComplete="off"
                   className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
                 />
               </div>
@@ -488,6 +543,7 @@ export const LLMModels: React.FC = () => {
                   value={form.endpoint}
                   onChange={e => setForm(p => ({ ...p, endpoint: e.target.value }))}
                   placeholder="https://api.groq.com/openai/v1"
+                  autoComplete="off"
                   className="w-full mt-2 px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
                 />
               </div>
@@ -500,6 +556,7 @@ export const LLMModels: React.FC = () => {
                   value={form.model_name}
                   onChange={e => setForm(p => ({ ...p, model_name: e.target.value }))}
                   placeholder="e.g. llama-3.3-70b-versatile"
+                  autoComplete="off"
                   className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
                 />
                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
@@ -518,6 +575,7 @@ export const LLMModels: React.FC = () => {
                     value={form.api_key}
                     onChange={e => setForm(p => ({ ...p, api_key: e.target.value }))}
                     placeholder={editingId ? 'Enter new key to replace…' : 'sk-…'}
+                    autoComplete="new-password"
                     className="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none font-mono"
                   />
                   <button

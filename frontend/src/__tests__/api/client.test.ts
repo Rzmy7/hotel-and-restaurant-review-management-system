@@ -166,6 +166,93 @@ describe('handleResponse (error behavior)', () => {
 
         vi.unstubAllGlobals();
     });
+
+    it('bypasses redirect on 401 response for /auth/me', async () => {
+        const fetchSpy = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ detail: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+        vi.stubGlobal('fetch', fetchSpy);
+        
+        // Mock window.location
+        const originalLocation = window.location;
+        const mockLocation = {
+            pathname: '/dashboard',
+            href: ''
+        };
+        delete (window as any).location;
+        window.location = mockLocation as any;
+
+        const { apiClient } = await import('../../api/client');
+        await expect(apiClient.get('/auth/me')).rejects.toThrow();
+
+        expect(mockLocation.href).toBe(''); // No redirect!
+
+        // Cleanup
+        delete (window as any).location;
+        window.location = originalLocation;
+        vi.unstubAllGlobals();
+    });
+
+    it('redirects on 401 response for other routes when not on /login', async () => {
+        const fetchSpy = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ detail: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+        vi.stubGlobal('fetch', fetchSpy);
+        
+        // Mock window.location
+        const originalLocation = window.location;
+        const mockLocation = {
+            pathname: '/dashboard',
+            href: ''
+        };
+        delete (window as any).location;
+        window.location = mockLocation as any;
+
+        const { apiClient } = await import('../../api/client');
+        await expect(apiClient.get('/other-route')).rejects.toThrow();
+
+        expect(mockLocation.href).toBe('/login?expired=true'); // Redirected!
+
+        // Cleanup
+        delete (window as any).location;
+        window.location = originalLocation;
+        vi.unstubAllGlobals();
+    });
+
+    it('bypasses redirect on 401 response when on public routes like /reset-password', async () => {
+        const fetchSpy = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ detail: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+        vi.stubGlobal('fetch', fetchSpy);
+        
+        // Mock window.location on /reset-password route
+        const originalLocation = window.location;
+        const mockLocation = {
+            pathname: '/reset-password/test-token-123',
+            href: ''
+        };
+        delete (window as any).location;
+        window.location = mockLocation as any;
+
+        const { apiClient } = await import('../../api/client');
+        await expect(apiClient.get('/user/organizations')).rejects.toThrow();
+
+        expect(mockLocation.href).toBe(''); // No redirect!
+
+        // Cleanup
+        delete (window as any).location;
+        window.location = originalLocation;
+        vi.unstubAllGlobals();
+    });
 });
 
 

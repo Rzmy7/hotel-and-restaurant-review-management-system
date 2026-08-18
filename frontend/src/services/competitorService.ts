@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 
 // ---------- Types ----------
 
@@ -31,16 +32,31 @@ export interface KpiData {
     gap:        number;
 }
 
+/** Confidence-adjusted rating KPI — nullable when a side has no reviews at all. */
+export interface AdjustedKpiData {
+    myHotel:    number | null;
+    competitor: number | null;
+    gap:        number | null;
+}
+
 export interface ComparisonData {
     competitor: Competitor;
     myOrganizationName: string;
     kpis: {
         avgRating:       KpiData;
+        /** Volume-weighted Bayesian mean — see backend services/scoring.py */
+        adjustedRating:  AdjustedKpiData;
         reviewCount:     KpiData;
         positivePercent: KpiData;
         negativePercent: KpiData;
     };
-    aspectData:   { subject: string; myHotel: number; competitor: number; fullMark: number }[];
+    /**
+     * Aspect scores. `myHotel`/`competitor` are null when that property has no
+     * reviews mentioning the aspect — absent evidence, not a score of zero, so
+     * the radar leaves a gap instead of plotting the axis at 0.
+     * `delta` is positive when your property leads, null when either side is null.
+     */
+    aspectData:   { subject: string; myHotel: number | null; competitor: number | null; delta: number | null; fullMark: number }[];
     trendData:    { name: string; myHotel: number | null; competitor: number | null }[];
     sentimentData:{ name: string; myHotel: number; competitor: number }[];
 }
@@ -50,6 +66,8 @@ export interface RankingEntry {
     name:      string;
     isYou:     boolean;
     rating:    number;
+    /** Bayesian-adjusted rating — this is what rank is sorted on. */
+    adjustedRating: number | null;
     sentiment: number;
     reviews:   number;
 }
@@ -59,6 +77,8 @@ export interface RankingsData {
     yourRank:         number;
     totalCompetitors: number;
     topPerformer:     RankingEntry | null;
+    /** Population prior the Bayesian adjustment shrank toward. */
+    ratingPrior:      number | null;
 }
 
 export interface AiInsights {
@@ -87,7 +107,10 @@ export async function addCompetitor(organizationId: string, params: {
     location_url: string;
     sources: CompetitorSourceInput[];
 }): Promise<{ message: string; competitor: Competitor }> {
-    return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors/?organization_id=${organizationId}`, params);
+    return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors/?organization_id=${organizationId}`, params, {
+        activity: ActivityMessages.ADD_COMPETITOR,
+        showSuccess: false
+    });
 }
 
 export interface SuggestedCompetitor {
@@ -113,33 +136,51 @@ export async function fetchSuggestedCompetitors(organizationId: string): Promise
 export async function addCompetitorFromOrganization(organizationId: string, target_organization_id: string):
     Promise<{ message: string; competitor: Competitor }> {
     return apiClient.post<{ message: string; competitor: Competitor }>(
-        `/competitors/from-organization?organization_id=${organizationId}`, { organization_id: target_organization_id }
+        `/competitors/from-organization?organization_id=${organizationId}`, { organization_id: target_organization_id }, {
+            activity: ActivityMessages.ADD_COMPETITOR,
+            showSuccess: false
+        }
     );
 }
 
 /** User: start tracking a competitor from the available pool */
 export async function trackCompetitor(organizationId: string, competitorId: string): Promise<{ message: string; competitor: Competitor }> {
-    return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors/track?organization_id=${organizationId}`, { competitorId });
+    return apiClient.post<{ message: string; competitor: Competitor }>(`/competitors/track?organization_id=${organizationId}`, { competitorId }, {
+        activity: ActivityMessages.ADD_COMPETITOR,
+        showSuccess: false
+    });
 }
 
 /** User: stop tracking a competitor */
 export async function untrackCompetitor(organizationId: string, competitorId: string): Promise<{ message: string }> {
-    return apiClient.post<{ message: string }>(`/competitors/untrack?organization_id=${organizationId}`, { competitorId });
+    return apiClient.post<{ message: string }>(`/competitors/untrack?organization_id=${organizationId}`, { competitorId }, {
+        activity: ActivityMessages.DELETE_COMPETITOR,
+        showSuccess: false
+    });
 }
 
 /** Admin: permanently delete a competitor */
 export async function deleteCompetitor(organizationId: string, competitorId: string): Promise<{ message: string }> {
-    return apiClient.delete<{ message: string }>(`/competitors/${competitorId}?organization_id=${organizationId}`);
+    return apiClient.delete<{ message: string }>(`/competitors/${competitorId}?organization_id=${organizationId}`, {
+        activity: ActivityMessages.DELETE_COMPETITOR,
+        showSuccess: false
+    });
 }
 
 /** User: edit a competitor's display name and location */
 export async function editCompetitor(organizationId: string, competitorId: string, params: { name: string; location_url: string }): Promise<{ message: string; competitor: Competitor }> {
-    return apiClient.put<{ message: string; competitor: Competitor }>(`/competitors/${competitorId}?organization_id=${organizationId}`, params);
+    return apiClient.put<{ message: string; competitor: Competitor }>(`/competitors/${competitorId}?organization_id=${organizationId}`, params, {
+        activity: ActivityMessages.UPDATE_COMPETITOR,
+        showSuccess: false
+    });
 }
 
 /** Trigger scraping for a competitor's Booking.com page */
 export async function scrapeCompetitor(competitorId: string, headless = true): Promise<{ message: string; competitorId: string }> {
-    return apiClient.post<{ message: string; competitorId: string }>(`/competitors/${competitorId}/scrape`, { headless });
+    return apiClient.post<{ message: string; competitorId: string }>(`/competitors/${competitorId}/scrape`, { headless }, {
+        activity: ActivityMessages.REFRESH_COMPETITOR,
+        showSuccess: false
+    });
 }
 
 /** Get rankings: your hotel + all tracked competitors */

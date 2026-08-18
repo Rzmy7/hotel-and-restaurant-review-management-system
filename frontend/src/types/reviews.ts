@@ -10,7 +10,7 @@ export interface Review {
     source: string;
     date: string;
     reviewDate?: string;
-    status: 'pending' | 'processed' | 'Replied' | 'AI Draft' | 'Archived' | 'Flagged';
+    status: 'pending' | 'processed';
     language?: string;
     photos?: { id: number; src: string; alt: string }[];
     keyPhrases?: string[];
@@ -28,6 +28,7 @@ export interface Review {
     negativeText?: string;
     sentimentScore?: number;
     aiReply?: string;
+    ai_reply?: string;
 }
 
 export interface ReviewStats {

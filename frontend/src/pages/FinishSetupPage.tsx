@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetupLayout from '../components/shared/SetupLayout';
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { getApiBaseUrl } from '../config/api';
+import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 const SETUP_DRAFT_CONFIG_KEY = 'setup_draft_config';
 const SETUP_SNAPSHOT_CURRENT_ORG_KEY = 'setup_snapshot_current_organization';
@@ -33,6 +35,7 @@ const clearSetupDraftState = () => {
 const FinishSetupPage = () => {
   const navigate = useNavigate();
   const { user, persist } = useAuth();
+  const fetchOrganizations = useOrganizationStore((state) => state.fetchOrganizations);
   const [isFinishing, setIsFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const showUpgradePlanAction =
@@ -75,7 +78,10 @@ const FinishSetupPage = () => {
         }))
       };
 
-      const response = await apiClient.post<any>(`/api/organizations/${tenantId}`, payload);
+      const response = await apiClient.post<any>(`/api/organizations/${tenantId}`, payload, {
+        activity: ActivityMessages.CREATE_ORG,
+        showSuccess: false
+      });
       
       const organizationId = response?.organization_id;
       const accessToken = response?.access_token;
@@ -93,12 +99,9 @@ const FinishSetupPage = () => {
             const formData = new FormData();
             formData.append('file', rulesFile);
 
-            const token = localStorage.getItem('token') || accessToken;
-            const baseUrl = getApiBaseUrl();
-            await fetch(`${baseUrl.replace(/\/$/, '')}/api/organizations/${organizationId}/upload-rules`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` },
-              body: formData,
+            await apiClient.post(`/organizations/${organizationId}/upload-rules`, formData, {
+              activity: ActivityMessages.UPLOAD_RULES,
+              showSuccess: false
             });
           } catch (rulesErr) {
             console.warn('Rules file upload failed (non-blocking):', rulesErr);
@@ -129,6 +132,9 @@ const FinishSetupPage = () => {
         localStorage.setItem('setupComplete', 'true');
         
         clearSetupDraftState();
+
+        // Sync the organization store state immediately so that the navigation route checker sees the organization
+        await fetchOrganizations();
         
         // Wait briefly for the "success" feel
         setTimeout(() => {

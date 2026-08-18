@@ -1,5 +1,5 @@
 -- Create the organization_rule table for storing extracted rules & regulations
--- This table stores individual rules parsed from uploaded documents via Gemini AI
+-- This table stores individual rules parsed from uploaded documents via LLM AI
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'organization_rule')
 BEGIN

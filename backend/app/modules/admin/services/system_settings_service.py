@@ -9,10 +9,7 @@ DEFAULT_TIMEZONE = "UTC"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_DATE_FORMAT = "MM/DD/YYYY"
 DEFAULT_CURRENCY = "USD ($)"
-DEFAULT_REPLY_PROVIDER = "google"
 DEFAULT_SIMILAR_REVIEWS_COUNT = 3
-DEFAULT_REPLY_GOOGLE_MODEL = "gemini-2.5-flash-lite"
-DEFAULT_REPLY_SELECTED_MODEL = DEFAULT_REPLY_GOOGLE_MODEL
 DEFAULT_REPLY_USE_EMBEDDING_RULES = True
 DEFAULT_REPLY_USE_SIMILAR_REVIEWS = True
 DEFAULT_USER_SESSION_TIMEOUT_MINUTES = 60
@@ -97,13 +94,6 @@ def get_system_timezone(cursor: pyodbc.Cursor) -> str:
     return DEFAULT_TIMEZONE
 
 
-def get_reply_provider(cursor: pyodbc.Cursor) -> str:
-    value = (get_setting(cursor, "reply_provider") or "").strip().lower()
-    if value == "google":
-        return value
-    return DEFAULT_REPLY_PROVIDER
-
-
 def get_similar_reviews_count(cursor: pyodbc.Cursor) -> int:
     value = (get_setting(cursor, "reply_similar_reviews_count") or "").strip()
     if not value:
@@ -173,6 +163,32 @@ def set_review_batch_size(cursor: pyodbc.Cursor, size: int) -> int:
     clamped = max(REVIEW_BATCH_SIZE_MIN, min(REVIEW_BATCH_SIZE_MAX, int(size)))
     set_setting(cursor, "review_batch_size", str(clamped))
     return clamped
+
+
+# Parallel review processing batches - how many batches of size review_batch_size can run concurrently.
+REVIEW_PARALLEL_BATCHES_DEFAULT = 1
+REVIEW_PARALLEL_BATCHES_MIN = 1
+REVIEW_PARALLEL_BATCHES_MAX = 10
+
+
+def get_review_parallel_batches(cursor: pyodbc.Cursor) -> int:
+    """Return the configured number of parallel review processing batches, clamped to [min, max]."""
+    value = (get_setting(cursor, "review_parallel_batches") or "").strip()
+    if not value:
+        return REVIEW_PARALLEL_BATCHES_DEFAULT
+    try:
+        parsed = int(value)
+    except ValueError:
+        return REVIEW_PARALLEL_BATCHES_DEFAULT
+    return max(REVIEW_PARALLEL_BATCHES_MIN, min(REVIEW_PARALLEL_BATCHES_MAX, parsed))
+
+
+def set_review_parallel_batches(cursor: pyodbc.Cursor, count: int) -> int:
+    """Persist a validated parallel batches count. Returns the clamped value that was saved."""
+    clamped = max(REVIEW_PARALLEL_BATCHES_MIN, min(REVIEW_PARALLEL_BATCHES_MAX, int(count)))
+    set_setting(cursor, "review_parallel_batches", str(clamped))
+    return clamped
+
 
 
 def get_session_timeout_minutes(cursor: pyodbc.Cursor, role: str) -> int:

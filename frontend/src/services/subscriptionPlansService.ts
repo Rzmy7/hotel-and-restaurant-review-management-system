@@ -1,4 +1,5 @@
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 
 export interface SubscriptionPlanFeature {
     id: string;
@@ -63,6 +64,9 @@ export const fetchUserOrganizations = (): Promise<UserOrganizationSummary[]> => 
 
 export const updateTenantPlan = (planId: string): Promise<{ message: string, plan_id: string }> => {
     return apiClient.put<{ message: string, plan_id: string }>('/tenant/plan', {
-        plan_id: planId,
+        plan_id: planId
+    }, {
+        activity: ActivityMessages.UPDATE_PLAN,
+        showSuccess: false
     });
 };

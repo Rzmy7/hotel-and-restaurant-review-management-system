@@ -36,7 +36,8 @@ type AuthContextType = {
     user: User | null;
     login: (email: string, password: string, rememberMe?: boolean) => Promise<LoginResponse>;
     verifyLogin2fa: (email: string, code: string, rememberMe?: boolean) => Promise<LoginSuccess>;
-    signup: (name: string, email: string, password: string) => Promise<User>;
+    signup: (name: string, email: string, password: string) => Promise<any>;
+    verifySignup: (signupToken: string, code: string) => Promise<User>;
     logout: () => void;
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, newPassword: string) => Promise<void>;
@@ -61,6 +62,8 @@ const clearSetupTemporaryKeys = () => {
 };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 import { apiClient } from '../api/client';
+import { useToast } from './ToastContext';
+import { ActivityMessages } from '../constants/activityMessages';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
@@ -72,27 +75,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Restore session from localStorage
     // ----------------------------------------------------
     useEffect(() => {
-        const storedUser = localStorage.getItem("authUser");
-        const token = localStorage.getItem("token");
-        const rememberMe = localStorage.getItem("remember_me");
-        
-        if (rememberMe === 'false' && !sessionStorage.getItem("session_active")) {
-            persist(null);
-            setIsLoading(false);
-            return;
-        }
+        const restoreSession = async () => {
+            // ponytail: clean up any legacy, insecure JWT tokens from localStorage
+            localStorage.removeItem("token");
 
-        if (storedUser && token) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch {
+            const rememberMe = localStorage.getItem("remember_me");
+            if (rememberMe === 'false' && !sessionStorage.getItem("session_active")) {
                 persist(null);
+                setIsLoading(false);
+                return;
             }
-        } else {
-            // Ensure state is null if no login details found
-            setUser(null);
-        }
-        setIsLoading(false);
+
+            try {
+                const me = await apiClient.get<any>('/auth/me');
+                if (me && me.user_id) {
+                    const normalizedUser: User = {
+                        user_id: me.user_id,
+                        email: me.email,
+                        full_name: me.full_name || `${me.first_name || ""} ${me.last_name || ""}`.trim() || "User",
+                        role: normalizeRole(me.role || me.roles),
+                    };
+                    persist(normalizedUser);
+                } else {
+                    persist(null);
+                }
+            } catch (err) {
+                console.warn("Failed to restore session via /auth/me:", err);
+                persist(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        restoreSession();
     }, []);
 
     // ----------------------------------------------------
@@ -113,6 +128,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 sessionStorage.setItem("session_active", "true");
             }
         } else {
+            // Hard clean notifications cache and purge storage on user session end
+            try {
+                import('../stores/useNotificationStore').then(({ useNotificationStore }) => {
+                    useNotificationStore.getState().clearCache();
+                    useNotificationStore.persist?.clearStorage();
+                }).catch(e => console.error("Failed to clear notifications on session end:", e));
+            } catch (e) {
+                console.error("Failed to clear notification cache on persist(null):", e);
+            }
+
             localStorage.removeItem("authUser");
             localStorage.removeItem("token");
             localStorage.removeItem("organizations");
@@ -120,10 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.removeItem("current_organization");
             localStorage.removeItem("remember_me");
             sessionStorage.removeItem("session_active");
-        }
-
-        if (token) {
-            localStorage.setItem("token", token);
         }
     };
 
@@ -179,7 +200,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // ----------------------------------------------------
     const exchangeTokenForOrganization = async (orgId: string) => {
         try {
-            const data = await apiClient.post<any>('/auth/switch-organization', { organization_id: orgId });
+            const data = await apiClient.post<any>('/auth/switch-organization', { organization_id: orgId }, {
+                activity: ActivityMessages.SWITCH_ORG,
+                showSuccess: false
+            });
             if (data && data.access_token) {
                 // Update the token in localStorage and state (via persist) without logging out
                 if (user) {
@@ -196,7 +220,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // LOGIN
     // ----------------------------------------------------
     const login = async (email: string, password: string, rememberMe: boolean = true) => {
-        const data = await apiClient.post<LoginResponse>('/auth/login', { email, password });
+        const data = await apiClient.post<LoginResponse>('/auth/login', { email, password }, {
+            activity: ActivityMessages.LOGIN,
+            showSuccess: false
+        });
         console.log("Login response:", data);
 
         if (isLoginChallenge(data)) {
@@ -224,7 +251,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const verifyLogin2fa = async (email: string, code: string, rememberMe: boolean = true) => {
-        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code });
+        const data = await apiClient.post<LoginSuccess>('/auth/login/2fa', { email, code }, {
+            activity: ActivityMessages.VERIFY_OTP,
+            showSuccess: false
+        });
 
         const backendUser = data.user;
         const normalizedUser: User = {
@@ -246,9 +276,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // SIGNUP
     // ----------------------------------------------------
     const signup = async (name: string, email: string, password: string) => {
-        const payload = await apiClient.post<any>('/auth/signup', { name, email, password });
+        const payload = await apiClient.post<any>('/auth/signup', { name, email, password }, {
+            activity: ActivityMessages.SIGNUP,
+            showSuccess: false
+        });
         
         console.log("Signup response:", payload);
+
+        if (payload.require_verification) {
+            return payload;
+        }
 
         const backendUser = payload.user || payload;
         const normalizedUser: User = {
@@ -285,10 +322,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return normalizedUser;
     };
 
+    const verifySignup = async (signupToken: string, code: string) => {
+        const payload = await apiClient.post<any>('/auth/signup/verify', { signup_token: signupToken, code }, {
+            activity: ActivityMessages.SIGNUP,
+            showSuccess: false
+        });
+
+        console.log("Signup verification response:", payload);
+
+        const backendUser = payload.user || payload;
+        const normalizedUser: User = {
+            user_id: backendUser.id || backendUser.user_id,
+            email: backendUser.email,
+            full_name: backendUser.full_name || backendUser.name || `${backendUser.first_name || ""} ${backendUser.last_name || ""}`.trim() || "User",
+            role: normalizeRole(backendUser.role || backendUser.roles),
+        };
+
+        if (payload.access_token) {
+            if (!isAdminRole(normalizedUser.role)) {
+                persist(normalizedUser, payload.access_token);
+                await checkUserOrganizations();
+            }
+        }
+        return normalizedUser;
+    };
+
     // ----------------------------------------------------
     // LOGOUT
     // ----------------------------------------------------
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await apiClient.post('/auth/logout', undefined, {
+                activity: ActivityMessages.LOGOUT,
+                showSuccess: false
+            });
+        } catch (err) {
+            console.error("Failed to call backend logout", err);
+        }
+        
+        // Hard clean notifications cache and purge storage
+        try {
+            const { useNotificationStore } = await import('../stores/useNotificationStore');
+            useNotificationStore.getState().clearCache();
+            useNotificationStore.persist?.clearStorage();
+        } catch (e) {
+            console.error("Failed to clear notifications on logout:", e);
+        }
+
         localStorage.clear();
         setUser(null);
         window.location.href = "/login";
@@ -298,14 +378,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // FORGOT PASSWORD
     // ----------------------------------------------------
     const forgotPassword = async (email: string) => {
-        await apiClient.post<any>('/auth/forgot-password', { email });
+        await apiClient.post<any>('/auth/forgot-password', { email }, {
+            activity: ActivityMessages.FORGOT_PASSWORD,
+            showSuccess: true,
+            successMessage: "Reset link sent"
+        });
     };
 
     // ----------------------------------------------------
     // RESET PASSWORD
     // ----------------------------------------------------
     const resetPassword = async (token: string, newPassword: string) => {
-        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword });
+        await apiClient.post<any>(`/auth/reset-password/${token}`, { new_password: newPassword }, {
+            activity: ActivityMessages.RESET_PASSWORD,
+            showSuccess: false
+        });
     };
 
     return (
@@ -315,6 +402,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 login,
                 verifyLogin2fa,
                 signup,
+                verifySignup,
                 logout,
                 forgotPassword,
                 resetPassword,

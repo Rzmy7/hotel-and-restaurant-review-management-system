@@ -4,6 +4,7 @@
 
 import type { Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '../types/sources';
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 
 class SourcesService {
     async stopSync(id: string | number): Promise<any> {
@@ -108,6 +109,10 @@ class SourcesService {
             source_url:        sourceData.propertyUrl,
             source_status:     sourceData.status.toLowerCase(),
             fetching_frequency: scheduleMapReverse[scheduleStr] || 2,
+        }, {
+            activity: ActivityMessages.ADD_SOURCE,
+            successMessage: "Source added successfully",
+            showSuccess: false // Pages often show their own toast for this, but we can rely on page logic or enable it. Wait, if we keep `showSuccess: false` the page's success toast takes over.
         });
         return this.mapBackendSourceToFrontend(newSource);
     }
@@ -121,12 +126,18 @@ class SourcesService {
             const scheduleStr = updates.syncSchedule.toLowerCase();
             payload.fetching_frequency = scheduleMapReverse[scheduleStr] || 2;
         }
-        const data = await apiClient.patch<any>(`/api/source/${id}`, payload);
+        const data = await apiClient.patch<any>(`/api/source/${id}`, payload, {
+            activity: ActivityMessages.UPDATE_SOURCE,
+            showSuccess: false
+        });
         return this.mapBackendSourceToFrontend(data);
     }
 
     async deleteSource(id: string | number): Promise<void> {
-        await apiClient.delete(`/api/source/${id}`);
+        await apiClient.delete(`/api/source/${id}`, {
+            activity: ActivityMessages.DELETE_SOURCE,
+            showSuccess: false
+        });
     }
 
     async triggerSync(id: string | number): Promise<void> {
@@ -139,7 +150,10 @@ class SourcesService {
     }
 
     async deleteSourceReviews(id: string | number): Promise<void> {
-        await apiClient.delete(`/api/reviews/source/${id}`);
+        await apiClient.delete(`/api/reviews/source/${id}`, {
+            activity: ActivityMessages.CLEAR_REVIEWS,
+            showSuccess: false
+        });
     }
 }
 

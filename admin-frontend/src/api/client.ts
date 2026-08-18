@@ -11,13 +11,8 @@ const getFullUrl = (url: string) => {
     // Normalize path by removing leading slash
     let cleanPath = url.startsWith('/') ? url.slice(1) : url;
     
-    // Auto-prepend /api if it's missing
-    const isSpecialRoute = cleanPath.startsWith('api') || 
-                          cleanPath.startsWith('auth') || 
-                          cleanPath.startsWith('public') || 
-                          cleanPath.startsWith('oauth');
-                          
-    if (!isSpecialRoute) {
+    // Auto-prepend /api if it's missing (mandatory for backend stability)
+    if (!cleanPath.startsWith('api')) {
         cleanPath = `api/${cleanPath}`;
     }
     
@@ -51,14 +46,21 @@ async function handleResponse(response: Response) {
 }
 
 const getHeaders = (customHeaders?: Record<string, string>) => {
-    const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...customHeaders
     };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    
+    // ponytail: restrict localStorage fallback exclusively to unit test runs to prevent production XSS leakage
+    const isTestEnv = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV === 'test') || 
+                      (import.meta.env?.MODE === 'test');
+    if (isTestEnv) {
+        const token = localStorage.getItem('token');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
     }
+    
     return headers;
 };
 
@@ -82,6 +84,7 @@ export const apiClient = {
         const response = await fetch(`${fullUrl}${queryString}`, {
             method: 'GET',
             headers: getHeaders(customHeaders),
+            credentials: 'include',
             signal
         });
         return handleResponse(response);
@@ -93,6 +96,7 @@ export const apiClient = {
             method: 'POST',
             headers: getHeaders(customHeaders),
             body: body ? JSON.stringify(body) : undefined,
+            credentials: 'include',
         });
         return handleResponse(response);
     },
@@ -103,6 +107,7 @@ export const apiClient = {
             method: 'PATCH',
             headers: getHeaders(customHeaders),
             body: body ? JSON.stringify(body) : undefined,
+            credentials: 'include',
         });
         return handleResponse(response);
     },
@@ -113,6 +118,7 @@ export const apiClient = {
             method: 'PUT',
             headers: getHeaders(customHeaders),
             body: body ? JSON.stringify(body) : undefined,
+            credentials: 'include',
         });
         return handleResponse(response);
     },
@@ -121,7 +127,8 @@ export const apiClient = {
         const fullUrl = getFullUrl(url);
         const response = await fetch(fullUrl, { 
             method: 'DELETE',
-            headers: getHeaders(customHeaders)
+            headers: getHeaders(customHeaders),
+            credentials: 'include',
         });
         return handleResponse(response);
     }

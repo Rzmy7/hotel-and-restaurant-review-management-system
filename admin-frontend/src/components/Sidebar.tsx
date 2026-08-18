@@ -6,7 +6,6 @@ import {
   Users,
   Flag,
   Settings as SettingsIcon,
-  Check,
   Database,
   Search,
   Activity,
@@ -18,6 +17,9 @@ import {
   LogOut,
 } from 'lucide-react';
 import { getFrontendLoginUrl } from '../config/frontend';
+import reviewMateLogo from '../assets/reviewMate-logo.png';
+
+import { apiClient } from '../api/client';
 
 export const Sidebar: React.FC = () => {
   const navItems = [
@@ -45,31 +47,45 @@ export const Sidebar: React.FC = () => {
   const [showLogout, setShowLogout] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('authUser');
-    if (storedUser) {
-      try {
-        const payload = JSON.parse(storedUser);
-        const name = payload.full_name || payload.name || 'Admin User';
-        const email = payload.email || 'admin@company.com';
-        
-        let initials = 'AD';
-        if (name) {
-          const parts = name.split(' ');
-          if (parts.length >= 2) {
-            initials = (parts[0][0] + parts[1][0]).toUpperCase();
-          } else {
-            initials = name.substring(0, 2).toUpperCase();
+    const handleProfileUpdate = () => {
+      const storedUser = localStorage.getItem('authUser');
+      if (storedUser) {
+        try {
+          const payload = JSON.parse(storedUser);
+          const name = payload.full_name || payload.name || 'Admin User';
+          const email = payload.email || 'admin@company.com';
+          
+          let initials = 'AD';
+          if (name) {
+            const parts = name.split(' ');
+            if (parts.length >= 2) {
+              initials = (parts[0][0] + parts[1][0]).toUpperCase();
+            } else {
+              initials = name.substring(0, 2).toUpperCase();
+            }
           }
+          
+          setUserProfile({ name, email, initials });
+        } catch (e) {
+          console.error("Failed to parse authUser in sidebar", e);
         }
-        
-        setUserProfile({ name, email, initials });
-      } catch (e) {
-        console.error("Failed to parse authUser in sidebar", e);
       }
-    }
+    };
+
+    handleProfileUpdate();
+
+    window.addEventListener('admin-profile-updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('admin-profile-updated', handleProfileUpdate);
+    };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      console.error("Failed to post logout to backend", e);
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('authUser');
     window.location.href = getFrontendLoginUrl('logout=true');
@@ -79,10 +95,8 @@ export const Sidebar: React.FC = () => {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col shadow-sm transition-colors duration-200">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-100 dark:border-slate-700">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md">
-          <Check size={20} strokeWidth={3} />
-        </div>
-        <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">AdminPanel</span>
+        <img src={reviewMateLogo} alt="ReviewMate Logo" className="w-9 h-9 object-contain" />
+        <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">ReviewMate</span>
       </div>
 
       {/* Navigation */}

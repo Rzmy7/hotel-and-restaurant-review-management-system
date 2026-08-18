@@ -45,126 +45,169 @@ def _mark_reviews_embedded_tx(embedded_ids_str: list) -> int:
         return cursor.rowcount
 
 
-def _embed_source_reviews(source_id: str) -> None:
+_active_threads = set()
+_active_threads_lock = threading.Lock()
+
+
+def _embed_source_reviews(source_id: str, force_all: bool = False) -> None:
     """
     Core logic (runs in a background thread):
-      1. Fetch unembedded processed reviews from ReviewMate DB
+      1. Fetch processed reviews from ReviewMate DB (unembedded only if force_all=False, or all reviews if force_all=True)
       2. Batch-embed them via Embedding Service
       3. Mark them as embedded in processed_review table
     """
-    logger.info(f"[EmbeddingClient] Starting embedding pipeline for source_id={source_id}")
-
-    # ── Step 1: Fetch unembedded, processed reviews from ReviewMate DB ────────
+    current_thread = threading.current_thread()
     try:
-        with get_raw_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT
-                    CAST(id AS VARCHAR(36)) AS review_id,
-                    text,
-                    positive_text,
-                    negative_text
-                FROM dbo.processed_review
-                WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
-                  AND is_embedded = 0
-                ORDER BY scrapedAt ASC, id ASC
-            """, source_id)
+        logger.info(f"[EmbeddingClient] Starting embedding pipeline for source_id={source_id} (force_all={force_all})")
 
-            columns = [col[0] for col in cursor.description]
-            rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    except Exception as e:
-        logger.error(f"[EmbeddingClient] Failed to fetch unembedded processed reviews for {source_id}: {e}")
-        return
+        # ── Step 1: Fetch processed reviews from ReviewMate DB ────────────────────
+        try:
+            with get_raw_connection() as conn:
+                cursor = conn.cursor()
+                if force_all:
+                    cursor.execute("""
+                        SELECT
+                            CAST(id AS VARCHAR(36)) AS review_id,
+                            text,
+                            positive_text,
+                            negative_text
+                        FROM dbo.processed_review
+                        WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                        ORDER BY scrapedAt ASC, id ASC
+                    """, source_id)
+                else:
+                    cursor.execute("""
+                        SELECT
+                            CAST(id AS VARCHAR(36)) AS review_id,
+                            text,
+                            positive_text,
+                            negative_text
+                        FROM dbo.processed_review
+                        WHERE source_id = CAST(? AS UNIQUEIDENTIFIER)
+                          AND is_embedded = 0
+                        ORDER BY scrapedAt ASC, id ASC
+                    """, source_id)
 
-    if not rows:
-        logger.info(f"[EmbeddingClient] No unembedded processed reviews found for source_id={source_id}. Skipping.")
-        return
+                columns = [col[0] for col in cursor.description]
+                rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"[EmbeddingClient] Failed to fetch processed reviews for {source_id}: {e}")
+            return
 
-    # Build review text for embedding (combine text fields)
-    reviews_data = []
-    for row in rows:
-        # Build the review_text from available fields
-        text_parts = []
-        if row.get("text"):
-            text_parts.append(row["text"])
-        if row.get("positive_text"):
-            text_parts.append(row["positive_text"])
-        if row.get("negative_text"):
-            text_parts.append(row["negative_text"])
+        if not rows:
+            logger.info(f"[EmbeddingClient] No processed reviews found for source_id={source_id} (force_all={force_all}). Skipping.")
+            return
 
-        review_text = " ".join(text_parts).strip()
-        if review_text:
-            reviews_data.append({
-                "review_id": row["review_id"],
-                "review_text": review_text,
-            })
+        # Build review text for embedding (combine text fields)
+        reviews_data = []
+        for row in rows:
+            # Build the review_text from available fields
+            text_parts = []
+            if row.get("text"):
+                text_parts.append(row["text"])
+            if row.get("positive_text"):
+                text_parts.append(row["positive_text"])
+            if row.get("negative_text"):
+                text_parts.append(row["negative_text"])
 
-    if not reviews_data:
-        logger.info(f"[EmbeddingClient] All fetched reviews have empty text for source_id={source_id}. Skipping.")
-        return
+            review_text = " ".join(text_parts).strip()
+            if review_text:
+                reviews_data.append({
+                    "review_id": row["review_id"],
+                    "review_text": review_text,
+                })
 
-    logger.info(f"[EmbeddingClient] Found {len(reviews_data)} unembedded processed reviews for source_id={source_id}")
+        if not reviews_data:
+            logger.info(f"[EmbeddingClient] All fetched reviews have empty text for source_id={source_id}. Skipping.")
+            return
 
-    # ── Step 2: Send to Embedding Service ─────────────────────────────────────
-    embed_payload = {
-        "source_id": source_id,
-        "reviews": [
-            {
-                "review_id": r["review_id"],
-                "text": r["review_text"]
-            }
-            for r in reviews_data
-        ]
-    }
+        logger.info(f"[EmbeddingClient] Found {len(reviews_data)} unembedded processed reviews for source_id={source_id}")
 
-    try:
-        embed_url = f"{EMBEDDING_SERVICE_URL}/embed"
-        embed_response = httpx.post(embed_url, json=embed_payload, headers=_AUTH_HEADERS, timeout=120.0)
-        embed_response.raise_for_status()
-        embed_result = embed_response.json()
-    except httpx.HTTPError as e:
-        logger.error(f"[EmbeddingClient] Embedding service request failed for source_id={source_id}: {e}")
-        return
-    except Exception as e:
-        logger.error(f"[EmbeddingClient] Unexpected error during embedding: {e}")
-        return
+        # ── Step 2: Send to Embedding Service ─────────────────────────────────────
+        embed_payload = {
+            "source_id": source_id,
+            "reviews": [
+                {
+                    "review_id": r["review_id"],
+                    "text": r["review_text"]
+                }
+                for r in reviews_data
+            ]
+        }
 
-    embedded_ids_str = embed_result.get("embedded_ids", [])
-    failed = embed_result.get("failed", [])
+        try:
+            embed_url = f"{EMBEDDING_SERVICE_URL}/embed"
+            embed_response = httpx.post(embed_url, json=embed_payload, headers=_AUTH_HEADERS, timeout=120.0)
+            embed_response.raise_for_status()
+            embed_result = embed_response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"[EmbeddingClient] Embedding service request failed for source_id={source_id}: {e}")
+            return
+        except Exception as e:
+            logger.error(f"[EmbeddingClient] Unexpected error during embedding: {e}")
+            return
 
-    if failed:
-        logger.warning(f"[EmbeddingClient] {len(failed)} reviews failed to embed for source_id={source_id}: {failed[:5]}")
+        embedded_ids_str = embed_result.get("embedded_ids", [])
+        failed = embed_result.get("failed", [])
 
-    if not embedded_ids_str:
-        logger.warning(f"[EmbeddingClient] Embedding service returned no embedded_ids for source_id={source_id}")
-        return
+        if failed:
+            logger.warning(f"[EmbeddingClient] {len(failed)} reviews failed to embed for source_id={source_id}: {failed[:5]}")
 
-    logger.info(f"[EmbeddingClient] Successfully embedded {len(embedded_ids_str)} reviews for source_id={source_id}")
+        if not embedded_ids_str:
+            logger.warning(f"[EmbeddingClient] Embedding service returned no embedded_ids for source_id={source_id}")
+            return
 
-    # ── Step 3: Mark reviews as embedded in processed_review table ────────────
-    # Enforce deterministic lock ordering
-    embedded_ids_str.sort()
-    try:
-        updated_count = _mark_reviews_embedded_tx(embedded_ids_str)
-        logger.info(f"[EmbeddingClient] Marked {updated_count} reviews as embedded in processed_review.")
-    except Exception as e:
-        logger.error(f"[EmbeddingClient] Failed to mark reviews as embedded in processed_review: {e}")
+        logger.info(f"[EmbeddingClient] Successfully embedded {len(embedded_ids_str)} reviews for source_id={source_id}")
+
+        # ── Step 3: Mark reviews as embedded in processed_review table ────────────
+        # Enforce deterministic lock ordering
+        embedded_ids_str.sort()
+        try:
+            updated_count = _mark_reviews_embedded_tx(embedded_ids_str)
+            logger.info(f"[EmbeddingClient] Marked {updated_count} reviews as embedded in processed_review.")
+        except Exception as e:
+            logger.error(f"[EmbeddingClient] Failed to mark reviews as embedded in processed_review: {e}")
+    finally:
+        with _active_threads_lock:
+            _active_threads.discard(current_thread)
 
 
-def trigger_embedding_for_source(source_id: str) -> None:
+def trigger_embedding_for_source(source_id: str, force_all: bool = False) -> None:
     """
     Fire-and-forget: launch embedding pipeline in a background thread.
-    Called from review_service after AI analysis pipeline completes.
+    Called from review_service after AI analysis pipeline completes or from admin endpoints.
     Does NOT block the processing pipeline.
     """
     thread = threading.Thread(
         target=_embed_source_reviews,
-        args=(str(source_id).upper(),),
+        args=(str(source_id).upper(), force_all),
         daemon=True,
         name=f"embed-{str(source_id)[:8]}"
     )
+    with _active_threads_lock:
+        _active_threads.add(thread)
     thread.start()
-    logger.info(f"[EmbeddingClient] Background embedding thread launched for source_id={source_id}")
+    logger.info(f"[EmbeddingClient] Background embedding thread launched for source_id={source_id} (force_all={force_all})")
+
+
+def wait_for_active_embeddings(timeout: float = 8.0) -> None:
+    """Waits for all active embedding threads to complete during application shutdown."""
+    with _active_threads_lock:
+        threads = list(_active_threads)
+    
+    if not threads:
+        return
+        
+    logger.info(f"[EmbeddingClient] Waiting for {len(threads)} active embedding threads to finish...")
+    import time
+    start_time = time.time()
+    for thread in threads:
+        elapsed = time.time() - start_time
+        remaining = max(0.1, timeout - elapsed)
+        if remaining <= 0:
+            break
+        thread.join(timeout=remaining)
+    logger.info("[EmbeddingClient] Graceful shutdown for embedding threads finished.")
 
 def delete_embeddings_for_source(source_id: str) -> None:
     """

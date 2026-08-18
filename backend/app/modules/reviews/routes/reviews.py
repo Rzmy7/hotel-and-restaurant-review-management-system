@@ -432,7 +432,7 @@ def generate_reply(
         from sqlalchemy import text
         review_row = db.execute(
             text("""
-                SELECT s.organization_id
+                SELECT s.organization_id, r.source_id
                 FROM dbo.processed_review r
                 JOIN dbo.source s ON r.source_id = s.source_id
                 WHERE r.id = :review_id
@@ -444,6 +444,12 @@ def generate_reply(
             raise HTTPException(status_code=404, detail="Review not found.")
             
         resolve_tenant_scope(current_user, db, str(review_row[0]))
+
+        # Automatically populate sourceId if not explicitly provided
+        if not payload.sourceId and len(review_row) > 1 and review_row[1]:
+            payload.sourceId = str(review_row[1])
+        elif not payload.sourceId and review_row[0]:
+            payload.sourceId = str(review_row[0])
 
         # ── Check reply_generations limit ──
         user_id = (
@@ -507,7 +513,7 @@ def update_review_status(
     try:
         from sqlalchemy import text
 
-        valid_statuses = {"Pending", "Replied", "AI Draft", "processed", "failed"}
+        valid_statuses = {"pending", "processed", "failed"}
         new_status = payload.get("status", "")
 
         if not new_status or new_status not in valid_statuses:

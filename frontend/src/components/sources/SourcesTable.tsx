@@ -87,33 +87,12 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
   );
 };
 
-import { useSyncProgress } from "../../hooks/useSyncProgress";
-
-const SyncProgressBar = ({ sourceId }: { sourceId: string | number }) => {
-  const { progress } = useSyncProgress(sourceId, true);
-
-  if (!progress) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100/50 shadow-sm shadow-blue-50 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800/50 dark:shadow-none">
-        <RefreshCw size={10} className="animate-spin" />
-        Syncing
-      </span>
-    );
-  }
-
+const SyncProgressBar = () => {
   return (
-    <div className="flex flex-col gap-1 w-24">
-      <div className="flex items-center justify-between text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-        <span>Syncing</span>
-        <span>{progress.percentage}%</span>
-      </div>
-      <div className="w-full h-1 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-blue-500 rounded-full transition-all duration-500"
-          style={{ width: `${progress.percentage}%` }}
-        />
-      </div>
-    </div>
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100/50 shadow-sm shadow-blue-50 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800/50 dark:shadow-none">
+      <RefreshCw size={10} className="animate-spin" />
+      Syncing
+    </span>
   );
 };
 
@@ -154,7 +133,7 @@ const StatusBadge = ({
         </span>
       );
     case "Syncing":
-      return <SyncProgressBar sourceId={sourceId} />;
+      return <SyncProgressBar />;
   }
 };
 

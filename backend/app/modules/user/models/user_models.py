@@ -35,6 +35,10 @@ class User(Base):
     is_phone_verified = Column(Boolean, nullable=False, default=False)
     is_2fa_enabled = Column(Boolean, nullable=False, default=False)
     is_email_notifications_enabled = Column(Boolean, nullable=False, default=True)
+    is_new_review_alerts_enabled = Column(Boolean, nullable=False, default=True)
+    is_weekly_summary_enabled = Column(Boolean, nullable=False, default=True)
+    is_group_invitations_enabled = Column(Boolean, nullable=False, default=True)
+    is_subscription_changes_enabled = Column(Boolean, nullable=False, default=True)
 
     last_login_at = Column(DateTime(timezone=True), nullable=True)
 

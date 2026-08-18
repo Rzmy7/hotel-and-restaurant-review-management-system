@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Monitor, Moon, Plus, Sun } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Select } from '../../ui/Select';
 import { FormField } from '../molecules/FormField';
 import { Button } from '../../ui/Button';
@@ -18,6 +19,7 @@ interface GeneralSettingsCardProps {
 }
 
 export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, onChange }) => {
+    const navigate = useNavigate();
     const { setTheme, darkModeAllowed } = useTheme();
     const { showToast } = useToast();
     const [organizations, setOrganizations] = useState<UserOrganizationSummary[]>([]);
@@ -97,37 +99,76 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({ data, 
     };
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-6">
             <FormField label="Owned Organizations" orientation="horizontal" description="Manage organizations you own">
-                <div className="w-full max-w-[640px] border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                <div className="w-full max-w-[600px] border border-gray-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
                     {isLoadingOrganizations ? (
-                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">Loading organizations...</div>
+                        <div className="px-5 py-4 text-sm text-gray-500 dark:text-slate-400">Loading organizations...</div>
                     ) : organizationsError ? (
-                        <div className="px-4 py-3 text-sm text-red-500">{organizationsError}</div>
+                        <div className="px-5 py-4 text-sm text-red-500">{organizationsError}</div>
                     ) : organizations.length === 0 ? (
-                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">No owned organizations found.</div>
+                        <div className="px-5 py-4 text-sm text-gray-500 dark:text-slate-400">No owned organizations found.</div>
                     ) : (
-                        organizations.map((organization) => (
-                            <div
-                                key={organization.organization_id}
-                                className="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-slate-700/50 last:border-b-0"
-                            >
-                                <div className="flex flex-col">
-                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                                        {organization.organization_name}
-                                    </p>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() => setOrganizationPendingDelete(organization)}
+                        organizations.map((organization) => {
+                            const initials = organization.organization_name
+                                .split(' ')
+                                .slice(0, 2)
+                                .map((w) => w[0]?.toUpperCase() ?? '')
+                                .join('');
+                            return (
+                                <div
+                                    key={organization.organization_id}
+                                    className="px-5 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50/70 dark:hover:bg-slate-700/30 transition-colors duration-150"
                                 >
-                                    Remove
-                                </Button>
-                            </div>
-                        ))
+                                    <div className="flex items-center gap-3">
+                                        {/* Logo / Initials Avatar */}
+                                        <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-gray-100 dark:border-slate-700 bg-blue-50 dark:bg-blue-900/30 shadow-sm">
+                                            {organization.logo_url ? (
+                                                <img
+                                                    src={organization.logo_url}
+                                                    alt={organization.organization_name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <span className="text-[13px] font-black text-[#4e80ee] dark:text-blue-400 tracking-tight">
+                                                    {initials}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                                {organization.organization_name}
+                                            </p>
+                                            {organization.organization_type && (
+                                                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 mt-0.5">
+                                                    {organization.organization_type}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() => setOrganizationPendingDelete(organization)}
+                                    >
+                                        Remove
+                                    </Button>
+                                </div>
+                            );
+                        })
                     )}
+                    {/* Add Organization footer row */}
+                    <button
+                        type="button"
+                        onClick={() => navigate('/setup')}
+                        className="w-full flex items-center gap-3 px-5 py-3.5 border-t border-gray-100 dark:border-slate-700/50 text-sm font-bold text-[#4e80ee] dark:text-blue-400 hover:bg-blue-50/60 dark:hover:bg-blue-900/20 transition-colors duration-150 group"
+                    >
+                        <span className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                            <Plus size={18} strokeWidth={2.5} />
+                        </span>
+                        Add Organization
+                    </button>
                 </div>
             </FormField>
             <FormField label="Time Zone" orientation="horizontal">

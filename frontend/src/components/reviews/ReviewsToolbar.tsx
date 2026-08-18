@@ -50,7 +50,7 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
         Sentiment: ['Positive', 'Neutral', 'Negative'],
         Platform: filtersConfig.sources,
         Category: filtersConfig.categories,
-        Status: ['Pending', 'Replied', 'AI Draft']
+        Status: ['Pending', 'Processed']
     };
 
     const handleMenuClick = (menu: string) => {
@@ -100,7 +100,7 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
                                 className="w-full pl-8 pr-3 py-1.5 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-blue-400 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-gray-200 transition-all"
                             />
                         </div>
-                        <br />
+
                         {filterType && (filters[filterType] as (string | number)[]).length > 0 && (
                             <div className="flex flex-wrap gap-1 border-b border-gray-100 dark:border-slate-700 pb-2 mb-2">
                                 {(filters[filterType] as (string | number)[]).map((val: string | number) => (

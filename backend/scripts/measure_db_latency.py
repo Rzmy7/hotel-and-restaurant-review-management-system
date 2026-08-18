@@ -95,20 +95,20 @@ def run_db_benchmarks():
         
         # Check if Index Seek is present on processed_review
         if "IX_processed_review_source_date" in plan_text:
-            print(" -> ✓ INDEX USAGE CONFIRMED: IX_processed_review_source_date")
+            print(" -> [OK] INDEX USAGE CONFIRMED: IX_processed_review_source_date")
             if "Seek" in plan_text or "Index Seek" in plan_text:
-                print(" -> ✓ INDEX SEEK CONFIRMED (O(log N))")
+                print(" -> [OK] INDEX SEEK CONFIRMED (O(log N))")
             else:
                 print(" -> ! Index Scan used")
         else:
-            print(" -> ❌ Warning: Index IX_processed_review_source_date not used in this plan!")
+            print(" -> [WARN] Warning: Index IX_processed_review_source_date not used in this plan!")
             
         # For Latest Reviews check sort elimination
         if "Latest" in name:
             if "Sort" in plan_text:
                 print(" -> ! Sort operator present (sorting required)")
             else:
-                print(" -> ✓ SORT ELIMINATED: SQL Server reads sorted data directly from index leaf pages!")
+                print(" -> [OK] SORT ELIMINATED: SQL Server reads sorted data directly from index leaf pages!")
 
     # 3. Measure Latencies over 100 iterations
     print("\n--- RAW LATENCY MEASUREMENT (Averaged over 100 Runs) ---")

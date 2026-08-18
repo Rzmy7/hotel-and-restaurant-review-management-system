@@ -133,6 +133,14 @@ describe('adminDataService', () => {
         expect(fetchSpy.mock.calls[0][0]).toContain('/admin/embeddings/trigger-pending');
         expect(fetchSpy.mock.calls[0][1].method).toBe('POST');
     });
+
+    it('reEmbedAllReviews calls POST to /admin/embeddings/re-embed-all', async () => {
+        const fetchSpy = setupFetchMock({ triggered_sources_count: 5, message: 'ok' });
+        const { reEmbedAllReviews } = await import('../../services/adminDataService');
+        await reEmbedAllReviews();
+        expect(fetchSpy.mock.calls[0][0]).toContain('/admin/embeddings/re-embed-all');
+        expect(fetchSpy.mock.calls[0][1].method).toBe('POST');
+    });
 });
 
 

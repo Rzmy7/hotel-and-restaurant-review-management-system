@@ -10,7 +10,41 @@ from datetime import datetime, timedelta
 from jose import jwt
 import bcrypt
 
-from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+from fastapi import Response
+from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES, SECURE_COOKIES
+
+# ── Cookie management ──────────────────────────────────────────────
+
+def set_auth_cookie(response: Response, token: str):
+    """Set the HttpOnly access token cookie with appropriate security attributes and max_age."""
+    try:
+        payload = decode_access_token(token)
+        exp = payload.get("exp")
+        if exp:
+            max_age = int(exp - datetime.utcnow().timestamp())
+        else:
+            max_age = JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    except Exception:
+        max_age = JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=SECURE_COOKIES,
+        samesite="lax",
+        max_age=max_age if max_age > 0 else None,
+        expires=max_age if max_age > 0 else None,
+        path="/",
+    )
+
+
+def clear_auth_cookie(response: Response):
+    """Clear the access token cookie."""
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+    )
 
 # ── Password hashing ───────────────────────────────────────────────
 
@@ -87,3 +121,24 @@ def create_access_token(user_id: str, role: str, organization_id: str | None = N
 def decode_access_token(token: str) -> dict:
     """Decode and verify a JWT access token."""
     return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+
+
+def create_signup_token(email: str, name: str, password_hash: str, otp_hash: str) -> str:
+    """Create a signed, short-lived signup token containing registration details."""
+    payload = {
+        "email": email,
+        "name": name,
+        "password_hash": password_hash,
+        "otp_hash": otp_hash,
+        "exp": datetime.utcnow() + timedelta(minutes=10),
+        "purpose": "signup_verification",
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_signup_token(token: str) -> dict:
+    """Decode and verify a signup token, validating its purpose."""
+    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    if payload.get("purpose") != "signup_verification":
+        raise jwt.JWTError("Invalid token purpose")
+    return payload

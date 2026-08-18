@@ -19,8 +19,10 @@ export const Organizations: React.FC = () => {
     const [orgs, setOrgs] = useState<Organization[]>([]);
     const [stats, setStats] = useState<OrganizationStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [orgsLoading, setOrgsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const itemsPerPage = 8;
 
     const [editOrg, setEditOrg] = useState<Organization | null>(null);
@@ -40,22 +42,38 @@ export const Organizations: React.FC = () => {
     const addSelectRef = useRef<HTMLSelectElement>(null);
 
     useEffect(() => {
-        const loadData = async () => {
+        const loadStats = async () => {
             try {
-                const [orgData, statsData] = await Promise.all([
-                    fetchOrganizations(),
-                    fetchOrgStats(),
-                ]);
-                setOrgs(orgData);
+                const statsData = await fetchOrgStats();
                 setStats(statsData);
             } catch (error) {
-                console.error('Failed to load organizations data:', error);
+                console.error('Failed to load organization stats:', error);
+            }
+        };
+        loadStats();
+    }, []);
+
+    useEffect(() => {
+        const loadOrgs = async () => {
+            setOrgsLoading(true);
+            try {
+                const paginatedResponse = await fetchOrganizations(currentPage, itemsPerPage, searchQuery);
+                setOrgs(paginatedResponse.data);
+                setTotalItems(paginatedResponse.total);
+            } catch (error) {
+                console.error('Failed to load organizations:', error);
             } finally {
+                setOrgsLoading(false);
                 setLoading(false);
             }
         };
-        loadData();
-    }, []);
+        
+        const timer = setTimeout(() => {
+            loadOrgs();
+        }, searchQuery ? 300 : 0);
+
+        return () => clearTimeout(timer);
+    }, [currentPage, searchQuery]);
 
     const handleOpenEdit = async (org: Organization) => {
         setEditOrg(org);
@@ -166,13 +184,9 @@ export const Organizations: React.FC = () => {
         (s) => !editSources.some((e) => e.source_id === s.source_id),
     );
 
-    const filteredOrgs = orgs.filter((org) => {
-        return org.name.toLowerCase().includes(searchQuery.toLowerCase());
-    });
-
-    const totalPages = Math.ceil(filteredOrgs.length / itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedOrgs = filteredOrgs.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedOrgs = orgs;
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -193,17 +207,19 @@ export const Organizations: React.FC = () => {
                 onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }}
             />
 
-            <OrganizationTable
-                organizations={paginatedOrgs}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredOrgs.length}
-                itemsPerPage={itemsPerPage}
-                startIndex={startIndex}
-                onPageChange={handlePageChange}
-                onEdit={handleOpenEdit}
-                onDelete={(org) => setDeleteOrg(org)}
-            />
+            <div className={orgsLoading ? "opacity-50 pointer-events-none transition-opacity duration-200" : "transition-opacity duration-200"}>
+                <OrganizationTable
+                    organizations={paginatedOrgs}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    startIndex={startIndex}
+                    onPageChange={handlePageChange}
+                    onEdit={handleOpenEdit}
+                    onDelete={(org) => setDeleteOrg(org)}
+                />
+            </div>
 
             {deleteOrg && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">

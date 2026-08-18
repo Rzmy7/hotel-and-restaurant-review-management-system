@@ -146,7 +146,7 @@ const CompetitorComparison = () => {
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center justify-between gap-3 transition-all duration-300">
                 <div>
                     <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Competitor Comparison</h1>
                     <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
@@ -174,7 +174,7 @@ const CompetitorComparison = () => {
                                     key={c.id}
                                     onClick={() => {
                                         setDropdownOpen(false);
-                                        navigate(`/competitor-comparison?id=${c.id}`);
+                                        navigate(`/competitors/compare?id=${c.id}`);
                                     }}
                                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors
                                         ${c.id === competitorId
@@ -189,7 +189,7 @@ const CompetitorComparison = () => {
                 </div>
             </header>
 
-            <main className="w-full px-8 py-8 flex-1 max-w-[1400px] mx-auto space-y-8">
+            <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex-1 max-w-[1400px] mx-auto space-y-8">
                 <Link to="/competitors" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-medium transition-colors">
                     <ArrowLeft size={16} />
                     Back to Competitors
@@ -300,7 +300,7 @@ const CompetitorComparison = () => {
                             )}
                         </>
                     ) : (
-                        <p className="text-sm text-gray-400 dark:text-slate-500">Unable to generate insights — Gemini API may be unavailable.</p>
+                        <p className="text-sm text-gray-400 dark:text-slate-500">Unable to generate insights — AI API may be unavailable.</p>
                     )}
                 </div>
             </main>

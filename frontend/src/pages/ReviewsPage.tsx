@@ -11,7 +11,6 @@ import ReviewsToolbar from '../components/reviews/ReviewsToolbar';
 import ReviewsTable from '../components/reviews/ReviewsTable';
 import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
-
 import { useReviewsData } from '../hooks/useReviewsData';
 import ReviewsSkeleton from './ReviewsSkeleton';
 
@@ -44,6 +43,72 @@ const ReviewsPageContent = () => {
   const handleRefresh = () => {
     setPage(0);
     refresh();
+  };
+
+  const handleExportCsv = () => {
+    if (!reviews || !reviews.length) return;
+    const headers = ['date', 'source', 'rating', 'sentiment', 'reviewerName', 'heading', 'text', 'status'];
+    const csv = [
+      headers.join(','),
+      ...reviews.map((r: any) => headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'reviews.csv' });
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPdf = () => {
+    if (!reviews || !reviews.length) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const html = `
+      <html>
+        <head>
+          <title>Reviews Export</title>
+          <style>
+            body { font-family: system-ui, sans-serif; padding: 20px; color: #333; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f4f4f4; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>Reviews Export</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Source</th>
+                <th>Rating</th>
+                <th>Reviewer</th>
+                <th>Review</th>
+                <th>Sentiment</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reviews.map((r: any) => `
+                <tr>
+                  <td style="white-space: nowrap">${new Date(r.date).toLocaleDateString()}</td>
+                  <td>${r.source}</td>
+                  <td>${r.rating}/5</td>
+                  <td>${r.userName || ''}</td>
+                  <td>${String(r.reviewText || '').replace(/</g, '&lt;')}</td>
+                  <td>${r.sentiment || ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   };
 
   if (loading && (!reviews || reviews.length === 0)) {
@@ -90,10 +155,20 @@ const ReviewsPageContent = () => {
             {filters.dateFrom && filters.dateTo ? 'Filtered Result' : 'Date Range'}
           </button>
 
-          <button className="flex items-center gap-2 bg-[#4e80ee] hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[13px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95">
-            <Download size={18} />
-            Export
-          </button>
+          <div className="flex bg-[#4e80ee] rounded-xl shadow-lg shadow-blue-100 transition-transform transform hover:-translate-y-0.5">
+            <button 
+              onClick={handleExportCsv}
+              className="flex items-center gap-1.5 hover:bg-blue-600 text-white px-4 py-2.5 rounded-l-xl text-[12px] font-black uppercase tracking-widest border-r border-blue-400"
+            >
+              <Download size={16} /> CSV
+            </button>
+            <button 
+              onClick={handleExportPdf}
+              className="flex items-center gap-1.5 hover:bg-blue-600 text-white px-4 py-2.5 rounded-r-xl text-[12px] font-black uppercase tracking-widest"
+            >
+              PDF
+            </button>
+          </div>
         </div>
       </header>
 

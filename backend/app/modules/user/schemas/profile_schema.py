@@ -12,6 +12,10 @@ class ProfileResponse(BaseModel):
     location: Optional[str] = None
     avatar: Optional[str] = None
     is_email_notifications_enabled: Optional[bool] = None
+    is_new_review_alerts_enabled: Optional[bool] = None
+    is_weekly_summary_enabled: Optional[bool] = None
+    is_group_invitations_enabled: Optional[bool] = None
+    is_subscription_changes_enabled: Optional[bool] = None
     joinedDate: Optional[str] = None
 
 
@@ -23,6 +27,10 @@ class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     is_email_notifications_enabled: Optional[bool] = None
+    is_new_review_alerts_enabled: Optional[bool] = None
+    is_weekly_summary_enabled: Optional[bool] = None
+    is_group_invitations_enabled: Optional[bool] = None
+    is_subscription_changes_enabled: Optional[bool] = None
 
 
 class PasswordChangeRequest(BaseModel):

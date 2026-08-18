@@ -540,7 +540,7 @@ Post-creation hook that seeds a new organization with a default source entry. Pr
 
 ### Reviews Module (`app.modules.reviews`)
 - **Data isolation**: Reviews are scoped to organizations via the `sources` table. When querying reviews, the organization module's `_check_org_access` ensures users only see reviews from their organization's sources
-- **Sentiment analysis**: Reviews fetched through organization sources are processed by the reviews module's Gemini-powered sentiment pipeline
+- **Sentiment analysis**: Reviews fetched through organization sources are processed by the reviews module's LLM-powered sentiment pipeline
 
 ### Competitors Module (`app.modules.competitors`)
 - **Parallel structure**: Competitors use a similar multi-tenant pattern but with a simpler tracking model (user-level competitor tracking vs. organization-level source management)

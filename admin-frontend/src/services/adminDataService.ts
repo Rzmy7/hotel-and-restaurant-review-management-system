@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import type { AvailableSource, Organization, OrganizationStats, OrgSource, User } from '../types';
+import type { AvailableSource, Organization, OrganizationStats, OrgSource, User, PaginatedResponse } from '../types';
  
 export interface UserStatsData {
     allActiveUsers: number;
@@ -28,8 +28,8 @@ export interface UserUpdatePayload {
     groups?: string[];
 }
  
-export const fetchOrganizations = (): Promise<Organization[]> => {
-    return apiClient.get<Organization[]>('/admin/organizations');
+export const fetchOrganizations = (page: number, limit: number, search?: string): Promise<PaginatedResponse<Organization>> => {
+    return apiClient.get<PaginatedResponse<Organization>>(`/admin/organizations?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ''}`);
 };
  
 export const fetchOrgStats = (): Promise<OrganizationStats> => {
@@ -59,8 +59,22 @@ export const deleteOrganization = (orgId: string): Promise<{ status: string }> =
     return apiClient.delete<{ status: string }>(`/admin/organizations/${encodeURIComponent(orgId)}`);
 };
  
-export const fetchUsers = (): Promise<User[]> => {
-    return apiClient.get<User[]>('/admin/users');
+export const fetchUsers = (
+    page: number,
+    limit: number,
+    search?: string,
+    role?: string,
+    plan?: string,
+    status?: string
+): Promise<PaginatedResponse<User>> => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    if (search) params.append('search', search);
+    if (role) params.append('role', role);
+    if (plan) params.append('plan', plan);
+    if (status) params.append('status', status);
+    return apiClient.get<PaginatedResponse<User>>(`/admin/users?${params}`);
 };
  
 export const fetchUserStats = (): Promise<UserStatsData> => {
@@ -81,4 +95,8 @@ export const deleteUser = async (userId: string): Promise<void> => {
  
 export const triggerPendingEmbeddings = (): Promise<{ triggered_sources_count: number; message: string }> => {
     return apiClient.post<{ triggered_sources_count: number; message: string }>('/admin/embeddings/trigger-pending', {});
+};
+
+export const reEmbedAllReviews = (): Promise<{ triggered_sources_count: number; message: string }> => {
+    return apiClient.post<{ triggered_sources_count: number; message: string }>('/admin/embeddings/re-embed-all', {});
 };

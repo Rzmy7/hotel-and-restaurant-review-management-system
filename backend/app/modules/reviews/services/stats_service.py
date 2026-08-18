@@ -255,7 +255,7 @@ def get_system_alerts(cursor: pyodbc.Cursor) -> List[Dict[str, Any]]:
                 "title": f"Review Processing Backlog ({pending} pending)",
                 "message": (
                     f"There are {pending} reviews waiting for AI analysis. "
-                    "Ensure the Gemini API key is configured and quota is available."
+                    "Ensure an active LLM Model is configured and quota is available."
                 ),
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
                 "isRead": False,
@@ -378,7 +378,7 @@ def get_paginated_system_alerts(cursor: pyodbc.Cursor, page: int = 1, limit: int
                 "title": f"Review Processing Backlog ({pending} pending)",
                 "message": (
                     f"There are {pending} reviews waiting for AI analysis. "
-                    "Ensure the Gemini API key is configured and quota is available."
+                    "Ensure an active LLM Model is configured and quota is available."
                 ),
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
                 "isRead": False,

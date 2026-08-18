@@ -1,3 +1,5 @@
+import { matchWindowHostname } from './api';
+
 /**
  * Resolve the user-frontend base URL.
  *
@@ -6,7 +8,7 @@
  */
 export const getFrontendBaseUrl = (): string => {
     const configured = (import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173').trim().replace(/\/$/, '');
-    return configured;
+    return matchWindowHostname(configured);
 };
 
 export const getFrontendLoginUrl = (query?: string): string => {

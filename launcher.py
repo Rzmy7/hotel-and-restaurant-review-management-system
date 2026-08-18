@@ -6,6 +6,24 @@ import time
 import webbrowser
 import argparse
 
+def load_env_file(env_path):
+    """Parse .env file manually and populate os.environ."""
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    value = value.strip().strip("'\"")
+                    # Only set if not already set by system environment
+                    if key.strip() not in os.environ:
+                        os.environ[key.strip()] = value
+
+# Load environment variables at startup
+load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend", ".env"))
+
 # Parse arguments first
 parser = argparse.ArgumentParser(description="System Launcher")
 parser.add_argument("--prod", action="store_true", help="Run in production mode (minimized logging, built assets)")

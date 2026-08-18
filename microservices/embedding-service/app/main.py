@@ -3,6 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import os
+from dotenv import load_dotenv
+
+# Load local environment variables from a .env file if it exists
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv()
 import time
 import uuid
 import psutil
@@ -271,6 +276,11 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
         for i, dist in enumerate(rule_results["distances"][0])
         if dist < (threshold + 0.2)   # rules are authoritative
     ]
+
+    logger.info(
+        f"Embedding search query='{data.query[:50]}' source_ids={data.source_ids} -> "
+        f"found {len(reviews)} reviews and {len(rules)} rules"
+    )
 
     return {
         "query": data.query,
@@ -588,4 +598,19 @@ def delete_rules_by_source(source_id: str, _auth: bool = Depends(verify_api_key)
         }
     except Exception as e:
         print(f"Error deleting rule embeddings for source {source_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/delete/rule/{rule_id}")
+def delete_single_rule(rule_id: str, _auth: bool = Depends(verify_api_key)) -> Dict[str, Any]:
+    """Delete a single rule embedding by rule ID."""
+    try:
+        collection.delete(ids=[rule_id])
+        return {
+            "status": "success",
+            "message": f"Deleted rule embedding for rule_id: {rule_id}",
+            "rule_id": rule_id
+        }
+    except Exception as e:
+        print(f"Error deleting rule embedding for rule {rule_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

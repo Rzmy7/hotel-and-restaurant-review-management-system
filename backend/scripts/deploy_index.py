@@ -98,7 +98,7 @@ def deploy_index():
     """)
     row = cursor.fetchone()
     if row:
-        print("✓ VERIFICATION SUCCESSFUL!")
+        print("[OK] VERIFICATION SUCCESSFUL!")
         print(f"  Index Name  : {row.name}")
         print(f"  Index Type  : {row.type_desc}")
         print(f"  Fill Factor : {row.fill_factor}%")
@@ -127,7 +127,7 @@ def deploy_index():
         print(f"  Compression : {compression}")
         
     else:
-        print("❌ VERIFICATION FAILED: Index was not found on dbo.processed_review.")
+        print("[FAIL] VERIFICATION FAILED: Index was not found on dbo.processed_review.")
         sys.exit(1)
         
     conn.close()

@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchRankings, type RankingEntry } from '../services/competitorService';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 
-type SortKey = 'rating' | 'sentiment' | 'reviews';
+type SortKey = 'adjusted' | 'rating' | 'sentiment' | 'reviews';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+    { key: 'adjusted',  label: 'Ranking Score' },
     { key: 'rating',    label: 'Average Rating' },
     { key: 'sentiment', label: 'Sentiment Score' },
     { key: 'reviews',   label: 'Review Count' },
@@ -16,7 +17,7 @@ const CompetitorRankingsPage = () => {
     const [rankings, setRankings] = useState<RankingEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [sortBy, setSortBy] = useState<SortKey>('rating');
+    const [sortBy, setSortBy] = useState<SortKey>('adjusted');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const currentOrg = useOrganizationStore(state => state.currentOrg);
@@ -52,6 +53,11 @@ const CompetitorRankingsPage = () => {
     const sorted = useMemo(() => {
         const copy = [...rankings];
         copy.sort((a, b) => {
+            // Default order. The ranking score is a volume-weighted Bayesian mean,
+            // so a property with a handful of glowing reviews does not leapfrog one
+            // with hundreds of consistently strong ones. Falls back to the raw
+            // average when the backend could not compute an adjustment.
+            if (sortBy === 'adjusted')  return (b.adjustedRating ?? b.rating) - (a.adjustedRating ?? a.rating);
             if (sortBy === 'rating')    return b.rating    - a.rating;
             if (sortBy === 'sentiment') return b.sentiment - a.sentiment;
             return b.reviews - a.reviews;
@@ -61,12 +67,12 @@ const CompetitorRankingsPage = () => {
 
     const yourRank = sorted.find(r => r.isYou)?.rank ?? '-';
     const topPerformer = sorted[0];
-    const currentSortLabel = SORT_OPTIONS.find(o => o.key === sortBy)?.label ?? 'Average Rating';
+    const currentSortLabel = SORT_OPTIONS.find(o => o.key === sortBy)?.label ?? 'Ranking Score';
 
     return (
         <div className="min-h-full bg-gray-50 dark:bg-slate-900 flex flex-col font-sans">
             {/* Header */}
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-8 py-5 flex items-center justify-between transition-all duration-300">
+            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-700/80 sticky top-0 z-[40] px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center justify-between gap-3 transition-all duration-300">
                 <div className="flex flex-col">
                     <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
                         Competitor Rankings
@@ -109,7 +115,7 @@ const CompetitorRankingsPage = () => {
             </header>
 
             {/* Main Content */}
-            <main className="w-full px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
+            <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex-1 max-w-[1600px] mx-auto space-y-6">
 
                 {/* Back */}
                 <Link
@@ -146,30 +152,39 @@ const CompetitorRankingsPage = () => {
 
                 {/* Rankings Table */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden mt-8">
-                    <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+                    <div className="px-4 sm:px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-800">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Rankings Overview</h2>
                         <span className="text-xs font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider">
                             Sorted by: <span className="text-blue-500">{currentSortLabel}</span>
                         </span>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto show-scrollbar">
+                        <table className="w-full min-w-[60rem] text-left border-collapse">
                             <thead>
                                 <tr className="bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[10%]">Rank</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[30%]">Organization Name</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[26%]">Organization Name</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[16%]">
+                                        <div
+                                            onClick={() => setSortBy('adjusted')}
+                                            title="Volume-weighted rating: averages from few reviews are pulled toward the group average, so small samples cannot dominate the ranking."
+                                            className={`flex items-center gap-1.5 cursor-pointer transition-colors ${sortBy === 'adjusted' ? 'text-blue-500' : 'hover:text-gray-600 dark:hover:text-gray-200'}`}
+                                        >
+                                            Ranking Score <ArrowUpDown size={12} />
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[16%]">
                                         <div onClick={() => setSortBy('rating')} className={`flex items-center gap-1.5 cursor-pointer transition-colors ${sortBy === 'rating' ? 'text-blue-500' : 'hover:text-gray-600 dark:hover:text-gray-200'}`}>
                                             Average Rating <ArrowUpDown size={12} />
                                         </div>
                                     </th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[16%]">
                                         <div onClick={() => setSortBy('sentiment')} className={`flex items-center gap-1.5 cursor-pointer transition-colors ${sortBy === 'sentiment' ? 'text-blue-500' : 'hover:text-gray-600 dark:hover:text-gray-200'}`}>
                                             Sentiment Score <ArrowUpDown size={12} />
                                         </div>
                                     </th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[20%]">
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest w-[16%]">
                                         <div onClick={() => setSortBy('reviews')} className={`flex items-center gap-1.5 cursor-pointer transition-colors ${sortBy === 'reviews' ? 'text-blue-500' : 'hover:text-gray-600 dark:hover:text-gray-200'}`}>
                                             Review Count <ArrowUpDown size={12} />
                                         </div>
@@ -178,13 +193,13 @@ const CompetitorRankingsPage = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
                                 {loading && (
-                                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading rankings...</td></tr>
+                                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading rankings...</td></tr>
                                 )}
                                 {error && (
-                                    <tr><td colSpan={5} className="px-6 py-8 text-center text-red-500">{error}</td></tr>
+                                    <tr><td colSpan={6} className="px-6 py-8 text-center text-red-500">{error}</td></tr>
                                 )}
                                 {!loading && !error && sorted.length === 0 && (
-                                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">No competitors tracked yet.</td></tr>
+                                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">No competitors tracked yet.</td></tr>
                                 )}
                                 {!loading && !error && sorted.map((competitor) => (
                                     <tr
@@ -203,6 +218,11 @@ const CompetitorRankingsPage = () => {
                                                     <span className="px-2 py-0.5 bg-[#4e80ee] text-white text-[11px] font-bold rounded-md uppercase tracking-wider">You</span>
                                                 )}
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-[22px]">
+                                            <span className="font-bold text-gray-900 dark:text-white text-[14px]">
+                                                {competitor.adjustedRating != null ? competitor.adjustedRating.toFixed(2) : '—'}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-[22px]">
                                             <div className="flex items-center gap-1.5">

@@ -21,7 +21,7 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({ subject, body, onS
                     value={subject}
                     onChange={(e) => onSubjectChange(e.target.value.slice(0, MAX_SUBJECT))}
                     placeholder="e.g., Important update: Platform maintenance"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{subject.length} / {MAX_SUBJECT}</p>
             </div>
@@ -34,7 +34,7 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({ subject, body, onS
                     onChange={(e) => onBodyChange(e.target.value.slice(0, MAX_BODY))}
                     placeholder="Write your message here..."
                     rows={6}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{body.length} / {MAX_BODY}</p>
             </div>

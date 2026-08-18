@@ -3,7 +3,7 @@ import Skeleton from '../components/shared/Skeleton';
 
 export const FeatureFlagsSkeleton: React.FC = () => {
     return (
-        <div className="space-y-6 pt-4 font-sans animate-shimmer">
+        <div className="space-y-6 pt-4 font-sans">
             {/* Search Bar Skeleton */}
             <div className="flex items-center gap-3">
                 <Skeleton className="h-10 flex-1 rounded-lg" />

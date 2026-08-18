@@ -2,8 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import NotificationsTemplate from '../components/notifications/templates/NotificationsTemplate';
 import type { Notification } from '../components/notifications/templates/NotificationsTemplate';
-import { notificationsService } from '../services/notificationsService';
-
+import { useNotificationStore } from '../stores/useNotificationStore';
 
 // maps backend type → frontend UI type
 const mapNotificationType = (type: string): Notification['type'] => {
@@ -21,7 +20,6 @@ const mapNotificationType = (type: string): Notification['type'] => {
             return 'system';
     }
 };
-
 
 // convert raw data into human readable date and time
 const getDateLabel = (value: string | null): string => {
@@ -49,43 +47,26 @@ const getTimeLabel = (value: string | null): string => {
     return parsed.toLocaleString();
 };
 
-/**
- * NotificationsPage Component.
- * 
- * This page serves as a centralized hub for all user notifications, including announcements,
- * system alerts, and analytics updates. It is built using an atomic design structure
- * for maximum maintainability and visual consistency.
- * 
- * @returns {React.FC} The redesigned Notifications Page.
- */
+const PAGE_SIZE = 15;
+
 const NotificationsPage: React.FC = () => {
     const location = useLocation();
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    //Controls: announcement, alert, success, system
+    const {
+        notifications: rawNotifications,
+        hasMore,
+        loading: isStoreLoading,
+        fetchNotifications,
+        markAsReadInStore,
+        deleteNotificationInStore,
+        markAllAsReadInStore,
+        deleteAllReadInStore,
+    } = useNotificationStore();
+
     const [activePrimaryFilter, setActivePrimaryFilter] = useState<'all' | 'unread'>('all');
     const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all-types' | 'announcement' | 'alert' | 'success' | 'system'>('all-types');
+    const [isLoading, setIsLoading] = useState(false);
 
-
-    const loadNotifications = useCallback(async () => {
-        try {
-            // Fetch max 100 notifications from backend
-            const result = await notificationsService.getNotifications(100);
-            setNotifications(
-                // Convert backend format → frontend format
-                (result.notifications || []).map((item) => ({
-                    id: item.notification_id,
-                    type: mapNotificationType(item.notification_type),
-                    title: item.title || 'Notification',
-                    message: item.message || '',
-                    time: getTimeLabel(item.created_at),
-                    date: getDateLabel(item.created_at),
-                    read: !!item.is_read,
-                }))
-            );
-        } catch (error) {
-            console.error('Failed to load notifications:', error);
-        }
-    }, []);
+    const lockRef = React.useRef(false);
 
     /**
      * Synchronize filter state with URL query parameters.
@@ -107,31 +88,71 @@ const NotificationsPage: React.FC = () => {
         }
     }, [location.search]);
 
-
-    // Auto Fetch Notifications
+    // Reset pagination state and load first page on filter change
     React.useEffect(() => {
-        loadNotifications();
-        const intervalId = window.setInterval(loadNotifications, 30000);   // Auto refresh every 30s
-        return () => window.clearInterval(intervalId);
-    }, [loadNotifications]);
+        const resetAndFetch = async () => {
+            if (lockRef.current) return;
+            lockRef.current = true;
+            setIsLoading(true);
+            try {
+                const isUnread = activePrimaryFilter === 'unread';
+                await fetchNotifications(PAGE_SIZE, 0, true, isUnread);
+            } catch (error) {
+                console.error('Failed to load notifications on filter change:', error);
+            } finally {
+                setIsLoading(false);
+                lockRef.current = false;
+            }
+        };
+
+        resetAndFetch();
+    }, [activePrimaryFilter, fetchNotifications]);
+
+    // Infinite scroll loading handler
+    const handleLoadMore = useCallback(async () => {
+        if (lockRef.current || isStoreLoading || !hasMore) return;
+        lockRef.current = true;
+        setIsLoading(true);
+        try {
+            const isUnread = activePrimaryFilter === 'unread';
+            await fetchNotifications(PAGE_SIZE, rawNotifications.length, false, isUnread);
+        } catch (error) {
+            console.error('Failed to load more notifications:', error);
+        } finally {
+            setIsLoading(false);
+            lockRef.current = false;
+        }
+    }, [isStoreLoading, hasMore, rawNotifications.length, activePrimaryFilter, fetchNotifications]);
+
+    const mappedNotifications = useMemo(() => {
+        return rawNotifications.map((item) => ({
+            id: item.notification_id,
+            type: mapNotificationType(item.notification_type),
+            title: item.title || 'Notification',
+            message: item.message || '',
+            time: getTimeLabel(item.created_at),
+            date: getDateLabel(item.created_at),
+            read: !!item.is_read,
+        }));
+    }, [rawNotifications]);
 
     /**
      * Memoized calculation of notification counts for filtering tabs.
      */
     const counts = useMemo(() => ({
-        all: notifications.length,
-        unread: notifications.filter(n => !n.read).length,
-        announcement: notifications.filter(n => n.type === 'announcement').length,
-        alert: notifications.filter(n => n.type === 'alert').length,
-        success: notifications.filter(n => n.type === 'success').length,
-        system: notifications.filter(n => n.type === 'system').length,
-    }), [notifications]);
+        all: mappedNotifications.length,
+        unread: mappedNotifications.filter(n => !n.read).length,
+        announcement: mappedNotifications.filter(n => n.type === 'announcement').length,
+        alert: mappedNotifications.filter(n => n.type === 'alert').length,
+        success: mappedNotifications.filter(n => n.type === 'success').length,
+        system: mappedNotifications.filter(n => n.type === 'system').length,
+    }), [mappedNotifications]);
 
     /**
      * Memoized filtered notifications based on the currently active filter.
      */
     const filteredNotifications = useMemo(() => {
-        let scoped = notifications;
+        let scoped = mappedNotifications;
 
         if (activePrimaryFilter === 'unread') {
             scoped = scoped.filter((n) => !n.read);
@@ -142,7 +163,7 @@ const NotificationsPage: React.FC = () => {
         }
 
         return scoped;
-    }, [notifications, activePrimaryFilter, activeCategoryFilter]);
+    }, [mappedNotifications, activePrimaryFilter, activeCategoryFilter]);
 
     const isFiltered = activePrimaryFilter !== 'all' || activeCategoryFilter !== 'all-types';
 
@@ -176,51 +197,30 @@ const NotificationsPage: React.FC = () => {
      * @param {number} id - The unique identifier of the notification.
      */
     const handleMarkAsRead = useCallback(async (id: string) => {
-        try {
-            await notificationsService.markAsRead(id);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        } catch (error) {
-            console.error('Failed to mark notification as read:', error);
-        }
-    }, []);
+        await markAsReadInStore(id);
+    }, [markAsReadInStore]);
 
     /**
      * Removes a notification from the list.
      * @param {number} id - The unique identifier of the notification.
      */
     const handleDismiss = useCallback(async (id: string) => {
-        try {
-            await notificationsService.deleteNotification(id);
-            setNotifications(prev => prev.filter(n => n.id !== id));
-        } catch (error) {
-            console.error('Failed to delete notification:', error);
-        }
-    }, []);
+        await deleteNotificationInStore(id);
+    }, [deleteNotificationInStore]);
 
     /**
      * Marks all currently filtered notifications as read.
      */
     const handleMarkAllRead = useCallback(async () => {
-        try {
-            await notificationsService.markAllAsRead();
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-        } catch (error) {
-            console.error('Failed to mark all notifications as read:', error);
-        }
-    }, []);
+        await markAllAsReadInStore();
+    }, [markAllAsReadInStore]);
 
     /**
      * Clears all read notifications from the system via API.
      */
     const handleClearAll = useCallback(async () => {
-        try {
-            await notificationsService.deleteAllReadNotifications();
-            // Remove all read notifications from the UI
-            setNotifications(prev => prev.filter(n => !n.read));
-        } catch (error) {
-            console.error('Failed to clear read notifications:', error);
-        }
-    }, []);
+        await deleteAllReadInStore();
+    }, [deleteAllReadInStore]);
 
     return (
         <NotificationsTemplate
@@ -237,6 +237,9 @@ const NotificationsPage: React.FC = () => {
             onDismiss={handleDismiss}
             onMarkAllRead={handleMarkAllRead}
             onClearAll={handleClearAll}
+            hasMore={hasMore}
+            isLoading={isLoading || isStoreLoading}
+            onLoadMore={handleLoadMore}
         />
     );
 };

@@ -39,7 +39,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ period, onPeri
     const notifRef = useRef<HTMLDivElement>(null);
     const datePickerRef = useRef<HTMLDivElement>(null);
 
-    const currentOption = DATE_RANGE_OPTIONS.find(opt => opt.value === period) || DATE_RANGE_OPTIONS[3];
+    const currentOption = DATE_RANGE_OPTIONS.find(opt => opt.value === period) || DATE_RANGE_OPTIONS[1];
 
     // Close panels on outside click
     useEffect(() => {

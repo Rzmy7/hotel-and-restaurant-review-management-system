@@ -11,7 +11,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pyodbc
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 
 from app.core.db_utils import get_connection_string
 from app.modules.admin.schemas import (
@@ -28,8 +28,45 @@ from app.modules.admin.services.broadcasting_service import (
     to_record,
 )
 from app.modules.admin.services.system_settings_service import get_system_timezone
+from app.modules.auth.services.email_service import send_broadcast_email, send_in_background
 
 router = APIRouter(prefix="/broadcasting", tags=["Admin - Settings"])
+
+
+def _send_emails_for_broadcast_bg(
+    recipient_ids: list[str],
+    subject: str,
+    body: str,
+    message_type: str,
+) -> None:
+    """
+    Background-safe version: opens its own DB connection so it can run
+    after the HTTP response has already been returned to the client.
+    Best-effort — individual failures are printed, not raised.
+    """
+    if not recipient_ids:
+        return
+
+    placeholders = ",".join(["?"] * len(recipient_ids))
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            rows = conn.cursor().execute(
+                f"""
+                SELECT email
+                FROM dbo.[user]
+                WHERE CAST(user_id AS NVARCHAR(36)) IN ({placeholders})
+                  AND is_email_notifications_enabled = 1
+                """,
+                recipient_ids,
+            ).fetchall()
+    except Exception as exc:
+        print(f"[broadcast-email] Failed to fetch recipient emails: {exc}")
+        return
+
+    for row in rows:
+        email = str(row[0]).strip() if row[0] else ""
+        if email:
+            send_in_background(send_broadcast_email, email, subject, body, message_type)
 
 
 def _parse_scheduled_at_to_utc(value: str | None, timezone_name: str) -> datetime | None:
@@ -64,7 +101,7 @@ def _parse_scheduled_at_to_utc(value: str | None, timezone_name: str) -> datetim
 
 
 @router.post("/send")
-def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
+def send_broadcast(payload: BroadcastCreate, request: Request, background_tasks: BackgroundTasks) -> dict:
     admin_identifier = request.headers.get("x-admin-user", "Admin User")
 
     connection = pyodbc.connect(get_connection_string())
@@ -117,6 +154,17 @@ def send_broadcast(payload: BroadcastCreate, request: Request) -> dict:
         if status == "sent" and payload.channel in {"notification", "both"}:
             create_notifications(
                 cursor, recipient_ids, payload.subject, payload.body, payload.messageType, now_utc,
+            )
+
+        if status == "sent" and payload.channel in {"email", "both"}:
+            # Queue email delivery as a background task so the HTTP response
+            # is returned immediately — the modal closes without waiting.
+            background_tasks.add_task(
+                _send_emails_for_broadcast_bg,
+                list(recipient_ids),
+                payload.subject,
+                payload.body,
+                payload.messageType,
             )
 
         connection.commit()
@@ -183,13 +231,38 @@ def get_statistics() -> StatisticsResponse:
 
 
 @router.get("/history")
-def get_history() -> list[dict]:
+def get_history(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+) -> dict:
+    page = max(1, page)
+    limit = max(1, limit)
+    offset = (page - 1) * limit
+
     connection = pyodbc.connect(get_connection_string())
     try:
         cursor = connection.cursor()
         ensure_broadcast_events_table(cursor)
-        rows = cursor.execute(
-            """
+
+        where_clauses = []
+        params = []
+        if search:
+            search_pattern = f"%{search.strip()}%"
+            where_clauses.append(
+                "(subject LIKE ? OR body LIKE ? OR audience_label LIKE ? OR sent_by LIKE ?)"
+            )
+            params.extend([search_pattern] * 4)
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Total count query
+        count_query = f"SELECT COUNT(*) FROM dbo.broadcast_event {where_sql}"
+        cursor.execute(count_query, params)
+        total = int(cursor.fetchone()[0] or 0)
+
+        # Paginated query
+        query = f"""
             SELECT
                 broadcast_id, subject, body, channel,
                 audience_type, audience_value, audience_label,
@@ -200,11 +273,20 @@ def get_history() -> list[dict]:
                 sent_by,
                 CAST(created_at AS NVARCHAR(50)) AS created_at
             FROM dbo.broadcast_event
-            ORDER BY created_at DESC
-            """
-        ).fetchall()
+            {where_sql}
+            ORDER BY created_at DESC, broadcast_id DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """
+        cursor.execute(query, params + [offset, limit])
+        rows = cursor.fetchall()
 
-        return [to_record(row) for row in rows]
+        data = [to_record(row) for row in rows]
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
     finally:
         connection.close()
 
@@ -245,7 +327,7 @@ def get_broadcast_detail(broadcast_id: str) -> dict:
 
 
 @router.post("/{broadcast_id}/resend")
-def resend_broadcast(broadcast_id: str) -> dict:
+def resend_broadcast(broadcast_id: str, background_tasks: BackgroundTasks) -> dict:
     try:
         parsed_id = str(uuid.UUID(broadcast_id))
     except ValueError:
@@ -279,6 +361,15 @@ def resend_broadcast(broadcast_id: str) -> dict:
         if str(event.channel) in {"notification", "both"}:
             create_notifications(
                 cursor, recipient_ids, str(event.subject), str(event.body), str(event.message_type), now_utc,
+            )
+
+        if str(event.channel) in {"email", "both"}:
+            background_tasks.add_task(
+                _send_emails_for_broadcast_bg,
+                list(recipient_ids),
+                str(event.subject),
+                str(event.body),
+                str(event.message_type),
             )
 
         cursor.execute(

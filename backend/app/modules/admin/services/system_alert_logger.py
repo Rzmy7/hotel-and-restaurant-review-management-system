@@ -1,7 +1,7 @@
 """
 System Alert Logger — fire-and-forget logging of system-level alerts.
 
-Records API failures (Gemini quota, scraping errors), system health issues,
+Records API failures (LLM quota, scraping errors), system health issues,
 and other operational events into ``dbo.system_alert_log``. This table is
 consumed by the admin dashboard's System Alerts panel.
 
@@ -25,8 +25,8 @@ logger = logging.getLogger("system_alert_logger")
 
 # ── Alert categories ───────────────────────────────────────────────
 
-ALERT_GEMINI_QUOTA = "gemini_quota_exceeded"
-ALERT_GEMINI_API_ERROR = "gemini_api_error"
+ALERT_LLM_QUOTA = "llm_quota_exceeded"
+ALERT_LLM_API_ERROR = "llm_api_error"
 ALERT_SCRAPING_FAILURE = "scraping_failure"
 ALERT_SCRAPER_ENGINE_DOWN = "scraper_engine_unreachable"
 ALERT_DB_ERROR = "database_error"
@@ -86,7 +86,7 @@ def log_system_alert(
     Parameters
     ----------
     alert_type:
-        Machine-readable category (e.g. ``ALERT_GEMINI_QUOTA``).
+        Machine-readable category (e.g. ``ALERT_LLM_QUOTA``).
     title:
         Short human-readable headline shown in the alerts panel.
     message:
@@ -148,14 +148,14 @@ def log_system_alert(
 # ── Pre-built alert helpers ────────────────────────────────────────
 
 
-def alert_gemini_quota_exceeded(detail: str = "") -> None:
-    """Log an alert when the Gemini API returns 429 / RESOURCE_EXHAUSTED."""
+def alert_llm_quota_exceeded(detail: str = "", model_name: str = "LLM") -> None:
+    """Log an alert when the API returns 429 / RESOURCE_EXHAUSTED or billing errors."""
     log_system_alert(
-        alert_type=ALERT_GEMINI_QUOTA,
-        title="Gemini API Quota Exceeded",
+        alert_type=ALERT_LLM_QUOTA,
+        title=f"{model_name} API Quota Exceeded",
         message=(
-            "The Gemini API quota has been exhausted. Review processing is paused "
-            "until quota resets. Check your Google AI billing or plan limits."
+            f"The {model_name} API quota/billing limit has been exhausted. Review processing is paused "
+            f"until quota resets. Check your {model_name} billing or plan limits."
             + (f" Detail: {detail}" if detail else "")
         ),
         severity="error",
@@ -163,33 +163,34 @@ def alert_gemini_quota_exceeded(detail: str = "") -> None:
     )
 
 
-def alert_gemini_api_error(error_msg: str = "") -> None:
-    """Log an alert for a non-quota Gemini API failure."""
+def alert_llm_api_error(error_msg: str = "", model_name: str = "LLM") -> None:
+    """Log an alert for a non-quota API failure."""
     log_system_alert(
-        alert_type=ALERT_GEMINI_API_ERROR,
-        title="Gemini API Error",
+        alert_type=ALERT_LLM_API_ERROR,
+        title=f"{model_name} API Error",
         message=(
-            "A Gemini API call failed during review analysis. "
+            f"A {model_name} API call failed during review analysis. "
             f"Error: {error_msg[:500]}" if error_msg else
-            "A Gemini API call failed during review analysis."
+            f"A {model_name} API call failed during review analysis."
         ),
         severity="error",
         category="api",
     )
 
 
-def alert_gemini_key_missing() -> None:
-    """Log an alert when no Gemini API key is configured."""
+def alert_llm_key_missing(model_name: str = "LLM") -> None:
+    """Log an alert when no API key/model is configured."""
     log_system_alert(
         alert_type=ALERT_API_KEY_MISSING,
-        title="Gemini API Key Not Configured",
+        title=f"{model_name} API Key Not Configured" if model_name != "AI" else "AI API Key/Model Not Configured",
         message=(
-            "No Gemini API key is configured. Review analysis cannot proceed. "
-            "Set a key via Admin Panel → Settings → Review Processing."
+            f"No {model_name} API key/model is configured. Review analysis cannot proceed. "
+            "Set a key/model via Admin Panel → LLM Models."
         ),
         severity="warning",
         category="api",
     )
+
 
 
 def alert_scraping_failure(platform: str, error_msg: str = "", org_name: str = "") -> None:

@@ -64,6 +64,107 @@ def force_hydrate_review_section(page):
         logger.warning(f"Could not strictly scroll to #reviewSection: {e}")
 
 
+def filter_agoda_reviews(page):
+    """Check for Agoda review tab button OR select box and select Agoda reviews (provider id 332) if found."""
+    logger.info("Checking for Agoda reviews source filter or tab button...")
+    try:
+        selected = False
+
+        # Strategy 1: Check tab button filter first (modern Agoda UI layout)
+        tab_selector = (
+            'button[data-element-name="review-tab"][data-provider-id="332"], '
+            'button[data-provider-id="332"], '
+            'button[id*="reviews-tab"][data-provider-id="332"]'
+        )
+        tab_locator = page.locator(tab_selector).first
+        if tab_locator.count() > 0:
+            logger.info("Agoda reviews tab button (provider id 332) found. Attempting to click tab...")
+            try:
+                # Force click natively via Playwright
+                tab_locator.evaluate("el => { el.scrollIntoView({block: 'center'}); el.click(); }")
+                selected = True
+                logger.info("Clicked Agoda Reviews tab button successfully via JS evaluate.")
+            except Exception as tab_err:
+                logger.warning(f"JS click failed on Agoda tab button: {tab_err}")
+                try:
+                    tab_locator.click(force=True)
+                    selected = True
+                    logger.info("Clicked Agoda Reviews tab button successfully via force click.")
+                except Exception as force_err:
+                    logger.warning(f"Force click failed on Agoda tab button: {force_err}")
+
+        # Strategy 2: Fallback JS search for any tab button containing 'Agoda' text or provider-id='332'
+        if not selected:
+            tab_clicked = page.evaluate("""
+                () => {
+                    const btns = Array.from(document.querySelectorAll('button[data-element-name="review-tab"], button[role="tab"], button[data-provider-id]'));
+                    for (const b of btns) {
+                        const providerId = b.getAttribute('data-provider-id');
+                        const text = (b.innerText || '').toLowerCase();
+                        if (providerId === '332' || text.includes('agoda')) {
+                            b.scrollIntoView({block: 'center'});
+                            b.click();
+                            b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            """)
+            if tab_clicked:
+                selected = True
+                logger.info("Successfully clicked Agoda Reviews tab via JS fallback search.")
+
+        # Strategy 3: Check select box filter (legacy/alternate Agoda UI layout)
+        if not selected:
+            select_selector = (
+                'select[data-testid="reviews-source-filter"], '
+                'select[data-element-name="reviews-source-filter"], '
+                'select[id*="reviews-source-filter"], '
+                'select[data-element-id*="reviews-source-filter"]'
+            )
+            select_locator = page.locator(select_selector).first
+            if select_locator.count() > 0 and select_locator.is_visible():
+                logger.info("Reviews source filter select box found. Attempting to select Agoda Reviews option...")
+                try:
+                    values = select_locator.select_option(value="332")
+                    if values:
+                        selected = True
+                        logger.info("Selected Agoda Reviews option by value='332'.")
+                except Exception as opt_err:
+                    logger.warning(f"Could not select Agoda option by value='332': {opt_err}")
+
+                if not selected:
+                    option_val = page.evaluate("""
+                        (sel) => {
+                            const el = document.querySelector(sel);
+                            if (!el) return null;
+                            for (const opt of el.options) {
+                                if (opt.value === '332' || opt.text.toLowerCase().includes('agoda')) {
+                                    return opt.value;
+                                }
+                            }
+                            return null;
+                        }
+                    """, select_selector)
+                    if option_val:
+                        select_locator.select_option(value=option_val)
+                        selected = True
+                        logger.info(f"Selected Agoda Reviews option with value '{option_val}'.")
+
+        if selected:
+            # Wait for reviews container to update after filter / tab selection
+            time.sleep(3)
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except Exception:
+                pass
+        else:
+            logger.info("No reviews source select box or Agoda tab button detected.")
+    except Exception as e:
+        logger.warning(f"Error while checking or setting reviews source filter / tab: {e}")
+
+
 def scrape_agoda(
     url: str,
     headless: bool = True,
@@ -141,6 +242,9 @@ def scrape_agoda(
 
         # Hydrate explicit inline section natively (zero modals)
         force_hydrate_review_section(page)
+
+        # Filter reviews source to Agoda before extraction
+        filter_agoda_reviews(page)
 
         extractor = AgodaExtractor(page)
 

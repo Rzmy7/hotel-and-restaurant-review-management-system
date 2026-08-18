@@ -1,4 +1,5 @@
 import { apiClient } from '../api/client';
+import type { PaginatedResponse } from '../types';
 
 export interface ReviewProcessingStats {
     activeJobs: number;
@@ -10,6 +11,7 @@ export interface ReviewProcessingStats {
     reviewsChange: number;
     pendingReviews: number;
     isPaused: boolean;
+    pauseReason?: string;
 }
 
 export interface ReviewProcessingJob {
@@ -31,6 +33,10 @@ export interface BatchConfig {
     min: number;
     max: number;
     default: number;
+    parallel_batches: number;
+    parallel_min: number;
+    parallel_max: number;
+    parallel_default: number;
 }
 
 export const fetchReviewProcessingStats = (): Promise<ReviewProcessingStats> => {
@@ -41,16 +47,33 @@ export const resumeReviewProcessing = (): Promise<{ status: string; message: str
     return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/resume');
 };
 
-export const fetchReviewProcessingJobs = (): Promise<ReviewProcessingJob[]> => {
-    return apiClient.get<ReviewProcessingJob[]>('/admin/monitoring/review-processing/jobs');
+export const pauseReviewProcessing = (): Promise<{ status: string; message: string }> => {
+    return apiClient.post<{ status: string; message: string }>('/admin/monitoring/review-processing/pause');
+};
+
+export const fetchReviewProcessingJobs = (
+    page: number,
+    limit: number,
+    search?: string
+): Promise<PaginatedResponse<ReviewProcessingJob>> => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    if (search) {
+        params.append('search', search);
+    }
+    return apiClient.get<PaginatedResponse<ReviewProcessingJob>>(`/admin/monitoring/review-processing/jobs?${params}`);
 };
 
 export const getBatchConfig = (): Promise<BatchConfig> => {
     return apiClient.get<BatchConfig>('/admin/monitoring/review-processing/batch-config');
 };
 
-export const updateBatchConfig = (batchSize: number): Promise<BatchConfig> => {
-    return apiClient.patch<BatchConfig>('/admin/monitoring/review-processing/batch-config', { batch_size: batchSize });
+export const updateBatchConfig = (batchSize: number, parallelBatches: number): Promise<BatchConfig> => {
+    return apiClient.patch<BatchConfig>('/admin/monitoring/review-processing/batch-config', { 
+        batch_size: batchSize, 
+        parallel_batches: parallelBatches 
+    });
 };
 
 export const retryFailedReviews = (sourceId: string): Promise<{ status: string; message: string; count: number }> => {

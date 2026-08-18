@@ -27,6 +27,7 @@ export interface SecuritySettings {
 
 export interface AdminProfile {
     name: string;
+    email: string;
 }
 
 export interface AdminPasswordChangePayload {

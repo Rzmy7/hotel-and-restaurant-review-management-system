@@ -61,11 +61,12 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const organizationId = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
   const refreshData = () => refreshDataStore(organizationId, fetchParams);
 
-  // Fetch detailed review lazily on modal open
+  // Fetch detailed review lazily on modal open, using propReview as placeholder for instant UI
   const { data: fetchedReview, loading: isDetailLoading } = useReviewDetail(
     isOpen && propReview?.id ? String(propReview.id) : null,
     propReview?.userName,
-    propReview?.heading
+    propReview?.heading,
+    propReview
   );
 
   // Combine propReview with fetchedReview details, preferring fetchedReview
@@ -74,7 +75,6 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const [draftReply, setDraftReply] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [tone, setTone] = useState<'professional' | 'casual' | 'standard'>('standard');
@@ -82,14 +82,14 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
 
   // Initialize draft when review changes
   useEffect(() => {
-    if (review) {
+    if (review?.id) {
       setDraftReply("");
       setIsCopied(false);
       setSelectedPhotoIndex(null);
       setTone('standard');
       setReplyLength('standard');
     }
-  }, [review]);
+  }, [review?.id]);
 
   // Keyboard navigation for image lightbox
   useEffect(() => {
@@ -129,17 +129,6 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
-    }
-  };
-
-  const handleMarkResolved = async () => {
-    setIsResolving(true);
-    try {
-      await reviewsService.updateReviewStatus(organizationId, review.id, 'Replied');
-      await refreshData();
-      onClose();
-    } finally {
-      setIsResolving(false);
     }
   };
 
@@ -239,19 +228,8 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
       </Button>
       <div className="flex items-center gap-3">
         <Button
-          variant="outline"
-          onClick={handleMarkResolved}
-          disabled={isResolving || isSaving || review.status === 'Replied'}
-          className="px-6 text-[13px] uppercase flex items-center gap-1.5 shadow-sm active:scale-95 transition-all
-            text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300
-            dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/60 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
-        >
-          {isResolving ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-          {review.status === 'Replied' ? 'Resolved' : 'Mark as Resolved'}
-        </Button>
-        <Button
           onClick={handleSave}
-          disabled={isSaving || isResolving || !draftReply}
+          disabled={isSaving || !draftReply}
           className="px-8 text-[13px] uppercase shadow-lg active:scale-95 transition-all"
         >
           {isSaving ? <RefreshCw size={16} className="animate-spin" /> : 'Save Changes'}

@@ -1,5 +1,3 @@
-version: '3.8'
-
 # ═══════════════════════════════════════════════════════════════════
 # Single VPS Docker Compose — External Database
 # ═══════════════════════════════════════════════════════════════════
@@ -17,6 +15,9 @@ services:
       context: ./microservices/embedding-service
     container_name: reviewmate-embedding
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     environment:
       - INTERNAL_API_KEY=${INTERNAL_API_KEY}
       - EMBEDDING_API_KEYS=${INTERNAL_API_KEY}
@@ -34,10 +35,14 @@ services:
       context: ./microservices/scraper_engine
     container_name: reviewmate-scraper
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     shm_size: '2gb' # Playwright requires shared memory to prevent browser crashes
     # Note: Ports are internal-only for security; exposed via Nginx
     depends_on:
       - backend
+      - rabbitmq
     environment:
       - DB_DRIVER=ODBC Driver 18 for SQL Server
       - DB_SERVER=${DB_SERVER}
@@ -58,6 +63,7 @@ services:
       - DELAY_AGODA=${DELAY_AGODA:-20.0}
       - DELAY_BOOKING=${DELAY_BOOKING:-20.0}
       - DELAY_TRIPADVISOR=${DELAY_TRIPADVISOR:-40.0}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672/}
 
   # ⚙️ Backend API (FastAPI)
   backend:
@@ -66,7 +72,12 @@ services:
       context: ./backend
     container_name: reviewmate-backend
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     # Note: Ports are internal-only for security; exposed via Nginx
+    depends_on:
+      - rabbitmq
     volumes:
       # scripts/ is excluded by .dockerignore — mount it for db_rebuild.py
       - ./backend/scripts:/app/scripts:ro
@@ -86,15 +97,16 @@ services:
       - DB_PWD=${DB_PWD}
       - DB_ENCRYPT=${DB_ENCRYPT:-yes}
       # ── AI / LLM ──
-      - GENAI_KEY=${GENAI_KEY}
       - LLM_ENCRYPTION_KEY=${LLM_ENCRYPTION_KEY}
       # ── JWT ──
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      # ── SMTP (Password resets) ──
+      # ── SMTP (Notifications & password resets) ──
       - SMTP_EMAIL=${SMTP_EMAIL}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_TIMEOUT=${SMTP_TIMEOUT:-10}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
       # ── Google OAuth ──
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -112,6 +124,22 @@ services:
       - BACKEND_API_KEYS=${INTERNAL_API_KEY}
       # ── CORS (allowed frontend origins) ──
       - CORS_ORIGINS=https://${DOMAIN_NAME:-reviewmate.live},https://admin.${DOMAIN_NAME:-reviewmate.live}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672/}
+
+  # 🐇 Message Broker (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: reviewmate-rabbitmq
+    restart: unless-stopped
+    ports:
+      # Expose rabbitmq ports (5672 for amqp, 15672 for admin management dashboard)
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   # 💻 User Frontend (React + Vite)
   frontend:
@@ -163,6 +191,7 @@ services:
       - backend
       - scraper
       - embedding
+      - rabbitmq
 
   # 🔒 Certbot (SSL Auto-renewal)
   certbot:
@@ -176,5 +205,6 @@ services:
 
 volumes:
   chroma_data:
+  rabbitmq_data:
   certbot_conf:
   certbot_www:

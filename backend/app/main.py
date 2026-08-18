@@ -96,6 +96,11 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown actions
     stop_scheduler()
+    try:
+        from app.modules.source.services.embedding_client import wait_for_active_embeddings
+        wait_for_active_embeddings()
+    except Exception as shutdown_err:
+        logger.warning(f"Error waiting for active embedding threads: {shutdown_err}")
 
 
 # ── Router imports ──────────────────────────────────────────────────
@@ -180,6 +185,46 @@ app.add_middleware(
 )
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# ── Sliding Sessions (Approach 1) ───────────────────────────────────
+@app.middleware("http")
+async def sliding_sessions_middleware(request: Request, call_next):
+    import time
+    from jose import jwt, JWTError
+    from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM
+    from app.core.security import create_access_token, set_auth_cookie
+
+    token = request.cookies.get("access_token")
+    new_token = None
+
+    if token:
+        try:
+            # Decode and verify the token. Raises JWTError if expired/invalid.
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            exp = payload.get("exp")
+            if exp:
+                time_remaining = exp - time.time()
+                # ponytail: if valid but <= 5 minutes left, rotate it automatically
+                if 0 < time_remaining <= 300:
+                    user_id = payload.get("user_id")
+                    role = payload.get("role")
+                    organization_id = payload.get("organization_id")
+                    if user_id and role:
+                        new_token = create_access_token(
+                            user_id=user_id,
+                            role=role,
+                            organization_id=organization_id,
+                        )
+        except JWTError:
+            pass
+
+    response = await call_next(request)
+
+    if new_token:
+        set_auth_cookie(response, new_token)
+
+    return response
+
 
 # ── Proxy Headers (Production HTTPS support) ──────────────────────
 # When running behind a reverse proxy (Nginx, Cloudflare), this allows

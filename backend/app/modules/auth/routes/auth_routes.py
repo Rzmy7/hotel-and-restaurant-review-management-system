@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -17,8 +17,8 @@ from app.modules.auth.repositories.roles_repo import assign_role_to_user, get_us
 from app.modules.auth.services.auth_service import login_user, verify_login_2fa
 from app.modules.auth.utils.auth_utils import hash_password, verify_password
 from app.modules.auth.utils.email_utils import send_reset_email
-from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel
-from app.core.security import decode_access_token, create_access_token
+from app.modules.auth.schemas.auth_schemas import SignupModel, LoginModel, LoginTwoFactorModel, EmailModel, ResetModel, SignupVerifyModel
+from app.core.security import decode_access_token, create_access_token, create_signup_token, decode_signup_token
 from app.core.validations.signup_validator import validate_signup_payload
 from app.core.validations.login_validator import validate_login_payload, validate_login_otp_code
 from app.modules.source.models import Tenant
@@ -42,9 +42,9 @@ def as_utc(dt: datetime | None) -> datetime | None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
-@router.post("/signup", status_code=201, summary="Register a new user account")
-def signup(payload: SignupModel, db: Session = Depends(get_db)):
-    """Create a new tenant user account. Returns a JWT access token on success."""
+@router.post("/signup", status_code=201, summary="Register a new user account (initiates verification)")
+def signup(payload: SignupModel, response: Response, db: Session = Depends(get_db)):
+    """Initiates user registration by sending an email verification OTP."""
     validated = validate_signup_payload(payload.name, payload.email, payload.password)
 
     existing_user = get_user_by_email(db, validated["email"])
@@ -53,22 +53,80 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
             status_code=400,
             detail="Email already exists in database"
         )
-    # split the full name into first name and last name
-    name_parts = validated["name"].split(" ", 1)
+
+    import random
+    from app.modules.auth.services.email_service import send_signup_otp_email
+
+    otp_code = f"{random.randint(100000, 999999)}"
+    otp_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+
+    signup_token = create_signup_token(
+        email=validated["email"],
+        name=validated["name"],
+        password_hash=hash_password(validated["password"]),
+        otp_hash=otp_hash
+    )
+
+    send_signup_otp_email(validated["email"], otp_code)
+
+    return {
+        "require_verification": True,
+        "signup_token": signup_token,
+        "message": "A verification code has been sent to your email."
+    }
+
+
+@router.post("/signup/verify", status_code=201, summary="Verify OTP and complete signup")
+def signup_verify(payload: SignupVerifyModel, response: Response, db: Session = Depends(get_db)):
+    """Verifies the signup OTP code and creates the user account on success."""
+    from app.core.validations.otp_validator import validate_otp_format
+    validate_otp_format(payload.code)
+
+    from jose import jwt
+    try:
+        token_data = decode_signup_token(payload.signup_token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=400,
+            detail="Verification session has expired. Please sign up again."
+        )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid verification session. Please sign up again."
+        )
+
+    submitted_hash = hashlib.sha256(payload.code.strip().encode("utf-8")).hexdigest()
+    if submitted_hash != token_data.get("otp_hash"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired verification code"
+        )
+
+    email = token_data.get("email")
+    existing_user = get_user_by_email(db, email)
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already exists in database"
+        )
+
+    name = token_data.get("name")
+    name_parts = name.split(" ", 1)
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else None
 
-    # Create the user with the default role (TENANT is assigned in create_user repo)
+    # Create the user with default role (TENANT is assigned in create_user repo)
     user = create_user(
         db=db,
-        email=validated["email"],
-        password_hash=hash_password(validated["password"]),
+        email=email,
+        password_hash=token_data.get("password_hash"),
         first_name=first_name,
         last_name=last_name,
-        is_email_verified=False,
+        is_email_verified=True,
     )
 
-    # Create the tenant workspace with the user's ID and default plan (Free=1)
+    # Create the tenant workspace with user's ID and default plan (Free=1)
     new_tenant = Tenant(
         tenant_id=user.user_id,
         plan="1"
@@ -89,25 +147,34 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
         {"user_id": str(user.user_id)}
     )
 
-    db.commit()   # permanently save changes
-    db.refresh(new_tenant)  # get updated data from DB
+    db.commit()
+    db.refresh(new_tenant)
 
-    # ── Send welcome notification ──
+    # Send welcome notification
     try:
         from app.services.notification_helpers import notify_welcome
         display_name = f"{first_name} {last_name}".strip() if last_name else first_name
         notify_welcome(str(user.user_id), display_name)
     except Exception:
-        pass  # Best-effort
+        pass
+
+    try:
+        from app.modules.auth.services.email_service import send_welcome_email, send_in_background
+        send_in_background(send_welcome_email, user.email, display_name)
+    except Exception as e:
+        print(f"[welcome-email] ERROR: Failed to enqueue welcome email: {e}")
 
     roles = get_user_role_names(db, user.user_id)
     
-    # Generate token for the new user (organization_id will be null)
+    # Generate access token
     access_token = create_access_token(
         user_id=str(user.user_id),
         role=roles[0] if roles else TENANT_ROLE,
         organization_id=None
     )
+
+    from app.core.security import set_auth_cookie
+    set_auth_cookie(response, access_token)
 
     return {
         "message": "User registered successfully in database",
@@ -126,7 +193,7 @@ def signup(payload: SignupModel, db: Session = Depends(get_db)):
 
 
 @router.post("/login", summary="Authenticate and obtain a JWT")
-def login(payload: LoginModel, db: Session = Depends(get_db)):
+def login(payload: LoginModel, response: Response, db: Session = Depends(get_db)):
     """Validate email/password credentials and return a JWT access token."""
     validated = validate_login_payload(payload.email, payload.password)
     result = login_user(
@@ -134,13 +201,16 @@ def login(payload: LoginModel, db: Session = Depends(get_db)):
         email=validated["email"],
         password=validated["password"]
     )
+    if "access_token" in result:
+        from app.core.security import set_auth_cookie
+        set_auth_cookie(response, result["access_token"])
     return {
         "message": "Login successful",
         **result
     }
 
 @router.post("/login/2fa", summary="Complete two-factor authentication")
-def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(get_db)):
+def verify_login_two_factor(payload: LoginTwoFactorModel, response: Response, db: Session = Depends(get_db)):
     """Verify a TOTP/OTP code to complete the 2FA login flow and receive a JWT."""
     normalized_code = validate_login_otp_code(payload.code)
     result = verify_login_2fa(
@@ -148,6 +218,9 @@ def verify_login_two_factor(payload: LoginTwoFactorModel, db: Session = Depends(
         email=payload.email.lower(),
         code=normalized_code,
     )
+    if "access_token" in result:
+        from app.core.security import set_auth_cookie
+        set_auth_cookie(response, result["access_token"])
     return {
         "message": "Login successful",
         **result,
@@ -162,6 +235,7 @@ from app.modules.auth.utils.auth_utils import get_current_user as get_jwt_user
 @router.post("/switch-organization", summary="Switch active organization context")
 def switch_organization(
     payload: SwitchOrganizationModel,
+    response: Response,
     db: Session = Depends(get_db),
     current_user = Depends(get_jwt_user)
 ):
@@ -182,10 +256,61 @@ def switch_organization(
         organization_id=payload.organization_id
     )
     
+    from app.core.security import set_auth_cookie
+    set_auth_cookie(response, access_token)
+    
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "organization_id": payload.organization_id
+    }
+
+@router.post("/logout", summary="Log out the current user by clearing the HttpOnly cookie")
+def logout(response: Response):
+    """Clear the access_token HttpOnly cookie on the client."""
+    from app.core.security import clear_auth_cookie
+    clear_auth_cookie(response)
+    return {"message": "Logged out successfully"}
+
+@router.get("/me", summary="Get the current authenticated user's details")
+def get_me(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_jwt_user)
+):
+    roles = get_user_role_names(db, current_user.user_id)
+    
+    # Get active organization context from the cookie/header
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+            
+    organization_id = None
+    if token:
+        try:
+            payload = decode_access_token(token)
+            organization_id = payload.get("organization_id")
+        except Exception:
+            pass
+            
+    if not organization_id:
+        org_query = db.execute(
+            text("SELECT TOP 1 organization_id FROM dbo.organization WHERE tenant_id = :tenant_id"),
+            {"tenant_id": str(current_user.user_id)}
+        ).fetchone()
+        organization_id = str(org_query[0]) if org_query else None
+
+    return {
+        "user_id": str(current_user.user_id),
+        "email": current_user.email,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "full_name": current_user.full_name,
+        "role": roles[0] if roles else TENANT_ROLE,
+        "roles": roles,
+        "organization_id": organization_id,
     }
 
 @router.post("/forgot-password", summary="Request a password reset email")

@@ -25,11 +25,13 @@ export function useReviewsData(organizationId: string, params: FetchReviewsParam
         queryKey: ['review-options', organizationId],
         queryFn: () => reviewsService.getOptions(organizationId),
         staleTime: 24 * 60 * 60 * 1000, // 24 hours
+        enabled: !!organizationId,
     });
 
     const refresh = () => {
         queryClient.invalidateQueries({ queryKey: ['reviews', organizationId] });
         queryClient.invalidateQueries({ queryKey: ['review-stats', organizationId] });
+        queryClient.invalidateQueries({ queryKey: ['review-options', organizationId] });
     };
 
     const paginatedData = reviewsQuery.data;

@@ -238,3 +238,33 @@ class AuditLog(Base):
         Index('IX_audit_level', 'level'),
         Index('IX_audit_action', 'action'),
     )
+
+
+# =========================================================
+#   SCRAPING JOBS (persisted background tasks)
+# =========================================================
+class ScrapingJob(Base):
+    """
+    Persisted record of scraping job execution states, progress,
+    and review counts across service redeployments.
+    """
+    __tablename__ = 'scraping_jobs'
+
+    id                = Column(String(36), primary_key=True)
+    platform          = Column(Unicode(100), nullable=False)
+    url               = Column(Unicode(1000), nullable=False)
+    status            = Column(String(20), nullable=False, default='pending')
+    progress          = Column(Unicode(500), nullable=True)
+    current_page      = Column(Integer, nullable=False, default=0)
+    total_pages       = Column(Integer, nullable=False, default=0)
+    reviews_extracted = Column(Integer, nullable=False, default=0)
+    total_reviews     = Column(Integer, nullable=False, default=0)
+    percentage        = Column(Float, nullable=False, default=0.0)
+    created_at        = Column(DateTime(timezone=True), server_default=text('SYSDATETIMEOFFSET()'))
+    ended_at          = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index('IX_scraping_jobs_created_at', 'created_at'),
+        Index('IX_scraping_jobs_status', 'status'),
+    )
+

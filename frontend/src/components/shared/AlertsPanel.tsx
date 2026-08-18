@@ -6,6 +6,28 @@ interface AlertsPanelProps {
   alerts: Alert[];
 }
 
+const formatRelativeTime = (isoString: string): string => {
+  try {
+    const occurred = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - occurred.getTime();
+    if (isNaN(diffMs)) return 'Recent';
+    
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+    
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHr < 24) return `${diffHr}h ago`;
+    if (diffDay === 1) return 'Yesterday';
+    return `${diffDay} days ago`;
+  } catch {
+    return 'Recent';
+  }
+};
+
 const AlertsPanel = ({ alerts }: AlertsPanelProps) => {
   const navigate = useNavigate();
 
@@ -34,22 +56,22 @@ const AlertsPanel = ({ alerts }: AlertsPanelProps) => {
         {alerts.map((alert) => (
           <div
             key={alert.id}
-            className={`flex items-start gap-3 p-4 rounded-xl border transition-all hover:shadow-md group/item ${alert.type === 'critical'
+            className={`flex items-start gap-3 p-4 rounded-xl border transition-all hover:shadow-md group/item ${alert.severity === 'critical'
               ? 'bg-rose-50/20 border-rose-100/30 text-rose-900 hover:bg-rose-50/40'
-              : alert.type === 'warning'
+              : alert.severity === 'warning'
                 ? 'bg-amber-50/20 border-amber-100/30 text-amber-900 hover:bg-amber-50/40'
                 : 'bg-blue-50/20 border-blue-100/30 text-blue-900 hover:bg-blue-50/40'
               }`}
           >
-            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${alert.type === 'critical'
+            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${alert.severity === 'critical'
               ? 'bg-rose-500'
-              : alert.type === 'warning'
+              : alert.severity === 'warning'
                 ? 'bg-amber-500'
                 : 'bg-blue-500'
               }`} />
             <div className="flex-1 min-w-0">
               <p className="m-0 text-[13px] font-bold leading-tight group-hover/item:translate-x-0.5 transition-transform">{alert.message}</p>
-              <p className="m-0 mt-1.5 text-[9px] font-black opacity-50 uppercase tracking-widest">{alert.time}</p>
+              <p className="m-0 mt-1.5 text-[9px] font-black opacity-50 uppercase tracking-widest">{formatRelativeTime(alert.occurred_at)}</p>
             </div>
           </div>
         ))}

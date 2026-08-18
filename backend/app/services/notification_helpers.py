@@ -42,6 +42,7 @@ def send_notification(
     title: str,
     message: str,
     notification_type: str = "info",
+    send_email: bool = True,
 ) -> None:
     """
     Create an in-app notification for a user.
@@ -56,6 +57,8 @@ def send_notification(
         Longer description (max 4000 chars).
     notification_type : str
         One of: info, success, warning, error, maintenance, announcement.
+    send_email : bool
+        If True, also sends a generic transactional email (if email is enabled).
     """
     from app.database.session import SessionLocal
     from app.modules.auth.repositories.notifications_repo import create_notification
@@ -69,6 +72,7 @@ def send_notification(
                 title=title,
                 message=message,
                 notification_type=notification_type,
+                send_email=send_email,
             )
         finally:
             db.close()
@@ -116,7 +120,9 @@ def notify_plan_changed_by_user(user_id: str, plan_name: str) -> None:
             "Your new feature limits are now in effect. Visit the Subscription page to see details."
         ),
         notification_type="success",
+        send_email=False,
     )
+    _try_send_subscription_email(user_id, plan_name, changed_by_admin=False)
 
 
 def notify_plan_changed_by_admin(user_id: str, plan_name: str) -> None:
@@ -129,7 +135,99 @@ def notify_plan_changed_by_admin(user_id: str, plan_name: str) -> None:
             "Your feature limits have been adjusted accordingly."
         ),
         notification_type="info",
+        send_email=False,
     )
+    _try_send_subscription_email(user_id, plan_name, changed_by_admin=True)
+
+
+def _try_send_subscription_email(
+    user_id: str,
+    plan_name: str,
+    changed_by_admin: bool,
+) -> None:
+    """
+    Best-effort: look up plan pricing and features from the DB, then send
+    a rich subscription confirmation email if the user has email notifications
+    enabled.  Failures are logged but never propagate.
+    """
+    from sqlalchemy import text
+    from app.database.session import SessionLocal
+    from app.modules.auth.services.email_service import send_subscription_email, send_in_background
+
+    try:
+        db = SessionLocal()
+        try:
+            # 1. Check email pref and fetch user email
+            user_row = db.execute(
+                text("""
+                    SELECT email, is_subscription_changes_enabled
+                    FROM dbo.[user]
+                    WHERE CAST(user_id AS NVARCHAR(36)) = :uid
+                """),
+                {"uid": user_id},
+            ).fetchone()
+            if not user_row or not user_row[1]:
+                return  # email notifications disabled or user not found
+
+            user_email = str(user_row[0])
+
+            # 2. Look up plan pricing
+            plan_row = db.execute(
+                text("""
+                    SELECT TOP 1 monthly_price, annual_price, currency
+                    FROM dbo.plans
+                    WHERE name = :name
+                """),
+                {"name": plan_name},
+            ).fetchone()
+
+            monthly_price = float(plan_row[0]) if plan_row and plan_row[0] is not None else 0.0
+            annual_price  = float(plan_row[1]) if plan_row and plan_row[1] is not None else 0.0
+            currency      = str(plan_row[2]) if plan_row and plan_row[2] else "USD"
+
+            # 3. Look up enabled plan features
+            feat_rows = db.execute(
+                text("""
+                    SELECT
+                        f.display_name,
+                        f.supports_limit,
+                        COALESCE(pf.is_enabled, 0) AS is_enabled,
+                        pf.feature_limit
+                    FROM dbo.plans p
+                    INNER JOIN dbo.plan_feature pf ON pf.plan_id = p.plan_id
+                    INNER JOIN dbo.features f      ON f.feature_id = pf.feature_id
+                    WHERE p.name = :name
+                    ORDER BY f.sort_order, f.feature_id
+                """),
+                {"name": plan_name},
+            ).fetchall()
+
+            features = [
+                {
+                    "name": str(row[0]),
+                    "supports_limit": bool(row[1]),
+                    "enabled": bool(row[2]),
+                    "limit": int(row[3]) if row[3] is not None else None,
+                }
+                for row in feat_rows
+            ]
+        finally:
+            db.close()
+
+        send_in_background(
+            send_subscription_email,
+            to_email=user_email,
+            plan_name=plan_name,
+            monthly_price=monthly_price,
+            annual_price=annual_price,
+            currency=currency,
+            features=features,
+            changed_by_admin=changed_by_admin,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Failed to send subscription email to user %s: %s", user_id, exc
+        )
 
 
 def notify_scrape_failed(user_id: str, platform_name: str, error_message: str | None = None, org_name: str | None = None) -> None:
@@ -235,7 +333,38 @@ def notify_group_invite(user_id: str, inviter_name: str, group_name: str) -> Non
             "Visit your Groups page to accept or decline the invitation."
         ),
         notification_type="info",
+        send_email=False,
     )
+    
+    # Send custom group invite email if enabled
+    from sqlalchemy import text
+    from app.database.session import SessionLocal
+    from app.modules.auth.services.email_service import send_group_invite_email, send_in_background
+
+    try:
+        db = SessionLocal()
+        try:
+            user_row = db.execute(
+                text("""
+                    SELECT email, is_group_invitations_enabled
+                    FROM dbo.[user]
+                    WHERE CAST(user_id AS NVARCHAR(36)) = :uid
+                """),
+                {"uid": user_id},
+            ).fetchone()
+            if user_row and user_row[1]:
+                send_in_background(
+                    send_group_invite_email,
+                    to_email=str(user_row[0]),
+                    inviter_name=inviter_name,
+                    group_name=group_name,
+                )
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning(
+            "Failed to send group invite email to user %s: %s", user_id, exc
+        )
 
 
 def notify_group_invite_accepted(
@@ -295,8 +424,45 @@ def notify_source_removed(user_id: str, platform_name: str, org_name: str | None
     )
 
 
-def notify_admin_gemini_quota_exceeded() -> None:
-    """Specialized alert for system admins when Gemini API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
+def notify_admin_llm_config_error(title: str, message: str) -> None:
+    """Specialized alert for system admins when review processing is paused due to configuration or missing models."""
+    from app.database.session import SessionLocal
+    from app.modules.user.models.user_models import User
+    from app.modules.auth.repositories.notifications_repo import create_notification
+
+    try:
+        db = SessionLocal()
+        try:
+            admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
+            for admin in admins:
+                if not _should_send(str(admin.user_id), f"llm_config_err_{title}", cooldown_seconds=600):
+                    continue
+                try:
+                    create_notification(
+                        db=db,
+                        user_id=admin.user_id,
+                        title=title,
+                        message=message,
+                        notification_type="error",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to notify admin {admin.user_id}: {e}")
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error(f"Failed to process admin LLM config notifications: {exc}")
+
+
+def notify_admin_llm_auth_error(model_name: str = "LLM") -> None:
+    """Specialized alert for system admins when API key authentication fails (401/403)."""
+    notify_admin_llm_config_error(
+        title=f"{model_name} Authentication Failed",
+        message=f"The API key for model '{model_name}' was rejected (401/403 Unauthorized). Please check your API key in Admin → LLM Models.",
+    )
+
+
+def notify_admin_llm_quota_exceeded(model_name: str = "LLM") -> None:
+    """Specialized alert for system admins when API quota is hit. Also alerts normal users if the api_limit_notifications feature flag is enabled."""
     from app.database.session import SessionLocal
     from app.modules.user.models.user_models import User
     from app.modules.auth.repositories.notifications_repo import create_notification
@@ -308,12 +474,14 @@ def notify_admin_gemini_quota_exceeded() -> None:
             # Find all users with Admin role
             admins = db.query(User).filter(User.role_id == ADMIN_ROLE_ID).all()
             if not admins:
-                logger.warning("No administrators found to notify about Gemini quota issue.")
+                logger.warning(f"No administrators found to notify about {model_name} quota issue.")
             else:
-                title = "Gemini API Quota Exceeded"
-                message = "The Gemini API quota has been exceeded for review processing. Please check the API billing or plan limits."
+                title = f"{model_name} API Quota Exceeded"
+                message = f"The {model_name} API quota has been exceeded for review processing. Please check the API billing or plan limits."
 
                 for admin in admins:
+                    if not _should_send(str(admin.user_id), f"llm_quota_{model_name}", cooldown_seconds=600):
+                        continue
                     try:
                         create_notification(
                             db=db,
@@ -341,6 +509,8 @@ def notify_admin_gemini_quota_exceeded() -> None:
                     user_message = "The review processing API limit has been reached. Review processing and reply generation are temporarily paused."
 
                     for user in normal_users:
+                        if not _should_send(str(user.user_id), "normal_user_api_limit", cooldown_seconds=600):
+                            continue
                         try:
                             create_notification(
                                 db=db,
@@ -357,4 +527,4 @@ def notify_admin_gemini_quota_exceeded() -> None:
         finally:
             db.close()
     except Exception as exc:
-        logger.error(f"Failed to process admin Gemini quota notifications: {exc}")
+        logger.error(f"Failed to process admin LLM quota notifications: {exc}")

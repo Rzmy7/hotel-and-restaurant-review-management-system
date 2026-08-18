@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.constants.roles import SYSTEM_ADMIN
 from app.modules.auth.models import BroadcastEvent, Notification, Role, User, UserNotification
-from app.modules.auth.services.email_service import send_notification_email
+from app.modules.auth.services.email_service import send_broadcast_email, send_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +270,7 @@ def _event_to_record(event: BroadcastEvent) -> dict:
     }
 
 
-def _create_notifications_for_recipients(
+def _create_in_app_notifications(
     db: Session,
     recipient_ids: list[uuid.UUID],
     subject: str,
@@ -278,6 +278,7 @@ def _create_notifications_for_recipients(
     message_type: str,
     created_at: datetime,
 ) -> None:
+    """Create in-app Notification + UserNotification records only. No email sending."""
     if not recipient_ids:
         return
 
@@ -301,13 +302,28 @@ def _create_notifications_for_recipients(
     ]
     db.add_all(user_notifications)
 
+
+def _send_broadcast_emails(
+    db: Session,
+    recipient_ids: list[uuid.UUID],
+    subject: str,
+    body: str,
+    message_type: str,
+) -> None:
+    """
+    Send broadcast emails to recipients who have email notifications enabled.
+    Only called when the broadcast channel includes 'email'.
+    """
+    if not recipient_ids:
+        return
+
     users_to_email = db.query(User).filter(
         User.user_id.in_(recipient_ids),
-        User.is_email_notifications_enabled == True
+        User.is_email_notifications_enabled == True,
     ).all()
 
     for user in users_to_email:
-        send_notification_email(user.email, subject, body)  # type: ignore
+        send_in_background(send_broadcast_email, user.email, subject, body, message_type)  # type: ignore
 
 
 async def send_broadcast(
@@ -361,7 +377,7 @@ async def send_broadcast(
         db.add(event)
 
         if status == "sent" and broadcast_data.channel in {"notification", "both"}:
-            _create_notifications_for_recipients(
+            _create_in_app_notifications(
                 db,
                 recipient_ids,
                 broadcast_data.subject,
@@ -370,12 +386,13 @@ async def send_broadcast(
                 now_utc,
             )
 
-        if broadcast_data.channel in {"email", "both"}:
-            logger.info(
-                "Broadcast includes email delivery; email transport not yet integrated. "
-                "broadcast_subject='%s', recipients=%s",
+        if status == "sent" and broadcast_data.channel in {"email", "both"}:
+            _send_broadcast_emails(
+                db,
+                recipient_ids,
                 broadcast_data.subject,
-                recipient_count,
+                broadcast_data.body,
+                broadcast_data.messageType,
             )
 
         db.commit()
@@ -462,13 +479,22 @@ async def resend_broadcast(
     now_utc = datetime.utcnow()
 
     if event.channel in {"notification", "both"}:
-        _create_notifications_for_recipients(
+        _create_in_app_notifications(
             db,
             recipient_ids,
             event.subject,  # type: ignore
             event.body,  # type: ignore
             event.message_type,  # type: ignore
             now_utc,
+        )
+
+    if event.channel in {"email", "both"}:
+        _send_broadcast_emails(
+            db,
+            recipient_ids,
+            event.subject,  # type: ignore
+            event.body,  # type: ignore
+            event.message_type,  # type: ignore
         )
 
     event.status = "sent"  # type: ignore

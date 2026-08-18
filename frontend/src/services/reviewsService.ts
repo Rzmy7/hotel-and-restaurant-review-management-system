@@ -4,6 +4,7 @@
 
 import type { Review, ReviewStats, FetchReviewsParams, PaginatedResponse } from '../types/reviews';
 import { apiClient } from '../api/client';
+import { ActivityMessages } from '../constants/activityMessages';
 
 class ReviewsService {
     /**
@@ -43,7 +44,10 @@ class ReviewsService {
             reviewText: item.reviewText || item.text || '',
             heading: item.heading || '',
             sentiment: item.sentiment || 'Neutral',
-            categories: Array.isArray(item.categories) ? item.categories : [],
+            categories: Array.isArray(item.categories) 
+                ? item.categories.map((c: any) => typeof c === 'string' ? c : (c?.name || ''))
+                  .filter(Boolean)
+                : [],
             source: item.source || item.platform || 'Unknown',
             date: item.date || item.reviewDate || new Date().toISOString().split('T')[0],
             status: item.status || 'pending',
@@ -105,6 +109,9 @@ class ReviewsService {
             sentiment: review.sentiment,
             source:    review.source,
             language:  review.language,
+        }, {
+            activity: ActivityMessages.GENERATE_REPLY,
+            showSuccess: false
         });
 
         if (result?.provider?.includes('fallback')) {
@@ -115,11 +122,18 @@ class ReviewsService {
     }
 
     async updateReviewStatus(organizationId: string, reviewId: string | number, status: Review['status']): Promise<void> {
-        await apiClient.put(`/reviews/${reviewId}/status`, { status });
+        await apiClient.put(`/reviews/${reviewId}/status`, { status }, {
+            activity: ActivityMessages.UPDATE_STATUS,
+            showSuccess: false
+        });
     }
 
     async saveReply(organizationId: string, reviewId: string | number, replyText: string): Promise<void> {
-        await apiClient.post(`/reviews/${reviewId}/reply`, { replyText });
+        await apiClient.post(`/reviews/${reviewId}/reply`, { replyText }, {
+            activity: ActivityMessages.SEND_REPLY,
+            successMessage: "Reply sent successfully.",
+            showSuccess: true
+        });
     }
 
     clearCache(): void {

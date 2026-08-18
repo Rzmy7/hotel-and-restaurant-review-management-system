@@ -20,7 +20,14 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({ value, onChang
             <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">Delivery Channel *</label>
             <div className="space-y-2">
                 {CHANNELS.map(channel => (
-                    <label key={channel.value} className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all" style={{ borderColor: value === channel.value ? '#2563eb' : '#e5e7eb' }}>
+                    <label
+                        key={channel.value}
+                        className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                            value === channel.value
+                                ? 'border-blue-500 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
+                                : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
+                        }`}
+                    >
                         <input
                             type="radio"
                             name="channel"
@@ -29,7 +36,7 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({ value, onChang
                             onChange={() => onChange(channel.value)}
                             className="w-4 h-4"
                         />
-                        <span className="text-blue-600">{getChannelIcon(channel.value)}</span>
+                        <span className="text-blue-600 dark:text-blue-400">{getChannelIcon(channel.value)}</span>
                         <div>
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{channel.label}</p>
                             <p className="text-xs text-gray-500 dark:text-slate-400">{channel.description}</p>

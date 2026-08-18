@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import ProfileTemplate from "../components/profile/templates/ProfileTemplate";
 import UnsavedChangesModal from "../components/profile/organisms/UnsavedChangesModal";
+import ProfileSkeleton from "./ProfileSkeleton";
 import { apiClient } from "../api/client";
+import { ActivityMessages } from "../constants/activityMessages";
 import { useNavigationBlocker } from "../contexts/NavigationBlockerContext";
 
 export interface UserProfile {
@@ -30,8 +32,6 @@ const isDirty = (saved: UserProfile, current: UserProfile): boolean =>
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
-
-    const token = localStorage.getItem("token");
 
     // ── The server-saved "clean" snapshot ───────────────────────────────
     const [savedProfile, setSavedProfile] = useState<UserProfile>({
@@ -114,7 +114,7 @@ const ProfilePage: React.FC = () => {
             }
         };
         loadProfile();
-    }, [token, showToast]);
+    }, [showToast]);
 
     // ── Update form state ─────────────────────────────────────────────────
     const handleUpdate = useCallback((updated: UserProfile) => {
@@ -132,6 +132,8 @@ const ProfilePage: React.FC = () => {
                 jobTitle: profile.jobTitle,
                 bio: profile.bio,
                 location: profile.location,
+            }, {
+                activity: ActivityMessages.UPDATE_PROFILE
             });
 
             showToast("Profile saved successfully ✅", "success");
@@ -195,7 +197,9 @@ const ProfilePage: React.FC = () => {
                 const formData = new FormData();
                 formData.append("file", file);
 
-                const data = await apiClient.post<any>("/users/me/upload-image", formData as any);
+                const data = await apiClient.post<any>("/users/me/upload-image", formData as any, {
+                    activity: ActivityMessages.UPLOAD_IMAGE
+                });
 
                 setProfile(prev => ({ ...prev, avatar: data.profile_image_url }));
                 setSavedProfile(prev => ({ ...prev, avatar: data.profile_image_url }));
@@ -222,7 +226,7 @@ const ProfilePage: React.FC = () => {
 
     const memberSince = formatMemberSince(profile.joinedDate);
 
-    if (loading) return <div>Loading profile...</div>;
+    if (loading) return <ProfileSkeleton />;
 
     return (
         <>

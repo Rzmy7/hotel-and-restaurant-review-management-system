@@ -6,19 +6,7 @@ from typing import List, Dict, Any
 
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from google import genai
-from app.core.config import GENAI_KEY
-
-_genai_client = None
-
-
-def _get_genai_client():
-    global _genai_client
-    if _genai_client is None:
-        _genai_client = genai.Client(
-            api_key=GENAI_KEY, http_options={"api_version": "v1"}
-        )
-    return _genai_client
+from app.services.llm_gateway import call as gateway_call
 
 
 def _parse_categories(raw) -> list:
@@ -171,13 +159,7 @@ Use "info" for positive reinforcement or growth opportunities.
 Return ONLY valid JSON array. No markdown, no code fences."""
 
     try:
-        response = (
-            _get_genai_client()
-            .models.generate_content(
-                model="gemini-2.5-flash-lite", contents=prompt
-            )
-        )
-        raw = response.text or ""
+        raw = gateway_call("insights", prompt)
 
         # Strip markdown code fences if present
         pattern = r"^```(?:json)?\s*(.*?)\s*```$"

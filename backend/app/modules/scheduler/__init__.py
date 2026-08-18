@@ -77,6 +77,17 @@ def setup_scheduler():
         jitter=5
     )
 
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            from app.modules.admin.services.system_settings_service import get_setting_bool
+            if get_setting_bool(cursor, "review_processing_paused", default=False):
+                scheduler.pause_job('process_reviews_job')
+                logging.info("Scheduler setup: process_reviews_job paused on startup because review_processing_paused is true.")
+    except Exception as e:
+        logging.error(f"Scheduler setup: Failed to check initial pause state: {e}")
+
+
     scheduler.add_job(
         auto_resume_sources,
         'interval',

@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 
 from app.database.session import get_db
+from app.utils.url_cleaner import clean_tracking_url
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.modules.organization.schemas.organization_schema import OrganizationCreate, OrganizationUpdate, OrganizationTypeRead, LogoUploadResponse
 from app.modules.organization.services import organization_service
@@ -161,12 +162,10 @@ def upsert_organization(
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         for source in data.sources:
             # Check if source already exists for this org/platform
+            clean_url = clean_tracking_url(source.source_url)
             existing_source = db.execute(
-                text("""
-                    SELECT 1 FROM dbo.source 
-                    WHERE organization_id = :org_id AND platform_id = :platform_id
-                """),
-                {"org_id": org_id, "platform_id": source.platform_id}
+                text("SELECT source_id FROM dbo.source WHERE organization_id = :org_id AND platform_id = :platform_id AND source_url = :url"),
+                {"org_id": org_id, "platform_id": source.platform_id, "url": clean_url}
             ).fetchone()
 
             if not existing_source:
@@ -182,7 +181,7 @@ def upsert_organization(
                         "source_id": new_source_id,
                         "org_id": org_id,
                         "platform_id": source.platform_id,
-                        "url": source.source_url,
+                        "url": clean_url,
                         "freq": source.fetching_frequency,
                         "next_sync": next_sync
                     }
@@ -401,7 +400,7 @@ async def upload_organization_rules(
 ):
     """Upload a rules & regulations file (.txt, .docx, .pdf) for an organization.
     
-    The file is parsed, sent to Gemini to extract individual rules,
+    The file is parsed, sent to LLM to extract individual rules,
     stored in the database, and dispatched to the embedding service.
     """
     # Verify ownership using resolve_tenant_scope
@@ -431,3 +430,43 @@ def get_organization_rules(
 
     from app.modules.organization.services.rules_service import get_organization_rules
     return get_organization_rules(db, org_id)
+
+
+@router.delete("/organizations/{org_id}/rules/{rule_id}")
+def delete_organization_rule(
+    org_id: str,
+    rule_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Delete a single rule from the organization's rules list and the embedding service."""
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
+
+    try:
+        from app.modules.organization.services.rules_service import delete_single_rule
+        return delete_single_rule(db, org_id, rule_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete rule: {str(e)}")
+
+
+@router.post("/organizations/{org_id}/rules")
+def add_organization_rule(
+    org_id: str,
+    rule_text: str = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Add a single organization rule directly to the DB and embedding engine."""
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
+
+    try:
+        from app.modules.organization.services.rules_service import add_single_rule
+        return add_single_rule(db, org_id, rule_text)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add rule: {str(e)}")

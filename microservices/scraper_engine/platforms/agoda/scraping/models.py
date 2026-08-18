@@ -29,11 +29,18 @@ def save_reviews_to_db(reviews, source_id: str) -> int:
     session = get_session()
     success_count = 0
     try:
-        # Verify the source exists
+        # Verify the source exists; if missing, auto-create it (e.g. direct API triggers)
         source = session.query(Source).filter_by(source_id=source_id).first()
         if not source:
-            logger.error(f"Source {source_id} not found — cannot save reviews.")
-            return 0
+            logger.info(f"Source {source_id} not found in DB. Auto-creating Source record...")
+            source = Source(
+                source_id=source_id,
+                platform_name="agoda",
+                source_url=getattr(reviews[0], 'url', 'https://www.agoda.com') if reviews else 'https://www.agoda.com',
+                status="RUNNING"
+            )
+            session.add(source)
+            session.commit()
 
         # Fetch existing platform_review_id's for this source_id (Idempotency layer)
         incoming_ids = [getattr(r, 'id', None) for r in reviews if getattr(r, 'id', None) is not None]

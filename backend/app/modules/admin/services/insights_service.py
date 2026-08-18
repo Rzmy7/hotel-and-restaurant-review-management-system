@@ -1,21 +1,11 @@
-"""Admin insights service — dashboard stats + Gemini AI insights."""
+"""Admin insights service — dashboard stats + LLM AI insights."""
 
 import json
 import re
 
 import pyodbc
-from google import genai
-from app.core.config import GENAI_KEY
 from app.core.pyodbc_connection import get_connection_string
-
-_genai_client = None
-
-
-def _get_genai_client():
-    global _genai_client
-    if _genai_client is None:
-        _genai_client = genai.Client(api_key=GENAI_KEY, http_options={"api_version": "v1"})
-    return _genai_client
+from app.services.llm_gateway import call as gateway_call
 
 
 def _table_exists(cursor, table_name: str) -> bool:
@@ -80,10 +70,10 @@ Return JSON:
 
 Return ONLY valid JSON. No markdown."""
 
-        response = _get_genai_client().models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
+        response_text = gateway_call("insights", prompt)
         pattern = r"^```(?:json)?\s*(.*?)\s*```$"
-        match = re.search(pattern, response.text, re.DOTALL | re.MULTILINE)
-        clean_text = match.group(1) if match else response.text
+        match = re.search(pattern, response_text, re.DOTALL | re.MULTILINE)
+        clean_text = match.group(1) if match else response_text
         return json.loads(clean_text)
     except Exception as e:
         return {"summary": "Unable to generate insights at this time.", "strengths": [], "improvements": [], "recommendations": [], "error": str(e)}
