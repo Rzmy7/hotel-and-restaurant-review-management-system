@@ -299,7 +299,7 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
         else:
             reviews_log_lines.append("  (None - no similar reviews matched threshold or similar reviews disabled)")
 
-        logger.info(
+        context_banner = (
             f"\n==================== [AI REPLY GENERATION CONTEXT] ====================\n"
             f"Review ID: {payload.reviewId} | Author: {payload.userName} | Sentiment: {payload.sentiment}\n"
             f"Original Review: \"{review_snippet}\"\n"
@@ -311,6 +311,8 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
             "\n".join(reviews_log_lines) + "\n"
             f"===================================================================="
         )
+        logger.info(context_banner)
+        print(context_banner, flush=True)
 
         prompt = _build_prompt(payload, similar_reviews, rules)
 
@@ -318,11 +320,14 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
         provider_error: str | None = None
         try:
             logger.info(f"Dispatching reply prompt to LLM Gateway for review ID '{payload.reviewId}'...")
+            print(f"[AI-Reply] Dispatching prompt to LLM Gateway for review ID '{payload.reviewId}' (Rules: {len(rules)}, Reviews: {len(similar_reviews)})", flush=True)
             reply = gateway_call("reply_generation", prompt)
             _increment_usage()
             logger.info(f"Successfully generated reply for review ID '{payload.reviewId}' via LLM Gateway")
+            print(f"[AI-Reply] Successfully generated reply for review ID '{payload.reviewId}'", flush=True)
         except Exception as exc:
             logger.error(f"LLM Gateway call failed for review ID '{payload.reviewId}': {exc}. Using fallback reply.")
+            print(f"[AI-Reply] LLM Gateway error for review ID '{payload.reviewId}': {exc}. Using fallback reply.", flush=True)
             reply = _fallback_reply(payload)
             provider_error = str(exc)
 
