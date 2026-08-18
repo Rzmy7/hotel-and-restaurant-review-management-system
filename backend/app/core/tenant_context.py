@@ -85,9 +85,8 @@ def resolve_tenant_scope(user, db: Session, client_supplied_org_id: str = None) 
                 detail="You do not have access to this organization."
             )
 
-        logger.warning(
-            f"Deprecation Warning: Normal user (user_id: {user_id}) supplied organization_id "
-            f"in query params. Scope resolved via JWT context instead."
+        logger.debug(
+            f"Tenant scope resolved: user_id={user_id}, organization_id={client_supplied_org_id}"
         )
         return client_supplied_org_id
 
