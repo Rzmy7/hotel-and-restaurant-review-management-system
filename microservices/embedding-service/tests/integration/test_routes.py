@@ -183,6 +183,33 @@ class TestSearchEndpoint:
         })
         assert response.status_code == 422
 
+    def test_search_multi_sentence_review_retrieves_specific_rule(self, client, mock_collection):
+        mock_collection.query.return_value = {
+            "ids": [["rule-smoke-1"]],
+            "documents": [["Smoking is strictly prohibited in all rooms and indoor facilities."]],
+            "metadatas": [[{"source_id": "test-org-multi", "type": "rule"}]],
+            "distances": [[0.55]],
+        }
+        long_review = (
+            "The rooms were dismal. Bed was one side on steps. "
+            "Access to the room was from a place where people were drinking and smoking with smoke smell in the room. "
+            "No place to keep luggage. Wifi kept dropping every 5 minutes. "
+            "We asked to change rooms but no go."
+        )
+        response = client.post("/search", json={
+            "query": long_review,
+            "source_ids": ["test-org-multi"],
+            "top_k": 3,
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["rules"]) > 0
+        assert data["rules"][0]["id"] == "rule-smoke-1"
+        assert "Smoking is strictly prohibited" in data["rules"][0]["text"]
+        assert data["rules"][0]["distance"] == 0.55
+
+
+
 
 # ── GET / PUT /thresholds ────────────────────────────────────────────
 

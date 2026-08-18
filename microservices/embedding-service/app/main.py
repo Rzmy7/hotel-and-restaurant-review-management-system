@@ -29,8 +29,9 @@ from app.config import (
     load_config, save_config, get_threshold_by_query, DEFAULT_THRESHOLDS,
     is_service_paused, set_service_paused
 )
+import re
 from app.jobs import add_job, update_job, get_recent_jobs
-from app.embedding import embed_text
+from app.embedding import embed_text, embed_texts
 
 import hmac
 import logging
@@ -220,6 +221,24 @@ def embed_rule_batch(data: BatchRuleEmbedRequest, _auth: bool = Depends(verify_a
 
 
 
+def _extract_query_sentences(text: str) -> list[str]:
+    """
+    Split complex customer review or query text into individual sentences/clauses
+    to avoid semantic dilution when matching against single SOP rules.
+    """
+    if not text or not text.strip():
+        return []
+    # Split on sentence terminals (. ! ?), newlines, and semicolons
+    raw_sentences = re.split(r'[\r\n]+|[.!?]+(?:\s+|\Z)|;+', text)
+    cleaned: list[str] = []
+    for s in raw_sentences:
+        clean = re.sub(r'\s+', ' ', s).strip(' \t\r\n"\'`.,-')
+        # Keep sentences that have at least 2 words and reasonable length
+        if len(clean) >= 6 and len(clean.split()) >= 2:
+            cleaned.append(clean)
+    return cleaned
+
+
 @app.post("/search")
 def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
     vector = embed_text(data.query)
@@ -239,7 +258,7 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
         review_where = {"type": "review"}
         rule_where = {"type": "rule"}
 
-    # Search REVIEWS
+    # ── 1. Search REVIEWS (Using whole review query vector) ──
     review_results = collection.query(
         query_embeddings=[vector],
         n_results=data.top_k,
@@ -258,24 +277,49 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
         if dist < threshold
     ]
 
-    # Search RULES (using the exact same threshold as reviews)
+    # ── 2. Search RULES (Sentence-Level Multi-Query Search) ──
+    # Split query into sentences to prevent multi-topic complaint dilution
+    sentences = _extract_query_sentences(data.query)
+    candidate_queries = [data.query.strip()]
+    for s in sentences:
+        if s.lower() not in [c.lower() for c in candidate_queries]:
+            candidate_queries.append(s)
+
+    candidate_vectors = embed_texts(candidate_queries)
+
     rule_results = collection.query(
-        query_embeddings=[vector],
+        query_embeddings=candidate_vectors,
         n_results=max(5, data.top_k),
         where=rule_where,
         include=["documents", "metadatas", "distances"]
     )
 
-    rules = [
-        {
-            "id": rule_results["ids"][0][i],
-            "text": rule_results["documents"][0][i],
-            "metadata": rule_results["metadatas"][0][i],
-            "distance": dist
-        }
-        for i, dist in enumerate(rule_results["distances"][0])
-        if dist < threshold
-    ]
+    matched_rules_map: dict[str, dict[str, Any]] = {}
+    if rule_results and "ids" in rule_results and rule_results["ids"]:
+        for q_idx, q_text in enumerate(candidate_queries):
+            q_threshold = get_threshold(q_text)
+            ids_list = rule_results["ids"][q_idx] if q_idx < len(rule_results["ids"]) else []
+            docs_list = rule_results["documents"][q_idx] if q_idx < len(rule_results["documents"]) else []
+            metas_list = rule_results["metadatas"][q_idx] if q_idx < len(rule_results["metadatas"]) else []
+            dists_list = rule_results["distances"][q_idx] if q_idx < len(rule_results["distances"]) else []
+
+            for i, dist in enumerate(dists_list):
+                if dist < q_threshold:
+                    rule_id = ids_list[i]
+                    rule_doc = docs_list[i]
+                    rule_meta = metas_list[i]
+
+                    # Track best (lowest) distance across all sentence queries
+                    if rule_id not in matched_rules_map or dist < matched_rules_map[rule_id]["distance"]:
+                        matched_rules_map[rule_id] = {
+                            "id": rule_id,
+                            "text": rule_doc,
+                            "metadata": rule_meta,
+                            "distance": dist,
+                        }
+
+    sorted_rules = sorted(matched_rules_map.values(), key=lambda x: x["distance"])
+    rules = sorted_rules[:max(5, data.top_k)]
 
     logger.info(
         f"Embedding search query='{data.query[:50]}' source_ids={data.source_ids} -> "
@@ -288,6 +332,7 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
         "reviews": reviews,
         "rules": rules
     }
+
 
 
 @app.get("/thresholds")

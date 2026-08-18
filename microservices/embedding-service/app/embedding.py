@@ -18,3 +18,16 @@ model = SentenceTransformer("all-MiniLM-L6-v2", cache_folder=CACHE_DIR)
 def embed_text(text: str):
     vector = model.encode(text)
     return vector.tolist()
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    if not texts:
+        return []
+    vectors = model.encode(texts)
+    if hasattr(vectors, "tolist"):
+        result = vectors.tolist()
+        if isinstance(result, list) and result and not isinstance(result[0], list):
+            return [result]
+        return result
+    return [v.tolist() if hasattr(v, "tolist") else v for v in vectors]
+
+
