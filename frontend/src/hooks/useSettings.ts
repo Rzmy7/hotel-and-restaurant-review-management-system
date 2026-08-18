@@ -151,6 +151,19 @@ export const useSettings = () => {
         }
     }, [showToast, organizationId]);
 
+    const deleteAllOrganizationRules = useCallback(async (orgId?: string) => {
+        try {
+            const targetOrgId = orgId || organizationId;
+            const res = await settingsService.deleteAllOrganizationRules(targetOrgId);
+            setOrganizationRules([]);
+            showToast('All rules deleted successfully', 'success');
+            return res;
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to delete all rules', 'error');
+            throw err;
+        }
+    }, [showToast, organizationId]);
+
     const fetchOrganizationTypes = useCallback(async () => {
         return await settingsService.fetchOrganizationTypes();
     }, []);
@@ -172,6 +185,7 @@ export const useSettings = () => {
         fetchOrganizationRules,
         addOrganizationRule,
         deleteOrganizationRule,
+        deleteAllOrganizationRules,
         fetchOrganizationTypes,
     };
 };

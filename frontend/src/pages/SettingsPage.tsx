@@ -51,6 +51,7 @@ const SettingsPage: React.FC = () => {
     uploadRulesFile,
     addOrganizationRule,
     deleteOrganizationRule,
+    deleteAllOrganizationRules,
     fetchOrganizationTypes,
   } = useSettings();
 
@@ -254,6 +255,14 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleDeleteAllRules = async () => {
+    try {
+      await deleteAllOrganizationRules(organizationId);
+    } catch {
+      // Error handled by hook/toast
+    }
+  };
+
   const activeTabData = TABS.find(t => t.id === activeTab);
 
   return (
@@ -360,6 +369,7 @@ const SettingsPage: React.FC = () => {
                   organizationTypes={organizationTypes}
                   onAddRule={handleAddRule}
                   onDeleteRule={handleDeleteRule}
+                  onDeleteAllRules={handleDeleteAllRules}
                 />
               )}
             </div>

@@ -464,6 +464,18 @@ export const settingsApi = {
         return response.data;
     },
 
+    deleteAllOrganizationRules: async (orgIdParam?: string): Promise<{ message: string; deleted_count: number }> => {
+        const orgId = orgIdParam || getActiveOrganizationId();
+        if (!orgId) {
+            throw new Error('No active organization selected.');
+        }
+
+        const response = await settingsAxios.delete(
+            toApiPath(`/organizations/${orgId}/rules`)
+        );
+        return response.data;
+    },
+
     fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
         const response = await settingsAxios.get<OrganizationType[]>(toApiPath('/organization-types'));
         return response.data;

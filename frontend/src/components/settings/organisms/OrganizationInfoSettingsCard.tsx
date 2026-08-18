@@ -26,6 +26,7 @@ interface OrganizationInfoSettingsCardProps {
     organizationTypes?: OrganizationType[];
     onAddRule?: (text: string) => Promise<void>;
     onDeleteRule?: (ruleId: string) => Promise<void>;
+    onDeleteAllRules?: () => Promise<void>;
     onOpenRulesModal?: () => void;
 }
 
@@ -39,12 +40,15 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
     organizationTypes = [],
     onAddRule,
     onDeleteRule,
+    onDeleteAllRules,
     onOpenRulesModal,
 }) => {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [newRule, setNewRule] = React.useState('');
     const [isSavingRule, setIsSavingRule] = React.useState(false);
     const [deletingIds, setDeletingIds] = React.useState<Record<string, boolean>>({});
+    const [isDeletingAll, setIsDeletingAll] = React.useState(false);
+    const [confirmDeleteAll, setConfirmDeleteAll] = React.useState(false);
 
     const rulesFilename = organizationRules.length > 0 ? organizationRules[0]?.source_filename : null;
 
@@ -75,6 +79,21 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
             await onDeleteRule(ruleId);
         } finally {
             setDeletingIds(prev => ({ ...prev, [ruleId]: false }));
+        }
+    };
+
+    const handleDeleteAllClick = async () => {
+        if (!confirmDeleteAll) {
+            setConfirmDeleteAll(true);
+            return;
+        }
+        if (!onDeleteAllRules) return;
+        try {
+            setIsDeletingAll(true);
+            await onDeleteAllRules();
+            setConfirmDeleteAll(false);
+        } finally {
+            setIsDeletingAll(false);
         }
     };
 
@@ -153,7 +172,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                                     <>
                                         <FileText className="text-gray-400 group-hover:text-[#4e80ee] transition-colors" size={28} />
                                         <span className="text-xs font-bold tracking-wider text-gray-400 uppercase group-hover:text-[#4e80ee] transition-colors">
-                                            {organizationRules.length > 0 ? 'Replace Rules File' : 'Upload Rules File'}
+                                            {organizationRules.length > 0 ? 'Add Rules File' : 'Upload Rules File'}
                                         </span>
                                         <span className="text-[10px] text-slate-400 dark:text-slate-400 text-center">
                                             Supported formats: .txt, .docx, .pdf (max 10MB)
@@ -172,7 +191,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                                     disabled={isUploadingRules}
                                     className="w-full"
                                 >
-                                    {organizationRules.length > 0 ? 'Replace File' : 'Upload File'}
+                                    {organizationRules.length > 0 ? 'Add File' : 'Upload File'}
                                 </Button>
                                 {organizationRules.length > 0 && (
                                     <Button
@@ -202,7 +221,10 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
             {/* Popup Modal Window for Rules Management */}
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setConfirmDeleteAll(false);
+                    setIsModalOpen(false);
+                }}
                 title={`Rules Management (${organizationRules.length})`}
                 description="Manage your organization rules directly below"
                 size="lg"
@@ -234,6 +256,50 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                             Add Rule
                         </Button>
                     </form>
+
+                    {/* Modal Toolbar & Rules Header */}
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Configured Rules ({organizationRules.length})
+                        </span>
+                        {organizationRules.length > 0 && onDeleteAllRules && (
+                            <div className="flex items-center gap-2">
+                                {confirmDeleteAll && (
+                                    <span className="text-xs text-red-500 font-semibold animate-fade-in">
+                                        Delete all {organizationRules.length} rules?
+                                    </span>
+                                )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleDeleteAllClick}
+                                    disabled={isDeletingAll}
+                                    isLoading={isDeletingAll}
+                                    className={`h-8 px-3 text-xs font-bold transition-all ${
+                                        confirmDeleteAll
+                                            ? 'bg-red-600 hover:bg-red-700 text-white border-red-600 dark:border-red-600'
+                                            : 'text-red-500 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30'
+                                    }`}
+                                >
+                                    <Trash2 size={13} className="mr-1" />
+                                    {confirmDeleteAll ? 'Confirm Delete All' : 'Delete All'}
+                                </Button>
+                                {confirmDeleteAll && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setConfirmDeleteAll(false)}
+                                        disabled={isDeletingAll}
+                                        className="h-8 px-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Scrollable Rules List */}
                     <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-2 no-scrollbar">

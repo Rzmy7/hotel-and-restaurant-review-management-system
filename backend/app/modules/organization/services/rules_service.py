@@ -132,6 +132,15 @@ def _extract_rules_with_llm(document_text: str) -> list[str]:
 
 # ── Database Operations ─────────────────────────────────────────────
 
+def _get_max_rule_order(db: Session, organization_id: str) -> int:
+    """Get the current maximum rule_order for an organization."""
+    row = db.execute(
+        text("SELECT MAX(rule_order) FROM dbo.organization_rule WHERE organization_id = :org_id"),
+        {"org_id": organization_id},
+    ).fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
 def _delete_existing_rules(db: Session, organization_id: str) -> int:
     """Delete all existing rules for an organization. Returns count deleted."""
     result = db.execute(
@@ -142,10 +151,12 @@ def _delete_existing_rules(db: Session, organization_id: str) -> int:
 
 
 def _insert_rules(db: Session, organization_id: str, rules: list[str], filename: str) -> list[dict[str, Any]]:
-    """Insert extracted rules into the database. Returns list of inserted rule records."""
+    """Insert extracted rules into the database appending to existing rules. Returns list of inserted rule records."""
+    start_order = _get_max_rule_order(db, organization_id)
     inserted = []
     for idx, rule_text in enumerate(rules):
         rule_id = uuid.uuid4()
+        rule_order = start_order + idx + 1
         db.execute(
             text("""
                 INSERT INTO dbo.organization_rule
@@ -156,14 +167,14 @@ def _insert_rules(db: Session, organization_id: str, rules: list[str], filename:
                 "rule_id": rule_id,
                 "org_id": organization_id,
                 "rule_text": rule_text,
-                "rule_order": idx + 1,
+                "rule_order": rule_order,
                 "filename": filename,
             },
         )
         inserted.append({
             "rule_id": str(rule_id).upper(),  # Uppercase for ChromaDB consistency
             "rule_text": rule_text,
-            "rule_order": idx + 1,
+            "rule_order": rule_order,
         })
     return inserted
 
@@ -223,7 +234,7 @@ def process_rules_upload_bytes(
 ) -> dict[str, Any]:
     """
     Synchronous worker pipeline: validate -> parse text -> LLM extraction ->
-    store in DB -> send to embedding.
+    append to DB -> send to embedding.
     Runs inside worker thread to avoid blocking FastAPI's asyncio event loop.
     """
     # 1. Validate file
@@ -247,55 +258,52 @@ def process_rules_upload_bytes(
     if not rules:
         raise ValueError("Could not extract any rules from the document.")
 
-    # 4. Delete old rules for this organization
-    deleted_count = _delete_existing_rules(db, organization_id)
-
-    # 5. Insert new rules
+    # 4. Insert new rules (appends to existing rules)
     inserted_rules = _insert_rules(db, organization_id, rules, filename)
     db.commit()
 
-    # 6. Send to embedding service
+    # 5. Send new rules to embedding service
     source_id = _get_source_id_for_org(db, organization_id)
     embed_result = {"embedded_count": 0, "skipped": True}
 
     if source_id:
-        # 6a. Delete old rule embeddings from ChromaDB before re-embedding
-        try:
-            requests.delete(
-                f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}/rules",
-                headers=_AUTH_HEADERS,
-                timeout=30,
-            )
-            # Also clear by organization_id if different
-            if source_id != str(organization_id).upper():
-                try:
-                    requests.delete(
-                        f"{EMBEDDING_SERVICE_URL}/delete/source/{str(organization_id).upper()}/rules",
-                        headers=_AUTH_HEADERS,
-                        timeout=15,
-                    )
-                except Exception:
-                    pass
-            logger.info(f"Cleared old rule embeddings for source_id={source_id}")
-        except Exception as e:
-            logger.warning(f"Failed to clear old rule embeddings: {e}")
-
-        # 6b. Embed new rules
         embed_result = _send_rules_to_embedding(inserted_rules, source_id)
 
-        # 7. Mark successfully embedded rules
+        # 6. Mark successfully embedded rules
         embedded_ids = embed_result.get("embedded_ids", [])
         if embedded_ids:
             _mark_rules_as_embedded(db, embedded_ids)
             db.commit()
 
     return {
-        "message": "Rules processed successfully",
+        "message": "Rules processed and added successfully",
         "filename": filename,
         "rules_extracted": len(rules),
-        "rules_deleted": deleted_count,
         "embedding_result": embed_result,
         "rules": [{"rule_id": r["rule_id"], "text": r["rule_text"], "order": r["rule_order"]} for r in inserted_rules],
+    }
+
+
+def delete_all_rules_for_org(db: Session, organization_id: str) -> dict[str, Any]:
+    """Delete all rules for an organization from DB and ChromaDB vector store."""
+    deleted_count = _delete_existing_rules(db, organization_id)
+    db.commit()
+
+    source_id = _get_source_id_for_org(db, organization_id)
+    if source_id:
+        try:
+            requests.delete(
+                f"{EMBEDDING_SERVICE_URL}/delete/source/{source_id}/rules",
+                headers=_AUTH_HEADERS,
+                timeout=30,
+            )
+            logger.info(f"Deleted all rule embeddings for source_id={source_id}")
+        except Exception as e:
+            logger.warning(f"Failed to clear rule embeddings on delete all: {e}")
+
+    return {
+        "message": "All rules deleted successfully",
+        "deleted_count": deleted_count,
     }
 
 

@@ -432,6 +432,23 @@ def get_organization_rules(
     return get_organization_rules(db, org_id)
 
 
+@router.delete("/organizations/{org_id}/rules")
+def delete_all_organization_rules(
+    org_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Delete all rules for an organization from the DB and embedding service."""
+    # Verify ownership using resolve_tenant_scope
+    resolve_tenant_scope(user, db, org_id)
+
+    try:
+        from app.modules.organization.services.rules_service import delete_all_rules_for_org
+        return delete_all_rules_for_org(db, org_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete all rules: {str(e)}")
+
+
 @router.delete("/organizations/{org_id}/rules/{rule_id}")
 def delete_organization_rule(
     org_id: str,

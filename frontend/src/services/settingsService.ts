@@ -147,6 +147,21 @@ export const settingsService = {
         }
     },
 
+    deleteAllOrganizationRules: async (orgId?: string) => {
+        try {
+            return await settingsApi.deleteAllOrganizationRules(orgId);
+        } catch (error) {
+            console.error('Failed to delete all organization rules:', error);
+            if (axios.isAxiosError(error)) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'string' && detail.trim()) {
+                    throw new Error(detail);
+                }
+            }
+            throw new Error('Failed to delete all organization rules');
+        }
+    },
+
     fetchOrganizationTypes: async (): Promise<OrganizationType[]> => {
         try {
             return await settingsApi.fetchOrganizationTypes();
