@@ -169,13 +169,7 @@ def _insert_rules(db: Session, organization_id: str, rules: list[str], filename:
 
 
 def _get_source_id_for_org(db: Session, organization_id: str) -> str:
-    """Get the first source_id for an organization, or fallback to organization_id."""
-    row = db.execute(
-        text("SELECT TOP 1 source_id FROM dbo.source WHERE organization_id = :org_id"),
-        {"org_id": organization_id},
-    ).fetchone()
-    if row and row[0]:
-        return str(row[0]).upper()
+    """Get the organization-scoped identifier for vectorizing rules."""
     return str(organization_id).upper()
 
 

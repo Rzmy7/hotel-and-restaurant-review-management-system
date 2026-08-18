@@ -76,41 +76,41 @@ export const useSettings = () => {
         return message;
     }, []);
 
-    const uploadRulesFile = useCallback(async (file: File) => {
+    const uploadRulesFile = useCallback(async (file: File, orgId?: string) => {
         try {
-            const result = await settingsService.uploadRulesFile(file);
+            const result = await settingsService.uploadRulesFile(file, orgId || organizationId);
             showToast(`${result.rules_extracted} rules extracted and processed`, 'success');
             return result;
         } catch (err) {
             showToast(err instanceof Error ? err.message : 'Failed to process rules file', 'error');
             throw err;
         }
-    }, [showToast]);
+    }, [showToast, organizationId]);
 
-    const fetchOrganizationRules = useCallback(async () => {
-        return await settingsService.fetchOrganizationRules();
-    }, []);
+    const fetchOrganizationRules = useCallback(async (orgId?: string) => {
+        return await settingsService.fetchOrganizationRules(orgId || organizationId);
+    }, [organizationId]);
 
-    const addOrganizationRule = useCallback(async (ruleText: string) => {
+    const addOrganizationRule = useCallback(async (ruleText: string, orgId?: string) => {
         try {
-            const rule = await settingsService.addOrganizationRule(ruleText);
+            const rule = await settingsService.addOrganizationRule(ruleText, orgId || organizationId);
             showToast('Rule added successfully', 'success');
             return rule;
         } catch (err) {
             showToast(err instanceof Error ? err.message : 'Failed to add rule', 'error');
             throw err;
         }
-    }, [showToast]);
+    }, [showToast, organizationId]);
 
-    const deleteOrganizationRule = useCallback(async (ruleId: string) => {
+    const deleteOrganizationRule = useCallback(async (ruleId: string, orgId?: string) => {
         try {
-            await settingsService.deleteOrganizationRule(ruleId);
+            await settingsService.deleteOrganizationRule(ruleId, orgId || organizationId);
             showToast('Rule deleted successfully', 'success');
         } catch (err) {
             showToast(err instanceof Error ? err.message : 'Failed to delete rule', 'error');
             throw err;
         }
-    }, [showToast]);
+    }, [showToast, organizationId]);
 
     const fetchOrganizationTypes = useCallback(async () => {
         return await settingsService.fetchOrganizationTypes();

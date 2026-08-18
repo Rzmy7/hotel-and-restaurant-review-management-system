@@ -390,13 +390,13 @@ export const settingsApi = {
         return response.data;
     },
 
-    uploadRulesFile: async (file: File): Promise<{
+    uploadRulesFile: async (file: File, orgIdParam?: string): Promise<{
         message: string;
         filename: string;
         rules_extracted: number;
         rules: Array<{ rule_id: string; text: string; order: number }>;
     }> => {
-        const orgId = getActiveOrganizationId();
+        const orgId = orgIdParam || getActiveOrganizationId();
         if (!orgId) {
             throw new Error('No active organization selected.');
         }
@@ -412,7 +412,7 @@ export const settingsApi = {
         return response.data;
     },
 
-    fetchOrganizationRules: async (): Promise<Array<{
+    fetchOrganizationRules: async (orgIdParam?: string): Promise<Array<{
         rule_id: string;
         rule_text: string;
         rule_order: number;
@@ -420,7 +420,7 @@ export const settingsApi = {
         source_filename: string | null;
         created_at: string | null;
     }>> => {
-        const orgId = getActiveOrganizationId();
+        const orgId = orgIdParam || getActiveOrganizationId();
         if (!orgId) {
             return [];
         }
@@ -432,7 +432,7 @@ export const settingsApi = {
         return Array.isArray(response.data) ? response.data : [];
     },
 
-    addOrganizationRule: async (ruleText: string): Promise<{
+    addOrganizationRule: async (ruleText: string, orgIdParam?: string): Promise<{
         rule_id: string;
         rule_text: string;
         rule_order: number;
@@ -440,7 +440,7 @@ export const settingsApi = {
         source_filename: string | null;
         created_at: string | null;
     }> => {
-        const orgId = getActiveOrganizationId();
+        const orgId = orgIdParam || getActiveOrganizationId();
         if (!orgId) {
             throw new Error('No active organization selected.');
         }
@@ -452,8 +452,8 @@ export const settingsApi = {
         return response.data;
     },
 
-    deleteOrganizationRule: async (ruleId: string): Promise<{ message: string; rule_id: string }> => {
-        const orgId = getActiveOrganizationId();
+    deleteOrganizationRule: async (ruleId: string, orgIdParam?: string): Promise<{ message: string; rule_id: string }> => {
+        const orgId = orgIdParam || getActiveOrganizationId();
         if (!orgId) {
             throw new Error('No active organization selected.');
         }

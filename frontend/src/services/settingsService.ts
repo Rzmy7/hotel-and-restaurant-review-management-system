@@ -93,9 +93,9 @@ export const settingsService = {
         }
     },
 
-    uploadRulesFile: async (file: File) => {
+    uploadRulesFile: async (file: File, orgId?: string) => {
         try {
-            return await settingsApi.uploadRulesFile(file);
+            return await settingsApi.uploadRulesFile(file, orgId);
         } catch (error) {
             console.error('Failed to upload rules file:', error);
             if (axios.isAxiosError(error)) {
@@ -108,18 +108,18 @@ export const settingsService = {
         }
     },
 
-    fetchOrganizationRules: async () => {
+    fetchOrganizationRules: async (orgId?: string) => {
         try {
-            return await settingsApi.fetchOrganizationRules();
+            return await settingsApi.fetchOrganizationRules(orgId);
         } catch (error) {
             console.error('Failed to fetch organization rules:', error);
             return [];
         }
     },
 
-    addOrganizationRule: async (ruleText: string) => {
+    addOrganizationRule: async (ruleText: string, orgId?: string) => {
         try {
-            return await settingsApi.addOrganizationRule(ruleText);
+            return await settingsApi.addOrganizationRule(ruleText, orgId);
         } catch (error) {
             console.error('Failed to add organization rule:', error);
             if (axios.isAxiosError(error)) {
@@ -132,9 +132,9 @@ export const settingsService = {
         }
     },
 
-    deleteOrganizationRule: async (ruleId: string) => {
+    deleteOrganizationRule: async (ruleId: string, orgId?: string) => {
         try {
-            return await settingsApi.deleteOrganizationRule(ruleId);
+            return await settingsApi.deleteOrganizationRule(ruleId, orgId);
         } catch (error) {
             console.error('Failed to delete organization rule:', error);
             if (axios.isAxiosError(error)) {
