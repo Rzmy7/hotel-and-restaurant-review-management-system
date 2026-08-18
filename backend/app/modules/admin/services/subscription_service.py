@@ -277,27 +277,6 @@ def ensure_subscription_tables(cursor: pyodbc.Cursor) -> None:
             );
         END;
 
-        IF OBJECT_ID('dbo.user_subscription', 'U') IS NULL
-        BEGIN
-            CREATE TABLE dbo.user_subscription (
-                user_subscription_id INT IDENTITY(1,1) NOT NULL
-                    CONSTRAINT PK_user_subscription PRIMARY KEY,
-                user_id NVARCHAR(64) NOT NULL,
-                plan_id INT NULL,
-                status NVARCHAR(30) NOT NULL
-                    CONSTRAINT DF_user_subscription_status DEFAULT 'active',
-                starts_at DATETIME2(7) NOT NULL
-                    CONSTRAINT DF_user_subscription_starts_at DEFAULT SYSUTCDATETIME(),
-                ends_at DATETIME2(7) NULL,
-                created_at DATETIME2(7) NOT NULL
-                    CONSTRAINT DF_user_subscription_created_at DEFAULT SYSUTCDATETIME(),
-                updated_at DATETIME2(7) NOT NULL
-                    CONSTRAINT DF_user_subscription_updated_at DEFAULT SYSUTCDATETIME(),
-                CONSTRAINT FK_user_subscription_plan
-                    FOREIGN KEY (plan_id) REFERENCES dbo.plans(plan_id) ON DELETE SET NULL
-            );
-        END;
-
         IF OBJECT_ID('dbo.user_feature_usage', 'U') IS NULL
         BEGIN
             CREATE TABLE dbo.user_feature_usage (

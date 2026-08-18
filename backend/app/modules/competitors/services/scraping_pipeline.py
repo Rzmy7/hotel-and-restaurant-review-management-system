@@ -1,6 +1,7 @@
 """
 Competitor scraping pipeline — scrape → LLM AI → DB.
 Extracted from modules/competitors/service.py (scraping section).
+Inserts reviews directly into dbo.processed_review and dbo.review_category.
 """
 
 from __future__ import annotations
@@ -24,17 +25,17 @@ def _strip_markdown_fences(text: str) -> str:
     return match.group(1) if match else text
 
 
-def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows: List[Dict]) -> None:
-    """Insert AI-processed reviews into CompetitorReviews table and ReviewCategory."""
+def _insert_competitor_reviews(conn: pyodbc.Connection, source_id: str, rows: List[Dict]) -> None:
+    """Insert AI-processed reviews into dbo.processed_review and dbo.review_category."""
     sql = """
-        INSERT INTO dbo.CompetitorReviews (
-            id, competitorId, platformReviewId, rating, userName, reviewText,
+        INSERT INTO dbo.processed_review (
+            id, source_id, rating, reviewDate, heading, author, reviewText,
             summary, sentiment, categories, keyPhrases, language,
-            reviewDate, source
+            source, status, scrapedAt
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'processed', GETDATE())
     """
-    sql_cats = "INSERT INTO dbo.ReviewCategory (id, competitor_review_id, category_name) VALUES (?, ?, ?)"
+    sql_cats = "INSERT INTO dbo.review_category (id, review_id, name, score, created_at) VALUES (?, ?, ?, ?, GETDATE())"
     cur = conn.cursor()
     for r in rows:
         def parse_date(date_str):
@@ -43,13 +44,15 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows
             except (ValueError, TypeError):
                 return None
 
-        rev_id = str(uuid.uuid4())
+        rev_id = uuid.uuid4()
+        rating_val = float(r.get("rating", 0) or 0)
         cur.execute(
             sql,
             rev_id,
-            competitor_id,
-            r.get("platformReviewId", ""),
-            r.get("rating", 0),
+            source_id,
+            rating_val,
+            parse_date(r.get("date")),
+            r.get("heading", ""),
             r.get("userName", ""),
             r.get("reviewText", r.get("text", "")),
             r.get("summary", ""),
@@ -57,60 +60,53 @@ def _insert_competitor_reviews(conn: pyodbc.Connection, competitor_id: str, rows
             json.dumps(r.get("categories", []), ensure_ascii=False),
             json.dumps(r.get("keyPhrases", []), ensure_ascii=False),
             r.get("language", "English"),
-            parse_date(r.get("date")),
             r.get("source", "Booking.com"),
         )
         
         cats = r.get("categories", [])
         if isinstance(cats, list):
             for c in cats:
-                cur.execute(sql_cats, str(uuid.uuid4()), rev_id, str(c))
+                cat_name = c if isinstance(c, str) else str(c)
+                cur.execute(sql_cats, uuid.uuid4(), rev_id, cat_name, rating_val)
     conn.commit()
-    print(f"[SUCCESS] Saved {len(rows)} competitor reviews to DB.")
-
-
-def _update_competitor_stats(competitor_id: str) -> None:
-    with pyodbc.connect(get_connection_string()) as conn:
-        cursor = conn.cursor()
-        row = cursor.execute("""
-            SELECT
-                COUNT(*) as cnt,
-                AVG(CAST(rating AS FLOAT)) as avgRating,
-                SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) * 100.0 /
-                    NULLIF(COUNT(*), 0) as sentimentScore
-            FROM dbo.CompetitorReviews
-            WHERE competitorId = ?
-        """, competitor_id).fetchone()
-
-        if row and row.cnt > 0:
-            cursor.execute("""
-                UPDATE dbo.Competitors
-                SET avgRating = ?, sentimentScore = ?, reviewCount = ?, status = 'Active'
-                WHERE id = ?
-            """, round(row.avgRating or 0, 2), round(row.sentimentScore or 0, 1), row.cnt, competitor_id)
-            conn.commit()
+    print(f"[SUCCESS] Saved {len(rows)} competitor reviews to dbo.processed_review.")
 
 
 def process_competitor_scrape(competitor_id: str, url: str, headless: bool = True) -> None:
-    """Full pipeline: scrape → AI process → save to DB. Runs as a background task."""
+    """Full pipeline: scrape → AI process → save to dbo.processed_review. Runs as a background task."""
     from app.modules.reviews.scraper import scrape_booking_for_competitor
 
     print(f"[Competitor {competitor_id}] Starting scrape for {url}...")
 
+    # Look up competitor organization and source_id
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE dbo.Competitors SET status = 'Scraping' WHERE id = ?", competitor_id)
-        conn.commit()
+        row = cursor.execute("""
+            SELECT c.competitor_organization_id, s.source_id
+            FROM dbo.Competitors c
+            LEFT JOIN dbo.source s ON s.organization_id = c.competitor_organization_id
+            WHERE c.id = ?
+        """, competitor_id).fetchone()
+
+        if not row or not row.competitor_organization_id:
+            print(f"[Competitor {competitor_id}] Competitor organization not found.")
+            return
+
+        source_id = row.source_id
+        if not source_id:
+            # Create a source row for this competitor organization if missing
+            source_id = uuid.uuid4()
+            cursor.execute("""
+                INSERT INTO dbo.source (source_id, organization_id, source_url, source_status, fetching_frequency, created_at)
+                VALUES (?, ?, ?, 'active', 2, GETDATE())
+            """, source_id, row.competitor_organization_id, url)
+            conn.commit()
 
     try:
         raw_reviews = scrape_booking_for_competitor(url, headless)
 
         if not raw_reviews:
             print(f"[Competitor {competitor_id}] No reviews scraped.")
-            with pyodbc.connect(get_connection_string()) as conn:
-                cursor = conn.cursor()
-                cursor.execute("UPDATE dbo.Competitors SET status = 'Active' WHERE id = ?", competitor_id)
-                conn.commit()
             return
 
         print(f"[Competitor {competitor_id}] Scraped {len(raw_reviews)} raw reviews. AI processing...")
@@ -126,17 +122,9 @@ def process_competitor_scrape(competitor_id: str, url: str, headless: bool = Tru
         print(f"[Competitor {competitor_id}] AI processed {len(processed_reviews)} reviews.")
 
         with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM dbo.CompetitorReviews WHERE competitorId = ?", competitor_id)
-            conn.commit()
-            _insert_competitor_reviews(conn, competitor_id, processed_reviews)
+            _insert_competitor_reviews(conn, str(source_id), processed_reviews)
 
-        _update_competitor_stats(competitor_id)
         print(f"[Competitor {competitor_id}] Pipeline complete!")
 
     except Exception as e:
         print(f"[Competitor {competitor_id}] Error in pipeline: {e}")
-        with pyodbc.connect(get_connection_string()) as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE dbo.Competitors SET status = 'Error' WHERE id = ?", competitor_id)
-            conn.commit()

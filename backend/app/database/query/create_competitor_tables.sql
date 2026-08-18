@@ -14,34 +14,10 @@ CREATE TABLE dbo.Competitors (
 );
 GO
 
--- 2. Scraped + AI-processed reviews for each competitor
-CREATE TABLE dbo.CompetitorReviews (
-    id              INT IDENTITY(1,1) PRIMARY KEY,
-    competitorId    INT             NOT NULL,
-    platformReviewId NVARCHAR(100)  NULL,
-    rating          INT             NULL,           -- 1-5 star scale
-    userName        NVARCHAR(255)   NULL,
-    reviewText      NVARCHAR(MAX)   NULL,
-    summary         NVARCHAR(MAX)   NULL,           -- AI-generated summary
-    sentiment       NVARCHAR(50)    NULL,           -- Positive / Negative / Neutral
-    categories      NVARCHAR(MAX)   NULL,           -- JSON array e.g. ["Cleanliness","Staff"]
-    keyPhrases      NVARCHAR(MAX)   NULL,           -- JSON array
-    language        NVARCHAR(50)    NULL DEFAULT 'English',
-    reviewDate      DATE            NULL,
-    source          NVARCHAR(100)   NULL DEFAULT 'Booking.com',
-    createdAt       DATETIME        NOT NULL DEFAULT GETDATE(),
-
-    CONSTRAINT FK_CompetitorReviews_Competitors 
-        FOREIGN KEY (competitorId) REFERENCES dbo.Competitors(id) 
-        ON DELETE CASCADE
-);
+CREATE INDEX IX_Competitors_TrackingOrg
+    ON dbo.Competitors(tracking_organization_id);
 GO
 
--- Index for faster lookups
-CREATE INDEX IX_CompetitorReviews_CompetitorId 
-    ON dbo.CompetitorReviews(competitorId);
-GO
-
-CREATE INDEX IX_CompetitorReviews_Sentiment 
-    ON dbo.CompetitorReviews(sentiment);
+CREATE INDEX IX_Competitors_CompetitorOrg
+    ON dbo.Competitors(competitor_organization_id);
 GO

@@ -84,14 +84,14 @@ def get_category_scores(org_id: str) -> Dict[str, float]:
     """Average category scores for an organization via ReviewCategory JOIN."""
     with pyodbc.connect(get_connection_string()) as conn:
         cursor = conn.cursor()
-        # First try the relational ReviewCategory table (populated by new pipeline)
+        # First try the relational review_category table
         rows = cursor.execute("""
-            SELECT rc.category_name, AVG(CAST(r.rating AS FLOAT)) as avgScore
+            SELECT rc.name as category_name, AVG(CAST(COALESCE(rc.score, r.rating) AS FLOAT)) as avgScore
             FROM dbo.processed_review r
             JOIN dbo.source s ON s.source_id = r.source_id
-            JOIN dbo.ReviewCategory rc ON r.id = rc.review_id
+            JOIN dbo.review_category rc ON r.id = rc.review_id
             WHERE s.organization_id = ?
-            GROUP BY rc.category_name
+            GROUP BY rc.name
         """, org_id).fetchall()
 
         if rows:
