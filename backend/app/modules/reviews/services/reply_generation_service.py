@@ -73,30 +73,63 @@ def _extract_token_usage(value: Any) -> int:
     return 0
 
 
-def _get_org_source_ids(source_id: str) -> list[str]:
-    """Fetch all source IDs that belong to the same organization as the given source."""
-    import logging
-    _logger = logging.getLogger(__name__)
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _get_org_source_ids(identifier: str) -> list[str]:
+    """
+    Fetch all source IDs + organization ID that belong to the same organization.
+    Handles identifier being either a source_id or an organization_id.
+    """
+    if not identifier:
+        return []
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
+            clean_id = str(identifier).strip()
+
+            # Case 1: Check if identifier is a source_id
             rows = cursor.execute(
-                "SELECT CAST(s2.source_id AS NVARCHAR(36)) "
-                "FROM dbo.source s1 "
-                "JOIN dbo.source s2 ON s1.organization_id = s2.organization_id "
-                "WHERE CAST(s1.source_id AS NVARCHAR(36)) = ?",
-                (source_id,),
+                """
+                SELECT CAST(s2.source_id AS NVARCHAR(36)), CAST(s1.organization_id AS NVARCHAR(36))
+                FROM dbo.source s1 
+                JOIN dbo.source s2 ON s1.organization_id = s2.organization_id 
+                WHERE CAST(s1.source_id AS NVARCHAR(36)) = ?
+                """,
+                (clean_id,),
             ).fetchall()
-            # Uppercase to match ChromaDB metadata (SQL Server CAST produces uppercase UUIDs)
-            return [row[0].upper() for row in rows] if rows else [source_id.upper()]
+
+            if rows:
+                source_ids = {row[0].upper() for row in rows if row[0]}
+                org_id = rows[0][1]
+                if org_id:
+                    source_ids.add(str(org_id).upper())
+                return list(source_ids)
+
+            # Case 2: Check if identifier is an organization_id
+            rows_by_org = cursor.execute(
+                """
+                SELECT CAST(source_id AS NVARCHAR(36))
+                FROM dbo.source
+                WHERE CAST(organization_id AS NVARCHAR(36)) = ?
+                """,
+                (clean_id,),
+            ).fetchall()
+
+            if rows_by_org:
+                source_ids = {row[0].upper() for row in rows_by_org if row[0]}
+                source_ids.add(clean_id.upper())
+                return list(source_ids)
+
+            return [clean_id.upper()]
     except Exception as e:
-        _logger.warning(f"Failed to resolve org sources for {source_id}, falling back to single source: {e}")
-        return [source_id.upper()]
+        logger.warning(f"Failed to resolve org sources for {identifier}, falling back to single identifier: {e}")
+        return [str(identifier).upper()]
 
 
 def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    import logging
-    _logger = logging.getLogger(__name__)
     from app.core.config import EMBEDDING_API_KEY
     _api_key = EMBEDDING_API_KEY
     try:
@@ -118,7 +151,7 @@ def _fetch_embedding_context(review_text: str, source_id: str, top_k: int) -> tu
         safe_rules = rules if isinstance(rules, list) else []
         return safe_reviews[:top_k], safe_rules
     except Exception as e:
-        _logger.error(f"Embedding context fetch failed: {e}")
+        logger.error(f"Embedding context fetch failed: {e}")
         return [], []
 
 
@@ -226,10 +259,12 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
 
         similar_reviews: list[dict[str, Any]] = []
         rules: list[dict[str, Any]] = []
+        
+        target_source_id = payload.sourceId or ""
         if settings["use_embedding_rules"] or settings["use_similar_reviews"]:
             similar_reviews, rules = _fetch_embedding_context(
                 payload.reviewText,
-                payload.sourceId or "",
+                target_source_id,
                 int(settings["similar_reviews_count"]),
             )
         if not settings["use_similar_reviews"]:
@@ -237,14 +272,57 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
         if not settings["use_embedding_rules"]:
             rules = []
 
+        # ── Backend Logging: Show which relevant rules and reviews are sent to LLM ──
+        review_snippet = payload.reviewText.strip()
+        if len(review_snippet) > 80:
+            review_snippet = review_snippet[:77] + "..."
+
+        rules_log_lines = []
+        if rules:
+            for idx, r in enumerate(rules, 1):
+                dist = r.get("distance")
+                dist_str = f"distance={dist:.4f}" if isinstance(dist, (int, float)) else "distance=N/A"
+                rule_text = (r.get("text") or "").strip()
+                rules_log_lines.append(f"  [{idx}] ({dist_str}) {rule_text}")
+        else:
+            rules_log_lines.append("  (None - no rules matched threshold or rules context disabled)")
+
+        reviews_log_lines = []
+        if similar_reviews:
+            for idx, r in enumerate(similar_reviews, 1):
+                dist = r.get("distance")
+                dist_str = f"distance={dist:.4f}" if isinstance(dist, (int, float)) else "distance=N/A"
+                rev_text = (r.get("text") or "").strip()
+                if len(rev_text) > 100:
+                    rev_text = rev_text[:97] + "..."
+                reviews_log_lines.append(f"  [{idx}] ({dist_str}) \"{rev_text}\"")
+        else:
+            reviews_log_lines.append("  (None - no similar reviews matched threshold or similar reviews disabled)")
+
+        logger.info(
+            f"\n==================== [AI REPLY GENERATION CONTEXT] ====================\n"
+            f"Review ID: {payload.reviewId} | Author: {payload.userName} | Sentiment: {payload.sentiment}\n"
+            f"Original Review: \"{review_snippet}\"\n"
+            f"--------------------------------------------------------------------\n"
+            f"Relevant Rules & Regulations Sent to LLM ({len(rules)}):\n" +
+            "\n".join(rules_log_lines) + "\n"
+            f"--------------------------------------------------------------------\n"
+            f"Similar Past Reviews Sent to LLM ({len(similar_reviews)}):\n" +
+            "\n".join(reviews_log_lines) + "\n"
+            f"===================================================================="
+        )
+
         prompt = _build_prompt(payload, similar_reviews, rules)
 
         reply = ""
         provider_error: str | None = None
         try:
+            logger.info(f"Dispatching reply prompt to LLM Gateway for review ID '{payload.reviewId}'...")
             reply = gateway_call("reply_generation", prompt)
             _increment_usage()
+            logger.info(f"Successfully generated reply for review ID '{payload.reviewId}' via LLM Gateway")
         except Exception as exc:
+            logger.error(f"LLM Gateway call failed for review ID '{payload.reviewId}': {exc}. Using fallback reply.")
             reply = _fallback_reply(payload)
             provider_error = str(exc)
 
@@ -258,7 +336,8 @@ def generate_review_reply(payload: ReplyGenerationRequest) -> dict[str, Any]:
             "rulesUsed": len(rules),
             "providerError": provider_error,
         }
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed in generate_review_reply: {e}", exc_info=True)
         return {
             "reply": _fallback_reply(payload),
             "provider": "fallback",

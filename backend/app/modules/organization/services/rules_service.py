@@ -168,13 +168,15 @@ def _insert_rules(db: Session, organization_id: str, rules: list[str], filename:
     return inserted
 
 
-def _get_source_id_for_org(db: Session, organization_id: str) -> str | None:
-    """Get the first source_id for an organization (used for embedding namespace)."""
+def _get_source_id_for_org(db: Session, organization_id: str) -> str:
+    """Get the first source_id for an organization, or fallback to organization_id."""
     row = db.execute(
         text("SELECT TOP 1 source_id FROM dbo.source WHERE organization_id = :org_id"),
         {"org_id": organization_id},
     ).fetchone()
-    return str(row[0]).upper() if row else None  # Uppercase for ChromaDB consistency
+    if row and row[0]:
+        return str(row[0]).upper()
+    return str(organization_id).upper()
 
 
 # ── Embedding Dispatch ──────────────────────────────────────────────
@@ -219,22 +221,22 @@ def _mark_rules_as_embedded(db: Session, rule_ids: list[str]) -> None:
 
 # ── Main Service Function ──────────────────────────────────────────
 
-async def process_rules_upload(
+def process_rules_upload_bytes(
     db: Session,
     organization_id: str,
-    file: UploadFile,
+    filename: str,
+    file_bytes: bytes,
 ) -> dict[str, Any]:
     """
-    Full pipeline: validate file → parse text → LLM extraction →
-    store in DB → send to embedding.
+    Synchronous worker pipeline: validate -> parse text -> LLM extraction ->
+    store in DB -> send to embedding.
+    Runs inside worker thread to avoid blocking FastAPI's asyncio event loop.
     """
     # 1. Validate file
-    filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise ValueError(f"Unsupported file type: {ext}. Allowed: .txt, .docx, .pdf")
 
-    file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise ValueError(f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
 
@@ -260,7 +262,7 @@ async def process_rules_upload(
 
     # 6. Send to embedding service
     source_id = _get_source_id_for_org(db, organization_id)
-    embed_result = {"embedded_count": 0, "skipped": True, "reason": "no_source"}
+    embed_result = {"embedded_count": 0, "skipped": True}
 
     if source_id:
         # 6a. Delete old rule embeddings from ChromaDB before re-embedding
@@ -270,6 +272,16 @@ async def process_rules_upload(
                 headers=_AUTH_HEADERS,
                 timeout=30,
             )
+            # Also clear by organization_id if different
+            if source_id != str(organization_id).upper():
+                try:
+                    requests.delete(
+                        f"{EMBEDDING_SERVICE_URL}/delete/source/{str(organization_id).upper()}/rules",
+                        headers=_AUTH_HEADERS,
+                        timeout=15,
+                    )
+                except Exception:
+                    pass
             logger.info(f"Cleared old rule embeddings for source_id={source_id}")
         except Exception as e:
             logger.warning(f"Failed to clear old rule embeddings: {e}")
@@ -291,6 +303,24 @@ async def process_rules_upload(
         "embedding_result": embed_result,
         "rules": [{"rule_id": r["rule_id"], "text": r["rule_text"], "order": r["rule_order"]} for r in inserted_rules],
     }
+
+
+async def process_rules_upload(
+    db: Session,
+    organization_id: str,
+    file: UploadFile,
+) -> dict[str, Any]:
+    """Full pipeline: reads file asynchronously and offloads processing to threadpool."""
+    from starlette.concurrency import run_in_threadpool
+    filename = file.filename or "unknown"
+    file_bytes = await file.read()
+    return await run_in_threadpool(
+        process_rules_upload_bytes,
+        db,
+        organization_id,
+        filename,
+        file_bytes,
+    )
 
 
 def get_organization_rules(db: Session, organization_id: str) -> list[dict[str, Any]]:

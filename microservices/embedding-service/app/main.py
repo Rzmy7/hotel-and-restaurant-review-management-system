@@ -277,6 +277,11 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
         if dist < (threshold + 0.2)   # rules are authoritative
     ]
 
+    logger.info(
+        f"Embedding search query='{data.query[:50]}' source_ids={data.source_ids} -> "
+        f"found {len(reviews)} reviews and {len(rules)} rules"
+    )
+
     return {
         "query": data.query,
         "threshold": threshold,

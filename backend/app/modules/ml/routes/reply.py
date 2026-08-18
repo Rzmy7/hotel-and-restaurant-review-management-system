@@ -59,6 +59,7 @@ def generate_reply(payload: dict):
                 "tone": payload.get("tone", "standard"),
                 "length": payload.get("length", "standard"),
                 "language": payload.get("language", "English"),
+                "sourceId": payload.get("sourceId") or payload.get("organizationId") or None,
             },
         )()
 
@@ -104,6 +105,7 @@ def generate_reply_batch(payload: dict):
 
         tone = payload.get("tone", "standard")
         length = payload.get("length", "standard")
+        batch_source_id = payload.get("sourceId") or payload.get("organizationId") or None
         results = []
         success = 0
 
@@ -126,6 +128,7 @@ def generate_reply_batch(payload: dict):
                         "tone": tone,
                         "length": length,
                         "language": r.get("language", "English"),
+                        "sourceId": r.get("sourceId") or batch_source_id,
                     },
                 )()
                 result = generate_review_reply(request_payload)

@@ -101,9 +101,9 @@ class TestSearchRequestSchema:
         with pytest.raises(ValidationError):
             SearchRequest(source_ids=["src-1"])
 
-    def test_rejects_missing_source_ids(self):
-        with pytest.raises(ValidationError):
-            SearchRequest(query="pool")
+    def test_default_source_ids(self):
+        sr = SearchRequest(query="pool")
+        assert sr.source_ids == []
 
     def test_empty_source_ids_accepted(self):
         """Empty list is structurally valid (business logic handles it)."""
