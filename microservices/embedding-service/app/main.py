@@ -258,10 +258,10 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
         if dist < threshold
     ]
 
-    # Search RULES (looser threshold, fewer results)
+    # Search RULES (using the exact same threshold as reviews)
     rule_results = collection.query(
         query_embeddings=[vector],
-        n_results=5,
+        n_results=max(5, data.top_k),
         where=rule_where,
         include=["documents", "metadatas", "distances"]
     )
@@ -274,7 +274,7 @@ def search(data: SearchRequest, _auth: bool = Depends(verify_api_key)):
             "distance": dist
         }
         for i, dist in enumerate(rule_results["distances"][0])
-        if dist < (threshold + 0.2)   # rules are authoritative
+        if dist < threshold
     ]
 
     logger.info(
