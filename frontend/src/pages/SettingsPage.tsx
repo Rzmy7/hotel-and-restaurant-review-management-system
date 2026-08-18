@@ -38,7 +38,21 @@ const SettingsPage: React.FC = () => {
   const currentOrg = useOrganizationStore((state) => state.currentOrg);
   const organizationId = currentOrg?.id;
 
-  const { data: serverData, loading, saving, updateSettings, uploadOrganizationLogo, changePassword, uploadRulesFile, fetchOrganizationRules, addOrganizationRule, deleteOrganizationRule, fetchOrganizationTypes } = useSettings();
+  const {
+    data: serverData,
+    loading,
+    saving,
+    organizationRules,
+    isLoadingRules,
+    refreshRules,
+    updateSettings,
+    uploadOrganizationLogo,
+    changePassword,
+    uploadRulesFile,
+    addOrganizationRule,
+    deleteOrganizationRule,
+    fetchOrganizationTypes,
+  } = useSettings();
 
   const { setTheme } = useTheme();
   const [localData, setLocalData] = useState<SettingsData | null>(null);
@@ -48,7 +62,6 @@ const SettingsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [isUploadingRules, setIsUploadingRules] = useState(false);
-  const [organizationRules, setOrganizationRules] = useState<Array<{ rule_id: string; rule_text: string; rule_order: number; is_embedded: boolean; source_filename: string | null }>>([]);
   const [organizationTypes, setOrganizationTypes] = useState<OrganizationType[]>([]);
   const rulesInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -82,13 +95,8 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'organizationInfo') {
-      setOrganizationRules([]);
       if (organizationId) {
-        fetchOrganizationRules(organizationId)
-          .then(setOrganizationRules)
-          .catch(() => {
-            showToast('Failed to load organization rules', 'error');
-          });
+        refreshRules(organizationId);
       }
       fetchOrganizationTypes()
         .then(setOrganizationTypes)
@@ -96,7 +104,7 @@ const SettingsPage: React.FC = () => {
           showToast('Failed to load organization types', 'error');
         });
     }
-  }, [activeTab, organizationId, fetchOrganizationRules, fetchOrganizationTypes, showToast]);
+  }, [activeTab, organizationId, refreshRules, fetchOrganizationTypes, showToast]);
 
   if (loading || !localData) {
     return <SettingsSkeleton />;
@@ -222,9 +230,6 @@ const SettingsPage: React.FC = () => {
     setIsUploadingRules(true);
     try {
       await uploadRulesFile(file, organizationId);
-      // Refresh rules list after successful upload
-      const updatedRules = await fetchOrganizationRules(organizationId);
-      setOrganizationRules(updatedRules);
       showToast('Rules file uploaded successfully', 'success');
     } catch (error: any) {
       showToast(error?.message || 'Failed to upload rules file', 'error');
@@ -235,8 +240,7 @@ const SettingsPage: React.FC = () => {
 
   const handleAddRule = async (text: string) => {
     try {
-      const newRule = await addOrganizationRule(text, organizationId);
-      setOrganizationRules(prev => [...prev, newRule]);
+      await addOrganizationRule(text, organizationId);
     } catch {
       // Error handled by hook/toast
     }
@@ -245,7 +249,6 @@ const SettingsPage: React.FC = () => {
   const handleDeleteRule = async (ruleId: string) => {
     try {
       await deleteOrganizationRule(ruleId, organizationId);
-      setOrganizationRules(prev => prev.filter(r => r.rule_id !== ruleId));
     } catch {
       // Error handled by hook/toast
     }
@@ -351,6 +354,8 @@ const SettingsPage: React.FC = () => {
                   onChange={(updates) => handleUpdateSection('organizationInfo', updates)}
                   onRulesUpload={handleRulesUploadClick}
                   isUploadingRules={isUploadingRules}
+                  isLoadingRules={isLoadingRules}
+                  onOpenRulesModal={() => organizationId && refreshRules(organizationId)}
                   organizationRules={organizationRules}
                   organizationTypes={organizationTypes}
                   onAddRule={handleAddRule}

@@ -4,9 +4,9 @@ import type { SettingsData } from '../types/settings';
 import axios from 'axios';
 
 export const settingsService = {
-    getSettings: async (): Promise<SettingsData> => {
+    getSettings: async (orgId?: string): Promise<SettingsData> => {
         try {
-            const data = await settingsApi.fetchSettings();
+            const data = await settingsApi.fetchSettings(orgId);
             return data;
         } catch (error) {
             console.error('Failed to fetch settings:', error);

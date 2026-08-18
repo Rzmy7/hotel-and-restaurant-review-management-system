@@ -238,10 +238,10 @@ const syncOrganizationInStorage = (organizationInfo: SettingsData['organizationI
 };
 
 export const settingsApi = {
-    fetchSettings: async (): Promise<SettingsData> => {
+    fetchSettings: async (activeOrgIdParam?: string): Promise<SettingsData> => {
         try {
             const organizations = await fetchUserOrganizations();
-            const activeOrgId = getActiveOrganizationId();
+            const activeOrgId = activeOrgIdParam || getActiveOrganizationId();
             const activeOrg =
                 organizations.find((org) => org.organization_id === activeOrgId) ||
                 organizations[0];

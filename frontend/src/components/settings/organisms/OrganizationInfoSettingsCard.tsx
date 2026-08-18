@@ -21,10 +21,12 @@ interface OrganizationInfoSettingsCardProps {
     onChange: (updates: Partial<OrganizationInfoSettings>) => void;
     onRulesUpload?: () => void;
     isUploadingRules?: boolean;
+    isLoadingRules?: boolean;
     organizationRules?: OrganizationRule[];
     organizationTypes?: OrganizationType[];
     onAddRule?: (text: string) => Promise<void>;
     onDeleteRule?: (ruleId: string) => Promise<void>;
+    onOpenRulesModal?: () => void;
 }
 
 export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCardProps> = ({
@@ -32,10 +34,12 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
     onChange,
     onRulesUpload,
     isUploadingRules = false,
+    isLoadingRules = false,
     organizationRules = [],
     organizationTypes = [],
     onAddRule,
     onDeleteRule,
+    onOpenRulesModal,
 }) => {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [newRule, setNewRule] = React.useState('');
@@ -174,7 +178,11 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                                     <Button
                                         variant="primary"
                                         size="sm"
-                                        onClick={() => setIsModalOpen(true)}
+                                        onClick={() => {
+                                            onOpenRulesModal?.();
+                                            setIsModalOpen(true);
+                                        }}
+                                        isLoading={isLoadingRules}
                                         className="w-full"
                                     >
                                         View Rules ({organizationRules.length})
