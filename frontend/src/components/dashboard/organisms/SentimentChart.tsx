@@ -26,8 +26,8 @@ export const SentimentChart: React.FC<SentimentChartProps> = ({ data }) => {
     return (
         <Card hoverEffect className="shadow-sm p-6">
             <SectionHeader
-                title="Sentiment Analysis"
-                subtitle="AI Generated Feedback"
+                title="Customer Sentiment"
+                subtitle="Sentiment Breakdown"
                 className="mb-8"
             />
 

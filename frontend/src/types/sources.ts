@@ -1,3 +1,4 @@
+// Ubiquitous Language: Review Ingestion & Sources Context
 export type SourcePlatform =
     | 'TripAdvisor'
     | 'Booking.com'
@@ -11,20 +12,23 @@ export type SourcePlatform =
     | 'Hotels.com'
     | 'Custom';
 
-export type SourceStatus = 'Active' | 'Paused' | 'Error' | 'In Queue' | 'Syncing';
+export type ReviewSourceStatus = 'Active' | 'Paused' | 'Error' | 'In Queue' | 'Syncing';
+export type SourceStatus = ReviewSourceStatus; // Backward-compatibility alias
 
-export type SyncStatus = 'Success' | 'Failed' | 'In Progress';
+export type ReviewSyncStatus = 'Success' | 'Failed' | 'In Progress';
+export type SyncStatus = ReviewSyncStatus; // Backward-compatibility alias
 
-export type SyncSchedule = 'daily' | 'three_days' | 'weekly';
+export type ReviewSyncSchedule = 'daily' | 'three_days' | 'weekly';
+export type SyncSchedule = ReviewSyncSchedule; // Backward-compatibility alias
 
-export interface Source {
+export interface ReviewSource {
     id: string | number;
     platformId: number;
     platform: SourcePlatform;
     platformStatus: 'active' | 'inactive';
-    status: SourceStatus;
+    status: ReviewSourceStatus;
     lastSyncedAt: string | null;
-    syncSchedule: SyncSchedule;
+    syncSchedule: ReviewSyncSchedule;
     propertyUrl: string;
     successRate: number;
     num_of_syncs: number;
@@ -35,12 +39,13 @@ export interface Source {
     nextRunAt: string | null;
     createdAt: string;
 }
+export type Source = ReviewSource; // Backward-compatibility alias
 
-export interface SyncLog {
+export interface ReviewSyncLog {
     id: string | number;
     sourceId: string | number;
     platform: SourcePlatform;
-    status: SyncStatus;
+    status: ReviewSyncStatus;
     timestamp: string;
     durationMs: number;
     reviewsFetched: number;
@@ -49,11 +54,13 @@ export interface SyncLog {
     isImportant?: boolean;
     activityDetails?: string;
 }
+export type SyncLog = ReviewSyncLog; // Backward-compatibility alias
 
-export interface SourceStats {
+export interface ReviewSourceStats {
     totalSources: number;
     activeSources: number;
     pausedSources: number;
     errorSources: number;
     totalReviewsFetched: number;
 }
+export type SourceStats = ReviewSourceStats; // Backward-compatibility alias

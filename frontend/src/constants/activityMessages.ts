@@ -6,17 +6,17 @@ export const ActivityMessages = {
     RESET_PASSWORD: "Resetting password...",
 
     // Reviews
-    GENERATE_REPLY: "Generating AI reply...",
+    GENERATE_REPLY: "Generating AI response...",
     SEND_REPLY: "Sending reply...",
     UPDATE_STATUS: "Updating review...",
     TRANSLATE: "Translating review...",
-    BULK_GENERATE: "Generating replies in bulk...",
+    BULK_GENERATE: "Generating responses in bulk...",
 
     // Sources
-    ADD_SOURCE: "Adding source...",
-    UPDATE_SOURCE: "Updating source...",
-    DELETE_SOURCE: "Deleting source...",
-    VERIFY_SOURCE: "Verifying source...",
+    ADD_SOURCE: "Adding review source...",
+    UPDATE_SOURCE: "Updating review source...",
+    DELETE_SOURCE: "Deleting review source...",
+    VERIFY_SOURCE: "Verifying review source...",
     CLEAR_REVIEWS: "Clearing reviews...",
 
     // Competitors
@@ -34,8 +34,8 @@ export const ActivityMessages = {
     CREATE_GROUP: "Creating group...",
     UPDATE_GROUP: "Updating group...",
     DELETE_GROUP: "Deleting group...",
-    INVITE_USER: "Inviting user...",
-    REMOVE_USER: "Removing user...",
+    INVITE_USER: "Inviting team member...",
+    REMOVE_USER: "Removing team member...",
     LEAVE_ORG: "Leaving organization...",
     JOIN_GROUP: "Joining group...",
     ACCEPT_INVITE: "Accepting invite...",
@@ -56,6 +56,6 @@ export const ActivityMessages = {
     CREATE_USER: "Creating user...",
     DISABLE_USER: "Disabling user...",
     REBUILD_EMBEDDINGS: "Rebuilding embeddings...",
-    BROADCAST: "Sending broadcast...",
+    BROADCAST: "Sending announcement...",
     TRIGGER_PROCESSING: "Triggering processing..."
 } as const;

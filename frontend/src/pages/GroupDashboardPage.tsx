@@ -907,7 +907,7 @@ const SettingsTab: React.FC<{
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-red-200 dark:border-red-900/40 shadow-sm p-5">
         <h3 className="text-[11px] font-black text-red-500 uppercase tracking-widest mb-2">Danger Zone</h3>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-          Deleting this group is permanent. All members and invite history will be removed.
+          Deleting this group is permanent. All team members and invite history will be removed.
         </p>
         <button
           onClick={() => setShowDelete(true)}

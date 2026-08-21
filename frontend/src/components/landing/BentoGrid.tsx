@@ -37,7 +37,7 @@ export const BentoGrid = () => {
     },
     {
       title: "Competitor Tracking",
-      description: "Monitor your rivals and see how you rank in the market.",
+      description: "Monitor your competitors and see how you rank in the market.",
       icon: <Target className="text-rose-600" />,
       className: "md:col-span-1",
       bg: "bg-rose-50 dark:bg-rose-900/20"

@@ -5,11 +5,13 @@ import { apiClient } from '../api/client';
 interface OrganizationState {
     organizations: Organization[];
     currentOrg: Organization | null;
+    currentOrganization: Organization | null;
     loading: boolean;
     error: string | null;
     hasOrganization: boolean;
     fetchOrganizations: () => Promise<void>;
     switchOrganization: (orgId: string) => void;
+    setOrganization: (orgId: string) => void;
     addOrganization: () => void;
 }
 
@@ -39,6 +41,7 @@ const loadFromStorage = (): { organizations: Organization[]; currentOrg: Organiz
 export const useOrganizationStore = create<OrganizationState>((set, get) => ({
     organizations: [],
     currentOrg: null,
+    currentOrganization: null,
     loading: true,
     error: null,
     hasOrganization: false,
@@ -57,7 +60,7 @@ export const useOrganizationStore = create<OrganizationState>((set, get) => ({
                 status: o.status ?? 'Active',
             }));
 
-            // ponytail: update local storage so that legacy pages reading directly continue to work
+            // update local storage so that legacy pages reading directly continue to work
             localStorage.setItem('organizations', JSON.stringify(list));
             const orgIds = orgs.map(o => o.id);
             localStorage.setItem('organization_ids', JSON.stringify(orgIds));
@@ -72,6 +75,7 @@ export const useOrganizationStore = create<OrganizationState>((set, get) => ({
             set({
                 organizations: orgs,
                 currentOrg,
+                currentOrganization: currentOrg,
                 hasOrganization: orgs.length > 0,
                 loading: false,
             });
@@ -82,6 +86,7 @@ export const useOrganizationStore = create<OrganizationState>((set, get) => ({
             set({
                 organizations,
                 currentOrg,
+                currentOrganization: currentOrg,
                 hasOrganization: organizations.length > 0,
                 loading: false,
             });
@@ -93,11 +98,16 @@ export const useOrganizationStore = create<OrganizationState>((set, get) => ({
         const org = organizations.find((o) => o.id === orgId);
         if (org) {
             localStorage.setItem('current_organization', org.id);
-            set({ currentOrg: org });
+            set({ currentOrg: org, currentOrganization: org });
         }
+    },
+
+    setOrganization: (orgId: string) => {
+        get().switchOrganization(orgId);
     },
 
     addOrganization: () => {
         window.location.href = '/setup';
     },
 }));
+

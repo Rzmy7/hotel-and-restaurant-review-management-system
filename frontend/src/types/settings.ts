@@ -34,10 +34,25 @@ export interface OrganizationInfoSettings {
     logoUrl?: string;
 }
 
+export interface RuleSettings {
+    hotelRulesPrompt?: string;
+    autoReplyEnabled?: boolean;
+    minRatingForAutoReply?: number;
+}
+
+export interface LLMGatewaySettings {
+    provider?: 'openai' | 'qwen' | 'deepseek' | 'gemini' | 'custom';
+    apiKey?: string;
+    modelName?: string;
+    isCustomKey?: boolean;
+}
+
 export interface SettingsData {
     general: GeneralSettings;
     notifications: NotificationSettings;
     security: SecuritySettings;
     subscription: SubscriptionSettings;
     organizationInfo: OrganizationInfoSettings;
+    rules?: RuleSettings;
+    llmGateway?: LLMGatewaySettings;
 }

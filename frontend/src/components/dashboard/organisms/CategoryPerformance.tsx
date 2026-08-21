@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import { Card } from '../atoms/Card';
 import { SectionHeader } from '../molecules/SectionHeader';
-import type { CategoryPerformanceItem } from '../../../types/dashboard';
+import type { CategoryPerformanceItem, AspectPerformanceItem } from '../../../types/dashboard';
 
 interface Props {
-    categories?: CategoryPerformanceItem[];
+    categories?: (CategoryPerformanceItem | AspectPerformanceItem)[];
+    aspects?: (CategoryPerformanceItem | AspectPerformanceItem)[];
 }
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -56,9 +57,9 @@ export const CategoryPerformance: React.FC<Props> = ({ categories = [] }) => {
     return (
         <Card hoverEffect className="shadow-sm p-6 flex flex-col h-full">
             <SectionHeader
-                title="Category Performance"
-                subtitle="Domain Metrics"
-                className="mb-8 items-center"
+                title="Aspect Performance"
+                subtitle="Aspect Sentiment Breakdown"
+                className="mb-6 items-center shrink-0"
             >
                 <span className="text-[10px] text-gray-400 dark:text-slate-500 font-black uppercase tracking-widest bg-gray-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-gray-100 dark:border-slate-700">
                     All Time
@@ -72,9 +73,9 @@ export const CategoryPerformance: React.FC<Props> = ({ categories = [] }) => {
                             <Star size={20} className="text-gray-300 dark:text-slate-600" />
                         </div>
                         <div>
-                            <p className="text-sm font-black text-gray-700 dark:text-white uppercase tracking-wide">No Category Data Available</p>
+                            <p className="text-sm font-black text-gray-700 dark:text-white uppercase tracking-wide">No Aspect Data Available</p>
                             <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-                                Categories will appear once reviews with category tags are collected.
+                                Aspect metrics will appear once customer reviews are collected and analyzed.
                             </p>
                         </div>
                     </div>
@@ -125,4 +126,5 @@ export const CategoryPerformance: React.FC<Props> = ({ categories = [] }) => {
     );
 };
 
+export const AspectPerformance = CategoryPerformance;
 export default CategoryPerformance;

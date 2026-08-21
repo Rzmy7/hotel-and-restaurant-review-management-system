@@ -48,8 +48,8 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
     const options = {
         Rating: [5, 4, 3, 2, 1],
         Sentiment: ['Positive', 'Neutral', 'Negative'],
-        Platform: filtersConfig.sources,
-        Category: filtersConfig.categories,
+        Source: filtersConfig.sources,
+        Aspect: filtersConfig.categories,
         Status: ['Pending', 'Processed']
     };
 
@@ -62,8 +62,8 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
         switch (type) {
             case "Rating": return filters.rating.length > 0;
             case "Sentiment": return filters.sentiment.length > 0;
-            case "Platform": return filters.source.length > 0;
-            case "Category": return filters.category.length > 0;
+            case "Source": return filters.source.length > 0;
+            case "Aspect": return filters.category.length > 0;
             case "Status": return filters.status.length > 0;
             default: return false;
         }
@@ -78,13 +78,13 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
         switch (menu) {
             case 'Rating': filterType = 'rating'; break;
             case 'Sentiment': filterType = 'sentiment'; break;
-            case 'Platform': filterType = 'source'; break;
-            case 'Category': filterType = 'category'; break;
+            case 'Source': filterType = 'source'; break;
+            case 'Aspect': filterType = 'category'; break;
             case 'Status': filterType = 'status'; break;
             default: return null;
         }
 
-        const hasSearch = menu === 'Category' || menu === 'Platform';
+        const hasSearch = menu === 'Aspect' || menu === 'Source';
 
         return (
             <div className={`absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-lg shadow-gray-200/50 dark:shadow-slate-900/50 z-50 p-2 min-w-[200px] ${hasSearch ? 'min-w-[240px]' : ''}`}>
@@ -183,9 +183,9 @@ const ReviewsToolbar = ({ filtersConfig, pagination }: ReviewsToolbarProps) => {
                             ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800 text-[#4e80ee] dark:text-blue-400'
                             : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee]'
                             }`}
-                        title="Content search"
+                        title="Search by meaning and context with AI"
                     >
-                        Content Search
+                        Smart Search
                     </button>
                 )}
 

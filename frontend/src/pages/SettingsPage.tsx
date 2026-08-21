@@ -25,7 +25,7 @@ import type { OrganizationType } from '../api/settingsApi';
 type TabID = 'general' | 'security' | 'notifications' | 'subscription' | 'organizationInfo';
 
 const TABS = [
-  { id: 'general', label: 'General Properties', icon: Globe },
+  { id: 'general', label: 'General Settings', icon: Globe },
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },

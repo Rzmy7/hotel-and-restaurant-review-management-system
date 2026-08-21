@@ -229,7 +229,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Sync Frequency</label>
+                <label className="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Update Schedule</label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { val: 'daily', label: 'Daily' }, 
@@ -243,7 +243,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
                         key={s.val}
                         disabled={!isAllowed}
                         onClick={() => setSyncSchedule(s.val as SyncSchedule)}
-                        title={!isAllowed ? 'Daily syncing is only available on Pro/Ultra plans' : undefined}
+                        title={!isAllowed ? 'Daily review updates are only available on Pro/Ultra plans' : undefined}
                         className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-1.5 ${
                           !isAllowed
                             ? 'bg-gray-50 border-gray-100 text-gray-300 dark:bg-slate-800/50 dark:border-slate-700/50 dark:text-slate-600 cursor-not-allowed'
@@ -307,7 +307,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
 
 
               <div className="bg-gray-50 dark:bg-slate-800 rounded-[32px] p-8">
-                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-6">Synchronization Timeline</h4>
+                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-6">Review Update Timeline</h4>
                 <div className="space-y-6">
                   <div className="flex items-center gap-6">
                     <div className="flex flex-col items-center">
@@ -315,9 +315,9 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
                       <div className="w-0.5 h-12 bg-gray-200 dark:bg-slate-700 mt-2" />
                     </div>
                     <div className="flex-1 pb-8">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">Last Synchronization Completed</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">Last Review Update Completed</p>
                       <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mt-1">
-                        Successfully fetched 12 new reviews on {source.lastSyncedAt ? new Date(source.lastSyncedAt).toLocaleString() : 'Never'}
+                        Successfully fetched new reviews on {source.lastSyncedAt ? new Date(source.lastSyncedAt).toLocaleString() : 'Never'}
                       </p>
                     </div>
                   </div>
@@ -326,7 +326,7 @@ const EditSourceModal = ({ isOpen, onClose, source, onSave, onDelete, onClearRev
                       <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_0_4px_rgba(59,130,246,0.1)]" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">Next Scheduled Pulse</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">Next Scheduled Update</p>
                       <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mt-1">
                         Estimated trigger: {source.nextRunAt ? new Date(source.nextRunAt).toLocaleString() : 'Not scheduled'}
                       </p>

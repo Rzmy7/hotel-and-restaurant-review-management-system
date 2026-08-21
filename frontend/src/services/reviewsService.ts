@@ -136,6 +136,15 @@ class ReviewsService {
         });
     }
 
+    async deleteReview(reviewId: number | string): Promise<void> {
+        await apiClient.delete(`/reviews/${reviewId}`);
+    }
+
+    // Ubiquitous Language aliases
+    fetchReviews = this.getReviews.bind(this);
+    fetchStats = this.getStats.bind(this);
+    fetchOptions = this.getOptions.bind(this);
+
     clearCache(): void {
         // No client-side cache in the new paged structure
     }

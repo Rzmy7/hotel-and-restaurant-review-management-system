@@ -104,7 +104,7 @@ const AddCompetitorModal: React.FC<AddCompetitorModalProps> = ({ isOpen, onClose
       if (hasData) {
         setSuccess(`"${res.competitor.name}" is already in the system — comparison data is ready.`);
       } else {
-        setSuccess(`"${res.competitor.name}" added. Reviews are being scraped in the background.`);
+        setSuccess(`"${res.competitor.name}" added. Reviews are being updated in the background.`);
       }
       setTimeout(() => {
         onSuccess();

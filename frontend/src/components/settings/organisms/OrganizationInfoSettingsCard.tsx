@@ -123,7 +123,7 @@ export const OrganizationInfoSettingsCard: React.FC<OrganizationInfoSettingsCard
                                 Rules & Regulations
                             </label>
                             <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
-                                Upload a document containing your property's rules and regulations. The AI will extract individual rules and use them when generating review replies.
+                                Upload a document containing your organization's rules and regulations. The AI will extract individual rules and use them when generating AI responses.
                             </p>
                         </div>
 

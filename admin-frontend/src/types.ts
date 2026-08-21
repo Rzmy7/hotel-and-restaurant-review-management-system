@@ -138,7 +138,8 @@ export interface AdminSettings {
     notifyScrapingFailures: boolean;
 }
 
-export interface ScrapingStats {
+// Ubiquitous Language: Review Ingestion Context
+export interface ReviewIngestionStats {
     activeJobs: number;
     activeJobsChange: number;
     completedToday: number;
@@ -148,8 +149,9 @@ export interface ScrapingStats {
     reviewsIngested: number;
     reviewsChange: number;
 }
+export type ScrapingStats = ReviewIngestionStats; // Backward-compatibility alias
 
-export interface ScrapingPlatform {
+export interface ReviewSourcePlatform {
     id: string;
     name: string;
     icon: string;
@@ -161,8 +163,9 @@ export interface ScrapingPlatform {
     attributes?: any[];
     baseUrl?: string;
 }
+export type ScrapingPlatform = ReviewSourcePlatform; // Backward-compatibility alias
 
-export interface ScrapingJob {
+export interface ReviewIngestionJob {
     id: string;
     jobId: string;
     platform: string;
@@ -174,6 +177,7 @@ export interface ScrapingJob {
     duration: string;
     reviews: number | null;
 }
+export type ScrapingJob = ReviewIngestionJob; // Backward-compatibility alias
 
 export interface ServerStatus {
     id: string;
@@ -183,6 +187,15 @@ export interface ServerStatus {
     ramUsage: number;
     icon: any; // LucideIcon type
     uptime?: string;
+}
+
+export interface Group {
+    id: string;
+    organizationId: string;
+    name: string;
+    propertyType?: string;
+    usersCount?: number;
+    status?: string;
 }
 
 export interface PaginatedResponse<T> {

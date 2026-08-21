@@ -58,9 +58,9 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
                                 <MessageSquare size={20} className="text-gray-300 dark:text-slate-600" />
                             </div>
                             <div>
-                                <p className="text-sm font-black text-gray-700 dark:text-white uppercase tracking-wide">No Review Data Available</p>
+                                <p className="text-sm font-black text-gray-700 dark:text-white uppercase tracking-wide">No Customer Reviews Available</p>
                                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-                                    Reviews will appear here once data is collected.
+                                    Reviews will appear here once customer feedback is collected.
                                 </p>
                             </div>
                         </div>

@@ -106,7 +106,7 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
                             Activity Log
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">
-                            Live system activity & history
+                            Live review updates & activity history
                         </p>
                     </div>
                     <div className="flex items-center gap-2">

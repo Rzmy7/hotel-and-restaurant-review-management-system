@@ -130,11 +130,11 @@ const SourceComparison: React.FC<SourceComparisonProps> = ({ sources: rawSources
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 border-b border-gray-50 dark:border-slate-700/50 pb-8">
                 <div>
                     <h3 className="m-0 text-sm font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest flex items-center gap-2">
-                        Source Comparison
+                        Review Source Comparison
                         <Info size={14} className="text-gray-300 dark:text-slate-600 cursor-help" />
                     </h3>
                     <p className="m-0 text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
-                        {rawSources.length} sources identified • Top performance clustering
+                        {rawSources.length} review sources connected • Share of total reviews
                     </p>
                 </div>
 

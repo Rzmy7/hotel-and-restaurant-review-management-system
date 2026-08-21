@@ -33,7 +33,7 @@ const SupportForm: React.FC = () => {
             </label>
             <input 
               type="text" 
-              placeholder="e.g. Scraper connection failure"
+              placeholder="e.g. Review source connection issue"
               className="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#4e80ee]/20 focus:border-[#4e80ee] placeholder:text-gray-300"
               required 
             />

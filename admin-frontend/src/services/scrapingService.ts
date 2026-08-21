@@ -162,3 +162,12 @@ export const uploadPlatformScript = async (
 
     return response.json() as Promise<{ status: string }>;
 };
+
+// Ubiquitous Language Aliases
+export const fetchReviewIngestionStats = fetchScrapingStats;
+export const fetchReviewSourcePlatforms = fetchScrapingPlatforms;
+export const fetchReviewIngestionJobs = fetchScrapingJobs;
+export const createReviewSourcePlatform = createScrapingPlatform;
+export const fetchReviewSourcePlatformDetails = fetchScrapingPlatformDetails;
+export const updateReviewSourcePlatform = updateScrapingPlatform;
+

@@ -391,9 +391,9 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
                       </span>
                     </div>
 
-                    {/* Categories */}
+                    {/* Review Aspects */}
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest block mb-2">Topic Categories</span>
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-widest block mb-2">Review Aspects</span>
                       {isDetailLoading ? (
                         <BadgesSkeleton />
                       ) : (
@@ -465,7 +465,7 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
                         <span className="text-gray-900 dark:text-white font-medium">{formatDate(review.firstSeen)}</span>
                       </div>
                       <div className="flex items-center justify-between text-[12px]">
-                        <span className="text-gray-500 font-bold dark:text-slate-400">Last Scraped</span>
+                        <span className="text-gray-500 font-bold dark:text-slate-400">Last Updated</span>
                         <span className="text-gray-900 dark:text-white font-medium">{formatDate(review.scrapedAt)}</span>
                       </div>
                     </div>

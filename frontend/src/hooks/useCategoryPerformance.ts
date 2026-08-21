@@ -23,4 +23,5 @@ export const useCategoryPerformance = (period: number = 30) => {
         refetch,
     };
 };
+export const useAspectPerformance = useCategoryPerformance;
 export default useCategoryPerformance;

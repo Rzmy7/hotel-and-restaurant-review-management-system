@@ -54,7 +54,7 @@ export const CategoryPerformanceSection: React.FC<CategoryPerformanceSectionProp
     if (error) {
         return (
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm h-full flex items-center justify-center text-center">
-                <p className="text-xs font-bold text-rose-600 dark:text-rose-400">Failed to load category performance: {error}</p>
+                <p className="text-xs font-bold text-rose-600 dark:text-rose-400">Failed to load aspect performance: {error}</p>
             </div>
         );
     }

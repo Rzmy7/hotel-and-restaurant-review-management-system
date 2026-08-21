@@ -41,7 +41,7 @@ const ReviewStats = ({ stats, isLoading }: ReviewStatsProps) => {
             border: 'hover:border-rose-200 dark:hover:border-rose-800'
         },
         {
-            label: 'Overall Sentiment',
+            label: 'Customer Sentiment',
             value: `${stats.sentimentScore} / 100`,
             icon: TrendingUp,
             color: sentimentStyle.color,
