@@ -13,7 +13,11 @@ from datetime import datetime
 
 import pyodbc
 from app.core.pyodbc_connection import get_raw_connection, retry_on_deadlock
-from app.modules.reviews.repository import get_pending_batch, get_review_by_id
+from app.modules.reviews.repository import (
+    get_pending_batch,
+    get_review_by_id,
+    get_org_ids_for_reviews,
+)
 from app.modules.reviews.services.llm_client import analyze_reviews_batch
 
 logger = logging.getLogger(__name__)
@@ -105,6 +109,7 @@ async def run_analysis_pipeline():
     total_processed = 0
     max_loops = 50  # Safety cap to prevent infinite processing in one task
     loop_count = 0
+    affected_org_ids: set = set()  # orgs with newly processed reviews (cache invalidation)
 
     while loop_count < max_loops:
         # Check if we have exceeded the time limit for this run
@@ -187,6 +192,17 @@ async def run_analysis_pipeline():
                 chunk_errors.append(err_info)
 
         total_processed += batch_success_count
+
+        # Collect orgs affected by this iteration for post-run cache invalidation
+        if batch_success_count > 0:
+            try:
+                with get_raw_connection() as conn:
+                    _affected = get_org_ids_for_reviews(
+                        conn.cursor(), [r["id"] for r in pending_reviews]
+                    )
+                affected_org_ids.update(_affected)
+            except Exception as e:
+                logger.warning(f"Pipeline: failed to resolve org ids for batch: {e}")
 
         # Handle any chunk errors
         if chunk_errors:
@@ -277,6 +293,17 @@ async def run_analysis_pipeline():
     if loop_count >= max_loops:
         logger.warning(f"Pipeline reached max_loops ({max_loops}). Some pending reviews may remain.")
 
+    # Post-run: invalidate caches for orgs with newly processed reviews.
+    # Fully guarded so cache failures never break the pipeline.
+    if affected_org_ids:
+        try:
+            from app.core.redis_client import invalidate_review_cache, invalidate_ai_cache
+            for org_id in affected_org_ids:
+                invalidate_review_cache(org_id)
+                invalidate_ai_cache(org_id)
+        except Exception as e:
+            logger.warning(f"Pipeline: cache invalidation failed: {e}")
+
 
 
 async def process_single_review(review_id: uuid.UUID) -> dict:
@@ -325,10 +352,24 @@ async def process_single_review(review_id: uuid.UUID) -> dict:
         if not success:
             raise RuntimeError("Failed to update review record in database.")
         logger.info(f"Single review {review_id} PROCESSED successfully.")
-        return analysis
     except Exception as e:
         logger.error(f"Failed to update single review {review_id}: {e}")
         raise e
+
+    # 4. Post-processing: invalidate caches for the affected org.
+    #    Guarded — must not fail the call.
+    try:
+        with get_raw_connection() as conn:
+            org_ids = get_org_ids_for_reviews(conn.cursor(), [review["id"]])
+        if org_ids:
+            from app.core.redis_client import invalidate_review_cache, invalidate_ai_cache
+            for org_id in org_ids:
+                invalidate_review_cache(org_id)
+                invalidate_ai_cache(org_id)
+    except Exception as e:
+        logger.warning(f"Single review: cache invalidation failed: {e}")
+
+    return analysis
 
 
 

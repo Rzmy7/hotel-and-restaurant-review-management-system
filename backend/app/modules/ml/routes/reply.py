@@ -9,8 +9,9 @@ GET  /ml/reply/health — Health check
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.modules.auth.utils.internal_auth import verify_internal_api_key
 from app.modules.reviews.services.reply_generation_service import generate_review_reply
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,10 @@ def health_check():
 
 
 @router.post("", summary="Generate an AI reply for a review")
-def generate_reply(payload: dict):
+def generate_reply(
+    payload: dict,
+    internal: bool = Depends(verify_internal_api_key),
+):
     """
     Generate a context-aware AI reply for a single review.
 
@@ -78,7 +82,10 @@ def generate_reply(payload: dict):
 
 
 @router.post("/batch", summary="Batch generate AI replies for multiple reviews")
-def generate_reply_batch(payload: dict):
+def generate_reply_batch(
+    payload: dict,
+    internal: bool = Depends(verify_internal_api_key),
+):
     """
     Generate replies for up to 5 reviews in a single request.
 

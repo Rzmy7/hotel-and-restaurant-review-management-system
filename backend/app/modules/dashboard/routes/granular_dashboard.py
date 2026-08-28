@@ -9,6 +9,7 @@ import uuid
 from app.database.session import get_db
 from app.core.tenant_context import resolve_tenant_scope
 from app.modules.auth.utils.auth_utils import get_current_user
+from app.core.redis_client import cache_get, cache_set
 
 router = APIRouter(prefix="/organizations/{org_id}/dashboard-granular", tags=["Granular Dashboard"])
 
@@ -38,7 +39,13 @@ def get_granular_kpis(
     from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
 
     try:
+        cache_key = f"dashboard:kpis:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         metrics = get_dashboard_metrics(db, org_id, period)
+        cache_set(cache_key, metrics, ttl=300)
         return metrics
     except Exception as e:
         raise HTTPException(
@@ -105,10 +112,15 @@ def get_granular_reviews(
     from app.modules.dashboard.services.trends_service import get_recent_reviews
 
     try:
+        cache_key = f"dashboard:latest-reviews:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         recent_reviews = get_recent_reviews(db, org_id, period_days=period)["reviews"]
-        
+
         # Format mapping strictly conforming to frontend expectations
-        return [
+        result = [
             {
                 "id": str(r["id"]),
                 "reviewerName": r["userName"],
@@ -124,6 +136,8 @@ def get_granular_reviews(
             }
             for r in recent_reviews[:5]
         ]
+        cache_set(cache_key, result, ttl=300)
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -150,7 +164,13 @@ def get_granular_sentiment_chart(
     from app.modules.dashboard.services.charts_service import get_sentiment_distribution
 
     try:
+        cache_key = f"dashboard:charts-sentiment:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         sentiment_charts = get_sentiment_distribution(db, org_id, period_days=period)
+        cache_set(cache_key, sentiment_charts, ttl=300)
         return sentiment_charts
     except Exception as e:
         raise HTTPException(
@@ -181,12 +201,19 @@ def get_granular_trends_chart(
     )
 
     try:
+        cache_key = f"dashboard:charts-trends:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         daily_trends = get_daily_review_trends(db, org_id, days=period)
         weekly_trends = get_weekly_review_trends(db, org_id, period_days=period)
-        return {
+        result = {
             "reviewsOverTime": daily_trends,
             "sentimentTrends": weekly_trends,
         }
+        cache_set(cache_key, result, ttl=300)
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -213,7 +240,13 @@ def get_granular_category_performance(
     from app.modules.dashboard.services.categories_service import get_category_performance
 
     try:
+        cache_key = f"dashboard:category-performance:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         category_performance = get_category_performance(db, org_id, period_days=period)
+        cache_set(cache_key, category_performance, ttl=300)
         return category_performance
     except Exception as e:
         raise HTTPException(
@@ -241,8 +274,13 @@ def get_granular_ai_insights(
     from app.modules.dashboard.services.metrics_service import get_dashboard_metrics
 
     try:
+        cache_key = f"dashboard:ai-insights:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         metrics = get_dashboard_metrics(db, org_id, period)
-        return {
+        result = {
             "strengths": [
                 {"label": "Review Quality", "impact": "High", "freq": "100%"},
             ],
@@ -252,6 +290,8 @@ def get_granular_ai_insights(
                 "correlation": "Strong",
             },
         }
+        cache_set(cache_key, result, ttl=300)
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -278,7 +318,13 @@ def get_granular_source_comparison(
     from app.modules.dashboard.services.sources_service import get_source_comparison_metrics
 
     try:
+        cache_key = f"dashboard:source-comparison:{org_id}:{period}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         source_comparison = get_source_comparison_metrics(db, org_id, period_days=period)
+        cache_set(cache_key, source_comparison, ttl=300)
         return source_comparison
     except Exception as e:
         raise HTTPException(

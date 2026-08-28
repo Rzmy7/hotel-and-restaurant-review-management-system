@@ -34,9 +34,17 @@ class ReviewsService {
     }
 
     /**
+     * Fetch a single review by id (detail view).
+     */
+    async getReviewById(reviewId: string): Promise<Review | null> {
+        const data = await apiClient.get<any>(`/reviews/${reviewId}`);
+        return data?.id ? this.mapReview(data) : null;
+    }
+
+    /**
      * Map backend ReviewModel to frontend Review interface.
      */
-    private mapReview(item: any): Review {
+    mapReview(item: any): Review {
         return {
             id: item.id,
             rating: typeof item.rating === 'number' ? item.rating : 0,

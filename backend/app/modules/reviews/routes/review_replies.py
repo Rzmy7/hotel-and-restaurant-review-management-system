@@ -15,6 +15,7 @@ from sqlalchemy import text
 from app.database import get_db
 from app.modules.auth.utils.auth_utils import get_current_user
 from app.core.tenant_context import resolve_tenant_scope
+from app.core.redis_client import invalidate_review_cache, invalidate_ai_cache
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ def save_reply(
     Body: { "replyText": "...", "tone": "professional" (optional) }
     """
     try:
-        _verify_review_ownership(db, review_id, current_user)
+        org_id = _verify_review_ownership(db, review_id, current_user)
 
         reply_text = (payload.get("replyText") or "").strip()
         if not reply_text:
@@ -223,6 +224,10 @@ def save_reply(
 
         db.commit()
 
+        # Replies feed insights response metrics — invalidate cached org data
+        invalidate_review_cache(org_id)
+        invalidate_ai_cache(org_id)
+
         return {
             "message": "Reply saved successfully",
             "reply_id": str(reply_id),
@@ -250,7 +255,7 @@ def edit_reply(
     Body: { "replyText": "..." }
     """
     try:
-        _verify_review_ownership(db, review_id, current_user)
+        org_id = _verify_review_ownership(db, review_id, current_user)
 
         reply_text = (payload.get("replyText") or "").strip()
         if not reply_text:
@@ -298,6 +303,9 @@ def edit_reply(
 
         db.commit()
 
+        invalidate_review_cache(org_id)
+        invalidate_ai_cache(org_id)
+
         return {
             "message": "Reply updated successfully",
             "reply_id": str(reply_id),
@@ -324,7 +332,7 @@ def delete_reply(
     Also clears the ai_reply on processed_review if it was the latest.
     """
     try:
-        _verify_review_ownership(db, review_id, current_user)
+        org_id = _verify_review_ownership(db, review_id, current_user)
 
         result = db.execute(
             text("""
@@ -369,6 +377,9 @@ def delete_reply(
             )
 
         db.commit()
+
+        invalidate_review_cache(org_id)
+        invalidate_ai_cache(org_id)
 
         return {
             "message": "Reply deleted successfully",
