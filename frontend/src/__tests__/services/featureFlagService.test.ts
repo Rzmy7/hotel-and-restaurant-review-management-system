@@ -73,6 +73,32 @@ describe('featureFlagService', () => {
         expect(result).toBe(true);
     });
 
+    // ── isReviewerNamesVisible ──────────────────────────────────
+
+    it('returns true when show_reviewer_names is Enabled', async () => {
+        mockFetchWithFlags([{ key: 'show_reviewer_names', status: 'Enabled' }]);
+        const result = await featureFlagService.isReviewerNamesVisible();
+        expect(result).toBe(true);
+    });
+
+    it('returns false when show_reviewer_names is Disabled', async () => {
+        mockFetchWithFlags([{ key: 'show_reviewer_names', status: 'Disabled' }]);
+        const result = await featureFlagService.isReviewerNamesVisible();
+        expect(result).toBe(false);
+    });
+
+    it('returns true (default) when show_reviewer_names is missing', async () => {
+        mockFetchWithFlags([]);
+        const result = await featureFlagService.isReviewerNamesVisible();
+        expect(result).toBe(true);
+    });
+
+    it('returns true (default) on network failure for isReviewerNamesVisible', async () => {
+        mockFetchFailure();
+        const result = await featureFlagService.isReviewerNamesVisible();
+        expect(result).toBe(true);
+    });
+
     // ── getAllFlags ──────────────────────────────────────────────
 
     it('returns all flags', async () => {

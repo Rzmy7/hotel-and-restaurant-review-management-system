@@ -75,6 +75,13 @@ FEATURE_FLAG_DEFINITIONS = {
         "status_key": "feature_flag_api_limit_notifications",
         "default": "Disabled",
     },
+    "show_reviewer_names": {
+        "id": "5",
+        "name": "Show Reviewer Names",
+        "description": "Display reviewer names on reviews across the user application. When disabled, reviewer names are anonymized.",
+        "status_key": "feature_flag_show_reviewer_names",
+        "default": "Enabled",
+    },
 }
 
 
@@ -532,6 +539,13 @@ def update_feature_flag(flag_key: str, payload: FeatureFlagUpdatePayload) -> Fea
                     cursor.execute("DELETE FROM dbo.two_factor_token")
                 except Exception:
                     pass  # columns/table may not exist yet
+
+            if flag_key == "show_reviewer_names":
+                try:
+                    from app.core.redis_client import invalidate_review_cache
+                    invalidate_review_cache()
+                except Exception:
+                    pass
 
             connection.commit()
 

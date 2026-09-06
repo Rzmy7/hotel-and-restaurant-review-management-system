@@ -13,10 +13,12 @@ import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
 import { useReviewsData } from '../hooks/useReviewsData';
 import ReviewsSkeleton from './ReviewsSkeleton';
+import { useReviewerNamesVisibility } from '../hooks/useReviewerNamesVisibility';
 
 const ReviewsPageContent = () => {
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const organizationId = currentOrg?.id ?? '';
+  const isReviewerNamesVisible = useReviewerNamesVisibility();
 
   const { filters, setDateRange, fetchParams, setPage } = useReviewFilters();
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
@@ -50,7 +52,13 @@ const ReviewsPageContent = () => {
     const headers = ['date', 'source', 'rating', 'sentiment', 'reviewerName', 'heading', 'text', 'status'];
     const csv = [
       headers.join(','),
-      ...reviews.map((r: any) => headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(','))
+      ...reviews.map((r: any) => headers.map(h => {
+        let val = r[h] || '';
+        if ((h === 'reviewerName' || h === 'userName') && !isReviewerNamesVisible) {
+          val = 'Anonymous';
+        }
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }).join(','))
     ].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = Object.assign(document.createElement('a'), { href: url, download: 'reviews.csv' });
@@ -93,7 +101,7 @@ const ReviewsPageContent = () => {
                   <td style="white-space: nowrap">${new Date(r.date).toLocaleDateString()}</td>
                   <td>${r.source}</td>
                   <td>${r.rating}/5</td>
-                  <td>${r.userName || ''}</td>
+                  <td>${isReviewerNamesVisible ? String(r.userName || '').replace(/</g, '&lt;') : 'Anonymous'}</td>
                   <td>${String(r.reviewText || '').replace(/</g, '&lt;')}</td>
                   <td>${r.sentiment || ''}</td>
                 </tr>

@@ -11,6 +11,7 @@ import { apiClient } from '../api/client';
 import { ActivityMessages } from '../constants/activityMessages';
 import type { Review } from '../types/reviews';
 import { Button } from '../components/ui/Button';
+import { useReviewerNamesVisibility } from '../hooks/useReviewerNamesVisibility';
 import ReviewDetailSkeleton from './ReviewDetailSkeleton';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ const StarRating = ({ rating }: { rating: number }) => (
 const ReviewDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const isReviewerNamesVisible = useReviewerNamesVisibility();
     const org = useOrganizationStore(state => state.currentOrg);
     const organizationId = org?.id || '';
 
@@ -193,7 +195,7 @@ const ReviewDetailPage: React.FC = () => {
                                         {review.heading || review.reviewText?.slice(0, 100) || 'Review'}
                                     </h2>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        by {review.reviewerName || 'Anonymous'} · {review.source}
+                                        by {isReviewerNamesVisible ? (review.reviewerName || 'Anonymous') : 'Anonymous'} · {review.source}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
