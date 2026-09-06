@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, AlertCircle, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
-import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
 
 const ForgotPasswordPage = () => {
   const { forgotPassword } = useAuth();
   const location = useLocation();
   const loginEmail = location.state?.loginEmail as string | undefined;
 
-  const [email, setEmail] = useState('');
-
+  const [email, setEmail] = useState(loginEmail || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,77 +20,134 @@ const ForgotPasswordPage = () => {
     setError(null);
     setMessage(null);
 
-    // Explicit check requested by user: email must match the one entered in login page
+    // Explicit check: email must match the one entered in login page if provided
     if (loginEmail && email !== loginEmail) {
-      setError("Please enter the correct login email.");
+      setError('Please enter the correct login email address associated with your session.');
       setLoading(false);
       return;
     }
 
     try {
       await forgotPassword(email);
-      setMessage('A password reset link has been sent to your email address.');
+      setMessage('A time-delimited recovery link has been dispatched to your email address.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset link');
+      setError(err instanceof Error ? err.message : 'Failed to dispatch recovery token.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout 
-      title="Reset Password" 
-      description="Enter your email to receive a recovery link"
+    <AuthLayout
+      type="other"
+      title="Reset password."
+      description="Enter your registered operator email to receive single-use cryptographic recovery instructions."
     >
-      {message && (
-        <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded-xl flex items-start gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-          <span className="text-sm font-bold text-emerald-700 leading-snug">{message}</span>
-        </div>
-      )}
+      {/* Success In-Place Confirmation Card */}
+      {message ? (
+        <div className="space-y-6 text-left animate-in fade-in">
+          <div className="p-5 bg-emerald-950/30 border border-emerald-500/40 rounded-sm space-y-3">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-400 font-bold">
+                  Recovery Instructions Dispatched
+                </div>
+                <p className="text-xs text-slate-300 font-sans mt-1 leading-relaxed">
+                  {message}
+                </p>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 font-mono border-t border-emerald-500/20 pt-2.5">
+              TARGET: <span className="text-white font-semibold">{email}</span>
+            </p>
+          </div>
 
-      {error && (
-        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
-          <AlertCircle className="w-5 h-5 text-rose-500" />
-          <span className="text-sm font-bold text-rose-700">{error}</span>
-        </div>
-      )}
+          <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-sm text-xs text-slate-400 font-sans space-y-2">
+            <p className="font-semibold text-slate-300">Didn't receive an email?</p>
+            <p className="leading-relaxed">
+              Check your spam or junk folder. The recovery link remains valid for 15 minutes.
+            </p>
+          </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-1.5">
-          <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
-            Email Address
-          </label>
-          <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
-            <Input
-              type="email"
-              placeholder="name@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-11"
-              required
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMessage(null);
+                setError(null);
+              }}
+              className="w-full sm:w-1/2 h-11 border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-200 rounded-sm font-mono text-xs uppercase tracking-wider transition-colors"
+            >
+              TRY ANOTHER EMAIL
+            </button>
+            <Link
+              to="/login"
+              className="w-full sm:w-1/2 h-11 bg-blue-600 hover:bg-blue-500 text-white rounded-sm font-mono text-xs uppercase tracking-widest font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              RETURN TO LOGIN
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
+      ) : (
+        /* Recovery Request Form */
+        <form onSubmit={handleSubmit} className="space-y-5 text-left">
+          {error && (
+            <div className="p-3.5 bg-rose-950/40 border border-rose-500/40 rounded-sm flex items-start gap-2.5 text-rose-300 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="text-xs font-sans font-medium leading-relaxed">{error}</span>
+            </div>
+          )}
 
-        <Button
-          type="submit"
-          className="w-full h-12 text-sm uppercase tracking-widest"
-          isLoading={loading}
-        >
-          {loading ? 'Processing...' : 'Send Recovery Link'}
-        </Button>
+          <div className="space-y-1.5">
+            <label className="block font-mono text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+              Registered Work Email
+            </label>
+            <div className="relative group">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+              <input
+                type="email"
+                placeholder="operator@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-11 pl-10 pr-4 bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-blue-500 focus:bg-slate-900 rounded-sm text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all font-sans"
+                required
+                autoComplete="email"
+                autoFocus
+              />
+            </div>
+          </div>
 
-        <p className="text-center mt-8">
-          <Link 
-            to="/login" 
-            className="text-gray-500 font-bold hover:text-blue-600 transition-colors uppercase text-[12px] tracking-widest inline-flex items-center gap-2"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-11 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-sm font-mono text-xs uppercase tracking-widest font-semibold transition-colors flex items-center justify-center gap-2 mt-2 cursor-pointer"
           >
-            Back to login
-          </Link>
-        </p>
-      </form>
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                DISPATCHING TOKEN...
+              </span>
+            ) : (
+              <>
+                DISPATCH RECOVERY LINK
+                <ArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
+
+          <div className="text-center pt-4">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Return to login
+            </Link>
+          </div>
+        </form>
+      )}
     </AuthLayout>
   );
 };
