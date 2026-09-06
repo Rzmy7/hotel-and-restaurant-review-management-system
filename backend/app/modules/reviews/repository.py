@@ -10,7 +10,7 @@ from typing import List, Optional, Dict
 from datetime import datetime
 
 import pyodbc
-from sqlalchemy import select, func, and_, or_, case
+from sqlalchemy import select, func, and_, or_, case, text
 from sqlalchemy.orm import Session, joinedload
 from app.core.pyodbc_connection import get_raw_connection
 
@@ -293,13 +293,26 @@ def fetch_all_reviews_enriched(
         query = query.offset(page * limit).limit(limit)
         db_reviews = query.all()
 
+        # Check feature flag for showing reviewer names
+        show_reviewer_names = True
+        try:
+            flag_row = db.execute(
+                text("SELECT setting_value FROM dbo.system_settings WHERE setting_key = 'feature_flag_show_reviewer_names'")
+            ).fetchone()
+            if flag_row and str(flag_row[0] or "").strip().lower() in {"disabled", "false", "0"}:
+                show_reviewer_names = False
+        except Exception:
+            pass
+
         import json
         results = []
         for rev in db_reviews:
+            reviewer_display = rev.reviewerName if show_reviewer_names else "Anonymous"
             row = {
                 "id": str(rev.id),
                 "rating": rev.rating,
-                "reviewerName": rev.reviewerName,
+                "reviewerName": reviewer_display,
+                "userName": reviewer_display,
                 "summary": rev.summary or "",
                 "sentiment": rev.sentiment or "Neutral",
                 "language": rev.language or "English",

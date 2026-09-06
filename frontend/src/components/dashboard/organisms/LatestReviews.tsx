@@ -7,12 +7,14 @@ import type { Review as DetailedReview } from '../../../types/reviews';
 import { Card } from '../atoms/Card';
 import { SectionHeader } from '../molecules/SectionHeader';
 import { useReviewsStore } from '../../../stores/useReviewsStore';
+import { useReviewerNamesVisibility } from '../../../hooks/useReviewerNamesVisibility';
 
 export interface LatestReviewsProps {
     reviews: Review[];
 }
 
 export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
+    const isReviewerNamesVisible = useReviewerNamesVisibility();
     const navigate = useNavigate();
     const openReview = useReviewsStore(state => state.openReview);
     const selectedReview = useReviewsStore(state => state.selectedReview);
@@ -88,8 +90,14 @@ export const LatestReviews: React.FC<LatestReviewsProps> = ({ reviews }) => {
                                             }`}>
                                             {review.sentiment}
                                         </span>
-                                        <div className="flex-1"></div>
-                                        <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">{review.reviewerName.split(' ')[0]}</span>
+                                        {isReviewerNamesVisible && (
+                                            <>
+                                                <div className="flex-1"></div>
+                                                <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+                                                    {(review.reviewerName || '').split(' ')[0]}
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ))}

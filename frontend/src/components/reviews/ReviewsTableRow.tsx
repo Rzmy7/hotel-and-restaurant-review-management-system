@@ -1,5 +1,6 @@
-import { Star, CheckCircle2, Bot } from 'lucide-react';
+import { Star, CheckCircle2, Bot, User } from 'lucide-react';
 import type { Review } from '../../types/reviews';
+import { useReviewerNamesVisibility } from '../../hooks/useReviewerNamesVisibility';
 
 interface ReviewsTableRowProps {
     review: Review;
@@ -9,6 +10,10 @@ interface ReviewsTableRowProps {
 }
 
 const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRowProps) => {
+    const isReviewerNamesVisible = useReviewerNamesVisibility();
+    const rawName = (review.userName || review.reviewerName || '').trim();
+    const hasNamedReviewer = isReviewerNamesVisible && Boolean(rawName) && rawName.toLowerCase() !== 'anonymous';
+
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -64,18 +69,27 @@ const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRow
 
             {/* Review Content */}
             <td className="px-6 py-5">
-                <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500 dark:text-slate-300 uppercase">
-                        {review.userName.charAt(0)}
+                {hasNamedReviewer ? (
+                    <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500 dark:text-slate-300 uppercase">
+                            {rawName.charAt(0)}
+                        </div>
+                        <div>
+                            <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{rawName}</p>
+                            {review.heading && (
+                                <p className="text-[12px] font-black text-gray-800 dark:text-gray-200 mb-1 leading-tight line-clamp-1">{review.heading}</p>
+                            )}
+                            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed pr-8">{review.reviewText}</p>
+                        </div>
                     </div>
+                ) : (
                     <div>
-                        <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{review.userName}</p>
                         {review.heading && (
-                            <p className="text-[12px] font-black text-gray-800 dark:text-gray-200 mb-1 leading-tight line-clamp-1">{review.heading}</p>
+                            <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 leading-tight line-clamp-1">{review.heading}</p>
                         )}
                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed pr-8">{review.reviewText}</p>
                     </div>
-                </div>
+                )}
             </td>
 
             {/* Insights (Sentiment/Categories) */}

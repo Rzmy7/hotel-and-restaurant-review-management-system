@@ -13,10 +13,12 @@ import ReviewDetailModal from '../components/reviews/ReviewDetailModal';
 import DateRangeModal from '../components/shared/DateRangeModal';
 import { useReviewsData } from '../hooks/useReviewsData';
 import ReviewsSkeleton from './ReviewsSkeleton';
+import { useReviewerNamesVisibility } from '../hooks/useReviewerNamesVisibility';
 
 const ReviewsPageContent = () => {
   const currentOrg = useOrganizationStore(state => state.currentOrg);
   const organizationId = currentOrg?.id ?? '';
+  const isReviewerNamesVisible = useReviewerNamesVisibility();
 
   const { filters, setDateRange, fetchParams, setPage } = useReviewFilters();
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
@@ -28,8 +30,12 @@ const ReviewsPageContent = () => {
     stats,
     filtersConfig, 
     isLoading: loading, 
+    isRefetching,
     refresh 
   } = useReviewsData(organizationId, fetchParams);
+
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const isRefreshing = isRefetching || isManualRefreshing;
 
   // Modal State from Store
   const selectedReview = useReviewsStore(state => state.selectedReview);
@@ -40,14 +46,23 @@ const ReviewsPageContent = () => {
     setDateRange(dateFrom, dateTo);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
     setPage(0);
-    refresh();
+    try {
+      await refresh();
+    } finally {
+      setTimeout(() => {
+        setIsManualRefreshing(false);
+      }, 500);
+    }
   };
 
   const handleExportCsv = () => {
     if (!reviews || !reviews.length) return;
-    const headers = ['date', 'source', 'rating', 'sentiment', 'reviewerName', 'heading', 'text', 'status'];
+    const headers = isReviewerNamesVisible
+      ? ['date', 'source', 'rating', 'sentiment', 'reviewerName', 'heading', 'text', 'status']
+      : ['date', 'source', 'rating', 'sentiment', 'heading', 'text', 'status'];
     const csv = [
       headers.join(','),
       ...reviews.map((r: any) => headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(','))
@@ -82,7 +97,7 @@ const ReviewsPageContent = () => {
                 <th>Date</th>
                 <th>Source</th>
                 <th>Rating</th>
-                <th>Reviewer</th>
+                ${isReviewerNamesVisible ? '<th>Reviewer</th>' : ''}
                 <th>Review</th>
                 <th>Sentiment</th>
               </tr>
@@ -93,7 +108,7 @@ const ReviewsPageContent = () => {
                   <td style="white-space: nowrap">${new Date(r.date).toLocaleDateString()}</td>
                   <td>${r.source}</td>
                   <td>${r.rating}/5</td>
-                  <td>${r.userName || ''}</td>
+                  ${isReviewerNamesVisible ? `<td>${String(r.userName || '').replace(/</g, '&lt;')}</td>` : ''}
                   <td>${String(r.reviewText || '').replace(/</g, '&lt;')}</td>
                   <td>${r.sentiment || ''}</td>
                 </tr>
@@ -138,10 +153,11 @@ const ReviewsPageContent = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={handleRefresh}
-            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${loading ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
+            disabled={isRefreshing}
+            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 disabled:opacity-75 disabled:cursor-not-allowed ${isRefreshing ? 'border-blue-400 dark:border-blue-500 text-[#4e80ee]' : ''}`}
             title="Refresh System"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} className={isRefreshing ? 'animate-spin text-[#4e80ee]' : ''} />
           </button>
 
           <button

@@ -153,11 +153,16 @@ def cached(ttl: int = REDIS_CACHE_TTL, key_prefix: str = "cache"):
     return decorator
 
 
-def invalidate_review_cache(org_id: str):
-    """Invalidate all cached review data for an organization."""
-    cache_delete_pattern(f"reviews:*:{org_id}:*")
-    cache_delete_pattern(f"dashboard:*:{org_id}:*")
-    cache_delete_pattern(f"insights:*:{org_id}:*")
+def invalidate_review_cache(org_id: Optional[str] = None):
+    """Invalidate all cached review data for an organization or globally."""
+    if org_id:
+        cache_delete_pattern(f"reviews:*:{org_id}:*")
+        cache_delete_pattern(f"dashboard:*:{org_id}:*")
+        cache_delete_pattern(f"insights:*:{org_id}:*")
+    else:
+        cache_delete_pattern("reviews:*")
+        cache_delete_pattern("dashboard:*")
+        cache_delete_pattern("insights:*")
 
 
 def invalidate_ai_cache(org_id: str):

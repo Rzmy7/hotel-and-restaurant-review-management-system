@@ -40,6 +40,12 @@ export const featureFlagService = {
         return isFlagEnabled(flags, 'two_factor_auth');
     },
 
+    async isReviewerNamesVisible(): Promise<boolean> {
+        const flags = await fetchFlags();
+        const target = flags.find((flag) => flag.key === 'show_reviewer_names');
+        return target ? target.status === 'Enabled' : true;
+    },
+
     async getAllFlags(): Promise<FeatureFlag[]> {
         return fetchFlags();
     },

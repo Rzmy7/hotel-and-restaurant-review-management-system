@@ -329,10 +329,24 @@ def get_single_review(
             except Exception:
                 keyPhrases = []
 
+        # Check feature flag for showing reviewer names
+        show_reviewer_names = True
+        try:
+            flag_row = db.execute(
+                text("SELECT setting_value FROM dbo.system_settings WHERE setting_key = 'feature_flag_show_reviewer_names'")
+            ).fetchone()
+            if flag_row and str(flag_row[0] or "").strip().lower() in {"disabled", "false", "0"}:
+                show_reviewer_names = False
+        except Exception:
+            pass
+
+        reviewer_display = row.reviewerName if show_reviewer_names else "Anonymous"
+
         return {
             "id": row.id,
             "rating": float(row.rating) if row.rating else 0,
-            "reviewerName": row.reviewerName,
+            "reviewerName": reviewer_display,
+            "userName": reviewer_display,
             "reviewText": row.reviewText,
             "heading": row.heading,
             "summary": row.summary,

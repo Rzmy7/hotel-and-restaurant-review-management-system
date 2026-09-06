@@ -1,13 +1,22 @@
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { reviewsService } from '../services/reviewsService';
+import { useReviewerNamesVisibility } from './useReviewerNamesVisibility';
 import type { FetchReviewsParams } from '../types/reviews';
 
 export function useReviewsData(organizationId: string, params: FetchReviewsParams) {
     const queryClient = useQueryClient();
+    const isReviewerNamesVisible = useReviewerNamesVisibility();
+
+    useEffect(() => {
+        if (organizationId) {
+            queryClient.invalidateQueries({ queryKey: ['reviews', organizationId] });
+        }
+    }, [isReviewerNamesVisible, organizationId, queryClient]);
 
     // 1. Fetch Reviews with pagination/filters
     const reviewsQuery = useQuery({
-        queryKey: ['reviews', organizationId, params],
+        queryKey: ['reviews', organizationId, params, isReviewerNamesVisible],
         queryFn: () => reviewsService.getReviews(organizationId, params),
         placeholderData: (previousData) => previousData, // keepPreviousData in v5
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -28,10 +37,17 @@ export function useReviewsData(organizationId: string, params: FetchReviewsParam
         enabled: !!organizationId,
     });
 
-    const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['reviews', organizationId] });
-        queryClient.invalidateQueries({ queryKey: ['review-stats', organizationId] });
-        queryClient.invalidateQueries({ queryKey: ['review-options', organizationId] });
+    const refresh = async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['reviews'] }),
+            queryClient.invalidateQueries({ queryKey: ['review-stats'] }),
+            queryClient.invalidateQueries({ queryKey: ['review-options'] }),
+            queryClient.invalidateQueries({ queryKey: ['featureFlag'] }),
+            reviewsQuery.refetch(),
+            statsQuery.refetch(),
+            optionsQuery.refetch(),
+            queryClient.refetchQueries({ queryKey: ['featureFlag'] }),
+        ]);
     };
 
     const paginatedData = reviewsQuery.data;
@@ -47,6 +63,7 @@ export function useReviewsData(organizationId: string, params: FetchReviewsParam
         stats: statsQuery.data || null,
         filtersConfig: optionsQuery.data || { sources: [], categories: [] },
         isLoading: reviewsQuery.isLoading || statsQuery.isLoading,
+        isRefetching: reviewsQuery.isRefetching || statsQuery.isRefetching || optionsQuery.isRefetching,
         error: reviewsQuery.error ? 'Unable to load reviews.' : null,
         refresh
     };
