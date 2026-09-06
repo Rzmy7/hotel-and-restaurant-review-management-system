@@ -32,7 +32,7 @@ export const CTA = () => {
           </div>
           
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-8 leading-tight">
-            Join 500+ Businesses Growing with AI
+            Take Full Control of Your Online Reputation
           </h2>
           
           {/* Body text: changed text-blue-100 (contrast ~1.9:1 ❌) to text-white (contrast 4.5:1+ ✅) on bg-blue-600 */}
@@ -51,9 +51,15 @@ export const CTA = () => {
                 {user ? "Go to Dashboard" : "Get Started Now"}
               </Button>
             </Link>
-            <Link to="/support" className="w-full sm:w-auto text-white font-bold hover:underline">
-              Contact Support
-            </Link>
+            {user ? (
+              <Link to="/support" className="w-full sm:w-auto text-white font-bold hover:underline">
+                Contact Support
+              </Link>
+            ) : (
+              <a href="mailto:support@reviewmate.com" className="w-full sm:w-auto text-white font-bold hover:underline">
+                Contact Support
+              </a>
+            )}
           </div>
         </div>
       </div>

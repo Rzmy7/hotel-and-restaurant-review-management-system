@@ -31,7 +31,7 @@ export const FAQ = () => {
       <div className="container mx-auto px-6 max-w-3xl">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">Frequently Asked Questions</h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Everything you need to know about ReviewMaster AI.</p>
+          <p className="text-lg text-gray-600 dark:text-gray-400">Everything you need to know about ReviewMate.</p>
         </div>
 
         <div 

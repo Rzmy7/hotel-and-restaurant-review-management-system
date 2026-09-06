@@ -35,7 +35,7 @@ export const HowItWorks = () => {
             Get Started in <span className="text-blue-600">3 Easy Steps</span>
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            We've built ReviewMaster AI to be powerful yet incredibly simple to use.
+            We've built ReviewMate to be powerful yet incredibly simple to use.
           </p>
         </div>
 

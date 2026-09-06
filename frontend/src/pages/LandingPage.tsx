@@ -5,7 +5,6 @@ import { Hero } from '../components/landing/Hero';
 import { BentoGrid } from '../components/landing/BentoGrid';
 import { HowItWorks } from '../components/landing/HowItWorks';
 import { Pricing } from '../components/landing/Pricing';
-import { SocialProof } from '../components/landing/SocialProof';
 import { FAQ } from '../components/landing/FAQ';
 import { CTA } from '../components/landing/CTA';
 
@@ -18,7 +17,6 @@ const LandingPage = () => {
         <Hero />
         <BentoGrid />
         <HowItWorks />
-        <SocialProof />
         <Pricing />
         <FAQ />
         <CTA />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import { cn, Button, type ButtonProps } from '../ui/Button';
 import { Check } from 'lucide-react';
@@ -20,7 +21,7 @@ export const Pricing = () => {
       price: "$29",
       description: "Perfect for small businesses starting their digital journey.",
       features: ["Up to 3 Sources", "AI Sentiment Analysis", "Weekly Reports", "Email Support"],
-      buttonText: "Start Starter",
+      buttonText: "Get Starter",
       variant: "outline"
     },
     {
@@ -28,7 +29,7 @@ export const Pricing = () => {
       price: "$79",
       description: "The most popular choice for growing restaurants and hotels.",
       features: ["Unlimited Sources", "AI Response Studio", "Daily Reports", "Competitor Tracking", "Priority Support"],
-      buttonText: "Go Pro",
+      buttonText: "Choose Pro",
       variant: "primary",
       highlighted: true
     },
@@ -36,7 +37,7 @@ export const Pricing = () => {
       name: "Enterprise",
       price: "$199",
       description: "Advanced solutions for large hospitality chains and agencies.",
-      features: ["Custom Integrations", "API Access", "Dedicated Account Manager", "White-label Reports", "24/7 Phone Support"],
+      features: ["Custom Integrations", "API Access", "Dedicated Account Manager", "White-label Reports", "Priority Support & Onboarding"],
       buttonText: "Contact Sales",
       variant: "outline"
     }
@@ -94,13 +95,27 @@ export const Pricing = () => {
                 ))}
               </ul>
 
-              <Button 
-                variant={tier.variant} 
-                className="w-full rounded-2xl"
-                size="lg"
-              >
-                {tier.buttonText}
-              </Button>
+              {tier.name === 'Enterprise' ? (
+                <a href="mailto:sales@reviewmate.com" className="block w-full">
+                  <Button 
+                    variant={tier.variant} 
+                    className="w-full rounded-2xl"
+                    size="lg"
+                  >
+                    {tier.buttonText}
+                  </Button>
+                </a>
+              ) : (
+                <Link to="/signup" className="block w-full">
+                  <Button 
+                    variant={tier.variant} 
+                    className="w-full rounded-2xl"
+                    size="lg"
+                  >
+                    {tier.buttonText}
+                  </Button>
+                </Link>
+              )}
             </div>
           ))}
         </div>
