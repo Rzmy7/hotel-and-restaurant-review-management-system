@@ -361,6 +361,21 @@ def user_subscription_plans():
         raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}")
 
 
+@app.get("/api/faqs", tags=["FAQs"])
+def public_faqs():
+    """List active FAQs for the public landing page."""
+    import pyodbc
+    from app.core.db_utils import get_connection_string
+    from app.modules.admin.services.faq_service import get_public_faqs
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_public_faqs(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load FAQs: {exc}")
+
+
 @app.get("/api/subscription-usage/{user_id}", tags=["Subscription"])
 def user_subscription_usage(
     user_id: str,

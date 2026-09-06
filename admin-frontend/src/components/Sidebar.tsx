@@ -26,7 +26,7 @@ export const Sidebar: React.FC = () => {
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/organizations', icon: Building2, label: 'Organizations' },
     { to: '/users', icon: Users, label: 'Users' },
-    { to: '/feature-flags', icon: Flag, label: 'Feature Flags' },
+    { to: '/feature-flags', icon: Flag, label: 'Feature Flags & FAQs' },
     { to: '/embeddings', icon: Database, label: 'Embeddings' },
     { to: '/scraping', icon: Search, label: 'Scraping' },
 
