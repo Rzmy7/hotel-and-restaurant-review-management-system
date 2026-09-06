@@ -68,18 +68,27 @@ const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRow
 
             {/* Review Content */}
             <td className="px-6 py-5">
-                <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500 dark:text-slate-300 uppercase">
-                        {isReviewerNamesVisible ? displayName.charAt(0) : <User size={14} className="text-gray-400 dark:text-slate-400" />}
+                {isReviewerNamesVisible ? (
+                    <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500 dark:text-slate-300 uppercase">
+                            {displayName.charAt(0)}
+                        </div>
+                        <div>
+                            <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{displayName}</p>
+                            {review.heading && (
+                                <p className="text-[12px] font-black text-gray-800 dark:text-gray-200 mb-1 leading-tight line-clamp-1">{review.heading}</p>
+                            )}
+                            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed pr-8">{review.reviewText}</p>
+                        </div>
                     </div>
+                ) : (
                     <div>
-                        <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{displayName}</p>
                         {review.heading && (
-                            <p className="text-[12px] font-black text-gray-800 dark:text-gray-200 mb-1 leading-tight line-clamp-1">{review.heading}</p>
+                            <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 leading-tight line-clamp-1">{review.heading}</p>
                         )}
                         <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed pr-8">{review.reviewText}</p>
                     </div>
-                </div>
+                )}
             </td>
 
             {/* Insights (Sentiment/Categories) */}

@@ -49,16 +49,12 @@ const ReviewsPageContent = () => {
 
   const handleExportCsv = () => {
     if (!reviews || !reviews.length) return;
-    const headers = ['date', 'source', 'rating', 'sentiment', 'reviewerName', 'heading', 'text', 'status'];
+    const headers = isReviewerNamesVisible
+      ? ['date', 'source', 'rating', 'sentiment', 'reviewerName', 'heading', 'text', 'status']
+      : ['date', 'source', 'rating', 'sentiment', 'heading', 'text', 'status'];
     const csv = [
       headers.join(','),
-      ...reviews.map((r: any) => headers.map(h => {
-        let val = r[h] || '';
-        if ((h === 'reviewerName' || h === 'userName') && !isReviewerNamesVisible) {
-          val = 'Anonymous';
-        }
-        return `"${String(val).replace(/"/g, '""')}"`;
-      }).join(','))
+      ...reviews.map((r: any) => headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(','))
     ].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = Object.assign(document.createElement('a'), { href: url, download: 'reviews.csv' });
@@ -90,7 +86,7 @@ const ReviewsPageContent = () => {
                 <th>Date</th>
                 <th>Source</th>
                 <th>Rating</th>
-                <th>Reviewer</th>
+                ${isReviewerNamesVisible ? '<th>Reviewer</th>' : ''}
                 <th>Review</th>
                 <th>Sentiment</th>
               </tr>
@@ -101,7 +97,7 @@ const ReviewsPageContent = () => {
                   <td style="white-space: nowrap">${new Date(r.date).toLocaleDateString()}</td>
                   <td>${r.source}</td>
                   <td>${r.rating}/5</td>
-                  <td>${isReviewerNamesVisible ? String(r.userName || '').replace(/</g, '&lt;') : 'Anonymous'}</td>
+                  ${isReviewerNamesVisible ? `<td>${String(r.userName || '').replace(/</g, '&lt;')}</td>` : ''}
                   <td>${String(r.reviewText || '').replace(/</g, '&lt;')}</td>
                   <td>${r.sentiment || ''}</td>
                 </tr>

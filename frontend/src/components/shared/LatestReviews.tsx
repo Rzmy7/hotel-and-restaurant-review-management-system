@@ -64,10 +64,14 @@ const LatestReviews = ({ reviews }: LatestReviewsProps) => {
                     }`}>
                     {review.sentiment}
                   </span>
-                  <div className="flex-1"></div>
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    {isReviewerNamesVisible ? (review.reviewerName || 'Anonymous').split(' ')[0] : 'Anonymous'}
-                  </span>
+                  {isReviewerNamesVisible && (
+                    <>
+                      <div className="flex-1"></div>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {(review.reviewerName || '').split(' ')[0]}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
