@@ -200,16 +200,16 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
           <thead>
             <tr className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100/50 dark:border-slate-700/50">
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">
-                Platform
+                Review Source
               </th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest text-center">
                 Status
               </th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">
-                Last Sync
+                Last Updated
               </th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest text-center">
-                Frequency
+                Update Schedule
               </th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-slate-400 uppercase tracking-widest">
                 Success Rate
@@ -418,12 +418,12 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                           source.platformStatus === "inactive"
                             ? `Platform ${source.platform} is disabled by admin`
                             : source.status === "Paused"
-                              ? "Resume source to sync"
+                              ? "Resume review updates"
                               : source.status === "In Queue" ||
                                   source.status === "Syncing" ||
                                   localSyncingIds.has(source.id)
-                                ? "Sync in progress"
-                                : "Sync Now"
+                                ? "Update in progress"
+                                : "Update Reviews"
                         }
                       >
                         <RefreshCw
@@ -438,16 +438,16 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                       </button>
                       {source.status === "Syncing" ||
                       source.status === "In Queue" ? (
-                        /* STOP button — shown when scraping is in progress */
+                        /* STOP button — shown when update is in progress */
                         <button
                           onClick={() => onStopSync(source.id)}
                           className="p-2 text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-lg transition-all"
-                          title="Stop Sync"
+                          title="Stop Review Update"
                         >
                           <Square size={18} fill="currentColor" />
                         </button>
                       ) : (
-                        /* PLAY/PAUSE button — toggles scheduled scraping */
+                        /* PLAY/PAUSE button — toggles scheduled updates */
                         <button
                           onClick={() => onToggleStatus(source)}
                           className={`p-2 rounded-lg transition-all ${
@@ -457,8 +457,8 @@ const SourcesTable: React.FC<SourcesTableProps> = ({
                           }`}
                           title={
                             source.status === "Active"
-                              ? "Pause scheduled scraping"
-                              : "Resume scheduled scraping"
+                              ? "Pause automatic review updates"
+                              : "Resume automatic review updates"
                           }
                         >
                           {source.status === "Active" ? (

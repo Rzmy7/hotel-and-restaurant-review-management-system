@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { Plus, Search, Filter, History, RefreshCw } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { sourcesService } from '../services/sourcesService';
-import type { Source, SyncLog } from '../types/sources';
+import type { ReviewSource, ReviewSyncLog, Source, SyncLog } from '../types/sources';
 import { useOrganizationStore } from '../stores/useOrganizationStore';
 
 // New Components
@@ -121,29 +121,29 @@ const ReviewSourcesPage = () => {
   const triggerSyncMutation = useMutation({
     mutationFn: (id: string | number) => sourcesService.triggerSync(id),
     onMutate: () => {
-      showToast('Starting synchronization in background...', 'info');
+      showToast('Updating reviews in background...', 'info');
     },
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
-      showToast(`Sync started for ${source?.platform || 'source'}`, 'success');
+      showToast(`Review update started for ${source?.platform || 'review source'}`, 'success');
       
       // Invalidate immediately to show updated status
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     },
-    onError: () => showToast('Sync failed', 'error'),
+    onError: () => showToast('Review update failed', 'error'),
   });
 
   const stopSyncMutation = useMutation({
     mutationFn: (id: string | number) => sourcesService.stopSync(id),
     onMutate: () => {
-      showToast('Stopping synchronization...', 'info');
+      showToast('Stopping review update...', 'info');
     },
     onSuccess: (_: any, id: string | number) => {
       const source = sources.find((s: Source) => s.id === id);
-      showToast(`Sync stopped for ${source?.platform || 'source'}`, 'info');
+      showToast(`Review update stopped for ${source?.platform || 'review source'}`, 'info');
       queryClient.invalidateQueries({ queryKey: ['sources'] });
     },
-    onError: () => showToast('Failed to stop sync', 'error'),
+    onError: () => showToast('Failed to stop review update', 'error'),
   });
   
   const deleteReviewsMutation = useMutation({

@@ -130,19 +130,49 @@ export interface RatingDistributionItem {
     percentage: number;
 }
 
+// Ubiquitous Language: Tenancy & Operations Context
 export interface Organization {
     id: string;
     name: string;
     status: string;
+    logoUrl?: string;
 }
 
-export interface CategoryPerformanceItem {
+export interface Group {
+    id: string;
+    organizationId: string;
+    name: string;
+    propertyType?: string;
+    location?: string;
+    status?: string;
+}
+export type Property = Group; // Backward-compatibility alias
+
+export interface GroupMembership {
+    id: string;
+    userId: string;
+    groupId: string;
+    role: 'PLATFORM_ADMIN' | 'GROUP_ADMIN' | 'GROUP_MANAGER' | 'GROUP_MEMBER';
+}
+
+export interface AspectPerformanceItem {
     name: string;
     score: number;
     count: number;
     icon: string;
     trend: string;
     trendType: 'up' | 'down' | 'neutral';
+}
+export type CategoryPerformanceItem = AspectPerformanceItem; // Backward-compatibility alias
+
+export interface CompetitorBenchmark {
+    competitorId: string;
+    competitorName: string;
+    rating: number;
+    reviewCount: number;
+    sentimentScore: number;
+    marketRank?: number;
+    trend: 'up' | 'down' | 'neutral';
 }
 
 export interface DashboardResponse {

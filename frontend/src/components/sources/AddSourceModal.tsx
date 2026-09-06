@@ -164,8 +164,8 @@ const AddSourceModal = ({
         setUrlTouched(false);
         onClose();
       }}
-      title="Connect Source"
-      description="Add a new review channel to your dashboard"
+      title="Connect Review Source"
+      description="Add a new review channel to your organization"
       footer={footer}
       className="max-w-[550px]"
     >
@@ -175,7 +175,7 @@ const AddSourceModal = ({
           <div className="flex items-center justify-between mb-4">
             <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
               <Globe size={16} className="text-blue-500" />
-              Source Platform
+              Review Platform
             </label>
             <div className="relative">
               <input
@@ -299,7 +299,7 @@ const AddSourceModal = ({
           <div>
             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
               <Calendar size={16} className="text-blue-500" />
-              Sync Schedule
+              Update Schedule
             </label>
             <select
               className="w-full px-5 py-3.5 bg-gray-50 dark:bg-slate-700 border-2 border-transparent rounded-2xl text-sm font-bold text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500/20 transition-all outline-none appearance-none"
@@ -335,7 +335,7 @@ const AddSourceModal = ({
         <div className="pt-4 flex items-center justify-end border-t border-gray-100 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-              Auto-Sync
+              Automatic Updates
             </span>
             <label className="relative inline-flex items-center cursor-pointer group">
               <input

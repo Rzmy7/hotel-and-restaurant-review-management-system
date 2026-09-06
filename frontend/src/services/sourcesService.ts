@@ -1,8 +1,8 @@
 /**
- * Sources Service — real API only, no mock fallback.
+ * Sources Service — Review Ingestion & Sources Context.
  */
 
-import type { Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '../types/sources';
+import type { ReviewSource, ReviewSyncLog, ReviewSourceStats, ReviewSourceStatus, ReviewSyncSchedule, Source, SyncLog, SourceStats, SourceStatus, SyncSchedule } from '../types/sources';
 import { apiClient } from '../api/client';
 import { ActivityMessages } from '../constants/activityMessages';
 
@@ -15,7 +15,7 @@ class SourcesService {
         return apiClient.get<any[]>('/api/source/platforms');
     }
 
-    private mapBackendSourceToFrontend(s: any): Source {
+    private mapBackendSourceToFrontend(s: any): ReviewSource {
         return {
             id: s.source_id,
             platformId: s.platform_id,
@@ -155,6 +155,12 @@ class SourcesService {
             showSuccess: false
         });
     }
+
+    // Ubiquitous Language aliases
+    fetchSources = this.getSources.bind(this);
+    fetchStats = this.getStats.bind(this);
+    fetchSyncLogs = this.getSyncLogs.bind(this);
+    triggerSourceSync = this.triggerSync.bind(this);
 }
 
 export const sourcesService = new SourcesService();

@@ -49,7 +49,7 @@ export const KPIsSection: React.FC<KPIsSectionProps> = ({ period }) => {
             />
             <MetricCard
                 icon={<Link2 size={20} />}
-                label="All Sources"
+                label="Review Sources"
                 {...metrics.activeSources}
             />
             <MetricCard

@@ -1,7 +1,10 @@
 import React from 'react';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import { cn } from '../ui/Button';
-import { Link2, Sparkles, Send } from 'lucide-react';
+import { Link2, Sparkles, Send, CheckCircle2 } from 'lucide-react';
+import step1Connect from '../../assets/step1-connect.jpg';
+import step2Analyze from '../../assets/step2-analyze.jpg';
+import step3Grow from '../../assets/step3-grow.jpg';
 
 export const HowItWorks = () => {
   const { elementRef, isIntersecting } = useIntersectionObserver<HTMLDivElement>();
@@ -10,62 +13,116 @@ export const HowItWorks = () => {
     {
       title: "Connect Your Sources",
       description: "Securely link your Google Business, Yelp, and TripAdvisor accounts in one click.",
-      icon: <Link2 className="text-white" />,
-      color: "bg-blue-600"
+      image: step1Connect,
+      imageAlt: "Connect Google, TripAdvisor, and Yelp review sources",
+      tag: "1-Click Integration",
+      highlight: "Auto-sync reviews in real-time",
+      icon: <Link2 className="w-5 h-5 text-white" />,
+      dotColor: "bg-[#4E80EE] animate-pulse",
+      color: "bg-gradient-to-r from-[#4E80EE] to-[#3A66DE]"
     },
     {
       title: "AI Analyzes Everything",
       description: "Our AI processes every review, identifying trends and sentiment automatically.",
-      icon: <Sparkles className="text-white" />,
-      color: "bg-indigo-600"
+      image: step2Analyze,
+      imageAlt: "AI sentiment analysis and trend metrics dashboard",
+      tag: "Neural Sentiment AI",
+      highlight: "Aspect ratings & keyword trends",
+      icon: <Sparkles className="w-5 h-5 text-white" />,
+      color: "bg-gradient-to-r from-[#4E80EE] to-[#2A4EBF]",
+      dotColor: "bg-[#4E80EE] animate-pulse"
     },
     {
       title: "Respond & Grow",
       description: "Use AI-generated drafts to reply to customers and watch your rating soar.",
-      icon: <Send className="text-white" />,
-      color: "bg-violet-600"
+      image: step3Grow,
+      imageAlt: "AI response studio with growth and rating elevation",
+      tag: "Smart Response Studio",
+      highlight: "Personalized AI tone reply drafts",
+      icon: <Send className="w-5 h-5 text-white" />,
+      color: "bg-gradient-to-r from-[#3A66DE] to-[#1D389F]",
+      dotColor: "bg-[#4E80EE] animate-pulse"
     }
   ];
 
   return (
-    <section id="how-it-works" className="py-24 bg-gray-50 dark:bg-slate-900/50">
+    <section id="how-it-works" className="py-24 bg-[#F9FAFB] dark:bg-slate-900/50 relative overflow-hidden">
+      {/* Decorative background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#4E80EE]/10 dark:bg-[#4E80EE]/15 rounded-full blur-3xl pointer-events-none -z-10" />
+
       <div className="container mx-auto px-6">
-        <div className="text-center mb-20">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#4E80EE]/10 text-[#4E80EE] border border-[#4E80EE]/20 mb-4 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4E80EE]"></span>
+            Effortless Workflow
+          </div>
           <h2 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Get Started in <span className="text-blue-600">3 Easy Steps</span>
+            Get Started in <span className="text-[#4E80EE]">3 Easy Steps</span>
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            We've built ReviewMaster AI to be powerful yet incredibly simple to use.
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            We've built ReviewMate to be powerful yet incredibly simple to use.
           </p>
         </div>
 
         <div 
           ref={elementRef}
-          className="grid grid-cols-1 md:grid-cols-3 gap-12 relative"
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10 relative"
         >
-          {/* Connector Line (Desktop) */}
-          <div className="hidden md:block absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-gray-200 dark:bg-slate-800 -translate-y-1/2 z-0"></div>
-
           {steps.map((step, index) => (
             <div 
               key={index}
               className={cn(
-                "relative z-10 flex flex-col items-center text-center staggered-item",
+                "relative z-10 flex flex-col bg-[#FEFEFE] dark:bg-slate-800/90 rounded-3xl p-5 border border-gray-100 dark:border-slate-700/60 shadow-xl shadow-gray-200/50 dark:shadow-none hover:shadow-2xl hover:border-[#4E80EE]/50 dark:hover:border-[#4E80EE]/50 transition-all duration-300 hover:-translate-y-2 group staggered-item",
                 isIntersecting && "animate-fadeInUp"
               )}
-              style={{ animationDelay: `${index * 200}ms` }}
+              style={{ animationDelay: `${index * 150}ms` }}
             >
-              <div className={cn(
-                "w-20 h-20 rounded-3xl flex items-center justify-center shadow-lg mb-8 transition-transform hover:scale-110",
-                step.color
-              )}>
-                {step.icon}
+              {/* Real Image Preview */}
+              <div className="relative overflow-hidden rounded-2xl mb-5 bg-[#F9FAFB] dark:bg-slate-900 border border-gray-100 dark:border-slate-700/50 aspect-video shadow-sm">
+                <img 
+                  src={step.image} 
+                  alt={step.imageAlt}
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                  loading="lazy"
+                />
+                
+                {/* Step Counter Badge */}
+                <div className="absolute top-3 left-3 bg-[#FEFEFE]/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-gray-900 dark:text-white border border-gray-200/50 dark:border-slate-700/70 shadow-sm flex items-center gap-1.5">
+                  <span className={cn("w-2 h-2 rounded-full", step.dotColor)}></span>
+                  Step 0{index + 1}
+                </div>
+
+                {/* Feature Tag */}
+                <div className="absolute bottom-3 right-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[11px] font-medium text-white shadow-sm">
+                  {step.tag}
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{step.title}</h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed max-w-xs">{step.description}</p>
-              
-              <div className="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 flex items-center justify-center font-bold text-blue-600 shadow-sm">
-                {index + 1}
+
+              {/* Text Information */}
+              <div className="flex flex-col flex-grow px-1">
+                <div className="flex items-center gap-3 mb-2.5">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md", step.color)}>
+                    {step.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-[#4E80EE] transition-colors">
+                    {step.title}
+                  </h3>
+                </div>
+
+                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-5 flex-grow">
+                  {step.description}
+                </p>
+
+                {/* Highlights footer */}
+                <div className="pt-3 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  <span className="flex items-center gap-1.5 text-[#4E80EE] font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-[#4E80EE] shrink-0" />
+                    {step.highlight}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500 font-mono font-bold">
+                    0{index + 1}
+                  </span>
+                </div>
               </div>
             </div>
           ))}

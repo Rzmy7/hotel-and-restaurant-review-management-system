@@ -54,7 +54,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ profile, onUpdate, onSave, on
                     className="h-12 px-8 bg-[#4e80ee] text-white rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none hover:bg-blue-600 active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-70"
                 >
                     <Save size={16} />
-                    {isSaving ? 'Synchronizing...' : 'Update Profile'}
+                    {isSaving ? 'Saving Profile...' : 'Update Profile'}
                 </button>
                 <button
                     onClick={onCancel}

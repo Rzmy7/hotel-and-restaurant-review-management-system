@@ -13,6 +13,7 @@ interface ReviewsState {
     pagination: { total: number; page: number; limit: number; totalPages: number };
     sourceOptions: string[];
     categoryOptions: string[];
+    aspectOptions: string[];
 
     // Modal State
     selectedReview: Review | null;
@@ -37,6 +38,7 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     pagination: { total: 0, page: 0, limit: 15, totalPages: 0 },
     sourceOptions: [],
     categoryOptions: [],
+    aspectOptions: [],
 
     selectedReview: null,
     isModalOpen: false,
@@ -65,6 +67,7 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
                 stats: fetchedStats,
                 sourceOptions: fetchedOptions.sources,
                 categoryOptions: fetchedOptions.categories,
+                aspectOptions: fetchedOptions.categories,
                 loading: false
             });
         } catch (err) {

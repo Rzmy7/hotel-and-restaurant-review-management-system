@@ -346,10 +346,8 @@ app.include_router(user_notifications_router, prefix="/api")
 
 
 @app.get("/api/subscription-plans", tags=["Subscription"])
-def user_subscription_plans(
-    current_user=Depends(get_current_user_dep),
-):
-    """List active subscription plans (available to any authenticated user)."""
+def user_subscription_plans():
+    """List active subscription plans (publicly accessible for landing/pricing pages and authenticated users)."""
     import pyodbc
     from app.core.db_utils import get_connection_string
     from app.modules.admin.services.subscription_service import get_subscription_plans
@@ -357,9 +355,25 @@ def user_subscription_plans(
     try:
         with pyodbc.connect(get_connection_string()) as conn:
             cursor = conn.cursor()
-            return get_subscription_plans(cursor)
+            plans = get_subscription_plans(cursor)
+            return [p for p in plans if getattr(p, "isActive", True)]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unable to load subscription plans: {exc}")
+
+
+@app.get("/api/faqs", tags=["FAQs"])
+def public_faqs():
+    """List active FAQs for the public landing page."""
+    import pyodbc
+    from app.core.db_utils import get_connection_string
+    from app.modules.admin.services.faq_service import get_public_faqs
+
+    try:
+        with pyodbc.connect(get_connection_string()) as conn:
+            cursor = conn.cursor()
+            return get_public_faqs(cursor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to load FAQs: {exc}")
 
 
 @app.get("/api/subscription-usage/{user_id}", tags=["Subscription"])

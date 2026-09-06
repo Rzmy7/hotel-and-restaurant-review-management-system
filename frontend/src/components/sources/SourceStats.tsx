@@ -18,7 +18,7 @@ const SourceStats: React.FC<SourceStatsProps> = ({ stats, isLoading }) => {
             border: 'hover:border-blue-200 dark:hover:border-blue-800'
         },
         {
-            label: 'Active Channels',
+            label: 'Active Sources',
             value: stats.activeSources,
             icon: Activity,
             color: 'text-emerald-600 dark:text-emerald-400',
@@ -26,7 +26,7 @@ const SourceStats: React.FC<SourceStatsProps> = ({ stats, isLoading }) => {
             border: 'hover:border-emerald-200 dark:hover:border-emerald-800'
         },
         {
-            label: 'Paused Tracks',
+            label: 'Paused Sources',
             value: stats.pausedSources,
             icon: PauseCircle,
             color: 'text-amber-600 dark:text-amber-400',
@@ -34,7 +34,7 @@ const SourceStats: React.FC<SourceStatsProps> = ({ stats, isLoading }) => {
             border: 'hover:border-amber-200 dark:hover:border-amber-800'
         },
         {
-            label: 'Sync Errors',
+            label: 'Failed Updates',
             value: stats.errorSources,
             icon: AlertCircle,
             color: 'text-rose-600 dark:text-rose-400',

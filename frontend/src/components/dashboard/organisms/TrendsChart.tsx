@@ -94,7 +94,7 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({ data }) => {
                     <div className="flex items-center gap-2 group cursor-help relative">
                         <div className="w-2.5 h-2.5 rounded-full bg-[#4e80ee] ring-4 ring-blue-50 dark:ring-blue-900/30 group-hover:scale-125 transition-transform" />
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-widest leading-none">Sentiment Score</span>
+                            <span className="text-[9px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-widest leading-none">Customer Sentiment</span>
                             <span className="text-[8px] font-bold text-gray-400 dark:text-slate-500 mt-1 uppercase">Rating</span>
                         </div>
                     </div>

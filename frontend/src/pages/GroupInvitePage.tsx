@@ -129,7 +129,7 @@ const GroupInvitePage: React.FC = () => {
                     className="w-full px-4 py-3 rounded-xl bg-brand text-white font-bold text-sm hover:bg-brand/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                   >
                     {joining ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                    {joining ? 'Joining…' : 'Join Group'}
+                    Accept & Join Group
                   </button>
                   <button
                     onClick={() => navigate('/groups')}

@@ -1,3 +1,32 @@
+// Ubiquitous Language: Reviews & Sentiment Intelligence Context
+export type SentimentCategory = 'Positive' | 'Neutral' | 'Negative';
+export type ReviewSentiment = SentimentCategory;
+
+export type ReviewProcessStatus = 'pending' | 'processed';
+
+export interface ReviewPhoto {
+    id: number;
+    src: string;
+    alt: string;
+}
+
+export interface ReviewAspect {
+    aspect: string;
+    sentiment: SentimentCategory;
+    sentimentScore?: number;
+    mentionsCount?: number;
+    snippet?: string;
+}
+
+export interface ReviewReply {
+    id?: number | string;
+    reviewId: number | string;
+    replyText: string;
+    isAiGenerated: boolean;
+    status: 'draft' | 'pending' | 'sent' | 'failed';
+    sentAt?: string;
+}
+
 export interface Review {
     id: number | string;
     rating: number;
@@ -5,14 +34,15 @@ export interface Review {
     reviewerName?: string;
     reviewText: string;
     text?: string;
-    sentiment: 'Positive' | 'Neutral' | 'Negative';
+    sentiment: SentimentCategory;
     categories: string[];
+    aspects?: ReviewAspect[];
     source: string;
     date: string;
     reviewDate?: string;
-    status: 'pending' | 'processed';
+    status: ReviewProcessStatus;
     language?: string;
-    photos?: { id: number; src: string; alt: string }[];
+    photos?: ReviewPhoto[];
     keyPhrases?: string[];
     summary?: string;
     scraper_review_id?: string;

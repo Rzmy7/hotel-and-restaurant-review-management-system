@@ -85,8 +85,8 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
     return (
         <Card hoverEffect className="shadow-sm p-6 flex flex-col" style={{ maxHeight: 380 }}>
             <SectionHeader
-                title="Recent Alerts"
-                subtitle="Critical System Events"
+                title="System Alerts"
+                subtitle="Operational Warnings"
                 icon={<AlertTriangle size={18} />}
                 iconClassName="bg-rose-50 text-rose-600 border border-rose-100/50"
                 className="mb-8 items-center shrink-0"

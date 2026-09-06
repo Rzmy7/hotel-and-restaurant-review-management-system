@@ -288,12 +288,12 @@ const ReviewDetailPage: React.FC = () => {
                         {/* Navigation */}
                         <div className="flex items-center justify-between">
                             <Button variant="outline" onClick={() => navigate('/reviews')}>
-                                <ArrowLeft size={16} className="mr-1.5" /> Back to All Reviews
+                                <ArrowLeft size={16} className="mr-1.5" /> Back to Reviews
                             </Button>
                         </div>
                     </div>
 
-                    {/* ── RIGHT: AI Reply Editor ───────────────────────── */}
+                    {/* ── RIGHT: AI Response Editor ───────────────────────── */}
                     <div className="space-y-4">
                         <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 sticky top-20">
                             <div className="flex items-center gap-2 mb-4">
@@ -301,8 +301,8 @@ const ReviewDetailPage: React.FC = () => {
                                     <Bot size={16} />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold text-gray-800 dark:text-white">AI Reply Editor</h3>
-                                    <p className="text-[11px] text-gray-400 dark:text-slate-500">{review.ai_reply ? 'Reply sent' : 'Generate a response'}</p>
+                                    <h3 className="text-sm font-bold text-gray-800 dark:text-white">AI Response Editor</h3>
+                                    <p className="text-[11px] text-gray-400 dark:text-slate-500">{review.ai_reply ? 'Response saved' : 'Generate an AI response'}</p>
                                 </div>
                             </div>
 
@@ -341,7 +341,7 @@ const ReviewDetailPage: React.FC = () => {
                                 ) : (
                                     <>
                                         <Cpu size={14} className="mr-1.5" />
-                                        Generate AI Reply
+                                        Generate AI Response
                                     </>
                                 )}
                             </Button>
@@ -350,7 +350,7 @@ const ReviewDetailPage: React.FC = () => {
                             <textarea
                                 value={draftReply}
                                 onChange={e => setDraftReply(e.target.value)}
-                                placeholder="AI-generated reply will appear here…"
+                                placeholder="AI-generated response will appear here…"
                                 rows={8}
                                 className="w-full text-sm rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 px-3 py-2.5 text-gray-800 dark:text-gray-200 placeholder-gray-400 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500/30 mb-3"
                             />
@@ -373,7 +373,7 @@ const ReviewDetailPage: React.FC = () => {
                                     disabled={isSaving || !draftReply.trim()}
                                 >
                                     <MessageSquareText size={14} className="mr-1" />
-                                    {isSaving ? 'Saving…' : 'Save Reply'}
+                                    {isSaving ? 'Saving…' : 'Save Response'}
                                 </Button>
                             </div>
                         </div>

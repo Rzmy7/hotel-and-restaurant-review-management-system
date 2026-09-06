@@ -17,7 +17,7 @@ const NotificationsHeader: React.FC = () => {
                     </span>
                 </div>
                 <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">
-                    Track critical alerts, announcement updates, and system insights
+                    Track system alerts, announcements, and activity updates
                 </p>
             </div>
 
@@ -25,7 +25,7 @@ const NotificationsHeader: React.FC = () => {
             <div className="flex items-center gap-4">
                 <div className="text-right max-md:hidden">
                     <p className="text-[10px] text-gray-400 dark:text-slate-500 font-black uppercase tracking-widest leading-none">
-                        Last Synchronized
+                        Last Updated
                     </p>
                     <p className="text-[12px] text-gray-600 dark:text-slate-300 font-bold mt-1">
                         Just Now
