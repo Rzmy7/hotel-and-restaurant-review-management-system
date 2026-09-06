@@ -1,7 +1,7 @@
 import React from 'react';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import { cn } from '../ui/Button';
-import { Shield, Zap, BarChart3, Globe, MessageSquare, Target } from 'lucide-react';
+import { Shield, Layers, Sliders, BarChart3, MessageSquare, Target } from 'lucide-react';
 
 export const BentoGrid = () => {
   const { elementRef, isIntersecting } = useIntersectionObserver<HTMLDivElement>();
@@ -15,16 +15,16 @@ export const BentoGrid = () => {
       bg: "bg-blue-50 dark:bg-blue-900/20"
     },
     {
-      title: "Global Reach",
-      description: "Support for 50+ languages and platforms.",
-      icon: <Globe className="text-indigo-600" />,
+      title: "Multi-Platform Sync",
+      description: "Consolidate reviews from Google, Booking.com, TripAdvisor, and Yelp into one unified feed.",
+      icon: <Layers className="text-indigo-600" />,
       className: "md:col-span-1",
       bg: "bg-indigo-50 dark:bg-indigo-900/20"
     },
     {
-      title: "Instant Alerts",
-      description: "Get notified the moment a critical review is posted.",
-      icon: <Zap className="text-amber-600" />,
+      title: "Aspect Breakdown",
+      description: "Track ratings across staff, cleanliness, location, and comfort to pinpoint operational issues.",
+      icon: <Sliders className="text-amber-600" />,
       className: "md:col-span-1",
       bg: "bg-amber-50 dark:bg-amber-900/20"
     },

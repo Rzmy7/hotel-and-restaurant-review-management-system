@@ -1,4 +1,5 @@
 import React from 'react';
+import dashboardPreview from '../../assets/dashboard-preview.png';
 
 export const HeroMockup = () => {
   return (
@@ -6,58 +7,27 @@ export const HeroMockup = () => {
       {/* Decorative Glow */}
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200"></div>
       
-      <div className="relative bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        {/* Browser Top Bar — decorative, hidden from assistive technologies */}
-        <div aria-hidden="true" className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex items-center space-x-2">
-          <div className="flex space-x-1.5">
+      <div className="relative bg-white dark:bg-slate-800 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+        {/* Browser Top Bar — decorative browser frame */}
+        <div aria-hidden="true" className="bg-gray-100/90 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 md:px-6 py-3 md:py-3.5 flex items-center">
+          <div className="flex space-x-2 shrink-0">
             <div className="w-3 h-3 rounded-full bg-red-400"></div>
             <div className="w-3 h-3 rounded-full bg-amber-400"></div>
             <div className="w-3 h-3 rounded-full bg-green-400"></div>
           </div>
-          <div className="flex-1 max-w-md mx-auto h-7 bg-gray-200/50 dark:bg-slate-800/50 rounded-lg"></div>
+          <div className="flex-1 max-w-xs sm:max-w-md mx-auto h-6 sm:h-7 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg flex items-center justify-center px-3 text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 font-mono truncate select-none shadow-sm">
+            https://app.reviewmate.com/dashboard
+          </div>
         </div>
 
-        {/* Mockup Content — decorative placeholder UI, hidden from assistive technologies */}
-        <div aria-hidden="true" className="p-8 flex h-[400px] md:h-[500px]">
-          {/* Sidebar Placeholder */}
-          <div className="hidden md:flex flex-col w-48 space-y-6 mr-8 border-r border-gray-100 dark:border-slate-800 pr-8">
-            <div className="w-full h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg"></div>
-            <div className="w-3/4 h-6 bg-gray-100 dark:bg-slate-700 rounded-lg"></div>
-            <div className="w-full h-6 bg-gray-100 dark:bg-slate-700 rounded-lg"></div>
-            <div className="w-2/3 h-6 bg-gray-100 dark:bg-slate-700 rounded-lg"></div>
-            <div className="w-5/6 h-6 bg-gray-100 dark:bg-slate-700 rounded-lg"></div>
-          </div>
-
-          {/* Main Dashboard Content */}
-          <div className="flex-1 space-y-8">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-32 bg-gray-50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-                  <div className="w-12 h-4 bg-gray-200 dark:bg-slate-700 rounded-full"></div>
-                  <div className="w-20 h-8 bg-blue-200 dark:bg-blue-900/50 rounded-lg"></div>
-                </div>
-              ))}
-            </div>
-
-            {/* Charts Placeholder */}
-            <div className="flex-1 bg-gray-50 dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800 rounded-2xl p-8">
-              <div className="flex justify-between items-end h-full gap-4">
-                {[40, 70, 45, 90, 65, 80, 55, 95, 75, 85].map((h, i) => (
-                  <div 
-                    key={i} 
-                    className="flex-1 bg-blue-500/20 dark:bg-blue-600/20 rounded-t-lg transition-all duration-1000"
-                    style={{ height: `${h}%` }}
-                  >
-                    <div 
-                      className="w-full bg-blue-600 rounded-t-lg"
-                      style={{ height: '30%', marginTop: '70%' }}
-                    ></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Real Screenshot Preview */}
+        <div className="relative overflow-hidden bg-slate-50">
+          <img 
+            src={dashboardPreview} 
+            alt="ReviewMate Live Dashboard Preview" 
+            className="w-full h-auto object-cover block"
+            loading="eager"
+          />
         </div>
       </div>
 

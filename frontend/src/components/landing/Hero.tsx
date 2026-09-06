@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { ArrowRight, Play, CheckCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import { cn } from '../ui/Button';
 import { HeroMockup } from './HeroMockup';
@@ -41,15 +41,12 @@ export const Hero = () => {
             Centralize reviews from Google, Yelp, and more. Use AI to analyze sentiment, automate responses, and stay ahead of the competition.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
+          <div className="flex items-center justify-center mb-16">
             <Link to={user ? "/dashboard" : "/signup"} className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto px-10 group" rightIcon={<ArrowRight className="group-hover:translate-x-1 transition-transform" />}>
+              <Button size="lg" className="w-full sm:w-auto px-10 group shadow-lg shadow-blue-500/20" rightIcon={<ArrowRight className="group-hover:translate-x-1 transition-transform" />}>
                 {user ? "Go to Dashboard" : "Start Free Trial"}
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="w-full sm:w-auto px-10" leftIcon={<Play size={18} />}>
-              Watch Demo
-            </Button>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm font-medium text-gray-500 dark:text-gray-400">
