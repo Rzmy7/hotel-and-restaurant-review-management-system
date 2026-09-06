@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/shared/AuthLayout';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 import { getDashboardPathForRole, isExternalDestination } from '../utils/authRole';
 import { getApiBaseUrl } from '../config/api';
 import {
@@ -34,7 +36,7 @@ const SignUpPage = () => {
   const [signupToken, setSignupToken] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
-
+  
   const navigate = useNavigate();
   const auth = useAuth();
 
@@ -47,29 +49,6 @@ const SignUpPage = () => {
     }
     navigate(destination);
   }, [auth.user, navigate]);
-
-  // Password Strength Calculation
-  const passwordStrength = useMemo(() => {
-    if (!password) return { score: 0, label: 'NONE', color: 'bg-slate-700' };
-    let score = 0;
-    if (password.length >= 8) score += 1;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
-    if (/\d/.test(password)) score += 1;
-    if (/[^A-Za-z0-9]/.test(password)) score += 1;
-
-    switch (score) {
-      case 1:
-        return { score: 1, label: 'WEAK', color: 'bg-rose-500' };
-      case 2:
-        return { score: 2, label: 'FAIR', color: 'bg-amber-500' };
-      case 3:
-        return { score: 3, label: 'STRONG', color: 'bg-emerald-500' };
-      case 4:
-        return { score: 4, label: 'OPTIMAL', color: 'bg-emerald-400' };
-      default:
-        return { score: 0, label: 'NONE', color: 'bg-slate-700' };
-    }
-  }, [password]);
 
   const setFieldError = (field: SignupField, message: string | null) => {
     setFieldErrors((prev) => {
@@ -200,124 +179,99 @@ const SignUpPage = () => {
   };
 
   const handleGoogleLogin = () => {
+    // Open backend Google OAuth flow (backend will redirect to Google)
     const apiBase = getApiBaseUrl();
     window.location.href = `${apiBase}/api/auth/login/google`;
   };
 
   return (
-    <AuthLayout
+    <AuthLayout 
       type="signup"
-      title={isVerificationStep ? 'Confirm Identity.' : 'Create workspace.'}
-      description={
-        isVerificationStep
-          ? 'Enter the 6-digit confirmation code sent to your email.'
-          : 'Initialize your 14-day enterprise trial. Zero payment details required.'
-      }
+      title="Create Your Workspace" 
+      description="Start your 14-day free trial. No credit card required."
     >
-      {/* Global Error Banner */}
-      {error && (
-        <div className="mb-6 p-3.5 bg-rose-950/40 border border-rose-500/40 rounded-sm flex items-start gap-2.5 text-rose-300 animate-in fade-in slide-in-from-top-1">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-          <span className="text-xs font-sans font-medium leading-relaxed">{error}</span>
+      {error && !isVerificationStep && (
+        <div className="text-sm font-bold text-rose-600 dark:text-rose-400 mb-6 text-center animate-in fade-in slide-in-from-top-2">
+          {error}
         </div>
       )}
 
-      {/* Verification Step */}
       {isVerificationStep ? (
-        <form onSubmit={handleVerifyEmail} className="space-y-6">
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-sm">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
-                  Verification Code Dispatched
-                </div>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  {verificationMessage || 'A 6-digit activation token has been dispatched to your email.'}
-                </p>
-              </div>
+        <form onSubmit={handleVerifyEmail} className="space-y-4">
+          {verificationMessage && (
+            <div className="text-sm font-bold text-emerald-500 dark:text-emerald-400 mb-6 text-center animate-in fade-in slide-in-from-top-2">
+              {verificationMessage}
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2 text-left">
-            <div className="flex items-center justify-between">
-              <label className="font-mono text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                Activation Code
-              </label>
-              <span className="font-mono text-[10px] text-slate-500">6 DIGITS</span>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
+          <div className="space-y-1.5">
+            <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+              Verification Code
+            </label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Input
                 type="text"
                 inputMode="numeric"
-                placeholder="000000"
+                placeholder="123456"
                 value={verificationCode}
                 onChange={(e) => {
                   setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
                   setError(null);
                 }}
-                className="w-full h-12 pl-10 pr-4 bg-slate-900/60 border border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-sm text-center font-mono text-lg tracking-[0.5em] text-white placeholder:text-slate-600 outline-none transition-colors"
+                className="pl-11 tracking-[0.4em] text-center"
                 required
                 maxLength={6}
-                autoFocus
               />
+            </div>
+            {error && (
+              <div className="text-sm font-bold text-rose-600 dark:text-rose-400 mt-2 text-center animate-in fade-in">
+                {error}
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={resendLoading}
+                className="text-sm font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              >
+                {resendLoading ? 'Resending...' : 'Resend Code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsVerificationStep(false);
+                  setVerificationCode('');
+                  setVerificationMessage(null);
+                }}
+                className="text-sm font-bold text-gray-500 hover:text-gray-300"
+              >
+                Back to signup
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-1 font-mono text-xs">
-            <button
-              type="button"
-              onClick={handleResendCode}
-              disabled={resendLoading}
-              className="text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider disabled:opacity-50"
-            >
-              {resendLoading ? 'DISPATCHING...' : 'RESEND CODE'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsVerificationStep(false);
-                setVerificationCode('');
-                setVerificationMessage(null);
-              }}
-              className="text-slate-500 hover:text-slate-300 transition-colors uppercase tracking-wider"
-            >
-              BACK TO SIGNUP
-            </button>
-          </div>
-
-          <button
+          <Button
             type="submit"
-            disabled={verificationCode.length !== 6 || loading}
-            className="w-full h-11 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:pointer-events-none text-white rounded-sm font-mono text-xs uppercase tracking-widest font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full h-12 text-sm uppercase tracking-widest mt-4"
+            isLoading={loading}
+            disabled={verificationCode.length !== 6}
           >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                VERIFYING TOKEN...
-              </span>
-            ) : (
-              <>
-                VERIFY & ACTIVATE WORKSPACE
-                <ArrowRight className="w-3.5 h-3.5" />
-              </>
-            )}
-          </button>
+            {loading ? 'Verifying...' : 'Verify & Create Account'}
+          </Button>
         </form>
       ) : (
-        /* Standard Signup Form */
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
-          <div className="space-y-1 text-left">
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
               Full Name
             </label>
             <div className="relative group">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-              <input
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              <Input
                 type="text"
-                placeholder="Eleanor Vance"
+                placeholder="John Doe"
                 value={fullName}
                 onChange={(e) => {
                   setFullName(e.target.value);
@@ -325,26 +279,22 @@ const SignUpPage = () => {
                   setError(null);
                 }}
                 onBlur={() => validateSingleField('fullName')}
-                className="w-full h-11 pl-10 pr-4 bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-blue-500 focus:bg-slate-900 rounded-sm text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all font-sans"
+                className="pl-11"
                 required
-                autoComplete="name"
               />
             </div>
-            {fieldErrors.fullName && (
-              <p className="font-mono text-xs text-rose-400 mt-1">{fieldErrors.fullName}</p>
-            )}
+            {fieldErrors.fullName && <p className="text-xs text-rose-500 ml-1">{fieldErrors.fullName}</p>}
           </div>
 
-          {/* Work Email */}
-          <div className="space-y-1 text-left">
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-              Work Email Address
+          <div className="space-y-1.5">
+            <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+              Work Email
             </label>
             <div className="relative group">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-              <input
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
+              <Input
                 type="email"
-                placeholder="eleanor@grandhotel.com"
+                placeholder="name@company.com"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -352,28 +302,23 @@ const SignUpPage = () => {
                   setError(null);
                 }}
                 onBlur={() => validateSingleField('email')}
-                className="w-full h-11 pl-10 pr-4 bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-blue-500 focus:bg-slate-900 rounded-sm text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all font-sans"
+                className="pl-11"
                 required
-                autoComplete="email"
               />
             </div>
-            {fieldErrors.email && (
-              <p className="font-mono text-xs text-rose-400 mt-1">{fieldErrors.email}</p>
-            )}
+            {fieldErrors.email && <p className="text-xs text-rose-500 ml-1">{fieldErrors.email}</p>}
           </div>
 
-          {/* Password & Confirm Password Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-            {/* Password */}
-            <div className="space-y-1">
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                 Password
               </label>
               <div className="relative group">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-                <input
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
+                <Input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••••••"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -382,34 +327,29 @@ const SignUpPage = () => {
                     setError(null);
                   }}
                   onBlur={() => validateSingleField('password')}
-                  className="w-full h-11 pl-10 pr-10 bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-blue-500 focus:bg-slate-900 rounded-sm text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all font-sans"
+                  className="px-11"
                   required
-                  autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
                 >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {fieldErrors.password && (
-                <p className="font-mono text-xs text-rose-400 mt-1">{fieldErrors.password}</p>
-              )}
+              {fieldErrors.password && <p className="text-xs text-rose-500 ml-1">{fieldErrors.password}</p>}
             </div>
 
-            {/* Confirm Password */}
-            <div className="space-y-1">
-              <label className="block font-mono text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+            <div className="grid grid-cols-1 gap-1.5">
+              <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider ml-1">
                 Confirm
               </label>
               <div className="relative group">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
-                <input
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition-colors group-focus-within:text-blue-500" />
+                <Input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="••••••••••••"
+                  placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
@@ -417,50 +357,23 @@ const SignUpPage = () => {
                     setError(null);
                   }}
                   onBlur={() => validateSingleField('confirmPassword')}
-                  className="w-full h-11 pl-10 pr-10 bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-blue-500 focus:bg-slate-900 rounded-sm text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all font-sans"
+                  className="px-11"
                   required
-                  autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
                 >
-                  {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {fieldErrors.confirmPassword && (
-                <p className="font-mono text-xs text-rose-400 mt-1">{fieldErrors.confirmPassword}</p>
-              )}
+              {fieldErrors.confirmPassword && <p className="text-xs text-rose-500 ml-1">{fieldErrors.confirmPassword}</p>}
             </div>
           </div>
 
-          {/* Password Strength Indicator */}
-          {password && (
-            <div className="pt-1 text-left space-y-1.5 animate-in fade-in">
-              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-slate-400">
-                <span>SECURITY LEVEL</span>
-                <span className={passwordStrength.score >= 3 ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                  {passwordStrength.label}
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5 h-1">
-                {[1, 2, 3, 4].map((seg) => (
-                  <div
-                    key={seg}
-                    className={`h-full rounded-none transition-colors duration-200 ${
-                      seg <= passwordStrength.score ? passwordStrength.color : 'bg-slate-800'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Terms & Privacy Agreement */}
-          <div className="pt-2 text-left">
-            <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+          <div className="flex items-start gap-3 py-2 px-1">
+            <div className="relative flex items-center mt-0.5">
               <input
                 type="checkbox"
                 id="terms"
@@ -471,63 +384,40 @@ const SignUpPage = () => {
                   setError(null);
                 }}
                 onBlur={() => validateSingleField('acceptedTerms')}
-                className="w-3.5 h-3.5 mt-0.5 rounded-none border border-slate-700 bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0 accent-blue-600 cursor-pointer shrink-0"
+                className="w-4 h-4 rounded border-slate-700 bg-[#0B1021] text-blue-600 focus:ring-blue-500/20 accent-blue-600 cursor-pointer"
               />
-              <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors font-sans leading-snug">
-                I agree to the{' '}
-                <Link to="/terms" className="text-slate-200 underline decoration-slate-600 hover:text-white">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="text-slate-200 underline decoration-slate-600 hover:text-white">
-                  Privacy Policy
-                </Link>
-                .
-              </span>
+            </div>
+            <label htmlFor="terms" className="text-[12px] font-medium text-gray-500 dark:text-gray-400 leading-snug cursor-pointer select-none">
+              I agree to the <Link to="/terms" className="text-blue-600 font-bold hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-blue-600 font-bold hover:underline">Privacy Policy</Link>
             </label>
-            {fieldErrors.acceptedTerms && (
-              <p className="font-mono text-xs text-rose-400 mt-1">{fieldErrors.acceptedTerms}</p>
-            )}
           </div>
+          {fieldErrors.acceptedTerms && <p className="text-xs text-rose-500 ml-1">{fieldErrors.acceptedTerms}</p>}
 
-          {/* Submit Button (44px) */}
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full h-11 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-sm font-mono text-xs uppercase tracking-widest font-semibold transition-colors flex items-center justify-center gap-2 mt-2 cursor-pointer"
+            className="w-full h-12 text-sm uppercase tracking-widest mt-4"
+            isLoading={loading}
           >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                INITIALIZING WORKSPACE...
-              </span>
-            ) : (
-              <>
-                INITIALIZE WORKSPACE
-                <ArrowRight className="w-3.5 h-3.5" />
-              </>
-            )}
-          </button>
+            {loading ? 'Creating Account...' : 'Get Started Now'}
+          </Button>
 
-          {/* Divider */}
-          <div className="relative my-5">
+          <div className="relative py-4">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-800" />
+              <div className="w-full border-t border-gray-100 dark:border-slate-800"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#020617] px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                OR REGISTER WITH
+              <span className="bg-white dark:bg-slate-800 px-4 text-[12px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                Or join with
               </span>
             </div>
           </div>
 
-          {/* Google Workspace (44px) */}
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-full h-11 flex items-center justify-center gap-3 bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 rounded-sm font-mono text-xs uppercase tracking-wider text-slate-200 hover:text-white transition-all duration-150 cursor-pointer"
+            className="w-full h-12 flex items-center justify-center gap-3 bg-white dark:bg-slate-700 border-2 border-gray-100 dark:border-slate-600 rounded-xl font-bold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-600 transition-all active:scale-[0.98]"
           >
-            <svg width="18" height="18" viewBox="0 0 18 18">
+            <svg width="20" height="20" viewBox="0 0 18 18">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" />
               <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" />
               <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" />
@@ -536,16 +426,15 @@ const SignUpPage = () => {
             Google Workspace
           </button>
 
-          {/* Login Link */}
-          <div className="text-center pt-3">
-            <span className="text-xs text-slate-500 font-sans">Already an operator? </span>
-            <Link
-              to="/login"
-              className="font-mono text-xs uppercase tracking-wider text-blue-400 hover:text-blue-300 transition-colors font-semibold ml-1 underline decoration-blue-500/30 underline-offset-4"
+          <p className="text-center mt-6">
+            <span className="text-gray-500 font-medium text-sm">Already a member? </span>
+            <Link 
+              to="/login" 
+              className="text-blue-600 font-black hover:text-blue-700 transition-colors uppercase text-sm tracking-tight"
             >
               Sign In
             </Link>
-          </div>
+          </p>
         </form>
       )}
     </AuthLayout>
