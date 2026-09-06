@@ -195,7 +195,7 @@ const ReviewDetailPage: React.FC = () => {
                                         {review.heading || review.reviewText?.slice(0, 100) || 'Review'}
                                     </h2>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {isReviewerNamesVisible && review.reviewerName ? `by ${review.reviewerName} · ` : ''}{review.source}
+                                        {isReviewerNamesVisible && review.reviewerName && review.reviewerName.toLowerCase() !== 'anonymous' ? `by ${review.reviewerName} · ` : ''}{review.source}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">

@@ -1,13 +1,22 @@
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { reviewsService } from '../services/reviewsService';
+import { useReviewerNamesVisibility } from './useReviewerNamesVisibility';
 import type { FetchReviewsParams } from '../types/reviews';
 
 export function useReviewsData(organizationId: string, params: FetchReviewsParams) {
     const queryClient = useQueryClient();
+    const isReviewerNamesVisible = useReviewerNamesVisibility();
+
+    useEffect(() => {
+        if (organizationId) {
+            queryClient.invalidateQueries({ queryKey: ['reviews', organizationId] });
+        }
+    }, [isReviewerNamesVisible, organizationId, queryClient]);
 
     // 1. Fetch Reviews with pagination/filters
     const reviewsQuery = useQuery({
-        queryKey: ['reviews', organizationId, params],
+        queryKey: ['reviews', organizationId, params, isReviewerNamesVisible],
         queryFn: () => reviewsService.getReviews(organizationId, params),
         placeholderData: (previousData) => previousData, // keepPreviousData in v5
         staleTime: 5 * 60 * 1000, // 5 minutes

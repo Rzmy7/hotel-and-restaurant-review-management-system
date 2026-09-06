@@ -11,7 +11,8 @@ interface ReviewsTableRowProps {
 
 const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRowProps) => {
     const isReviewerNamesVisible = useReviewerNamesVisibility();
-    const displayName = isReviewerNamesVisible ? (review.userName || 'Anonymous') : 'Anonymous';
+    const rawName = (review.userName || review.reviewerName || '').trim();
+    const hasNamedReviewer = isReviewerNamesVisible && Boolean(rawName) && rawName.toLowerCase() !== 'anonymous';
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -68,13 +69,13 @@ const ReviewsTableRow = ({ review, isLastRows, onClick, index }: ReviewsTableRow
 
             {/* Review Content */}
             <td className="px-6 py-5">
-                {isReviewerNamesVisible ? (
+                {hasNamedReviewer ? (
                     <div className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500 dark:text-slate-300 uppercase">
-                            {displayName.charAt(0)}
+                            {rawName.charAt(0)}
                         </div>
                         <div>
-                            <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{displayName}</p>
+                            <p className="text-[13px] font-black text-gray-900 dark:text-white mb-1 tracking-tight">{rawName}</p>
                             {review.heading && (
                                 <p className="text-[12px] font-black text-gray-800 dark:text-gray-200 mb-1 leading-tight line-clamp-1">{review.heading}</p>
                             )}

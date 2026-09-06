@@ -73,7 +73,8 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   // Combine propReview with fetchedReview details, preferring fetchedReview
   const review = fetchedReview ? { ...propReview, ...fetchedReview } : propReview;
   const isReviewerNamesVisible = useReviewerNamesVisibility();
-  const displayName = isReviewerNamesVisible ? (review.userName || 'User') : 'Anonymous';
+  const rawModalName = (review.userName || review.reviewerName || '').trim();
+  const hasNamedModalReviewer = isReviewerNamesVisible && Boolean(rawModalName) && rawModalName.toLowerCase() !== 'anonymous';
 
   const [draftReply, setDraftReply] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -170,14 +171,14 @@ const ReviewDetailModal = ({ isOpen, onClose, review: propReview, allReviews = [
   const customHeader = (
     <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 sticky top-0 z-10 backdrop-blur-md w-full">
       <div className="flex items-center gap-4">
-        {isReviewerNamesVisible && (
+        {hasNamedModalReviewer && (
           <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800 flex items-center justify-center flex-shrink-0 text-lg font-black text-[#4e80ee] dark:text-blue-400 uppercase">
-            {review.userName ? review.userName.charAt(0) : 'U'}
+            {rawModalName.charAt(0)}
           </div>
         )}
         <div>
-          {isReviewerNamesVisible ? (
-            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{review.userName || 'User'}</h2>
+          {hasNamedModalReviewer ? (
+            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{rawModalName}</h2>
           ) : (
             <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{review.heading || 'Review Details'}</h2>
           )}
