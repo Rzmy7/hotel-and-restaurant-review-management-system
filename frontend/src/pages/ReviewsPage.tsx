@@ -30,8 +30,12 @@ const ReviewsPageContent = () => {
     stats,
     filtersConfig, 
     isLoading: loading, 
+    isRefetching,
     refresh 
   } = useReviewsData(organizationId, fetchParams);
+
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const isRefreshing = isRefetching || isManualRefreshing;
 
   // Modal State from Store
   const selectedReview = useReviewsStore(state => state.selectedReview);
@@ -42,9 +46,16 @@ const ReviewsPageContent = () => {
     setDateRange(dateFrom, dateTo);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
     setPage(0);
-    refresh();
+    try {
+      await refresh();
+    } finally {
+      setTimeout(() => {
+        setIsManualRefreshing(false);
+      }, 500);
+    }
   };
 
   const handleExportCsv = () => {
@@ -142,10 +153,11 @@ const ReviewsPageContent = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={handleRefresh}
-            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 ${loading ? 'animate-spin border-blue-600 dark:border-blue-500' : ''}`}
+            disabled={isRefreshing}
+            className={`w-10 h-10 grid place-items-center bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400 rounded-xl transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-[#4e80ee] hover:shadow-sm active:scale-90 disabled:opacity-75 disabled:cursor-not-allowed ${isRefreshing ? 'border-blue-400 dark:border-blue-500 text-[#4e80ee]' : ''}`}
             title="Refresh System"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} className={isRefreshing ? 'animate-spin text-[#4e80ee]' : ''} />
           </button>
 
           <button
