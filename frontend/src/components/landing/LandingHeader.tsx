@@ -32,7 +32,7 @@ export const LandingHeader = () => {
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         isScrolled
-          ? 'bg-white/80 backdrop-blur-md shadow-sm dark:bg-slate-900/80 border-b border-gray-200 dark:border-slate-800 py-3'
+          ? 'bg-[#FEFEFE]/90 backdrop-blur-md shadow-sm dark:bg-slate-900/90 border-b border-gray-200/50 dark:border-slate-800 py-3'
           : 'bg-transparent py-5'
       )}
     >
@@ -50,7 +50,7 @@ export const LandingHeader = () => {
             <a
               key={link.name}
               href={link.href}
-              className="text-sm font-medium text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+              className="text-sm font-medium text-gray-600 hover:text-[#4E80EE] dark:text-gray-300 dark:hover:text-[#4E80EE] transition-colors"
             >
               {link.name}
             </a>
@@ -60,19 +60,19 @@ export const LandingHeader = () => {
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <Link to="/dashboard">
-              <Button variant="primary" size="sm">
+              <Button variant="primary" size="sm" className="bg-[#4E80EE] hover:bg-[#3A66DE] text-white shadow-md shadow-[#4E80EE]/20 border-transparent">
                 Dashboard
               </Button>
             </Link>
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="hover:text-[#4E80EE]">
                   Login
                 </Button>
               </Link>
               <Link to="/signup">
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" className="bg-[#4E80EE] hover:bg-[#3A66DE] text-white shadow-md shadow-[#4E80EE]/20 border-transparent">
                   Get Started
                 </Button>
               </Link>
@@ -82,7 +82,7 @@ export const LandingHeader = () => {
 
         {/* Mobile Menu Toggle: added aria-label, aria-expanded, aria-controls for full screen reader support */}
         <button
-          className="md:hidden text-gray-600 dark:text-gray-300"
+          className="md:hidden text-gray-600 dark:text-gray-300 hover:text-[#4E80EE]"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={isMobileMenuOpen}
@@ -95,13 +95,13 @@ export const LandingHeader = () => {
       {/* Mobile Nav */}
       {/* Mobile Nav: id="mobile-menu" matches aria-controls on the toggle button */}
       {isMobileMenuOpen && (
-        <div id="mobile-menu" className="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 animate-fadeIn">
+        <div id="mobile-menu" className="md:hidden bg-[#FEFEFE] dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 animate-fadeIn">
           <nav className="flex flex-col p-6 space-y-4">
             {navLinks.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
-                className="text-base font-medium text-gray-600 dark:text-gray-300"
+                className="text-base font-medium text-gray-600 dark:text-gray-300 hover:text-[#4E80EE]"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.name}
@@ -111,19 +111,19 @@ export const LandingHeader = () => {
             <div className="flex flex-col space-y-3">
               {user ? (
                 <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="primary" className="w-full">
+                  <Button variant="primary" className="w-full bg-[#4E80EE] hover:bg-[#3A66DE] text-white">
                     Dashboard
                   </Button>
                 </Link>
               ) : (
                 <>
                   <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button variant="ghost" className="w-full justify-start hover:text-[#4E80EE]">
                       Login
                     </Button>
                   </Link>
                   <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button variant="primary" className="w-full">
+                    <Button variant="primary" className="w-full bg-[#4E80EE] hover:bg-[#3A66DE] text-white">
                       Get Started
                     </Button>
                   </Link>

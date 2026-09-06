@@ -30,11 +30,15 @@ export const FAQ = () => {
   }, []);
 
   return (
-    <section id="faq" className="py-24 bg-white dark:bg-slate-900">
+    <section id="faq" className="py-24 bg-[#F9FAFB] dark:bg-slate-900">
       <div className="container mx-auto px-6 max-w-3xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Frequently Asked Questions
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#4E80EE]/10 text-[#4E80EE] border border-[#4E80EE]/20 mb-4 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4E80EE]"></span>
+            Got Questions?
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            Frequently Asked <span className="text-[#4E80EE]">Questions</span>
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400">
             Everything you need to know about ReviewMate.
@@ -47,7 +51,7 @@ export const FAQ = () => {
             {[1, 2, 3, 4].map((i) => (
               <div 
                 key={i} 
-                className="h-20 bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 rounded-2xl animate-pulse"
+                className="h-20 bg-[#FEFEFE] dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 rounded-2xl animate-pulse"
               />
             ))}
           </div>
@@ -55,11 +59,11 @@ export const FAQ = () => {
 
         {/* Error / Retry State */}
         {!isLoading && error && faqs.length === 0 && (
-          <div className="p-8 text-center bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-200 dark:border-slate-700">
+          <div className="p-8 text-center bg-[#FEFEFE] dark:bg-slate-800/50 rounded-2xl border border-gray-200 dark:border-slate-700">
             <p className="text-gray-600 dark:text-slate-300 mb-4">{error}</p>
             <button
               onClick={() => void loadFaqs()}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#4E80EE] text-white rounded-xl shadow hover:bg-[#3A66DE] transition-colors"
             >
               <RefreshCw size={14} /> Retry
             </button>
@@ -80,15 +84,17 @@ export const FAQ = () => {
                 <div 
                   key={faq.id || index}
                   className={cn(
-                    "border border-gray-100 dark:border-slate-800 rounded-2xl overflow-hidden staggered-item transition-colors",
-                    isOpen ? "bg-gray-50/50 dark:bg-slate-800/40" : "bg-white dark:bg-slate-900",
+                    "border rounded-2xl overflow-hidden staggered-item transition-all duration-200",
+                    isOpen 
+                      ? "bg-[#FEFEFE] dark:bg-slate-800/80 border-[#4E80EE]/40 shadow-md shadow-[#4E80EE]/5" 
+                      : "bg-[#FEFEFE] dark:bg-slate-900 border-gray-100 dark:border-slate-800 shadow-sm hover:border-[#4E80EE]/30",
                     isIntersecting && "animate-fadeInUp"
                   )}
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   <button
                     type="button"
-                    className="w-full p-6 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 rounded-2xl"
+                    className="w-full p-6 flex items-center justify-between text-left hover:bg-[#F9FAFB]/60 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#4E80EE] rounded-2xl"
                     onClick={() => setOpenIndex(isOpen ? null : index)}
                     aria-expanded={isOpen}
                     aria-controls={contentId}
@@ -96,7 +102,7 @@ export const FAQ = () => {
                     <span className="font-bold text-gray-900 dark:text-white pr-4">
                       {faq.question}
                     </span>
-                    <span className="shrink-0 text-blue-600 dark:text-blue-400">
+                    <span className="shrink-0 text-[#4E80EE]">
                       {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} className="text-gray-400" />}
                     </span>
                   </button>

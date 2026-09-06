@@ -4,7 +4,7 @@ import { Github, Twitter, Linkedin } from 'lucide-react';
 import reviewMateLogo from '../../assets/reviewMate-logo.png';
 export const LandingFooter = () => {
   return (
-    <footer className="bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 py-12 md:py-20">
+    <footer className="bg-[#FEFEFE] dark:bg-slate-900 border-t border-gray-200/60 dark:border-slate-800 py-12 md:py-20">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-1">
@@ -19,13 +19,13 @@ export const LandingFooter = () => {
             </p>
             {/* Social links: added aria-label for screen readers; aria-hidden on icon SVGs to avoid duplicate announcements */}
             <div className="flex space-x-4">
-              <a href="#" aria-label="Follow us on Twitter" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <a href="#" aria-label="Follow us on Twitter" className="text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">
                 <Twitter size={20} aria-hidden="true" />
               </a>
-              <a href="#" aria-label="Connect on LinkedIn" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <a href="#" aria-label="Connect on LinkedIn" className="text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">
                 <Linkedin size={20} aria-hidden="true" />
               </a>
-              <a href="#" aria-label="View our GitHub" className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <a href="#" aria-label="View our GitHub" className="text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">
                 <Github size={20} aria-hidden="true" />
               </a>
             </div>
@@ -35,29 +35,29 @@ export const LandingFooter = () => {
           {/* Heading order fix: changed h4 → h3 (page has h2 section headings; skipping to h4 violates WCAG heading order) */}
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Product</h3>
             <ul className="space-y-4">
-              <li><a href="#features" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Features</a></li>
-              <li><a href="#pricing" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing</a></li>
-              <li><a href="#how-it-works" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">How It Works</a></li>
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Integrations</a></li>
+              <li><a href="#features" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Features</a></li>
+              <li><a href="#pricing" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Pricing</a></li>
+              <li><a href="#how-it-works" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">How It Works</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Integrations</a></li>
             </ul>
           </div>
 
           <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Company</h3>
             <ul className="space-y-4">
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">About Us</a></li>
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Careers</a></li>
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Blog</a></li>
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Press</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">About Us</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Careers</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Blog</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Press</a></li>
             </ul>
           </div>
 
           <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-6">Legal</h3>
             <ul className="space-y-4">
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Cookie Policy</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Privacy Policy</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#4E80EE] dark:hover:text-[#4E80EE] transition-colors">Cookie Policy</a></li>
             </ul>
           </div>
         </div>
