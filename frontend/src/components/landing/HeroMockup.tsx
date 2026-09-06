@@ -30,30 +30,6 @@ export const HeroMockup = () => {
           />
         </div>
       </div>
-
-      {/* Decorative Floating Elements — aria-hidden: purely visual, no meaningful content */}
-      <div aria-hidden="true" className="absolute -top-12 -right-12 hidden lg:block bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 animate-bounce duration-[3000ms]">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-            <span className="text-green-600 text-lg font-bold">+24%</span>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">Sentiment Score</div>
-            <div className="text-sm font-bold">Increasing fast</div>
-          </div>
-        </div>
-      </div>
-
-      {/* AI badge: changed from bg-blue-100/text-blue-600 (contrast ~2.9:1 ❌) to bg-blue-600/text-white (contrast 4.5:1+ ✅) */}
-      <div aria-hidden="true" className="absolute -bottom-8 -left-12 hidden lg:block bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 animate-pulse">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">AI</div>
-          <div>
-            <div className="text-xs text-gray-500">Auto-Response</div>
-            <div className="text-sm font-bold">Drafting...</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
